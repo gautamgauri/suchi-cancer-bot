@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.log
+nci_urls.json
+extracted_content.json
+processed_files.json
+Thesaurus.owl
+output/
+*.cache
+
+

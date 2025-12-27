@@ -1,0 +1,27 @@
+# NCI Ingestion Configuration
+
+sitemap_url: "https://www.cancer.gov/sitemap.xml"
+target_sections:
+  - "/publications/pdq"
+  - "/types/"
+  - "/publications/dictionaries"
+  - "/about-cancer/treatment"
+  - "/coping"
+
+output_dir: "../../kb/en/02_nci_core"
+rate_limit_delay: 1.5  # seconds between requests
+user_agent: "Suchi Cancer Bot/1.0 (Educational Use)"
+
+# NCIt Thesaurus
+ncit_url: "https://evs.nci.nih.gov/ftp1/rdf/Thesaurus.owl"
+ncit_update_schedule: "quarterly"
+
+# Exclude patterns
+exclude_patterns:
+  - ".pdf"
+  - ".zip"
+  - "/es/"  # Spanish content (can add later)
+  - "/admin/"
+  - "/search"
+
+

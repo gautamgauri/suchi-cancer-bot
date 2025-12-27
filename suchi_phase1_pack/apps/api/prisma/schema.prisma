@@ -1,0 +1,139 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+model Session {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  channel   String
+  locale    String?
+  userType  String?
+  status    String   @default("active")
+
+  messages        Message[]
+  feedback        Feedback[]
+  safetyEvents    SafetyEvent[]
+  analyticsEvents AnalyticsEvent[]
+}
+
+model Message {
+  id                  String   @id @default(uuid())
+  sessionId            String
+  createdAt            DateTime @default(now())
+  role                String
+  text                String
+
+  safetyClassification String?
+  policyRulesFired     String[] @default([])
+  kbDocIds             String[] @default([])
+  latencyMs            Int?
+
+  evidenceQuality    String?   // "strong" | "weak" | "conflicting" | "insufficient"
+  citationCount      Int?      @default(0)
+  abstentionReason   String?
+  evidenceGatePassed Boolean?  @default(false)
+
+  session      Session @relation(fields: [sessionId], references: [id])
+  feedback     Feedback[]
+  safetyEvents SafetyEvent[]
+  citations    MessageCitation[]
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  sessionId String
+  messageId String?
+  createdAt DateTime @default(now())
+  rating    String
+  reason    String?
+  comment   String?
+
+  session Session @relation(fields: [sessionId], references: [id])
+  message Message? @relation(fields: [messageId], references: [id])
+}
+
+model SafetyEvent {
+  id        String   @id @default(uuid())
+  sessionId String
+  messageId String?
+  createdAt DateTime @default(now())
+  type      String
+  detail    String?
+
+  session Session @relation(fields: [sessionId], references: [id])
+  message Message? @relation(fields: [messageId], references: [id])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  sessionId String?
+  createdAt DateTime @default(now())
+  eventName String
+  payload   Json?
+
+  session Session? @relation(fields: [sessionId], references: [id])
+}
+
+model KbDocument {
+  id              String   @id
+  title           String
+  source          String?
+  sourceType      String?  // 01_suchi_oncotalks, 02_nci_core, etc.
+  version         String
+  status          String   @default("active")
+  license         String?  // public_domain, cc_by_nc_sa, sccf_owned, etc.
+  lastReviewed    DateTime?
+  reviewFrequency String?  // quarterly, annual, monthly, as_needed
+  audienceLevel   String?  // patient, caregiver, general, technical
+  language        String?  @default("en")
+  cancerTypes     String[] @default([]) // Array of cancer types
+  tags            String[] @default([]) // Array of topic tags
+  url             String?  // Original source URL
+  citation        String?  // How to cite this source
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  isTrustedSource Boolean  @default(false)  // Approved sources only
+  versionHash     String?  // For change detection
+  publisher       String?
+  jurisdiction    String?
+  retrievedDate   DateTime?
+
+  chunks KbChunk[]
+
+  @@index([sourceType])
+  @@index([status])
+  @@index([language])
+  @@index([cancerTypes])
+  @@index([tags])
+  @@index([isTrustedSource])
+}
+
+model KbChunk {
+  id         String   @id @default(uuid())
+  docId      String
+  chunkIndex Int
+  content    String
+  embedding  Unsupported("vector(768)")? // pgvector for semantic search
+  createdAt  DateTime @default(now())
+
+  document KbDocument @relation(fields: [docId], references: [id])
+
+  @@index([docId])
+  @@index([content])
+}
+
+model MessageCitation {
+  id          String   @id @default(uuid())
+  messageId   String
+  docId       String
+  chunkId     String
+  citationText String
+  position    Int      // Character position in message text
+  createdAt   DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([docId])
+}

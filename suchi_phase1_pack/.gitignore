@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma
+prisma/migrations/
+
+# Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# NCI Ingestion artifacts
+scripts/nci-ingestion/nci_urls.json
+scripts/nci-ingestion/extracted_content.json
+scripts/nci-ingestion/processed_files.json
+scripts/nci-ingestion/test_extracted.json
+scripts/nci-ingestion/test_urls.json
+
+# YouTube transcripts artifacts
+scripts/youtube-transcripts/transcripts/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Generated files
+*.generated.*
+

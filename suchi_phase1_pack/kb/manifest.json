@@ -1,0 +1,2003 @@
+{
+  "locale": "en",
+  "schemaVersion": "2.0",
+  "docs": [
+    {
+      "id": "kb_en_cancer_basics_v1",
+      "title": "Cancer Basics: An Introduction",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF KB",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "en/01_suchi_oncotalks/cancer-basics.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2025-01-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "basics",
+        "introduction",
+        "general"
+      ],
+      "url": null,
+      "citation": "SCCF KB, 2025"
+    },
+    {
+      "id": "kb_en_breast_cancer_screening_v1",
+      "title": "Breast Cancer Screening: General Information",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI (Adapted)",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/breast-cancer-screening.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-01-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "screening",
+        "breast-cancer",
+        "prevention"
+      ],
+      "url": "https://www.cancer.gov/types/breast/patient/breast-screening-pdq",
+      "citation": "NCI PDQ, Adapted 2025"
+    },
+    {
+      "id": "kb_en_red_flags_urgent_care_v1",
+      "title": "Red Flags: When to Seek Urgent Care",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF KB",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/red-flags-urgent-care.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2025-01-24",
+      "reviewFrequency": "monthly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "red-flags",
+        "urgent-care",
+        "emergency",
+        "safety"
+      ],
+      "url": null,
+      "citation": "SCCF KB, 2025"
+    },
+    {
+      "id": "kb_en_questions_to_ask_doctor_v1",
+      "title": "Questions to Ask Your Doctor",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF KB",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/questions-to-ask-doctor.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2025-01-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "questions",
+        "doctor-visit",
+        "preparation",
+        "communication"
+      ],
+      "url": null,
+      "citation": "SCCF KB, 2025"
+    },
+    {
+      "id": "kb_en_india_helplines_v1",
+      "title": "Cancer Support Helplines and Resources in India",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/india-helplines.md",
+      "license": "public_info",
+      "lastReviewed": "2025-01-24",
+      "reviewFrequency": "monthly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "helplines",
+        "support",
+        "india",
+        "resources",
+        "navigation"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled, 2025"
+    },
+    {
+      "id": "kb_en_nci_publications_patient_education_coping_with_advance_cancer_mobi_v1",
+      "title": "",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/publications-patient-education-coping-with-advance-cancer-mobi.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/publications/patient-education/coping-with-advance-cancer.mobi",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_research_car_t_cell_therapy_infographic_v1",
+      "title": "CAR T-Cell Therapy Infographic - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/treatment/about-cancer-treatment-research-car-t-cell-therapy-infographic.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "treatment"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/research/car-t-cell-therapy-infographic",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_photodynamic_therapy_photodyamic_therapy_process_infographic_",
+      "title": "Photodynamic Therapy Process Infographic - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-photodynamic-therapy-photodyamic-therapy-process-infographic.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "photodynamic therapy",
+        "lung",
+        "skin"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/photodynamic-therapy/photodyamic-therapy-process-infographic",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_publications_pdq_editorial_boards_members_v1",
+      "title": "The PDQ® Editorial Board Members: Leading Experts in Oncology - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/pdq/publications-pdq-editorial-boards-members.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "pdq"
+      ],
+      "url": "https://www.cancer.gov/publications/pdq/editorial-boards/members",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_day_to_day_benefits_of_exercise_infographic_v1",
+      "title": "Benefits of Exercise for People with Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-day-to-day-benefits-of-exercise-infographic.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/day-to-day/benefits-of-exercise-infographic",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_publications_pdq_editorial_processes_editorial_process_infographic_v1",
+      "title": "PDQ Editorial Process Infographic - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/pdq/publications-pdq-editorial-processes-editorial-process-infographic.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "pdq"
+      ],
+      "url": "https://www.cancer.gov/publications/pdq/editorial-processes/editorial-process-infographic",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_aya_overview_video_v1",
+      "title": "Introduction to Adolescent and Young Adult Cancers - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-aya-overview-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "aya"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/aya/overview-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_aya_aya_fertility_v1",
+      "title": "Fertility Issues for Adolescents and Young Adults with Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-aya-aya-fertility.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "aya"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/aya/aya-fertility",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_cam_cam_video_v1",
+      "title": "Lifelines: Complementary and Alternative Medicine - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/treatment/about-cancer-treatment-cam-cam-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "treatment"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/cam/cam-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_aya_after_diagnosis_v1",
+      "title": "What Adolescents and Young Adults Need to Know after a Cancer Diagnosis - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-aya-after-diagnosis.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "aya"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/aya/after-diagnosis",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_surgery_choices_surgery_choices_talk_with_doc_video_v1",
+      "title": "Surgery Choices: Theresa - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-surgery-choices-surgery-choices-talk-with-doc-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/surgery-choices/surgery-choices-talk-with-doc-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_stem_cell_transplant_bone_marrow_video_v1",
+      "title": "Considering becoming a bone marrow or a blood stem cell donor? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-stem-cell-transplant-bone-marrow-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "stem cell transplant"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/stem-cell-transplant/bone-marrow-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_surgery_choices_surgery_choices_learn_about_video_v1",
+      "title": "Surgery Choices: Cindy, Theresa, Paula - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-surgery-choices-surgery-choices-learn-about-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/surgery-choices/surgery-choices-learn-about-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_surgery_choices_surgery_choices_think_about_video_v1",
+      "title": "Surgery Choices: Theresa, Cindy, Paula - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-surgery-choices-surgery-choices-think-about-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/surgery-choices/surgery-choices-think-about-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_colorectal_colorectal_screening_cdc_psa_v1",
+      "title": "No Excuses - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-colorectal-colorectal-screening-cdc-psa.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "colorectal"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/colorectal/colorectal-screening-cdc-psa",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_did_you_know_breast_2014_video_v1",
+      "title": "Breast Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-did-you-know-breast-2014-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/did-you-know-breast-2014-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_skin_did_you_know_melanoma_cancer_2014_video_v1",
+      "title": "Did You Know? Melanoma Cancer Statistics - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-skin-did-you-know-melanoma-cancer-2014-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "skin"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/skin/did-you-know-melanoma-cancer-2014-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_lung_research_dr_david_gandara_lung_map_trial_v1",
+      "title": "Dr. David Gandara of the UC Davis Comprehensive Cancer Center - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-lung-research-dr-david-gandara-lung-map-trial.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "lung"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/lung/research/dr-david-gandara-lung-map-trial",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_leukemia_dyk_leukemia_video_v1",
+      "title": "Leukemia Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-leukemia-dyk-leukemia-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "leukemia"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/leukemia/dyk-leukemia-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_bladder_did_you_know_bladder_cancer_video_v1",
+      "title": "Bladder Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-bladder-did-you-know-bladder-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "bladder"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/bladder/did-you-know-bladder-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_liver_did_you_know_liver_cancer_2014_video_v1",
+      "title": "Liver Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-liver-did-you-know-liver-cancer-2014-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "liver"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/liver/did-you-know-liver-cancer-2014-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_cervical_did_you_know_cervical_cancer_video_v1",
+      "title": "Did You Know? Cervical Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-cervical-did-you-know-cervical-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "cervical"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/cervical/did-you-know-cervical-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_colorectal_did_you_know_colorectal_cancer_video_v1",
+      "title": "Colorectal Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-colorectal-did-you-know-colorectal-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "colorectal"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/colorectal/did-you-know-colorectal-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_pancreatic_did_you_know_pancreatic_cancer_video_v1",
+      "title": "Pancreatic Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-pancreatic-did-you-know-pancreatic-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "pancreatic"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/pancreatic/did-you-know-pancreatic-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_prostate_did_you_know_prostate_cancer_video_v1",
+      "title": "Prostate Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-prostate-did-you-know-prostate-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "prostate"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/prostate/did-you-know-prostate-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_cervical_did_you_know_hpv_video_v1",
+      "title": "Human Papillomavirus (HPV) | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-cervical-did-you-know-hpv-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "cervical"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/cervical/did-you-know-hpv-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_lung_changing_landscape_lung_cancer_research_google_hangout_video_v1",
+      "title": "The Changing Landscape of Lung Cancer Research and Treatment - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-lung-changing-landscape-lung-cancer-research-google-hangout-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "lung"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/lung/changing-landscape-lung-cancer-research-google-hangout-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_thyroid_did_you_know_thyroid_cancer_2015_video_v1",
+      "title": "Thyroid Cancer Statistics | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-thyroid-did-you-know-thyroid-cancer-2015-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "thyroid"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/thyroid/did-you-know-thyroid-cancer-2015-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_lung_did_you_know_lung_cancer_video_v1",
+      "title": "Lung Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-lung-did-you-know-lung-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "lung"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/lung/did-you-know-lung-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_research_cisnet_interview_modeling_cronin_video_v1",
+      "title": "Interview on CISNET modeling -- Dr. Kathy Cronin - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-research-cisnet-interview-modeling-cronin-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/research/cisnet-interview-modeling-cronin-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_liver_dyk_hepatitis_liver_cancer_video_v1",
+      "title": "Hepatitis and Liver Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-liver-dyk-hepatitis-liver-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "liver"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/liver/dyk-hepatitis-liver-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_kidney_did_you_know_kidney_cancer_2016_video_v1",
+      "title": "Kidney and Renal Pelvis Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-kidney-did-you-know-kidney-cancer-2016-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "kidney"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/kidney/did-you-know-kidney-cancer-2016-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_photoimmunotherapy_video_v1",
+      "title": "Killing Cancer Cells with the Help of Infrared Light – Photoimmunotherapy - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-photoimmunotherapy-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "photoimmunotherapy video"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/photoimmunotherapy-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_uterine_did_you_know_endometrial_cancer_2016_video_v1",
+      "title": "Endometrial Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-uterine-did-you-know-endometrial-cancer-2016-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "uterine"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/uterine/did-you-know-endometrial-cancer-2016-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_metastatic_cancer_research_oxygen_metastasis_video_v1",
+      "title": "Oxygen and Metastasis: A Conversation with Dr. Nick Restifo - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-metastatic-cancer-research-oxygen-metastasis-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "metastatic cancer",
+        "lung"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/metastatic-cancer/research/oxygen-metastasis-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_brain_dyk_brain_cancer_v1",
+      "title": "Brain and Other Nervous System Cancers | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-brain-dyk-brain-cancer.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "brain"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/brain/dyk-brain-cancer",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_pancreatic_future_of_pancreatic_cancer_research_and_treatment_video_v1",
+      "title": "The Future of Pancreatic Cancer Research and Treatment - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-pancreatic-future-of-pancreatic-cancer-research-and-treatment-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "pancreatic"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/pancreatic/future-of-pancreatic-cancer-research-and-treatment-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_prostate_prostate_cancer_youtube_live_video_v1",
+      "title": "The Future of Prostate Cancer Research and Treatment - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-prostate-prostate-cancer-youtube-live-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "prostate"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/prostate/prostate-cancer-youtube-live-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_cervical_facebook_live_cervical_treatments_video_v1",
+      "title": "Today's Cervical Cancer Treatments - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-cervical-facebook-live-cervical-treatments-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "cervical"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/cervical/facebook-live-cervical-treatments-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_metastatic_cancer_how_cancer_spreads_video_v1",
+      "title": "Metastasis: How Cancer Spreads - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-metastatic-cancer-how-cancer-spreads-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "metastatic cancer"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/metastatic-cancer/how-cancer-spreads-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_colorectal_colorectal_cancer_prevention_screening_video_v1",
+      "title": "Talking Through Colorectal Cancer Prevention and Screening - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-colorectal-colorectal-cancer-prevention-screening-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "colorectal"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/colorectal/colorectal-cancer-prevention-screening-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_ovarian_did_you_know_ovarian_cancer_video_v1",
+      "title": "Ovarian Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-ovarian-did-you-know-ovarian-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "ovarian"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/ovarian/did-you-know-ovarian-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_head_and_neck_did_you_know_oral_cancer_video_v1",
+      "title": "Oral Cavity and Pharynx Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-head-and-neck-did-you-know-oral-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "head and neck"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/head-and-neck/did-you-know-oral-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_skin_melanoma_facebook_live_v1",
+      "title": "Advanced Melanoma Facebook Live Event - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-skin-melanoma-facebook-live.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "skin"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/skin/melanoma-facebook-live",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_survivorship_did_you_know_cancer_survival_update_video_v1",
+      "title": "Update on U.S. Cancer Survival - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-survivorship-did-you-know-cancer-survival-update-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/survivorship/did-you-know-cancer-survival-update-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_survivorship_survivorship_facebook_live_v1",
+      "title": "Survivorship: The Importance of Research - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-survivorship-survivorship-facebook-live.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/survivorship/survivorship-facebook-live",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_childhood_cancers_childhood_cancer_awareness_facebook_live_v1",
+      "title": "Childhood Cancer Facebook Live - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-childhood-cancers-childhood-cancer-awareness-facebook-live.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "childhood cancers"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/childhood-cancers/childhood-cancer-awareness-facebook-live",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_research_advanced_cancer_research_fb_live_video_v1",
+      "title": "The Latest in Research for Advanced Breast Cancer, Facebook Live Event - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-research-advanced-cancer-research-fb-live-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/research/advanced-cancer-research-fb-live-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_pancreatic_research_advances_video_v1",
+      "title": "Pancreatic Cancer Research Highlights - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-pancreatic-research-advances-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "pancreatic"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/pancreatic/research/advances-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_colorectal_rectal_cancer_facebook_live_video_v1",
+      "title": "Rectal Cancer: Treatment, Research and Quality of Life - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-colorectal-rectal-cancer-facebook-live-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "colorectal"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/colorectal/rectal-cancer-facebook-live-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_brain_adult_brain_tumor_research_fb_live_video_v1",
+      "title": "Adult Brain and Spine Tumor Research - Facebook Live Event - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-brain-adult-brain-tumor-research-fb-live-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "brain"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/brain/adult-brain-tumor-research-fb-live-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_immunotherapy_immunotherapy_video_v1",
+      "title": "Immunotherapy: How the Immune System Fights Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-immunotherapy-immunotherapy-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "immunotherapy"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/immunotherapy/immunotherapy-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_soft_tissue_sarcoma_gist_facebook_live_video_v1",
+      "title": "GIST Clinic Facebook Live Event - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-soft-tissue-sarcoma-gist-facebook-live-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "soft tissue sarcoma"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/soft-tissue-sarcoma/gist-facebook-live-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_childhood_cancers_immunotherapy_pediatric_treatment_facebook_live_video_v1",
+      "title": "Immunotherapy in Childhood Cancer Treatment - Facebook Live Video - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-childhood-cancers-immunotherapy-pediatric-treatment-facebook-live-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "childhood cancers"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/childhood-cancers/immunotherapy-pediatric-treatment-facebook-live-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_immunotherapy_nonspecific_immune_stimulation_video_v1",
+      "title": "Nonspecific Immune Stimulation - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-immunotherapy-nonspecific-immune-stimulation-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "immunotherapy"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/immunotherapy/nonspecific-immune-stimulation-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_immunotherapy_t_cell_transfer_video_v1",
+      "title": "T-Cell Transfer Therapy Video - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-immunotherapy-t-cell-transfer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "immunotherapy"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/immunotherapy/t-cell-transfer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_immunotherapy_checkpoint_inhibitor_video_v1",
+      "title": "Immune Checkpoint Inhibitors - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-immunotherapy-checkpoint-inhibitor-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "immunotherapy"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/immunotherapy/checkpoint-inhibitor-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_liver_liver_cancer_research_twitter_video_v1",
+      "title": "What's Next in Liver Cancer Research Twitter Live - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-liver-liver-cancer-research-twitter-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "liver"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/liver/liver-cancer-research-twitter-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_research_experts_discuss_challenges_breast_cancer_research_video_v1",
+      "title": "NCI Experts Discuss Challenges in Breast Cancer Research - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-research-experts-discuss-challenges-breast-cancer-research-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/research/experts-discuss-challenges-breast-cancer-research-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_childhood_cancers_caring_for_children_with_cancer_video_v1",
+      "title": "Beyond Treatment: Caring for the Needs of Children with Cancer Facebook Live - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-childhood-cancers-caring-for-children-with-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "childhood cancers"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/childhood-cancers/caring-for-children-with-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_types_targeted_therapies_monoclonal_antibodies_video_v1",
+      "title": "How Monoclonal Antibodies Treat Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/about-cancer-treatment-types-targeted-therapies-monoclonal-antibodies-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "targeted therapies"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/types/targeted-therapies/monoclonal-antibodies-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_caregiver_support_parents_managing_cancer_information_video_v1",
+      "title": "Managing Cancer Information During Your Child’s Treatment - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-caregiver-support-parents-managing-cancer-information-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "treatment",
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/caregiver-support/parents/managing-cancer-information-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_caregiver_support_parents_family_support_video_v1",
+      "title": "Support for Your Family When a Child Has Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-caregiver-support-parents-family-support-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/caregiver-support/parents/family-support-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_caregiver_support_parents_supporting_child_with_cancer_video_v1",
+      "title": "Supporting Your Child with Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-caregiver-support-parents-supporting-child-with-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/caregiver-support/parents/supporting-child-with-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_caregiver_support_parents_child_cancer_diagnosis_video_v1",
+      "title": "When Your Child Is Diagnosed with Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-caregiver-support-parents-child-cancer-diagnosis-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/caregiver-support/parents/child-cancer-diagnosis-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_childhood_cancers_treatment_considerations_video_v1",
+      "title": "Treatment Considerations for Children with Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-childhood-cancers-treatment-considerations-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "childhood cancers"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/childhood-cancers/treatment-considerations-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_testicular_did_you_know_video_v1",
+      "title": "Testicular Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-testicular-did-you-know-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "testicular"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/testicular/did-you-know-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_brain_connect_overview_video_v1",
+      "title": "NCI-CONNECT Overview - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-brain-connect-overview-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "brain"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/brain/connect-overview-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_brain_adult_astrocytoma_survivor_video_v1",
+      "title": "Astrocytoma Survivor and Caregiver Journey - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-brain-adult-astrocytoma-survivor-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "brain"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/brain/adult-astrocytoma-survivor-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_coping_survivorship_cancer_survivorship_did_you_know_v1",
+      "title": "Cancer Survivorship | Did You Know Series - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/coping/about-cancer-coping-survivorship-cancer-survivorship-did-you-know.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "support"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/coping/survivorship/cancer-survivorship-did-you-know",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_esophageal_did_you_know_esophageal_cancer_video_v1",
+      "title": "Esophageal Cancer | Did You Know? - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-esophageal-did-you-know-esophageal-cancer-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "esophageal"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/esophageal/did-you-know-esophageal-cancer-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_breast_cancer_disparities_video_v1",
+      "title": "Breast Cancer Disparities Video - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-breast-cancer-disparities-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/breast-cancer-disparities-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_liver_ccr_liver_cancer_clinical_trials_video_v1",
+      "title": "Are Our Liver Cancer Clinical Trials Right for You Video - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-liver-ccr-liver-cancer-clinical-trials-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "liver"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/liver/ccr-liver-cancer-clinical-trials-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_brain_patient_glioblastoma_caregiver_video_v1",
+      "title": "Caring for Someone with Glioblastoma - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-brain-patient-glioblastoma-caregiver-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "brain"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/brain/patient/glioblastoma-caregiver-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_side_effects_appetite_loss_ways_deal_with_appetite_loss_video_v1",
+      "title": "Ways to Deal with Appetite Loss During Cancer Treatment - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/treatment/about-cancer-treatment-side-effects-appetite-loss-ways-deal-with-appetite-loss-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "treatment"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/appetite-loss/ways-deal-with-appetite-loss-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_side_effects_food_safety_tips_video_v1",
+      "title": "Food Safety for People with Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/treatment/about-cancer-treatment-side-effects-food-safety-tips-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "treatment"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/food-safety-tips-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_about_cancer_treatment_side_effects_improving_taste_smell_video_v1",
+      "title": "Improving Taste and Smell During Cancer Treatment - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/treatment/about-cancer-treatment-side-effects-improving-taste-smell-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "treatment"
+      ],
+      "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/improving-taste-smell-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_brain_addressing_brain_tumor_treatment_video_v1",
+      "title": "NCI-CONNECT Addresses Rare Brain Tumor Treatment and Care - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-brain-addressing-brain-tumor-treatment-video.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "brain"
+      ],
+      "tags": [
+        "treatment",
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/brain/addressing-brain-tumor-treatment-video",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_head_and_neck_head_neck_fact_sheet_v1",
+      "title": "Head and Neck Cancers - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-head-and-neck-head-neck-fact-sheet.md",
+      "license": "public_domain",
+      "lastReviewed": "2021-05-25",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "head and neck",
+        "lung",
+        "skin"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/head-and-neck/head-neck-fact-sheet",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_breast_cancer_types_inflammatory_v1",
+      "title": "Inflammatory Breast Cancer - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-breast-cancer-types-inflammatory.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast",
+        "skin"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/breast-cancer-types/inflammatory",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_research_altto_v1",
+      "title": "The ALTTO Breast Cancer Trial - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-research-altto.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/research/altto",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_publications_pdq_editorial_boards_pediatric_treatment_v1",
+      "title": "Pediatric Treatment Editorial Board - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/pdq/publications-pdq-editorial-boards-pediatric-treatment.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "pdq",
+        "treatment"
+      ],
+      "url": "https://www.cancer.gov/publications/pdq/editorial-boards/pediatric-treatment",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_types_breast_research_trastuzumab_locally_advanced_inflammatory_v1",
+      "title": "Trastuzumab Benefits Women with Locally Advanced or Inflammatory - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/cancer-types/types-breast-research-trastuzumab-locally-advanced-inflammatory.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "cancer-type"
+      ],
+      "url": "https://www.cancer.gov/types/breast/research/trastuzumab-locally-advanced-inflammatory",
+      "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_nci_publications_pdq_editorial_boards_cam_v1",
+      "title": "Integrative Therapies Editorial Board - NCI",
+      "version": "v1",
+      "status": "active",
+      "source": "NCI",
+      "sourceType": "02_nci_core",
+      "path": "en/02_nci_core/pdq/publications-pdq-editorial-boards-cam.md",
+      "license": "public_domain",
+      "lastReviewed": "2025-12-24",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "pdq"
+      ],
+      "url": "https://www.cancer.gov/publications/pdq/editorial-boards/cam",
+      "citation": "NCI, 2025"
+    }
+  ]
+}

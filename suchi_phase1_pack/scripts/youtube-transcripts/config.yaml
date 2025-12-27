@@ -1,0 +1,27 @@
+# YouTube Transcript Extraction Configuration
+
+# Output directories
+output_dir: "./output"  # Raw JSON transcripts
+kb_dir: "../../kb/en/01_suchi_oncotalks"  # Processed Markdown files
+
+# YouTube channel configuration
+channel_id: "UCI242a2_VRTCdCbpXzyeW4w"  # Suchitra Cancer Care Foundation
+channel_handle: "@suchitracancercarefoundati1877"
+
+# Video IDs to process (if not using channel scraping)
+# video_ids:
+#   - "abc123"
+#   - "def456"
+
+# Transcript settings
+languages:
+  - "en"  # Primary language
+  - "hi"  # Fallback language (Hindi)
+
+# Metadata settings
+default_source: "SCCF Onco Talks"
+default_source_type: "01_suchi_oncotalks"
+default_license: "sccf_owned"
+default_review_frequency: "monthly"
+
+
