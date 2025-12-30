@@ -20,13 +20,14 @@ export interface EvidenceChunk {
 
 export type EvidenceQuality = "strong" | "weak" | "conflicting" | "insufficient";
 
-export type AbstentionReason = 
-  | "insufficient_passages" 
-  | "insufficient_sources" 
-  | "untrusted_sources" 
-  | "outdated_content" 
+export type AbstentionReason =
+  | "insufficient_passages"
+  | "insufficient_sources"
+  | "untrusted_sources"
+  | "outdated_content"
   | "conflicting_evidence"
-  | "no_evidence";
+  | "no_evidence"
+  | "citation_validation_failed";
 
 export interface EvidenceGateResult {
   shouldAbstain: boolean;

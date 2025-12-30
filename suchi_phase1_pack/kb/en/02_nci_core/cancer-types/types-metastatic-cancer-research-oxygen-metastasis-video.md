@@ -5,7 +5,7 @@ cancerTypes:
 - lung
 citation: NCI, 2025
 language: en
-lastReviewed: '2025-12-24'
+lastReviewed: '2025-12-30'
 license: public_domain
 reviewFrequency: quarterly
 source: NCI

@@ -151,16 +151,13 @@ def main():
     extractor = NCIContentExtractor(config)
     extracted_content = []
     
-    # Apply limit if specified (for testing)
+    # Apply limit if specified (for testing only)
     if args.limit:
         urls_to_process = urls[:args.limit]
-        print(f"âš  Processing limited to {args.limit} URLs (of {len(urls)} total) for testing")
-    elif len(urls) > 50:
-        urls_to_process = urls[:50]
-        print(f"âš  Processing first 50 URLs (of {len(urls)} total) for initial test. Use --limit to override.")
+        print(f"⚠ Processing limited to {args.limit} URLs (of {len(urls)} total) for testing")
     else:
         urls_to_process = urls
-    print(f"Processing {len(urls_to_process)} URLs...")
+        print(f"Processing all {len(urls_to_process)} discovered URLs...")
     
     for i, item in enumerate(urls_to_process, 1):
         url = item.get("url", item) if isinstance(item, dict) else item

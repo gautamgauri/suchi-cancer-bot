@@ -7,6 +7,7 @@ function App() {
   const [hasConsented, setHasConsented] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user has already consented in this session
@@ -21,15 +22,22 @@ function App() {
 
   const createSession = async () => {
     try {
+      setError(null);
+      setLoading(true);
       const response = await apiService.createSession({
         channel: "web",
         locale: "en"
       });
       setSessionId(response.sessionId);
       setLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating session:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to connect to server. Please try again.";
+      setError(errorMessage);
       setLoading(false);
+      // Clear consent on session creation failure
+      sessionStorage.removeItem("suchi_consented");
+      setHasConsented(false);
     }
   };
 
@@ -56,7 +64,7 @@ function App() {
   }
 
   if (!hasConsented || !sessionId) {
-    return <ConsentGate onAccept={handleConsent} />;
+    return <ConsentGate onAccept={handleConsent} error={error} />;
   }
 
   return <ChatInterface sessionId={sessionId} onStartOver={handleStartOver} />;
@@ -77,4 +85,8 @@ const styles: { [key: string]: React.CSSProperties } = {
 };
 
 export default App;
+
+
+
+
 

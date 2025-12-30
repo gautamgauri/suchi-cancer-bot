@@ -1,0 +1,70 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore.
+
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs (will be rebuilt in Cloud Build)
+dist/
+build/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# NCI Ingestion artifacts
+scripts/nci-ingestion/nci_urls.json
+scripts/nci-ingestion/extracted_content.json
+scripts/nci-ingestion/processed_files.json
+scripts/nci-ingestion/test_*.json
+
+# YouTube transcripts artifacts
+scripts/youtube-transcripts/transcripts/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Generated files
+*.generated.*
+
+# Documentation (keep in repo but don't need in build)
+docs/
+
+# Prisma migrations (already in repo, don't need to copy)
+apps/api/prisma/migrations/*.sql
+
+
+

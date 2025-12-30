@@ -71,3 +71,7 @@ python extract_transcripts.py --video-ids VIDEO_ID --skip-manifest
 - **Encoding issues**: Ensure UTF-8 encoding for non-English transcripts
 
 
+
+
+
+

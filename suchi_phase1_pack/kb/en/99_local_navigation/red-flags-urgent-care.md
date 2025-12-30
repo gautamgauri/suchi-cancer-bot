@@ -31,3 +31,7 @@ If you experience any of these symptoms, seek immediate medical attention:
 - Keep emergency contact numbers easily accessible
 - Have your medical history and current medications list ready
 
+
+
+
+

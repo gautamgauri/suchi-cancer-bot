@@ -95,4 +95,3 @@ const getAssistantMessageStyles = (): React.CSSProperties => ({
   color: "#333",
   border: "1px solid #dee2e6"
 });
-};

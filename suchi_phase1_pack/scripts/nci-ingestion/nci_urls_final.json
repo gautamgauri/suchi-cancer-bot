@@ -1,0 +1,1794 @@
+[
+  {
+    "url": "https://www.cancer.gov/types/cervical/survival",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/cervical/treatment",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/cervical/treatment/by-stage",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/cervical/treatment/cancer-treatment-during-pregnancy",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/cervical/coping",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/causes-risk-factors",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/symptoms",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/screening",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/diagnosis",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/survival",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/stages",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/treatment",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/childhood",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/treatment/by-stage",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/bladder/coping",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/brca-genes-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/cervical/childhood-cervical-vaginal-cancer",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/lymphoma/hp/indolent-b-cell-lymphoma-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/lymphoma/hp/peripheral-t-cell-lymphoma-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/lymphoma/hp/non-hodgkin-lymphoma-treatment-during-pregnancy-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/stomach/hp/gastric-genetics-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/hereditary-diffuse-gastric-cancer-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/runx1-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/cebpa-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/ddx41-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/brain/patient/childhood-ependymoma",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/brain/patient/diffuse-intrinsic-pontine-glioma",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/brain/patient/childhood-glioma-astrocytoma",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/leukemia/hp/child-aml-treatment-pdq/childhood-apl-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/leukemia/hp/child-aml-treatment-pdq/myeloid-proliferations-down-syndrome-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/leukemia/hp/child-aml-treatment-pdq/myeloid-dysplastic-neoplasms-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/leukemia/hp/child-aml-treatment-pdq/childhood-jmml-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/leukemia/hp/child-aml-treatment-pdq/childhood-cml-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/rtps1-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/gapps-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/types/agnostic-cancer-therapies-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/side-effects/cancer-symptom-clusters-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/hereditary-hematologic-malignancies",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/gata2",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/mbd4-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/palb2-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/men2-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/lymphoma/hp/hodgkin-lymphoma-treatment-during-pregnancy-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/lymphoma/hp/aggressive-b-cell-lymphoma-treatment-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/pdq/information-summaries/genetics/rtps2-hp-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/cervical/hp/treatment-during-pregnancy-pdq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/lymphoma/hp/mantle-cell-lymphoma-treatment",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/types/kidney/patient/childhood-kidney-cancer",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/imatinibmesylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pemetrexeddisodium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bevacizumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bortezomib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cetuximab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fulvestrant",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sunitinibmalate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/exemestane",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nelarabine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sorafenibtosylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/erlotinibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/clofarabine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/oxaliplatin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/palifermin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lenalidomide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nanoparticlepaclitaxel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/imiquimod",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/decitabine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/letrozole",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/gemcitabinehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/topotecanhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/gefitinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/rituximab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/talc",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dasatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/azacitidine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/capecitabine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/docetaxel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/temozolomide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/thalidomide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/aminolevulinicacid",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/aprepitant",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/arsenictrioxide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bexarotene",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/epirubicinhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/paclitaxel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/trastuzumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tamoxifencitrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/gemtuzumabozogamicin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/palonosetronhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/zoledronicacid",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pegaspargase",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/panitumumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vorinostat",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/anastrozole",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cisplatin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/irinotecanhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fluorouracil",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lapatinibditosylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cytarabine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/doxorubicinhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/doxorubicin-hydrochloride-liposome",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/temsirolimus",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/carboplatin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/raloxifenehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cyclophosphamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ibritumomabtiuxetan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dexrazoxanehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/alemtuzumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ixabepilone",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nilotinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/methotrexate-sodium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/leuprolideacetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/etoposide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/etoposidephosphate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bendamustinehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/aldesleukin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fludarabinephosphate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/leucovorincalcium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vincristinesulfate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/romiplostim",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cmf",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bleomycin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/eltrombopagolamine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/plerixafor",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ac-t",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/degarelix",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/abvd",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/beacopp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/caf",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/gemcitabine-cisplatin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/chop",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/epoch",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ice",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mopp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/r-chop",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/stanfordv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/folfox",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/folfiri",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/everolimus",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/filgrastim",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/daunorubicinhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dacarbazine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/toremifene",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/prednisone",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pralatrexate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ofatumumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pazopanibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/rasburicase",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/recombinant-hpv-bivalent-vaccine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/recombinant-hpv-quadrivalent-vaccine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/romidepsin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/denileukindiftitox-cxdl",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ac",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sipuleucel-t",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/procarbazinehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cabazitaxel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/abve",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ade",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bep",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/chlorambucil",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/abve-pc",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ifosfamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/copp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/chlorambucil-prednisone",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/eribulinmesylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/denosumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vinblastinesulfate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ipilimumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vandetanib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/abirateroneacetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vinorelbinetartrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mesna",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cvp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fec",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/folfiri-bevacizumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fu-lv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vemurafenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/brentuximabvedotin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mechlorethaminehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/crizotinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mitomycin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/folfirinox",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/r-cvp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ruxolitinibphosphate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/asparaginase-erwinia-chrysanthemi",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vamp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/veip",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/xelox",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/axitinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/glucarpidase",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lomustine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dactinomycin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vismodegib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/capox",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/carboplatin-taxol",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pertuzumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ziv-aflibercept",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/carfilzomib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bosutinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/enzalutamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/regorafenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/omacetaxinemepesuccinate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cabozantinib-s-malate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ponatinibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pomalidomide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/folfiri-cetuximab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/recombinant-interferon-alfa-2b",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ado-trastuzumab-emtansine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/megestrolacetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/radium-223-dichloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/copp-abv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dabrafenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/trametinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mercaptopurine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/afatinibdimaleate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pamidronatedisodium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/oppa",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/gemcitabine-oxaliplatin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/oepa",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/obinutuzumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/goserelinacetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tac",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ibrutinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bicalutamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/busulfan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/hyper-cvad",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/siltuximab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ramucirumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ceritinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/off",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pad",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/carmustine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/carmustineimplant",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/belinostat",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/idelalisib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tpf",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mitoxantronehydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pembrolizumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/idarubicinhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vip",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/thiotepa",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/xeliri",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/recombinant-hpv-nonavalent-vaccine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lanreotideacetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/olaparib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nivolumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/palbociclib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lenvatinibmesylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/r-epoch",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dinutuximab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/netupitant-palonosetronhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ondansetronhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sonidegib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dexamethasone",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/thioguanine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pcv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/copdac",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/rolapitanthydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/trifluridine-tipiracilhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/irinotecan-hydrochloride-liposome",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/trabectedin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/talimogenelaherparepvec",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cobimetinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/osimertinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/daratumumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ixazomibcitrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/necitumumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vac",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/elotuzumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/alectinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/flutamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/uridinetriacetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fluorouracil-topical",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cem",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/melphalan-hydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/melphalan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/defibrotide-sodium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/venetoclax",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/hydroxyurea",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/atezolizumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/bumel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/peb",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/r-ice",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/propranolol-hydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/jeb",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nilutamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cev",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cladribine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pegfilgrastim",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/rucaparibcamsylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/methylnaltrexonebromide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/amifostine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ribociclib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/avelumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/niraparibtosylatemonohydrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/durvalumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/brigatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/midostaurin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/neratinibmaleate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/enasidenibmesylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/rituximabandhyaluronidasehuman",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/inotuzumabozogamicin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tisagenlecleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/daunorubicinhydrochlorideandcytarabineliposome",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/abemaciclib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/axicabtageneciloleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/valrubicin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/acalabrutinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lutetiumlu177-dotatate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/apalutamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tocilizumab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/darbepoetinalfa",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/epoetinalfa",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fostamatinibdisodium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/encorafenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/binimetinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ivosidenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/granisetronhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/granisetron",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mvac",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/iobenguanei131",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mogamulizumabkpkc",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cemiplimab-rwlc",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dacomitinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/duvelisib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/larotrectinibsulfate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lorlatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/glasdegibmaleate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ravulizumab-cwvz",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/emapalumab-lzsg",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/gilteritinibfumarate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tagraxofusp-erzs",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/calaspargasepegol-mknl",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/caplacizumab-yhdp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/talazoparibtosylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/trastuzumabandhyaluronidase-oysk",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/erdafitinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/alpelisib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/polatuzumabvedotin-piiq",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/darolutamide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/selinexor",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fedratinibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/entrectinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/zanubrutinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/famtrastuzumabderuxtecan-nxki",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/avapritinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/enfortumabvedotin-ejfv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tazemetostathydrobromide",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/isatuximab-irfc",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pexidartinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/selumetinibsulfate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pemigatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tucatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sacituzumabgovitecan-hziy",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/luspatercept-aamt",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/daratumumabandhyaluronidase-fihj",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/selpercatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ripretinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/capmatinibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lurbinectedin",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pertuzumabtrastuzumabandhyaluronidase-zzxf",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/decitabineandcedazuridine",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tafasitamab-cxix",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/brexucabtageneautoleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pralsetinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/relugolix",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/naxitamab-gqgk",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/margetuximab-cmkb",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lisocabtagenemaraleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tepotinibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tivozanibhydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/idecabtagenevicleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/loncastuximabtesirine-lpyl",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/dostarlimab-gxly",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sotorasib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/amivantamab-vmjw",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/asparaginase-erwinia-chrysanthemi-recombinant",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/belzutifan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tisotumabvedotin-tftv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/asciminib-hydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ropeginterferon-alfa-2b-njft",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/sirolimus-protein-bound-particles",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tebentafusp-tebn",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pacritinib-citrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ciltacabtagene-autoleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nivolumab-and-relatlimab-rmbw",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lutetium-lu-177-vipivotide-tetraxetan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/futibatinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tremelimumab-actl",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/teclistamab-cqyv",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/olutasidenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mirvetuximab-soravtansine-gynx",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/adagrasib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nadofaragene-firadenovec-vncg",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/elacestrant-dihydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/pirtobrutinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/mosunetuzumab-axgb",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/blinatumomab",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/retifanlimab-dlwr",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/epcoritamab-bysp",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/quizartinib-dihydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/glofitamab-gxbm",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/niraparib-tosylate-monohydrate-and-abiraterone-acetate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/elranatamab-bcmm",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/talquetamab-tgvs",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/momelotinib-dihydrochloride-monohydrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/fruquintinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/repotrectinib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/toripalimab-tpzi",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/capivasertib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nirogacestat",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/eflornithine-hydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lifileucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tislelizumab-jsgr",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tovorafenib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nogapendekin-alfa-inbakicept-pmln",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/tarlatamab-dlle",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/imetelstat-sodium",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/leuprolide-mesylate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/afamitresgene-autoleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vorasidenib-citrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/lazertinib-mesylate-hydrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/triptorelin-pamoate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ribociclib-succinate-and-letrozole",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/atezolizumab-and-hyaluronidase-tqjs",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/inavolisib",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/zolbetuximab-clzb",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/revumenib-citrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/obecabtagene-autoleucel",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/zanidatamab-hrii",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/datopotamab-deruxtecan-dlnk",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/zenocutuzumab-zbco",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/cosibelimab-ipdl",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/ensartinib-hydrochloride",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/nivolumab-and-hyaluronidase-nvhy",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/treosulfan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/vimseltinib-dihydrate",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/about-cancer/treatment/drugs/penpulimab-kcqx",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/coping-skills",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/survivorship",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/survivorship-care-plan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/treatment-cycle",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/treatment-plan",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/treatment-schedule",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/publications/dictionaries/cancer-terms/def/treatment-summary",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/rare-brain-spine-tumor/living/coping/find-support-video",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/pediatric-adult-rare-tumor/support/patients-caregivers/copingwithcovid19",
+    "source": "sitemap"
+  },
+  {
+    "url": "https://www.cancer.gov/pediatric-adult-rare-tumor/support/coping-young-adults",
+    "source": "sitemap"
+  }
+]

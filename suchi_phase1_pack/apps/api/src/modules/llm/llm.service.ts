@@ -1,19 +1,19 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private readonly genAI: GoogleGenerativeAI;
+  private readonly openai: OpenAI;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>("GEMINI_API_KEY");
+    const apiKey = this.configService.get<string>("OPENAI_API_KEY");
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is required");
+      throw new Error("OPENAI_API_KEY is required");
     }
-    this.genAI = new GoogleGenerativeAI(apiKey);
+    this.openai = new OpenAI({ apiKey });
   }
 
   /**
@@ -26,8 +26,6 @@ export class LlmService {
     chunks: EvidenceChunk[]
   ): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
-
       // Build reference list with citation IDs
       const referenceList = chunks.map((chunk, index) => {
         return `[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}\n   Title: ${chunk.document.title}\n   Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
@@ -54,20 +52,26 @@ RESPONSE FORMAT:
 
 User question: ${userMessage}`;
 
-      const fullPrompt = `${systemPrompt}\n\n${citationInstructions}`;
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: citationInstructions }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500
+      });
 
-      const result = await model.generateContent(fullPrompt);
-      const response = await result.response;
-      const text = response.text();
+      const text = completion.choices[0]?.message?.content;
 
       if (!text || text.trim().length === 0) {
-        this.logger.warn("Empty response from Gemini, using fallback");
+        this.logger.warn("Empty response from OpenAI, using fallback");
         return this.getFallbackResponse();
       }
 
       return text;
     } catch (error) {
-      this.logger.error(`Error generating response with Gemini: ${error.message}`, error.stack);
+      this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
       return this.getFallbackResponse();
     }
   }
@@ -77,22 +81,28 @@ User question: ${userMessage}`;
    */
   async generate(systemPrompt: string, context: string, userMessage: string): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+      const fullPrompt = `${context}\n\nUser question: ${userMessage}\n\nPlease provide a helpful response based on the reference information above. Format your response with clear sections when appropriate.`;
 
-      const fullPrompt = `${systemPrompt}\n\n${context}\n\nUser question: ${userMessage}\n\nPlease provide a helpful response based on the reference information above. Format your response with clear sections when appropriate.`;
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: fullPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500
+      });
 
-      const result = await model.generateContent(fullPrompt);
-      const response = await result.response;
-      const text = response.text();
+      const text = completion.choices[0]?.message?.content;
 
       if (!text || text.trim().length === 0) {
-        this.logger.warn("Empty response from Gemini, using fallback");
+        this.logger.warn("Empty response from OpenAI, using fallback");
         return this.getFallbackResponse();
       }
 
       return text;
     } catch (error) {
-      this.logger.error(`Error generating response with Gemini: ${error.message}`, error.stack);
+      this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
       return this.getFallbackResponse();
     }
   }

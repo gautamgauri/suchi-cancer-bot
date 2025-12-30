@@ -14,6 +14,7 @@ import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { AdminModule } from "./modules/admin/admin.module";
 import { HealthModule } from "./modules/health/health.module";
 import { EmbeddingsModule } from "./modules/embeddings/embeddings.module";
+import { YoutubeModule } from "./modules/youtube/youtube.module";
 
 @Module({
   imports: [
@@ -21,8 +22,10 @@ import { EmbeddingsModule } from "./modules/embeddings/embeddings.module";
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (cfg: ConfigService) => ({
-        ttl: cfg.get<number>("RATE_LIMIT_TTL_SEC") ?? 60,
-        limit: cfg.get<number>("RATE_LIMIT_REQ_PER_TTL") ?? 20
+        throttlers: [{
+          ttl: (cfg.get<number>("RATE_LIMIT_TTL_SEC") ?? 60) * 1000,
+          limit: cfg.get<number>("RATE_LIMIT_REQ_PER_TTL") ?? 20
+        }]
       })
     }),
     PrismaModule,
@@ -35,7 +38,8 @@ import { EmbeddingsModule } from "./modules/embeddings/embeddings.module";
     FeedbackModule,
     AdminModule,
     HealthModule,
-    EmbeddingsModule
+    EmbeddingsModule,
+    YoutubeModule
   ]
 })
 export class AppModule {}

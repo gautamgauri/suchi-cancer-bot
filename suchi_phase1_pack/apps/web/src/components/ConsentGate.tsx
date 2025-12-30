@@ -2,9 +2,10 @@ import React, { useState } from "react";
 
 interface ConsentGateProps {
   onAccept: () => void;
+  error?: string | null;
 }
 
-export const ConsentGate: React.FC<ConsentGateProps> = ({ onAccept }) => {
+export const ConsentGate: React.FC<ConsentGateProps> = ({ onAccept, error }) => {
   const [accepted, setAccepted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,6 +38,12 @@ export const ConsentGate: React.FC<ConsentGateProps> = ({ onAccept }) => {
             <li>Your conversations are anonymous by default.</li>
           </ul>
         </div>
+
+        {error && (
+          <div style={styles.errorBox}>
+            <strong>⚠️ Connection Error:</strong> {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <label style={styles.checkboxLabel}>
@@ -162,6 +169,20 @@ const styles: { [key: string]: React.CSSProperties } = {
   buttonDisabled: {
     backgroundColor: "#ccc",
     cursor: "not-allowed"
+  },
+  errorBox: {
+    backgroundColor: "#fff3cd",
+    border: "2px solid #dc3545",
+    borderRadius: "8px",
+    padding: "16px",
+    marginBottom: "20px",
+    color: "#721c24",
+    fontSize: "14px",
+    lineHeight: "1.6"
   }
 };
+
+
+
+
 

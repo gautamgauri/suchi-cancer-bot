@@ -27,7 +27,9 @@
     "uuid": "^10.0.0",
     "zod": "^3.24.1",
     "gray-matter": "^4.0.3",
-    "@google/generative-ai": "^0.21.0"
+    "openai": "^4.77.0",
+    "youtube-transcript": "^1.2.1",
+    "puppeteer": "^22.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",

@@ -1,0 +1,82 @@
+# Cloud Run service configuration for Suchi API
+# This file can be used with: gcloud run services update suchi-api --from-file=cloudrun-service.yaml
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: suchi-api
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/cloudsql-instances: PROJECT_ID:REGION:INSTANCE_NAME
+        run.googleapis.com/cpu-throttling: "true"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: PROJECT_NUMBER-compute@developer.gserviceaccount.com
+      containers:
+      - image: REGION-docker.pkg.dev/PROJECT_ID/ARTIFACT_REGISTRY/suchi-api:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: NODE_ENV
+          value: "production"
+        - name: EMBEDDING_MODEL
+          value: "text-embedding-004"
+        - name: RATE_LIMIT_TTL_SEC
+          value: "60"
+        - name: RATE_LIMIT_REQ_PER_TTL
+          value: "20"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: database-url
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: gemini-api-key
+        - name: EMBEDDING_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: embedding-api-key
+        - name: ADMIN_BASIC_USER
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: admin-basic-user
+        - name: ADMIN_BASIC_PASS
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: admin-basic-pass
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: 512Mi
+        startupProbe:
+          httpGet:
+            path: /v1/health
+            port: 8080
+          initialDelaySeconds: 0
+          timeoutSeconds: 240
+          periodSeconds: 240
+          failureThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8080
+          initialDelaySeconds: 300
+
+
+

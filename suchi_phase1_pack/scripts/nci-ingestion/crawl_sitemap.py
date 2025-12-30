@@ -9,7 +9,7 @@ import sys
 import time
 import requests
 import xml.etree.ElementTree as ET
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Tuple
 from urllib.parse import urlparse
 import yaml
 
@@ -19,19 +19,23 @@ class NCISitemapCrawler:
         self.target_sections = config.get("target_sections", [])
         self.exclude_patterns = config.get("exclude_patterns", [])
         self.rate_limit_delay = config.get("rate_limit_delay", 1.5)
+        self.max_sitemap_depth = config.get("max_sitemap_depth", 5)
         self.user_agent = config.get("user_agent", "Suchi Cancer Bot/1.0")
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": self.user_agent})
         
-    def get_sitemap_urls(self, sitemap_url: str) -> List[str]:
-        """Fetch URLs from a sitemap or sitemap index"""
+    def get_sitemap_urls(self, sitemap_url: str) -> Tuple[List[str], List[str]]:
+        """
+        Fetch URLs from a sitemap or sitemap index.
+        Returns tuple: (urls_list, child_sitemaps_list)
+        """
         try:
             response = self.session.get(sitemap_url, timeout=30)
             response.raise_for_status()
             xml_content = response.text
         except Exception as e:
             print(f"Error fetching {sitemap_url}: {e}")
-            return []
+            return [], []
         
         root = ET.fromstring(xml_content)
         ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -40,7 +44,12 @@ class NCISitemapCrawler:
         sitemaps = root.findall(".//sm:sitemap", ns)
         if sitemaps:
             # This is a sitemap index, return child sitemap URLs
-            return [loc.find("sm:loc", ns).text.strip() for loc in sitemaps if loc.find("sm:loc", ns) is not None]
+            child_sitemaps = []
+            for sitemap_entry in sitemaps:
+                loc = sitemap_entry.find("sm:loc", ns)
+                if loc is not None:
+                    child_sitemaps.append(loc.text.strip())
+            return [], child_sitemaps
         
         # This is a regular sitemap, return URLs
         urls = []
@@ -49,7 +58,7 @@ class NCISitemapCrawler:
             if loc is not None:
                 urls.append(loc.text.strip())
         
-        return urls
+        return urls, []
     
     def should_include_url(self, url: str) -> bool:
         """Check if URL should be included based on target sections and exclude patterns"""
@@ -68,28 +77,43 @@ class NCISitemapCrawler:
         
         return False
     
-    def crawl(self) -> List[Dict[str, str]]:
-        """Crawl sitemap and return filtered URLs with metadata"""
+    def crawl(self, max_depth: int = None) -> List[Dict[str, str]]:
+        """
+        Recursively crawl sitemap and return filtered URLs with metadata.
+        
+        Args:
+            max_depth: Maximum recursion depth for nested sitemap indexes (defaults to config value)
+        """
+        if max_depth is None:
+            max_depth = self.max_sitemap_depth
+        
         print(f"Fetching sitemap index from {self.sitemap_url}...")
+        print(f"Max recursion depth: {max_depth}")
         
-        # Get sitemap index
-        child_sitemaps = self.get_sitemap_urls(self.sitemap_url)
-        
-        if not child_sitemaps:
-            print("No child sitemaps found. Treating as single sitemap.")
-            # Try as single sitemap
-            urls = self.get_sitemap_urls(self.sitemap_url)
-            child_sitemaps = [] if urls else []
-        
+        # Track visited sitemaps to avoid duplicates
+        visited_sitemaps = set()
         all_urls = []
         
-        # Expand child sitemaps
-        if child_sitemaps:
-            print(f"Found {len(child_sitemaps)} child sitemaps. Expanding...")
-            for i, sitemap_url in enumerate(child_sitemaps, 1):
-                print(f"  Processing sitemap {i}/{len(child_sitemaps)}: {sitemap_url}")
-                urls = self.get_sitemap_urls(sitemap_url)
+        # Queue of (sitemap_url, depth) tuples
+        sitemap_queue = [(self.sitemap_url, 0)]
+        
+        # Recursively expand sitemaps
+        while sitemap_queue:
+            sitemap_url, depth = sitemap_queue.pop(0)
+            
+            if sitemap_url in visited_sitemaps:
+                continue
+            
+            if depth > max_depth:
+                print(f"  Skipping {sitemap_url} (max depth {max_depth} reached)")
+                continue
+            
+            visited_sitemaps.add(sitemap_url)
+            
+            try:
+                urls, child_sitemaps = self.get_sitemap_urls(sitemap_url)
                 
+                # Add URLs from this sitemap
                 for url in urls:
                     if self.should_include_url(url):
                         all_urls.append({
@@ -97,18 +121,26 @@ class NCISitemapCrawler:
                             "source": "sitemap"
                         })
                 
+                # If this is a sitemap index, add child sitemaps to queue
+                if child_sitemaps:
+                    if depth == 0:
+                        print(f"Found {len(child_sitemaps)} child sitemaps. Recursively expanding...")
+                    else:
+                        print(f"  Found {len(child_sitemaps)} nested sitemaps at depth {depth}")
+                    
+                    for child_sitemap in child_sitemaps:
+                        if child_sitemap not in visited_sitemaps:
+                            sitemap_queue.append((child_sitemap, depth + 1))
+                
                 # Rate limiting
-                if i < len(child_sitemaps):
-                    time.sleep(self.rate_limit_delay)
-        else:
-            # Single sitemap
-            urls = self.get_sitemap_urls(self.sitemap_url)
-            for url in urls:
-                if self.should_include_url(url):
-                    all_urls.append({
-                        "url": url,
-                        "source": "sitemap"
-                    })
+                if len(visited_sitemaps) % 10 == 0:
+                    print(f"  Processed {len(visited_sitemaps)} sitemaps, found {len(all_urls)} URLs...")
+                
+                time.sleep(self.rate_limit_delay)
+                
+            except Exception as e:
+                print(f"  Error processing {sitemap_url}: {e}")
+                continue
         
         # Remove duplicates
         seen = set()
@@ -119,6 +151,7 @@ class NCISitemapCrawler:
                 unique_urls.append(item)
         
         print(f"\n[OK] Found {len(unique_urls)} unique URLs matching target sections")
+        print(f"     Processed {len(visited_sitemaps)} sitemaps")
         return unique_urls
 
 
@@ -159,6 +192,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
 
 
 

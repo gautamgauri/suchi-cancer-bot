@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo apt-get:*)",
+      "Bash(gcloud:*)",
+      "Bash(docker:*)",
+      "Bash(npm install)",
+      "Bash(npx prisma validate:*)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(DATABASE_URL=\"postgresql://suchi_app:SuchiApp2024SecurePass@localhost:5432/suchi_db\" npx prisma migrate deploy:*)",
+      "Bash(export DATABASE_URL=\"postgresql://suchi_app:SuchiApp2024SecurePass@localhost:5432/suchi_db\":*)",
+      "Bash(npx prisma migrate deploy:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx prisma db push:*)"
+    ]
+  }
+}

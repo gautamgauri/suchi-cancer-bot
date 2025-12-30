@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile.ingest'
+      - '-t'
+      - 'gcr.io/gen-lang-client-0202543132/suchi-kb-ingest:latest'
+      - '.'
+    dir: 'apps/api'
+images:
+  - 'gcr.io/gen-lang-client-0202543132/suchi-kb-ingest:latest'

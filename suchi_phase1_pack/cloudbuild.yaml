@@ -1,0 +1,123 @@
+# Google Cloud Build configuration for Suchi Cancer Bot
+# This file defines the build and deployment pipeline
+
+steps:
+  # Build API Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-api'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:latest'
+      - '-f'
+      - 'apps/api/Dockerfile'
+      - 'apps/api'
+
+  # Build Web Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-web'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:latest'
+      - '--build-arg'
+      - 'VITE_API_URL=${_API_URL}'
+      - '-f'
+      - 'apps/web/Dockerfile'
+      - 'apps/web'
+
+  # Push API image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-api'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api'
+
+  # Push Web image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-web'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web'
+
+  # Deploy API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-api'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_API_SERVICE_NAME}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--port'
+      - '8080'
+      - '--add-cloudsql-instances'
+      - '${_CLOUDSQL_CONNECTION_NAME}'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,EMBEDDING_MODEL=text-embedding-004,RATE_LIMIT_TTL_SEC=60,RATE_LIMIT_REQ_PER_TTL=20'
+      - '--set-secrets'
+      - 'DATABASE_URL=database-url:latest,OPENAI_API_KEY=openai-api-key:latest,EMBEDDING_API_KEY=embedding-api-key:latest,ADMIN_BASIC_USER=admin-basic-user:latest,ADMIN_BASIC_PASS=admin-basic-pass:latest'
+
+  # Deploy Web to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-web'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_WEB_SERVICE_NAME}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '256Mi'
+      - '--cpu'
+      - '1'
+      - '--port'
+      - '8080'
+      - '--set-env-vars'
+      - 'VITE_API_URL=${_API_URL}'
+
+# Substitution variables (set these in Cloud Build triggers or via command line)
+substitutions:
+  _REGION: 'us-central1'
+  _ARTIFACT_REGISTRY: 'suchi-images'
+  _API_SERVICE_NAME: 'suchi-api'
+  _WEB_SERVICE_NAME: 'suchi-web'
+  _CLOUDSQL_CONNECTION_NAME: 'PROJECT_ID:REGION:INSTANCE_NAME'
+  _API_URL: 'https://suchi-api-XXXXX.run.app/v1'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout for the entire build
+timeout: '1200s'
+
+
+

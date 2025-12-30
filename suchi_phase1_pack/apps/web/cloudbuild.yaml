@@ -1,0 +1,11 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_URL=https://suchi-api-514521785197.us-central1.run.app'
+      - '-t'
+      - 'gcr.io/gen-lang-client-0202543132/suchi-web:latest'
+      - '.'
+images:
+  - 'gcr.io/gen-lang-client-0202543132/suchi-web:latest'

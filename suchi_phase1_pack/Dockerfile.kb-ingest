@@ -1,0 +1,30 @@
+# Dockerfile for KB Ingestion Job
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
+# Copy package files
+COPY apps/api/package.json apps/api/package-lock.json* ./
+COPY apps/api/prisma ./prisma/
+
+# Install dependencies
+RUN npm ci
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy source code
+COPY apps/api/src ./src
+COPY apps/api/tsconfig.json ./
+
+# Copy knowledge base
+COPY kb ./kb
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Run the ingestion script
+CMD ["npx", "ts-node", "src/scripts/ingest-kb.ts", "--wipeChunks", "--kbRoot", "/app/kb"]
