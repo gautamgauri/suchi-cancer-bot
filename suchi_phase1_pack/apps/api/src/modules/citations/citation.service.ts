@@ -18,10 +18,14 @@ export interface EnrichedCitation extends Citation {
   };
 }
 
+export type CitationConfidenceLevel = "GREEN" | "YELLOW" | "RED";
+
 export interface CitationValidationResult {
   isValid: boolean;
+  confidenceLevel: CitationConfidenceLevel;
   citations: Citation[];
   errors?: string[];
+  citationDensity: number; // Citations per sentence
 }
 
 /**
@@ -71,19 +75,23 @@ export class CitationService {
   }
 
   /**
-   * Validate citations against retrieved chunks
-   * Ensures all citations are valid and claims have citations
+   * Validate citations against retrieved chunks with graduated confidence levels
+   *
+   * Citation Threshold Ladder:
+   * - GREEN (high confidence): 2+ citations, good density (>0.3 citations/sentence)
+   * - YELLOW (low confidence): 1 citation OR low density - answer with uncertainty
+   * - RED (abstain): 0 citations - unsafe to answer
    */
-  validateCitations(citations: Citation[], chunks: EvidenceChunk[]): CitationValidationResult {
+  validateCitations(citations: Citation[], chunks: EvidenceChunk[], responseText?: string): CitationValidationResult {
     const errors: string[] = [];
-    
+
     // Build chunk map
     const chunkMap = new Map<string, EvidenceChunk>();
     for (const chunk of chunks) {
       chunkMap.set(`${chunk.docId}:${chunk.chunkId}`, chunk);
     }
 
-    // Validate each citation
+    // Validate each citation references an actual retrieved chunk
     for (const citation of citations) {
       const key = `${citation.docId}:${citation.chunkId}`;
       if (!chunkMap.has(key)) {
@@ -91,26 +99,48 @@ export class CitationService {
       }
     }
 
-    // Check for duplicates
+    // Check for duplicates (warning, not error)
     const citationKeys = new Set<string>();
     for (const citation of citations) {
       const key = `${citation.docId}:${citation.chunkId}`;
       if (citationKeys.has(key)) {
-        errors.push(`Duplicate citation: ${citation.citationText}`);
+        this.logger.debug(`Duplicate citation: ${citation.citationText}`);
       }
       citationKeys.add(key);
     }
 
-    // Basic check: should have at least some citations for medical claims
-    // Note: More sophisticated checks (like ensuring each sentence has citations) 
-    // would require NLP parsing - this is a basic validation
+    // Calculate citation density (citations per sentence)
+    // Simple sentence splitting - could be enhanced with proper NLP
+    const sentenceCount = responseText
+      ? responseText.split(/[.!?]+/).filter(s => s.trim().length > 0).length
+      : 1;
+    const citationDensity = citations.length / sentenceCount;
+
+    // Determine confidence level using threshold ladder
+    let confidenceLevel: CitationConfidenceLevel;
+    let isValid: boolean;
+
     if (citations.length === 0) {
+      // RED: No citations - unsafe, must abstain
+      confidenceLevel = "RED";
+      isValid = false;
       errors.push("Response contains no citations - all medical claims must be cited");
+    } else if (citations.length < 2 || citationDensity < 0.3) {
+      // YELLOW: Limited citations - answer with caution and uncertainty
+      confidenceLevel = "YELLOW";
+      isValid = true; // Allow response but flag as low confidence
+      this.logger.warn(`Low citation density: ${citations.length} citations, density ${citationDensity.toFixed(2)}`);
+    } else {
+      // GREEN: Good citation coverage - high confidence
+      confidenceLevel = "GREEN";
+      isValid = true;
     }
 
     return {
-      isValid: errors.length === 0,
+      isValid,
+      confidenceLevel,
       citations,
+      citationDensity,
       errors: errors.length > 0 ? errors : undefined
     };
   }
@@ -182,6 +212,7 @@ export class CitationService {
     return lines.join("\n");
   }
 }
+
 
 
 

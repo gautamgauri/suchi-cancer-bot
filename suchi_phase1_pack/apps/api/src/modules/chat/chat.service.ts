@@ -114,13 +114,14 @@ export class ChatService {
       evidenceChunks
     );
 
-    // 6. Extract and validate citations
+    // 6. Extract and validate citations with confidence levels
     let citations = this.citationService.extractCitations(responseText, evidenceChunks);
-    let citationValidation = this.citationService.validateCitations(citations, evidenceChunks);
+    let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
 
-    if (!citationValidation.isValid) {
-      this.logger.warn(`Citation validation failed: ${citationValidation.errors?.join(", ")}`);
-      // Retry once or return abstention
+    // Handle RED (no citations) - retry once, then abstain
+    if (citationValidation.confidenceLevel === "RED") {
+      this.logger.warn(`Citation validation RED (no citations): ${citationValidation.errors?.join(", ")}`);
+      // Retry once
       responseText = await this.llm.generateWithCitations(
         systemPrompt,
         "",
@@ -128,12 +129,12 @@ export class ChatService {
         evidenceChunks
       );
       citations = this.citationService.extractCitations(responseText, evidenceChunks);
-      citationValidation = this.citationService.validateCitations(citations, evidenceChunks);
+      citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
 
-      if (!citationValidation.isValid) {
-        // Still failed - return abstention
+      if (citationValidation.confidenceLevel === "RED") {
+        // Still RED after retry - abstain
         const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType);
-        
+
         const assistant = await this.prisma.message.create({
           data: {
             sessionId: dto.sessionId,
@@ -157,6 +158,20 @@ export class ChatService {
         };
       }
     }
+
+    // Handle YELLOW (low confidence) - add cautious preamble
+    if (citationValidation.confidenceLevel === "YELLOW") {
+      this.logger.info(`Citation validation YELLOW: ${citations.length} citations, density ${citationValidation.citationDensity.toFixed(2)}`);
+
+      // Prepend uncertainty disclaimer
+      const uncertaintyPreamble =
+        "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. " +
+        "Please verify with your healthcare provider.\n\n";
+
+      responseText = uncertaintyPreamble + responseText;
+    }
+
+    // GREEN or YELLOW with citations - proceed with response
 
     // 7. Store assistant message
     const assistant = await this.prisma.message.create({
@@ -196,6 +211,8 @@ export class ChatService {
       kbDocCount: kbDocIds.length,
       latencyMs: assistant.latencyMs,
       citationCount: citations.length,
+      citationConfidence: citationValidation.confidenceLevel,
+      citationDensity: citationValidation.citationDensity,
       evidenceQuality: gateResult.quality,
       queryType
     }, dto.sessionId);
@@ -209,7 +226,8 @@ export class ChatService {
         docId: c.docId,
         chunkId: c.chunkId,
         position: c.position
-      }))
+      })),
+      citationConfidence: citationValidation.confidenceLevel
     };
   }
 }
