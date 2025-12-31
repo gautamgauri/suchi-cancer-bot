@@ -12,8 +12,8 @@ steps:
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:latest'
       - '-f'
-      - 'apps/api/Dockerfile'
-      - 'apps/api'
+      - 'suchi_phase1_pack/apps/api/Dockerfile'
+      - 'suchi_phase1_pack/apps/api'
 
   # Build Web Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -27,8 +27,8 @@ steps:
       - '--build-arg'
       - 'VITE_API_URL=${_API_URL}'
       - '-f'
-      - 'apps/web/Dockerfile'
-      - 'apps/web'
+      - 'suchi_phase1_pack/apps/web/Dockerfile'
+      - 'suchi_phase1_pack/apps/web'
 
   # Push API image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
@@ -108,8 +108,8 @@ substitutions:
   _ARTIFACT_REGISTRY: 'suchi-images'
   _API_SERVICE_NAME: 'suchi-api'
   _WEB_SERVICE_NAME: 'suchi-web'
-  _CLOUDSQL_CONNECTION_NAME: 'PROJECT_ID:REGION:INSTANCE_NAME'
-  _API_URL: 'https://suchi-api-XXXXX.run.app/v1'
+  _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:suchi-db'
+  _API_URL: 'https://suchi-api-lxiveognla-uc.a.run.app'
 
 # Build options
 options:
@@ -118,6 +118,7 @@ options:
 
 # Timeout for the entire build
 timeout: '1200s'
+
 
 
 
