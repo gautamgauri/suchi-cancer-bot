@@ -161,7 +161,7 @@ export class ChatService {
 
     // Handle YELLOW (low confidence) - add cautious preamble
     if (citationValidation.confidenceLevel === "YELLOW") {
-      this.logger.info(`Citation validation YELLOW: ${citations.length} citations, density ${citationValidation.citationDensity.toFixed(2)}`);
+      this.logger.log(`Citation validation YELLOW: ${citations.length} citations, density ${citationValidation.citationDensity.toFixed(2)}`);
 
       // Prepend uncertainty disclaimer
       const uncertaintyPreamble =
