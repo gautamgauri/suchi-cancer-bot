@@ -3,7 +3,7 @@ steps:
     args:
       - 'build'
       - '--build-arg'
-      - 'VITE_API_URL=https://suchi-api-514521785197.us-central1.run.app'
+      - 'VITE_API_URL=https://suchi-api-lxiveognla-uc.a.run.app/v1'
       - '-t'
       - 'gcr.io/gen-lang-client-0202543132/suchi-web:latest'
       - '.'

@@ -109,7 +109,7 @@ substitutions:
   _API_SERVICE_NAME: 'suchi-api'
   _WEB_SERVICE_NAME: 'suchi-web'
   _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:suchi-db'
-  _API_URL: 'https://suchi-api-lxiveognla-uc.a.run.app'
+  _API_URL: 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
 
 # Build options
 options:
@@ -118,6 +118,7 @@ options:
 
 # Timeout for the entire build
 timeout: '1200s'
+
 
 
 
