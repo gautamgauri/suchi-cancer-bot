@@ -182,8 +182,12 @@ export class ResponseTemplates {
    */
   static needsClosingTemplate(templateText: string): boolean {
     // Check if template already ends with clear next step
-    const hasNextStep = /\*\*Next steps?\*\*|What would you like|Is there anything else|What specific/i.test(templateText);
+    // Match patterns like "**Next steps**", "**Next steps:**", "**Next step**", "**Next step:**"
+    // Also check for other closing indicators like questions or call-to-action phrases
+    const hasNextStep = /\*\*Next steps?[:\*]|What would you like|Is there anything else|What specific|What's your|What information do you|What sections of your/i.test(templateText);
     return !hasNextStep;
   }
 }
+
+
 
