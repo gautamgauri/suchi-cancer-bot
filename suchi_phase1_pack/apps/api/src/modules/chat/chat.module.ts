@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ChatController } from "./chat.controller";
 import { ChatService } from "./chat.service";
+import { IntentClassifier } from "./intent-classifier";
+import { TemplateSelector } from "./template-selector";
 import { SafetyModule } from "../safety/safety.module";
 import { RagModule } from "../rag/rag.module";
 import { LlmModule } from "../llm/llm.module";
@@ -22,6 +24,6 @@ import { PrismaModule } from "../prisma/prisma.module";
     PrismaModule
   ],
   controllers: [ChatController],
-  providers: [ChatService]
+  providers: [ChatService, IntentClassifier, TemplateSelector]
 })
 export class ChatModule {}

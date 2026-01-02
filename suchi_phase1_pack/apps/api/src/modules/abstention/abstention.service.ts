@@ -6,32 +6,119 @@ import { QueryType } from "../../config/trusted-sources.config";
 export class AbstentionService {
   /**
    * Generate appropriate abstention message when evidence is insufficient
+   * Follows Safe-but-Helpful structure from PRD
    */
-  generateAbstentionMessage(reason: AbstentionReason, queryType: QueryType): string {
-    const baseMessage = "I don't have enough reliable information to answer this question.";
+  generateAbstentionMessage(
+    reason: AbstentionReason,
+    queryType: QueryType,
+    userMessage?: string
+  ): string {
+    const hasUrgency = userMessage ? this.hasUrgencyIndicators(userMessage) : false;
 
+    // Build the message following Safe-but-Helpful structure
+    let message = "";
+
+    // 1. Safety boundary (one sentence)
+    message += this.getSafetyBoundary(reason, queryType);
+
+    // 2. What Suchi can do (max 3 bullets)
+    message += "\n\nWhat I can do right now:\n";
+    message += this.getActionableHelp(queryType);
+
+    // 3. Urgent red flags (only when appropriate)
+    if (hasUrgency) {
+      message += "\n\nIf this is urgent: seek medical care immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.";
+    }
+
+    // 4. Invite context
+    message += "\n\n" + this.getContextInvitation(reason, queryType);
+
+    return message;
+  }
+
+  /**
+   * Check if user message contains urgency indicators
+   * Public method for use in chat service priority routing
+   */
+  hasUrgencyIndicators(userText: string): boolean {
+    const urgencyPatterns = [
+      /\b(severe|severe\s+chest\s+pain|severe\s+breathlessness)\b/i,
+      /\b(trouble\s+breathing|can't\s+breathe|difficulty\s+breathing|breathless)\b/i,
+      /\b(heavy\s+bleeding|bleeding\s+heavily|excessive\s+bleeding)\b/i,
+      /\b(confusion|confused|altered\s+sensorium|disoriented)\b/i,
+      /\b(fainting|fainted|passed\s+out|unconscious)\b/i,
+      /\b(rapidly\s+worsening|getting\s+worse\s+quickly|suddenly\s+worse)\b/i,
+      /\b(emergency|urgent|immediate|right\s+now)\b/i,
+      /\b(chest\s+pain|heart\s+attack|stroke)\b/i
+    ];
+
+    return urgencyPatterns.some(pattern => pattern.test(userText));
+  }
+
+  /**
+   * Get safety boundary statement (one sentence)
+   */
+  private getSafetyBoundary(reason: AbstentionReason, queryType: QueryType): string {
     switch (reason) {
       case "no_evidence":
-        return `${baseMessage} This topic may not be covered in my knowledge base, or your question might need to be rephrased.\n\nI recommend:\n- Consulting with a qualified healthcare professional\n- Checking with your oncology team if you're already in treatment\n- Contacting a cancer helpline for immediate support`;
+        return "I want to be careful here: I can't confidently verify enough information to answer this accurately.";
 
       case "insufficient_passages":
       case "insufficient_sources":
-        return `${baseMessage} I found some information, but not enough to provide a comprehensive and reliable answer.\n\nFor ${this.getQueryTypeDescription(queryType)} questions, I need multiple sources to ensure accuracy.\n\nNext steps:\n- Consult with your healthcare provider who can access comprehensive medical resources\n- Share your specific situation with your oncology team`;
+        return "I want to be careful here: I found some information, but not enough to provide a comprehensive and reliable answer.";
 
       case "untrusted_sources":
-        return `${baseMessage} The information I found isn't from sources I'm authorized to use.\n\nI only provide answers based on trusted medical sources (NCI, WHO, recognized medical organizations).\n\nPlease:\n- Consult with a qualified healthcare professional\n- Check official medical websites for this information`;
+        return "I want to be careful here: the information I found isn't from sources I'm authorized to use.";
 
       case "outdated_content":
-        return `${baseMessage} The information I have may be outdated, and medical guidelines for ${this.getQueryTypeDescription(queryType)} change over time.\n\nI recommend:\n- Consulting with your healthcare provider for the most current information\n- Checking with your oncology team for the latest guidelines`;
+        return "I want to be careful here: the information I have may be outdated, and medical guidelines change over time.";
 
       case "conflicting_evidence":
-        return `${baseMessage} I found information from multiple sources that present different perspectives. Medical information can vary based on specific situations and guidelines.\n\nSince this requires careful interpretation:\n- Please discuss this with your healthcare provider\n- Your doctor can help you understand which information applies to your specific case\n- Consider getting a second opinion from another qualified oncologist if you're uncertain`;
+        return "I want to be careful here: I found information from multiple sources that present different perspectives.";
 
       case "citation_validation_failed":
-        return `${baseMessage} I generated a response, but I couldn't properly verify all the sources. To ensure accuracy, I'd rather provide you with guidance on next steps.\n\nPlease:\n- Consult with a qualified healthcare professional\n- Use official medical resources for detailed information\n- Prepare questions to discuss with your oncology team`;
+        return "I want to be careful here: I generated a response, but I couldn't properly verify all the sources.";
 
       default:
-        return `${baseMessage}\n\nNext steps:\n- Consult with a qualified healthcare professional\n- Check with your oncology team\n- Contact a cancer helpline for support`;
+        return "I want to be careful here: I can't confidently verify enough information to answer this accurately.";
+    }
+  }
+
+  /**
+   * Get actionable help bullets (max 3)
+   */
+  private getActionableHelp(queryType: QueryType): string {
+    const helpItems = [
+      "• Help you prepare questions for your oncologist based on your situation",
+      "• Explain any medical terms in plain language",
+      "• Help you organize symptoms, reports, and timelines for a clearer consultation"
+    ];
+
+    // Add query-type specific help if relevant
+    if (queryType === "treatment" || queryType === "sideEffects") {
+      return helpItems.join("\n");
+    } else if (queryType === "navigation") {
+      return "• Help you find appropriate healthcare resources and support services\n" + helpItems.slice(1).join("\n");
+    } else {
+      return helpItems.join("\n");
+    }
+  }
+
+  /**
+   * Get context invitation (ask for minimum additional details)
+   */
+  private getContextInvitation(reason: AbstentionReason, queryType: QueryType): string {
+    const baseInvitation = "If you share what the question was about (and any relevant details like diagnosis, treatment, and reports), I'll help you frame the next best steps and questions.";
+
+    switch (reason) {
+      case "no_evidence":
+        return "If you can rephrase your question or share more context about what you're looking for, I may be able to help better.";
+
+      case "untrusted_sources":
+        return "If you share what you're looking for, I can help you prepare questions to discuss with your healthcare provider.";
+
+      default:
+        return baseInvitation;
     }
   }
 
@@ -48,6 +135,8 @@ export class AbstentionService {
     return descriptions[queryType] || "cancer-related";
   }
 }
+
+
 
 
 
