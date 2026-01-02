@@ -34,8 +34,19 @@ export class ChatService {
   ) {}
 
   async handle(dto: ChatDto) {
+    // #region agent log
+    const fs = require('fs');
+    const logPath = 'c:\\Users\\gauta\\OneDrive\\Documents\\suchi_phase1_pack\\.cursor\\debug.log';
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'chat.service.ts:36',message:'handle entry',data:{sessionId:dto.sessionId,userText:dto.userText?.substring(0,50),channel:dto.channel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2,H3,H4,H5'})+'\n'); } catch(e) {}
+    // #endregion
+
     const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
-    if (!session) throw new BadRequestException("Invalid sessionId");
+    if (!session) {
+      // #region agent log
+      try { fs.appendFileSync(logPath, JSON.stringify({location:'chat.service.ts:38',message:'Invalid sessionId',data:{sessionId:dto.sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})+'\n'); } catch(e) {}
+      // #endregion
+      throw new BadRequestException("Invalid sessionId");
+    }
 
     await this.analytics.emit("chat_turn_submitted", { channel: dto.channel }, dto.sessionId);
 
@@ -145,12 +156,18 @@ export class ChatService {
 
       await this.analytics.emit("greeting_response", { isFirstMessage, intent: templateResult.intent }, dto.sessionId);
 
-      return {
+      const returnValue = {
         sessionId: dto.sessionId,
         messageId: assistant.id,
         responseText: assistant.text,
         safety: { classification: "normal" as const, actions: [] }
       };
+      // #region agent log
+      const fs = require('fs');
+      const logPath = 'c:\\Users\\gauta\\OneDrive\\Documents\\suchi_phase1_pack\\.cursor\\debug.log';
+      try { fs.appendFileSync(logPath, JSON.stringify({location:'chat.service.ts:148',message:'Returning greeting response',data:{messageId:assistant.id,responseTextLength:assistant.text?.length,hasSafety:!!returnValue.safety},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H6'})+'\n'); } catch(e) {}
+      // #endregion
+      return returnValue;
     }
 
     // 2. Mode Detection (NEW - after greeting, before RAG)
