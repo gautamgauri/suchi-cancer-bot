@@ -122,6 +122,31 @@ export class AbstentionService {
     }
   }
 
+  /**
+   * Generate clarifying question for weak evidence (Rule B2)
+   * Ask ONE question before abstaining
+   */
+  generateClarifyingQuestion(userText: string, queryType: QueryType): string {
+    const lowerText = userText.toLowerCase();
+    
+    // Detect what type of question this is
+    if (lowerText.includes("symptom")) {
+      return "To provide more accurate information, could you specify which symptoms you're asking about, or are you asking about symptoms in general?";
+    }
+    if (lowerText.includes("treatment") || lowerText.includes("therapy")) {
+      return "To help you better, could you share the cancer type or stage (if known), or are you asking about treatments in general?";
+    }
+    if (lowerText.includes("report") || lowerText.includes("scan") || lowerText.includes("test")) {
+      return "To provide more relevant guidance, could you share the type of report or test you're asking about?";
+    }
+    if (lowerText.includes("lymphoma") || lowerText.includes("cancer type")) {
+      return "To provide more specific information, could you clarify what aspect of this you'd like to know about (symptoms, treatment, diagnosis, etc.)?";
+    }
+    
+    // Generic clarifying question
+    return "To provide a more accurate answer, could you provide a bit more context about what specifically you'd like to know?";
+  }
+
   private getQueryTypeDescription(queryType: QueryType): string {
     const descriptions: Record<QueryType, string> = {
       treatment: "treatment",

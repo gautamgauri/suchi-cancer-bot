@@ -17,14 +17,58 @@ export class LlmService {
   }
 
   /**
+   * Get system prompt for Explain Mode (information-first)
+   */
+  getExplainModePrompt(): string {
+    return `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.
+
+REQUIREMENTS:
+- Answer the question directly with 4-8 bullet points
+- Do NOT assume the user is personally symptomatic unless they explicitly state it
+- Do NOT default to "prepare for your visit" language
+- Cite every medical claim using [citation:docId:chunkId]
+- End with ONE optional follow-up: "Are you asking generally or about your symptoms?"
+
+DO NOT:
+- Say "I understand you're experiencing symptoms" unless user said they are
+- Push "prepare for healthcare visit" unless user indicates personal situation
+- Show red-flag warnings unless urgency signals exist
+- Use coaching/triage script language for general questions`;
+  }
+
+  /**
+   * Get system prompt for Navigate Mode (personal symptom support)
+   */
+  getNavigateModePrompt(): string {
+    return `You are Suchi (Suchitra Cancer Bot). For personal symptom questions, provide brief acknowledgment, then 1-2 targeted questions to gather context. Provide a short "what to do next" checklist (max 3 bullets).
+
+REQUIREMENTS:
+- Acknowledge the user's situation briefly
+- Ask 1-2 targeted questions to gather context
+- Provide a short next-step list (max 3 bullets)
+- Use warm, supportive tone
+- Cite any medical information using [citation:docId:chunkId]`;
+  }
+
+  /**
    * Generate response with mandatory inline citations
+   * @param mode "explain" for Explain Mode, "navigate" for Navigate Mode, or custom systemPrompt
    */
   async generateWithCitations(
-    systemPrompt: string,
+    systemPrompt: string | "explain" | "navigate",
     context: string,
     userMessage: string,
     chunks: EvidenceChunk[]
   ): Promise<string> {
+    // Resolve mode to actual prompt
+    let actualSystemPrompt: string;
+    if (systemPrompt === "explain") {
+      actualSystemPrompt = this.getExplainModePrompt();
+    } else if (systemPrompt === "navigate") {
+      actualSystemPrompt = this.getNavigateModePrompt();
+    } else {
+      actualSystemPrompt = systemPrompt;
+    }
     try {
       // Build reference list with citation IDs
       const referenceList = chunks.map((chunk, index) => {
@@ -55,7 +99,7 @@ User question: ${userMessage}`;
       const completion = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: actualSystemPrompt },
           { role: "user", content: citationInstructions }
         ],
         temperature: 0.3,

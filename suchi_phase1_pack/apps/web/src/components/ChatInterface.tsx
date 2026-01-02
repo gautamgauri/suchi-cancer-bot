@@ -4,6 +4,10 @@ import { MessageInput } from "./MessageInput";
 import { SuggestedPrompts } from "./SuggestedPrompts";
 import { SafetyBanner } from "./SafetyBanner";
 import { FeedbackModal } from "./FeedbackModal";
+import { SuchiAvatar } from "./SuchiAvatar";
+import { LoadingIndicator } from "./LoadingIndicator";
+import { ErrorDisplay } from "./ErrorDisplay";
+import { WelcomeMessage } from "./WelcomeMessage";
 import { apiService, ChatResponse } from "../services/api";
 
 interface ChatInterfaceProps {
@@ -28,7 +32,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [lastMessageId, setLastMessageId] = useState<string | null>(null);
   const [conversationEnded, setConversationEnded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Show welcome message on first visit
+    const hasSeenWelcome = localStorage.getItem("suchi_welcome_seen");
+    if (!hasSeenWelcome && messages.length === 0) {
+      setShowWelcome(true);
+    }
+  }, [messages.length]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -85,14 +99,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        text: "I'm sorry, there was an error processing your message. Please try again.",
-        timestamp: new Date()
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
+      setError("I'm sorry, there was an error processing your message. Please try again.");
       setLoading(false);
     }
   };
@@ -120,8 +127,24 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.headerTitle}>Suchi</h1>
-        <button onClick={onStartOver} style={styles.startOverButton}>
+        <div style={styles.headerContent}>
+          <SuchiAvatar size="medium" />
+          <div style={styles.headerText}>
+            <h1 style={styles.headerTitle}>Suchi</h1>
+            <p style={styles.headerTagline}>Your trusted cancer information assistant</p>
+          </div>
+        </div>
+        <button 
+          onClick={onStartOver} 
+          style={styles.startOverButton}
+          onMouseEnter={(e) => {
+            Object.assign(e.currentTarget.style, styles.startOverButtonHover);
+          }}
+          onMouseLeave={(e) => {
+            Object.assign(e.currentTarget.style, styles.startOverButton);
+          }}
+          aria-label="Start new conversation"
+        >
           Start Over
         </button>
       </div>
@@ -136,17 +159,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       )}
 
       <div style={styles.chatContainer}>
-        <MessageList messages={messages} />
+        <MessageList 
+          messages={messages} 
+          onFeedback={(messageId, rating) => {
+            handleFeedback(rating);
+            setLastMessageId(messageId);
+          }}
+        />
         {loading && (
-          <div style={styles.loadingContainer}>
-            <div style={styles.loadingMessage}>
-              <div style={styles.loadingDots}>
-                <div style={styles.loadingDot} className="loading-dot-1"></div>
-                <div style={styles.loadingDot} className="loading-dot-2"></div>
-                <div style={styles.loadingDot} className="loading-dot-3"></div>
-              </div>
-            </div>
-          </div>
+          <LoadingIndicator />
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -156,10 +177,28 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
           <button
             onClick={() => setShowFeedbackModal(true)}
             style={styles.feedbackButton}
+            aria-label="Provide feedback on conversation"
           >
             Provide Feedback
           </button>
         </div>
+      )}
+
+      {error && (
+        <ErrorDisplay
+          message={error}
+          onRetry={() => {
+            setError(null);
+            // Retry last message if available
+            if (messages.length > 0) {
+              const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
+              if (lastUserMessage) {
+                handleSend(lastUserMessage.text);
+              }
+            }
+          }}
+          onDismiss={() => setError(null)}
+        />
       )}
 
       {messages.length === 0 && (
@@ -179,6 +218,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
           onSubmit={handleFeedback}
         />
       )}
+
+      {showWelcome && (
+        <WelcomeMessage
+          onDismiss={() => setShowWelcome(false)}
+          onGetStarted={() => {
+            setShowWelcome(false);
+            // Focus on input or show suggested prompts
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -188,44 +237,67 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     flexDirection: "column",
     height: "100vh",
-    backgroundColor: "#f5f5f5"
+    backgroundColor: "var(--color-background)"
   },
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 20px",
-    backgroundColor: "white",
-    borderBottom: "1px solid #dee2e6",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+    backgroundColor: "var(--color-surface)",
+    borderBottom: "1px solid var(--color-border)",
+    boxShadow: "var(--shadow-sm)"
+  },
+  headerContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px"
+  },
+  headerText: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px"
   },
   headerTitle: {
     fontSize: "24px",
     fontWeight: "bold",
     margin: 0,
-    color: "#1a1a1a"
+    color: "var(--color-primary)",
+    lineHeight: "1.2"
+  },
+  headerTagline: {
+    fontSize: "var(--font-size-sm)",
+    color: "var(--color-text-secondary)",
+    margin: 0,
+    lineHeight: "1.2"
   },
   startOverButton: {
     padding: "8px 16px",
     fontSize: "14px",
-    backgroundColor: "#6c757d",
-    color: "white",
+    backgroundColor: "var(--color-text-secondary)",
+    color: "var(--color-text-on-primary)",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "var(--radius-md)",
     cursor: "pointer",
-    fontWeight: "500"
+    fontWeight: "500",
+    transition: "var(--transition-base)"
+  },
+  startOverButtonHover: {
+    backgroundColor: "var(--color-text-muted)",
+    transform: "translateY(-1px)",
+    boxShadow: "var(--shadow-sm)"
   },
   bannerContainer: {
     padding: "16px 20px",
-    backgroundColor: "white"
+    backgroundColor: "var(--color-surface)"
   },
   chatContainer: {
     flex: 1,
     overflowY: "auto",
-    backgroundColor: "white",
+    backgroundColor: "var(--color-surface)",
     margin: "0 20px 20px 20px",
-    borderRadius: "8px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+    borderRadius: "var(--radius-lg)",
+    boxShadow: "var(--shadow-md)"
   },
   loadingContainer: {
     padding: "20px",
@@ -233,9 +305,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: "flex-start"
   },
   loadingMessage: {
-    backgroundColor: "#f8f9fa",
-    border: "1px solid #dee2e6",
-    borderRadius: "12px",
+    backgroundColor: "var(--color-surface-alt)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-lg)",
     padding: "12px 16px"
   },
   loadingDots: {
@@ -247,7 +319,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "8px",
     height: "8px",
     borderRadius: "50%",
-    backgroundColor: "#007bff",
+    backgroundColor: "var(--color-primary)",
     animation: "bounce 1.4s infinite ease-in-out both"
   },
   feedbackButtonContainer: {
@@ -258,10 +330,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   feedbackButton: {
     padding: "8px 16px",
     fontSize: "14px",
-    backgroundColor: "white",
-    border: "1px solid #dee2e6",
-    borderRadius: "6px",
+    backgroundColor: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
     cursor: "pointer",
-    color: "#495057"
+    color: "var(--color-text)",
+    transition: "var(--transition-base)"
   }
 };

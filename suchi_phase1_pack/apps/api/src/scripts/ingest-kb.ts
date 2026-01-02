@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { PrismaClient } from "@prisma/client";
-import { randomUUID, createHash } from "crypto";
+import { createHash } from "crypto";
 import { isTrustedSource } from "../config/trusted-sources.config";
 
 type ManifestDoc = {
@@ -25,12 +25,72 @@ type ManifestDoc = {
   citation?: string;
 };
 type Manifest = { locale?: string; schemaVersion?: string; docs: ManifestDoc[] };
-type Opts = { kbRoot: string; wipeChunks: boolean; maxChunkChars: number; overlapChars: number; dryRun: boolean; skipEmbeddings: boolean };
+type Opts = { kbRoot: string; wipeChunks: boolean; maxChunkChars: number; overlapChars: number; dryRun: boolean; skipEmbeddings: boolean; resume: boolean; confirmWipe: boolean };
+type Checkpoint = { docIndex: number; chunkIndex: number; timestamp: string };
 
 const prisma = new PrismaClient();
 
+// Retry database operations on connection failures
+async function withRetry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      // Retry on connection errors
+      if (error.code === 'P1017' || error.code === 'P1001' || error.message?.includes('connection')) {
+        console.log(`  ⚠️  Connection error (attempt ${attempt}/${maxRetries}), reconnecting...`);
+        await prisma.$disconnect();
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+        continue;
+      }
+      throw error; // Don't retry other errors
+    }
+  }
+  throw lastError;
+}
+
+// SAFETY: Check existing data before wipe operations
+async function checkExistingData() {
+  const docCount = await prisma.kbDocument.count();
+  const chunkCount = await prisma.kbChunk.count();
+  const embeddedResult = await prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) as count FROM "KbChunk" WHERE embedding IS NOT NULL`;
+  const embeddedCount = Number(embeddedResult[0].count);
+  return { docCount, chunkCount, embeddedCount };
+}
+
 function mustExist(p: string) { if (!fs.existsSync(p)) throw new Error(`Missing: ${p}`); }
 function readJson<T>(p: string): T { return JSON.parse(fs.readFileSync(p, "utf-8")) as T; }
+
+// Checkpoint management for resume-safe ingestion
+const CHECKPOINT_FILE = path.join(process.cwd(), ".ingestion-checkpoint.json");
+
+function loadCheckpoint(): Checkpoint {
+  if (fs.existsSync(CHECKPOINT_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(CHECKPOINT_FILE, "utf-8"));
+    } catch {
+      return { docIndex: 0, chunkIndex: 0, timestamp: new Date().toISOString() };
+    }
+  }
+  return { docIndex: 0, chunkIndex: 0, timestamp: new Date().toISOString() };
+}
+
+function saveCheckpoint(state: Checkpoint): void {
+  const tmpFile = CHECKPOINT_FILE + ".tmp";
+  fs.writeFileSync(tmpFile, JSON.stringify({ ...state, timestamp: new Date().toISOString() }, null, 2));
+  fs.renameSync(tmpFile, CHECKPOINT_FILE);
+}
+
+function clearCheckpoint(): void {
+  if (fs.existsSync(CHECKPOINT_FILE)) fs.unlinkSync(CHECKPOINT_FILE);
+}
+
+// Generate deterministic chunk ID
+function generateChunkId(docId: string, chunkIndex: number): string {
+  return `${docId}::chunk::${chunkIndex}`;
+}
 
 function chunkMarkdown(md: string, maxChars: number, overlapChars: number): string[] {
   const normalized = md.replace(/\r\n/g, "\n").trim();
@@ -65,6 +125,8 @@ function parseArgs(): Opts {
     wipeChunks: flag("--wipeChunks"),
     dryRun: flag("--dryRun"),
     skipEmbeddings: flag("--skipEmbeddings"),
+    resume: flag("--resume"),
+    confirmWipe: flag("--confirmWipe"),
     maxChunkChars: Number(get("--maxChunkChars") || "1400"),
     overlapChars: Number(get("--overlapChars") || "200")
   };
@@ -148,7 +210,7 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
 
   const now = new Date();
 
-  await prisma.kbDocument.upsert({
+  await withRetry(() => prisma.kbDocument.upsert({
     where: { id: doc.id },
     update: {
       title: doc.title,
@@ -193,9 +255,14 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
       jurisdiction: jurisdiction,
       retrievedDate: now
     }
-  });
+  }));
 
-  if (opts.wipeChunks) await prisma.kbChunk.deleteMany({ where: { docId: doc.id } });
+  // SAFETY: Only wipe if explicitly confirmed
+  if (opts.wipeChunks && opts.confirmWipe) {
+    await prisma.kbChunk.deleteMany({ where: { docId: doc.id } });
+  } else if (opts.wipeChunks && !opts.confirmWipe) {
+    throw new Error("SAFETY: --wipeChunks requires --confirmWipe flag to prevent accidental data loss");
+  }
 
   // Generate embeddings if not skipped
   let embeddings: (number[] | null)[] = [];
@@ -232,29 +299,40 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
     embeddings = chunks.map(() => null);
   }
 
-  // Store chunks with embeddings
+  // Store chunks with embeddings (UPSERT for idempotency)
   for (let i = 0; i < chunks.length; i++) {
+    const chunkId = generateChunkId(doc.id, i); // Deterministic ID
     const embedding = embeddings[i];
     // Convert embedding array to pgvector format string: "[0.1,0.2,...]"
     const embeddingStr = embedding ? `[${embedding.join(",")}]` : null;
-    
-    // Use raw SQL to insert vector data since Prisma doesn't support vectors directly
+
+    // Use UPSERT (ON CONFLICT) for idempotency with retry on connection errors
     if (embeddingStr) {
-      const chunkId = randomUUID();
-      // Use $executeRawUnsafe for vector type (Prisma doesn't support vector in tagged templates)
-      await prisma.$executeRawUnsafe(
+      await withRetry(() => prisma.$executeRawUnsafe(
         `INSERT INTO "KbChunk" ("id", "docId", "chunkIndex", "content", "embedding", "createdAt")
-         VALUES ($1, $2, $3, $4, $5::vector, NOW())`,
+         VALUES ($1, $2, $3, $4, $5::vector, NOW())
+         ON CONFLICT ("id") DO UPDATE SET
+           "content" = EXCLUDED."content",
+           "embedding" = EXCLUDED."embedding",
+           "createdAt" = NOW()`,
         chunkId,
         doc.id,
         i,
         chunks[i],
         embeddingStr
-      );
+      ));
     } else {
-      await prisma.kbChunk.create({
-        data: { docId: doc.id, chunkIndex: i, content: chunks[i] }
-      });
+      await withRetry(() => prisma.$executeRawUnsafe(
+        `INSERT INTO "KbChunk" ("id", "docId", "chunkIndex", "content", "createdAt")
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT ("id") DO UPDATE SET
+           "content" = EXCLUDED."content",
+           "createdAt" = NOW()`,
+        chunkId,
+        doc.id,
+        i,
+        chunks[i]
+      ));
     }
   }
 }
@@ -265,9 +343,52 @@ async function main() {
   mustExist(manifestPath);
   const manifest = readJson<Manifest>(manifestPath);
   const embeddingsStatus = opts.skipEmbeddings ? "disabled" : "enabled";
-  console.log(`Suchi KB Ingestion | docs=${manifest.docs.length} | dry=${opts.dryRun} | wipe=${opts.wipeChunks} | embeddings=${embeddingsStatus}`);
-  for (const d of manifest.docs) await ingestDoc(d, opts);
-  console.log("\nDone.");
+
+  // SAFETY: Check existing data and warn before destructive operations
+  if (opts.wipeChunks) {
+    const existing = await checkExistingData();
+    console.log("\n⚠️  WARNING: DESTRUCTIVE OPERATION REQUESTED");
+    console.log(`   Current database state:`);
+    console.log(`   - Documents: ${existing.docCount}`);
+    console.log(`   - Total chunks: ${existing.chunkCount}`);
+    console.log(`   - Chunks with embeddings: ${existing.embeddedCount}`);
+    console.log(`\n   --wipeChunks will DELETE all ${existing.chunkCount} chunks!`);
+
+    if (!opts.confirmWipe) {
+      console.error("\n❌ SAFETY CHECK FAILED:");
+      console.error("   --wipeChunks requires --confirmWipe flag to proceed.");
+      console.error("   This prevents accidental data loss.\n");
+      console.error("   To confirm deletion, add: --confirmWipe");
+      console.error("   Example: npm run kb:ingest -- --wipeChunks --confirmWipe\n");
+      process.exit(1);
+    }
+
+    console.log(`\n✓  Confirmation received. Proceeding with wipe operation...\n`);
+  }
+
+  // Load checkpoint if resuming
+  let checkpoint: Checkpoint = { docIndex: 0, chunkIndex: 0, timestamp: new Date().toISOString() };
+  if (opts.resume) {
+    checkpoint = loadCheckpoint();
+    console.log(`Resuming from checkpoint: doc ${checkpoint.docIndex + 1}/${manifest.docs.length} (${checkpoint.timestamp})`);
+  } else {
+    clearCheckpoint(); // Start fresh
+  }
+
+  console.log(`Suchi KB Ingestion | docs=${manifest.docs.length} | dry=${opts.dryRun} | wipe=${opts.wipeChunks} | embeddings=${embeddingsStatus} | resume=${opts.resume}`);
+
+  // Process documents from checkpoint
+  for (let docIndex = checkpoint.docIndex; docIndex < manifest.docs.length; docIndex++) {
+    await ingestDoc(manifest.docs[docIndex], opts);
+
+    // Save checkpoint after each document (every 1 doc)
+    if (!opts.dryRun) {
+      saveCheckpoint({ docIndex: docIndex + 1, chunkIndex: 0, timestamp: new Date().toISOString() });
+    }
+  }
+
+  clearCheckpoint(); // Success - clear checkpoint
+  console.log("\n✓ Ingestion complete!");
 }
 
 main().catch((e) => { console.error(e); process.exitCode = 1; }).finally(async () => prisma.$disconnect());

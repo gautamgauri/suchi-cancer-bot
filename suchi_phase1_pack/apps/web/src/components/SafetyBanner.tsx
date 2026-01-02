@@ -12,8 +12,8 @@ export const SafetyBanner: React.FC<SafetyBannerProps> = ({ classification, mess
     <div
       style={{
         ...styles.banner,
-        backgroundColor: isEmergency ? "#f8d7da" : "#fff3cd",
-        borderColor: isEmergency ? "#f5c6cb" : "#ffeaa7"
+        backgroundColor: isEmergency ? "#FEE2E2" : "#FEF3C7",
+        borderColor: isEmergency ? "#FCA5A5" : "#FCD34D"
       }}
     >
       <div style={styles.icon}>{isEmergency ? "🚨" : "⚠️"}</div>
@@ -45,17 +45,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     flex: 1
   },
   title: {
-    fontSize: "18px",
+    fontSize: "var(--font-size-lg)",
     fontWeight: "bold",
     marginBottom: "8px",
-    color: "#721c24"
+    color: "#991B1B"
   },
   message: {
-    fontSize: "14px",
+    fontSize: "var(--font-size-sm)",
     lineHeight: "1.6",
-    color: "#721c24"
+    color: "#991B1B"
   }
 };
+
+
+
+
 
 
 

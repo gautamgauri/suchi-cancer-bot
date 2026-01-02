@@ -1,7 +1,9 @@
 /**
- * Response templates following Intent → Template Mapping Table
- * All templates follow warm-professional tone, structured format, and end with clear next steps
+ * Response templates - refactored to micro-structures that wrap RAG content
+ * Templates are thin wrappers, RAG determines the content
  */
+
+import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
 export interface TemplateContext {
   isFirstMessage: boolean;
@@ -12,6 +14,89 @@ export interface TemplateContext {
 }
 
 export class ResponseTemplates {
+  /**
+   * Explain Mode micro-structure - wraps RAG content for general informational questions
+   * Structure: Optional framing → RAG content → Optional safety nuance → Optional follow-up
+   */
+  static explainModeFrame(
+    ragContent: string,
+    userText: string,
+    chunks: EvidenceChunk[]
+  ): string {
+    const lowerText = userText.toLowerCase();
+    let response = "";
+
+    // Optional one-line framing (only if needed for context)
+    if (lowerText.includes("symptom")) {
+      response += "Here are common symptoms described in the medical literature:\n\n";
+    } else if (lowerText.includes("treatment")) {
+      response += "Here's information about treatment options:\n\n";
+    }
+
+    // RAG content (inserted here)
+    response += ragContent;
+
+    // Optional one-line safety nuance (only if relevant)
+    if (lowerText.includes("symptom") && !lowerText.includes("I") && !lowerText.includes("my")) {
+      response += "\n\n**Note:** These symptoms can overlap with other conditions and are not specific to any one diagnosis.";
+    }
+
+    // Optional follow-up question (only if appropriate)
+    if (!ragContent.includes("Are you asking") && !ragContent.includes("generally or")) {
+      response += "\n\nAre you asking generally or about your symptoms?";
+    }
+
+    return response;
+  }
+
+  /**
+   * Navigate Mode micro-structure - for personal symptom support
+   * Structure: Acknowledge → 1-2 questions → Short next-step list (max 3 bullets)
+   */
+  static navigateModeFrame(userText: string, topic?: string): string {
+    const lowerText = userText.toLowerCase();
+    let response = "";
+
+    // Acknowledge (brief)
+    if (lowerText.includes("symptom")) {
+      response += "I understand you're experiencing symptoms. ";
+    } else if (lowerText.includes("report") || lowerText.includes("scan") || lowerText.includes("test")) {
+      response += "I understand you have questions about your report. ";
+    } else {
+      response += "I understand you have questions. ";
+    }
+
+    // 1-2 targeted questions
+    const questions: string[] = [];
+    if (lowerText.includes("symptom")) {
+      questions.push("When did these symptoms start?");
+      questions.push("How often do they occur?");
+    } else if (lowerText.includes("weight loss")) {
+      questions.push("How much weight have you lost and over what timeframe?");
+    } else if (lowerText.includes("report")) {
+      questions.push("What specific findings in your report are you concerned about?");
+    } else {
+      questions.push("What specific aspect would you like help with?");
+    }
+
+    response += `To help you better, could you share:\n• ${questions[0]}`;
+    if (questions.length > 1) {
+      response += `\n• ${questions[1]}`;
+    }
+
+    // Short next-step list (max 3 bullets)
+    response += "\n\n**Next steps:**\n";
+    if (lowerText.includes("symptom")) {
+      response += "• Track your symptoms and when they occur\n• Prepare questions for your healthcare provider\n• Seek urgent care if symptoms worsen or become severe";
+    } else if (lowerText.includes("report")) {
+      response += "• Review your report with your healthcare provider\n• Prepare specific questions about findings\n• Bring your report to your appointment";
+    } else {
+      response += "• Discuss with your healthcare provider\n• Prepare questions based on your situation\n• Share any follow-up questions you have";
+    }
+
+    return response;
+  }
+
   /**
    * G-series: Greeting templates
    */
@@ -148,11 +233,12 @@ export class ResponseTemplates {
 
   /**
    * Helper: Select appropriate template based on intent
+   * Note: INFORMATIONAL_* intents should use explainModeFrame (called from chat service)
+   * PERSONAL_SYMPTOMS should use navigateModeFrame (called from chat service)
    */
   static selectTemplate(intent: string, context: TemplateContext): string {
     const templateMap: Record<string, (ctx: TemplateContext) => string> = {
       GREETING_ONLY: context.isFirstMessage ? this.G1 : this.G2,
-      SYMPTOMS_NON_URGENT: this.S1,
       SYMPTOMS_URGENT_RED_FLAGS: this.S2,
       INSUFFICIENT_EVIDENCE: this.A0,
       MISSING_CONTEXT: this.A1,
@@ -164,8 +250,12 @@ export class ResponseTemplates {
       CARE_NAVIGATION_PROVIDER_CHOICE: this.N1,
       CARE_NAVIGATION_SECOND_OPINION: this.N2,
       REPORT_REQUEST_NO_TEXT: this.R1,
+      // Note: SIDE_EFFECTS_GENERAL and TREATMENT_OPTIONS_GENERAL may route to RAG in Explain Mode
+      // Keep templates for Navigate Mode fallback
       SIDE_EFFECTS_GENERAL: this.T1,
-      TREATMENT_OPTIONS_GENERAL: this.T2
+      TREATMENT_OPTIONS_GENERAL: this.T2,
+      // PERSONAL_SYMPTOMS uses navigateModeFrame (not in template map)
+      // INFORMATIONAL_* intents use explainModeFrame (not in template map)
     };
 
     const templateFn = templateMap[intent];

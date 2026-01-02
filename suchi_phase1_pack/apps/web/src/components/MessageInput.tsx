@@ -41,7 +41,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           ...(disabled ? styles.inputDisabled : {})
         }}
         rows={1}
+        aria-label="Message input"
+        aria-describedby="input-help"
+        role="textbox"
       />
+      <div id="input-help" style={{ display: "none" }}>
+        Type your message and press Enter to send, or Shift+Enter for a new line
+      </div>
       <button
         onClick={handleSend}
         disabled={disabled || !text.trim()}
@@ -49,6 +55,17 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           ...styles.button,
           ...((disabled || !text.trim()) ? styles.buttonDisabled : {})
         }}
+        onMouseEnter={(e) => {
+          if (!disabled && text.trim()) {
+            Object.assign(e.currentTarget.style, styles.buttonHover);
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!disabled && text.trim()) {
+            Object.assign(e.currentTarget.style, styles.button);
+          }
+        }}
+        aria-label="Send message"
       >
         Send
       </button>
@@ -61,41 +78,54 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     gap: "12px",
     padding: "20px",
-    backgroundColor: "white",
-    borderTop: "1px solid #dee2e6"
+    backgroundColor: "var(--color-surface)",
+    borderTop: "1px solid var(--color-border)"
   },
   input: {
     flex: 1,
     padding: "12px 16px",
-    fontSize: "15px",
-    border: "1px solid #dee2e6",
-    borderRadius: "8px",
+    fontSize: "var(--font-size-base)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
     resize: "none",
-    fontFamily: "inherit",
+    fontFamily: "var(--font-family)",
     lineHeight: "1.5",
-    maxHeight: "120px"
+    maxHeight: "120px",
+    backgroundColor: "var(--color-surface)",
+    color: "var(--color-text)"
   },
   inputDisabled: {
-    backgroundColor: "#f8f9fa",
-    cursor: "not-allowed"
+    backgroundColor: "var(--color-surface-alt)",
+    cursor: "not-allowed",
+    opacity: 0.6
   },
   button: {
     padding: "12px 24px",
-    fontSize: "15px",
+    fontSize: "var(--font-size-base)",
     fontWeight: "600",
-    color: "white",
-    backgroundColor: "#007bff",
+    color: "var(--color-text-on-primary)",
+    backgroundColor: "var(--color-primary)",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "var(--radius-md)",
     cursor: "pointer",
-    transition: "background-color 0.2s",
+    transition: "var(--transition-base)",
     alignSelf: "flex-end"
   },
+  buttonHover: {
+    backgroundColor: "var(--color-primary-hover)",
+    transform: "translateY(-1px)",
+    boxShadow: "var(--shadow-md)"
+  },
   buttonDisabled: {
-    backgroundColor: "#ccc",
-    cursor: "not-allowed"
+    backgroundColor: "var(--color-text-muted)",
+    cursor: "not-allowed",
+    opacity: 0.5
   }
 };
+
+
+
+
 
 
 

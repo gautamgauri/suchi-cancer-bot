@@ -178,8 +178,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     transition: "all 0.2s"
   },
   ratingButtonActive: {
-    borderColor: "#007bff",
-    backgroundColor: "#e7f3ff"
+    borderColor: "var(--color-primary)",
+    backgroundColor: "#E8F5E9"
   },
   reasonSection: {
     display: "flex",
@@ -220,19 +220,25 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   submitButton: {
     padding: "10px 20px",
-    fontSize: "14px",
+    fontSize: "var(--font-size-sm)",
     border: "none",
-    borderRadius: "8px",
-    backgroundColor: "#007bff",
-    color: "white",
+    borderRadius: "var(--radius-md)",
+    backgroundColor: "var(--color-primary)",
+    color: "var(--color-text-on-primary)",
     cursor: "pointer",
-    fontWeight: "600"
+    fontWeight: "600",
+    transition: "var(--transition-base)"
   },
   submitButtonDisabled: {
-    backgroundColor: "#ccc",
-    cursor: "not-allowed"
+    backgroundColor: "var(--color-text-muted)",
+    cursor: "not-allowed",
+    opacity: 0.5
   }
 };
+
+
+
+
 
 
 

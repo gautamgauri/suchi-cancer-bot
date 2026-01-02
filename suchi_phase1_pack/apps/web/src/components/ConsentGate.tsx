@@ -79,61 +79,61 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     minHeight: "100vh",
     padding: "20px",
-    backgroundColor: "#f5f5f5"
+    backgroundColor: "var(--color-background)"
   },
   content: {
     maxWidth: "600px",
     width: "100%",
-    backgroundColor: "white",
-    borderRadius: "12px",
+    backgroundColor: "var(--color-surface)",
+    borderRadius: "var(--radius-lg)",
     padding: "40px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+    boxShadow: "var(--shadow-lg)"
   },
   title: {
-    fontSize: "32px",
+    fontSize: "var(--font-size-3xl)",
     fontWeight: "bold",
     marginBottom: "8px",
-    color: "#1a1a1a"
+    color: "var(--color-primary)"
   },
   subtitle: {
-    fontSize: "16px",
-    color: "#666",
+    fontSize: "var(--font-size-base)",
+    color: "var(--color-text-secondary)",
     marginBottom: "32px"
   },
   warningBox: {
-    backgroundColor: "#fff3cd",
-    border: "1px solid #ffc107",
-    borderRadius: "8px",
+    backgroundColor: "#FEF3C7",
+    border: "1px solid var(--color-warning)",
+    borderRadius: "var(--radius-md)",
     padding: "20px",
     marginBottom: "24px"
   },
   warningTitle: {
-    fontSize: "18px",
+    fontSize: "var(--font-size-lg)",
     fontWeight: "bold",
     marginBottom: "12px",
-    color: "#856404"
+    color: "#92400E"
   },
   warningText: {
-    fontSize: "14px",
-    color: "#856404",
+    fontSize: "var(--font-size-sm)",
+    color: "#92400E",
     lineHeight: "1.6"
   },
   disclaimerBox: {
-    backgroundColor: "#f8f9fa",
-    border: "1px solid #dee2e6",
-    borderRadius: "8px",
+    backgroundColor: "var(--color-surface-alt)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
     padding: "20px",
     marginBottom: "32px"
   },
   disclaimerTitle: {
-    fontSize: "18px",
+    fontSize: "var(--font-size-lg)",
     fontWeight: "bold",
     marginBottom: "12px",
-    color: "#1a1a1a"
+    color: "var(--color-text)"
   },
   disclaimerList: {
-    fontSize: "14px",
-    color: "#495057",
+    fontSize: "var(--font-size-sm)",
+    color: "var(--color-text)",
     lineHeight: "1.8",
     paddingLeft: "20px"
   },
@@ -157,30 +157,35 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   button: {
     padding: "14px 28px",
-    fontSize: "16px",
+    fontSize: "var(--font-size-base)",
     fontWeight: "600",
-    color: "white",
-    backgroundColor: "#007bff",
+    color: "var(--color-text-on-primary)",
+    backgroundColor: "var(--color-primary)",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "var(--radius-md)",
     cursor: "pointer",
-    transition: "background-color 0.2s"
+    transition: "var(--transition-base)"
   },
   buttonDisabled: {
-    backgroundColor: "#ccc",
-    cursor: "not-allowed"
+    backgroundColor: "var(--color-text-muted)",
+    cursor: "not-allowed",
+    opacity: 0.5
   },
   errorBox: {
-    backgroundColor: "#fff3cd",
-    border: "2px solid #dc3545",
-    borderRadius: "8px",
+    backgroundColor: "#FEE2E2",
+    border: "2px solid var(--color-error)",
+    borderRadius: "var(--radius-md)",
     padding: "16px",
     marginBottom: "20px",
-    color: "#721c24",
-    fontSize: "14px",
+    color: "#991B1B",
+    fontSize: "var(--font-size-sm)",
     lineHeight: "1.6"
   }
 };
+
+
+
+
 
 
 

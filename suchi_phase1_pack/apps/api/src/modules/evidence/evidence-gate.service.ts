@@ -44,7 +44,35 @@ export class EvidenceGateService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * Check if RAG has strong matches (Rule B1)
+   * Strong = similarity > 0.7 OR top 3 chunks from trusted sources
+   */
+  hasStrongMatches(chunks: EvidenceChunk[]): boolean {
+    if (!chunks || chunks.length === 0) {
+      return false;
+    }
+
+    // Check if top chunk has high similarity (> 0.7)
+    const topChunk = chunks[0];
+    if (topChunk.similarity !== undefined && topChunk.similarity > 0.7) {
+      return true;
+    }
+
+    // Check if top 3 chunks are from trusted sources
+    const top3Chunks = chunks.slice(0, 3);
+    const allTrusted = top3Chunks.every(chunk => chunk.document.isTrustedSource);
+    if (top3Chunks.length >= 3 && allTrusted) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Validate evidence quality before allowing response generation
+   * Rule B1: If strong matches, bypass abstention (only check source trustworthiness)
+   * Rule B2: If weak/empty, ask clarifying question before abstaining
+   * Rule B3: Abstain only for diagnosis/treatment/dosing or very weak matches
    */
   async validateEvidence(chunks: EvidenceChunk[], queryType: QueryType): Promise<EvidenceGateResult> {
     if (!chunks || chunks.length === 0) {
@@ -57,7 +85,30 @@ export class EvidenceGateService {
       };
     }
 
-    // Check source trustworthiness
+    // Rule B1: Check for strong matches first
+    const hasStrong = this.hasStrongMatches(chunks);
+    if (hasStrong) {
+      // Only check source trustworthiness for strong matches
+      const trustworthinessCheck = await this.checkSourceTrustworthiness(chunks);
+      if (!trustworthinessCheck.isTrusted) {
+        return {
+          shouldAbstain: true,
+          confidence: "low",
+          quality: "insufficient",
+          reason: "untrusted_sources",
+          message: `Sources not from trusted providers: ${trustworthinessCheck.untrustedSources.join(", ")}`
+        };
+      }
+
+      // Strong matches pass through - answer directly
+      return {
+        shouldAbstain: false,
+        confidence: "high",
+        quality: "strong",
+      };
+    }
+
+    // For non-strong matches, check source trustworthiness
     const trustworthinessCheck = await this.checkSourceTrustworthiness(chunks);
     if (!trustworthinessCheck.isTrusted) {
       return {
@@ -69,29 +120,28 @@ export class EvidenceGateService {
       };
     }
 
-    // Get evidence thresholds for this query type
+    // Rule B2: For weak matches, check thresholds but don't abstain immediately
+    // Rule B3: Only abstain if confidence would be very low (< 0.3 equivalent)
     const thresholds = getEvidenceThresholds(queryType);
-
-    // Check minimum passage count
-    if (chunks.length < thresholds.minPassages) {
-      return {
-        shouldAbstain: true,
-        confidence: "low",
-        quality: "insufficient",
-        reason: "insufficient_passages",
-        message: `Found ${chunks.length} passage(s), need at least ${thresholds.minPassages} for ${queryType} queries`
-      };
-    }
-
-    // Check minimum source count
     const uniqueDocIds = new Set(chunks.map(c => c.docId));
-    if (uniqueDocIds.size < thresholds.minSources) {
+
+    // Calculate confidence based on similarity scores if available
+    const avgSimilarity = chunks
+      .filter(c => c.similarity !== undefined)
+      .map(c => c.similarity!)
+      .reduce((sum, sim) => sum + sim, 0) / chunks.filter(c => c.similarity !== undefined).length;
+
+    // Rule B3: Very weak matches (low similarity AND insufficient passages/sources)
+    const isVeryWeak = (avgSimilarity < 0.3 || avgSimilarity === undefined) && 
+                       (chunks.length < thresholds.minPassages || uniqueDocIds.size < thresholds.minSources);
+
+    if (isVeryWeak) {
       return {
         shouldAbstain: true,
         confidence: "low",
         quality: "insufficient",
-        reason: "insufficient_sources",
-        message: `Found ${uniqueDocIds.size} source(s), need at least ${thresholds.minSources} for ${queryType} queries`
+        reason: chunks.length < thresholds.minPassages ? "insufficient_passages" : "insufficient_sources",
+        message: `Found ${chunks.length} passage(s) from ${uniqueDocIds.size} source(s), but confidence is too low to answer accurately`
       };
     }
 
@@ -114,21 +164,49 @@ export class EvidenceGateService {
       };
     }
 
-    // Determine quality based on passage count and sources
+    // Determine quality based on passage count, sources, and similarity
+    const hasEnoughPassages = chunks.length >= thresholds.minPassages;
+    const hasEnoughSources = uniqueDocIds.size >= thresholds.minSources;
+    const hasGoodSimilarity = avgSimilarity !== undefined && avgSimilarity > 0.5;
+
     const quality: EvidenceQuality = 
-      chunks.length >= thresholds.minPassages + 1 && uniqueDocIds.size >= thresholds.minSources + 1
+      hasEnoughPassages && hasEnoughSources && hasGoodSimilarity
         ? "strong"
-        : "weak";
+        : (hasEnoughPassages || hasEnoughSources || hasGoodSimilarity)
+        ? "weak"
+        : "insufficient";
 
     const confidence: "high" | "medium" | "low" = 
       quality === "strong" ? "high" :
       quality === "weak" ? "medium" : "low";
 
+    // Rule B2: For weak matches, don't abstain - allow with clarifying question option
     return {
       shouldAbstain: false,
       confidence,
       quality,
     };
+  }
+
+  /**
+   * Generate a clarifying question for weak evidence (Rule B2)
+   */
+  generateClarifyingQuestion(userText: string, queryType: QueryType): string {
+    const lowerText = userText.toLowerCase();
+    
+    // Detect what type of question this is
+    if (lowerText.includes("symptom")) {
+      return "To provide more accurate information, could you specify which symptoms you're asking about, or are you asking about symptoms in general?";
+    }
+    if (lowerText.includes("treatment") || lowerText.includes("therapy")) {
+      return "To help you better, could you share the cancer type or stage (if known), or are you asking about treatments in general?";
+    }
+    if (lowerText.includes("report") || lowerText.includes("scan") || lowerText.includes("test")) {
+      return "To provide more relevant guidance, could you share the type of report or test you're asking about?";
+    }
+    
+    // Generic clarifying question
+    return "To provide a more accurate answer, could you provide a bit more context about what specifically you'd like to know?";
   }
 
   /**

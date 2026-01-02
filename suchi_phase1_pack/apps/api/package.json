@@ -8,9 +8,10 @@
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "kb:dry": "ts-node src/scripts/ingest-kb.ts --dryRun --wipeChunks",
-    "kb:ingest": "ts-node src/scripts/ingest-kb.ts --wipeChunks",
-    "kb:ingest:no-embeddings": "ts-node src/scripts/ingest-kb.ts --wipeChunks --skipEmbeddings"
+    "kb:dry": "ts-node src/scripts/ingest-kb.ts --dryRun",
+    "kb:ingest": "ts-node src/scripts/ingest-kb.ts --resume",
+    "kb:ingest:fresh": "ts-node src/scripts/ingest-kb.ts --wipeChunks --confirmWipe",
+    "kb:ingest:no-embeddings": "ts-node src/scripts/ingest-kb.ts --resume --skipEmbeddings"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",

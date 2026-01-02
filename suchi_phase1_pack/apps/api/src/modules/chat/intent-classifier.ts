@@ -2,16 +2,19 @@ import { Injectable } from "@nestjs/common";
 import { EvidenceChunk, EvidenceGateResult } from "../evidence/evidence-gate.service";
 import { GreetingDetector } from "./greeting-detector";
 import { AbstentionService } from "../abstention/abstention.service";
+import { ModeDetector } from "./mode-detector";
 
 /**
- * Intent types from the Intent → Template Mapping Table
+ * Intent types - updated for RAG-first architecture
  */
 export type IntentType =
   | "GREETING_ONLY"
   | "UNCLEAR_REQUEST"
   | "REPORT_REQUEST_NO_TEXT"
   | "REPORT_TEXT_PROVIDED"
-  | "SYMPTOMS_NON_URGENT"
+  | "INFORMATIONAL_GENERAL" // General cancer information questions (Explain Mode)
+  | "INFORMATIONAL_SYMPTOMS" // General symptom information, not personal (Explain Mode)
+  | "PERSONAL_SYMPTOMS" // User describing their own symptoms (Navigate Mode)
   | "SYMPTOMS_URGENT_RED_FLAGS"
   | "SIDE_EFFECTS_GENERAL"
   | "SIDE_EFFECTS_POSSIBLY_URGENT"
@@ -39,7 +42,7 @@ export class IntentClassifier {
 
   /**
    * Classify user intent based on message content, evidence, and gate results
-   * Follows priority order from mapping table
+   * Updated for RAG-first architecture with mode detection
    */
   classify(
     userText: string,
@@ -81,7 +84,10 @@ export class IntentClassifier {
       };
     }
 
-    // Priority 4: Clear primary intents
+    // Priority 4: Mode detection (NEW - check mode before intent classification)
+    const mode = ModeDetector.detectMode(userText);
+
+    // Priority 5: Clear primary intents
 
     // Report requests
     if (this.isReportRequest(lowerText)) {
@@ -99,12 +105,21 @@ export class IntentClassifier {
       }
     }
 
-    // Symptoms (non-urgent)
+    // Symptoms - now mode-aware
     if (this.hasSymptomKeywords(lowerText) && !this.abstention.hasUrgencyIndicators(userText)) {
-      return {
-        intent: "SYMPTOMS_NON_URGENT",
-        confidence: "high"
-      };
+      if (mode === "navigate") {
+        // Personal symptoms - Navigate Mode
+        return {
+          intent: "PERSONAL_SYMPTOMS",
+          confidence: "high"
+        };
+      } else {
+        // General symptom information - Explain Mode
+        return {
+          intent: "INFORMATIONAL_SYMPTOMS",
+          confidence: "high"
+        };
+      }
     }
 
     // Side effects (general)
@@ -131,18 +146,40 @@ export class IntentClassifier {
       };
     }
 
-    // Prevention/Screening
+    // Prevention/Screening - route to Explain Mode if general, Navigate if personal
     if (this.isPreventionScreeningRequest(lowerText)) {
-      return {
-        intent: "PREVENTION_SCREENING_INFO",
-        confidence: "high"
-      };
+      if (mode === "navigate") {
+        return {
+          intent: "PREVENTION_SCREENING_INFO", // Keep for Navigate Mode
+          confidence: "high"
+        };
+      } else {
+        return {
+          intent: "INFORMATIONAL_GENERAL", // Route to RAG for general questions
+          confidence: "high"
+        };
+      }
     }
 
-    // Treatment options (general)
+    // Treatment options - route to Explain Mode if general
     if (this.isTreatmentOptionsRequest(lowerText)) {
+      if (mode === "navigate") {
+        return {
+          intent: "TREATMENT_OPTIONS_GENERAL", // Keep for Navigate Mode
+          confidence: "medium"
+        };
+      } else {
+        return {
+          intent: "INFORMATIONAL_GENERAL", // Route to RAG for general questions
+          confidence: "high"
+        };
+      }
+    }
+
+    // General informational questions (Explain Mode) - catch-all for cancer-related questions
+    if (mode === "explain" && this.hasCancerRelatedKeywords(lowerText)) {
       return {
-        intent: "TREATMENT_OPTIONS_GENERAL",
+        intent: "INFORMATIONAL_GENERAL",
         confidence: "medium"
       };
     }
@@ -174,15 +211,30 @@ export class IntentClassifier {
     }
 
     // Missing context (user asked specific medical question but lacks details)
+    // Only abstain if we truly have no evidence AND it's not a general question
     if (gateResult.shouldAbstain && this.hasMedicalQuestionKeywords(lowerText) && evidenceChunks.length === 0) {
+      // If it's a general question in Explain Mode, don't abstain - ask clarifying question instead
+      if (mode === "explain") {
+        return {
+          intent: "INFORMATIONAL_GENERAL", // Route to RAG with clarifying question
+          confidence: "low"
+        };
+      }
       return {
         intent: "MISSING_CONTEXT",
         confidence: "medium"
       };
     }
 
-    // Technical failure
+    // Technical failure - only if truly no evidence and not a general question
     if (gateResult.shouldAbstain && evidenceChunks.length === 0 && !this.isUnclearRequest(lowerText)) {
+      // If it's a general question, try to answer with what we have
+      if (mode === "explain" && this.hasCancerRelatedKeywords(lowerText)) {
+        return {
+          intent: "INFORMATIONAL_GENERAL",
+          confidence: "low"
+        };
+      }
       return {
         intent: "TECHNICAL_FAILURE",
         confidence: "medium"
@@ -190,7 +242,14 @@ export class IntentClassifier {
     }
 
     // Insufficient evidence (default abstention)
+    // For Explain Mode with cancer-related keywords, route to INFORMATIONAL_GENERAL instead
     if (gateResult.shouldAbstain) {
+      if (mode === "explain" && this.hasCancerRelatedKeywords(lowerText)) {
+        return {
+          intent: "INFORMATIONAL_GENERAL", // Route to RAG even with weak evidence
+          confidence: "low"
+        };
+      }
       return {
         intent: "INSUFFICIENT_EVIDENCE",
         confidence: "high"
