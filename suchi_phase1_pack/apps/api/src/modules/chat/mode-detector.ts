@@ -15,6 +15,22 @@ export class ModeDetector {
     const text = userText.trim();
     const lowerText = text.toLowerCase();
 
+    // Identify patterns - check these first to gate properly
+    const identifyPatterns = [
+      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i
+    ];
+
+    // Check for identify patterns first - if found, gate by personal signals
+    const hasIdentifyPattern = identifyPatterns.some(pattern => pattern.test(text));
+    if (hasIdentifyPattern) {
+      // If identify pattern + personal signal → NAVIGATE mode
+      if (ModeDetector.hasPersonalDiagnosisSignal(text)) {
+        return "navigate";
+      }
+      // If identify pattern + no personal signal → EXPLAIN mode
+      return "explain";
+    }
+
     // Navigate Mode patterns - personal references
     const navigatePatterns = [
       // First-person pronouns with medical context
@@ -41,7 +57,9 @@ export class ModeDetector {
       // General information requests
       /\b(common|typical|general|usually|often|typically)\b/i,
       // Educational intent
-      /\b(information about|learn about|understand|know about)\b/i
+      /\b(information about|learn about|understand|know about)\b/i,
+      // "How to identify" patterns - general informational questions about symptoms/signs
+      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i
     ];
 
     // If we have personal references, it's Navigate Mode
@@ -79,15 +97,41 @@ export class ModeDetector {
   }
 
   /**
+   * Check if text contains personal diagnosis-style signals
+   * Used to distinguish "how to identify X" (general) from "identify if I have X" (personal)
+   * Patterns:
+   * - First-person: I, I'm, me, my, mine
+   * - Second-person direct: do I, can I, should I, am I
+   * - Someone-specific: my mother, my father, my wife, my husband, my child, my friend, he has, she has
+   * - Symptom framing: I have, I got, I feel, experiencing, suffering from
+   */
+  static hasPersonalDiagnosisSignal(text: string): boolean {
+    const personalSignals = [
+      // First-person pronouns
+      /\b(i|i'm|im|me|my|mine)\b/i,
+      // Second-person direct questions
+      /\b(do i|can i|should i|am i)\b/i,
+      // Someone-specific references
+      /\b(my mother|my father|my wife|my husband|my child|my friend|he has|she has)\b/i,
+      // Symptom framing
+      /\b(i have|i got|i feel|experiencing|suffering from)\b/i
+    ];
+    return personalSignals.some(pattern => pattern.test(text));
+  }
+
+  /**
    * Check if text is a general informational question
    */
   static isGeneralQuestion(text: string): boolean {
     const explainPatterns = [
       /\b(what are|what is|what do|how do|tell me about|explain|describe|list)\b/i,
-      /\b(common|typical|general|usually|often|typically)\b/i
+      /\b(common|typical|general|usually|often|typically)\b/i,
+      // "How to identify" patterns - general informational questions about symptoms/signs
+      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i
     ];
     return explainPatterns.some(pattern => pattern.test(text));
   }
 }
+
 
 
