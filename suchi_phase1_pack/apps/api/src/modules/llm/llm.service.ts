@@ -153,27 +153,34 @@ REQUIREMENTS:
       actualSystemPrompt = systemPrompt;
     }
     try {
-      // Build reference list with citation IDs
+      // Build reference list with citation IDs - make it very clear for LLM
       const referenceList = chunks.map((chunk, index) => {
-        return `[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}\n   Title: ${chunk.document.title}\n   Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
+        // Show example citation format for each chunk to make it crystal clear
+        const exampleCitation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
+        return `[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}
+   Example citation format: ${exampleCitation}
+   Title: ${chunk.document.title}
+   Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
       }).join("\n\n");
 
-      // Enhanced prompt with citation requirements
+      // Enhanced prompt with citation requirements - make it extremely explicit
       const citationInstructions = `
-CRITICAL CITATION REQUIREMENTS:
-1. You MUST cite EVERY medical claim using the format: [citation:docId:chunkId]
-2. Example: "Breast cancer screening typically begins at age 40 [citation:doc_123:chunk_456]"
-3. If you cannot cite a claim from the provided references, DO NOT include it in your response
-4. Use the exact docId and chunkId from the reference list below
-5. Multiple claims can cite the same chunk if appropriate
-6. DO NOT make up information or cite sources not in the reference list
+CRITICAL CITATION REQUIREMENTS - YOU MUST FOLLOW THESE EXACTLY:
+1. You MUST cite EVERY medical claim, fact, symptom, diagnostic method, or piece of information using the format: [citation:docId:chunkId]
+2. Use the EXACT docId and chunkId from the reference list below - copy them exactly as shown
+3. Example: If reference [1] has docId "kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1" and chunkId "kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1::chunk::0", you would write: "Swollen lymph nodes are a symptom [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1::chunk::0]"
+4. You MUST include at least 2-3 citations in your response
+5. If you mention multiple facts, cite each one separately
+6. DO NOT write a response without citations - if you cannot cite something, do not include it
+7. DO NOT make up docId or chunkId values - use ONLY what is in the reference list below
 
-REFERENCE LIST:
+REFERENCE LIST (use the exact docId and chunkId shown for each reference):
 ${referenceList}
 
 RESPONSE FORMAT:
 - Provide a clear, helpful answer based ONLY on the references above
-- Cite every medical fact or claim
+- Cite EVERY medical fact, symptom, diagnostic method, or claim using [citation:docId:chunkId] format
+- Include at least 2-3 citations in your response
 - Format with clear sections when appropriate
 - If you cannot answer based on the references, say so clearly
 
@@ -186,7 +193,7 @@ User question: ${userMessage}`;
           { role: "user", content: citationInstructions }
         ],
         temperature: 0.3,
-        max_tokens: 1500
+        max_tokens: isIdentifyQuestion ? 2500 : 1500 // Identify questions need more tokens for structured response with citations
       });
 
       const text = completion.choices[0]?.message?.content;

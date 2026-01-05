@@ -391,6 +391,18 @@ export class ChatService {
       // Extract and validate citations
       let citations = this.citationService.extractCitations(responseText, evidenceChunks);
       
+      // Log citation extraction results for debugging
+      this.logger.log(`Extracted ${citations.length} citations from response. Response length: ${responseText.length}. Evidence chunks available: ${evidenceChunks.length}`);
+      if (citations.length === 0 && evidenceChunks.length > 0) {
+        // Check if response contains citation-like patterns that weren't matched
+        const citationLikePatterns = responseText.match(/\[citation[^\]]*\]/gi);
+        if (citationLikePatterns && citationLikePatterns.length > 0) {
+          this.logger.warn(`Found ${citationLikePatterns.length} citation-like patterns but none matched: ${citationLikePatterns.slice(0, 3).join(", ")}`);
+        } else {
+          this.logger.warn(`No citation patterns found in response. Response preview: ${responseText.substring(0, 200)}...`);
+        }
+      }
+      
       // Ensure minimum 2 citations for general education identify questions
       if (isIdentifyQuestion && hasGenerallyAsking && citations.length < 2) {
         this.logger.warn(`Only ${citations.length} citations for identify question, expected 2+`);

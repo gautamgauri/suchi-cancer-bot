@@ -67,7 +67,9 @@ export class CitationService {
           citationText: fullMatch
         });
       } else {
-        this.logger.warn(`Invalid citation: ${fullMatch} - chunk not found in retrieved chunks`);
+        // Log available chunks for debugging
+        const availableKeys = Array.from(chunkMap.keys()).slice(0, 5);
+        this.logger.warn(`Invalid citation: ${fullMatch} - chunk not found. Looking for key: "${key}". Available chunks (first 5): ${availableKeys.join(", ")}`);
       }
     }
 
