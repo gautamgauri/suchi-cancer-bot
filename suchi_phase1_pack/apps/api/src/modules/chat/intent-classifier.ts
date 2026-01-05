@@ -3,6 +3,7 @@ import { EvidenceChunk, EvidenceGateResult } from "../evidence/evidence-gate.ser
 import { GreetingDetector } from "./greeting-detector";
 import { AbstentionService } from "../abstention/abstention.service";
 import { ModeDetector } from "./mode-detector";
+import { hasGeneralIntentSignal } from "./utils/general-intent";
 
 /**
  * Intent types - updated for RAG-first architecture
@@ -48,9 +49,19 @@ export class IntentClassifier {
     userText: string,
     evidenceChunks: EvidenceChunk[],
     gateResult: EvidenceGateResult,
-    safetyClassification: string
+    safetyClassification: string,
+    conversationContext?: { hasGenerallyAsking?: boolean }
   ): IntentClassificationResult {
     const lowerText = userText.toLowerCase().trim();
+
+    // Fast-path: if general intent detected, immediately return INFORMATIONAL_GENERAL
+    if (conversationContext?.hasGenerallyAsking) {
+      return {
+        intent: "INFORMATIONAL_GENERAL",
+        confidence: "high",
+        metadata: { reason: "User signaled general/educational intent" }
+      };
+    }
 
     // Priority 1: Crisis / urgent symptoms (S2) - checked before greeting
     if (this.abstention.hasUrgencyIndicators(userText)) {
@@ -81,6 +92,16 @@ export class IntentClassifier {
       return {
         intent: "GREETING_ONLY",
         confidence: "high"
+      };
+    }
+
+    // Optional: history-based detection if context not provided
+    // (This is backup if conversationContext not passed)
+    if (hasGeneralIntentSignal(userText)) {
+      return {
+        intent: "INFORMATIONAL_GENERAL",
+        confidence: "high",
+        metadata: { reason: "General intent detected in current message" }
       };
     }
 
@@ -237,6 +258,29 @@ export class IntentClassifier {
       }
       return {
         intent: "TECHNICAL_FAILURE",
+        confidence: "medium"
+      };
+    }
+
+    // Explicit check for "how to identify" questions - gate by personal signals
+    // Identify general pattern: how to identify, signs of, indicators of, how to detect, etc.
+    const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
+    // Cancer keyword pattern
+    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning|breast|lung|colon|leukemia|melanoma)\b/i;
+    
+    // Check if this is an identify question with cancer keywords
+    if (identifyGeneralPattern.test(lowerText) && cancerKeywordPattern.test(lowerText)) {
+      // Gate by personal signals
+      if (ModeDetector.hasPersonalDiagnosisSignal(userText)) {
+        // Personal identify question → route to PERSONAL_SYMPTOMS or navigation intent
+        return {
+          intent: "PERSONAL_SYMPTOMS",
+          confidence: "medium"
+        };
+      }
+      // General identify question → route to INFORMATIONAL_GENERAL even with weak evidence
+      return {
+        intent: "INFORMATIONAL_GENERAL",
         confidence: "medium"
       };
     }

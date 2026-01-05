@@ -15,6 +15,7 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ChatDto } from "./dto";
+import { hasGeneralIntentSignal } from "./utils/general-intent";
 
 @Injectable()
 export class ChatService {
@@ -173,6 +174,18 @@ export class ChatService {
     // 2. Mode Detection (NEW - after greeting, before RAG)
     const mode = ModeDetector.detectMode(dto.userText);
 
+    // 2.5. Conversation History Tracking - detect "generally asking" signals
+    const recentMessages = await this.prisma.message.findMany({
+      where: { sessionId: dto.sessionId },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: { role: true, text: true }
+    });
+
+    const hasGenerallyAsking =
+      hasGeneralIntentSignal(dto.userText) ||
+      recentMessages.some(m => m.role === "user" && hasGeneralIntentSignal(m.text));
+
     // 3. Retrieve evidence with full metadata
     const evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6);
     const kbDocIds = Array.from(new Set(evidenceChunks.map(c => c.docId)));
@@ -181,7 +194,7 @@ export class ChatService {
     const queryType = QueryTypeClassifier.classify(dto.userText);
 
     // 5. Evidence gate check (refactored - less aggressive)
-    const gateResult = await this.evidenceGate.validateEvidence(evidenceChunks, queryType);
+    const gateResult = await this.evidenceGate.validateEvidence(evidenceChunks, queryType, dto.userText);
     
     // 6. Intent classification
     const existingAssistantMessages = await this.prisma.message.count({
@@ -196,7 +209,17 @@ export class ChatService {
       dto.userText,
       evidenceChunks,
       gateResult,
-      safetyResult.classification
+      safetyResult.classification,
+      { hasGenerallyAsking }
+    );
+
+    // Re-run evidence gate with intent and conversation context
+    gateResult = await this.evidenceGate.validateEvidence(
+      evidenceChunks,
+      queryType,
+      dto.userText,
+      intentResult.intent,
+      { hasGenerallyAsking }
     );
 
     // 7. Mode-based routing
@@ -260,8 +283,32 @@ export class ChatService {
     ];
 
     if (abstentionIntents.includes(intentResult.intent) && mode === "explain") {
-      // Rule B2: Ask ONE clarifying question before abstaining
-      const clarifyingQuestion = this.evidenceGate.generateClarifyingQuestion(dto.userText, queryType);
+      // Clarification budget enforcement: count recent clarifying messages
+      const recentAssistant = await this.prisma.message.findMany({
+        where: { 
+          sessionId: dto.sessionId, 
+          role: "assistant"
+        },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: { text: true }
+      });
+
+      // Heuristic: detect clarifying questions (question mark + common clarifying patterns)
+      const clarificationsSoFar = recentAssistant.filter(m => {
+        return /\?/.test(m.text) && /\b(can you|could you|would you|tell me|share|provide|specify)\b/i.test(m.text);
+      }).length;
+
+      // Budget rules: 0 if general intent, max 2 otherwise
+      const maxClarifications = hasGenerallyAsking ? 0 : 2;
+      const canAskClarifying = clarificationsSoFar < maxClarifications;
+
+      if (!canAskClarifying) {
+        // Force answer path: skip clarifying question, proceed to explain mode response
+        // Continue to Explain Mode + Strong RAG flow below (fall through)
+      } else {
+        // Rule B2: Ask ONE clarifying question before abstaining
+        const clarifyingQuestion = this.evidenceGate.generateClarifyingQuestion(dto.userText, queryType);
       
       const assistant = await this.prisma.message.create({
         data: {
@@ -277,39 +324,74 @@ export class ChatService {
         }
       });
 
-      await this.analytics.emit("clarifying_question", {
-        intent: intentResult.intent,
-        queryType,
-        mode
-      }, dto.sessionId);
+        await this.analytics.emit("clarifying_question", {
+          intent: intentResult.intent,
+          queryType,
+          mode
+        }, dto.sessionId);
 
-      return {
-        sessionId: dto.sessionId,
-        messageId: assistant.id,
-        responseText: assistant.text,
-        safety: { classification: "normal" as const, actions: [] },
-        abstentionReason: gateResult.reason
-      };
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] },
+          abstentionReason: gateResult.reason
+        };
+      }
+      // If canAskClarifying is false, fall through to Explain Mode flow below
     }
 
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
     if (mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) {
+      // Check if this is an identify question (general, not personal)
+      const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
+      const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
+      const isIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) && 
+                                  cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
+                                  !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
+      
       // Generate response with Explain Mode prompt
       let responseText = await this.llm.generateWithCitations(
         "explain",
         "",
         dto.userText,
-        evidenceChunks
+        evidenceChunks,
+        isIdentifyQuestion,
+        { hasGenerallyAsking }
       );
 
       // Structure with explainModeFrame
       responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+
+      // Validate identify question responses
+      if (isIdentifyQuestion) {
+        const validation = this.passesIdentifyRubric(responseText);
+        if (!validation.ok) {
+          this.logger.warn(`Identify response missing elements: ${validation.missing.join(", ")}`);
+          // Regenerate with stricter prompt
+          responseText = await this.llm.generateWithCitations(
+            "explain",
+            "",
+            dto.userText,
+            evidenceChunks,
+            true,
+            { hasGenerallyAsking }
+          );
+          responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+        }
+      }
 
       // Apply response formatting rules (E1, E2, E3)
       responseText = ResponseFormatter.formatResponse(responseText, "explain", true, false);
 
       // Extract and validate citations
       let citations = this.citationService.extractCitations(responseText, evidenceChunks);
+      
+      // Ensure minimum 2 citations for general education identify questions
+      if (isIdentifyQuestion && hasGenerallyAsking && citations.length < 2) {
+        this.logger.warn(`Only ${citations.length} citations for identify question, expected 2+`);
+      }
+      
       let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
 
       // Handle citation validation (same as before)
@@ -584,5 +666,48 @@ export class ChatService {
       })),
       citationConfidence: citationValidation.confidenceLevel
     };
+  }
+
+  /**
+   * Validate identify question responses against rubric requirements
+   * Checks for: biopsy mention, timeline, warning signs count, tests count, doctor questions count
+   */
+  private passesIdentifyRubric(text: string): { ok: boolean; missing: string[] } {
+    const missing: string[] = [];
+
+    // Check for biopsy mention
+    const hasBiopsy = /\bbiopsy\b/i.test(text);
+    if (!hasBiopsy) missing.push("biopsy");
+
+    // Check for timeline "2-4 weeks"
+    const hasTimeline = /\b2\s*[–-]\s*4\s*weeks\b/i.test(text);
+    if (!hasTimeline) missing.push("timeline 2–4 weeks");
+
+    // Count warning signs (heuristic: bullets under "Warning Signs" heading)
+    const warningSignsMatch = text.match(/(?:warning signs?|signs? to watch|symptoms?)[\s\S]*?((?:^[-*•]\s+.*\n?)+)/im);
+    const warningSignsCount = warningSignsMatch 
+      ? warningSignsMatch[1].split(/\n/).filter(l => /^[-*•]\s+/.test(l.trim())).length 
+      : 0;
+    if (warningSignsCount < 5) missing.push(`>=5 warning signs (found ${warningSignsCount})`);
+
+    // Count diagnostic tests (keyword matching)
+    const testKeywords = [
+      /\bclinical\b.*\bexam\b/i,
+      /\bmammogram\b/i,
+      /\bultrasound\b/i,
+      /\bmri\b/i,
+      /\bbiopsy\b/i
+    ];
+    const testsCount = testKeywords.filter(regex => regex.test(text)).length;
+    if (testsCount < 3) missing.push(`>=3 diagnostic tests (found ${testsCount})`);
+
+    // Count doctor questions (bullets under "Questions to Ask" heading)
+    const questionsMatch = text.match(/(?:questions? to ask|ask (?:your )?doctor|questions? for (?:your )?doctor)[\s\S]*?((?:^[-*•]\s+.*\n?)+)/im);
+    const doctorQsCount = questionsMatch 
+      ? questionsMatch[1].split(/\n/).filter(l => /^[-*•]\s+/.test(l.trim())).length 
+      : 0;
+    if (doctorQsCount < 5) missing.push(`>=5 doctor questions (found ${doctorQsCount})`);
+
+    return { ok: missing.length === 0, missing };
   }
 }

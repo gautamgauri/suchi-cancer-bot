@@ -74,7 +74,46 @@ export class EvidenceGateService {
    * Rule B2: If weak/empty, ask clarifying question before abstaining
    * Rule B3: Abstain only for diagnosis/treatment/dosing or very weak matches
    */
-  async validateEvidence(chunks: EvidenceChunk[], queryType: QueryType): Promise<EvidenceGateResult> {
+  async validateEvidence(
+    chunks: EvidenceChunk[], 
+    queryType: QueryType, 
+    userText?: string,
+    intent?: string,
+    conversationContext?: { hasGenerallyAsking?: boolean }
+  ): Promise<EvidenceGateResult> {
+    // Bypass abstention when general education is detected
+    if (conversationContext?.hasGenerallyAsking && intent === "INFORMATIONAL_GENERAL") {
+      return {
+        shouldAbstain: false,
+        confidence: "medium",
+        quality: chunks.length > 0 ? "weak" : "insufficient",
+        reason: "General education mode: do not abstain due to weak evidence"
+      };
+    }
+
+    // Override: Allow general identify questions through even with weak evidence
+    // Check if this is a general identify question (not personal) - check userText pattern directly
+    if (userText) {
+      const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
+      const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
+      // Import ModeDetector to check for personal signals
+      const { ModeDetector } = require("../chat/mode-detector");
+      
+      const isIdentifyGeneral = identifyGeneralPattern.test(userText.toLowerCase()) && 
+                                cancerKeywordPattern.test(userText.toLowerCase()) &&
+                                !ModeDetector.hasPersonalDiagnosisSignal(userText);
+      
+      if (isIdentifyGeneral) {
+        // Allow through with caution - provide informational response even with weak evidence
+        // This bypasses abstention for general "how to identify" questions
+        return {
+          shouldAbstain: false,
+          confidence: "medium",
+          quality: chunks.length > 0 ? "weak" : "insufficient"
+        };
+      }
+    }
+
     if (!chunks || chunks.length === 0) {
       return {
         shouldAbstain: true,
