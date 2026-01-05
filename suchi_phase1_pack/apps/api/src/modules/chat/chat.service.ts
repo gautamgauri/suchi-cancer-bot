@@ -396,45 +396,75 @@ export class ChatService {
         this.logger.warn(`Only ${citations.length} citations for identify question, expected 2+`);
       }
       
-      let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
+      // For identify questions with general intent, pass flag to allow 0 citations with YELLOW
+      const isIdentifyWithGeneralIntent = isIdentifyQuestion && hasGenerallyAsking;
+      let citationValidation = this.citationService.validateCitations(
+        citations, 
+        evidenceChunks, 
+        responseText,
+        isIdentifyWithGeneralIntent
+      );
 
-      // Handle citation validation (same as before)
+      // Handle citation validation
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
         responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, isIdentifyQuestion, { hasGenerallyAsking, cancerType });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
-        citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
+        citationValidation = this.citationService.validateCitations(
+          citations, 
+          evidenceChunks, 
+          responseText,
+          isIdentifyWithGeneralIntent
+        );
 
+        // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
         if (citationValidation.confidenceLevel === "RED") {
-          const clarifyingQuestion = this.evidenceGate.generateClarifyingQuestion(dto.userText, queryType);
-          const assistant = await this.prisma.message.create({
-            data: {
+          if (isIdentifyWithGeneralIntent) {
+            // Allow response with strong disclaimer - don't abstain for identify questions with general intent
+            this.logger.warn("Identify question with general intent has 0 citations after retry - allowing with strong disclaimer");
+            citationValidation = {
+              ...citationValidation,
+              confidenceLevel: "YELLOW", // Override to YELLOW to allow response
+              isValid: true
+            };
+          } else {
+            // Non-identify questions: abstain as before
+            const clarifyingQuestion = this.evidenceGate.generateClarifyingQuestion(dto.userText, queryType);
+            const assistant = await this.prisma.message.create({
+              data: {
+                sessionId: dto.sessionId,
+                role: "assistant",
+                text: clarifyingQuestion,
+                safetyClassification: "normal",
+                kbDocIds: [],
+                latencyMs: Date.now() - started,
+                evidenceQuality: gateResult.quality,
+                evidenceGatePassed: false,
+                abstentionReason: "citation_validation_failed"
+              }
+            });
+            return {
               sessionId: dto.sessionId,
-              role: "assistant",
-              text: clarifyingQuestion,
-              safetyClassification: "normal",
-              kbDocIds: [],
-              latencyMs: Date.now() - started,
-              evidenceQuality: gateResult.quality,
-              evidenceGatePassed: false,
+              messageId: assistant.id,
+              responseText: assistant.text,
+              safety: { classification: "normal" as const, actions: [] },
               abstentionReason: "citation_validation_failed"
-            }
-          });
-          return {
-            sessionId: dto.sessionId,
-            messageId: assistant.id,
-            responseText: assistant.text,
-            safety: { classification: "normal" as const, actions: [] },
-            abstentionReason: "citation_validation_failed"
-          };
+            };
+          }
         }
       }
 
       // Handle YELLOW confidence
       if (citationValidation.confidenceLevel === "YELLOW") {
-        const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
-        responseText = uncertaintyPreamble + responseText;
+        // For identify questions with 0 citations, use stronger disclaimer
+        if (isIdentifyWithGeneralIntent && citations.length === 0) {
+          const strongDisclaimer = "**Important Note:** This information is provided for general educational purposes. I was unable to verify all sources with citations. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
+          responseText = strongDisclaimer + responseText;
+        } else {
+          const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
+          responseText = uncertaintyPreamble + responseText;
+        }
       }
 
       // Store assistant message

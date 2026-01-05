@@ -81,8 +81,15 @@ export class CitationService {
    * - GREEN (high confidence): 2+ citations, good density (>0.3 citations/sentence)
    * - YELLOW (low confidence): 1 citation OR low density - answer with uncertainty
    * - RED (abstain): 0 citations - unsafe to answer
+   * 
+   * @param isIdentifyQuestionWithGeneralIntent If true, allows 0 citations with YELLOW (not RED) for identify questions
    */
-  validateCitations(citations: Citation[], chunks: EvidenceChunk[], responseText?: string): CitationValidationResult {
+  validateCitations(
+    citations: Citation[], 
+    chunks: EvidenceChunk[], 
+    responseText?: string,
+    isIdentifyQuestionWithGeneralIntent?: boolean
+  ): CitationValidationResult {
     const errors: string[] = [];
 
     // Build chunk map
@@ -121,10 +128,18 @@ export class CitationService {
     let isValid: boolean;
 
     if (citations.length === 0) {
-      // RED: No citations - unsafe, must abstain
-      confidenceLevel = "RED";
-      isValid = false;
-      errors.push("Response contains no citations - all medical claims must be cited");
+      // Special case: For identify questions with general intent, allow with YELLOW (strong disclaimer)
+      // This allows educational content even if LLM didn't generate citations properly
+      if (isIdentifyQuestionWithGeneralIntent) {
+        confidenceLevel = "YELLOW";
+        isValid = true;
+        this.logger.warn("Identify question with general intent has 0 citations - allowing with YELLOW confidence and strong disclaimer");
+      } else {
+        // RED: No citations - unsafe, must abstain
+        confidenceLevel = "RED";
+        isValid = false;
+        errors.push("Response contains no citations - all medical claims must be cited");
+      }
     } else if (citations.length < 2 || citationDensity < 0.3) {
       // YELLOW: Limited citations - answer with caution and uncertainty
       confidenceLevel = "YELLOW";
@@ -212,6 +227,8 @@ export class CitationService {
     return lines.join("\n");
   }
 }
+
+
 
 
 

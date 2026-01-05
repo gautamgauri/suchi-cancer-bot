@@ -28,7 +28,8 @@ Extract ${cancerType ? cancerType + ' cancer ' : ''}warning signs from the refer
 - Swollen lymph nodes (if mentioned in references)
 - Systemic symptoms (weight loss, fatigue, fever, night sweats, etc. - if mentioned in references)
 - Any other warning signs SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'this cancer type'} mentioned in the references
-Cite each sign using [citation:docId:chunkId] from the REFERENCE LIST.
+
+CRITICAL: You MUST cite EVERY warning sign using [citation:docId:chunkId] format. Example: "- Swollen lymph nodes [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]". Use the exact docId and chunkId from the REFERENCE LIST below.
 
 2) HOW DOCTORS CONFIRM (minimum 4 bullet points)
 Extract diagnostic methods SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'the cancer type mentioned'} from the references. Look for:
@@ -37,13 +38,15 @@ Extract diagnostic methods SPECIFIC to ${cancerType ? cancerType + ' cancer' : '
 - Biopsy types and procedures mentioned in references - MUST be included if mentioned, and explicitly state it as the diagnostic gold standard / confirmation step if the references indicate this
 - Pathology, staging, and molecular testing mentioned in references (receptor testing, genetic markers, tumor markers, etc. - as mentioned in references)
 Include the sentence: "Symptoms cannot confirm cancer; confirmation requires medical evaluation and often a biopsy." (only if this concept appears in references)
-Cite each diagnostic method using [citation:docId:chunkId] from the REFERENCE LIST.
+
+CRITICAL: You MUST cite EVERY diagnostic method using [citation:docId:chunkId] format. Example: "- Biopsy is the gold standard for confirmation [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]". Use the exact docId and chunkId from the REFERENCE LIST below.
 
 3) WHEN TO SEEK CARE (timeline + urgency)
 Extract timeline guidance SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'this cancer type'} from the references. If references mention specific timelines, include them. If not, provide general guidance based on what the references say about urgency for ${cancerType ? 'this cancer type' : 'this cancer'}.
 Include timeline guidance if available from references (adapt to the specific cancer type and symptoms mentioned)
 Also include urgent vs routine distinction based on what references say for ${cancerType ? 'this cancer type' : 'this cancer'}.
-Cite using [citation:docId:chunkId] from the REFERENCE LIST.
+
+CRITICAL: You MUST cite timeline/urgency information using [citation:docId:chunkId] format. Example: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]". Use the exact docId and chunkId from the REFERENCE LIST below.
 
 4) QUESTIONS TO ASK THE DOCTOR (minimum 7 questions)
 Generate practical questions based on information in the references for ${cancerType ? cancerType + ' cancer' : 'this cancer type'}. Include questions about:
@@ -54,7 +57,14 @@ Generate practical questions based on information in the references for ${cancer
 - What symptoms should trigger earlier return? (if references discuss symptom monitoring)
 Plus 2 additional practical questions based on reference content for ${cancerType ? cancerType + ' cancer' : 'this cancer type'} (referral, timeline, costs, where to go, etc.)
 
-CITATIONS: Provide at least 2 sources with title + URL if available. All citations MUST reference chunks from the REFERENCE LIST provided below.
+CITATION REQUIREMENTS (CRITICAL):
+- You MUST include at least 2 citations using [citation:docId:chunkId] format throughout your response
+- Every medical claim, warning sign, diagnostic method, and timeline MUST be cited
+- Use the exact docId and chunkId from the REFERENCE LIST provided below
+- Example format: "Swollen lymph nodes are a common sign [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]"
+- DO NOT use placeholder citations or make up docId/chunkId values
+- If you cannot find information in the references, say so clearly rather than making it up
+
 Do NOT ask more clarifying questions if the user has indicated general intent (e.g., "generally asking").
 `;
 }
