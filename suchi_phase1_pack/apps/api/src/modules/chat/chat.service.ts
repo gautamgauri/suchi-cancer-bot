@@ -16,6 +16,7 @@ import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
+import { detectCancerType } from "./utils/cancer-type-detector";
 
 @Injectable()
 export class ChatService {
@@ -350,6 +351,9 @@ export class ChatService {
                                   cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
                                   !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
       
+      // Detect cancer type for cancer-type-specific responses
+      const cancerType = isIdentifyQuestion ? detectCancerType(dto.userText) : null;
+      
       // Generate response with Explain Mode prompt
       let responseText = await this.llm.generateWithCitations(
         "explain",
@@ -357,7 +361,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         isIdentifyQuestion,
-        { hasGenerallyAsking }
+        { hasGenerallyAsking, cancerType }
       );
 
       // Structure with explainModeFrame
@@ -368,14 +372,14 @@ export class ChatService {
         const validation = this.passesIdentifyRubric(responseText);
         if (!validation.ok) {
           this.logger.warn(`Identify response missing elements: ${validation.missing.join(", ")}`);
-          // Regenerate with stricter prompt
+          // Regenerate with stricter prompt (cancerType already detected above)
           responseText = await this.llm.generateWithCitations(
             "explain",
             "",
             dto.userText,
             evidenceChunks,
             true,
-            { hasGenerallyAsking }
+            { hasGenerallyAsking, cancerType }
           );
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
         }
@@ -397,7 +401,7 @@ export class ChatService {
       // Handle citation validation (same as before)
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
-        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks);
+        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, isIdentifyQuestion, { hasGenerallyAsking, cancerType });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
         citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);

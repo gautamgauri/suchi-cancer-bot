@@ -7,52 +7,57 @@ import { EvidenceChunk } from "../evidence/evidence-gate.service";
  * IDENTIFY_REQUIREMENTS: Structure checklist for "how to identify" questions
  * CRITICAL: This is a STRUCTURE checklist, NOT hardcoded content. 
  * All information MUST come from the RAG chunks provided in the REFERENCE LIST.
- * The items listed are examples/requirements - include them IF they appear in the references.
+ * The prompt is cancer-type-aware and instructs the LLM to extract cancer-type-specific information.
  */
-const IDENTIFY_REQUIREMENTS = `
+function getIdentifyRequirements(cancerType: string | null): string {
+  const cancerTypeContext = cancerType 
+    ? `The user is asking about ${cancerType} cancer. Extract information SPECIFIC to ${cancerType} cancer from the references.`
+    : `The user is asking about cancer in general. Extract relevant information from the references.`;
+
+  return `
 If the user asks "how to identify" cancer (or warning signs / how doctors confirm), you MUST output the following 4 sections with these minimum requirements.
 
-IMPORTANT: All content MUST come from the provided REFERENCE LIST (RAG chunks). Do NOT make up information. If a required item is not in the references, note that it's not available rather than inventing it.
+IMPORTANT: ${cancerTypeContext} All content MUST come from the provided REFERENCE LIST (RAG chunks). Do NOT make up information. If a required item is not in the references, note that it's not available rather than inventing it.
 
 1) WARNING SIGNS (minimum 7 bullet points, plain language)
-Extract from references. Common examples to look for (include IF found in references):
-- Lump/mass or thickening
-- Change in size/shape
-- Nipple inversion/pulling in
-- Nipple discharge (new, one-sided; mention bloody as concerning if mentioned in references)
-- Skin dimpling / "orange peel" or puckering
-- Redness or scaling of nipple/breast skin
-- Swollen lymph nodes in armpit or collarbone
-- Any other warning signs mentioned in the references
+Extract ${cancerType ? cancerType + ' cancer ' : ''}warning signs from the references. Look for signs that are SPECIFIC to ${cancerType ? 'this cancer type' : 'the cancer type mentioned'}. Include:
+- Any lumps, masses, or unusual growths mentioned in references
+- Changes in size, shape, or appearance mentioned in references
+- Any discharge, bleeding, or fluid changes mentioned in references
+- Skin changes (if mentioned in references for this cancer type)
+- Swollen lymph nodes (if mentioned in references)
+- Systemic symptoms (weight loss, fatigue, fever, night sweats, etc. - if mentioned in references)
+- Any other warning signs SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'this cancer type'} mentioned in the references
 Cite each sign using [citation:docId:chunkId] from the REFERENCE LIST.
 
 2) HOW DOCTORS CONFIRM (minimum 4 bullet points)
-Extract diagnostic methods from references. Common examples to look for (include IF found in references):
-- Clinical breast exam (if mentioned)
-- Imaging: mammogram, ultrasound, MRI (as mentioned in references)
-- Biopsy (core needle or surgical) - MUST be included if mentioned in references, and explicitly state it as the diagnostic gold standard / confirmation step if the references indicate this
-- Pathology and receptor testing: ER/PR/HER2 (if mentioned)
+Extract diagnostic methods SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'the cancer type mentioned'} from the references. Look for:
+- Physical/clinical examination methods mentioned in references
+- Imaging tests SPECIFIC to ${cancerType ? 'this cancer type' : 'this cancer'} (X-ray, CT, MRI, PET, ultrasound, mammogram, etc. - as mentioned in references)
+- Biopsy types and procedures mentioned in references - MUST be included if mentioned, and explicitly state it as the diagnostic gold standard / confirmation step if the references indicate this
+- Pathology, staging, and molecular testing mentioned in references (receptor testing, genetic markers, tumor markers, etc. - as mentioned in references)
 Include the sentence: "Symptoms cannot confirm cancer; confirmation requires medical evaluation and often a biopsy." (only if this concept appears in references)
 Cite each diagnostic method using [citation:docId:chunkId] from the REFERENCE LIST.
 
 3) WHEN TO SEEK CARE (timeline + urgency)
-Extract timeline guidance from references. If references mention specific timelines (e.g., "2–4 weeks"), include them. If not, provide general guidance based on what the references say about urgency.
-Include timeline guidance if available: "If a new lump persists for 2–4 weeks, or there are nipple/skin changes, book a clinical evaluation soon." (only if references support this)
-Also include urgent vs routine distinction based on what references say.
+Extract timeline guidance SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'this cancer type'} from the references. If references mention specific timelines, include them. If not, provide general guidance based on what the references say about urgency for ${cancerType ? 'this cancer type' : 'this cancer'}.
+Include timeline guidance if available from references (adapt to the specific cancer type and symptoms mentioned)
+Also include urgent vs routine distinction based on what references say for ${cancerType ? 'this cancer type' : 'this cancer'}.
 Cite using [citation:docId:chunkId] from the REFERENCE LIST.
 
 4) QUESTIONS TO ASK THE DOCTOR (minimum 7 questions)
-Generate practical questions based on information in the references. Examples to include (if supported by references):
-- What imaging do I need and why? (if references discuss imaging)
-- Do I need a biopsy? Which type? (if references discuss biopsy)
-- If cancer is confirmed, what subtype tests will be done (ER/PR/HER2)? (if references discuss these tests)
-- If benign, what follow-up interval? (if references discuss follow-up)
+Generate practical questions based on information in the references for ${cancerType ? cancerType + ' cancer' : 'this cancer type'}. Include questions about:
+- What imaging or tests are needed for ${cancerType ? 'this cancer type' : 'this cancer'} and why? (if references discuss imaging/tests)
+- Do I need a biopsy? Which type is used for ${cancerType ? 'this cancer type' : 'this cancer'}? (if references discuss biopsy)
+- If cancer is confirmed, what staging or subtype tests will be done? (if references discuss staging/subtyping)
+- What follow-up interval is recommended? (if references discuss follow-up)
 - What symptoms should trigger earlier return? (if references discuss symptom monitoring)
-Plus 2 additional practical questions based on reference content (referral, timeline, costs, where to go, etc.)
+Plus 2 additional practical questions based on reference content for ${cancerType ? cancerType + ' cancer' : 'this cancer type'} (referral, timeline, costs, where to go, etc.)
 
 CITATIONS: Provide at least 2 sources with title + URL if available. All citations MUST reference chunks from the REFERENCE LIST provided below.
 Do NOT ask more clarifying questions if the user has indicated general intent (e.g., "generally asking").
 `;
+}
 
 @Injectable()
 export class LlmService {
@@ -70,11 +75,11 @@ export class LlmService {
   /**
    * Get system prompt for Explain Mode (information-first)
    * @param isIdentifyQuestion If true, provide structured answer for "how to identify" questions
-   * @param conversationContext Optional context about conversation state (e.g., general intent)
+   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type)
    */
   getExplainModePrompt(
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null }
   ): string {
     const basePrompt = `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.
 
@@ -94,7 +99,7 @@ DO NOT:
 - Use coaching/triage script language for general questions`;
 
     if (isIdentifyQuestion) {
-      return basePrompt + `\n\n${IDENTIFY_REQUIREMENTS}`;
+      return basePrompt + `\n\n${getIdentifyRequirements(conversationContext?.cancerType || null)}`;
     }
 
     return basePrompt;
@@ -118,7 +123,7 @@ REQUIREMENTS:
    * Generate response with mandatory inline citations
    * @param mode "explain" for Explain Mode, "navigate" for Navigate Mode, or custom systemPrompt
    * @param isIdentifyQuestion If true and mode is "explain", use enhanced prompt for identify questions
-   * @param conversationContext Optional context about conversation state (e.g., general intent)
+   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type)
    */
   async generateWithCitations(
     systemPrompt: string | "explain" | "navigate",
@@ -126,7 +131,7 @@ REQUIREMENTS:
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null }
   ): Promise<string> {
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
