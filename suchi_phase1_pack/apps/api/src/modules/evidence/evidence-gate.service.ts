@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { getEvidenceThresholds, getSourceConfig, isTrustedSource, QueryType, SourceConfig } from "../../config/trusted-sources.config";
+import { ModeDetector } from "../chat/mode-detector";
 
 export interface EvidenceChunk {
   chunkId: string;
@@ -86,8 +87,8 @@ export class EvidenceGateService {
       return {
         shouldAbstain: false,
         confidence: "medium",
-        quality: chunks.length > 0 ? "weak" : "insufficient",
-        reason: "General education mode: do not abstain due to weak evidence"
+        quality: chunks.length > 0 ? "weak" : "insufficient"
+        // No reason needed since we're not abstaining
       };
     }
 
@@ -96,8 +97,6 @@ export class EvidenceGateService {
     if (userText) {
       const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
       const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
-      // Import ModeDetector to check for personal signals
-      const { ModeDetector } = require("../chat/mode-detector");
       
       const isIdentifyGeneral = identifyGeneralPattern.test(userText.toLowerCase()) && 
                                 cancerKeywordPattern.test(userText.toLowerCase()) &&

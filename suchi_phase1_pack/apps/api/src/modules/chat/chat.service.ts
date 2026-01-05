@@ -195,7 +195,7 @@ export class ChatService {
     const queryType = QueryTypeClassifier.classify(dto.userText);
 
     // 5. Evidence gate check (refactored - less aggressive)
-    const gateResult = await this.evidenceGate.validateEvidence(evidenceChunks, queryType, dto.userText);
+    let gateResult = await this.evidenceGate.validateEvidence(evidenceChunks, queryType, dto.userText);
     
     // 6. Intent classification
     const existingAssistantMessages = await this.prisma.message.count({
