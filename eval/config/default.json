@@ -1,0 +1,23 @@
+{
+  "apiBaseUrl": "http://localhost:3001",
+  "llmProvider": "openai",
+  "vertexAiConfig": {
+    "project": "",
+    "location": "us-central1",
+    "model": "gemini-1.5-pro"
+  },
+  "openAiConfig": {
+    "model": "gpt-4o",
+    "apiKey": ""
+  },
+  "deepseekConfig": {
+    "model": "deepseek-chat",
+    "apiKey": "",
+    "baseURL": "https://api.deepseek.com/v1"
+  },
+  "timeoutMs": 30000,
+  "retries": 2,
+  "parallel": false,
+  "maxConcurrency": 5
+}
+

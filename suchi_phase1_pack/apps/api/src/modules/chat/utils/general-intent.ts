@@ -11,3 +11,4 @@ export function hasGeneralIntentSignal(text?: string | null): boolean {
   return GENERAL_INTENT_REGEX.test(text);
 }
 
+

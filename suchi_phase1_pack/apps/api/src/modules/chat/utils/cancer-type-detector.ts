@@ -42,3 +42,4 @@ export function detectCancerType(userText: string): string | null {
   return null; // No specific cancer type detected
 }
 
+

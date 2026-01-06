@@ -1,0 +1,45 @@
+{
+  "name": "suchi-eval",
+  "version": "1.0.0",
+  "description": "Evaluation framework for Suchi Cancer Bot",
+  "main": "dist/cli.js",
+  "bin": {
+    "eval": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint",
+    "eval": "ts-node cli.ts",
+    "eval:run": "npm run build && node dist/cli.js run",
+    "eval:report": "npm run build && node dist/cli.js report"
+  },
+  "keywords": [
+    "evaluation",
+    "testing",
+    "medical-ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "commander": "^11.1.0",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.14.10",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  },
+  "optionalDependencies": {
+    "@google-cloud/secret-manager": "^5.0.0",
+    "@google-cloud/vertexai": "^1.0.0"
+  }
+}
