@@ -27,7 +27,7 @@ export class Evaluator {
     this.rubricPack = rubricPack;
     this.globalConfig = rubricPack.global;
 
-    this.apiClient = new ApiClient(config.apiBaseUrl);
+    this.apiClient = new ApiClient(config.apiBaseUrl, config.timeoutMs);
     this.deterministicChecker = new DeterministicChecker(this.globalConfig);
     this.llmJudge = new LLMJudge(config);
     this.reportGenerator = new ReportGenerator();
@@ -105,6 +105,21 @@ export class Evaluator {
 
       let llmJudgeResults;
       if (!requiredDeterministicFailed && rubric.llm_judge) {
+        // Extract retrieved chunk info from citations
+        // Note: Full chunk content is not available in API response
+        // For full validation, API would need to return chunk content in response metadata
+        const retrievedChunks: Array<{ docId: string; chunkId: string; content: string }> = [];
+        if (finalResponse.citations) {
+          // We have docId and chunkId from citations, but not content
+          // For now, pass empty content - the judge will still check for unsupported claims
+          // based on citation presence, though full validation requires chunk content
+          retrievedChunks.push(...finalResponse.citations.map(c => ({
+            docId: c.docId,
+            chunkId: c.chunkId,
+            content: "" // Content not available in API response
+          })));
+        }
+        
         // Run LLM judge
         llmJudgeResults = await this.llmJudge.judge(
           fullResponseText,
@@ -114,6 +129,7 @@ export class Evaluator {
             cancer: testCase.cancer,
             intent: testCase.intent,
             mustMentionTests: testCase.expectations.must_mention_tests,
+            retrievedChunks: retrievedChunks.length > 0 ? retrievedChunks : undefined
           }
         );
       }

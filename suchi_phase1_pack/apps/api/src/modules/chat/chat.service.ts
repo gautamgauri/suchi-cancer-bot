@@ -14,6 +14,7 @@ import { TemplateSelector } from "./template-selector";
 import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
+import { ResponseValidatorService } from "./response-validator.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
@@ -32,21 +33,13 @@ export class ChatService {
     private readonly citationService: CitationService,
     private readonly abstention: AbstentionService,
     private readonly intentClassifier: IntentClassifier,
-    private readonly templateSelector: TemplateSelector
+    private readonly templateSelector: TemplateSelector,
+    private readonly responseValidator: ResponseValidatorService
   ) {}
 
   async handle(dto: ChatDto) {
-    // #region agent log
-    const fs = require('fs');
-    const logPath = 'c:\\Users\\gauta\\OneDrive\\Documents\\suchi_phase1_pack\\.cursor\\debug.log';
-    try { fs.appendFileSync(logPath, JSON.stringify({location:'chat.service.ts:36',message:'handle entry',data:{sessionId:dto.sessionId,userText:dto.userText?.substring(0,50),channel:dto.channel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2,H3,H4,H5'})+'\n'); } catch(e) {}
-    // #endregion
-
     const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
     if (!session) {
-      // #region agent log
-      try { fs.appendFileSync(logPath, JSON.stringify({location:'chat.service.ts:38',message:'Invalid sessionId',data:{sessionId:dto.sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})+'\n'); } catch(e) {}
-      // #endregion
       throw new BadRequestException("Invalid sessionId");
     }
 
@@ -158,18 +151,12 @@ export class ChatService {
 
       await this.analytics.emit("greeting_response", { isFirstMessage, intent: templateResult.intent }, dto.sessionId);
 
-      const returnValue = {
+      return {
         sessionId: dto.sessionId,
         messageId: assistant.id,
         responseText: assistant.text,
         safety: { classification: "normal" as const, actions: [] }
       };
-      // #region agent log
-      const fs = require('fs');
-      const logPath = 'c:\\Users\\gauta\\OneDrive\\Documents\\suchi_phase1_pack\\.cursor\\debug.log';
-      try { fs.appendFileSync(logPath, JSON.stringify({location:'chat.service.ts:148',message:'Returning greeting response',data:{messageId:assistant.id,responseTextLength:assistant.text?.length,hasSafety:!!returnValue.safety},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H6'})+'\n'); } catch(e) {}
-      // #endregion
-      return returnValue;
     }
 
     // 2. Mode Detection (NEW - after greeting, before RAG)
@@ -188,16 +175,25 @@ export class ChatService {
       recentMessages.some(m => m.role === "user" && hasGeneralIntentSignal(m.text));
 
     // 3. Retrieve evidence with full metadata
-    const evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6);
+    // Use expanded retrieval if this might be an identify question or if we expect weak evidence
+    const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
+    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
+    const mightBeIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) && 
+                                    cancerKeywordPattern.test(dto.userText.toLowerCase());
+    
+    let evidenceChunks;
+    if (mightBeIdentifyQuestion) {
+      const cancerType = detectCancerType(dto.userText);
+      evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
+    } else {
+      evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6);
+    }
     const kbDocIds = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 4. Classify query type
     const queryType = QueryTypeClassifier.classify(dto.userText);
 
-    // 5. Evidence gate check (refactored - less aggressive)
-    let gateResult = await this.evidenceGate.validateEvidence(evidenceChunks, queryType, dto.userText);
-    
-    // 6. Intent classification
+    // 5. Intent classification (moved before evidence gate to provide context)
     const existingAssistantMessages = await this.prisma.message.count({
       where: {
         sessionId: dto.sessionId,
@@ -209,19 +205,36 @@ export class ChatService {
     const intentResult = this.intentClassifier.classify(
       dto.userText,
       evidenceChunks,
-      gateResult,
+      { shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
       { hasGenerallyAsking }
     );
 
-    // Re-run evidence gate with intent and conversation context
-    gateResult = await this.evidenceGate.validateEvidence(
+    // 6. Evidence gate check (with intent and conversation context)
+    let gateResult = await this.evidenceGate.validateEvidence(
       evidenceChunks,
       queryType,
       dto.userText,
       intentResult.intent,
       { hasGenerallyAsking }
     );
+
+    // If evidence is weak or insufficient, try expanded retrieval
+    if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
+      const cancerType = detectCancerType(dto.userText);
+      const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
+      if (expandedChunks.length > evidenceChunks.length) {
+        evidenceChunks = expandedChunks;
+        // Re-run evidence gate with expanded chunks
+        gateResult = await this.evidenceGate.validateEvidence(
+          evidenceChunks,
+          queryType,
+          dto.userText,
+          intentResult.intent,
+          { hasGenerallyAsking }
+        );
+      }
+    }
 
     // 7. Mode-based routing
     // Template-only intents (no RAG needed)
@@ -304,26 +317,23 @@ export class ChatService {
       const maxClarifications = hasGenerallyAsking ? 0 : 2;
       const canAskClarifying = clarificationsSoFar < maxClarifications;
 
-      if (!canAskClarifying) {
-        // Force answer path: skip clarifying question, proceed to explain mode response
-        // Continue to Explain Mode + Strong RAG flow below (fall through)
-      } else {
+      if (canAskClarifying) {
         // Rule B2: Ask ONE clarifying question before abstaining
         const clarifyingQuestion = this.evidenceGate.generateClarifyingQuestion(dto.userText, queryType);
       
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: clarifyingQuestion,
-          safetyClassification: "normal",
-          kbDocIds: [],
-          latencyMs: Date.now() - started,
-          evidenceQuality: gateResult.quality,
-          evidenceGatePassed: false,
-          abstentionReason: gateResult.reason || undefined
-        }
-      });
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: clarifyingQuestion,
+            safetyClassification: "normal",
+            kbDocIds: [],
+            latencyMs: Date.now() - started,
+            evidenceQuality: gateResult.quality,
+            evidenceGatePassed: false,
+            abstentionReason: gateResult.reason || undefined
+          }
+        });
 
         await this.analytics.emit("clarifying_question", {
           intent: intentResult.intent,
@@ -340,6 +350,7 @@ export class ChatService {
         };
       }
       // If canAskClarifying is false, fall through to Explain Mode flow below
+      // (No clarifying question will be asked, proceed with answer generation)
     }
 
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
@@ -367,6 +378,45 @@ export class ChatService {
       // Structure with explainModeFrame
       responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
 
+      // Validate response for ungrounded medical entities
+      const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
+      if (validationResult.shouldAbstain) {
+        this.logger.warn(
+          `Response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
+        );
+        // Check for red flags in user text
+        const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
+        const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
+        
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: abstentionResponse,
+            safetyClassification: "normal",
+            kbDocIds: [],
+            latencyMs: Date.now() - started,
+            evidenceQuality: gateResult.quality,
+            evidenceGatePassed: false
+          }
+        });
+
+        await this.analytics.emit("abstention_response", {
+          reason: "ungrounded_entities",
+          ungroundedEntities: validationResult.ungroundedEntities.map(e => e.entity),
+          intent: intentResult.intent,
+          queryType
+        }, dto.sessionId);
+
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] },
+          abstentionReason: "ungrounded_entities"
+        };
+      }
+
       // Validate identify question responses
       if (isIdentifyQuestion) {
         const validation = this.passesIdentifyRubric(responseText);
@@ -382,11 +432,54 @@ export class ChatService {
             { hasGenerallyAsking, cancerType }
           );
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+          
+          // Re-validate after regeneration
+          const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
+          if (revalidationResult.shouldAbstain) {
+            this.logger.warn(`Regenerated response still contains ungrounded entities`);
+            const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
+            const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
+            
+            const assistant = await this.prisma.message.create({
+              data: {
+                sessionId: dto.sessionId,
+                role: "assistant",
+                text: abstentionResponse,
+                safetyClassification: "normal",
+                kbDocIds: [],
+                latencyMs: Date.now() - started,
+                evidenceQuality: gateResult.quality,
+                evidenceGatePassed: false
+              }
+            });
+
+            return {
+              sessionId: dto.sessionId,
+              messageId: assistant.id,
+              responseText: assistant.text,
+              safety: { classification: "normal" as const, actions: [] },
+              abstentionReason: "ungrounded_entities"
+            };
+          }
         }
       }
 
       // Apply response formatting rules (E1, E2, E3)
-      responseText = ResponseFormatter.formatResponse(responseText, "explain", true, false);
+      // Determine hasResolvedAnswer: true if we have a complete answer with citations
+      const hasResolvedAnswer = citations.length >= 2 && citationValidation.confidenceLevel !== "RED";
+      // Determine isMultiStepInteraction: true if this is a follow-up after clarification
+      const recentAssistantMessages = await this.prisma.message.findMany({
+        where: {
+          sessionId: dto.sessionId,
+          role: "assistant"
+        },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        select: { text: true }
+      });
+      const isMultiStepInteraction = recentAssistantMessages.some(m => m.text.includes("?"));
+      
+      responseText = ResponseFormatter.formatResponse(responseText, "explain", hasResolvedAnswer, isMultiStepInteraction);
 
       // Extract and validate citations
       let citations = this.citationService.extractCitations(responseText, evidenceChunks);
@@ -552,10 +645,33 @@ export class ChatService {
           evidenceChunks.slice(0, 2)
         );
         responseText = ragContext + "\n\n" + responseText;
+        
+        // Validate response for ungrounded medical entities
+        const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
+        if (validationResult.shouldAbstain) {
+          this.logger.warn(
+            `Navigate mode response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
+          );
+          // Remove ungrounded context and use template only
+          responseText = ResponseTemplates.navigateModeFrame(dto.userText);
+        }
       }
 
       // Apply response formatting rules
-      responseText = ResponseFormatter.formatResponse(responseText, "navigate", false, false);
+      // For navigate mode, determine if this is a multi-step interaction
+      const recentAssistantMessages = await this.prisma.message.findMany({
+        where: {
+          sessionId: dto.sessionId,
+          role: "assistant"
+        },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        select: { text: true }
+      });
+      const isMultiStepInteraction = recentAssistantMessages.some(m => m.text.includes("?"));
+      const hasResolvedAnswer = evidenceChunks.length > 0; // Navigate mode has answer if RAG chunks available
+      
+      responseText = ResponseFormatter.formatResponse(responseText, "navigate", hasResolvedAnswer, isMultiStepInteraction);
 
       const assistant = await this.prisma.message.create({
         data: {
@@ -729,11 +845,17 @@ export class ChatService {
     const hasTimeline = /\b2\s*[–-]\s*4\s*weeks\b/i.test(text);
     if (!hasTimeline) missing.push("timeline 2–4 weeks");
 
-    // Count warning signs (heuristic: bullets under "Warning Signs" heading)
-    const warningSignsMatch = text.match(/(?:warning signs?|signs? to watch|symptoms?)[\s\S]*?((?:^[-*•]\s+.*\n?)+)/im);
-    const warningSignsCount = warningSignsMatch 
-      ? warningSignsMatch[1].split(/\n/).filter(l => /^[-*•]\s+/.test(l.trim())).length 
-      : 0;
+    // Count warning signs (improved regex to capture all bullet lines)
+    const warningSignsSection = text.match(/(?:warning signs?|signs? to watch|symptoms?)[\s\S]*?(?=\n\n|\*\*|$)/i);
+    let warningSignsCount = 0;
+    if (warningSignsSection) {
+      // Split by lines and count those starting with bullet markers
+      const lines = warningSignsSection[0].split(/\n/);
+      warningSignsCount = lines.filter(line => {
+        const trimmed = line.trim();
+        return /^[-*•]\s+/.test(trimmed);
+      }).length;
+    }
     if (warningSignsCount < 5) missing.push(`>=5 warning signs (found ${warningSignsCount})`);
 
     // Count diagnostic tests (keyword matching)
@@ -747,11 +869,17 @@ export class ChatService {
     const testsCount = testKeywords.filter(regex => regex.test(text)).length;
     if (testsCount < 3) missing.push(`>=3 diagnostic tests (found ${testsCount})`);
 
-    // Count doctor questions (bullets under "Questions to Ask" heading)
-    const questionsMatch = text.match(/(?:questions? to ask|ask (?:your )?doctor|questions? for (?:your )?doctor)[\s\S]*?((?:^[-*•]\s+.*\n?)+)/im);
-    const doctorQsCount = questionsMatch 
-      ? questionsMatch[1].split(/\n/).filter(l => /^[-*•]\s+/.test(l.trim())).length 
-      : 0;
+    // Count doctor questions (improved regex to capture all bullet lines)
+    const questionsSection = text.match(/(?:questions? to ask|ask (?:your )?doctor|questions? for (?:your )?doctor)[\s\S]*?(?=\n\n|\*\*|$)/i);
+    let doctorQsCount = 0;
+    if (questionsSection) {
+      // Split by lines and count those starting with bullet markers
+      const lines = questionsSection[0].split(/\n/);
+      doctorQsCount = lines.filter(line => {
+        const trimmed = line.trim();
+        return /^[-*•]\s+/.test(trimmed);
+      }).length;
+    }
     if (doctorQsCount < 5) missing.push(`>=5 doctor questions (found ${doctorQsCount})`);
 
     return { ok: missing.length === 0, missing };

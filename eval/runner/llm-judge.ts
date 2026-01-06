@@ -34,6 +34,7 @@ export class LLMJudge {
       cancer?: string;
       intent?: string;
       mustMentionTests?: string[];
+      retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
     }
   ): Promise<LLMJudgeResult[]> {
     try {
@@ -61,6 +62,7 @@ export class LLMJudge {
       cancer?: string;
       intent?: string;
       mustMentionTests?: string[];
+      retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
     }
   ): string {
     let prompt = `You are evaluating a medical chatbot response. Analyze the following response and return JSON-only output.\n\n`;
@@ -73,6 +75,15 @@ export class LLMJudge {
       prompt += `Intent: ${testCaseContext.intent}\n`;
     }
 
+    // Include retrieved chunks content if available
+    if (testCaseContext?.retrievedChunks && testCaseContext.retrievedChunks.length > 0) {
+      prompt += `\nRetrieved Knowledge Base Content (what the bot had access to):\n`;
+      testCaseContext.retrievedChunks.forEach((chunk, index) => {
+        prompt += `\n[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}\n`;
+        prompt += `Content: ${chunk.content.substring(0, 500)}${chunk.content.length > 500 ? "..." : ""}\n`;
+      });
+    }
+
     prompt += `\nResponse to evaluate:\n${responseText}\n\n`;
 
     prompt += `Evaluation Criteria:\n`;
@@ -83,8 +94,29 @@ export class LLMJudge {
       }
     }
 
+    // Update mustMentionTests to be conditional on retrieval
     if (testCaseContext?.mustMentionTests && testCaseContext.mustMentionTests.length > 0) {
-      prompt += `\n\nIMPORTANT: The response MUST mention these tests: ${testCaseContext.mustMentionTests.join(", ")}`;
+      if (testCaseContext.retrievedChunks && testCaseContext.retrievedChunks.length > 0) {
+        // Check which tests are actually in retrieval
+        const allRetrievedContent = testCaseContext.retrievedChunks.map(c => c.content.toLowerCase()).join(" ");
+        const testsInRetrieval = testCaseContext.mustMentionTests.filter(test => {
+          const testLower = test.toLowerCase();
+          return allRetrievedContent.includes(testLower) || 
+                 allRetrievedContent.includes(testLower.replace(/\s+/g, " "));
+        });
+        
+        if (testsInRetrieval.length > 0) {
+          prompt += `\n\nIMPORTANT: The response SHOULD mention these tests IF they appear in the retrieved content: ${testsInRetrieval.join(", ")}`;
+          const testsNotInRetrieval = testCaseContext.mustMentionTests.filter(t => !testsInRetrieval.includes(t));
+          if (testsNotInRetrieval.length > 0) {
+            prompt += `\nNOTE: These tests are NOT in the retrieved content, so the response should NOT be penalized for omitting them: ${testsNotInRetrieval.join(", ")}`;
+          }
+        } else {
+          prompt += `\n\nNOTE: None of the expected tests (${testCaseContext.mustMentionTests.join(", ")}) appear in the retrieved content. The response should NOT be penalized for omitting them.`;
+        }
+      } else {
+        prompt += `\n\nNOTE: Expected tests: ${testCaseContext.mustMentionTests.join(", ")}, but no retrieved content available to verify.`;
+      }
     }
 
     prompt += `\n\nRAG-Backed Content Validation:\n`;
@@ -93,6 +125,26 @@ export class LLMJudge {
     prompt += `- Look for citation markers in the format [citation:docId:chunkId]\n`;
     prompt += `- Ensure that specific medical information (test names, procedures, timelines) are cited\n`;
     prompt += `- The response should demonstrate use of RAG (Retrieval-Augmented Generation) rather than pure LLM knowledge\n`;
+    
+    // Add specific instruction for no_unsupported_medical_claims check
+    const hasUnsupportedClaimsCheck = checks.some(c => c.id === "no_unsupported_medical_claims");
+    if (hasUnsupportedClaimsCheck && testCaseContext?.retrievedChunks) {
+      prompt += `\n\nCRITICAL: For "no_unsupported_medical_claims" check:\n`;
+      prompt += `- Check if EVERY medical claim (test, treatment, procedure, prognosis) in the response appears in the retrieved content above\n`;
+      prompt += `- If ANY claim is not present in retrieved content, this check MUST FAIL\n`;
+      prompt += `- The response should only state facts that are directly supported by the retrieved chunks\n`;
+    }
+    
+    // Add instruction for conditional tests_coverage
+    const hasTestsCoverageCheck = checks.some(c => c.id === "tests_coverage");
+    if (hasTestsCoverageCheck && testCaseContext?.retrievedChunks) {
+      prompt += `\n\nFor "tests_coverage" check:\n`;
+      prompt += `- Only require tests that are actually mentioned in the retrieved content above\n`;
+      prompt += `- If retrieval contains fewer than 3 test mentions, the response should either:\n`;
+      prompt += `  * List the tests that ARE in retrieval (even if < 3), OR\n`;
+      prompt += `  * State "I don't have enough information in my NCI sources" - both are acceptable\n`;
+      prompt += `- Do NOT penalize for omitting tests that are not in the retrieved content\n`;
+    }
 
     prompt += `\n\nReturn JSON-only in this exact format:\n`;
     prompt += JSON.stringify({

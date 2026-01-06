@@ -11,6 +11,7 @@ import { EvidenceGateModule } from "../evidence/evidence-gate.module";
 import { CitationModule } from "../citations/citation.module";
 import { AbstentionModule } from "../abstention/abstention.module";
 import { PrismaModule } from "../prisma/prisma.module";
+import { ResponseValidatorService } from "./response-validator.service";
 
 @Module({
   imports: [
@@ -24,6 +25,6 @@ import { PrismaModule } from "../prisma/prisma.module";
     PrismaModule
   ],
   controllers: [ChatController],
-  providers: [ChatService, IntentClassifier, TemplateSelector]
+  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService]
 })
 export class ChatModule {}

@@ -42,6 +42,77 @@ export class RagService {
   }
 
   /**
+   * Retrieve with expansion/retry when results are thin
+   * Expands query with diagnostic/screening terms and retries if initial retrieval is insufficient
+   * @param query Original query
+   * @param topK Number of chunks to retrieve
+   * @param cancerType Optional cancer type for targeted expansion
+   * @param minChunks Minimum chunks required before considering expansion (default: 3)
+   * @param maxRetries Maximum number of retry attempts (default: 2)
+   */
+  async retrieveWithExpansion(
+    query: string,
+    topK = 6,
+    cancerType?: string | null,
+    minChunks = 3,
+    maxRetries = 2
+  ): Promise<EvidenceChunk[]> {
+    // First attempt: original query
+    let results = await this.retrieveWithMetadata(query, topK);
+    
+    // If we have enough chunks, return
+    if (results.length >= minChunks) {
+      return results;
+    }
+
+    this.logger.debug(`Initial retrieval returned ${results.length} chunks, attempting expansion...`);
+
+    // Expansion attempts
+    const expansionTerms = [
+      // General diagnostic terms
+      "diagnosis",
+      "diagnostic tests",
+      "how is it diagnosed",
+      "screening",
+      "detection",
+      "diagnostic methods"
+    ];
+
+    // Cancer-type-specific terms if provided
+    if (cancerType) {
+      expansionTerms.push(
+        `${cancerType} cancer diagnosis`,
+        `${cancerType} cancer tests`,
+        `${cancerType} cancer screening`,
+        `how is ${cancerType} cancer diagnosed`
+      );
+    }
+
+    // Try expanded queries
+    for (let attempt = 0; attempt < maxRetries && results.length < minChunks; attempt++) {
+      const expansionTerm = expansionTerms[attempt % expansionTerms.length];
+      const expandedQuery = `${query} ${expansionTerm}`;
+      
+      this.logger.debug(`Retry attempt ${attempt + 1}: expanding query with "${expansionTerm}"`);
+      
+      const expandedResults = await this.retrieveWithMetadata(expandedQuery, topK);
+      
+      // Merge results, avoiding duplicates
+      const existingKeys = new Set(results.map(r => `${r.docId}:${r.chunkId}`));
+      const newResults = expandedResults.filter(r => !existingKeys.has(`${r.docId}:${r.chunkId}`));
+      
+      results = [...results, ...newResults].slice(0, topK);
+      
+      if (results.length >= minChunks) {
+        this.logger.debug(`Expansion successful: now have ${results.length} chunks`);
+        break;
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Legacy method for backward compatibility
    */
   async retrieve(query: string, topK = 6): Promise<Array<{ docId: string; chunkId: string; content: string }>> {

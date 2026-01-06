@@ -31,20 +31,39 @@ Extract ${cancerType ? cancerType + ' cancer ' : ''}warning signs from the refer
 
 CRITICAL: You MUST cite EVERY warning sign using [citation:docId:chunkId] format. Example: "- Swollen lymph nodes [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]". Use the exact docId and chunkId from the REFERENCE LIST below.
 
-2) HOW DOCTORS CONFIRM (minimum 4 bullet points)
-Extract diagnostic methods SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'the cancer type mentioned'} from the references. Look for:
-- Physical/clinical examination methods mentioned in references
-- Imaging tests SPECIFIC to ${cancerType ? 'this cancer type' : 'this cancer'} (X-ray, CT, MRI, PET, ultrasound, mammogram, etc. - as mentioned in references)
-- Biopsy types and procedures mentioned in references - MUST be included if mentioned, and explicitly state it as the diagnostic gold standard / confirmation step if the references indicate this
-- Pathology, staging, and molecular testing mentioned in references (receptor testing, genetic markers, tumor markers, etc. - as mentioned in references)
+2) HOW DOCTORS CONFIRM (minimum 4 bullet points - you MUST list at least 4 distinct diagnostic methods)
+Extract ALL diagnostic methods SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'the cancer type mentioned'} from the references. You MUST include:
+
+- Physical/clinical examination methods mentioned in references (e.g., physical exam, chest examination, lymph node examination)
+- Imaging tests SPECIFIC to ${cancerType ? 'this cancer type' : 'this cancer'} - List ALL imaging tests mentioned: X-ray, CT scan, CT, MRI, PET scan, ultrasound, mammogram, bronchoscopy, etc. (as mentioned in references)
+- Biopsy types and procedures mentioned in references - MUST be included if mentioned, and explicitly state it as the diagnostic gold standard / confirmation step if the references indicate this. Include specific biopsy types (e.g., needle biopsy, surgical biopsy, bronchoscopy biopsy) if mentioned.
+- Pathology, staging, and molecular testing mentioned in references (receptor testing, genetic markers, tumor markers, histology, etc. - as mentioned in references)
+
+EVIDENCE-ONLY POLICY (CRITICAL):
+- DO NOT use phrases like "common tests include...", "usually doctors do...", "often done..." unless these exact phrases appear in the retrieved references
+- DO NOT add general medical knowledge - only state what is explicitly mentioned in the retrieved chunks
+- If a test/treatment/symptom is not mentioned in the references, DO NOT include it - omit it entirely
+- Every bullet point MUST be directly supported by content in the retrieved chunks
+
 Include the sentence: "Symptoms cannot confirm cancer; confirmation requires medical evaluation and often a biopsy." (only if this concept appears in references)
 
-CRITICAL: You MUST cite EVERY diagnostic method using [citation:docId:chunkId] format. Example: "- Biopsy is the gold standard for confirmation [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]". Use the exact docId and chunkId from the REFERENCE LIST below.
+CRITICAL: You MUST cite EVERY diagnostic method using [citation:docId:chunkId] format. Example: "- CT scan is used to detect lung cancer [citation:kb_en_nci_types_lung_hp_non_small_cell_lung_treatment_pdq_v1:chunk-id]". Use the exact docId and chunkId from the REFERENCE LIST below.
 
-3) WHEN TO SEEK CARE (timeline + urgency)
-Extract timeline guidance SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'this cancer type'} from the references. If references mention specific timelines, include them. If not, provide general guidance based on what the references say about urgency for ${cancerType ? 'this cancer type' : 'this cancer'}.
-Include timeline guidance if available from references (adapt to the specific cancer type and symptoms mentioned)
-Also include urgent vs routine distinction based on what references say for ${cancerType ? 'this cancer type' : 'this cancer'}.
+3) WHEN TO SEEK CARE (timeline + urgency - MUST include specific timeframe)
+Extract timeline guidance SPECIFIC to ${cancerType ? cancerType + ' cancer' : 'this cancer type'} from the references. 
+
+CRITICAL TIMELINE REQUIREMENT: You MUST include a SPECIFIC timeframe with numbers in your response. DO NOT use vague phrases like "promptly", "soon", or "as soon as possible" without a specific timeframe. You MUST include one of these exact formats:
+- "If symptoms persist for 2-4 weeks, seek medical evaluation"
+- "Seek medical care within 1-2 weeks if symptoms persist"
+- "Consult a doctor within 2-4 weeks of noticing symptoms"
+- "If symptoms last more than 2 weeks, see a healthcare provider"
+- "Seek evaluation within 2-4 weeks if symptoms persist"
+
+If references mention specific timelines, include them exactly. If references don't mention a specific timeframe, you MUST state: "I don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician for guidance on when to seek care."
+
+Also include urgent vs routine distinction:
+- Urgent care: If symptoms are severe, rapidly worsening, or include red flags (e.g., significant bleeding, severe pain, difficulty breathing), seek care immediately or within days
+- Routine care: For persistent but stable symptoms, seek evaluation within 2-4 weeks (MUST include the "2-4 weeks" timeframe explicitly)
 
 CRITICAL: You MUST cite timeline/urgency information using [citation:docId:chunkId] format. Example: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]". Use the exact docId and chunkId from the REFERENCE LIST below.
 
@@ -93,11 +112,24 @@ export class LlmService {
   ): string {
     const basePrompt = `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.
 
+EVIDENCE-ONLY POLICY (CRITICAL - YOU MUST FOLLOW THIS):
+- You may ONLY state medical facts that are directly supported by retrieved NCI chunks
+- DO NOT use general medical knowledge to "fill in" missing information
+- DO NOT use phrases like "common tests include...", "usually doctors do...", "often done..." unless these exact phrases appear in retrieved text
+- If retrieval doesn't support something, DO NOT guess - either omit it or say "I can't confirm from the provided sources"
+- Every medical claim, test, treatment, or symptom MUST be present in the retrieved chunks
+- If you cannot quote-support a test/treatment/symptom from retrieved context, omit it entirely
+- Allowed meta-statements:
+  * Content present in retrieved NCI text
+  * Universal safety actions (seek urgent care for red flags, call emergency services)
+  * Limitation statements ("I can't confirm from the provided sources", "I don't have enough information in my NCI sources")
+
 REQUIREMENTS:
 - Answer the question directly with 4-8 bullet points
 - Do NOT assume the user is personally symptomatic unless they explicitly state it
 - Do NOT default to "prepare for your visit" language
 - Cite every medical claim using [citation:docId:chunkId]
+- Every bullet point in structured sections MUST have a citation or be omitted
 ${conversationContext?.hasGenerallyAsking 
   ? "- Do NOT ask clarifying questions - user has indicated general/educational intent"
   : "- End with ONE optional follow-up: \"Are you asking generally or about your symptoms?\""}
@@ -106,7 +138,8 @@ DO NOT:
 - Say "I understand you're experiencing symptoms" unless user said they are
 - Push "prepare for healthcare visit" unless user indicates personal situation
 - Show red-flag warnings unless urgency signals exist
-- Use coaching/triage script language for general questions`;
+- Use coaching/triage script language for general questions
+- Add general medical knowledge not in retrieved chunks`;
 
     if (isIdentifyQuestion) {
       return basePrompt + `\n\n${getIdentifyRequirements(conversationContext?.cancerType || null)}`;
@@ -121,12 +154,19 @@ DO NOT:
   getNavigateModePrompt(): string {
     return `You are Suchi (Suchitra Cancer Bot). For personal symptom questions, provide brief acknowledgment, then 1-2 targeted questions to gather context. Provide a short "what to do next" checklist (max 3 bullets).
 
+EVIDENCE-ONLY POLICY (CRITICAL):
+- You may ONLY state medical facts that are directly supported by retrieved NCI chunks
+- DO NOT use general medical knowledge to "fill in" missing information
+- If retrieval doesn't support something, DO NOT guess - either omit it or say "I can't confirm from the provided sources"
+- Every medical claim MUST be present in the retrieved chunks
+
 REQUIREMENTS:
 - Acknowledge the user's situation briefly
 - Ask 1-2 targeted questions to gather context
 - Provide a short next-step list (max 3 bullets)
 - Use warm, supportive tone
-- Cite any medical information using [citation:docId:chunkId]`;
+- Cite any medical information using [citation:docId:chunkId]
+- Every bullet point with medical information MUST have a citation or be omitted`;
   }
 
   /**
@@ -173,6 +213,12 @@ CRITICAL CITATION REQUIREMENTS - YOU MUST FOLLOW THESE EXACTLY:
 5. If you mention multiple facts, cite each one separately
 6. DO NOT write a response without citations - if you cannot cite something, do not include it
 7. DO NOT make up docId or chunkId values - use ONLY what is in the reference list below
+8. Every bullet point in structured sections (Warning Signs, Tests, etc.) MUST have a citation - if you cannot cite it, omit the bullet entirely
+
+GROUNDING PER BULLET REQUIREMENT:
+- Each bullet point MUST include: the medical claim + citation marker [citation:docId:chunkId]
+- Format: "- CT scan of the chest [citation:doc_123:chunk_456]"
+- If you cannot find supporting content in the references for a bullet point, DO NOT include that bullet point
 
 REFERENCE LIST (use the exact docId and chunkId shown for each reference):
 ${referenceList}
@@ -182,7 +228,7 @@ RESPONSE FORMAT:
 - Cite EVERY medical fact, symptom, diagnostic method, or claim using [citation:docId:chunkId] format
 - Include at least 2-3 citations in your response
 - Format with clear sections when appropriate
-- If you cannot answer based on the references, say so clearly
+- If you cannot answer based on the references, say: "I don't have enough information in my NCI sources to answer this safely. Please consult a clinician."
 
 User question: ${userMessage}`;
 
