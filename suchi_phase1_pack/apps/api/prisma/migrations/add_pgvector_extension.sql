@@ -19,3 +19,7 @@ CREATE INDEX IF NOT EXISTS kb_chunk_embedding_idx ON "KbChunk" USING hnsw (embed
 
 
 
+
+
+
+

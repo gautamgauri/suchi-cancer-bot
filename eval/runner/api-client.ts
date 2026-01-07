@@ -5,14 +5,14 @@ export class ApiClient {
   private client: AxiosInstance;
   private baseUrl: string;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, timeoutMs: number = 60000) {
     this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
     this.client = axios.create({
       baseURL: this.baseUrl,
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 30000, // 30 seconds
+      timeout: timeoutMs,
     });
   }
 

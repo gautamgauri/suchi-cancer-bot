@@ -188,7 +188,7 @@ export class ChatService {
     } else {
       evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6);
     }
-    const kbDocIds = Array.from(new Set(evidenceChunks.map(c => c.docId)));
+    const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 4. Classify query type
     const queryType = QueryTypeClassifier.classify(dto.userText);
@@ -464,24 +464,7 @@ export class ChatService {
         }
       }
 
-      // Apply response formatting rules (E1, E2, E3)
-      // Determine hasResolvedAnswer: true if we have a complete answer with citations
-      const hasResolvedAnswer = citations.length >= 2 && citationValidation.confidenceLevel !== "RED";
-      // Determine isMultiStepInteraction: true if this is a follow-up after clarification
-      const recentAssistantMessages = await this.prisma.message.findMany({
-        where: {
-          sessionId: dto.sessionId,
-          role: "assistant"
-        },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-        select: { text: true }
-      });
-      const isMultiStepInteraction = recentAssistantMessages.some(m => m.text.includes("?"));
-      
-      responseText = ResponseFormatter.formatResponse(responseText, "explain", hasResolvedAnswer, isMultiStepInteraction);
-
-      // Extract and validate citations
+      // Extract and validate citations (before formatting)
       let citations = this.citationService.extractCitations(responseText, evidenceChunks);
       
       // Log citation extraction results for debugging
@@ -509,6 +492,23 @@ export class ChatService {
         responseText,
         isIdentifyWithGeneralIntent
       );
+
+      // Apply response formatting rules (E1, E2, E3)
+      // Determine hasResolvedAnswer: true if we have a complete answer with citations
+      const hasResolvedAnswer = citations.length >= 2 && citationValidation.confidenceLevel !== "RED";
+      // Determine isMultiStepInteraction: true if this is a follow-up after clarification
+      const recentAssistantMessages = await this.prisma.message.findMany({
+        where: {
+          sessionId: dto.sessionId,
+          role: "assistant"
+        },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        select: { text: true }
+      });
+      const isMultiStepInteraction = recentAssistantMessages.some(m => m.text.includes("?"));
+      
+      responseText = ResponseFormatter.formatResponse(responseText, "explain", hasResolvedAnswer, isMultiStepInteraction);
 
       // Handle citation validation
       if (citationValidation.confidenceLevel === "RED") {

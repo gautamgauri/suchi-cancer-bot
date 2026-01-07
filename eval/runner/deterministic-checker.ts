@@ -121,6 +121,15 @@ export class DeterministicChecker {
   }
 
   /**
+   * Convert PCRE-style (?i) patterns to JavaScript-compatible patterns
+   * Removes (?i) prefix and uses the 'i' flag instead
+   */
+  private normalizePattern(pattern: string): string {
+    // Remove (?i) prefix if present
+    return pattern.replace(/^\(\?i\)/, "");
+  }
+
+  /**
    * Check if any regex pattern matches in the text
    */
   private checkRegexPresence(text: string, patterns: string[]): boolean {
@@ -128,7 +137,8 @@ export class DeterministicChecker {
 
     for (const pattern of patterns) {
       try {
-        const regex = new RegExp(pattern, "i");
+        const normalizedPattern = this.normalizePattern(pattern);
+        const regex = new RegExp(normalizedPattern, "i");
         if (regex.test(text)) {
           return true;
         }
@@ -265,7 +275,8 @@ export class DeterministicChecker {
     // Count interrogatives
     for (const pattern of rules.interrogatives_patterns_any) {
       try {
-        const regex = new RegExp(pattern, "gi");
+        const normalizedPattern = this.normalizePattern(pattern);
+        const regex = new RegExp(normalizedPattern, "gi");
         const matches = text.match(regex);
         if (matches) {
           count += matches.length;

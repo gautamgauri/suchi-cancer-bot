@@ -204,3 +204,7 @@ gcloud run services describe $SERVICE_NAME \
     --format="yaml(spec.template.spec.containers[0].env)"
 ```
 
+
+
+
+

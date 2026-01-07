@@ -55,10 +55,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   const handleSend = async (text: string) => {
     if (conversationEnded) return;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:55',message:'handleSend entry',data:{text,conversationEnded,sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H2,H3,H4'})}).catch(()=>{});
-    // #endregion
-
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -69,26 +65,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:66',message:'Before API call',data:{text,sessionId,loadingState:'true'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2,H3,H4'})}).catch(()=>{});
-    // #endregion
-
     try {
-      const requestStartTime = Date.now();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:69',message:'API call starting',data:{text,sessionId},timestamp:requestStartTime,sessionId:'debug-session',runId:'run1',hypothesisId:'H2,H3,H4,H5'})}).catch(()=>{});
-      // #endregion
-
       const response: ChatResponse = await apiService.sendMessage({
         sessionId,
         channel: "web",
         userText: text
       });
-
-      const requestEndTime = Date.now();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:73',message:'API call success',data:{responseText:response.responseText?.substring(0,50),messageId:response.messageId,hasSafety:!!response.safety,latencyMs:requestEndTime-requestStartTime},timestamp:requestEndTime,sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H6'})}).catch(()=>{});
-      // #endregion
 
       const assistantMessage: Message = {
         id: response.messageId,
@@ -115,20 +97,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       } else {
         setSafetyBanner(null);
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:99',message:'Before setLoading(false)',data:{responseReceived:true,loadingState:'still true'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
     } catch (error: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:106',message:'API call error',data:{errorMessage:error?.message,errorResponse:error?.response?.status,errorData:error?.response?.data,hasResponse:!!error?.response},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2,H3,H5'})}).catch(()=>{});
-      // #endregion
       console.error("Error sending message:", error);
       setError("I'm sorry, there was an error processing your message. Please try again.");
     } finally {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/00e75a4c-076d-414b-b20f-e162c02833f6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChatInterface.tsx:113',message:'Finally block - setLoading(false)',data:{loadingState:'false'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       setLoading(false);
     }
   };
@@ -217,13 +189,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
         <ErrorDisplay
           message={error}
           onRetry={() => {
+            // Clear error state BEFORE retry to prevent overlay issues
             setError(null);
+            setLoading(true); // Show loading state during retry
+            
             // Retry last message if available
             if (messages.length > 0) {
               const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
               if (lastUserMessage) {
+                // Call handleSend which will manage loading state
                 handleSend(lastUserMessage.text);
+              } else {
+                setLoading(false);
               }
+            } else {
+              setLoading(false);
             }
           }}
           onDismiss={() => setError(null)}
