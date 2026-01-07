@@ -47,3 +47,7 @@ export function detectCancerType(userText: string): string | null {
 
 
 
+
+
+
+
