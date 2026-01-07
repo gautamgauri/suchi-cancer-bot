@@ -21,7 +21,7 @@ export class ApiClient {
    */
   async createSession(channel: "web" | "app" | "whatsapp" = "web"): Promise<string> {
     try {
-      const response = await this.client.post<{ sessionId: string; createdAt: string }>("/v1/sessions", {
+      const response = await this.client.post<{ sessionId: string; createdAt: string }>("/sessions", {
         channel,
       });
       return response.data.sessionId;
@@ -39,7 +39,7 @@ export class ApiClient {
     channel: "web" | "app" | "whatsapp" = "web"
   ): Promise<ChatResponse> {
     try {
-      const response = await this.client.post<ChatResponse>("/v1/chat", {
+      const response = await this.client.post<ChatResponse>("/chat", {
         sessionId,
         channel,
         userText,

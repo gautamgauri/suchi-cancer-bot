@@ -673,6 +673,12 @@ export class ChatService {
       
       responseText = ResponseFormatter.formatResponse(responseText, "navigate", hasResolvedAnswer, isMultiStepInteraction);
 
+      // Extract citations from response text if RAG chunks were used
+      let citations: Array<{ docId: string; chunkId: string; position: number }> = [];
+      if (evidenceChunks.length > 0) {
+        citations = this.citationService.extractCitations(responseText, evidenceChunks);
+      }
+
       const assistant = await this.prisma.message.create({
         data: {
           sessionId: dto.sessionId,
@@ -689,14 +695,21 @@ export class ChatService {
       await this.analytics.emit("navigate_mode_response", {
         intent: intentResult.intent,
         queryType,
-        mode
+        mode,
+        citationCount: citations.length
       }, dto.sessionId);
 
       return {
         sessionId: dto.sessionId,
         messageId: assistant.id,
         responseText: assistant.text,
-        safety: { classification: "normal" as const, actions: [] }
+        safety: { classification: "normal" as const, actions: [] },
+        citations: citations.map(c => ({
+          docId: c.docId,
+          chunkId: c.chunkId,
+          position: c.position
+        })),
+        citationConfidence: citations.length > 0 ? "GREEN" : undefined
       };
     }
 

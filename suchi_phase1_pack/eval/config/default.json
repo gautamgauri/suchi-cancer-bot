@@ -1,5 +1,5 @@
 {
-  "apiBaseUrl": "http://localhost:3001",
+  "apiBaseUrl": "https://suchi-api-lxiveognla-uc.a.run.app/v1",
   "llmProvider": "openai",
   "vertexAiConfig": {
     "project": "",
@@ -15,7 +15,7 @@
     "apiKey": "",
     "baseURL": "https://api.deepseek.com/v1"
   },
-  "timeoutMs": 30000,
+  "timeoutMs": 60000,
   "retries": 2,
   "parallel": false,
   "maxConcurrency": 5

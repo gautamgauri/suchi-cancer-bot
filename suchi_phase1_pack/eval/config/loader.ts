@@ -43,10 +43,10 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
   const envConfig: Partial<EvaluationConfig> = {
     apiBaseUrl: process.env.EVAL_API_BASE_URL || config.apiBaseUrl || "http://localhost:3001",
     llmProvider: (process.env.EVAL_LLM_PROVIDER || secrets["eval-llm-provider"] || config.llmProvider || "openai") as "vertex_ai" | "openai" | "deepseek",
-    timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || "30000", 10),
-    retries: parseInt(process.env.EVAL_RETRIES || "2", 10),
-    parallel: process.env.EVAL_PARALLEL === "true",
-    maxConcurrency: parseInt(process.env.EVAL_MAX_CONCURRENCY || "5", 10),
+    timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || String(config.timeoutMs || 60000), 10),
+    retries: parseInt(process.env.EVAL_RETRIES || String(config.retries || 2), 10),
+    parallel: process.env.EVAL_PARALLEL === "true" || config.parallel || false,
+    maxConcurrency: parseInt(process.env.EVAL_MAX_CONCURRENCY || String(config.maxConcurrency || 5), 10),
   };
 
   // Vertex AI config
