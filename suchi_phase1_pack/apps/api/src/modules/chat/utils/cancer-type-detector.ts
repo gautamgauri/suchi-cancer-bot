@@ -1,9 +1,15 @@
 /**
  * Cancer type detector - extracts cancer type from user queries
  * Used to make identify question responses cancer-type-specific
+ * @param userText User message text
+ * @param sessionCancerType Optional cancer type from session (checked first)
  */
+export function detectCancerType(userText: string, sessionCancerType?: string | null): string | null {
+  // Check session first if available
+  if (sessionCancerType) {
+    return sessionCancerType;
+  }
 
-export function detectCancerType(userText: string): string | null {
   const textLower = userText.toLowerCase();
   
   const cancerKeywords: Record<string, string> = {

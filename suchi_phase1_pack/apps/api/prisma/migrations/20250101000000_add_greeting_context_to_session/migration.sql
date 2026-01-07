@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Session" ADD COLUMN IF NOT EXISTS "userContext" TEXT,
+ADD COLUMN IF NOT EXISTS "cancerType" TEXT,
+ADD COLUMN IF NOT EXISTS "greetingCompleted" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS "emotionalState" TEXT;

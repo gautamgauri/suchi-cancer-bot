@@ -121,6 +121,113 @@ export class ResponseTemplates {
   }
 
   /**
+   * Interactive greeting flow templates with empathy
+   */
+  static interactiveGreetingStep1(emotionalTone?: string): string {
+    const isAnxious = emotionalTone === "anxious" || emotionalTone === "urgent";
+    const isSad = emotionalTone === "sad";
+
+    if (isAnxious) {
+      return `Hi! I'm Suchi, your cancer information assistant. I understand this can be overwhelming, and I'm here to help you find reliable information.
+
+To help you best, could you tell me:
+• Are you seeking general information about cancer?
+• Are you experiencing symptoms or concerns?
+• Are you supporting someone with cancer (caregiver)?
+• Have you or someone you know been diagnosed?`;
+    } else if (isSad) {
+      return `Hi! I'm Suchi, your cancer information assistant. I understand this can be a difficult time, and I'm here to support you with accurate, trusted information.
+
+To provide the most helpful guidance, could you tell me:
+• Are you seeking general information about cancer?
+• Are you experiencing symptoms or concerns?
+• Are you supporting someone with cancer (caregiver)?
+• Have you or someone you know been diagnosed?`;
+    } else {
+      // Neutral/calm
+      return `Hi! I'm Suchi, your cancer information assistant. I'm here to help you navigate this journey with accurate, trusted information.
+
+To provide the most helpful guidance, could you tell me:
+• Are you seeking general information about cancer?
+• Are you experiencing symptoms or concerns?
+• Are you supporting someone with cancer (caregiver)?
+• Have you or someone you know been diagnosed?`;
+    }
+  }
+
+  static interactiveGreetingStep2(
+    context: string,
+    emotionalTone?: string
+  ): string {
+    const isAnxious = emotionalTone === "anxious" || emotionalTone === "urgent";
+    const isPatient = context === "patient";
+    const isCaregiver = context === "caregiver";
+
+    if (isPatient && isAnxious) {
+      return `I understand this is a difficult and overwhelming time. Which type of cancer are you concerned about?
+
+[Common options: Breast, Lung, Prostate, Colorectal, etc. or 'Not sure/General']
+
+You can also just describe what you're experiencing, and I'll help guide you.`;
+    } else if (isPatient) {
+      return `I understand this is a difficult time. Which type of cancer are you concerned about?
+
+[Common options: Breast, Lung, Prostate, Colorectal, etc. or 'Not sure/General']
+
+You can also just describe what you're experiencing, and I'll help guide you.`;
+    } else if (isCaregiver) {
+      return `Thank you for supporting your loved one. Which type of cancer are they dealing with?
+
+[Common options: Breast, Lung, Prostate, Colorectal, etc. or 'Not sure/General']
+
+You can also describe the situation, and I'll help guide you.`;
+    } else {
+      // Post-diagnosis
+      return `I understand this is a challenging time. Which type of cancer are you asking about?
+
+[Common options: Breast, Lung, Prostate, Colorectal, etc. or 'Not sure/General']
+
+You can also describe your situation, and I'll help guide you.`;
+    }
+  }
+
+  static greetingComplete(
+    context: string,
+    cancerType?: string,
+    emotionalTone?: string
+  ): string {
+    const isAnxious = emotionalTone === "anxious" || emotionalTone === "urgent";
+    const isPatient = context === "patient";
+    const isCaregiver = context === "caregiver";
+    const isPostDiagnosis = context === "post_diagnosis";
+
+    const cancerTypeText = cancerType ? ` about ${cancerType} cancer` : "";
+
+    if (isPatient && isAnxious) {
+      return `I'm here to support you. I can help with information${cancerTypeText} for patients. Remember, I'm here to provide information and help you prepare questions for your healthcare team.
+
+What would you like to know?`;
+    } else if (isPatient) {
+      return `I'm here to help. I can provide information${cancerTypeText} for patients. I'll help you understand your situation and prepare questions for your healthcare team.
+
+What would you like to know?`;
+    } else if (isCaregiver) {
+      return `Thank you for supporting your loved one. I can help with information${cancerTypeText} for caregivers, including how to prepare for appointments and what questions to ask.
+
+How can I help you today?`;
+    } else if (isPostDiagnosis) {
+      return `I understand this is a challenging journey. I can help with information${cancerTypeText} about treatment options, side effects, and next steps.
+
+What would you like to know?`;
+    } else {
+      // General
+      return `Thank you! I'm here to help with general information${cancerTypeText ? ` about ${cancerType} cancer` : ""}.
+
+What would you like to know?`;
+    }
+  }
+
+  /**
    * S-series: Symptoms templates
    */
   static S1(context: TemplateContext): string {

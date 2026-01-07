@@ -14,6 +14,10 @@ model Session {
   locale    String?
   userType  String?
   status    String   @default("active")
+  userContext String? // "general" | "patient" | "caregiver" | "post_diagnosis"
+  cancerType String? // Detected or user-selected cancer type
+  greetingCompleted Boolean @default(false) // Track if greeting flow is complete
+  emotionalState String? // "anxious" | "calm" | "urgent" | "sad" | "neutral"
 
   messages        Message[]
   feedback        Feedback[]

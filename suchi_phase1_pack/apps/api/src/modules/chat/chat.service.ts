@@ -18,6 +18,8 @@ import { ResponseValidatorService } from "./response-validator.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
+import { GreetingFlowService } from "./greeting-flow.service";
+import { EmpathyDetector } from "./empathy-detector";
 
 @Injectable()
 export class ChatService {
@@ -34,12 +36,14 @@ export class ChatService {
     private readonly abstention: AbstentionService,
     private readonly intentClassifier: IntentClassifier,
     private readonly templateSelector: TemplateSelector,
-    private readonly responseValidator: ResponseValidatorService
+    private readonly responseValidator: ResponseValidatorService,
+    private readonly greetingFlow: GreetingFlowService,
+    private readonly empathyDetector: EmpathyDetector
   ) {}
 
   async handle(dto: ChatDto) {
-    const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
-    if (!session) {
+    const sessionForValidation = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+    if (!sessionForValidation) {
       throw new BadRequestException("Invalid sessionId");
     }
 
@@ -117,9 +121,160 @@ export class ChatService {
       };
     }
 
-    // 1.6. Check for greeting (after safety and urgency checks, before RAG)
-    // Note: Greeting will be handled by intent classification system below
-    // But we keep this check for early return to bypass RAG
+    // 1.6. Extract context and emotional state from message (even if greeting is bypassed)
+    // This ensures we capture context silently for evaluation compatibility
+    const contextResult = await this.greetingFlow.extractContextFromMessage(dto.userText);
+    const emotionalToneResult = await this.empathyDetector.detectEmotionalTone(dto.userText);
+
+    // Update session with extracted context and emotional state
+    if (contextResult.context || contextResult.cancerType || emotionalToneResult.tone !== "neutral") {
+      await this.greetingFlow.updateSessionContext(dto.sessionId, {
+        userContext: contextResult.context,
+        cancerType: contextResult.cancerType,
+        emotionalState: emotionalToneResult.tone,
+      });
+    }
+
+    // 1.7. Check for greeting (after safety and urgency checks, before RAG)
+    // Handle interactive greeting flow if needed
+    const needsGreeting = await this.greetingFlow.needsGreetingFlow(dto.sessionId);
+    if (needsGreeting && GreetingDetector.isGreeting(dto.userText)) {
+      const greetingStep = await this.greetingFlow.getGreetingStep(dto.sessionId);
+      
+      if (greetingStep === 1) {
+        // First greeting question
+        const greetingText = ResponseTemplates.interactiveGreetingStep1(emotionalToneResult.tone);
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: greetingText,
+            safetyClassification: "normal",
+            latencyMs: Date.now() - started
+          }
+        });
+
+        await this.analytics.emit("greeting_response", { step: 1, emotionalTone: emotionalToneResult.tone }, dto.sessionId);
+
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] }
+        };
+      } else if (greetingStep === 2) {
+        // Parse user response and ask for cancer type
+        const parseResult = await this.greetingFlow.parseGreetingResponse(dto.userText, 1);
+        
+        if (parseResult.context) {
+          await this.greetingFlow.updateSessionContext(dto.sessionId, {
+            userContext: parseResult.context,
+            emotionalState: parseResult.emotionalTone,
+          });
+        }
+
+        if (parseResult.nextStep === 2) {
+          // Need cancer type
+          const sessionForGreeting = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+          const greetingText = ResponseTemplates.interactiveGreetingStep2(
+            parseResult.context || sessionForGreeting?.userContext || "general",
+            parseResult.emotionalTone || emotionalToneResult.tone
+          );
+          const assistant = await this.prisma.message.create({
+            data: {
+              sessionId: dto.sessionId,
+              role: "assistant",
+              text: greetingText,
+              safetyClassification: "normal",
+              latencyMs: Date.now() - started
+            }
+          });
+
+          await this.analytics.emit("greeting_response", { step: 2, context: parseResult.context }, dto.sessionId);
+
+          return {
+            sessionId: dto.sessionId,
+            messageId: assistant.id,
+            responseText: assistant.text,
+            safety: { classification: "normal" as const, actions: [] }
+          };
+        } else if (parseResult.nextStep === 3) {
+          // Complete greeting flow
+          await this.greetingFlow.updateSessionContext(dto.sessionId, {
+            userContext: parseResult.context,
+            cancerType: parseResult.cancerType,
+            emotionalState: parseResult.emotionalTone,
+            greetingCompleted: true,
+          });
+
+          const greetingText = ResponseTemplates.greetingComplete(
+            parseResult.context || "general",
+            parseResult.cancerType,
+            parseResult.emotionalTone || emotionalToneResult.tone
+          );
+          const assistant = await this.prisma.message.create({
+            data: {
+              sessionId: dto.sessionId,
+              role: "assistant",
+              text: greetingText,
+              safetyClassification: "normal",
+              latencyMs: Date.now() - started
+            }
+          });
+
+          await this.analytics.emit("greeting_completed", { 
+            context: parseResult.context, 
+            cancerType: parseResult.cancerType 
+          }, dto.sessionId);
+
+          return {
+            sessionId: dto.sessionId,
+            messageId: assistant.id,
+            responseText: assistant.text,
+            safety: { classification: "normal" as const, actions: [] }
+          };
+        }
+      } else if (greetingStep === 3) {
+        // Parse cancer type response and complete
+        const parseResult = await this.greetingFlow.parseGreetingResponse(dto.userText, 2);
+        
+        await this.greetingFlow.updateSessionContext(dto.sessionId, {
+          cancerType: parseResult.cancerType,
+          emotionalState: parseResult.emotionalTone,
+          greetingCompleted: true,
+        });
+
+        const sessionForCompletion = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+        const greetingText = ResponseTemplates.greetingComplete(
+          sessionForCompletion?.userContext || "general",
+          parseResult.cancerType,
+          parseResult.emotionalTone || emotionalToneResult.tone
+        );
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: greetingText,
+            safetyClassification: "normal",
+            latencyMs: Date.now() - started
+          }
+        });
+
+        await this.analytics.emit("greeting_completed", { 
+          context: sessionForCompletion?.userContext, 
+          cancerType: parseResult.cancerType 
+        }, dto.sessionId);
+
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] }
+        };
+      }
+    }
+
+    // Fallback to old greeting handling if not in interactive flow
     if (GreetingDetector.isGreeting(dto.userText)) {
       const existingAssistantMessages = await this.prisma.message.count({
         where: {
@@ -159,6 +314,12 @@ export class ChatService {
       };
     }
 
+    // 2. Get session context (including emotional state and user context)
+    const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+    const emotionalState = (session?.emotionalState || emotionalToneResult.tone) as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
+    const userContext = session?.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
+    const sessionCancerType = session?.cancerType;
+
     // 2. Mode Detection (NEW - after greeting, before RAG)
     const mode = ModeDetector.detectMode(dto.userText);
 
@@ -183,7 +344,7 @@ export class ChatService {
     
     let evidenceChunks;
     if (mightBeIdentifyQuestion) {
-      const cancerType = detectCancerType(dto.userText);
+      const cancerType = detectCancerType(dto.userText, sessionCancerType);
       evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
     } else {
       evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6);
@@ -207,7 +368,8 @@ export class ChatService {
       evidenceChunks,
       { shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
-      { hasGenerallyAsking }
+      { hasGenerallyAsking },
+      { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context
     );
 
     // 6. Evidence gate check (with intent and conversation context)
@@ -221,7 +383,7 @@ export class ChatService {
 
     // If evidence is weak or insufficient, try expanded retrieval
     if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
-      const cancerType = detectCancerType(dto.userText);
+      const cancerType = detectCancerType(dto.userText, sessionCancerType);
       const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
       if (expandedChunks.length > evidenceChunks.length) {
         evidenceChunks = expandedChunks;
@@ -362,8 +524,8 @@ export class ChatService {
                                   cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
                                   !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
       
-      // Detect cancer type for cancer-type-specific responses
-      const cancerType = isIdentifyQuestion ? detectCancerType(dto.userText) : null;
+      // Detect cancer type for cancer-type-specific responses (check session first)
+      const cancerType = isIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;
       
       // Generate response with Explain Mode prompt
       let responseText = await this.llm.generateWithCitations(
@@ -372,7 +534,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         isIdentifyQuestion,
-        { hasGenerallyAsking, cancerType }
+        { hasGenerallyAsking, cancerType, emotionalState }
       );
 
       // Structure with explainModeFrame
@@ -429,7 +591,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             true,
-            { hasGenerallyAsking, cancerType }
+            { hasGenerallyAsking, cancerType, emotionalState }
           );
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
           
@@ -513,7 +675,7 @@ export class ChatService {
       // Handle citation validation
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
-        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, isIdentifyQuestion, { hasGenerallyAsking, cancerType });
+        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, isIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
         citationValidation = this.citationService.validateCitations(
@@ -642,7 +804,9 @@ export class ChatService {
           "navigate",
           "",
           `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
-          evidenceChunks.slice(0, 2)
+          evidenceChunks.slice(0, 2),
+          false,
+          { emotionalState }
         );
         responseText = ragContext + "\n\n" + responseText;
         
@@ -723,7 +887,9 @@ export class ChatService {
       systemPrompt,
       "",
       dto.userText,
-      evidenceChunks
+      evidenceChunks,
+      false,
+      { emotionalState, cancerType: sessionCancerType }
     );
 
     // 6. Extract and validate citations with confidence levels
@@ -738,7 +904,9 @@ export class ChatService {
         systemPrompt,
         "",
         dto.userText,
-        evidenceChunks
+        evidenceChunks,
+        false,
+        { emotionalState, cancerType: sessionCancerType }
       );
       citations = this.citationService.extractCitations(responseText, evidenceChunks);
       citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);

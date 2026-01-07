@@ -37,6 +37,12 @@ export interface IntentClassificationResult {
   metadata?: Record<string, any>;
 }
 
+export interface SessionContext {
+  userContext?: "general" | "patient" | "caregiver" | "post_diagnosis";
+  emotionalState?: "anxious" | "calm" | "urgent" | "sad" | "neutral";
+  cancerType?: string;
+}
+
 @Injectable()
 export class IntentClassifier {
   constructor(private readonly abstention: AbstentionService) {}
@@ -44,15 +50,21 @@ export class IntentClassifier {
   /**
    * Classify user intent based on message content, evidence, and gate results
    * Updated for RAG-first architecture with mode detection
+   * @param sessionContext Optional session context (userContext, emotionalState, cancerType) to influence classification
    */
   classify(
     userText: string,
     evidenceChunks: EvidenceChunk[],
     gateResult: EvidenceGateResult,
     safetyClassification: string,
-    conversationContext?: { hasGenerallyAsking?: boolean }
+    conversationContext?: { hasGenerallyAsking?: boolean },
+    sessionContext?: SessionContext
   ): IntentClassificationResult {
     const lowerText = userText.toLowerCase().trim();
+
+    // Use session context to influence classification if available
+    const userContext = sessionContext?.userContext;
+    const emotionalState = sessionContext?.emotionalState;
 
     // Fast-path: if general intent detected, immediately return INFORMATIONAL_GENERAL
     if (conversationContext?.hasGenerallyAsking) {
@@ -61,6 +73,59 @@ export class IntentClassifier {
         confidence: "high",
         metadata: { reason: "User signaled general/educational intent" }
       };
+    }
+
+    // If session has userContext, use it to influence intent classification
+    if (userContext === "general") {
+      // General information seeker - prioritize INFORMATIONAL_GENERAL
+      if (this.hasCancerRelatedKeywords(lowerText)) {
+        return {
+          intent: "INFORMATIONAL_GENERAL",
+          confidence: "high",
+          metadata: { reason: "Session context: general information seeker" }
+        };
+      }
+    } else if (userContext === "patient") {
+      // Patient with symptoms - prioritize PERSONAL_SYMPTOMS
+      if (this.hasSymptomKeywords(lowerText) && !this.abstention.hasUrgencyIndicators(userText)) {
+        return {
+          intent: "PERSONAL_SYMPTOMS",
+          confidence: "high",
+          metadata: { reason: "Session context: patient with symptoms" }
+        };
+      }
+    } else if (userContext === "caregiver") {
+      // Caregiver - prioritize CARE_NAVIGATION intents
+      if (this.isProviderChoiceRequest(lowerText)) {
+        return {
+          intent: "CARE_NAVIGATION_PROVIDER_CHOICE",
+          confidence: "high",
+          metadata: { reason: "Session context: caregiver" }
+        };
+      }
+      if (this.isSecondOpinionRequest(lowerText)) {
+        return {
+          intent: "CARE_NAVIGATION_SECOND_OPINION",
+          confidence: "high",
+          metadata: { reason: "Session context: caregiver" }
+        };
+      }
+    } else if (userContext === "post_diagnosis") {
+      // Post-diagnosis - prioritize TREATMENT_OPTIONS_GENERAL, SIDE_EFFECTS_*
+      if (this.isTreatmentOptionsRequest(lowerText)) {
+        return {
+          intent: "TREATMENT_OPTIONS_GENERAL",
+          confidence: "high",
+          metadata: { reason: "Session context: post-diagnosis" }
+        };
+      }
+      if (this.hasSideEffectKeywords(lowerText)) {
+        return {
+          intent: "SIDE_EFFECTS_GENERAL",
+          confidence: "high",
+          metadata: { reason: "Session context: post-diagnosis" }
+        };
+      }
     }
 
     // Priority 1: Crisis / urgent symptoms (S2) - checked before greeting

@@ -102,15 +102,48 @@ export class LlmService {
   }
 
   /**
+   * Get empathy guidelines based on emotional state
+   */
+  private getEmpathyGuidelines(emotionalState?: string): string {
+    if (!emotionalState || emotionalState === "neutral" || emotionalState === "calm") {
+      return "";
+    }
+
+    const guidelines: Record<string, string> = {
+      anxious: `EMPATHY GUIDELINES (for anxious user):
+- Acknowledge their concern: "I understand this can be overwhelming/concerning"
+- Provide reassurance: "I'm here to help you find reliable information"
+- Use calming language: avoid alarmist phrasing
+- Be supportive while maintaining evidence-only policy
+- Balance empathy with accuracy`,
+      urgent: `EMPATHY GUIDELINES (for urgent user):
+- Acknowledge urgency: "I understand this is urgent"
+- Prioritize actionable information
+- Provide clear next steps
+- Maintain calm, supportive tone
+- Balance empathy with evidence-only policy`,
+      sad: `EMPATHY GUIDELINES (for sad user):
+- Use supportive language: "I understand this is a difficult time"
+- Acknowledge difficulty: "I'm here to support you"
+- Provide hope without false promises
+- Be compassionate while maintaining evidence-only policy
+- Balance empathy with accuracy`,
+    };
+
+    return `\n\n${guidelines[emotionalState] || ""}`;
+  }
+
+  /**
    * Get system prompt for Explain Mode (information-first)
    * @param isIdentifyQuestion If true, provide structured answer for "how to identify" questions
-   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type)
+   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state)
    */
   getExplainModePrompt(
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string }
   ): string {
-    const basePrompt = `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.
+    const empathyGuidelines = this.getEmpathyGuidelines(conversationContext?.emotionalState);
+    const basePrompt = `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.${empathyGuidelines}
 
 EVIDENCE-ONLY POLICY (CRITICAL - YOU MUST FOLLOW THIS):
 - You may ONLY state medical facts that are directly supported by retrieved NCI chunks
@@ -150,9 +183,11 @@ DO NOT:
 
   /**
    * Get system prompt for Navigate Mode (personal symptom support)
+   * @param emotionalState Optional emotional state for empathy-aware responses
    */
-  getNavigateModePrompt(): string {
-    return `You are Suchi (Suchitra Cancer Bot). For personal symptom questions, provide brief acknowledgment, then 1-2 targeted questions to gather context. Provide a short "what to do next" checklist (max 3 bullets).
+  getNavigateModePrompt(emotionalState?: string): string {
+    const empathyGuidelines = this.getEmpathyGuidelines(emotionalState);
+    return `You are Suchi (Suchitra Cancer Bot). For personal symptom questions, provide brief acknowledgment, then 1-2 targeted questions to gather context. Provide a short "what to do next" checklist (max 3 bullets).${empathyGuidelines}
 
 EVIDENCE-ONLY POLICY (CRITICAL):
 - You may ONLY state medical facts that are directly supported by retrieved NCI chunks
@@ -173,7 +208,7 @@ REQUIREMENTS:
    * Generate response with mandatory inline citations
    * @param mode "explain" for Explain Mode, "navigate" for Navigate Mode, or custom systemPrompt
    * @param isIdentifyQuestion If true and mode is "explain", use enhanced prompt for identify questions
-   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type)
+   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state)
    */
   async generateWithCitations(
     systemPrompt: string | "explain" | "navigate",
@@ -181,14 +216,14 @@ REQUIREMENTS:
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string }
   ): Promise<string> {
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
     if (systemPrompt === "explain") {
       actualSystemPrompt = this.getExplainModePrompt(isIdentifyQuestion, conversationContext);
     } else if (systemPrompt === "navigate") {
-      actualSystemPrompt = this.getNavigateModePrompt();
+      actualSystemPrompt = this.getNavigateModePrompt(conversationContext?.emotionalState);
     } else {
       actualSystemPrompt = systemPrompt;
     }
