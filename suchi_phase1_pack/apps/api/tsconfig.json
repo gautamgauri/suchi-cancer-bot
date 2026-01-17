@@ -2,6 +2,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2022",
+    "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
     "emitDecoratorMetadata": true,
@@ -16,6 +17,7 @@
   "exclude": [
     "node_modules",
     "dist",
+    "scripts",
     "**/*.spec.ts",
     "**/*.test.ts"
   ]
