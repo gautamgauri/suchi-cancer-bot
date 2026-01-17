@@ -75,11 +75,21 @@ export class ChatService {
       return { sessionId: dto.sessionId, messageId: assistant.id, responseText: assistant.text, safety: { classification: safetyResult.classification, actions: safetyResult.actions } };
     }
 
-    // 1.5. Check for urgent red flags BEFORE greeting (priority: red flags > greetings)
-    // This ensures "hi + severe pain" doesn't get a cheerful greeting menu
+    // 1.5. Check for urgent red flags (but retrieve RAG first to include citations)
+    // This ensures "hi + severe pain" doesn't get a cheerful greeting menu, but still includes RAG content
     const hasUrgencyIndicators = this.abstention.hasUrgencyIndicators(dto.userText);
+    
+    // Retrieve RAG content early for urgent cases to include citations
+    let earlyEvidenceChunks: any[] = [];
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
-      // Use template system for urgent symptoms (S2 template)
+      // Quick RAG retrieval for urgent cases to support citations
+      const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+      const sessionCancerType = session?.cancerType;
+      earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType);
+    }
+    
+    if (hasUrgencyIndicators && safetyResult.classification === "normal") {
+      // Use template system for urgent symptoms (S2 template) but include RAG content if available
       const existingAssistantMessages = await this.prisma.message.count({
         where: {
           sessionId: dto.sessionId,
@@ -88,6 +98,74 @@ export class ChatService {
       });
       const isFirstMessage = existingAssistantMessages === 0;
 
+      let urgentResponse = ResponseTemplates.S2({ isFirstMessage, userText: dto.userText } as any);
+      
+      // If we have RAG content, generate a response with citations and prepend urgent guidance
+      if (earlyEvidenceChunks.length > 0) {
+        const queryType = QueryTypeClassifier.classify(dto.userText);
+        const ragResponse = await this.llm.generateWithCitations(
+          "explain",
+          "",
+          dto.userText,
+          earlyEvidenceChunks,
+          false,
+          { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" }
+        );
+        
+        // Extract citations from RAG response
+        const citations = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
+        
+        // Combine urgent guidance with RAG content (urgent guidance first, then RAG with citations)
+        urgentResponse = urgentResponse.split("\n\n**Next steps:**")[0]; // Remove generic next steps
+        urgentResponse += "\n\n**Information from trusted sources:**\n\n" + ragResponse;
+        
+        // Store citations if we have them
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: urgentResponse,
+            safetyClassification: "red_flag",
+            kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
+            latencyMs: Date.now() - started,
+            citationCount: citations.length
+          }
+        });
+        
+        // Store citations
+        if (citations.length > 0) {
+          const enrichedCitations = await this.citationService.enrichCitations(citations, earlyEvidenceChunks);
+          await Promise.all(
+            enrichedCitations.map(citation =>
+              this.prisma.messageCitation.create({
+                data: {
+                  messageId: assistant.id,
+                  docId: citation.docId,
+                  chunkId: citation.chunkId,
+                  citationText: citation.citationText,
+                  position: citation.position
+                }
+              })
+            )
+          );
+        }
+
+        await this.prisma.safetyEvent.create({
+          data: { sessionId: dto.sessionId, messageId: assistant.id, type: "red_flag", detail: "urgency_indicators_detected" }
+        });
+
+        await this.analytics.emit("safety_triggered", { classification: "red_flag", rules: ["urgency_indicators_detected"] }, dto.sessionId);
+
+        return { 
+          sessionId: dto.sessionId, 
+          messageId: assistant.id, 
+          responseText: assistant.text, 
+          safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"] },
+          citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position }))
+        };
+      }
+      
+      // Fallback: no RAG content available, use template only
       const templateResult = this.templateSelector.selectAndGenerate(
         dto.userText,
         [],
@@ -347,7 +425,7 @@ export class ChatService {
       const cancerType = detectCancerType(dto.userText, sessionCancerType);
       evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
     } else {
-      evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6);
+      evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType);
     }
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
@@ -513,6 +591,88 @@ export class ChatService {
       }
       // If canAskClarifying is false, fall through to Explain Mode flow below
       // (No clarifying question will be asked, proceed with answer generation)
+      // BUT: If we have evidence chunks, try to answer with RAG content instead of abstaining
+      if (evidenceChunks.length > 0) {
+        // Generate response with available evidence even if weak
+        const queryType = QueryTypeClassifier.classify(dto.userText);
+        let responseText = await this.llm.generateWithCitations(
+          "explain",
+          "",
+          dto.userText,
+          evidenceChunks,
+          false,
+          { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState }
+        );
+        
+        // Structure with explainModeFrame
+        responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+        
+        // Extract and validate citations
+        let citations = this.citationService.extractCitations(responseText, evidenceChunks);
+        const citationValidation = this.citationService.validateCitations(
+          citations, 
+          evidenceChunks, 
+          responseText,
+          hasGenerallyAsking
+        );
+        
+        // Handle YELLOW confidence (weak evidence but still answer)
+        if (citationValidation.confidenceLevel === "YELLOW") {
+          const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
+          responseText = uncertaintyPreamble + responseText;
+        }
+        
+        // Store assistant message with citations
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: responseText,
+            safetyClassification: "normal",
+            kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
+            latencyMs: Date.now() - started,
+            evidenceQuality: gateResult.quality,
+            evidenceGatePassed: false,
+            abstentionReason: gateResult.reason || undefined,
+            citationCount: citations.length
+          }
+        });
+        
+        // Store citations
+        if (citations.length > 0) {
+          const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
+          await Promise.all(
+            enrichedCitations.map(citation =>
+              this.prisma.messageCitation.create({
+                data: {
+                  messageId: assistant.id,
+                  docId: citation.docId,
+                  chunkId: citation.chunkId,
+                  citationText: citation.citationText,
+                  position: citation.position
+                }
+              })
+            )
+          );
+        }
+        
+        await this.analytics.emit("abstention_with_rag", {
+          intent: intentResult.intent,
+          queryType,
+          citationCount: citations.length,
+          confidenceLevel: citationValidation.confidenceLevel
+        }, dto.sessionId);
+        
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] },
+          citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
+          citationConfidence: citationValidation.confidenceLevel,
+          abstentionReason: gateResult.reason || undefined
+        };
+      }
     }
 
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
@@ -1005,9 +1165,18 @@ export class ChatService {
       citations: citations.map(c => ({
         docId: c.docId,
         chunkId: c.chunkId,
-        position: c.position
+        position: c.position,
+        sourceType: evidenceChunks.find(chunk => chunk.docId === c.docId && chunk.chunkId === c.chunkId)?.document.sourceType || null,
+        isTrustedSource: evidenceChunks.find(chunk => chunk.docId === c.docId && chunk.chunkId === c.chunkId)?.document.isTrustedSource || false
       })),
-      citationConfidence: citationValidation.confidenceLevel
+      citationConfidence: citationValidation.confidenceLevel,
+      retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+        docId: chunk.docId,
+        chunkId: chunk.chunkId,
+        sourceType: chunk.document.sourceType,
+        isTrustedSource: chunk.document.isTrustedSource,
+        similarity: chunk.similarity
+      }))
     };
   }
 

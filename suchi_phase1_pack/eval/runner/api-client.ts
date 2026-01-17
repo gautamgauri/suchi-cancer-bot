@@ -5,13 +5,20 @@ export class ApiClient {
   private client: AxiosInstance;
   private baseUrl: string;
 
-  constructor(baseUrl: string, timeoutMs: number = 60000) {
+  constructor(baseUrl: string, timeoutMs: number = 120000, authorizationHeader?: string) {
     this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    
+    // Add authorization header if provided
+    if (authorizationHeader) {
+      headers["Authorization"] = `Bearer ${authorizationHeader}`;
+    }
+    
     this.client = axios.create({
       baseURL: this.baseUrl,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       timeout: timeoutMs,
     });
   }
