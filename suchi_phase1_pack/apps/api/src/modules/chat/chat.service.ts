@@ -24,6 +24,9 @@ import { EmpathyDetector } from "./empathy-detector";
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
+  // In-memory session cache with 60s TTL
+  private readonly sessionCache = new Map<string, { data: any; expires: number }>();
+  private readonly CACHE_TTL_MS = 60000; // 60 seconds
 
   constructor(
     private readonly prisma: PrismaService,
@@ -41,13 +44,47 @@ export class ChatService {
     private readonly empathyDetector: EmpathyDetector
   ) {}
 
+  /**
+   * Get session with caching (60s TTL)
+   */
+  private async getSession(sessionId: string) {
+    const cached = this.sessionCache.get(sessionId);
+    if (cached && cached.expires > Date.now()) {
+      return cached.data;
+    }
+    
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    if (session) {
+      this.sessionCache.set(sessionId, {
+        data: session,
+        expires: Date.now() + this.CACHE_TTL_MS
+      });
+    }
+    return session;
+  }
+
   async handle(dto: ChatDto) {
-    const sessionForValidation = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
-    if (!sessionForValidation) {
+    // Fetch session (with caching) and message count once at the start - reuse throughout method
+    const [session, existingAssistantMessages] = await Promise.all([
+      this.getSession(dto.sessionId),
+      this.prisma.message.count({
+        where: { sessionId: dto.sessionId, role: "assistant" }
+      })
+    ]);
+
+    if (!session) {
       throw new BadRequestException("Invalid sessionId");
     }
 
-    await this.analytics.emit("chat_turn_submitted", { channel: dto.channel }, dto.sessionId);
+    const isFirstMessage = existingAssistantMessages === 0;
+    const sessionCancerType = session.cancerType;
+    let emotionalState = session.emotionalState as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
+    const userContext = session.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
+
+    // Make analytics non-blocking (fire and forget)
+    this.analytics.emit("chat_turn_submitted", { channel: dto.channel }, dto.sessionId).catch(err => 
+      this.logger.warn(`Analytics emit failed: ${err.message}`)
+    );
 
     await this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } });
 
@@ -70,7 +107,9 @@ export class ChatService {
         data: { sessionId: dto.sessionId, messageId: assistant.id, type: safetyResult.classification, detail: safetyResult.rulesFired.join(",") }
       });
 
-      await this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId);
+      this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err => 
+        this.logger.warn(`Analytics emit failed: ${err.message}`)
+      );
 
       return { sessionId: dto.sessionId, messageId: assistant.id, responseText: assistant.text, safety: { classification: safetyResult.classification, actions: safetyResult.actions } };
     }
@@ -80,23 +119,18 @@ export class ChatService {
     const hasUrgencyIndicators = this.abstention.hasUrgencyIndicators(dto.userText);
     
     // Retrieve RAG content early for urgent cases to include citations
+    // Classify query type early for better RAG retrieval
+    const earlyQueryType = QueryTypeClassifier.classify(dto.userText);
     let earlyEvidenceChunks: any[] = [];
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Quick RAG retrieval for urgent cases to support citations
-      const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
-      const sessionCancerType = session?.cancerType;
-      earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType);
+      // Reuse sessionCancerType from session fetched at start
+      earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, earlyQueryType);
     }
     
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Use template system for urgent symptoms (S2 template) but include RAG content if available
-      const existingAssistantMessages = await this.prisma.message.count({
-        where: {
-          sessionId: dto.sessionId,
-          role: "assistant"
-        }
-      });
-      const isFirstMessage = existingAssistantMessages === 0;
+      // Reuse isFirstMessage from message count fetched at start
 
       let urgentResponse = ResponseTemplates.S2({ isFirstMessage, userText: dto.userText } as any);
       
@@ -154,7 +188,9 @@ export class ChatService {
           data: { sessionId: dto.sessionId, messageId: assistant.id, type: "red_flag", detail: "urgency_indicators_detected" }
         });
 
-        await this.analytics.emit("safety_triggered", { classification: "red_flag", rules: ["urgency_indicators_detected"] }, dto.sessionId);
+        this.analytics.emit("safety_triggered", { classification: "red_flag", rules: ["urgency_indicators_detected"] }, dto.sessionId).catch(err => 
+          this.logger.warn(`Analytics emit failed: ${err.message}`)
+        );
 
         return { 
           sessionId: dto.sessionId, 
@@ -201,8 +237,16 @@ export class ChatService {
 
     // 1.6. Extract context and emotional state from message (even if greeting is bypassed)
     // This ensures we capture context silently for evaluation compatibility
-    const contextResult = await this.greetingFlow.extractContextFromMessage(dto.userText);
-    const emotionalToneResult = await this.empathyDetector.detectEmotionalTone(dto.userText);
+    // Parallelize context extraction and emotional tone detection
+    const [contextResult, emotionalToneResult] = await Promise.all([
+      this.greetingFlow.extractContextFromMessage(dto.userText),
+      this.empathyDetector.detectEmotionalTone(dto.userText)
+    ]);
+
+    // Update emotionalState if emotionalToneResult provides new information
+    if (emotionalToneResult.tone && emotionalToneResult.tone !== "neutral") {
+      emotionalState = emotionalToneResult.tone as typeof emotionalState;
+    }
 
     // Update session with extracted context and emotional state
     if (contextResult.context || contextResult.cancerType || emotionalToneResult.tone !== "neutral") {
@@ -253,9 +297,9 @@ export class ChatService {
 
         if (parseResult.nextStep === 2) {
           // Need cancer type
-          const sessionForGreeting = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+          // Reuse session fetched at start
           const greetingText = ResponseTemplates.interactiveGreetingStep2(
-            parseResult.context || sessionForGreeting?.userContext || "general",
+            parseResult.context || session?.userContext || "general",
             parseResult.emotionalTone || emotionalToneResult.tone
           );
           const assistant = await this.prisma.message.create({
@@ -322,9 +366,9 @@ export class ChatService {
           greetingCompleted: true,
         });
 
-        const sessionForCompletion = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
+        // Reuse session fetched at start
         const greetingText = ResponseTemplates.greetingComplete(
-          sessionForCompletion?.userContext || "general",
+          session?.userContext || "general",
           parseResult.cancerType,
           parseResult.emotionalTone || emotionalToneResult.tone
         );
@@ -339,7 +383,7 @@ export class ChatService {
         });
 
         await this.analytics.emit("greeting_completed", { 
-          context: sessionForCompletion?.userContext, 
+          context: session?.userContext, 
           cancerType: parseResult.cancerType 
         }, dto.sessionId);
 
@@ -354,13 +398,7 @@ export class ChatService {
 
     // Fallback to old greeting handling if not in interactive flow
     if (GreetingDetector.isGreeting(dto.userText)) {
-      const existingAssistantMessages = await this.prisma.message.count({
-        where: {
-          sessionId: dto.sessionId,
-          role: "assistant"
-        }
-      });
-      const isFirstMessage = existingAssistantMessages === 0;
+      // Reuse isFirstMessage from message count fetched at start
 
       // Use template system for greeting
       const templateResult = this.templateSelector.selectAndGenerate(
@@ -393,10 +431,8 @@ export class ChatService {
     }
 
     // 2. Get session context (including emotional state and user context)
-    const session = await this.prisma.session.findUnique({ where: { id: dto.sessionId } });
-    const emotionalState = (session?.emotionalState || emotionalToneResult.tone) as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
-    const userContext = session?.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
-    const sessionCancerType = session?.cancerType;
+    // Session already fetched at start - reuse emotionalState, userContext, sessionCancerType
+    // emotionalState already updated above if emotionalToneResult provided new information
 
     // 2. Mode Detection (NEW - after greeting, before RAG)
     const mode = ModeDetector.detectMode(dto.userText);
@@ -413,7 +449,11 @@ export class ChatService {
       hasGeneralIntentSignal(dto.userText) ||
       recentMessages.some(m => m.role === "user" && hasGeneralIntentSignal(m.text));
 
-    // 3. Retrieve evidence with full metadata
+    // 3. Classify query type BEFORE RAG retrieval (for better query rewriting)
+    const queryType = QueryTypeClassifier.classify(dto.userText);
+
+    // 4. Retrieve evidence with full metadata
+    // Reuse early RAG retrieval if available (for urgent cases), otherwise retrieve normally
     // Use expanded retrieval if this might be an identify question or if we expect weak evidence
     const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
     const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
@@ -421,25 +461,22 @@ export class ChatService {
                                     cancerKeywordPattern.test(dto.userText.toLowerCase());
     
     let evidenceChunks;
-    if (mightBeIdentifyQuestion) {
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
-      evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
+    if (earlyEvidenceChunks.length > 0) {
+      // Reuse early RAG retrieval from urgent check to avoid double retrieval
+      evidenceChunks = earlyEvidenceChunks;
     } else {
-      evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType);
+      // Normal RAG retrieval
+      if (mightBeIdentifyQuestion) {
+        const cancerType = detectCancerType(dto.userText, sessionCancerType);
+        evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
+      } else {
+        evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, queryType);
+      }
     }
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
-    // 4. Classify query type
-    const queryType = QueryTypeClassifier.classify(dto.userText);
-
     // 5. Intent classification (moved before evidence gate to provide context)
-    const existingAssistantMessages = await this.prisma.message.count({
-      where: {
-        sessionId: dto.sessionId,
-        role: "assistant"
-      }
-    });
-    const isFirstMessage = existingAssistantMessages === 0;
+    // Reuse isFirstMessage from message count fetched at start
 
     const intentResult = this.intentClassifier.classify(
       dto.userText,
@@ -447,7 +484,7 @@ export class ChatService {
       { shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
       { hasGenerallyAsking },
-      { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context
+      { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
     );
 
     // 6. Evidence gate check (with intent and conversation context)
@@ -462,7 +499,7 @@ export class ChatService {
     // If evidence is weak or insufficient, try expanded retrieval
     if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
       const cancerType = detectCancerType(dto.userText, sessionCancerType);
-      const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType);
+      const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
       if (expandedChunks.length > evidenceChunks.length) {
         evidenceChunks = expandedChunks;
         // Re-run evidence gate with expanded chunks
@@ -605,7 +642,7 @@ export class ChatService {
         );
         
         // Structure with explainModeFrame
-        responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+        responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
         
         // Extract and validate citations
         let citations = this.citationService.extractCitations(responseText, evidenceChunks);
@@ -753,7 +790,7 @@ export class ChatService {
             true,
             { hasGenerallyAsking, cancerType, emotionalState }
           );
-          responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+          responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -836,7 +873,7 @@ export class ChatService {
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
         responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, isIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState });
-        responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+        responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
         citationValidation = this.citationService.validateCitations(
           citations, 

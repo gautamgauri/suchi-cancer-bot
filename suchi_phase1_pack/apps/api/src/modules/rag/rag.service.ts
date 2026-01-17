@@ -3,6 +3,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 import { SynonymService } from "./synonym-service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/trusted-sources.config";
+import { QueryTypeClassifier } from "./query-type.classifier";
 
 @Injectable()
 export class RagService {
@@ -16,17 +18,27 @@ export class RagService {
 
   /**
    * Retrieve chunks with full document metadata for citations
+   * @param query Original user query
+   * @param topK Number of chunks to retrieve
+   * @param cancerType Optional cancer type for query enhancement
+   * @param queryType Optional pre-classified query type (to avoid re-classification)
    */
-  async retrieveWithMetadata(query: string, topK = 6): Promise<EvidenceChunk[]> {
+  async retrieveWithMetadata(query: string, topK = 6, cancerType?: string | null, queryType?: string): Promise<EvidenceChunk[]> {
     try {
-      // Expand query with synonyms if available
-      const expandedTerms = this.synonyms.expandQuery(query);
-      if (expandedTerms.length > 1) {
-        this.logger.debug(`Query expanded from "${query}" to ${expandedTerms.length} terms`);
+      // Step 1: Query rewrite using QueryTypeClassifier + cancer terms
+      const rewrittenQuery = this.rewriteQuery(query, cancerType, queryType);
+      if (rewrittenQuery !== query) {
+        this.logger.debug(`Query rewritten from "${query}" to "${rewrittenQuery}"`);
       }
 
-      // Try vector search first
-      const vectorResults = await this.vectorSearchWithMetadata(query, topK);
+      // Step 2: Expand query with synonyms if available
+      const expandedTerms = this.synonyms.expandQuery(rewrittenQuery);
+      if (expandedTerms.length > 1) {
+        this.logger.debug(`Query expanded from "${rewrittenQuery}" to ${expandedTerms.length} terms`);
+      }
+
+      // Step 3: Try vector search with rewritten query
+      const vectorResults = await this.vectorSearchWithMetadata(rewrittenQuery, topK);
       if (vectorResults.length > 0) {
         return vectorResults;
       }
@@ -39,6 +51,91 @@ export class RagService {
       // Fallback to keyword search on error
       return this.keywordSearchWithMetadata(query, topK);
     }
+  }
+
+  /**
+   * Rewrite query using QueryTypeClassifier and cancer type to improve retrieval
+   * Adds intent-specific terms and cancer type context
+   * @param queryType Optional pre-classified query type (to avoid re-classification)
+   */
+  private rewriteQuery(query: string, cancerType?: string | null, queryType?: string): string {
+    const classifiedQueryType: string = queryType || QueryTypeClassifier.classify(query);
+    const lowerQuery = query.toLowerCase();
+    
+    // Build rewritten query parts
+    const parts: string[] = [query]; // Start with original query
+    
+    // Add cancer type if detected
+    if (cancerType) {
+      parts.push(cancerType);
+    }
+    
+    // Add intent-specific enhancement terms
+    switch (classifiedQueryType) {
+      case "treatment":
+        if (!lowerQuery.includes("treatment") && !lowerQuery.includes("therapy")) {
+          parts.push("treatment options");
+        }
+        if (cancerType) {
+          parts.push(`${cancerType} cancer treatment`);
+        }
+        break;
+      case "screening":
+        if (!lowerQuery.includes("screening") && !lowerQuery.includes("screen")) {
+          parts.push("screening");
+        }
+        if (cancerType) {
+          parts.push(`${cancerType} cancer screening`);
+        }
+        break;
+      case "sideEffects":
+        if (!lowerQuery.includes("side effect")) {
+          parts.push("side effects");
+        }
+        if (cancerType) {
+          parts.push(`${cancerType} cancer treatment side effects`);
+        }
+        break;
+      case "symptoms":
+        if (!lowerQuery.includes("symptom") && !lowerQuery.includes("sign")) {
+          parts.push("symptoms");
+          parts.push("warning signs");
+        }
+        if (cancerType) {
+          parts.push(`${cancerType} cancer symptoms`);
+          parts.push(`${cancerType} cancer signs`);
+        }
+        break;
+      case "prevention":
+        if (!lowerQuery.includes("prevent")) {
+          parts.push("prevention");
+        }
+        if (cancerType) {
+          parts.push(`${cancerType} cancer prevention`);
+        }
+        break;
+      case "caregiver":
+      case "navigation":
+        // For caregiver/navigation queries, add cancer type context if available
+        if (cancerType) {
+          parts.push(`${cancerType} cancer`);
+        }
+        break;
+      case "general":
+        // For general queries, add cancer type context only
+        // Avoid generic terms like "information" that can act as semantic noise
+        if (cancerType) {
+          parts.push(`${cancerType} cancer`);
+        }
+        break;
+    }
+    
+    // Return rewritten query (join with space, remove duplicates)
+    const rewritten = parts.join(" ");
+    // Simple deduplication: split, filter unique words (case-insensitive), rejoin
+    const words = rewritten.toLowerCase().split(/\s+/);
+    const uniqueWords = Array.from(new Set(words));
+    return uniqueWords.join(" ");
   }
 
   /**
@@ -55,10 +152,11 @@ export class RagService {
     topK = 6,
     cancerType?: string | null,
     minChunks = 3,
-    maxRetries = 2
+    maxRetries = 2,
+    queryType?: string
   ): Promise<EvidenceChunk[]> {
     // First attempt: original query
-    let results = await this.retrieveWithMetadata(query, topK);
+    let results = await this.retrieveWithMetadata(query, topK, cancerType, queryType);
     
     // If we have enough chunks, return
     if (results.length >= minChunks) {
@@ -95,7 +193,7 @@ export class RagService {
       
       this.logger.debug(`Retry attempt ${attempt + 1}: expanding query with "${expansionTerm}"`);
       
-      const expandedResults = await this.retrieveWithMetadata(expandedQuery, topK);
+      const expandedResults = await this.retrieveWithMetadata(expandedQuery, topK, cancerType, queryType);
       
       // Merge results, avoiding duplicates
       const existingKeys = new Set(results.map(r => `${r.docId}:${r.chunkId}`));
@@ -148,6 +246,9 @@ export class RagService {
 
     // Use raw SQL for pgvector similarity search with document metadata
     // Cosine distance: <=> operator (smaller is more similar)
+    // Retrieve more than topK to allow reranking
+    const retrieveCount = Math.max(topK * 2, 20); // Retrieve 2x for reranking buffer
+    
     const results = await this.prisma.$queryRaw<Array<{
       id: string;
       docId: string;
@@ -178,10 +279,10 @@ export class RagService {
       WHERE d.status = 'active'
         AND c.embedding IS NOT NULL
       ORDER BY c.embedding <=> ${embeddingStr}::vector
-      LIMIT ${topK}
+      LIMIT ${retrieveCount}
     `;
 
-    return results.map((r) => ({
+    const chunks = results.map((r) => ({
       chunkId: r.id,
       docId: r.docId,
       content: r.content,
@@ -196,6 +297,12 @@ export class RagService {
         isTrustedSource: r.isTrustedSource
       }
     }));
+
+    // Apply trusted-source reranking
+    const reranked = this.rerankByTrustedSource(chunks, query);
+    
+    // Return topK after reranking
+    return reranked.slice(0, topK);
   }
 
   private async vectorSearch(query: string, topK: number): Promise<Array<{ docId: string; chunkId: string; content: string }>> {
@@ -206,6 +313,9 @@ export class RagService {
   private async keywordSearchWithMetadata(query: string, topK: number): Promise<EvidenceChunk[]> {
     const tokens = query.toLowerCase().split(/\s+/).filter((t) => t.length >= 4).slice(0, 8);
     if (!tokens.length) return [];
+
+    // Retrieve more than topK to allow reranking
+    const retrieveCount = Math.max(topK * 2, 20);
 
     const chunks = await this.prisma.kbChunk.findMany({
       where: {
@@ -225,14 +335,15 @@ export class RagService {
           }
         }
       },
-      take: topK,
+      take: retrieveCount,
       orderBy: { createdAt: "desc" }
     });
 
-    return chunks.map((c) => ({
+    const mappedChunks = chunks.map((c) => ({
       chunkId: c.id,
       docId: c.docId,
       content: c.content,
+      similarity: 0.5, // Default similarity for keyword search (no vector similarity available)
       document: {
         title: c.document.title,
         url: c.document.url || undefined,
@@ -243,10 +354,117 @@ export class RagService {
         isTrustedSource: c.document.isTrustedSource
       }
     }));
+
+    // Apply trusted-source reranking
+    const reranked = this.rerankByTrustedSource(mappedChunks, query);
+    
+    // Return topK after reranking
+    return reranked.slice(0, topK);
   }
 
   private async keywordSearch(query: string, topK: number): Promise<Array<{ docId: string; chunkId: string; content: string }>> {
     const results = await this.keywordSearchWithMetadata(query, topK);
     return results.map(r => ({ docId: r.docId, chunkId: r.chunkId, content: r.content }));
+  }
+
+  /**
+   * Rerank chunks by trusted source priority while preserving similarity-based ordering
+   * Deterministic: applies source multiplier/bonus to similarity score
+   * - Trusted high priority: +0.15 boost
+   * - Trusted medium priority: +0.10 boost
+   * - Trusted low priority: +0.05 boost
+   * - Unknown/untrusted: no boost
+   * Tie-breaker: original order for stability
+   */
+  private rerankByTrustedSource(chunks: EvidenceChunk[], query: string): EvidenceChunk[] {
+    const enableTrace = process.env.RAG_TRACE_RERANK === 'true';
+    const beforeOrder = chunks.slice(0, 3).map(c => ({
+      docId: c.docId,
+      sourceType: c.document.sourceType,
+      isTrusted: c.document.isTrustedSource || (c.document.sourceType ? isTrustedSource(c.document.sourceType) : false),
+      similarity: c.similarity || 0
+    }));
+
+    // Calculate reranked scores
+    const reranked = chunks.map((chunk, originalIndex) => {
+      const similarity = chunk.similarity || 0;
+      let rerankScore = similarity;
+      
+      const sourceType = chunk.document.sourceType;
+      const isTrusted = chunk.document.isTrustedSource || (sourceType ? isTrustedSource(sourceType) : false);
+      
+      if (isTrusted && sourceType) {
+        const config = getSourceConfig(sourceType);
+        if (config) {
+          // Apply priority-based boost
+          switch (config.priority) {
+            case 'high':
+              rerankScore = similarity + 0.15;
+              break;
+            case 'medium':
+              rerankScore = similarity + 0.10;
+              break;
+            case 'low':
+              rerankScore = similarity + 0.05;
+              break;
+          }
+        } else {
+          // Trusted but no config (shouldn't happen, but safe fallback)
+          rerankScore = similarity + 0.10;
+        }
+      }
+      // Untrusted/unknown sources get no boost
+
+      return {
+        chunk,
+        rerankScore,
+        originalIndex,
+        originalSimilarity: similarity,
+        sourceType,
+        isTrusted
+      };
+    });
+
+    // Sort by rerank score (descending), then by original index for tie-breaking
+    reranked.sort((a, b) => {
+      if (Math.abs(a.rerankScore - b.rerankScore) > 0.001) {
+        return b.rerankScore - a.rerankScore; // Higher score first
+      }
+      return a.originalIndex - b.originalIndex; // Stable tie-breaker
+    });
+
+    const afterOrder = reranked.slice(0, 3).map(r => ({
+      docId: r.chunk.docId,
+      sourceType: r.sourceType,
+      isTrusted: r.isTrusted,
+      similarity: r.originalSimilarity,
+      rerankScore: r.rerankScore
+    }));
+
+    // Trace logging (behind env flag)
+    if (enableTrace) {
+      this.logger.log(`[RERANK] Query: "${query.substring(0, 50)}..."`);
+      this.logger.log(`[RERANK] Before: ${JSON.stringify(beforeOrder)}`);
+      this.logger.log(`[RERANK] After: ${JSON.stringify(afterOrder)}`);
+      
+      // Calculate deltas
+      const deltas = afterOrder.map((after, idx) => {
+        const before = beforeOrder[idx];
+        if (!before) return { moved: 'new', docId: after.docId };
+        if (before.docId !== after.docId) {
+          return { 
+            moved: 'changed', 
+            from: before.docId, 
+            to: after.docId,
+            beforeTrusted: before.isTrusted,
+            afterTrusted: after.isTrusted
+          };
+        }
+        return { moved: 'same', docId: after.docId };
+      });
+      this.logger.log(`[RERANK] Deltas: ${JSON.stringify(deltas)}`);
+    }
+
+    return reranked.map(r => r.chunk);
   }
 }

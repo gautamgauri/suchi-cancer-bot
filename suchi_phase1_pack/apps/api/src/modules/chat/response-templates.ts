@@ -21,7 +21,8 @@ export class ResponseTemplates {
   static explainModeFrame(
     ragContent: string,
     userText: string,
-    chunks: EvidenceChunk[]
+    chunks: EvidenceChunk[],
+    queryType?: string
   ): string {
     const lowerText = userText.toLowerCase();
     let response = "";
@@ -29,49 +30,49 @@ export class ResponseTemplates {
     // Add disclaimer at the start (required for eval)
     response += "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
 
-    // Optional one-line framing (only if needed for context)
-    if (lowerText.includes("symptom")) {
+    // Optional one-line framing based on query type
+    if (queryType === "symptoms") {
       response += "Here are common symptoms described in the medical literature:\n\n";
-    } else if (lowerText.includes("treatment")) {
+    } else if (queryType === "treatment") {
       response += "Here's information about treatment options:\n\n";
-    } else if (lowerText.includes("test") || lowerText.includes("diagnos")) {
+    } else if (queryType === "screening" || queryType === "diagnosis") {
       response += "Here's information about diagnostic tests:\n\n";
     }
 
     // RAG content (inserted here)
     response += ragContent;
 
-    // Add structured sections based on query type
+    // Add structured sections based on query type (not keyword matching)
     // These sections help meet eval requirements for warning_signs, tests_to_expect, etc.
-    if (lowerText.includes("symptom") || lowerText.includes("sign")) {
+    if (queryType === "symptoms") {
       response += "\n\n**Warning Signs to Watch For:**\n";
       response += "If you experience persistent or worsening symptoms, unusual changes, or any of the symptoms mentioned above, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n";
     }
     
-    if (lowerText.includes("test") || lowerText.includes("diagnos") || lowerText.includes("screen")) {
+    if (queryType === "screening" || queryType === "diagnosis") {
       response += "\n\n**Tests Doctors May Use:**\n";
       response += "Your healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n";
     }
     
-    if (lowerText.includes("symptom") || lowerText.includes("sign") || lowerText.includes("when")) {
+    if (queryType === "symptoms") {
       response += "\n\n**When to Seek Care:**\n";
       response += "If you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n";
     }
     
     // Questions for doctor section (always include for informational queries)
     response += "\n\n**Questions to Ask Your Doctor:**\n";
-    if (lowerText.includes("symptom")) {
+    if (queryType === "symptoms") {
       response += "• What could be causing these symptoms?\n• What tests might be needed?\n• When should I be concerned about these symptoms?";
-    } else if (lowerText.includes("treatment")) {
+    } else if (queryType === "treatment") {
       response += "• What treatment options are available?\n• What are the potential side effects?\n• What should I expect during treatment?";
-    } else if (lowerText.includes("test") || lowerText.includes("diagnos")) {
+    } else if (queryType === "screening" || queryType === "diagnosis") {
       response += "• What do these test results mean?\n• Are additional tests needed?\n• What are the next steps?";
     } else {
       response += "• Can you explain this in more detail?\n• What should I know about this?\n• What are the next steps?";
     }
 
-    // Optional one-line safety nuance (only if relevant)
-    if (lowerText.includes("symptom") && !lowerText.includes("I") && !lowerText.includes("my")) {
+    // Optional one-line safety nuance (only if relevant for symptoms queries)
+    if (queryType === "symptoms" && !lowerText.includes("I") && !lowerText.includes("my")) {
       response += "\n\n**Note:** These symptoms can overlap with other conditions and are not specific to any one diagnosis.";
     }
 

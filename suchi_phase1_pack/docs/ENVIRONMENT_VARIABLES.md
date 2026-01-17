@@ -21,6 +21,7 @@ Create these as secrets in Google Cloud Secret Manager:
 |----------|-------------|---------|-------|
 | `EMBEDDING_API_KEY` | Embedding API key (can use Gemini key) | Uses `GEMINI_API_KEY` | Store as `embedding-api-key` secret |
 | `EMBEDDING_MODEL` | Embedding model name | `text-embedding-004` | Google's embedding model |
+| `LLM_TIMEOUT_MS` | LLM API call timeout | `10000` | Milliseconds (10s default) |
 | `PORT` | Server port | `8080` | Cloud Run uses 8080 by default |
 | `NODE_ENV` | Node environment | `production` | Set to `development` for local |
 | `RATE_LIMIT_TTL_SEC` | Rate limit time window | `60` | Seconds |

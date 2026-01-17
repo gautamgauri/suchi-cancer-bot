@@ -92,6 +92,7 @@ Do NOT ask more clarifying questions if the user has indicated general intent (e
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
   private readonly openai: OpenAI;
+  private readonly timeoutMs: number;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>("OPENAI_API_KEY");
@@ -99,6 +100,8 @@ export class LlmService {
       throw new Error("OPENAI_API_KEY is required");
     }
     this.openai = new OpenAI({ apiKey });
+    // Default timeout: 10s, configurable via LLM_TIMEOUT_MS env var
+    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 10000;
   }
 
   /**
@@ -267,24 +270,76 @@ RESPONSE FORMAT:
 
 User question: ${userMessage}`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: actualSystemPrompt },
-          { role: "user", content: citationInstructions }
-        ],
-        temperature: 0.3,
-        max_tokens: isIdentifyQuestion ? 2500 : 1500 // Identify questions need more tokens for structured response with citations
-      });
+      // Retry logic with exponential backoff (max 2 retries)
+      const maxRetries = 2;
+      let lastError: any;
+      
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+          // Exponential backoff: 1s, 2s
+          const backoffMs = Math.pow(2, attempt - 1) * 1000;
+          this.logger.debug(`Retrying LLM call (attempt ${attempt + 1}/${maxRetries + 1}) after ${backoffMs}ms backoff`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
 
-      const text = completion.choices[0]?.message?.content;
+        // Add timeout using AbortController
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, this.timeoutMs);
 
-      if (!text || text.trim().length === 0) {
-        this.logger.warn("Empty response from OpenAI, using fallback");
-        return this.getFallbackResponse();
+        try {
+          const completion = await this.openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              { role: "system", content: actualSystemPrompt },
+              { role: "user", content: citationInstructions }
+            ],
+            temperature: 0.3,
+            max_tokens: isIdentifyQuestion ? 2500 : 1500 // Identify questions need more tokens for structured response with citations
+          }, {
+            signal: controller.signal as any // OpenAI SDK may not support AbortSignal directly, but we'll handle timeout via catch
+          });
+
+          clearTimeout(timeoutId);
+
+          const text = completion.choices[0]?.message?.content;
+
+          if (!text || text.trim().length === 0) {
+            this.logger.warn("Empty response from OpenAI, using fallback");
+            return this.getFallbackResponse();
+          }
+
+          return text;
+        } catch (error: any) {
+          clearTimeout(timeoutId);
+          lastError = error;
+          
+          // Don't retry on timeout or abort errors
+          if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('aborted')) {
+            this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms, using fallback`);
+            return this.getFallbackResponse();
+          }
+          
+          // Retry on rate limit or network errors (if not last attempt)
+          const isRetryable = error.status === 429 || error.status === 503 || 
+                             error.message?.includes('ECONNRESET') || 
+                             error.message?.includes('ETIMEDOUT') ||
+                             (error.status >= 500 && error.status < 600);
+          
+          if (isRetryable && attempt < maxRetries) {
+            this.logger.warn(`LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${error.message}, will retry`);
+            continue;
+          }
+          
+          // Non-retryable error or last attempt - throw
+          throw error;
+        }
       }
-
-      return text;
+      
+      // Should not reach here, but handle just in case
+      this.logger.error(`LLM generation failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
+      return this.getFallbackResponse();
     } catch (error) {
       this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
       return this.getFallbackResponse();
@@ -298,24 +353,42 @@ User question: ${userMessage}`;
     try {
       const fullPrompt = `${context}\n\nUser question: ${userMessage}\n\nPlease provide a helpful response based on the reference information above. Format your response with clear sections when appropriate.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: fullPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500
-      });
+      // Add timeout using AbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, this.timeoutMs);
 
-      const text = completion.choices[0]?.message?.content;
+      try {
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: fullPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 1500
+        }, {
+          signal: controller.signal as any
+        });
 
-      if (!text || text.trim().length === 0) {
-        this.logger.warn("Empty response from OpenAI, using fallback");
-        return this.getFallbackResponse();
+        clearTimeout(timeoutId);
+
+        const text = completion.choices[0]?.message?.content;
+        if (!text || text.trim().length === 0) {
+          this.logger.warn("Empty response from OpenAI, using fallback");
+          return this.getFallbackResponse();
+        }
+        return text;
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('aborted')) {
+          this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms, using fallback`);
+          return this.getFallbackResponse();
+        }
+        throw error; // Re-throw non-timeout errors
       }
-
-      return text;
     } catch (error) {
       this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
       return this.getFallbackResponse();
