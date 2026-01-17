@@ -54,4 +54,90 @@ export class AdminService {
 
     return { sessions, feedback: { up, down }, safetyEvents: safety };
   }
+
+  async kbStats() {
+    // Count NCI documents
+    const nciDocCount = await this.prisma.kbDocument.count({
+      where: { sourceType: '02_nci_core', status: 'active' }
+    });
+
+    // Count NCI chunks
+    const nciChunkResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count 
+      FROM "KbChunk" c
+      INNER JOIN "KbDocument" d ON c."docId" = d.id
+      WHERE d."sourceType" = '02_nci_core' 
+        AND d.status = 'active'
+    `;
+    const nciChunkCount = Number(nciChunkResult[0].count);
+
+    // Count NCI chunks with embeddings
+    const nciEmbeddedResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count 
+      FROM "KbChunk" c
+      INNER JOIN "KbDocument" d ON c."docId" = d.id
+      WHERE d."sourceType" = '02_nci_core' 
+        AND d.status = 'active'
+        AND c.embedding IS NOT NULL
+    `;
+    const nciEmbeddedCount = Number(nciEmbeddedResult[0].count);
+
+    // Breakdown by source type (documents)
+    const sourceTypeBreakdown = await this.prisma.$queryRaw<Array<{ sourceType: string | null; count: bigint }>>`
+      SELECT d."sourceType", COUNT(*) as count
+      FROM "KbDocument" d
+      WHERE d.status = 'active'
+      GROUP BY d."sourceType"
+      ORDER BY count DESC
+    `;
+
+    // Breakdown by source type (chunks)
+    const chunkBreakdown = await this.prisma.$queryRaw<Array<{ sourceType: string | null; count: bigint; embedded: bigint }>>`
+      SELECT 
+        d."sourceType",
+        COUNT(*) as count,
+        COUNT(c.embedding) as embedded
+      FROM "KbChunk" c
+      INNER JOIN "KbDocument" d ON c."docId" = d.id
+      WHERE d.status = 'active'
+      GROUP BY d."sourceType"
+      ORDER BY count DESC
+    `;
+
+    // Total counts
+    const totalDocs = await this.prisma.kbDocument.count({ where: { status: 'active' } });
+    const totalChunks = await this.prisma.kbChunk.count();
+    const totalEmbedded = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count FROM "KbChunk" WHERE embedding IS NOT NULL
+    `;
+    const totalEmbeddedCount = Number(totalEmbedded[0].count);
+
+    return {
+      nci: {
+        documents: nciDocCount,
+        chunks: nciChunkCount,
+        chunksWithEmbeddings: nciEmbeddedCount,
+        embeddingPercentage: nciChunkCount > 0 ? ((nciEmbeddedCount / nciChunkCount) * 100).toFixed(1) : '0.0'
+      },
+      bySourceType: {
+        documents: sourceTypeBreakdown.map(r => ({
+          sourceType: r.sourceType || 'unknown',
+          count: Number(r.count)
+        })),
+        chunks: chunkBreakdown.map(r => ({
+          sourceType: r.sourceType || 'unknown',
+          count: Number(r.count),
+          embedded: Number(r.embedded),
+          embeddingPercentage: Number(r.count) > 0 ? ((Number(r.embedded) / Number(r.count)) * 100).toFixed(1) : '0.0'
+        }))
+      },
+      totals: {
+        documents: totalDocs,
+        chunks: totalChunks,
+        chunksWithEmbeddings: totalEmbeddedCount,
+        embeddingPercentage: totalChunks > 0 ? ((totalEmbeddedCount / totalChunks) * 100).toFixed(1) : '0.0',
+        nciPercentage: totalChunks > 0 ? ((nciChunkCount / totalChunks) * 100).toFixed(1) : '0.0'
+      }
+    };
+  }
 }

@@ -10,4 +10,5 @@ export class AdminController {
     return this.admin.listConversations({ from, to, filter });
   }
   @Get("metrics") async metrics(@Query("from") from?: string, @Query("to") to?: string) { return this.admin.metrics({ from, to }); }
+  @Get("kb-stats") async kbStats() { return this.admin.kbStats(); }
 }
