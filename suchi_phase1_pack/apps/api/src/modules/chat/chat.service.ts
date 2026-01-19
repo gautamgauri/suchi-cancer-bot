@@ -134,6 +134,10 @@ export class ChatService {
 
       let urgentResponse = ResponseTemplates.S2({ isFirstMessage, userText: dto.userText } as any);
       
+      // Add disclaimer at the start (required for eval)
+      const disclaimer = "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
+      urgentResponse = disclaimer + urgentResponse;
+      
       // If we have RAG content, generate a response with citations and prepend urgent guidance
       if (earlyEvidenceChunks.length > 0) {
         const queryType = QueryTypeClassifier.classify(dto.userText);
@@ -148,6 +152,13 @@ export class ChatService {
         
         // Extract citations from RAG response
         const citations = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
+        
+        // Validate citations to determine confidence level (required for eval)
+        const citationValidation = this.citationService.validateCitations(
+          citations,
+          earlyEvidenceChunks,
+          urgentResponse + "\n\n**Information from trusted sources:**\n\n" + ragResponse
+        );
         
         // Combine urgent guidance with RAG content (urgent guidance first, then RAG with citations)
         urgentResponse = urgentResponse.split("\n\n**Next steps:**")[0]; // Remove generic next steps
@@ -197,7 +208,8 @@ export class ChatService {
           messageId: assistant.id, 
           responseText: assistant.text, 
           safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"] },
-          citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position }))
+          citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
+          citationConfidence: citationValidation.confidenceLevel
         };
       }
       

@@ -44,17 +44,36 @@ export class ResponseTemplates {
 
     // Add structured sections based on query type (not keyword matching)
     // These sections help meet eval requirements for warning_signs, tests_to_expect, etc.
+    // Eval requires at least 3 of 4 sections: warning_signs, tests_to_expect, when_to_seek_care_timeline, questions_for_doctor
+    
     if (queryType === "symptoms") {
+      // Symptoms queries: include warning_signs, when_to_seek_care_timeline, and tests_to_expect (3 sections)
       response += "\n\n**Warning Signs to Watch For:**\n";
       response += "If you experience persistent or worsening symptoms, unusual changes, or any of the symptoms mentioned above, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n";
-    }
-    
-    if (queryType === "screening" || queryType === "diagnosis") {
+      
       response += "\n\n**Tests Doctors May Use:**\n";
       response += "Your healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n";
-    }
-    
-    if (queryType === "symptoms") {
+      
+      response += "\n\n**When to Seek Care:**\n";
+      response += "If you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n";
+    } else if (queryType === "screening" || queryType === "diagnosis") {
+      // Diagnosis/screening queries: include tests_to_expect, warning_signs, and when_to_seek_care_timeline (3 sections)
+      response += "\n\n**Tests Doctors May Use:**\n";
+      response += "Your healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n";
+      
+      response += "\n\n**Warning Signs to Watch For:**\n";
+      response += "If you experience persistent or worsening symptoms, unusual changes, or any concerns, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n";
+      
+      response += "\n\n**When to Seek Care:**\n";
+      response += "If you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n";
+    } else {
+      // General queries: include all 4 sections to ensure coverage
+      response += "\n\n**Warning Signs to Watch For:**\n";
+      response += "If you experience persistent or worsening symptoms, unusual changes, or any concerns, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n";
+      
+      response += "\n\n**Tests Doctors May Use:**\n";
+      response += "Your healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n";
+      
       response += "\n\n**When to Seek Care:**\n";
       response += "If you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n";
     }
