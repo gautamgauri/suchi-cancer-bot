@@ -293,23 +293,38 @@ RESPONSE FORMAT - YOU MUST INCLUDE THESE SECTIONS:
 1. Main Answer: 4-8 bullet points directly answering the question, all cited
 2. **Warning Signs to Watch For:** (if query mentions symptoms or is about symptoms)
    - List 5+ SPECIFIC warning signs from references, each cited
+   - Extract ALL warning signs mentioned in references - don't stop at 2-3
    - Example: "- A lump in the breast [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
+   - Include systemic symptoms (weight loss, fatigue, etc.) if mentioned in references
    - DO NOT use generic text - use specific signs from references
+
 3. **Tests Doctors May Use:** (if query is about diagnosis/screening/symptoms)
-   - List SPECIFIC diagnostic tests from references, each cited
-   - Example: "- Mammography (breast X-ray) [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
-   - DO NOT use generic text like "various diagnostic tests"
+   - Extract ALL diagnostic tests mentioned in references - aim for 4+ tests
+   - Include: imaging tests (CT, MRI, X-ray, mammogram, ultrasound, PET scan, etc.), biopsy types, lab tests, physical exams
+   - Each test must be cited: "- Mammography (breast X-ray) [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
+   - If references mention multiple tests, list them all - don't stop at 2
+   - DO NOT use generic text like "various diagnostic tests" - list actual test names
+
 4. **When to Seek Care:** (always include)
-   - Include SPECIFIC timeframe from references (e.g., "within 2-4 weeks")
-   - If no specific timeframe in references, state: "I don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician."
-   - Cite timeline: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:docId:chunkId]"
+   - FIRST: Check if references mention specific timeframes (e.g., "2-4 weeks", "within 1-2 weeks")
+   - If references mention timelines, use them EXACTLY: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:docId:chunkId]"
+   - If NO specific timeframe in references, provide reasonable guidance: "If symptoms persist for 2-4 weeks or worsen, seek medical evaluation. For urgent symptoms (severe pain, difficulty breathing, heavy bleeding), seek care immediately."
+   - DO NOT say "I don't have enough information" - provide actionable guidance based on standard medical practice
+   - Always cite if timeline is from references, or note it's general guidance
+
 5. **Questions to Ask Your Doctor:** (always include)
    - Generate 5-7 SPECIFIC, practical questions based on references
-   - Questions should be cancer-type-specific
+   - Questions should be cancer-type-specific and reference-specific
+   - Include questions about: specific tests mentioned, biopsy types, staging, follow-up, symptoms to monitor
    - Example: "What imaging tests are recommended for [cancer type]?" (if references discuss imaging)
    - DO NOT use generic questions like "Can you explain this in more detail?"
 
-CRITICAL: All sections must contain SPECIFIC content from the references, not generic placeholders. If you cannot find specific content in references for a section, state that clearly rather than using generic text.
+CRITICAL REQUIREMENTS:
+- Extract ALL available information from references - don't stop early
+- For tests: List ALL diagnostic methods mentioned, not just 2-3
+- For timeline: Provide actionable guidance even if references don't specify exact timeframe
+- All sections must contain SPECIFIC content from references with citations
+- If a section truly has no relevant content in references, state that clearly rather than using generic text
 
 User question: ${userMessage}`;
 

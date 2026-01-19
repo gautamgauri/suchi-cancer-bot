@@ -6,7 +6,7 @@ import { ChatService } from "./chat.service";
 @Controller("chat")
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
-  private readonly REQUEST_TIMEOUT_MS = 45000; // 45 seconds overall timeout (increased for structured LLM responses)
+  private readonly REQUEST_TIMEOUT_MS = 60000; // 60 seconds overall timeout (increased for complex structured LLM responses)
 
   constructor(private readonly chat: ChatService) {}
 
