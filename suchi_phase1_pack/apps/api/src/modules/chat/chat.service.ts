@@ -750,8 +750,12 @@ export class ChatService {
       responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
 
       // Validate response for ungrounded medical entities
+      // For informational/general queries, don't abstain on ungrounded entities - allow response with warning
       const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
-      if (validationResult.shouldAbstain) {
+      const isInformationalQuery = hasGenerallyAsking || intentResult.intent === "INFORMATIONAL_GENERAL";
+      
+      if (validationResult.shouldAbstain && !isInformationalQuery) {
+        // Only abstain for non-informational queries (personal symptoms, etc.)
         this.logger.warn(
           `Response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
         );
@@ -786,6 +790,12 @@ export class ChatService {
           safety: { classification: "normal" as const, actions: [] },
           abstentionReason: "ungrounded_entities"
         };
+      } else if (validationResult.shouldAbstain && isInformationalQuery) {
+        // For informational queries, log warning but allow response through
+        this.logger.warn(
+          `Informational query response contains ungrounded entities (allowing through): ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
+        );
+        // Continue with the response - don't abstain
       }
 
       // Validate identify question responses
