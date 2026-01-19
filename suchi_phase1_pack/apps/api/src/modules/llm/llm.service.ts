@@ -100,8 +100,9 @@ export class LlmService {
       throw new Error("OPENAI_API_KEY is required");
     }
     this.openai = new OpenAI({ apiKey });
-    // Default timeout: 10s, configurable via LLM_TIMEOUT_MS env var
-    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 10000;
+    // Default timeout: 15s, configurable via LLM_TIMEOUT_MS env var
+    // Increased from 10s to handle complex queries better
+    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 15000;
   }
 
   /**
