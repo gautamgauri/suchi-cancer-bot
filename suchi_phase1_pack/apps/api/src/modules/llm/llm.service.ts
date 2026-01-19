@@ -162,11 +162,38 @@ EVIDENCE-ONLY POLICY (CRITICAL - YOU MUST FOLLOW THIS):
   * Limitation statements ("I can't confirm from the provided sources", "I don't have enough information in my NCI sources")
 
 REQUIREMENTS:
-- Answer the question directly with 4-8 bullet points
+- Answer the question directly with 4-8 bullet points based on the references
 - Do NOT assume the user is personally symptomatic unless they explicitly state it
 - Do NOT default to "prepare for your visit" language
 - Cite every medical claim using [citation:docId:chunkId]
 - Every bullet point in structured sections MUST have a citation or be omitted
+
+STRUCTURED SECTIONS REQUIREMENT:
+After your main answer, you MUST include these sections with SPECIFIC content from the references (not generic placeholders):
+
+1) **Warning Signs to Watch For:** (if query is about symptoms)
+   - List 5+ SPECIFIC warning signs mentioned in the references
+   - Each sign must be cited: "- [specific sign] [citation:docId:chunkId]"
+   - Example: "- A lump in the breast [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
+   - DO NOT use generic text like "persistent symptoms" - use specific signs from references
+
+2) **Tests Doctors May Use:** (if query is about diagnosis/screening/symptoms)
+   - List SPECIFIC diagnostic tests mentioned in the references
+   - Each test must be cited: "- [specific test name] [citation:docId:chunkId]"
+   - Example: "- Mammography (breast X-ray) [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
+   - DO NOT use generic text like "various diagnostic tests" - list actual tests from references
+
+3) **When to Seek Care:** (always include for symptom/diagnosis queries)
+   - Include SPECIFIC timeframe from references (e.g., "within 2-4 weeks", "within 1-2 weeks")
+   - If references mention specific timelines, use them exactly
+   - If no specific timeframe in references, state: "I don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician for guidance."
+   - Cite timeline information: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:docId:chunkId]"
+
+4) **Questions to Ask Your Doctor:** (always include)
+   - Generate 5-7 SPECIFIC, practical questions based on the references
+   - Questions should be cancer-type-specific and reference-specific
+   - Example: "What imaging tests are recommended for [cancer type]?" (if references discuss imaging)
+   - DO NOT use generic questions like "Can you explain this in more detail?"
 ${conversationContext?.hasGenerallyAsking 
   ? "- Do NOT ask clarifying questions - user has indicated general/educational intent"
   : "- End with ONE optional follow-up: \"Are you asking generally or about your symptoms?\""}
@@ -242,7 +269,7 @@ REQUIREMENTS:
    Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
       }).join("\n\n");
 
-      // Enhanced prompt with citation requirements - make it extremely explicit
+      // Enhanced prompt with citation requirements and structured sections - make it extremely explicit
       const citationInstructions = `
 CRITICAL CITATION REQUIREMENTS - YOU MUST FOLLOW THESE EXACTLY:
 1. You MUST cite EVERY medical claim, fact, symptom, diagnostic method, or piece of information using the format: [citation:docId:chunkId]
@@ -262,12 +289,27 @@ GROUNDING PER BULLET REQUIREMENT:
 REFERENCE LIST (use the exact docId and chunkId shown for each reference):
 ${referenceList}
 
-RESPONSE FORMAT:
-- Provide a clear, helpful answer based ONLY on the references above
-- Cite EVERY medical fact, symptom, diagnostic method, or claim using [citation:docId:chunkId] format
-- Include at least 2-3 citations in your response
-- Format with clear sections when appropriate
-- If you cannot answer based on the references, say: "I don't have enough information in my NCI sources to answer this safely. Please consult a clinician."
+RESPONSE FORMAT - YOU MUST INCLUDE THESE SECTIONS:
+1. Main Answer: 4-8 bullet points directly answering the question, all cited
+2. **Warning Signs to Watch For:** (if query mentions symptoms or is about symptoms)
+   - List 5+ SPECIFIC warning signs from references, each cited
+   - Example: "- A lump in the breast [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
+   - DO NOT use generic text - use specific signs from references
+3. **Tests Doctors May Use:** (if query is about diagnosis/screening/symptoms)
+   - List SPECIFIC diagnostic tests from references, each cited
+   - Example: "- Mammography (breast X-ray) [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
+   - DO NOT use generic text like "various diagnostic tests"
+4. **When to Seek Care:** (always include)
+   - Include SPECIFIC timeframe from references (e.g., "within 2-4 weeks")
+   - If no specific timeframe in references, state: "I don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician."
+   - Cite timeline: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:docId:chunkId]"
+5. **Questions to Ask Your Doctor:** (always include)
+   - Generate 5-7 SPECIFIC, practical questions based on references
+   - Questions should be cancer-type-specific
+   - Example: "What imaging tests are recommended for [cancer type]?" (if references discuss imaging)
+   - DO NOT use generic questions like "Can you explain this in more detail?"
+
+CRITICAL: All sections must contain SPECIFIC content from the references, not generic placeholders. If you cannot find specific content in references for a section, state that clearly rather than using generic text.
 
 User question: ${userMessage}`;
 
