@@ -22,7 +22,10 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
   let secrets: Record<string, string | null> = {};
   const useSecretManager = await isSecretManagerAvailable();
   
-  if (useSecretManager) {
+  // Check if environment variables are already set - if so, skip Secret Manager to avoid unnecessary warnings
+  const hasEnvVars = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY;
+  
+  if (useSecretManager && !hasEnvVars) {
     try {
       const secretNames = [
         "deepseek-api-key",
@@ -32,16 +35,25 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
         "openai-model",
       ];
       secrets = await getSecrets(secretNames);
-      console.log("Loaded secrets from Google Cloud Secret Manager");
+      console.log("✓ Loaded secrets from Google Cloud Secret Manager");
     } catch (error: any) {
-      console.warn(`Failed to load secrets from Secret Manager: ${error.message}`);
-      console.warn("Falling back to environment variables");
+      // Only warn if authentication failed AND no env vars are set
+      // If env vars are set, Secret Manager failure is expected and not a problem
+      if (!hasEnvVars) {
+        console.warn(`⚠ Secret Manager unavailable (${error.message?.substring(0, 50) || 'authentication required'})`);
+        console.warn("  Using environment variables instead (set DEEPSEEK_API_KEY or use gcloud secrets access)");
+      }
+      // Silently fall back to environment variables if they're already set
     }
+  } else if (hasEnvVars) {
+    // Environment variables are set, no need to try Secret Manager
+    // This is the normal case when running locally with gcloud secrets access
   }
 
   // Override with environment variables (or secrets from Secret Manager)
   const envConfig: Partial<EvaluationConfig> = {
     apiBaseUrl: process.env.EVAL_API_BASE_URL || config.apiBaseUrl || "http://localhost:3001",
+    authBearer: process.env.EVAL_AUTH_BEARER || config.authBearer, // Optional bearer token for API auth
     llmProvider: (process.env.EVAL_LLM_PROVIDER || secrets["eval-llm-provider"] || config.llmProvider || "openai") as "vertex_ai" | "openai" | "deepseek",
     timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || String(config.timeoutMs || 60000), 10),
     retries: parseInt(process.env.EVAL_RETRIES || String(config.retries || 2), 10),
