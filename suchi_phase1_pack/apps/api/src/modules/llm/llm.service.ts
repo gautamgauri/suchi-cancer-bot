@@ -76,13 +76,24 @@ Generate practical questions based on information in the references for ${cancer
 - What symptoms should trigger earlier return? (if references discuss symptom monitoring)
 Plus 2 additional practical questions based on reference content for ${cancerType ? cancerType + ' cancer' : 'this cancer type'} (referral, timeline, costs, where to go, etc.)
 
-CITATION REQUIREMENTS (CRITICAL):
-- You MUST include at least 2 citations using [citation:docId:chunkId] format throughout your response
-- Every medical claim, warning sign, diagnostic method, and timeline MUST be cited
-- Use the exact docId and chunkId from the REFERENCE LIST provided below
-- Example format: "Swollen lymph nodes are a common sign [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]"
-- DO NOT use placeholder citations or make up docId/chunkId values
-- If you cannot find information in the references, say so clearly rather than making it up
+CITATION REQUIREMENTS (BLOCKING - READ CAREFULLY):
+Without proper citations, your response will be REJECTED and the user will receive a fallback message.
+
+YOU MUST:
+1. Include [citation:docId:chunkId] for EVERY factual medical statement
+2. Use the EXACT docId and chunkId from the REFERENCE LIST below
+3. Copy the format EXACTLY as shown in this example:
+
+EXAMPLE (copy this format exactly):
+"Lung cancer is diagnosed through imaging tests [citation:kb_en_nci_types_lung_hp_non_small_cell_lung_treatment_pdq_v1:0cac033f-1d34-48ae-8ef1-d15a6682a2d2] and confirmed with biopsy [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:a8b17b8f-2a5c-495f-b176-5e467affe9e4]."
+
+DO NOT use:
+- Numbered references like [1], [2]
+- Parenthetical citations like (NCI, 2024)
+- Phrases like "according to sources"
+
+Your response MUST include at least 2 citations in [citation:docId:chunkId] format or it will be rejected.
+If you cannot find information in the references, say so clearly rather than making it up.
 
 Do NOT ask more clarifying questions if the user has indicated general intent (e.g., "generally asking").
 `;
