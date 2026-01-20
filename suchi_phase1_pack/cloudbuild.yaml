@@ -31,8 +31,8 @@ steps:
       - '--build-arg'
       - 'VITE_API_URL=${_API_URL}'
       - '-f'
-      - 'suchi_phase1_pack/apps/web/Dockerfile'
-      - 'suchi_phase1_pack/apps/web'
+      - 'apps/web/Dockerfile'
+      - 'apps/web'
 
   # Push API image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
