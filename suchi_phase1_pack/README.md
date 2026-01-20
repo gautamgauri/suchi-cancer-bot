@@ -166,6 +166,50 @@ cd scripts/nci-ingestion
 bash update_nci.sh
 ```
 
+## Sanity Check
+
+A sanity check script verifies that all components are working correctly. It runs automatically when you open the workspace in Cursor, and can also be run manually.
+
+### Automatic Check
+
+The sanity check runs automatically when you open the workspace (configured in `.cursor/tasks.json`). It will:
+- ✅ Check frontend build
+- ✅ Check backend health endpoint
+- ✅ Test RAG retrieval with a sample query
+- ✅ Test AI model response generation
+
+### Manual Check
+
+Run the sanity check manually:
+
+```bash
+# Full check (includes build and functional tests)
+npm run sanity-check
+
+# Quick check (skips build and functional tests, faster)
+npm run sanity-check:quick
+```
+
+### What It Checks
+
+1. **Frontend**: Verifies the web app can build successfully
+2. **Backend**: Checks health endpoint and database connectivity
+3. **RAG**: Tests retrieval with a sample query, verifies trusted sources in top-3
+4. **AI Model**: Tests LLM response generation, verifies citations are present
+
+### Requirements
+
+- Root dependencies installed: `npm install` (from repo root)
+- Backend running (for RAG and AI model checks): Start with `cd apps/api && npm run dev`
+- Environment variables configured (API keys, database URL, etc.)
+
+### Output
+
+The script provides clear pass/fail indicators:
+- ✅ Success: Component is working
+- ❌ Failure: Component has issues (see details)
+- ⏭️ Skipped: Component check was skipped (e.g., backend not running)
+
 ## Development Notes
 
 - Backend runs on port 3001 by default

@@ -37,14 +37,22 @@ export class RagService {
         this.logger.debug(`Query expanded from "${rewrittenQuery}" to ${expandedTerms.length} terms`);
       }
 
-      // Step 3: Try vector search with rewritten query
+      // Step 3: PRIMARY PATH - Hybrid search (vector + FTS)
+      const hybridResults = await this.hybridSearchWithMetadata(rewrittenQuery, topK, cancerType);
+      if (hybridResults.length > 0) {
+        this.logger.debug(`Hybrid search returned ${hybridResults.length} results`);
+        return hybridResults;
+      }
+
+      // Fallback: Vector only (if FTS fails or not available)
+      this.logger.warn("Hybrid search failed, trying vector only");
       const vectorResults = await this.vectorSearchWithMetadata(rewrittenQuery, topK);
       if (vectorResults.length > 0) {
         return vectorResults;
       }
       
-      // Fallback to keyword search
-      this.logger.warn("No vector embeddings found, falling back to keyword search");
+      // Final fallback: Keyword search
+      this.logger.warn("Vector search failed, falling back to keyword search");
       return this.keywordSearchWithMetadata(expandedTerms.join(" "), topK);
     } catch (error) {
       this.logger.error(`Error in RAG retrieval: ${error.message}`, error.stack);
@@ -308,6 +316,164 @@ export class RagService {
   private async vectorSearch(query: string, topK: number): Promise<Array<{ docId: string; chunkId: string; content: string }>> {
     const results = await this.vectorSearchWithMetadata(query, topK);
     return results.map(r => ({ docId: r.docId, chunkId: r.chunkId, content: r.content }));
+  }
+
+  /**
+   * Full-text search using Postgres tsvector
+   * Returns chunks with lexical ranking scores normalized 0-1
+   */
+  private async fullTextSearchWithMetadata(
+    query: string, 
+    topK: number
+  ): Promise<EvidenceChunk[]> {
+    try {
+      // Use websearch_to_tsquery for better query parsing (handles phrases, AND/OR, etc.)
+      const results = await this.prisma.$queryRaw<Array<{
+        id: string;
+        docId: string;
+        content: string;
+        lexRank: number;
+        title: string;
+        url: string | null;
+        sourceType: string | null;
+        source: string | null;
+        citation: string | null;
+        lastReviewed: Date | null;
+        isTrustedSource: boolean;
+      }>>`
+        SELECT 
+          c.id,
+          c."docId",
+          c.content,
+          ts_rank_cd(c.content_tsv, query) AS "lexRank",
+          d.title,
+          d.url,
+          d."sourceType",
+          d.source,
+          d.citation,
+          d."lastReviewed",
+          d."isTrustedSource"
+        FROM "KbChunk" c
+        INNER JOIN "KbDocument" d ON c."docId" = d.id,
+        websearch_to_tsquery('english', ${query}) query
+        WHERE d.status = 'active'
+          AND c.content_tsv @@ query
+        ORDER BY ts_rank_cd(c.content_tsv, query) DESC
+        LIMIT ${topK * 2}
+      `;
+
+      if (results.length === 0) {
+        return [];
+      }
+
+      // Calculate max lexRank for normalization (guard against zero)
+      const maxLexRank = Math.max(...results.map(r => r.lexRank), 0.0001);
+
+      return results.map(r => ({
+        chunkId: r.id,
+        docId: r.docId,
+        content: r.content,
+        similarity: r.lexRank / maxLexRank, // Normalized lexical similarity (0-1)
+        document: {
+          title: r.title,
+          url: r.url || undefined,
+          sourceType: r.sourceType,
+          source: r.source,
+          citation: r.citation,
+          lastReviewed: r.lastReviewed || undefined,
+          isTrustedSource: r.isTrustedSource
+        }
+      }));
+    } catch (error) {
+      this.logger.error(`Full-text search error: ${error.message}`, error.stack);
+      return [];
+    }
+  }
+
+  /**
+   * Hybrid search combining vector similarity and full-text search
+   * Scoring: 60% vector + 40% lexical, then trust-aware reranking
+   */
+  private async hybridSearchWithMetadata(
+    query: string,
+    topK: number,
+    cancerType?: string | null
+  ): Promise<EvidenceChunk[]> {
+    // Parallel retrieval: vector + FTS
+    const [vectorChunks, ftsChunks] = await Promise.all([
+      this.vectorSearchWithMetadata(query, topK * 2).catch(err => {
+        this.logger.warn(`Vector search failed: ${err.message}`);
+        return [];
+      }),
+      this.fullTextSearchWithMetadata(query, topK * 2).catch(err => {
+        this.logger.warn(`FTS failed: ${err.message}`);
+        return [];
+      })
+    ]);
+
+    if (vectorChunks.length === 0 && ftsChunks.length === 0) {
+      this.logger.warn("Both vector and FTS returned no results");
+      return [];
+    }
+
+    // Merge and score
+    const chunkMap = new Map<string, {
+      chunk: EvidenceChunk;
+      vecSim: number;
+      lexSim: number;
+    }>();
+
+    // Process vector results
+    for (const chunk of vectorChunks) {
+      const vecSim = chunk.similarity || 0;
+      chunkMap.set(chunk.chunkId, {
+        chunk,
+        vecSim,
+        lexSim: 0 // Will be filled if FTS also found this chunk
+      });
+    }
+
+    // Process FTS results
+    for (const chunk of ftsChunks) {
+      const lexSim = chunk.similarity || 0; // Already normalized
+      const existing = chunkMap.get(chunk.chunkId);
+      if (existing) {
+        existing.lexSim = lexSim;
+      } else {
+        chunkMap.set(chunk.chunkId, {
+          chunk,
+          vecSim: 0,
+          lexSim
+        });
+      }
+    }
+
+    // Calculate hybrid scores: 0.6 * vecSim + 0.4 * lexSim
+    const scored = Array.from(chunkMap.values()).map(item => ({
+      chunk: item.chunk,
+      finalScore: 0.6 * item.vecSim + 0.4 * item.lexSim,
+      vecSim: item.vecSim,
+      lexSim: item.lexSim
+    }));
+
+    // Sort by finalScore descending
+    scored.sort((a, b) => b.finalScore - a.finalScore);
+
+    // Update similarity field with hybrid score
+    const hybridChunks = scored.map(s => ({
+      ...s.chunk,
+      similarity: s.finalScore
+    }));
+
+    // Apply existing trust-aware reranking
+    const reranked = this.rerankByTrustedSource(hybridChunks, query);
+
+    this.logger.debug(
+      `Hybrid search: ${vectorChunks.length} vector + ${ftsChunks.length} FTS = ${chunkMap.size} unique chunks, returning top ${topK}`
+    );
+
+    // Return top-K
+    return reranked.slice(0, topK);
   }
 
   private async keywordSearchWithMetadata(query: string, topK: number): Promise<EvidenceChunk[]> {

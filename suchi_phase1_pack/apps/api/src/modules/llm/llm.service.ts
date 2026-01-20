@@ -247,7 +247,7 @@ REQUIREMENTS:
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string }
   ): Promise<string> {
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
@@ -288,6 +288,8 @@ GROUNDING PER BULLET REQUIREMENT:
 
 REFERENCE LIST (use the exact docId and chunkId shown for each reference):
 ${referenceList}
+
+${conversationContext?.checklist || ""}
 
 RESPONSE FORMAT - YOU MUST INCLUDE THESE SECTIONS:
 1. Main Answer: 4-8 bullet points directly answering the question, all cited

@@ -40,6 +40,8 @@ export class CitationService {
 
   /**
    * Extract citations from LLM response text
+   * Enforces strict 1:1 mapping: only citations that reference actual retrieved chunks are included
+   * Orphan citations (not in retrieved chunks) are filtered out
    */
   extractCitations(response: string, retrievedChunks: EvidenceChunk[]): Citation[] {
     const citations: Citation[] = [];
@@ -51,13 +53,14 @@ export class CitationService {
     }
 
     let match;
+    const orphanCitations: string[] = [];
     while ((match = CITATION_PATTERN.exec(response)) !== null) {
       const fullMatch = match[0];
       const docId = match[1];
       const chunkId = match[2];
       const position = match.index;
 
-      // Validate that this citation references an actual retrieved chunk
+      // Strict validation: citation MUST reference an actual retrieved chunk
       const key = `${docId}:${chunkId}`;
       if (chunkMap.has(key)) {
         citations.push({
@@ -67,10 +70,16 @@ export class CitationService {
           citationText: fullMatch
         });
       } else {
-        // Log available chunks for debugging
+        // Orphan citation - not in retrieved chunks, filter it out
+        orphanCitations.push(fullMatch);
         const availableKeys = Array.from(chunkMap.keys()).slice(0, 5);
-        this.logger.warn(`Invalid citation: ${fullMatch} - chunk not found. Looking for key: "${key}". Available chunks (first 5): ${availableKeys.join(", ")}`);
+        this.logger.warn(`[CITATION_INTEGRITY] Orphan citation filtered: ${fullMatch} - chunk not in retrieved set. Looking for key: "${key}". Available chunks (first 5): ${availableKeys.join(", ")}`);
       }
+    }
+
+    // Log citation integrity summary
+    if (orphanCitations.length > 0) {
+      this.logger.warn(`[CITATION_INTEGRITY] Filtered ${orphanCitations.length} orphan citation(s). Only ${citations.length} valid citations remain.`);
     }
 
     return citations.sort((a, b) => a.position - b.position);

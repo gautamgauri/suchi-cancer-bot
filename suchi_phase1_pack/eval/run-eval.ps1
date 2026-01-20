@@ -37,7 +37,16 @@ Write-Host ""
 Write-Host "Running evaluation..." -ForegroundColor Green
 Write-Host ""
 if ($args.Count -gt 0) {
+    # Check if --cases is provided but --batch-size is not
+    $argsString = $args -join " "
+    if ($argsString -match "--cases" -and $argsString -notmatch "--batch-size") {
+        # Add --batch-size 5 if not already specified
+        $args = $args + "--batch-size", "5"
+        Write-Host "Using default batch size of 5 cases" -ForegroundColor Cyan
+    }
+    # Pass all arguments to npm run eval
     & npm run eval run -- $args
 } else {
-    & npm run eval run
+    # Default: run sample test (3 cases) instead of all 100
+    & npm run eval run -- --cases cases/tier1/retrieval_quality_sample.yaml --output reports/eval-sample.json --summary
 }

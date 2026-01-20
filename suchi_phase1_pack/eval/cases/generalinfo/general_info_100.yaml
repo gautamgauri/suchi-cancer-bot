@@ -1,0 +1,953 @@
+# General Info Patient Pack - 100 Cases
+# 10 cancer types × 10 general information intents
+# Each case tests educational/informational responses without personal medical advice
+
+_templates:
+  symptoms_common: &SYMPTOMS_COMMON
+    max_clarifying_questions: 2
+    required_sections:
+      - common_symptoms
+      - when_to_seek_care_timeline
+      - questions_for_doctor
+      - disclaimer
+    symptoms_min: 5
+    disclaimer_required: true
+    must_not: ["definitive diagnosis", "personalized advice"]
+
+  symptoms_early_vs_late: &SYMPTOMS_EARLY_VS_LATE
+    max_clarifying_questions: 2
+    required_sections:
+      - early_warning_signs
+      - later_signs
+      - when_to_seek_care_timeline
+      - questions_for_doctor
+      - disclaimer
+    early_signs_min: 3
+    later_signs_min: 3
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+
+  diagnosis_tests: &DIAGNOSIS_TESTS
+    max_clarifying_questions: 2
+    required_sections:
+      - diagnosis_tests
+      - tests_to_expect
+      - questions_for_doctor
+      - disclaimer
+    tests_min: 3
+    disclaimer_required: true
+    must_not: ["definitive diagnosis", "test recommendations"]
+
+  treatment_options: &TREATMENT_OPTIONS
+    max_clarifying_questions: 2
+    required_sections:
+      - treatment_options
+      - questions_for_doctor
+      - disclaimer
+    treatment_modalities_min: 4
+    disclaimer_required: true
+    must_not: ["definitive diagnosis", "treatment recommendations"]
+
+  side_effects: &SIDE_EFFECTS
+    max_clarifying_questions: 2
+    required_sections:
+      - side_effects_common
+      - side_effects_serious
+      - when_to_contact_clinician
+      - questions_for_doctor
+      - disclaimer
+    common_side_effects_min: 3
+    serious_side_effects_min: 2
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+
+  red_flags_urgent: &RED_FLAGS_URGENT
+    max_clarifying_questions: 1
+    required_sections:
+      - red_flags
+      - emergency_guidance
+      - what_to_do_now
+      - disclaimer
+    red_flags_min: 3
+    emergency_required: true
+    must_include_any_phrases: ["ER", "emergency", "call an ambulance", "call emergency services"]
+    disclaimer_required: true
+    must_not: ["definitive diagnosis", "over-questioning"]
+
+  doctor_questions: &DOCTOR_QUESTIONS
+    max_clarifying_questions: 2
+    required_sections:
+      - questions_for_doctor
+      - disclaimer
+    doctor_questions_min: 5
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+
+  staging_basics: &STAGING_BASICS
+    max_clarifying_questions: 2
+    required_sections:
+      - staging_basics
+      - questions_for_doctor
+      - disclaimer
+    disclaimer_required: true
+    must_not: ["definitive diagnosis", "staging guesses"]
+
+  prognosis_factors: &PROGNOSIS_FACTORS
+    max_clarifying_questions: 2
+    required_sections:
+      - prognosis_factors
+      - questions_for_doctor
+      - disclaimer
+    disclaimer_required: true
+    must_not: ["definitive diagnosis", "specific survival numbers", "prognosis promises"]
+
+  visit_preparation: &VISIT_PREPARATION
+    max_clarifying_questions: 2
+    required_sections:
+      - visit_preparation
+      - questions_for_doctor
+      - disclaimer
+    preparation_checklist_min: 5
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+
+cases:
+  # BREAST CANCER (10 cases)
+  - id: GI-BREAST-01
+    tier: 2
+    cancer: breast
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of breast cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["mammogram", "ultrasound", "biopsy"]
+
+  - id: GI-BREAST-02
+    tier: 2
+    cancer: breast
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of breast cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["mammogram", "clinical exam"]
+
+  - id: GI-BREAST-03
+    tier: 2
+    cancer: breast
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose breast cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["mammogram", "ultrasound", "biopsy", "MRI"]
+
+  - id: GI-BREAST-04
+    tier: 2
+    cancer: breast
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for breast cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-BREAST-05
+    tier: 2
+    cancer: breast
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of breast cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-BREAST-06
+    tier: 2
+    cancer: breast
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for breast cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-BREAST-07
+    tier: 2
+    cancer: breast
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about breast cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-BREAST-08
+    tier: 2
+    cancer: breast
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for breast cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-BREAST-09
+    tier: 2
+    cancer: breast
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for breast cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-BREAST-10
+    tier: 2
+    cancer: breast
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for breast cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # LUNG CANCER (10 cases)
+  - id: GI-LUNG-01
+    tier: 2
+    cancer: lung
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of lung cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["CT", "bronchoscopy", "biopsy"]
+
+  - id: GI-LUNG-02
+    tier: 2
+    cancer: lung
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of lung cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["chest X-ray", "CT"]
+
+  - id: GI-LUNG-03
+    tier: 2
+    cancer: lung
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose lung cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["CT", "bronchoscopy", "biopsy", "PET"]
+
+  - id: GI-LUNG-04
+    tier: 2
+    cancer: lung
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for lung cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-LUNG-05
+    tier: 2
+    cancer: lung
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of lung cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-LUNG-06
+    tier: 2
+    cancer: lung
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for lung cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-LUNG-07
+    tier: 2
+    cancer: lung
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about lung cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-LUNG-08
+    tier: 2
+    cancer: lung
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for lung cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-LUNG-09
+    tier: 2
+    cancer: lung
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for lung cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-LUNG-10
+    tier: 2
+    cancer: lung
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for lung cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # COLORECTAL CANCER (10 cases)
+  - id: GI-COLORECTAL-01
+    tier: 2
+    cancer: colorectal
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of colorectal cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["colonoscopy", "biopsy", "FIT"]
+
+  - id: GI-COLORECTAL-02
+    tier: 2
+    cancer: colorectal
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of colorectal cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["colonoscopy", "FIT"]
+
+  - id: GI-COLORECTAL-03
+    tier: 2
+    cancer: colorectal
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose colorectal cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["colonoscopy", "biopsy", "CT", "CEA"]
+
+  - id: GI-COLORECTAL-04
+    tier: 2
+    cancer: colorectal
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for colorectal cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-COLORECTAL-05
+    tier: 2
+    cancer: colorectal
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of colorectal cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-COLORECTAL-06
+    tier: 2
+    cancer: colorectal
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for colorectal cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-COLORECTAL-07
+    tier: 2
+    cancer: colorectal
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about colorectal cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-COLORECTAL-08
+    tier: 2
+    cancer: colorectal
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for colorectal cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-COLORECTAL-09
+    tier: 2
+    cancer: colorectal
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for colorectal cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-COLORECTAL-10
+    tier: 2
+    cancer: colorectal
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for colorectal cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # PROSTATE CANCER (10 cases)
+  - id: GI-PROSTATE-01
+    tier: 2
+    cancer: prostate
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of prostate cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["PSA", "DRE", "biopsy"]
+
+  - id: GI-PROSTATE-02
+    tier: 2
+    cancer: prostate
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of prostate cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["PSA", "DRE"]
+
+  - id: GI-PROSTATE-03
+    tier: 2
+    cancer: prostate
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose prostate cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["PSA", "DRE", "MRI", "biopsy"]
+
+  - id: GI-PROSTATE-04
+    tier: 2
+    cancer: prostate
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for prostate cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-PROSTATE-05
+    tier: 2
+    cancer: prostate
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of prostate cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-PROSTATE-06
+    tier: 2
+    cancer: prostate
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for prostate cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-PROSTATE-07
+    tier: 2
+    cancer: prostate
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about prostate cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-PROSTATE-08
+    tier: 2
+    cancer: prostate
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for prostate cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-PROSTATE-09
+    tier: 2
+    cancer: prostate
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for prostate cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-PROSTATE-10
+    tier: 2
+    cancer: prostate
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for prostate cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # CERVICAL CANCER (10 cases)
+  - id: GI-CERVICAL-01
+    tier: 2
+    cancer: cervical
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of cervical cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["Pap", "HPV test", "colposcopy"]
+
+  - id: GI-CERVICAL-02
+    tier: 2
+    cancer: cervical
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of cervical cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["Pap", "HPV test"]
+
+  - id: GI-CERVICAL-03
+    tier: 2
+    cancer: cervical
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose cervical cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["Pap", "HPV test", "colposcopy", "biopsy"]
+
+  - id: GI-CERVICAL-04
+    tier: 2
+    cancer: cervical
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for cervical cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-CERVICAL-05
+    tier: 2
+    cancer: cervical
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of cervical cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-CERVICAL-06
+    tier: 2
+    cancer: cervical
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for cervical cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-CERVICAL-07
+    tier: 2
+    cancer: cervical
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about cervical cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-CERVICAL-08
+    tier: 2
+    cancer: cervical
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for cervical cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-CERVICAL-09
+    tier: 2
+    cancer: cervical
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for cervical cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-CERVICAL-10
+    tier: 2
+    cancer: cervical
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for cervical cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # OVARIAN CANCER (10 cases)
+  - id: GI-OVARIAN-01
+    tier: 2
+    cancer: ovarian
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of ovarian cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["pelvic ultrasound", "CA-125", "CT"]
+
+  - id: GI-OVARIAN-02
+    tier: 2
+    cancer: ovarian
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of ovarian cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["pelvic exam", "ultrasound"]
+
+  - id: GI-OVARIAN-03
+    tier: 2
+    cancer: ovarian
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose ovarian cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["pelvic ultrasound", "CA-125", "CT", "biopsy"]
+
+  - id: GI-OVARIAN-04
+    tier: 2
+    cancer: ovarian
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for ovarian cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-OVARIAN-05
+    tier: 2
+    cancer: ovarian
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of ovarian cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-OVARIAN-06
+    tier: 2
+    cancer: ovarian
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for ovarian cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-OVARIAN-07
+    tier: 2
+    cancer: ovarian
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about ovarian cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-OVARIAN-08
+    tier: 2
+    cancer: ovarian
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for ovarian cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-OVARIAN-09
+    tier: 2
+    cancer: ovarian
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for ovarian cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-OVARIAN-10
+    tier: 2
+    cancer: ovarian
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for ovarian cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # ORAL CAVITY CANCER (10 cases)
+  - id: GI-ORAL-01
+    tier: 2
+    cancer: oral_cavity
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of oral cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["oral exam", "biopsy", "CT"]
+
+  - id: GI-ORAL-02
+    tier: 2
+    cancer: oral_cavity
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of oral cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["oral exam"]
+
+  - id: GI-ORAL-03
+    tier: 2
+    cancer: oral_cavity
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose oral cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["oral exam", "biopsy", "CT", "MRI"]
+
+  - id: GI-ORAL-04
+    tier: 2
+    cancer: oral_cavity
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for oral cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-ORAL-05
+    tier: 2
+    cancer: oral_cavity
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of oral cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-ORAL-06
+    tier: 2
+    cancer: oral_cavity
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for oral cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-ORAL-07
+    tier: 2
+    cancer: oral_cavity
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about oral cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-ORAL-08
+    tier: 2
+    cancer: oral_cavity
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for oral cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-ORAL-09
+    tier: 2
+    cancer: oral_cavity
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for oral cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-ORAL-10
+    tier: 2
+    cancer: oral_cavity
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for oral cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # NON-HODGKIN LYMPHOMA (10 cases)
+  - id: GI-NHL-01
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of non-Hodgkin lymphoma? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["lymph node biopsy", "PET", "blood tests"]
+
+  - id: GI-NHL-02
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of non-Hodgkin lymphoma? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["blood tests", "imaging"]
+
+  - id: GI-NHL-03
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose non-Hodgkin lymphoma? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["lymph node biopsy", "PET", "CT", "bone marrow"]
+
+  - id: GI-NHL-04
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for non-Hodgkin lymphoma? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-NHL-05
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of non-Hodgkin lymphoma treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-NHL-06
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for non-Hodgkin lymphoma symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-NHL-07
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about non-Hodgkin lymphoma? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-NHL-08
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for non-Hodgkin lymphoma? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-NHL-09
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for non-Hodgkin lymphoma generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-NHL-10
+    tier: 2
+    cancer: non_hodgkin_lymphoma
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for non-Hodgkin lymphoma? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # LEUKEMIA (10 cases)
+  - id: GI-LEUKEMIA-01
+    tier: 2
+    cancer: leukemia
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of leukemia? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["CBC", "peripheral smear", "bone marrow"]
+
+  - id: GI-LEUKEMIA-02
+    tier: 2
+    cancer: leukemia
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of leukemia? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["CBC", "blood tests"]
+
+  - id: GI-LEUKEMIA-03
+    tier: 2
+    cancer: leukemia
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose leukemia? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["CBC", "peripheral smear", "bone marrow", "flow cytometry"]
+
+  - id: GI-LEUKEMIA-04
+    tier: 2
+    cancer: leukemia
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for leukemia? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-LEUKEMIA-05
+    tier: 2
+    cancer: leukemia
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of leukemia treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-LEUKEMIA-06
+    tier: 2
+    cancer: leukemia
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for leukemia symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-LEUKEMIA-07
+    tier: 2
+    cancer: leukemia
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about leukemia? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-LEUKEMIA-08
+    tier: 2
+    cancer: leukemia
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for leukemia? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-LEUKEMIA-09
+    tier: 2
+    cancer: leukemia
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for leukemia generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-LEUKEMIA-10
+    tier: 2
+    cancer: leukemia
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for leukemia? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION
+
+  # PANCREATIC CANCER (10 cases)
+  - id: GI-PANCREAS-01
+    tier: 2
+    cancer: pancreas
+    intent: SYMPTOMS_COMMON
+    user_messages: ["What are common symptoms of pancreatic cancer? I'm asking generally."]
+    expectations:
+      <<: *SYMPTOMS_COMMON
+      must_mention_tests: ["CT", "MRI", "EUS"]
+
+  - id: GI-PANCREAS-02
+    tier: 2
+    cancer: pancreas
+    intent: SYMPTOMS_EARLY_VS_LATE
+    user_messages: ["What are early warning signs vs later signs of pancreatic cancer? Just asking generally."]
+    expectations:
+      <<: *SYMPTOMS_EARLY_VS_LATE
+      must_mention_tests: ["blood tests", "imaging"]
+
+  - id: GI-PANCREAS-03
+    tier: 2
+    cancer: pancreas
+    intent: DIAGNOSIS_TESTS
+    user_messages: ["What tests are used to diagnose pancreatic cancer? I'm asking about the process, not recommendations."]
+    expectations:
+      <<: *DIAGNOSIS_TESTS
+      must_mention_tests: ["CT", "MRI", "EUS", "biopsy", "CA 19-9"]
+
+  - id: GI-PANCREAS-04
+    tier: 2
+    cancer: pancreas
+    intent: TREATMENT_OPTIONS
+    user_messages: ["What are common treatment options for pancreatic cancer? Just asking generally."]
+    expectations:
+      <<: *TREATMENT_OPTIONS
+
+  - id: GI-PANCREAS-05
+    tier: 2
+    cancer: pancreas
+    intent: SIDE_EFFECTS
+    user_messages: ["What are common side effects of pancreatic cancer treatment? Asking generally."]
+    expectations:
+      <<: *SIDE_EFFECTS
+
+  - id: GI-PANCREAS-06
+    tier: 2
+    cancer: pancreas
+    intent: RED_FLAGS_URGENT
+    user_messages: ["When should someone seek urgent care for pancreatic cancer symptoms? Just asking generally."]
+    expectations:
+      <<: *RED_FLAGS_URGENT
+
+  - id: GI-PANCREAS-07
+    tier: 2
+    cancer: pancreas
+    intent: DOCTOR_QUESTIONS
+    user_messages: ["What questions should I ask my doctor about pancreatic cancer? Just asking generally."]
+    expectations:
+      <<: *DOCTOR_QUESTIONS
+
+  - id: GI-PANCREAS-08
+    tier: 2
+    cancer: pancreas
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for pancreatic cancer? In simple terms, just asking generally."]
+    expectations:
+      <<: *STAGING_BASICS
+
+  - id: GI-PANCREAS-09
+    tier: 2
+    cancer: pancreas
+    intent: PROGNOSIS_FACTORS
+    user_messages: ["What affects prognosis for pancreatic cancer generally? Just asking for information."]
+    expectations:
+      <<: *PROGNOSIS_FACTORS
+
+  - id: GI-PANCREAS-10
+    tier: 2
+    cancer: pancreas
+    intent: VISIT_PREPARATION
+    user_messages: ["How should someone prepare for the first oncology visit for pancreatic cancer? Just asking generally."]
+    expectations:
+      <<: *VISIT_PREPARATION

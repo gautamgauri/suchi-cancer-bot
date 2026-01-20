@@ -15,7 +15,7 @@
     "apiKey": "",
     "baseURL": "https://api.deepseek.com/v1"
   },
-  "timeoutMs": 120000,
+  "timeoutMs": 180000,
   "retries": 2,
   "parallel": false,
   "maxConcurrency": 5

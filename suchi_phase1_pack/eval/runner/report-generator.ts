@@ -22,6 +22,18 @@ export class ReportGenerator {
 
     const totalExecutionTime = results.reduce((sum, r) => sum + r.executionTimeMs, 0);
 
+    // Calculate retrieval quality metrics
+    const resultsWithQuality = results.filter(r => r.retrievalQuality);
+    const top3TrustedCount = resultsWithQuality.filter(r => r.retrievalQuality?.top3TrustedPresence).length;
+    const citationCoverageCount = resultsWithQuality.filter(r => (r.retrievalQuality?.citationCoverage || 0) > 0).length;
+    const abstentionCount = resultsWithQuality.filter(r => r.retrievalQuality?.hasAbstention).length;
+    
+    const retrievalQuality = resultsWithQuality.length > 0 ? {
+      top3TrustedPresenceRate: top3TrustedCount / resultsWithQuality.length,
+      citationCoverageRate: citationCoverageCount / resultsWithQuality.length,
+      abstentionRate: abstentionCount / resultsWithQuality.length,
+    } : undefined;
+
     return {
       runId,
       timestamp: new Date().toISOString(),
@@ -33,6 +45,7 @@ export class ReportGenerator {
         skipped: skipped.length,
         averageScore,
         executionTimeMs: totalExecutionTime,
+        retrievalQuality,
       },
       results,
       failures: failed,
@@ -125,6 +138,16 @@ export class ReportGenerator {
     lines.push(`Skipped: ${report.summary.skipped}`);
     lines.push(`Average Score: ${(report.summary.averageScore * 100).toFixed(1)}%`);
     lines.push(`Total Execution Time: ${(report.summary.executionTimeMs / 1000).toFixed(2)}s`);
+    
+    if (report.summary.retrievalQuality) {
+      lines.push("");
+      lines.push("RETRIEVAL QUALITY METRICS");
+      lines.push("-".repeat(60));
+      lines.push(`Top-3 Trusted Source Presence: ${(report.summary.retrievalQuality.top3TrustedPresenceRate * 100).toFixed(1)}%`);
+      lines.push(`Citation Coverage: ${(report.summary.retrievalQuality.citationCoverageRate * 100).toFixed(1)}%`);
+      lines.push(`Abstention Rate: ${(report.summary.retrievalQuality.abstentionRate * 100).toFixed(1)}%`);
+    }
+    
     lines.push("");
 
     if (report.failures.length > 0) {

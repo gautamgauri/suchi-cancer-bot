@@ -13,9 +13,27 @@ export class QueryTypeClassifier {
       return "treatment";
     }
 
-    // Side effects
-    if (/\b(side effect|adverse|complication|symptom|pain|nausea|fatigue|hair loss)\b/i.test(lowerQuery)) {
+    // Canonical precedence for side effects vs symptoms:
+    // 1) Side effects if treatment context is present (highest priority)
+    // 2) Explicit side effects language
+    // 3) Symptoms language (lowest priority)
+    const hasTreatmentContext = /\b(chemotherapy|chemo|radiation|radiotherapy|immunotherapy|after treatment|during treatment|treatment side|of treatment|of chemo|of radiation)\b/i.test(lowerQuery);
+    const hasSideEffectLanguage = /\b(side effect|adverse effect|adverse reaction|complication)\b/i.test(lowerQuery);
+    const hasSymptomLanguage = /\b(symptom|signs|warning sign|early sign|common sign|identify|recognize|detect)\b/i.test(lowerQuery);
+    
+    // 1) Side effects with treatment context (highest priority)
+    if (hasTreatmentContext && (hasSideEffectLanguage || hasSymptomLanguage)) {
       return "sideEffects";
+    }
+    
+    // 2) Explicit side effects language
+    if (hasSideEffectLanguage) {
+      return "sideEffects";
+    }
+    
+    // 3) Symptoms language (only if no treatment context or explicit side effects)
+    if (hasSymptomLanguage) {
+      return "symptoms";
     }
 
     // Screening

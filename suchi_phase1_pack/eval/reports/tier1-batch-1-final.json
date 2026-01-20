@@ -1,0 +1,644 @@
+{
+  "runId": "run-1768832138011",
+  "timestamp": "2026-01-19T14:15:38.011Z",
+  "config": {
+    "apiBaseUrl": "https://suchi-api-lxiveognla-uc.a.run.app/v1",
+    "llmProvider": "deepseek",
+    "timeoutMs": 180000,
+    "retries": 2,
+    "parallel": false,
+    "maxConcurrency": 5,
+    "deepseekConfig": {
+      "model": "deepseek-chat",
+      "apiKey": "sk-6bc325dec38c4d4c95f9f4ecb185e1dc ",
+      "baseURL": "https://api.deepseek.com/v1"
+    }
+  },
+  "summary": {
+    "total": 3,
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "averageScore": 0.40959595959595957,
+    "executionTimeMs": 118263,
+    "retrievalQuality": {
+      "top3TrustedPresenceRate": 0,
+      "citationCoverageRate": 0.5,
+      "abstentionRate": 0.5
+    }
+  },
+  "results": [
+    {
+      "testCaseId": "RQ-BREAST-01",
+      "passed": false,
+      "score": 0.45,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": false,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 0,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": false,
+          "required": true,
+          "details": {
+            "sectionsFound": [],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": false,
+          "required": true,
+          "details": {
+            "citationCount": 0,
+            "minCount": 2,
+            "citations": []
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": false,
+          "required": true,
+          "details": {
+            "currentConfidence": "RED",
+            "minConfidence": "YELLOW",
+            "passed": false
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": false,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 0,
+            "hasValidFormat": false,
+            "sampleMatches": []
+          }
+        }
+      ],
+      "responseText": "I don't have enough information in my NCI sources to answer this safely. Please consult a clinician.\n\nFor general information about cancer, I can help answer questions based on trusted sources. If you have specific concerns about symptoms, please consult a healthcare provider.",
+      "responseMetadata": {
+        "sessionId": "c60cc962-1802-4327-b5e9-0cddc0613478",
+        "messageId": "6337c4b1-d24f-412e-980d-1c79cde0b5a8",
+        "abstentionReason": "ungrounded_entities"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 0,
+        "hasAbstention": true
+      },
+      "executionTimeMs": 35215
+    },
+    {
+      "testCaseId": "RQ-LUNG-01",
+      "passed": false,
+      "score": 0.7787878787878787,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 1,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": true,
+          "required": true,
+          "details": {
+            "sectionsFound": [
+              "warning_signs",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 6,
+            "minCount": 2,
+            "citations": [
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+                "position": 342
+              },
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+                "position": 622
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+                "position": 879
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "bb67088b-9841-48d2-9323-4d45cbd0da16",
+                "position": 1074
+              },
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+                "position": 1351
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+                "position": 1599
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "GREEN",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": true,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 6,
+            "hasValidFormat": true,
+            "sampleMatches": [
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11]",
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26]",
+              "[citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1]"
+            ]
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "warning_signs_coverage",
+          "passed": false,
+          "score": 0,
+          "evidence": "I can't confirm specific warning signs from the provided sources.",
+          "count": 0
+        },
+        {
+          "checkId": "tests_coverage",
+          "passed": false,
+          "score": 0.6666666666666666,
+          "evidence": "Imaging tests to create pictures of the lung and surrounding area",
+          "count": 2
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": true,
+          "evidence": "All medical claims have citations to retrieved content",
+          "count": null
+        },
+        {
+          "checkId": "urgency_timeline",
+          "passed": false,
+          "evidence": "I don't have enough information in my NCI sources to provide a specific timeline",
+          "count": null
+        },
+        {
+          "checkId": "doctor_questions",
+          "passed": true,
+          "score": 1,
+          "evidence": "What imaging tests are recommended for diagnosing lung cancer?",
+          "count": 7
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "Response uses citation format [citation:docId:chunkId] for all medical claims",
+          "count": null
+        }
+      ],
+      "responseText": "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n### Main Answer\n- Non-small cell lung cancer (NSCLC) is usually diagnosed with tests and procedures that create images of the lung and the surrounding area [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11].\n- The process used to determine if cancer cells have spread within and around the lungs is crucial for diagnosis and staging [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26].\n- Low-dose CT scans have been shown to be effective in screening for lung cancer, particularly in individuals with a history of heavy smoking [citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1].\n- The National Lung Screening Trial (NLST) supports the use of low-dose CT scans for lung cancer screening [citation:kb_en_nci_types_lung_research_v1:bb67088b-9841-48d2-9323-4d45cbd0da16].\n\n### Warning Signs to Watch For:\nI can't confirm specific warning signs from the provided sources.\n\n### Tests Doctors May Use:\n- Imaging tests to create pictures of the lung and surrounding area [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11].\n- Low-dose CT scans for screening, especially in individuals with a history of heavy smoking [citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1].\n\n### When to Seek Care:\nI don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician for guidance.\n\n### Questions to Ask Your Doctor:\n- What imaging tests are recommended for diagnosing lung cancer?\n- How does a low-dose CT scan help in the early detection of lung cancer?\n- Are there specific tests to determine if cancer has spread beyond the lungs?\n- What are the potential risks associated with lung cancer screening tests?\n- How often should someone with a history of heavy smoking be screened for lung cancer?\n- What are the next steps if a screening test indicates potential lung cancer?\n- How do the results of these tests influence treatment options?\n\nAre you asking generally or about your symptoms?",
+      "responseMetadata": {
+        "sessionId": "7bc4f3de-4924-4759-987d-9bafc031b4fb",
+        "messageId": "6a1f5b00-1ac5-4d63-a099-d547a1b4cd45",
+        "citations": [
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+            "position": 342
+          },
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+            "position": 622
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+            "position": 879
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "bb67088b-9841-48d2-9323-4d45cbd0da16",
+            "position": 1074
+          },
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+            "position": 1351
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+            "position": 1599
+          }
+        ],
+        "citationConfidence": "GREEN"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 37187
+    },
+    {
+      "testCaseId": "RQ-ORAL-01",
+      "passed": false,
+      "score": 0,
+      "deterministicResults": [],
+      "responseText": "",
+      "responseMetadata": {
+        "sessionId": "0de91638-33fc-427f-af72-b78d003fbf72",
+        "messageId": ""
+      },
+      "error": "Failed to send message: Request failed with status code 504",
+      "executionTimeMs": 45861
+    }
+  ],
+  "failures": [
+    {
+      "testCaseId": "RQ-BREAST-01",
+      "passed": false,
+      "score": 0.45,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": false,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 0,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": false,
+          "required": true,
+          "details": {
+            "sectionsFound": [],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": false,
+          "required": true,
+          "details": {
+            "citationCount": 0,
+            "minCount": 2,
+            "citations": []
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": false,
+          "required": true,
+          "details": {
+            "currentConfidence": "RED",
+            "minConfidence": "YELLOW",
+            "passed": false
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": false,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 0,
+            "hasValidFormat": false,
+            "sampleMatches": []
+          }
+        }
+      ],
+      "responseText": "I don't have enough information in my NCI sources to answer this safely. Please consult a clinician.\n\nFor general information about cancer, I can help answer questions based on trusted sources. If you have specific concerns about symptoms, please consult a healthcare provider.",
+      "responseMetadata": {
+        "sessionId": "c60cc962-1802-4327-b5e9-0cddc0613478",
+        "messageId": "6337c4b1-d24f-412e-980d-1c79cde0b5a8",
+        "abstentionReason": "ungrounded_entities"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 0,
+        "hasAbstention": true
+      },
+      "executionTimeMs": 35215
+    },
+    {
+      "testCaseId": "RQ-LUNG-01",
+      "passed": false,
+      "score": 0.7787878787878787,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 1,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": true,
+          "required": true,
+          "details": {
+            "sectionsFound": [
+              "warning_signs",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 6,
+            "minCount": 2,
+            "citations": [
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+                "position": 342
+              },
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+                "position": 622
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+                "position": 879
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "bb67088b-9841-48d2-9323-4d45cbd0da16",
+                "position": 1074
+              },
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+                "position": 1351
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+                "position": 1599
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "GREEN",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": true,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 6,
+            "hasValidFormat": true,
+            "sampleMatches": [
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11]",
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26]",
+              "[citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1]"
+            ]
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "warning_signs_coverage",
+          "passed": false,
+          "score": 0,
+          "evidence": "I can't confirm specific warning signs from the provided sources.",
+          "count": 0
+        },
+        {
+          "checkId": "tests_coverage",
+          "passed": false,
+          "score": 0.6666666666666666,
+          "evidence": "Imaging tests to create pictures of the lung and surrounding area",
+          "count": 2
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": true,
+          "evidence": "All medical claims have citations to retrieved content",
+          "count": null
+        },
+        {
+          "checkId": "urgency_timeline",
+          "passed": false,
+          "evidence": "I don't have enough information in my NCI sources to provide a specific timeline",
+          "count": null
+        },
+        {
+          "checkId": "doctor_questions",
+          "passed": true,
+          "score": 1,
+          "evidence": "What imaging tests are recommended for diagnosing lung cancer?",
+          "count": 7
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "Response uses citation format [citation:docId:chunkId] for all medical claims",
+          "count": null
+        }
+      ],
+      "responseText": "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n### Main Answer\n- Non-small cell lung cancer (NSCLC) is usually diagnosed with tests and procedures that create images of the lung and the surrounding area [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11].\n- The process used to determine if cancer cells have spread within and around the lungs is crucial for diagnosis and staging [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26].\n- Low-dose CT scans have been shown to be effective in screening for lung cancer, particularly in individuals with a history of heavy smoking [citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1].\n- The National Lung Screening Trial (NLST) supports the use of low-dose CT scans for lung cancer screening [citation:kb_en_nci_types_lung_research_v1:bb67088b-9841-48d2-9323-4d45cbd0da16].\n\n### Warning Signs to Watch For:\nI can't confirm specific warning signs from the provided sources.\n\n### Tests Doctors May Use:\n- Imaging tests to create pictures of the lung and surrounding area [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11].\n- Low-dose CT scans for screening, especially in individuals with a history of heavy smoking [citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1].\n\n### When to Seek Care:\nI don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician for guidance.\n\n### Questions to Ask Your Doctor:\n- What imaging tests are recommended for diagnosing lung cancer?\n- How does a low-dose CT scan help in the early detection of lung cancer?\n- Are there specific tests to determine if cancer has spread beyond the lungs?\n- What are the potential risks associated with lung cancer screening tests?\n- How often should someone with a history of heavy smoking be screened for lung cancer?\n- What are the next steps if a screening test indicates potential lung cancer?\n- How do the results of these tests influence treatment options?\n\nAre you asking generally or about your symptoms?",
+      "responseMetadata": {
+        "sessionId": "7bc4f3de-4924-4759-987d-9bafc031b4fb",
+        "messageId": "6a1f5b00-1ac5-4d63-a099-d547a1b4cd45",
+        "citations": [
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+            "position": 342
+          },
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+            "position": 622
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+            "position": 879
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "bb67088b-9841-48d2-9323-4d45cbd0da16",
+            "position": 1074
+          },
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+            "position": 1351
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+            "position": 1599
+          }
+        ],
+        "citationConfidence": "GREEN"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 37187
+    },
+    {
+      "testCaseId": "RQ-ORAL-01",
+      "passed": false,
+      "score": 0,
+      "deterministicResults": [],
+      "responseText": "",
+      "responseMetadata": {
+        "sessionId": "0de91638-33fc-427f-af72-b78d003fbf72",
+        "messageId": ""
+      },
+      "error": "Failed to send message: Request failed with status code 504",
+      "executionTimeMs": 45861
+    }
+  ]
+}

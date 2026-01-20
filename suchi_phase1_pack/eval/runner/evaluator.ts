@@ -13,6 +13,22 @@ import {
 import * as yaml from "js-yaml";
 import * as fs from "fs/promises";
 
+// Trusted sources list (matches apps/api/src/config/trusted-sources.config.ts)
+const TRUSTED_SOURCES = [
+  '01_suchi_oncotalks',
+  '02_nci_core',
+  '03_who_public_health',
+  '04_iarc_stats',
+  '05_india_ncg',
+  '06_pmc_selective',
+  '99_local_navigation'
+];
+
+function isTrustedSource(sourceType: string | null | undefined): boolean {
+  if (!sourceType) return false;
+  return TRUSTED_SOURCES.includes(sourceType);
+}
+
 export class Evaluator {
   private apiClient: ApiClient;
   private deterministicChecker: DeterministicChecker;
@@ -27,7 +43,7 @@ export class Evaluator {
     this.rubricPack = rubricPack;
     this.globalConfig = rubricPack.global;
 
-    this.apiClient = new ApiClient(config.apiBaseUrl, config.timeoutMs);
+    this.apiClient = new ApiClient(config.apiBaseUrl, config.timeoutMs, config.authBearer);
     this.deterministicChecker = new DeterministicChecker(this.globalConfig);
     this.llmJudge = new LLMJudge(config);
     this.reportGenerator = new ReportGenerator();
@@ -134,6 +150,26 @@ export class Evaluator {
         );
       }
 
+      // Calculate retrieval quality metrics
+      const citations = finalResponse.citations || [];
+      const retrievedChunks = finalResponse.retrievedChunks || [];
+      
+      // Check top-3 trusted source presence
+      const top3Chunks = retrievedChunks.slice(0, 3);
+      const top3TrustedPresence = top3Chunks.some(chunk => 
+        chunk.isTrustedSource === true || 
+        (chunk.sourceType && isTrustedSource(chunk.sourceType))
+      );
+      const top3SourceTypes = top3Chunks
+        .map(chunk => chunk.sourceType)
+        .filter((st): st is string => st !== null && st !== undefined);
+
+      // Calculate citation coverage (has citations)
+      const citationCoverage = citations.length > 0 ? 1.0 : 0.0;
+
+      // Check for abstention
+      const hasAbstention = !!finalResponse.abstentionReason;
+
       // Calculate score and determine pass/fail
       const result: EvaluationResult = {
         testCaseId: testCase.id,
@@ -147,6 +183,14 @@ export class Evaluator {
           messageId: finalResponse.messageId,
           citations: finalResponse.citations,
           citationConfidence: finalResponse.citationConfidence,
+          retrievedChunks: finalResponse.retrievedChunks,
+          abstentionReason: finalResponse.abstentionReason,
+        },
+        retrievalQuality: {
+          top3TrustedPresence,
+          top3SourceTypes,
+          citationCoverage,
+          hasAbstention,
         },
         executionTimeMs: Date.now() - startTime,
       };

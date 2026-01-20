@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "1.0",
+  "description": "Test scenarios for hybrid retrieval (vector + FTS) quality validation",
+  "scenarios": [
+    {
+      "id": "symptoms-lung-cancer",
+      "query": "What are the symptoms of lung cancer?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["cough", "breath", "chest pain"],
+      "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks", "03_who_public_health"],
+      "minChunks": 3,
+      "notes": "Should surface authoritative symptom lists from trusted sources"
+    },
+    {
+      "id": "screening-mammogram",
+      "query": "When should I get a mammogram?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["mammogram", "screening", "age"],
+      "expectedSourceTypes": ["02_nci_core", "03_who_public_health"],
+      "minChunks": 3,
+      "notes": "Screening guidelines from national/international authorities"
+    },
+    {
+      "id": "side-effects-chemotherapy",
+      "query": "What are common side effects of chemotherapy?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["nausea", "fatigue", "hair loss", "side effect"],
+      "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks"],
+      "minChunks": 3,
+      "notes": "Should retrieve comprehensive side effect information"
+    },
+    {
+      "id": "treatment-options-breast",
+      "query": "What are treatment options for breast cancer?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["surgery", "chemotherapy", "radiation"],
+      "expectedSourceTypes": ["02_nci_core", "05_india_ncg"],
+      "minChunks": 3,
+      "notes": "Should cover multiple treatment modalities from guidelines"
+    },
+    {
+      "id": "diagnosis-process-general",
+      "query": "How is cancer diagnosed?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["biopsy", "test", "diagnosis"],
+      "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks"],
+      "minChunks": 3,
+      "notes": "General diagnostic process overview"
+    },
+    {
+      "id": "symptom-side-effect-confusion",
+      "query": "Is nausea a symptom or side effect?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["nausea", "symptom", "side effect"],
+      "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks"],
+      "minChunks": 3,
+      "notes": "Tests disambiguation - should find content about both concepts"
+    },
+    {
+      "id": "drug-specific-tamoxifen",
+      "query": "What is Tamoxifen used for?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["tamoxifen", "breast", "hormone"],
+      "expectedSourceTypes": ["02_nci_core", "06_pmc_selective"],
+      "minChunks": 2,
+      "notes": "Specific drug information from medical literature"
+    },
+    {
+      "id": "prevention-diet",
+      "query": "Can diet prevent cancer?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["diet", "nutrition", "prevention"],
+      "expectedSourceTypes": ["02_nci_core", "03_who_public_health"],
+      "minChunks": 3,
+      "notes": "Prevention-focused query with lifestyle factors"
+    },
+    {
+      "id": "report-interpretation-navigation",
+      "query": "I don't understand my pathology report",
+      "isMedicalQuery": false,
+      "mustContainTerms": ["pathology", "report", "doctor"],
+      "expectedSourceTypes": ["99_local_navigation", "01_suchi_oncotalks"],
+      "minChunks": 2,
+      "notes": "Navigation query - helps patient communicate with doctor, not diagnostic"
+    },
+    {
+      "id": "caregiver-support",
+      "query": "How can I support someone with cancer?",
+      "isMedicalQuery": false,
+      "mustContainTerms": ["caregiver", "support", "help"],
+      "expectedSourceTypes": ["01_suchi_oncotalks", "99_local_navigation"],
+      "minChunks": 2,
+      "notes": "Caregiver support resources - non-medical content"
+    },
+    {
+      "id": "staging-terminology",
+      "query": "What does stage 3 cancer mean?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["stage", "staging", "spread"],
+      "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks"],
+      "minChunks": 3,
+      "notes": "Staging system explanation - medical terminology"
+    },
+    {
+      "id": "pain-management-side-effects",
+      "query": "What are side effects of cancer pain medication?",
+      "isMedicalQuery": true,
+      "mustContainTerms": ["pain", "medication", "side effect"],
+      "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks"],
+      "minChunks": 3,
+      "notes": "Pain management side effects - supportive care topic"
+    }
+  ]
+}

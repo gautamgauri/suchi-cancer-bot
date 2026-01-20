@@ -1,0 +1,19 @@
+{
+  "name": "suchi-phase1-pack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Suchi Phase 1 Pack - Root workspace",
+  "scripts": {
+    "sanity-check": "ts-node scripts/sanity-check.ts",
+    "sanity-check:quick": "ts-node scripts/sanity-check.ts --quick",
+    "check-nci": "cd apps/api && ts-node scripts/check-nci-chunks.ts",
+    "test-kb-stats": "ts-node scripts/test-kb-stats.ts",
+    "eval:hybrid-retrieval": "tsx scripts/test-hybrid-retrieval.ts"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "@types/node": "^20.14.10",
+    "axios": "^1.6.0"
+  }
+}

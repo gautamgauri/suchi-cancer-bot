@@ -45,6 +45,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 # Install production dependencies only
 COPY package.json package-lock.json* ./
+# Copy Prisma schema and migrations directory (needed for migrate deploy)
 COPY prisma ./prisma/
 
 RUN npm ci --only=production && \
@@ -52,6 +53,10 @@ RUN npm ci --only=production && \
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+# Copy scripts directory for migration and utility scripts
+COPY --from=builder /app/scripts ./scripts
+# Make migration script executable
+RUN chmod +x /app/scripts/migrate-with-repair.sh
 
 # Expose port (Cloud Run uses PORT env var, default 8080)
 EXPOSE 8080

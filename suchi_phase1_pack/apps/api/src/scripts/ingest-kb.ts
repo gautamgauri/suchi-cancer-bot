@@ -92,6 +92,30 @@ function generateChunkId(docId: string, chunkIndex: number): string {
   return `${docId}::chunk::${chunkIndex}`;
 }
 
+/**
+ * Normalize content for stable hashing
+ * Apply same transformations used by chunker to ensure hash consistency
+ */
+function normalizeContent(content: string): string {
+  let normalized = content;
+  
+  // 1. Normalize line endings to \n
+  normalized = normalized.replace(/\r\n/g, '\n');
+  
+  // 2. Trim trailing whitespace per line
+  normalized = normalized.split('\n')
+    .map(line => line.trimEnd())
+    .join('\n');
+  
+  // 3. Collapse 3+ blank lines to 2 (chunker ignores excessive spacing)
+  normalized = normalized.replace(/\n{3,}/g, '\n\n');
+  
+  // 4. Trim overall content
+  normalized = normalized.trim();
+  
+  return normalized;
+}
+
 function chunkMarkdown(md: string, maxChars: number, overlapChars: number): string[] {
   const normalized = md.replace(/\r\n/g, "\n").trim();
   if (!normalized) return [];
@@ -170,21 +194,47 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
   mustExist(full);
   const raw = fs.readFileSync(full, "utf-8");
   const parsed = matter(raw);
-  const content = parsed.content.trim();
+  const rawContent = parsed.content.trim();
 
-  const chunks = chunkMarkdown(content, opts.maxChunkChars, opts.overlapChars);
+  // NORMALIZE content before hashing (same as chunker input)
+  const normalizedContent = normalizeContent(rawContent);
+  
+  // Generate version hash from NORMALIZED content
+  const versionHash = createHash("sha256")
+    .update(normalizedContent)
+    .digest("hex")
+    .substring(0, 16);
 
   const sourceInfo = `[${doc.sourceType || "unknown"}] ${doc.source || "Unknown"}`;
-  console.log(`\n[DOC] ${doc.id}  ${sourceInfo}  (${chunks.length} chunks)`);
+  
+  // Check if document is unchanged (SKIP logic)
+  const existingDoc = await withRetry(() => 
+    prisma.kbDocument.findUnique({ 
+      where: { id: doc.id },
+      select: { versionHash: true, status: true }
+    })
+  );
+
+  if (existingDoc && 
+      existingDoc.versionHash === versionHash && 
+      existingDoc.status === 'active' &&
+      !opts.wipeChunks) {
+    // Document unchanged - SKIP re-chunking/re-embedding
+    console.log(`  ⏭️  SKIP ${doc.id} ${sourceInfo} (unchanged hash: ${versionHash})`);
+    return; // Early return
+  }
+
+  // Document is NEW or UPDATED - proceed with chunking
+  const logPrefix = existingDoc ? 'UPDATE' : 'NEW';
+  const chunks = chunkMarkdown(normalizedContent, opts.maxChunkChars, opts.overlapChars);
+
+  console.log(`  ${logPrefix} ${doc.id} ${sourceInfo} (hash: ${versionHash}, ${chunks.length} chunks)`);
   if (opts.dryRun) return;
 
   const lastReviewedDate = parseDate(doc.lastReviewed);
   
   // Determine if source is trusted
   const isTrusted = doc.sourceType ? isTrustedSource(doc.sourceType) : false;
-  
-  // Generate version hash from content for change detection
-  const versionHash = createHash("sha256").update(content).digest("hex").substring(0, 16);
   
   // Determine publisher and jurisdiction based on sourceType
   let publisher: string | undefined;

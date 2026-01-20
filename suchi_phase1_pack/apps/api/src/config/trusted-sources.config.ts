@@ -6,7 +6,7 @@
  */
 
 export type SourcePriority = 'high' | 'medium' | 'low';
-export type QueryType = 'prevention' | 'screening' | 'treatment' | 'sideEffects' | 'caregiver' | 'navigation' | 'general';
+export type QueryType = 'prevention' | 'screening' | 'treatment' | 'sideEffects' | 'symptoms' | 'caregiver' | 'navigation' | 'general';
 
 export interface SourceConfig {
   priority: SourcePriority;
@@ -70,6 +70,10 @@ export const EVIDENCE_THRESHOLDS: Record<QueryType, EvidenceThresholds> = {
   sideEffects: {
     minPassages: 2,
     minSources: 1, // Side effects can come from single authoritative source
+  },
+  symptoms: {
+    minPassages: 2,
+    minSources: 1, // Symptoms info should be from authoritative source
   },
   prevention: {
     minPassages: 1,

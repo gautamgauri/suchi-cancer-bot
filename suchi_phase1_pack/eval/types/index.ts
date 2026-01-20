@@ -99,9 +99,18 @@ export interface ChatResponse {
     docId: string;
     chunkId: string;
     position: number;
+    sourceType?: string | null;
+    isTrustedSource?: boolean;
   }>;
   citationConfidence?: string;
   abstentionReason?: string;
+  retrievedChunks?: Array<{
+    docId: string;
+    chunkId: string;
+    sourceType?: string | null;
+    isTrustedSource?: boolean;
+    similarity?: number;
+  }>;
 }
 
 export interface DeterministicCheckResult {
@@ -144,6 +153,14 @@ export interface EvaluationResult {
     messageId: string;
     citations?: ChatResponse["citations"];
     citationConfidence?: string;
+    retrievedChunks?: ChatResponse["retrievedChunks"];
+    abstentionReason?: string;
+  };
+  retrievalQuality?: {
+    top3TrustedPresence: boolean;
+    top3SourceTypes?: string[];
+    citationCoverage: number; // Percentage of responses with citations
+    hasAbstention: boolean;
   };
   error?: string;
   executionTimeMs: number;
@@ -160,6 +177,11 @@ export interface EvaluationReport {
     skipped: number;
     averageScore: number;
     executionTimeMs: number;
+    retrievalQuality?: {
+      top3TrustedPresenceRate: number; // Percentage of cases with trusted source in top-3
+      citationCoverageRate: number; // Percentage of responses with citations
+      abstentionRate: number; // Percentage of responses that abstained
+    };
   };
   results: EvaluationResult[];
   failures: EvaluationResult[];
@@ -167,6 +189,7 @@ export interface EvaluationReport {
 
 export interface EvaluationConfig {
   apiBaseUrl: string;
+  authBearer?: string; // Optional bearer token for API authentication
   llmProvider: "vertex_ai" | "openai" | "deepseek";
   vertexAiConfig?: {
     project: string;

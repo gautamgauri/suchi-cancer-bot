@@ -1,0 +1,437 @@
+# Google Cloud Build configuration with gated deployment
+# Deploys candidate revision → runs eval → shifts traffic only if eval passes
+# This provides "staging safety" without a separate environment
+
+steps:
+  # 1) Build API Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-api'
+    dir: 'apps/api'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-api:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-api:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+
+  # 2) Push API image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-api'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api'
+
+  # 2b) Update migration job to use the just-built image (ensures parity)
+  # Also ensures job uses same env vars and Cloud SQL connection as service
+  # Uses robust migration script that: tries migrate deploy, verifies columns, applies idempotent SQL if needed
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'update-migrate-job-image'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'update'
+      - 'suchi-db-migrate'
+      - '--region=${_REGION}'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-api:$BUILD_ID'
+      - '--set-cloudsql-instances=${_CLOUDSQL_CONNECTION_NAME}'
+      - '--set-secrets=DATABASE_URL=database-url:latest'
+      - '--set-env-vars=NODE_ENV=production,MIG=20250101000000_add_greeting_context_to_session'
+      - '--command=/app/scripts/migrate-with-repair.sh'
+      - '--max-retries=1'
+      - '--parallelism=1'
+      - '--tasks=1'
+    waitFor: ['push-api']
+
+  # 2c) Local schema validation (no DB access needed - validates schema file correctness)
+  - name: 'node:20'
+    id: 'check-schema-local'
+    dir: 'apps/api'
+    entrypoint: 'bash'
+    args:
+      - '-euc'
+      - |
+        echo "=== Local Schema Validation (no DB) ==="
+        echo "Node version: $(node -v)"
+        echo "Installing dependencies..."
+        npm ci
+        echo "Prisma version: $(npx prisma@5.22.0 -v | head -1)"
+        echo "Validating Prisma schema syntax..."
+        # Format schema first (ensures consistent formatting)
+        npx prisma@5.22.0 format
+        # Then validate syntax (format --check would fail if we just formatted, so we validate differently)
+        # Just verify schema can be loaded without DB connection
+        echo "✅ Schema file is valid and formatted"
+    waitFor: ['push-api']
+
+  # 2d) Execute migration job (runs drift check + migrate + confirm - all with Cloud SQL access)
+  # The job itself performs: drift check → migrate deploy → column confirmation
+  # If any step fails, job exits non-zero and Cloud Build halts (fail-fast preserved)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'run-migrations'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'execute'
+      - 'suchi-db-migrate'
+      - '--region=${_REGION}'
+      - '--wait'
+    waitFor: ['update-migrate-job-image', 'check-schema-local']
+
+  # 3) Deploy candidate revision with 0% traffic (tagged 'candidate')
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-candidate'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_API_SERVICE_NAME}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-api:$BUILD_ID'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--port'
+      - '8080'
+      - '--tag'
+      - 'candidate'
+      - '--no-traffic'
+      - '--add-cloudsql-instances'
+      - '${_CLOUDSQL_CONNECTION_NAME}'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,EMBEDDING_MODEL=text-embedding-004,RATE_LIMIT_TTL_SEC=60,RATE_LIMIT_REQ_PER_TTL=20'
+      - '--set-secrets'
+      - 'DATABASE_URL=database-url:latest,OPENAI_API_KEY=openai-api-key:latest,EMBEDDING_API_KEY=embedding-api-key:latest,ADMIN_BASIC_USER=admin-basic-user:latest,ADMIN_BASIC_PASS=admin-basic-pass:latest'
+      - '--quiet'
+
+  # 4) Wait for candidate revision to be healthy
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'healthcheck-candidate'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "Waiting for candidate revision to be healthy..."
+        # Get the latest revision name (which is our candidate)
+        revision_name=$(gcloud run revisions list --service=${_API_SERVICE_NAME} --region=${_REGION} --limit=1 --format='value(name)')
+        echo "Latest revision: $revision_name"
+        
+        # Store revision name for promotion step (write to file for next step)
+        echo "$revision_name" > /workspace/candidate-revision.txt
+        
+        # Get the service URL to extract the base domain
+        service_url=$(gcloud run services describe ${_API_SERVICE_NAME} --region=${_REGION} --format='value(status.url)')
+        # Extract the domain part (e.g., "suchi-api-lxiveognla-uc.a.run.app")
+        service_domain=$(echo "$service_url" | sed 's|https://||')
+        # Construct candidate tag URL: https://candidate---[SERVICE_DOMAIN]
+        candidate_url="https://candidate---$service_domain"
+        echo "$candidate_url" > /workspace/candidate-url.txt
+        
+        # Health endpoint is at /v1/health (global prefix is /v1)
+        health_url="$candidate_url/v1/health"
+        
+        echo "Checking health at: $health_url"
+        
+        # Get ID token for authenticated health check (even if service is public, this is good practice)
+        token=$(gcloud auth print-identity-token 2>/dev/null || echo "")
+        
+        # Try health check with retries (60 attempts × 5s = 5 minutes, sufficient for cold starts)
+        for i in $(seq 1 60); do
+          # Try authenticated first, fallback to unauthenticated
+          if [ -n "$token" ]; then
+            if curl -fsS -H "Authorization: Bearer $token" "$health_url" >/dev/null 2>&1; then
+              echo "✅ Candidate revision is healthy (authenticated)"
+              exit 0
+            fi
+          fi
+          # Fallback to unauthenticated (service is --allow-unauthenticated)
+          if curl -fsS "$health_url" >/dev/null 2>&1; then
+            echo "✅ Candidate revision is healthy (unauthenticated)"
+            exit 0
+          fi
+          echo "Attempt $i/60: Waiting for candidate to be healthy..."
+          sleep 5
+        done
+        echo "❌ Candidate revision never became healthy after 5 minutes"
+        exit 1
+
+  # 5) Run eval:tier1 against candidate revision
+  - name: 'node:20'
+    id: 'eval-tier1'
+    entrypoint: 'sh'
+    timeout: '1800s'  # 30 minutes timeout for eval (allows for LLM calls and retries)
+    secretEnv: ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY']
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "Setting up eval environment..."
+        
+        # Read candidate URL from previous step
+        candidate_url=$(cat /workspace/candidate-url.txt)
+        candidate_api_url="$candidate_url/v1"
+        
+        echo "Running eval against candidate: $candidate_api_url"
+        
+        # Get ID token for authenticated API calls (if service requires auth)
+        auth_token=$(gcloud auth print-identity-token 2>/dev/null || echo "")
+        
+        # Install eval dependencies
+        cd eval
+        npm ci
+        
+        # Build eval package
+        npm run build
+        
+        # Run eval with candidate URL and optional auth token
+        export EVAL_API_BASE_URL="$candidate_api_url"
+        if [ -n "$auth_token" ]; then
+          export EVAL_AUTH_BEARER="$auth_token"
+        fi
+        export EVAL_LLM_PROVIDER=$${EVAL_LLM_PROVIDER:-deepseek}
+        # DEEPSEEK_API_KEY and OPENAI_API_KEY are already available as env vars from secretEnv
+        export GOOGLE_CLOUD_PROJECT="$PROJECT_ID"
+        
+        echo "Starting tier1 evaluation..."
+        npm run eval:tier1
+        
+        echo "✅ Eval passed - candidate revision is ready for traffic"
+
+  # 5b) Generate summary text and print to logs
+  - name: 'node:20'
+    id: 'generate-eval-summary'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        set -e
+        cd eval
+        
+        if [ -f "reports/tier1-report.json" ]; then
+          echo ""
+          echo "=========================================="
+          echo "TIER1 EVAL SUMMARY"
+          echo "=========================================="
+          
+          # Generate summary using report generator
+          node -e "
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
+            const q = report.summary.retrievalQuality || {};
+            
+            console.log(\`Total Cases: \${report.summary.total}\`);
+            console.log(\`Passed: \${report.summary.passed} (\${((report.summary.passed / report.summary.total) * 100).toFixed(1)}%)\`);
+            console.log(\`Failed: \${report.summary.failed} (\${((report.summary.failed / report.summary.total) * 100).toFixed(1)}%)\`);
+            console.log(\`Average Score: \${(report.summary.averageScore * 100).toFixed(1)}%\`);
+            console.log('');
+            console.log('RETRIEVAL QUALITY METRICS:');
+            console.log(\`  Top-3 Trusted Source Presence: \${(q.top3TrustedPresenceRate * 100).toFixed(1)}%\`);
+            console.log(\`  Citation Coverage: \${(q.citationCoverageRate * 100).toFixed(1)}%\`);
+            console.log(\`  Abstention Rate: \${(q.abstentionRate * 100).toFixed(1)}%\`);
+            
+            // Count improved cases
+            const improved = report.results.filter(r => r.retrievalQuality?.top3TrustedPresence).length;
+            console.log(\`  Improved Cases (top3 trusted): \${improved}\`);
+            console.log('');
+          " > reports/tier1-summary.txt
+          
+          # Print summary to stdout (visible in build logs)
+          cat reports/tier1-summary.txt
+          echo "=========================================="
+        else
+          echo "⚠️ Warning: No eval report found at reports/tier1-report.json"
+        fi
+    waitFor: ['eval-tier1']
+
+  # 5c) NCI Dominance Hard Gate - Fail build if trusted presence < 90%
+  - name: 'node:20'
+    id: 'nci-dominance-gate'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        set -e
+        cd eval
+        
+        if [ ! -f "reports/tier1-report.json" ]; then
+          echo "❌ Error: Eval report not found - cannot verify NCI dominance"
+          exit 1
+        fi
+        
+        node -e "
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
+          const q = report.summary.retrievalQuality || {};
+          const trustedPresenceRate = q.top3TrustedPresenceRate || 0;
+          const threshold = 0.90; // 90% threshold for NCI-only corpus
+          
+          console.log(\`NCI Dominance Gate Check:\`);
+          console.log(\`  Top-3 Trusted Presence Rate: \${(trustedPresenceRate * 100).toFixed(1)}%\`);
+          console.log(\`  Required Threshold: \${(threshold * 100).toFixed(1)}%\`);
+          
+          if (trustedPresenceRate < threshold) {
+            console.error('');
+            console.error('❌ BUILD FAILED: NCI Dominance Gate');
+            console.error(\`  Actual: \${(trustedPresenceRate * 100).toFixed(1)}%\`);
+            console.error(\`  Required: \${(threshold * 100).toFixed(1)}%\`);
+            console.error('');
+            console.error('This indicates retrieval is not prioritizing NCI sources as expected.');
+            console.error('Possible causes:');
+            console.error('  - Reranking not working correctly');
+            console.error('  - Source metadata misclassified');
+            console.error('  - Non-NCI sources in corpus (unexpected)');
+            process.exit(1);
+          }
+          
+          console.log('✅ NCI dominance gate passed');
+        "
+    waitFor: ['generate-eval-summary']
+
+  # 5d) Prepare eval reports for artifact upload
+  - name: 'node:20'
+    id: 'prepare-eval-artifacts'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        set -e
+        cd eval
+        
+        # Copy reports to workspace root for Cloud Build artifact capture
+        if [ -f "reports/tier1-report.json" ]; then
+          echo "Preparing eval reports for artifact upload..."
+          mkdir -p /workspace/eval-reports
+          cp reports/tier1-report.json /workspace/eval-reports/
+          if [ -f "reports/tier1-summary.txt" ]; then
+            cp reports/tier1-summary.txt /workspace/eval-reports/
+          fi
+          echo "✅ Reports ready at /workspace/eval-reports/"
+          ls -lh /workspace/eval-reports/
+        else
+          echo "⚠️ Warning: No eval report found"
+        fi
+    waitFor: ['nci-dominance-gate']
+
+  # 6) If eval passed, shift 100% traffic to candidate revision (explicit revision name)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'promote-candidate'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        set -e
+        # Read candidate revision name from health check step
+        candidate_revision=$(cat /workspace/candidate-revision.txt)
+        echo "Promoting revision: $candidate_revision"
+        
+        # Verify revision exists
+        if ! gcloud run revisions describe "$candidate_revision" --region=${_REGION} --service=${_API_SERVICE_NAME} >/dev/null 2>&1; then
+          echo "❌ Error: Candidate revision $candidate_revision not found"
+          exit 1
+        fi
+        
+        # Shift 100% traffic to candidate revision (explicit revision name for safety)
+        gcloud run services update-traffic ${_API_SERVICE_NAME} \
+          --region=${_REGION} \
+          --to-revisions="$candidate_revision=100" \
+          --quiet
+        
+        echo "✅ Traffic shifted to revision: $candidate_revision"
+    waitFor: ['nci-dominance-gate']
+
+  # 7) Build Web Docker image (can run in parallel with eval, but keeping sequential for simplicity)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-web'
+    dir: 'apps/web'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-web:$BUILD_ID'
+      - '--build-arg'
+      - 'VITE_API_URL=${_API_URL}'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+
+  # 8) Push Web image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-web'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-web:$BUILD_ID'
+
+  # 9) Deploy Web to Cloud Run (after API is promoted)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-web'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_WEB_SERVICE_NAME}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-web:$BUILD_ID'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '256Mi'
+      - '--cpu'
+      - '1'
+      - '--port'
+      - '8080'
+      - '--set-env-vars'
+      - 'VITE_API_URL=${_API_URL}'
+    waitFor: ['promote-candidate']
+
+# Substitution variables (same as original cloudbuild.yaml)
+substitutions:
+  _REGION: 'us-central1'
+  _ARTIFACT_REGISTRY: 'suchi-images'
+  _API_SERVICE_NAME: 'suchi-api'
+  _WEB_SERVICE_NAME: 'suchi-web'
+  _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:suchi-db'
+  _API_URL: 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
+
+# Secrets from Secret Manager
+availableSecrets:
+  secretManager:
+    - versionName: 'projects/$PROJECT_ID/secrets/deepseek-api-key/versions/latest'
+      env: 'DEEPSEEK_API_KEY'
+    - versionName: 'projects/$PROJECT_ID/secrets/openai-api-key/versions/latest'
+      env: 'OPENAI_API_KEY'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: 'CLOUD_LOGGING_ONLY'
+
+# Artifacts to upload (eval reports)
+# Note: Cloud Build uploads artifacts to gs://[PROJECT_ID]_cloudbuild/[BUILD_ID]/
+# Access via: gsutil ls gs://[PROJECT_ID]_cloudbuild/[BUILD_ID]/
+artifacts:
+  objects:
+    location: 'gs://${PROJECT_ID}_cloudbuild/eval-reports/'
+    paths:
+      - 'eval-reports/tier1-report.json'
+      - 'eval-reports/tier1-summary.txt'
+
+# Timeout for the entire build (increased to allow for eval)
+timeout: '1800s'  # 30 minutes

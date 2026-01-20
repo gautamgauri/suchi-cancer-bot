@@ -80,9 +80,17 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
 
   // Deepseek config
   if (envConfig.llmProvider === "deepseek" || config.llmProvider === "deepseek") {
+    const deepseekApiKey = process.env.DEEPSEEK_API_KEY || secrets["deepseek-api-key"] || config.deepseekConfig?.apiKey || "";
+    
+    // Warn if API key is missing when using Deepseek
+    if (!deepseekApiKey) {
+      console.warn("⚠ WARNING: DEEPSEEK_API_KEY is not set. LLM judge checks will fail.");
+      console.warn("  Set DEEPSEEK_API_KEY environment variable or ensure Secret Manager is accessible.");
+    }
+    
     envConfig.deepseekConfig = {
       model: process.env.DEEPSEEK_MODEL || secrets["deepseek-model"] || config.deepseekConfig?.model || "deepseek-chat",
-      apiKey: process.env.DEEPSEEK_API_KEY || secrets["deepseek-api-key"] || config.deepseekConfig?.apiKey || "",
+      apiKey: deepseekApiKey,
       baseURL: process.env.DEEPSEEK_BASE_URL || config.deepseekConfig?.baseURL || "https://api.deepseek.com/v1",
     };
   }

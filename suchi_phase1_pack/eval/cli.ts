@@ -26,6 +26,7 @@ program
   .option("--config <path>", "Path to config file")
   .option("--output <path>", "Output path for report JSON", "report.json")
   .option("--summary", "Print summary to console")
+  .option("--batch-size <number>", "Run tests in batches of N cases", parseInt)
   .action(async (options) => {
     try {
       console.log("Loading configuration...");
@@ -51,13 +52,35 @@ program
       if (options.intent) filters.intent = options.intent;
 
       const filteredCases = Evaluator.filterTestCases(testCases, filters);
-      console.log(`Running ${filteredCases.length} test case(s)...`);
 
       // Create evaluator
       const evaluator = new Evaluator(config, rubricPack);
 
-      // Run evaluation
-      const results = await evaluator.evaluateTestCases(filteredCases);
+      // Apply batching if batch-size is specified
+      let results;
+      if (options.batchSize && options.batchSize > 0) {
+        const batches: typeof filteredCases[] = [];
+        for (let i = 0; i < filteredCases.length; i += options.batchSize) {
+          batches.push(filteredCases.slice(i, i + options.batchSize));
+        }
+        
+        console.log(`Running ${filteredCases.length} test case(s) in ${batches.length} batch(es) of ${options.batchSize}...`);
+        
+        // Process batches sequentially
+        const allResults = [];
+        for (let i = 0; i < batches.length; i++) {
+          const startCase = i * options.batchSize + 1;
+          const endCase = Math.min((i + 1) * options.batchSize, filteredCases.length);
+          console.log(`\nBatch ${i + 1}/${batches.length}: Cases ${startCase}-${endCase}`);
+          const batchResults = await evaluator.evaluateTestCases(batches[i]);
+          allResults.push(...batchResults);
+        }
+        
+        results = allResults;
+      } else {
+        console.log(`Running ${filteredCases.length} test case(s)...`);
+        results = await evaluator.evaluateTestCases(filteredCases);
+      }
 
       // Generate report
       const reportGenerator = new ReportGenerator();

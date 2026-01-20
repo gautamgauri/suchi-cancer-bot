@@ -1,0 +1,51 @@
+# Tier1 Retrieval Quality Test Cases - Batch 2 (3 cases)
+# Cases 4-6 from retrieval_quality.yaml
+
+_templates:
+  retrieval_quality: &RETRIEVAL_QUALITY
+    max_clarifying_questions: 2
+    required_sections:
+      - disclaimer
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+    # Retrieval quality assertions
+    expected_top3_trusted: true  # At least one trusted source in top-3
+    min_citations: 2
+    citation_integrity: true  # All citations must map to retrieved chunks
+
+cases:
+  # Colorectal - Treatment Options (should get multiple trusted sources)
+  - id: RQ-COLORECTAL-01
+    tier: 1
+    cancer: colorectal
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common treatment options for colorectal cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core", "05_india_ncg"]
+      query_type: "treatment"
+      notes: "Should retrieve multiple trusted sources for treatment options"
+
+  # Prostate - Screening (should prioritize trusted sources)
+  - id: RQ-PROSTATE-01
+    tier: 1
+    cancer: prostate
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What screening tests are used for prostate cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "screening"
+      notes: "Should retrieve trusted sources for screening information"
+
+  # Cervical - Side Effects (should get treatment-related sources)
+  - id: RQ-CERVICAL-01
+    tier: 1
+    cancer: cervical
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common side effects of cervical cancer treatment? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "sideEffects"
+      notes: "Should retrieve relevant sources for side effects"

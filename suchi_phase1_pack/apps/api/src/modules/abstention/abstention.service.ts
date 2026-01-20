@@ -151,6 +151,7 @@ export class AbstentionService {
     const descriptions: Record<QueryType, string> = {
       treatment: "treatment",
       sideEffects: "side effects",
+      symptoms: "symptoms",
       prevention: "prevention",
       screening: "screening",
       caregiver: "caregiver support",
@@ -158,6 +159,39 @@ export class AbstentionService {
       general: "general cancer information"
     };
     return descriptions[queryType] || "cancer-related";
+  }
+
+  /**
+   * Generate SafeFallbackResponse with NO medical content
+   * Purely navigational + clinician referral
+   * Used when evidence gate blocks LLM call or citation enforcement fails
+   */
+  generateSafeFallbackResponse(
+    reasonCode: string,
+    queryType: string
+  ): string {
+    const baseMessage = 
+      "I don't have enough specific information in my knowledge base to answer this accurately.\n\n" +
+      "For personalized medical guidance, please consult with your healthcare provider or oncology team.";
+    
+    const resources = 
+      "\n\nYou may also find general information at:\n" +
+      "- National Cancer Institute: https://www.cancer.gov\n" +
+      "- WHO Cancer Resources: https://www.who.int/health-topics/cancer";
+    
+    // Optional: Add reason-specific guidance
+    let additionalGuidance = "";
+    if (reasonCode === 'NO_RESULTS') {
+      additionalGuidance = "\n\nThis topic may require more specialized medical knowledge than I currently have access to.";
+    } else if (reasonCode === 'LOW_TRUST') {
+      additionalGuidance = "\n\nI can only provide information from verified medical sources, and I don't have sufficient trusted sources for this query.";
+    } else if (reasonCode === 'INSUFFICIENT_CITATIONS') {
+      additionalGuidance = "\n\nI couldn't verify the information with reliable source citations.";
+    } else if (reasonCode === 'LOW_SCORE') {
+      additionalGuidance = "\n\nThe information I found doesn't meet my confidence threshold for medical guidance.";
+    }
+    
+    return baseMessage + additionalGuidance + resources;
   }
 }
 

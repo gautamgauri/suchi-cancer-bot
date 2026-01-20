@@ -15,6 +15,7 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
+import { StructuredExtractorService } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
@@ -41,7 +42,8 @@ export class ChatService {
     private readonly templateSelector: TemplateSelector,
     private readonly responseValidator: ResponseValidatorService,
     private readonly greetingFlow: GreetingFlowService,
-    private readonly empathyDetector: EmpathyDetector
+    private readonly empathyDetector: EmpathyDetector,
+    private readonly structuredExtractor: StructuredExtractorService
   ) {}
 
   /**
@@ -132,7 +134,12 @@ export class ChatService {
       // Use template system for urgent symptoms (S2 template) but include RAG content if available
       // Reuse isFirstMessage from message count fetched at start
 
-      let urgentResponse = ResponseTemplates.S2({ isFirstMessage, userText: dto.userText } as any);
+      // Pass locale to template for locale-aware emergency numbers
+      let urgentResponse = ResponseTemplates.S2({ 
+        isFirstMessage, 
+        userText: dto.userText,
+        locale: session.locale || dto.locale 
+      } as any);
       
       // Add disclaimer at the start (required for eval)
       const disclaimer = "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
@@ -217,7 +224,7 @@ export class ChatService {
       const templateResult = this.templateSelector.selectAndGenerate(
         dto.userText,
         [],
-        { shouldAbstain: false, confidence: "high", quality: "strong" },
+        { status: 'ok', approvedChunks: [], reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" },
         "normal",
         isFirstMessage,
         "sideEffects"
@@ -416,7 +423,7 @@ export class ChatService {
       const templateResult = this.templateSelector.selectAndGenerate(
         dto.userText,
         [],
-        { shouldAbstain: false, confidence: "high", quality: "strong" },
+        { status: 'ok', approvedChunks: [], reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" },
         "normal",
         isFirstMessage,
         "general"
@@ -493,7 +500,7 @@ export class ChatService {
     const intentResult = this.intentClassifier.classify(
       dto.userText,
       evidenceChunks,
-      { shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
+      { status: 'ok', approvedChunks: evidenceChunks, reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
       { hasGenerallyAsking },
       { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
@@ -524,6 +531,51 @@ export class ChatService {
         );
       }
     }
+
+    // 6a. HARD GATE: If insufficient evidence, NO LLM call
+    if (gateResult.status === 'insufficient') {
+      this.logger.warn(`Evidence gate BLOCKED: ${gateResult.reasonCode} - ${gateResult.reason || 'insufficient evidence'}`);
+      
+      // Generate SafeFallbackResponse (no medical content)
+      const safeFallback = this.abstention.generateSafeFallbackResponse(
+        gateResult.reasonCode || 'NO_RESULTS',
+        queryType
+      );
+      
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: safeFallback,
+          safetyClassification: "normal",
+          kbDocIds: [], // No KB docs used
+          latencyMs: Date.now() - started,
+          evidenceQuality: 'insufficient',
+          evidenceGatePassed: false,
+          abstentionReason: gateResult.reasonCode || 'no_evidence',
+          citationCount: 0 // No citations
+        }
+      });
+
+      // Log structured event
+      await this.analytics.emit("evidence_gate_blocked", {
+        reasonCode: gateResult.reasonCode,
+        reason: gateResult.reason,
+        queryType,
+        chunkCount: evidenceChunks.length
+      }, dto.sessionId);
+
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: assistant.text,
+        safety: { classification: "normal" as const, actions: [] },
+        abstentionReason: gateResult.reasonCode || 'insufficient_evidence'
+      };
+    }
+
+    // Evidence is OK - use approvedChunks for LLM call
+    evidenceChunks = gateResult.approvedChunks;
 
     // 7. Mode-based routing
     // Template-only intents (no RAG needed)
@@ -729,25 +781,92 @@ export class ChatService {
       // Check if this is an identify question (general, not personal)
       const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
       const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
-      const isIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) && 
+      const isIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
                                   cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
                                   !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
-      
+
       // Detect cancer type for cancer-type-specific responses (check session first)
       const cancerType = isIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;
-      
-      // Generate response with Explain Mode prompt
+
+      // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
+      const extraction = this.structuredExtractor.extract(evidenceChunks, queryType);
+      const checklist = this.structuredExtractor.formatForPrompt(extraction);
+
+      // Generate response with Explain Mode prompt + checklist
       let responseText = await this.llm.generateWithCitations(
         "explain",
         "",
         dto.userText,
         evidenceChunks,
         isIdentifyQuestion,
-        { hasGenerallyAsking, cancerType, emotionalState }
+        { hasGenerallyAsking, cancerType, emotionalState, checklist }
       );
 
       // Structure with explainModeFrame
       responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
+
+      // POST-PROCESSING: Check completeness and fill gaps if needed
+      const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
+      
+      // Structured logging for completeness outcomes (observability)
+      this.logger.log({
+        event: "completeness_check",
+        queryType,
+        sessionId: dto.sessionId,
+        extracted: {
+          tests: extraction.diagnosticTests.length,
+          signs: extraction.warningSigns.length,
+          timeline: extraction.timeline !== null,
+        },
+        coverage: {
+          tests: {
+            found: completenessResult.coverage.diagnosticTests.found,
+            required: completenessResult.coverage.diagnosticTests.required,
+          },
+          signs: {
+            found: completenessResult.coverage.warningSigns.found,
+            required: completenessResult.coverage.warningSigns.required,
+          },
+          timeline: {
+            found: completenessResult.coverage.timeline.found,
+            required: completenessResult.coverage.timeline.required,
+          },
+        },
+        fallbackInserted: !completenessResult.meetsPolicy && completenessResult.missing.diagnosticTests.length + completenessResult.missing.warningSigns.length > 0,
+        meetsPolicy: completenessResult.meetsPolicy,
+      });
+      
+      if (!completenessResult.meetsPolicy) {
+        this.logger.debug(
+          `Response incomplete: tests=${completenessResult.coverage.diagnosticTests.found}/${completenessResult.coverage.diagnosticTests.required}, ` +
+          `signs=${completenessResult.coverage.warningSigns.found}/${completenessResult.coverage.warningSigns.required}`
+        );
+        const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+        if (fallbackContent) {
+          // Try multiple insertion points (most specific first)
+          const insertionPatterns = [
+            /(\n\n\*\*Questions to Ask Your Doctor:\*\*)/i,  // Before questions section
+            /(\n\n\*\*Important:\*\*|\n\nThis information is)/i,  // Before disclaimer
+            /(\n\nAre you asking generally)/i,  // Before follow-up question
+            /(\n\n\*\*Note:\*\*)/i,  // Before note section
+          ];
+
+          let inserted = false;
+          for (const pattern of insertionPatterns) {
+            const match = responseText.match(pattern);
+            if (match && match.index !== undefined) {
+              responseText = responseText.slice(0, match.index) + fallbackContent + responseText.slice(match.index);
+              inserted = true;
+              break;
+            }
+          }
+
+          // Fallback: append at end if no pattern matches
+          if (!inserted) {
+            responseText = responseText + fallbackContent;
+          }
+        }
+      }
 
       // Validate response for ungrounded medical entities
       // For informational/general queries, don't abstain on ungrounded entities - allow response with warning
@@ -847,6 +966,60 @@ export class ChatService {
 
       // Extract and validate citations (before formatting)
       let citations = this.citationService.extractCitations(responseText, evidenceChunks);
+      
+      // RUNTIME ENFORCEMENT: Medical content requires 2-5 citations
+      const isMedicalContent = this.isMedicalContent(responseText, intentResult.intent);
+      if (isMedicalContent && citations.length < 2) {
+        this.logger.error(
+          `CITATION ENFORCEMENT FAILED: Medical response has ${citations.length} citations (need 2+). Discarding LLM output.`
+        );
+        
+        // Discard LLM response, replace with SafeFallbackResponse
+        const safeFallback = this.abstention.generateSafeFallbackResponse(
+          'INSUFFICIENT_CITATIONS',
+          queryType
+        );
+        
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: safeFallback,
+            safetyClassification: "normal",
+            kbDocIds: [],
+            latencyMs: Date.now() - started,
+            evidenceQuality: gateResult.quality,
+            evidenceGatePassed: true, // Gate passed, but citation enforcement failed
+            abstentionReason: 'citation_validation_failed',
+            citationCount: 0
+          }
+        });
+
+        // Log structured error
+        this.logger.error({
+          event: 'citation_enforcement_failed',
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          query: dto.userText.substring(0, 200),
+          intent: intentResult.intent,
+          citationCount: citations.length,
+          responsePreview: responseText.substring(0, 200)
+        });
+
+        await this.analytics.emit("citation_enforcement_failed", {
+          intent: intentResult.intent,
+          queryType,
+          citationCount: citations.length
+        }, dto.sessionId);
+
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] },
+          abstentionReason: 'citation_validation_failed'
+        };
+      }
       
       // Log citation extraction results for debugging
       this.logger.log(`Extracted ${citations.length} citations from response. Response length: ${responseText.length}. Evidence chunks available: ${evidenceChunks.length}`);
@@ -1292,5 +1465,34 @@ export class ChatService {
     if (doctorQsCount < 5) missing.push(`>=5 doctor questions (found ${doctorQsCount})`);
 
     return { ok: missing.length === 0, missing };
+  }
+
+  /**
+   * Detect if response contains medical content requiring citations
+   * Used for runtime citation enforcement
+   */
+  private isMedicalContent(text: string, intent: string): boolean {
+    // Intent-based detection (primary)
+    const medicalIntents = [
+      'INFORMATIONAL_GENERAL',
+      'INFORMATIONAL_SYMPTOMS',
+      'INFORMATIONAL_TREATMENT',
+      'INFORMATIONAL_SIDE_EFFECTS'
+    ];
+    
+    if (medicalIntents.includes(intent)) {
+      return true;
+    }
+    
+    // Keyword-based detection (backup)
+    const medicalKeywords = [
+      /\b(symptom|sign|cause|risk factor|diagnosis|staging|prognosis)\b/i,
+      /\b(treatment|therapy|surgery|radiation|chemotherapy|immunotherapy)\b/i,
+      /\b(side effect|adverse|toxicity|complication|management)\b/i,
+      /\b(screening|test|biopsy|scan|imaging|biomarker)\b/i,
+      /\b(drug|medication|dosage|regimen|protocol)\b/i
+    ];
+    
+    return medicalKeywords.some(pattern => pattern.test(text));
   }
 }

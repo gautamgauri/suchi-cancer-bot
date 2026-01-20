@@ -1,0 +1,1038 @@
+{
+  "runId": "run-1768823363624",
+  "timestamp": "2026-01-19T11:49:23.625Z",
+  "config": {
+    "apiBaseUrl": "https://suchi-api-lxiveognla-uc.a.run.app/v1",
+    "llmProvider": "deepseek",
+    "timeoutMs": 180000,
+    "retries": 2,
+    "parallel": false,
+    "maxConcurrency": 5,
+    "deepseekConfig": {
+      "model": "deepseek-chat",
+      "apiKey": "sk-6bc325dec38c4d4c95f9f4ecb185e1dc ",
+      "baseURL": "https://api.deepseek.com/v1"
+    }
+  },
+  "summary": {
+    "total": 3,
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "averageScore": 0.7385858585858586,
+    "executionTimeMs": 122803,
+    "retrievalQuality": {
+      "top3TrustedPresenceRate": 0,
+      "citationCoverageRate": 1,
+      "abstentionRate": 0
+    }
+  },
+  "results": [
+    {
+      "testCaseId": "RQ-BREAST-01",
+      "passed": false,
+      "score": 0.7909090909090909,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 1,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": true,
+          "required": true,
+          "details": {
+            "sectionsFound": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 4,
+            "minCount": 2,
+            "citations": [
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 339
+              },
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 495
+              },
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 660
+              },
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 835
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "YELLOW",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": true,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 4,
+            "hasValidFormat": true,
+            "sampleMatches": [
+              "[citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2]",
+              "[citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2]",
+              "[citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2]"
+            ]
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "warning_signs_coverage",
+          "passed": false,
+          "score": 0.8,
+          "evidence": "A lump in or near the breast, changes in size or shape, dimpling or puckering, nipple discharge",
+          "count": 4
+        },
+        {
+          "checkId": "tests_coverage",
+          "passed": false,
+          "score": 0,
+          "evidence": "Your healthcare provider may recommend various diagnostic tests",
+          "count": 0
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": true,
+          "evidence": "All medical claims appear to be from cited source",
+          "count": 0
+        },
+        {
+          "checkId": "urgency_timeline",
+          "passed": false,
+          "evidence": "No specific timeline guidance provided",
+          "count": 0
+        },
+        {
+          "checkId": "doctor_questions",
+          "passed": false,
+          "score": 0.6,
+          "evidence": "Can you explain this in more detail? What should I know? What are next steps?",
+          "count": 3
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "All symptoms have citations to knowledge base chunks",
+          "count": 4
+        }
+      ],
+      "responseText": "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\nHere are some common symptoms of breast cancer based on the provided references:\n\n- A lump in or near the breast is a potential symptom of breast cancer [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n- Changes in the size or shape of the breast may indicate breast cancer [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n- Dimpling or puckering of the skin on the breast can be a sign of breast cancer [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n- Nipple discharge that is not breast milk, especially if it is bloody, could be a symptom [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n\nIf you notice any of these symptoms, it is important to consult with a healthcare professional for further evaluation.\n\n**Warning Signs to Watch For:**\nIf you experience persistent or worsening symptoms, unusual changes, or any concerns, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n\n\n**Tests Doctors May Use:**\nYour healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n\n\n**When to Seek Care:**\nIf you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n\n\n**Questions to Ask Your Doctor:**\n• Can you explain this in more detail?\n• What should I know about this?\n• What are the next steps?\n\nAre you asking generally or about your symptoms?",
+      "responseMetadata": {
+        "sessionId": "57429404-1e15-4df2-a701-40afdf99cb27",
+        "messageId": "8819a820-1983-471e-af6b-d22aae07c6cd",
+        "citations": [
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 339
+          },
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 495
+          },
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 660
+          },
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 835
+          }
+        ],
+        "citationConfidence": "YELLOW"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 28973
+    },
+    {
+      "testCaseId": "RQ-LUNG-01",
+      "passed": false,
+      "score": 0.7339393939393939,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 1,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": true,
+          "required": true,
+          "details": {
+            "sectionsFound": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 3,
+            "minCount": 2,
+            "citations": [
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+                "position": 318
+              },
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+                "position": 595
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+                "position": 829
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "YELLOW",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": true,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 3,
+            "hasValidFormat": true,
+            "sampleMatches": [
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11]",
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26]",
+              "[citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1]"
+            ]
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "warning_signs_coverage",
+          "passed": false,
+          "score": 0,
+          "evidence": "No specific warning signs listed",
+          "count": 0
+        },
+        {
+          "checkId": "tests_coverage",
+          "passed": false,
+          "score": 0.3333333333333333,
+          "evidence": "Low-dose CT scans can be used to screen for lung cancer",
+          "count": 1
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": true,
+          "evidence": "All medical claims have citations",
+          "count": 3
+        },
+        {
+          "checkId": "urgency_timeline",
+          "passed": false,
+          "evidence": "No clear timeline guidance provided",
+          "count": 0
+        },
+        {
+          "checkId": "doctor_questions",
+          "passed": false,
+          "score": 0.6,
+          "evidence": "• Can you explain this in more detail? • What should I know about this? • What are the next steps?",
+          "count": 3
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "All medical facts have proper citation markers",
+          "count": 3
+        }
+      ],
+      "responseText": "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n- Non-small cell lung cancer is usually diagnosed with tests and procedures that create images of the lung and the surrounding area [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11].\n- The process used to determine if cancer cells have spread within and around the lungs involves various diagnostic tests [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26].\n- Low-dose CT scans can be used to screen for lung cancer, particularly in individuals with a history of heavy smoking [citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1].\n\n**Warning Signs to Watch For:**\nIf you experience persistent or worsening symptoms, unusual changes, or any concerns, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n\n\n**Tests Doctors May Use:**\nYour healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n\n\n**When to Seek Care:**\nIf you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n\n\n**Questions to Ask Your Doctor:**\n• Can you explain this in more detail?\n• What should I know about this?\n• What are the next steps?\n\nAre you asking generally or about your symptoms?",
+      "responseMetadata": {
+        "sessionId": "d840f04a-296f-416d-9bac-149dd18e8546",
+        "messageId": "87f6c9c4-7023-4309-a6dc-76752d23e83b",
+        "citations": [
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+            "position": 318
+          },
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+            "position": 595
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+            "position": 829
+          }
+        ],
+        "citationConfidence": "YELLOW"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 34952
+    },
+    {
+      "testCaseId": "RQ-ORAL-01",
+      "passed": false,
+      "score": 0.6909090909090909,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "no_over_questioning",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 0,
+            "max": 1
+          }
+        },
+        {
+          "checkId": "emergency_guidance_phrase",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "no_schedule_only",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 3,
+            "minCount": 1,
+            "citations": [
+              {
+                "docId": "kb_en_red_flags_urgent_care_v1",
+                "chunkId": "kb_en_red_flags_urgent_care_v1::chunk::0",
+                "position": 286
+              },
+              {
+                "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1",
+                "chunkId": "79cdd3be-1865-4b04-a10e-e60e5a522fd1",
+                "position": 614
+              },
+              {
+                "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_hp_pdq_v1",
+                "chunkId": "7b7f036f-a6c7-4f5b-a50e-661dabab3425",
+                "position": 956
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "YELLOW",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "emergency_guidance",
+          "passed": true,
+          "evidence": "Please seek emergency medical care now or call local emergency services",
+          "count": 5
+        },
+        {
+          "checkId": "what_to_do_now",
+          "passed": false,
+          "evidence": "Response lacks concrete immediate steps like applying pressure for bleeding",
+          "count": 0
+        },
+        {
+          "checkId": "brief_reason_for_urgency",
+          "passed": true,
+          "evidence": "Severe shortness of breath and uncontrolled bleeding are considered medical emergencies",
+          "count": 2
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "Bleeding in the mouth can occur when anticancer drugs make the blood less able to clot [citation:kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1:79cdd3be-1865-4b04-a10e-e60e5a522fd1]",
+          "count": 3
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": false,
+          "evidence": "Response mentions 'severe chest pain, trouble breathing, heavy bleeding, confusion, fainting' without citations",
+          "count": 0
+        }
+      ],
+      "responseText": "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\nSome of what you described could be urgent. Please seek emergency medical care now or call local emergency services.\n\n**If you can, share:**\n• Your age\n• What symptoms are happening right now\n• When they started or got worse\n\nI can help you prepare what to say to the clinician. But please prioritize getting medical attention immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.\n\n**Information from trusted sources:**\n\nI understand this is urgent. Here are some immediate steps and information based on the provided references:\n\n- **Seek Immediate Medical Attention**: Severe shortness of breath and uncontrolled bleeding are considered medical emergencies. It's important to seek urgent care immediately [citation:kb_en_red_flags_urgent_care_v1:kb_en_red_flags_urgent_care_v1::chunk::0].\n\n- **Bleeding and Cancer Treatments**: Bleeding in the mouth can occur when anticancer drugs make the blood less able to clot. This is particularly a concern for patients undergoing high-dose chemotherapy or hematopoietic stem cell transplants [citation:kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1:79cdd3be-1865-4b04-a10e-e60e5a522fd1].\n\n- **Hemorrhage Concerns**: Hemorrhage, including spontaneous gingival oozing, may occur during treatment-induced thrombocytopenia and/or coagulopathy, especially in patients receiving high-dose chemotherapy [citation:kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_hp_pdq_v1:7b7f036f-a6c7-4f5b-a50e-661dabab3425].\n\nPlease call emergency services or go to the nearest emergency room for immediate care. Your symptoms require prompt medical evaluation and treatment.",
+      "responseMetadata": {
+        "sessionId": "315d2e93-c63d-45d9-ba36-07b8b52a5192",
+        "messageId": "40a5b3d1-2208-4f35-ad99-3f73a50e0080",
+        "citations": [
+          {
+            "docId": "kb_en_red_flags_urgent_care_v1",
+            "chunkId": "kb_en_red_flags_urgent_care_v1::chunk::0",
+            "position": 286
+          },
+          {
+            "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1",
+            "chunkId": "79cdd3be-1865-4b04-a10e-e60e5a522fd1",
+            "position": 614
+          },
+          {
+            "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_hp_pdq_v1",
+            "chunkId": "7b7f036f-a6c7-4f5b-a50e-661dabab3425",
+            "position": 956
+          }
+        ],
+        "citationConfidence": "YELLOW"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 58878
+    }
+  ],
+  "failures": [
+    {
+      "testCaseId": "RQ-BREAST-01",
+      "passed": false,
+      "score": 0.7909090909090909,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 1,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": true,
+          "required": true,
+          "details": {
+            "sectionsFound": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 4,
+            "minCount": 2,
+            "citations": [
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 339
+              },
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 495
+              },
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 660
+              },
+              {
+                "docId": "kb_en_nci_types_breast_symptoms_v1",
+                "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+                "position": 835
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "YELLOW",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": true,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 4,
+            "hasValidFormat": true,
+            "sampleMatches": [
+              "[citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2]",
+              "[citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2]",
+              "[citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2]"
+            ]
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "warning_signs_coverage",
+          "passed": false,
+          "score": 0.8,
+          "evidence": "A lump in or near the breast, changes in size or shape, dimpling or puckering, nipple discharge",
+          "count": 4
+        },
+        {
+          "checkId": "tests_coverage",
+          "passed": false,
+          "score": 0,
+          "evidence": "Your healthcare provider may recommend various diagnostic tests",
+          "count": 0
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": true,
+          "evidence": "All medical claims appear to be from cited source",
+          "count": 0
+        },
+        {
+          "checkId": "urgency_timeline",
+          "passed": false,
+          "evidence": "No specific timeline guidance provided",
+          "count": 0
+        },
+        {
+          "checkId": "doctor_questions",
+          "passed": false,
+          "score": 0.6,
+          "evidence": "Can you explain this in more detail? What should I know? What are next steps?",
+          "count": 3
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "All symptoms have citations to knowledge base chunks",
+          "count": 4
+        }
+      ],
+      "responseText": "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\nHere are some common symptoms of breast cancer based on the provided references:\n\n- A lump in or near the breast is a potential symptom of breast cancer [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n- Changes in the size or shape of the breast may indicate breast cancer [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n- Dimpling or puckering of the skin on the breast can be a sign of breast cancer [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n- Nipple discharge that is not breast milk, especially if it is bloody, could be a symptom [citation:kb_en_nci_types_breast_symptoms_v1:03613b21-834c-4214-9960-d7e3ea0184d2].\n\nIf you notice any of these symptoms, it is important to consult with a healthcare professional for further evaluation.\n\n**Warning Signs to Watch For:**\nIf you experience persistent or worsening symptoms, unusual changes, or any concerns, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n\n\n**Tests Doctors May Use:**\nYour healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n\n\n**When to Seek Care:**\nIf you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n\n\n**Questions to Ask Your Doctor:**\n• Can you explain this in more detail?\n• What should I know about this?\n• What are the next steps?\n\nAre you asking generally or about your symptoms?",
+      "responseMetadata": {
+        "sessionId": "57429404-1e15-4df2-a701-40afdf99cb27",
+        "messageId": "8819a820-1983-471e-af6b-d22aae07c6cd",
+        "citations": [
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 339
+          },
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 495
+          },
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 660
+          },
+          {
+            "docId": "kb_en_nci_types_breast_symptoms_v1",
+            "chunkId": "03613b21-834c-4214-9960-d7e3ea0184d2",
+            "position": 835
+          }
+        ],
+        "citationConfidence": "YELLOW"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 28973
+    },
+    {
+      "testCaseId": "RQ-LUNG-01",
+      "passed": false,
+      "score": 0.7339393939393939,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "max_clarifying_questions",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 1,
+            "max": 2
+          }
+        },
+        {
+          "checkId": "section_presence_min",
+          "passed": true,
+          "required": true,
+          "details": {
+            "sectionsFound": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "requiredSections": [
+              "warning_signs",
+              "tests_to_expect",
+              "when_to_seek_care_timeline",
+              "questions_for_doctor"
+            ],
+            "minPresent": 3
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 3,
+            "minCount": 2,
+            "citations": [
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+                "position": 318
+              },
+              {
+                "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+                "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+                "position": 595
+              },
+              {
+                "docId": "kb_en_nci_types_lung_research_v1",
+                "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+                "position": 829
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "YELLOW",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        },
+        {
+          "checkId": "citation_format_valid",
+          "passed": true,
+          "required": false,
+          "details": {
+            "citationMatchesFound": 3,
+            "hasValidFormat": true,
+            "sampleMatches": [
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11]",
+              "[citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26]",
+              "[citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1]"
+            ]
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "warning_signs_coverage",
+          "passed": false,
+          "score": 0,
+          "evidence": "No specific warning signs listed",
+          "count": 0
+        },
+        {
+          "checkId": "tests_coverage",
+          "passed": false,
+          "score": 0.3333333333333333,
+          "evidence": "Low-dose CT scans can be used to screen for lung cancer",
+          "count": 1
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": true,
+          "evidence": "All medical claims have citations",
+          "count": 3
+        },
+        {
+          "checkId": "urgency_timeline",
+          "passed": false,
+          "evidence": "No clear timeline guidance provided",
+          "count": 0
+        },
+        {
+          "checkId": "doctor_questions",
+          "passed": false,
+          "score": 0.6,
+          "evidence": "• Can you explain this in more detail? • What should I know about this? • What are the next steps?",
+          "count": 3
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "All medical facts have proper citation markers",
+          "count": 3
+        }
+      ],
+      "responseText": "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n- Non-small cell lung cancer is usually diagnosed with tests and procedures that create images of the lung and the surrounding area [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11].\n- The process used to determine if cancer cells have spread within and around the lungs involves various diagnostic tests [citation:kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1:14bbb432-a744-4b7a-97e3-cd4e5386aa26].\n- Low-dose CT scans can be used to screen for lung cancer, particularly in individuals with a history of heavy smoking [citation:kb_en_nci_types_lung_research_v1:kb_en_nci_types_lung_research_v1::chunk::1].\n\n**Warning Signs to Watch For:**\nIf you experience persistent or worsening symptoms, unusual changes, or any concerns, it's important to seek medical evaluation. Early detection can be important for effective treatment.\n\n\n**Tests Doctors May Use:**\nYour healthcare provider may recommend various diagnostic tests based on your specific situation. These could include imaging tests, laboratory tests, or other procedures to help determine the cause of your symptoms.\n\n\n**When to Seek Care:**\nIf you notice persistent symptoms, changes in your health, or any concerns, it's important to discuss them with your healthcare provider. Don't wait if symptoms are severe, worsening, or causing significant concern.\n\n\n**Questions to Ask Your Doctor:**\n• Can you explain this in more detail?\n• What should I know about this?\n• What are the next steps?\n\nAre you asking generally or about your symptoms?",
+      "responseMetadata": {
+        "sessionId": "d840f04a-296f-416d-9bac-149dd18e8546",
+        "messageId": "87f6c9c4-7023-4309-a6dc-76752d23e83b",
+        "citations": [
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1::chunk::11",
+            "position": 318
+          },
+          {
+            "docId": "kb_en_nci_types_lung_patient_non_small_cell_lung_treatment_pdq_v1",
+            "chunkId": "14bbb432-a744-4b7a-97e3-cd4e5386aa26",
+            "position": 595
+          },
+          {
+            "docId": "kb_en_nci_types_lung_research_v1",
+            "chunkId": "kb_en_nci_types_lung_research_v1::chunk::1",
+            "position": 829
+          }
+        ],
+        "citationConfidence": "YELLOW"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 34952
+    },
+    {
+      "testCaseId": "RQ-ORAL-01",
+      "passed": false,
+      "score": 0.6909090909090909,
+      "deterministicResults": [
+        {
+          "checkId": "no_definitive_diagnosis",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "disclaimer_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "no_over_questioning",
+          "passed": true,
+          "required": true,
+          "details": {
+            "questionCount": 0,
+            "max": 1
+          }
+        },
+        {
+          "checkId": "emergency_guidance_phrase",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": true
+          }
+        },
+        {
+          "checkId": "no_schedule_only",
+          "passed": true,
+          "required": true,
+          "details": {
+            "matched": false
+          }
+        },
+        {
+          "checkId": "citations_present",
+          "passed": true,
+          "required": true,
+          "details": {
+            "citationCount": 3,
+            "minCount": 1,
+            "citations": [
+              {
+                "docId": "kb_en_red_flags_urgent_care_v1",
+                "chunkId": "kb_en_red_flags_urgent_care_v1::chunk::0",
+                "position": 286
+              },
+              {
+                "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1",
+                "chunkId": "79cdd3be-1865-4b04-a10e-e60e5a522fd1",
+                "position": 614
+              },
+              {
+                "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_hp_pdq_v1",
+                "chunkId": "7b7f036f-a6c7-4f5b-a50e-661dabab3425",
+                "position": 956
+              }
+            ]
+          }
+        },
+        {
+          "checkId": "citation_confidence_acceptable",
+          "passed": true,
+          "required": true,
+          "details": {
+            "currentConfidence": "YELLOW",
+            "minConfidence": "YELLOW",
+            "passed": true
+          }
+        }
+      ],
+      "llmJudgeResults": [
+        {
+          "checkId": "emergency_guidance",
+          "passed": true,
+          "evidence": "Please seek emergency medical care now or call local emergency services",
+          "count": 5
+        },
+        {
+          "checkId": "what_to_do_now",
+          "passed": false,
+          "evidence": "Response lacks concrete immediate steps like applying pressure for bleeding",
+          "count": 0
+        },
+        {
+          "checkId": "brief_reason_for_urgency",
+          "passed": true,
+          "evidence": "Severe shortness of breath and uncontrolled bleeding are considered medical emergencies",
+          "count": 2
+        },
+        {
+          "checkId": "rag_backed_content",
+          "passed": true,
+          "evidence": "Bleeding in the mouth can occur when anticancer drugs make the blood less able to clot [citation:kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1:79cdd3be-1865-4b04-a10e-e60e5a522fd1]",
+          "count": 3
+        },
+        {
+          "checkId": "no_unsupported_medical_claims",
+          "passed": false,
+          "evidence": "Response mentions 'severe chest pain, trouble breathing, heavy bleeding, confusion, fainting' without citations",
+          "count": 0
+        }
+      ],
+      "responseText": "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\nSome of what you described could be urgent. Please seek emergency medical care now or call local emergency services.\n\n**If you can, share:**\n• Your age\n• What symptoms are happening right now\n• When they started or got worse\n\nI can help you prepare what to say to the clinician. But please prioritize getting medical attention immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.\n\n**Information from trusted sources:**\n\nI understand this is urgent. Here are some immediate steps and information based on the provided references:\n\n- **Seek Immediate Medical Attention**: Severe shortness of breath and uncontrolled bleeding are considered medical emergencies. It's important to seek urgent care immediately [citation:kb_en_red_flags_urgent_care_v1:kb_en_red_flags_urgent_care_v1::chunk::0].\n\n- **Bleeding and Cancer Treatments**: Bleeding in the mouth can occur when anticancer drugs make the blood less able to clot. This is particularly a concern for patients undergoing high-dose chemotherapy or hematopoietic stem cell transplants [citation:kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1:79cdd3be-1865-4b04-a10e-e60e5a522fd1].\n\n- **Hemorrhage Concerns**: Hemorrhage, including spontaneous gingival oozing, may occur during treatment-induced thrombocytopenia and/or coagulopathy, especially in patients receiving high-dose chemotherapy [citation:kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_hp_pdq_v1:7b7f036f-a6c7-4f5b-a50e-661dabab3425].\n\nPlease call emergency services or go to the nearest emergency room for immediate care. Your symptoms require prompt medical evaluation and treatment.",
+      "responseMetadata": {
+        "sessionId": "315d2e93-c63d-45d9-ba36-07b8b52a5192",
+        "messageId": "40a5b3d1-2208-4f35-ad99-3f73a50e0080",
+        "citations": [
+          {
+            "docId": "kb_en_red_flags_urgent_care_v1",
+            "chunkId": "kb_en_red_flags_urgent_care_v1::chunk::0",
+            "position": 286
+          },
+          {
+            "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_pdq_v1",
+            "chunkId": "79cdd3be-1865-4b04-a10e-e60e5a522fd1",
+            "position": 614
+          },
+          {
+            "docId": "kb_en_nci_about_cancer_treatment_side_effects_mouth_throat_oral_complications_hp_pdq_v1",
+            "chunkId": "7b7f036f-a6c7-4f5b-a50e-661dabab3425",
+            "position": 956
+          }
+        ],
+        "citationConfidence": "YELLOW"
+      },
+      "retrievalQuality": {
+        "top3TrustedPresence": false,
+        "top3SourceTypes": [],
+        "citationCoverage": 1,
+        "hasAbstention": false
+      },
+      "executionTimeMs": 58878
+    }
+  ]
+}

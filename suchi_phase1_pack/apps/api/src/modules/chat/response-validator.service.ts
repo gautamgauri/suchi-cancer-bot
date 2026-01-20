@@ -1,5 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import {
+  DIAGNOSTIC_TEST_PATTERNS,
+  TREATMENT_PATTERNS,
+  STAGING_PROGNOSIS_PATTERNS,
+  PROCEDURE_PATTERNS,
+  PatternEntry,
+  resetPatternIndices,
+} from "./patterns/medical-entities";
 
 export interface ValidationResult {
   isValid: boolean;
@@ -15,86 +23,15 @@ export interface UngroundedEntity {
 
 /**
  * Validates that all medical entities in a response are grounded in retrieved chunks
+ * Uses shared pattern registry from patterns/medical-entities.ts
  */
 @Injectable()
 export class ResponseValidatorService {
   private readonly logger = new Logger(ResponseValidatorService.name);
 
-  // Diagnostic test patterns (case-insensitive)
-  private readonly diagnosticTestPatterns = [
-    /\b(CT|CAT)\s*(scan|scanning)?\b/gi,
-    /\bMRI\b/gi,
-    /\bbronchoscopy\b/gi,
-    /\bbiopsy\b/gi,
-    /\bPET\s*(-\s*CT)?\b/gi,
-    /\bX-?ray\b/gi,
-    /\bmammogram\b/gi,
-    /\bultrasound\b/gi,
-    /\bcolonoscopy\b/gi,
-    /\bendoscopy\b/gi,
-    /\blaryngoscopy\b/gi,
-    /\bcolposcopy\b/gi,
-    /\bFNA\b/gi, // Fine needle aspiration
-    /\bPSA\b/gi, // Prostate-specific antigen
-    /\bAFP\b/gi, // Alpha-fetoprotein
-    /\bCA\s*-?\s*125\b/gi,
-    /\bCA\s*-?\s*19-?9\b/gi,
-    /\bCEA\b/gi, // Carcinoembryonic antigen
-    /\bPap\s*(test|smear)?\b/gi,
-    /\bHPV\s*test\b/gi,
-    /\bsputum\s*test\b/gi,
-    /\bchest\s*X-?ray\b/gi,
-    /\bpulmonary\s*function\s*test\b/gi,
-    /\bneedle\s*biopsy\b/gi,
-    /\bsurgical\s*biopsy\b/gi,
-    /\bFIT\b/gi, // Fecal immunochemical test
-    /\bDRE\b/gi, // Digital rectal exam
-    /\bEUS\b/gi, // Endoscopic ultrasound
-    /\bTSH\b/gi, // Thyroid-stimulating hormone
-    /\bcystoscopy\b/gi,
-    /\burinalysis\b/gi,
-    /\bpathology\s*(test|report)?\b/gi,
-    /\bstaging\s*(scan|test|workup)?\b/gi,
-    /\breceptor\s*testing\b/gi,
-    /\bgenetic\s*markers?\b/gi,
-    /\btumor\s*markers?\b/gi,
-  ];
-
-  // Treatment patterns
-  private readonly treatmentPatterns = [
-    /\bchemotherapy\b/gi,
-    /\bimmunotherapy\b/gi,
-    /\bradiation\s*(therapy|treatment)?\b/gi,
-    /\btargeted\s*therapy\b/gi,
-    /\bhormone\s*therapy\b/gi,
-    /\bsurgery\b/gi,
-    /\bsurgical\s*(resection|removal|procedure)\b/gi,
-  ];
-
-  // Staging/prognosis patterns
-  private readonly stagingPrognosisPatterns = [
-    /\bstage\s*[I1-4IV]\b/gi,
-    /\bstaging\b/gi,
-    /\bprognosis\b/gi,
-    /\bsurvival\s*(rate|percentage)?\b/gi,
-    /\b\d+%\s*survival\b/gi,
-    /\bmetastasis\b/gi,
-    /\bmetastatic\b/gi,
-  ];
-
-  // Procedure patterns
-  private readonly procedurePatterns = [
-    /\bphysical\s*exam\b/gi,
-    /\bclinical\s*exam\b/gi,
-    /\bpelvic\s*exam\b/gi,
-    /\bbreast\s*exam\b/gi,
-    /\bchest\s*exam\b/gi,
-    /\bneurologic\s*exam\b/gi,
-    /\bENT\s*exam\b/gi,
-  ];
-
   /**
    * Validate that all medical entities in the response are grounded in retrieved chunks
+   * Uses shared patterns from patterns/medical-entities.ts
    */
   validate(responseText: string, retrievedChunks: EvidenceChunk[]): ValidationResult {
     const ungroundedEntities: UngroundedEntity[] = [];
@@ -102,10 +39,16 @@ export class ResponseValidatorService {
     // Combine all chunk content for searching
     const allChunkContent = retrievedChunks.map(chunk => chunk.content.toLowerCase()).join(" ");
 
+    // Reset all pattern indices before extraction
+    resetPatternIndices(DIAGNOSTIC_TEST_PATTERNS);
+    resetPatternIndices(TREATMENT_PATTERNS);
+    resetPatternIndices(STAGING_PROGNOSIS_PATTERNS);
+    resetPatternIndices(PROCEDURE_PATTERNS);
+
     // Extract and check diagnostic tests
     this.extractAndCheckEntities(
       responseText,
-      this.diagnosticTestPatterns,
+      DIAGNOSTIC_TEST_PATTERNS,
       "diagnostic_test",
       allChunkContent,
       ungroundedEntities
@@ -114,7 +57,7 @@ export class ResponseValidatorService {
     // Extract and check treatments
     this.extractAndCheckEntities(
       responseText,
-      this.treatmentPatterns,
+      TREATMENT_PATTERNS,
       "treatment",
       allChunkContent,
       ungroundedEntities
@@ -123,7 +66,7 @@ export class ResponseValidatorService {
     // Extract and check staging/prognosis
     this.extractAndCheckEntities(
       responseText,
-      this.stagingPrognosisPatterns,
+      STAGING_PROGNOSIS_PATTERNS,
       "staging_prognosis",
       allChunkContent,
       ungroundedEntities
@@ -132,7 +75,7 @@ export class ResponseValidatorService {
     // Extract and check procedures
     this.extractAndCheckEntities(
       responseText,
-      this.procedurePatterns,
+      PROCEDURE_PATTERNS,
       "procedure",
       allChunkContent,
       ungroundedEntities
@@ -158,28 +101,29 @@ export class ResponseValidatorService {
   }
 
   /**
-   * Extract entities using patterns and check if they're grounded
+   * Extract entities using PatternEntry array and check if they're grounded
    */
   private extractAndCheckEntities(
     responseText: string,
-    patterns: RegExp[],
+    patterns: PatternEntry[],
     type: UngroundedEntity["type"],
     allChunkContent: string,
     ungroundedEntities: UngroundedEntity[]
   ): void {
-    for (const pattern of patterns) {
+    for (const patternEntry of patterns) {
+      const pattern = patternEntry.regex;
       // Reset regex lastIndex to avoid issues with global flag
       pattern.lastIndex = 0;
-      
+
       let match;
       while ((match = pattern.exec(responseText)) !== null) {
         const entity = match[0].trim();
         const entityLower = entity.toLowerCase();
-        
+
         // Check if entity appears in any retrieved chunk
         // Use word boundaries to avoid partial matches
         const entityPattern = new RegExp(`\\b${this.escapeRegex(entityLower)}\\b`, "i");
-        
+
         if (!entityPattern.test(allChunkContent)) {
           // Get context around the match (50 chars before and after)
           const start = Math.max(0, match.index - 50);

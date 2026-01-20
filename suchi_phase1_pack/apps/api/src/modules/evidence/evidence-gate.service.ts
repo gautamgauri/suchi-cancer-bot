@@ -31,6 +31,12 @@ export type AbstentionReason =
   | "citation_validation_failed";
 
 export interface EvidenceGateResult {
+  // NEW: Clear status and approved chunks for trust-first enforcement
+  status: 'ok' | 'insufficient';
+  approvedChunks: EvidenceChunk[];
+  reasonCode: 'NO_RESULTS' | 'LOW_TRUST' | 'LOW_SCORE' | 'RECENCY_FAIL' | 'LOW_DIVERSITY' | 'FILTERED_OUT' | null;
+  
+  // EXISTING: Keep for backward compatibility
   shouldAbstain: boolean;
   confidence: "high" | "medium" | "low";
   quality: EvidenceQuality;
@@ -85,10 +91,12 @@ export class EvidenceGateService {
     // Bypass abstention when general education is detected
     if (conversationContext?.hasGenerallyAsking && intent === "INFORMATIONAL_GENERAL") {
       return {
+        status: chunks.length > 0 ? 'ok' : 'insufficient',
+        approvedChunks: chunks.length > 0 ? chunks : [],
+        reasonCode: chunks.length > 0 ? null : 'NO_RESULTS',
         shouldAbstain: false,
         confidence: "medium",
         quality: chunks.length > 0 ? "weak" : "insufficient"
-        // No reason needed since we're not abstaining
       };
     }
 
@@ -106,6 +114,9 @@ export class EvidenceGateService {
         // Allow through with caution - provide informational response even with weak evidence
         // This bypasses abstention for general "how to identify" questions
         return {
+          status: chunks.length > 0 ? 'ok' : 'insufficient',
+          approvedChunks: chunks.length > 0 ? chunks : [],
+          reasonCode: chunks.length > 0 ? null : 'NO_RESULTS',
           shouldAbstain: false,
           confidence: "medium",
           quality: chunks.length > 0 ? "weak" : "insufficient"
@@ -115,6 +126,9 @@ export class EvidenceGateService {
 
     if (!chunks || chunks.length === 0) {
       return {
+        status: 'insufficient',
+        approvedChunks: [],
+        reasonCode: 'NO_RESULTS',
         shouldAbstain: true,
         confidence: "low",
         quality: "insufficient",
@@ -130,6 +144,9 @@ export class EvidenceGateService {
       const trustworthinessCheck = await this.checkSourceTrustworthiness(chunks);
       if (!trustworthinessCheck.isTrusted) {
         return {
+          status: 'insufficient',
+          approvedChunks: [],
+          reasonCode: 'LOW_TRUST',
           shouldAbstain: true,
           confidence: "low",
           quality: "insufficient",
@@ -140,6 +157,9 @@ export class EvidenceGateService {
 
       // Strong matches pass through - answer directly
       return {
+        status: 'ok',
+        approvedChunks: chunks,
+        reasonCode: null,
         shouldAbstain: false,
         confidence: "high",
         quality: "strong",
@@ -150,6 +170,9 @@ export class EvidenceGateService {
     const trustworthinessCheck = await this.checkSourceTrustworthiness(chunks);
     if (!trustworthinessCheck.isTrusted) {
       return {
+        status: 'insufficient',
+        approvedChunks: [],
+        reasonCode: 'LOW_TRUST',
         shouldAbstain: true,
         confidence: "low",
         quality: "insufficient",
@@ -175,6 +198,9 @@ export class EvidenceGateService {
 
     if (isVeryWeak) {
       return {
+        status: 'insufficient',
+        approvedChunks: [],
+        reasonCode: 'LOW_SCORE',
         shouldAbstain: true,
         confidence: "low",
         quality: "insufficient",
@@ -194,6 +220,9 @@ export class EvidenceGateService {
     const conflictCheck = this.detectConflicts(chunks);
     if (conflictCheck.hasConflict) {
       return {
+        status: 'ok', // Allow with conflicting flag
+        approvedChunks: chunks,
+        reasonCode: null,
         shouldAbstain: false, // Present uncertainty instead of abstaining
         confidence: "low",
         quality: "conflicting",
@@ -220,6 +249,9 @@ export class EvidenceGateService {
 
     // Rule B2: For weak matches, don't abstain - allow with clarifying question option
     return {
+      status: quality === "insufficient" ? 'insufficient' : 'ok',
+      approvedChunks: quality === "insufficient" ? [] : chunks,
+      reasonCode: quality === "insufficient" ? 'LOW_DIVERSITY' : null,
       shouldAbstain: false,
       confidence,
       quality,

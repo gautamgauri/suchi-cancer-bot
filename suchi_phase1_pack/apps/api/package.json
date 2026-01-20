@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "kb:dry": "ts-node src/scripts/ingest-kb.ts --dryRun",
     "kb:ingest": "ts-node src/scripts/ingest-kb.ts --resume",
     "kb:ingest:fresh": "ts-node src/scripts/ingest-kb.ts --wipeChunks --confirmWipe",
@@ -22,19 +23,20 @@
     "@prisma/client": "^5.20.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "gray-matter": "^4.0.3",
     "helmet": "^7.1.0",
+    "openai": "^4.77.0",
+    "puppeteer": "^22.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "uuid": "^10.0.0",
-    "zod": "^3.24.1",
-    "gray-matter": "^4.0.3",
-    "openai": "^4.77.0",
     "youtube-transcript": "^1.2.1",
-    "puppeteer": "^22.0.0"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
     "@types/node": "^20.14.10",
+    "pg": "^8.16.3",
     "prisma": "^5.20.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"

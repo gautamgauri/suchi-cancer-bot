@@ -10,6 +10,7 @@ export interface TemplateContext {
   userText: string;
   queryType?: string;
   evidenceQuality?: string;
+  locale?: string; // For locale-aware emergency numbers
   [key: string]: any;
 }
 
@@ -248,7 +249,28 @@ What would you like to know?`;
 
   static S2(context: TemplateContext): string {
     // Urgent red flags - highest priority
-    return "Some of what you described could be urgent. Please seek emergency medical care now or call local emergency services.\n\n**If you can, share:**\n• Your age\n• What symptoms are happening right now\n• When they started or got worse\n\nI can help you prepare what to say to the clinician. But please prioritize getting medical attention immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.";
+    // Locale-aware emergency numbers
+    const locale = context.locale?.toLowerCase() || "";
+    const isIndia = locale.includes("india") || locale.includes("in") || locale === "en-in";
+    
+    const emergencyNumber = isIndia ? "112" : "911"; // 112 for India, 911 for US/others
+    const ambulanceNumber = isIndia ? "108" : "911"; // 108 for India ambulance, 911 for others
+    
+    return `Some of what you described could be urgent. Please seek emergency medical care now or call local emergency services${isIndia ? ` (${emergencyNumber} for emergency, ${ambulanceNumber} for ambulance)` : ` (${emergencyNumber})`}.
+
+**Immediate Steps:**
+• Call ${emergencyNumber}${isIndia ? ` or ${ambulanceNumber} for ambulance` : ""} or have someone drive you to the nearest emergency room
+• Don't drive yourself if you're feeling faint, dizzy, or confused
+• If you have severe bleeding, apply gentle pressure if possible (without causing more harm)
+• Bring a list of your current medications if you can
+• If someone is with you, have them call ahead to the ER if possible
+
+**If you can, share with the clinician:**
+• Your age
+• What symptoms are happening right now
+• When they started or got worse
+
+I can help you prepare what to say to the clinician. But please prioritize getting medical attention immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.`;
   }
 
   /**

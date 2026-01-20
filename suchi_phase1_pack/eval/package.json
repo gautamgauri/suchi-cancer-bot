@@ -14,7 +14,9 @@
     "check": "npm run typecheck && npm run lint",
     "eval": "ts-node cli.ts",
     "eval:run": "npm run build && node dist/cli.js run",
-    "eval:report": "npm run build && node dist/cli.js report"
+    "eval:report": "npm run build && node dist/cli.js report",
+    "eval:generalinfo": "ts-node cli.ts run --cases cases/generalinfo/general_info_100.yaml --output reports/generalinfo-report.json --summary",
+    "eval:tier1": "ts-node cli.ts run --cases cases/tier1/retrieval_quality.yaml --output reports/tier1-report.json --summary"
   },
   "keywords": [
     "evaluation",

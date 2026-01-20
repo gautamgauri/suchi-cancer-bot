@@ -15,11 +15,16 @@ export class LLMJudge {
       });
     }
     
-    if (config.llmProvider === "deepseek" && config.deepseekConfig?.apiKey) {
-      this.deepseekClient = new OpenAI({
-        apiKey: config.deepseekConfig.apiKey,
-        baseURL: config.deepseekConfig.baseURL || "https://api.deepseek.com/v1",
-      });
+    if (config.llmProvider === "deepseek") {
+      if (config.deepseekConfig?.apiKey && config.deepseekConfig.apiKey.trim().length > 0) {
+        this.deepseekClient = new OpenAI({
+          apiKey: config.deepseekConfig.apiKey,
+          baseURL: config.deepseekConfig.baseURL || "https://api.deepseek.com/v1",
+        });
+      } else {
+        console.warn("⚠ Deepseek client not initialized: DEEPSEEK_API_KEY is missing or empty in config.");
+        console.warn("  Set DEEPSEEK_API_KEY environment variable or ensure Secret Manager is accessible.");
+      }
     }
   }
 

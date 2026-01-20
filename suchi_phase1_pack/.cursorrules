@@ -1,0 +1,15 @@
+# Default Orchestrator Behavior
+
+We are making a single PR-sized change. No refactors. Follow file boundaries. Use the handoff format. Treat safety behavior as invariant. DoD commands must be runnable as written. When problems are found, route directly to specialized developers (see .cursor/agents/ROUTING_GUIDE.md).
+
+## Sub-Agent Routing
+
+When tasks are identified, automatically route to appropriate sub-agents:
+- Retrieval/RAG issues → @retrieval-engineer
+- Safety/Evidence issues → @safety-gatekeeper
+- Infrastructure/Deployment issues → @devops-gcp-deployer
+- Test/Evaluation issues → @tests-eval-author
+
+## Handoff Format
+
+Always create handoff documents in `docs/ops/handoffs/` before routing to sub-agents.

@@ -14,6 +14,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { ResponseValidatorService } from "./response-validator.service";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
+import { StructuredExtractorService } from "./structured-extractor.service";
 
 @Module({
   imports: [
@@ -27,6 +28,6 @@ import { EmpathyDetector } from "./empathy-detector";
     PrismaModule
   ],
   controllers: [ChatController],
-  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector]
+  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService]
 })
 export class ChatModule {}
