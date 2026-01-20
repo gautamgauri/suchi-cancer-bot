@@ -921,7 +921,14 @@ export class ChatService {
           messageId: assistant.id,
           responseText: assistant.text,
           safety: { classification: "normal" as const, actions: [] },
-          abstentionReason: "ungrounded_entities"
+          abstentionReason: "ungrounded_entities",
+          retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
         };
       } else if (validationResult.shouldAbstain && isInformationalQuery) {
         // For informational queries, log warning but allow response through
@@ -972,7 +979,14 @@ export class ChatService {
               messageId: assistant.id,
               responseText: assistant.text,
               safety: { classification: "normal" as const, actions: [] },
-              abstentionReason: "ungrounded_entities"
+              abstentionReason: "ungrounded_entities",
+              retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+                docId: chunk.docId,
+                chunkId: chunk.chunkId,
+                sourceType: chunk.document.sourceType,
+                isTrustedSource: chunk.document.isTrustedSource,
+                similarity: chunk.similarity
+              }))
             };
           }
         }
@@ -1031,7 +1045,14 @@ export class ChatService {
           messageId: assistant.id,
           responseText: assistant.text,
           safety: { classification: "normal" as const, actions: [] },
-          abstentionReason: 'citation_validation_failed'
+          abstentionReason: 'citation_validation_failed',
+          retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
         };
       }
       
@@ -1122,7 +1143,14 @@ export class ChatService {
               messageId: assistant.id,
               responseText: assistant.text,
               safety: { classification: "normal" as const, actions: [] },
-              abstentionReason: "citation_validation_failed"
+              abstentionReason: "citation_validation_failed",
+              retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+                docId: chunk.docId,
+                chunkId: chunk.chunkId,
+                sourceType: chunk.document.sourceType,
+                isTrustedSource: chunk.document.isTrustedSource,
+                similarity: chunk.similarity
+              }))
             };
           }
         }
@@ -1354,7 +1382,14 @@ export class ChatService {
           messageId: assistant.id,
           responseText: assistant.text,
           safety: { classification: "normal" as const, actions: [] },
-          abstentionReason: "citation_validation_failed"
+          abstentionReason: "citation_validation_failed",
+          retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
         };
       }
     }
