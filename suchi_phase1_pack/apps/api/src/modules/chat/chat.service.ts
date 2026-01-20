@@ -778,7 +778,14 @@ export class ChatService {
           safety: { classification: "normal" as const, actions: [] },
           citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
           citationConfidence: citationValidation.confidenceLevel,
-          abstentionReason: gateResult.reason || undefined
+          abstentionReason: gateResult.reason || undefined,
+          retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
         };
       }
     }
@@ -1187,7 +1194,14 @@ export class ChatService {
           chunkId: c.chunkId,
           position: c.position
         })),
-        citationConfidence: citationValidation.confidenceLevel
+        citationConfidence: citationValidation.confidenceLevel,
+        retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+          docId: chunk.docId,
+          chunkId: chunk.chunkId,
+          sourceType: chunk.document.sourceType,
+          isTrustedSource: chunk.document.isTrustedSource,
+          similarity: chunk.similarity
+        }))
       };
     }
 
@@ -1272,7 +1286,14 @@ export class ChatService {
           chunkId: c.chunkId,
           position: c.position
         })),
-        citationConfidence: citations.length > 0 ? "GREEN" : undefined
+        citationConfidence: citations.length > 0 ? "GREEN" : undefined,
+        retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+          docId: chunk.docId,
+          chunkId: chunk.chunkId,
+          sourceType: chunk.document.sourceType,
+          isTrustedSource: chunk.document.isTrustedSource,
+          similarity: chunk.similarity
+        }))
       };
     }
 
