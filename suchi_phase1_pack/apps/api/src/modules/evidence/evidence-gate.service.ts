@@ -186,6 +186,17 @@ export class EvidenceGateService {
     const thresholds = getEvidenceThresholds(queryType);
     const uniqueDocIds = new Set(chunks.map(c => c.docId));
 
+    // NEW: Relax thresholds for general-info queries with Tier-1 sources
+    const hasTier1 = chunks.some(c => {
+      const config = getSourceConfig(c.document.sourceType || '');
+      return config?.priority === 'high';
+    });
+
+    const isGeneralInfo = ['general', 'prevention', 'caregiver', 'navigation'].includes(queryType);
+    const adjustedThresholds = (isGeneralInfo && hasTier1) 
+      ? { minPassages: 1, minSources: 1 } // Relax for general queries with Tier-1 source
+      : thresholds; // Keep strict for treatment/symptoms
+
     // Calculate confidence based on similarity scores if available
     const avgSimilarity = chunks
       .filter(c => c.similarity !== undefined)
@@ -194,7 +205,7 @@ export class EvidenceGateService {
 
     // Rule B3: Very weak matches (low similarity AND insufficient passages/sources)
     const isVeryWeak = (avgSimilarity < 0.3 || avgSimilarity === undefined) && 
-                       (chunks.length < thresholds.minPassages || uniqueDocIds.size < thresholds.minSources);
+                       (chunks.length < adjustedThresholds.minPassages || uniqueDocIds.size < adjustedThresholds.minSources);
 
     if (isVeryWeak) {
       return {

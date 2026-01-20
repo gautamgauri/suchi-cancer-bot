@@ -367,7 +367,7 @@ export class RagService {
       }
 
       // Calculate max lexRank for normalization (guard against zero)
-      const maxLexRank = Math.max(...results.map(r => r.lexRank), 0.0001);
+      const maxLexRank = Math.max(...results.map(r => r.lexRank), 0.01);
 
       return results.map(r => ({
         chunkId: r.id,
@@ -448,10 +448,10 @@ export class RagService {
       }
     }
 
-    // Calculate hybrid scores: 0.6 * vecSim + 0.4 * lexSim
+    // Calculate hybrid scores: 0.55 * vecSim + 0.45 * lexSim
     const scored = Array.from(chunkMap.values()).map(item => ({
       chunk: item.chunk,
-      finalScore: 0.6 * item.vecSim + 0.4 * item.lexSim,
+      finalScore: 0.55 * item.vecSim + 0.45 * item.lexSim,
       vecSim: item.vecSim,
       lexSim: item.lexSim
     }));
@@ -471,6 +471,22 @@ export class RagService {
     this.logger.debug(
       `Hybrid search: ${vectorChunks.length} vector + ${ftsChunks.length} FTS = ${chunkMap.size} unique chunks, returning top ${topK}`
     );
+
+    // Log top-K metadata for debugging
+    const top3Trusted = reranked.slice(0, 3).filter(c => 
+      c.document.isTrustedSource || isTrustedSource(c.document.sourceType || '')
+    ).length;
+
+    this.logger.log({
+      event: 'hybrid_retrieval',
+      query: query.substring(0, 50),
+      vectorCount: vectorChunks.length,
+      ftsCount: ftsChunks.length,
+      mergedCount: chunkMap.size,
+      top3TrustedCount: top3Trusted,
+      topScore: reranked[0]?.similarity || 0,
+      top3SourceTypes: reranked.slice(0, 3).map(c => c.document.sourceType)
+    });
 
     // Return top-K
     return reranked.slice(0, topK);
@@ -562,24 +578,26 @@ export class RagService {
       if (isTrusted && sourceType) {
         const config = getSourceConfig(sourceType);
         if (config) {
-          // Apply priority-based boost
+          // Apply priority-based multiplicative boost
           switch (config.priority) {
             case 'high':
-              rerankScore = similarity + 0.15;
+              rerankScore = similarity * 1.50; // 50% boost (was +0.15)
               break;
             case 'medium':
-              rerankScore = similarity + 0.10;
+              rerankScore = similarity * 1.25; // 25% boost (was +0.10)
               break;
             case 'low':
-              rerankScore = similarity + 0.05;
+              rerankScore = similarity * 1.10; // 10% boost (was +0.05)
               break;
           }
         } else {
           // Trusted but no config (shouldn't happen, but safe fallback)
-          rerankScore = similarity + 0.10;
+          rerankScore = similarity * 1.25;
         }
+      } else {
+        // Penalize untrusted sources slightly
+        rerankScore = similarity * 0.95;
       }
-      // Untrusted/unknown sources get no boost
 
       return {
         chunk,

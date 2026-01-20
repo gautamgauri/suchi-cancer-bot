@@ -570,7 +570,14 @@ export class ChatService {
         messageId: assistant.id,
         responseText: assistant.text,
         safety: { classification: "normal" as const, actions: [] },
-        abstentionReason: gateResult.reasonCode || 'insufficient_evidence'
+        abstentionReason: gateResult.reasonCode || 'insufficient_evidence',
+        retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+          docId: chunk.docId,
+          chunkId: chunk.chunkId,
+          sourceType: chunk.document.sourceType,
+          isTrustedSource: chunk.document.isTrustedSource,
+          similarity: chunk.similarity
+        }))
       };
     }
 
