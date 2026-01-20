@@ -16,8 +16,8 @@ steps:
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:latest'
       - '-f'
-      - 'suchi_phase1_pack/apps/api/Dockerfile'
-      - 'suchi_phase1_pack/apps/api'
+      - 'apps/api/Dockerfile'
+      - 'apps/api'
 
   # Build Web Docker image
   - name: 'gcr.io/cloud-builders/docker'
