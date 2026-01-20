@@ -46,18 +46,6 @@ steps:
       - '--all-tags'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web'
 
-  # Run Database Migration before deployment
-  - name: 'node:20-alpine'
-    id: 'run-migration'
-    entrypoint: 'sh'
-    args:
-      - '-c'
-      - |
-        cd suchi_phase1_pack/apps/api
-        npm ci
-        npx prisma migrate deploy
-    secretEnv: ['DATABASE_URL']
-
   # Deploy API to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy-api'
@@ -129,12 +117,6 @@ substitutions:
 options:
   machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
-
-# Available secrets for build steps
-availableSecrets:
-  secretManager:
-    - versionName: 'projects/gen-lang-client-0202543132/secrets/database-url/versions/latest'
-      env: 'DATABASE_URL'
 
 # Timeout for the entire build
 timeout: '1200s'
