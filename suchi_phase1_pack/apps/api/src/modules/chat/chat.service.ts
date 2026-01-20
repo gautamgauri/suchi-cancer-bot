@@ -216,7 +216,14 @@ export class ChatService {
           responseText: assistant.text, 
           safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"] },
           citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
-          citationConfidence: citationValidation.confidenceLevel
+          citationConfidence: citationValidation.confidenceLevel,
+          retrievedChunks: earlyEvidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
         };
       }
       
@@ -632,7 +639,16 @@ export class ChatService {
         messageId: assistant.id,
         responseText: assistant.text,
         safety: { classification: "normal" as const, actions: [] },
-        abstentionReason: gateResult.shouldAbstain ? gateResult.reason : undefined
+        abstentionReason: gateResult.shouldAbstain ? gateResult.reason : undefined,
+        ...(evidenceChunks.length > 0 && {
+          retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
+        })
       };
     }
 
@@ -694,7 +710,16 @@ export class ChatService {
           messageId: assistant.id,
           responseText: assistant.text,
           safety: { classification: "normal" as const, actions: [] },
-          abstentionReason: gateResult.reason
+          abstentionReason: gateResult.reason,
+          ...(evidenceChunks.length > 0 && {
+            retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+              docId: chunk.docId,
+              chunkId: chunk.chunkId,
+              sourceType: chunk.document.sourceType,
+              isTrustedSource: chunk.document.isTrustedSource,
+              similarity: chunk.similarity
+            }))
+          })
         };
       }
       // If canAskClarifying is false, fall through to Explain Mode flow below
