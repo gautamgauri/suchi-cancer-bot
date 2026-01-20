@@ -1,5 +1,9 @@
 # Google Cloud Build configuration for Suchi Cancer Bot
 # This file defines the build and deployment pipeline
+#
+# NOTE: Uses $BUILD_ID (not SHORT_SHA) for image tags because BUILD_ID is always
+# available, while SHORT_SHA is only available for repository-triggered builds.
+# This allows both manual (gcloud builds submit) and trigger-based deployments.
 
 steps:
   # Build API Docker image
@@ -8,7 +12,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:$BUILD_ID'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:latest'
       - '-f'
@@ -21,7 +25,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:$BUILD_ID'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:latest'
       - '--build-arg'
@@ -55,7 +59,7 @@ steps:
       - 'deploy'
       - '${_API_SERVICE_NAME}'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:$BUILD_ID'
       - '--region'
       - '${_REGION}'
       - '--platform'
@@ -89,7 +93,7 @@ steps:
       - 'deploy'
       - '${_WEB_SERVICE_NAME}'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-web:$BUILD_ID'
       - '--region'
       - '${_REGION}'
       - '--platform'
