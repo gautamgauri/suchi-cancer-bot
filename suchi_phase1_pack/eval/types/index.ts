@@ -163,6 +163,7 @@ export interface EvaluationResult {
     hasAbstention: boolean;
   };
   error?: string;
+  timedOut?: boolean; // ✅ NEW: Flag for timeout failures
   executionTimeMs: number;
 }
 

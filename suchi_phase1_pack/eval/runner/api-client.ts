@@ -4,9 +4,12 @@ import { ChatResponse } from "../types";
 export class ApiClient {
   private client: AxiosInstance;
   private baseUrl: string;
+  private retries: number;
 
-  constructor(baseUrl: string, timeoutMs: number = 120000, authorizationHeader?: string) {
+  constructor(baseUrl: string, timeoutMs: number = 120000, authorizationHeader?: string, retries: number = 2) {
     this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
+    this.retries = retries;
+    
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -38,23 +41,50 @@ export class ApiClient {
   }
 
   /**
-   * Send a chat message
+   * Send a chat message with retry logic
    */
   async sendMessage(
     sessionId: string,
     userText: string,
     channel: "web" | "app" | "whatsapp" = "web"
   ): Promise<ChatResponse> {
-    try {
-      const response = await this.client.post<ChatResponse>("/chat", {
-        sessionId,
-        channel,
-        userText,
-      });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(`Failed to send message: ${error.message}`);
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.retries; attempt++) {
+      try {
+        const response = await this.client.post<ChatResponse>("/chat", {
+          sessionId,
+          channel,
+          userText,
+        });
+        
+        if (attempt > 0) {
+          console.log(`  ✅ Retry ${attempt} succeeded`);
+        }
+        
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Check if retryable
+        const isRetryable = 
+          error.code === 'ECONNABORTED' || // Timeout
+          error.response?.status === 429 || // Rate limit
+          error.response?.status === 503 || // Service unavailable
+          error.response?.status === 504;   // Gateway timeout
+
+        if (!isRetryable || attempt === this.retries) {
+          throw new Error(`Failed to send message: ${error.message}`);
+        }
+
+        // Exponential backoff: 2s, 4s, 8s
+        const backoffMs = Math.pow(2, attempt + 1) * 1000;
+        console.log(`  ⚠️ Attempt ${attempt + 1} failed (${error.message}), retrying in ${backoffMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
     }
+
+    throw new Error(`Failed to send message after ${this.retries} retries: ${lastError?.message}`);
   }
 
   /**

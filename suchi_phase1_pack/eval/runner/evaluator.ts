@@ -79,12 +79,61 @@ export class Evaluator {
   }
 
   /**
-   * Evaluate a single test case
+   * Evaluate a single test case with timeout
    */
   async evaluateTestCase(testCase: TestCase): Promise<EvaluationResult> {
     const startTime = Date.now();
     let sessionId: string | null = null;
 
+    // ✅ NEW: Wrap in timeout promise (2 minutes per case)
+    const PER_CASE_TIMEOUT = 120000; // 2 minutes
+
+    try {
+      const result = await Promise.race([
+        this.executeTestCase(testCase, sessionId, startTime),
+        this.timeoutPromise(PER_CASE_TIMEOUT, testCase.id),
+      ]);
+      
+      return result;
+    } catch (error: any) {
+      console.error(`  ❌ Case ${testCase.id} failed: ${error.message}`);
+      
+      return {
+        testCaseId: testCase.id,
+        passed: false,
+        score: 0,
+        deterministicResults: [],
+        responseText: "",
+        responseMetadata: {
+          sessionId: sessionId || "",
+          messageId: "",
+        },
+        error: error.message,
+        executionTimeMs: Date.now() - startTime,
+        timedOut: error.message.includes('timeout'), // ✅ NEW: Flag timeouts
+      };
+    }
+  }
+
+  /**
+   * ✅ NEW: Helper method for timeout
+   */
+  private timeoutPromise(ms: number, caseId: string): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Case ${caseId} timeout after ${ms}ms`));
+      }, ms);
+    });
+  }
+
+  /**
+   * ✅ NEW: Extract main execution logic
+   */
+  private async executeTestCase(
+    testCase: TestCase,
+    sessionId: string | null,
+    startTime: number
+  ): Promise<EvaluationResult> {
     try {
       // Create session
       sessionId = await this.apiClient.createSession("web");
@@ -234,9 +283,28 @@ export class Evaluator {
         results.push(...batchResults);
       }
     } else {
-      // Sequential execution
+      // ✅ UPDATED: Sequential execution with progress logging
       for (const testCase of testCases) {
+        const caseNum = testCases.indexOf(testCase) + 1;
+        const caseStartTime = Date.now();
+        
+        console.log(`\n[${caseNum}/${testCases.length}] ${testCase.id}`);
+        console.log(`  Query: "${testCase.user_messages[0]}"`);
+        
         const result = await this.evaluateTestCase(testCase);
+        
+        const duration = Date.now() - caseStartTime;
+        const status = result.passed ? '✅' : result.error ? '❌' : '⚠️';
+        console.log(`  ${status} Completed in ${(duration / 1000).toFixed(1)}s`);
+        
+        if (result.error) {
+          console.log(`  Error: ${result.error}`);
+        } else {
+          console.log(`  Score: ${(result.score * 100).toFixed(1)}%`);
+          const citationCount = result.responseMetadata.citations?.length || 0;
+          console.log(`  Citations: ${citationCount}`);
+        }
+        
         results.push(result);
         
         // Small delay between tests to avoid rate limiting

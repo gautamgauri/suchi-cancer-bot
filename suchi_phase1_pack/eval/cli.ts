@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { Evaluator } from "./runner/evaluator";
 import { ReportGenerator } from "./runner/report-generator";
+import { ApiClient } from "./runner/api-client";
 import { loadConfig } from "./config/loader";
 import * as path from "path";
 import * as fs from "fs/promises";
@@ -53,8 +54,25 @@ program
 
       const filteredCases = Evaluator.filterTestCases(testCases, filters);
 
-      // Create evaluator
+      // ✅ NEW: Warm-up API to prevent cold start on first test case
+      console.log("\n🔥 Warming up API...");
+      try {
+        const warmupClient = new ApiClient(config.apiBaseUrl, 30000, config.authBearer); // 30s timeout
+        const warmupSession = await warmupClient.createSession("web");
+        await warmupClient.sendMessage(
+          warmupSession,
+          "What is cancer?", // Simple query
+          "web"
+        );
+        console.log("✅ API warmed up\n");
+      } catch (error: any) {
+        console.warn("⚠️ Warm-up failed (continuing anyway):", error.message);
+      }
+
+      // Create evaluator and report generator
       const evaluator = new Evaluator(config, rubricPack);
+      const reportGenerator = new ReportGenerator();
+      const outputPath = path.resolve(process.cwd(), options.output);
 
       // Apply batching if batch-size is specified
       let results;
@@ -74,22 +92,39 @@ program
           console.log(`\nBatch ${i + 1}/${batches.length}: Cases ${startCase}-${endCase}`);
           const batchResults = await evaluator.evaluateTestCases(batches[i]);
           allResults.push(...batchResults);
+          
+          // ✅ NEW: Write incremental report after each batch
+          const partialReport = reportGenerator.generateReport(allResults, config);
+          await reportGenerator.exportToFile(partialReport, outputPath);
+          console.log(`  💾 Progress saved: ${allResults.length}/${filteredCases.length} cases`);
         }
         
         results = allResults;
       } else {
         console.log(`Running ${filteredCases.length} test case(s)...`);
-        results = await evaluator.evaluateTestCases(filteredCases);
+        
+        // ✅ NEW: Write after each case for non-batched runs
+        const allResults = [];
+        for (let i = 0; i < filteredCases.length; i++) {
+          console.log(`\n[${i + 1}/${filteredCases.length}] Evaluating ${filteredCases[i].id}...`);
+          const result = await evaluator.evaluateTestCase(filteredCases[i]);
+          allResults.push(result);
+          
+          // Write incremental report after each case
+          const partialReport = reportGenerator.generateReport(allResults, config);
+          await reportGenerator.exportToFile(partialReport, outputPath);
+          console.log(`  💾 Progress saved: ${allResults.length}/${filteredCases.length} cases`);
+        }
+        
+        results = allResults;
       }
 
-      // Generate report
-      const reportGenerator = new ReportGenerator();
+      // Generate final report
       const report = reportGenerator.generateReport(results, config);
 
-      // Save report
-      const outputPath = path.resolve(process.cwd(), options.output);
+      // Save final report (ensures completeness marker)
       await reportGenerator.exportToFile(report, outputPath);
-      console.log(`\nReport saved to: ${outputPath}`);
+      console.log(`\n✅ Final report saved to: ${outputPath}`);
 
       // Print summary if requested
       if (options.summary) {
