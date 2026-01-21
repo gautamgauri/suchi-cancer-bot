@@ -535,15 +535,16 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
       try {
-        const completion = await this.client.chat.completions.create({
-          model: this.model,
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-4o",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: fullPrompt },
           ],
           temperature: 0.2, // Lower temperature for factual responses
           max_tokens: 500, // Shorter responses
-          signal: controller.signal,
+        }, {
+          signal: controller.signal as any // OpenAI SDK may not support AbortSignal directly, but we'll handle timeout via catch
         });
 
         clearTimeout(timeoutId);

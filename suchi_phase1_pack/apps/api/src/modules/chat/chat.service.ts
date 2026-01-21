@@ -855,18 +855,17 @@ export class ChatService {
     }
 
     // PHASE 3: Answer-First EXPLAIN Mode for definitional queries with sufficient evidence
-    // Check for simple definitional queries (not "identify" questions which need full structure)
-    const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
-    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
-    const isIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
-                                cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
-                                !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
+    // Calculate average similarity from retrieved chunks
+    const avgSimilarity = evidenceChunks.length > 0
+      ? evidenceChunks.reduce((sum, chunk) => sum + (chunk.similarity || 0), 0) / evidenceChunks.length
+      : 0;
     
     // Answer-first logic: For non-identify definitional queries with sufficient evidence
+    // (isIdentifyQuestion already defined earlier at line 486)
     if (
       mode === "explain" && 
       (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
-      !isIdentifyQuestion && // Not an "identify" question (those need full structured response)
+      !mightBeIdentifyQuestion && // Not an "identify" question (those need full structured response)
       evidenceChunks.length >= 2 && // Sufficient chunks
       avgSimilarity >= 0.40 // Moderate confidence threshold
     ) {
@@ -1005,7 +1004,7 @@ export class ChatService {
     if (mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) {
 
       // Detect cancer type for cancer-type-specific responses (check session first)
-      const cancerType = isIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;
+      const cancerType = mightBeIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;
 
       // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
       const extraction = this.structuredExtractor.extract(evidenceChunks, queryType);
@@ -1017,7 +1016,7 @@ export class ChatService {
         "",
         dto.userText,
         evidenceChunks,
-        isIdentifyQuestion,
+        mightBeIdentifyQuestion,
         { hasGenerallyAsking, cancerType, emotionalState, checklist }
       );
 
@@ -1144,7 +1143,7 @@ export class ChatService {
       }
 
       // Validate identify question responses
-      if (isIdentifyQuestion) {
+      if (mightBeIdentifyQuestion) {
         const validation = this.passesIdentifyRubric(responseText);
         if (!validation.ok) {
           this.logger.warn(`Identify response missing elements: ${validation.missing.join(", ")}`);
@@ -1312,12 +1311,12 @@ export class ChatService {
       }
       
       // Ensure minimum 2 citations for general education identify questions
-      if (isIdentifyQuestion && hasGenerallyAsking && citations.length < 2) {
+      if (mightBeIdentifyQuestion && hasGenerallyAsking && citations.length < 2) {
         this.logger.warn(`Only ${citations.length} citations for identify question, expected 2+`);
       }
       
       // For identify questions with general intent, pass flag to allow 0 citations with YELLOW
-      const isIdentifyWithGeneralIntent = isIdentifyQuestion && hasGenerallyAsking;
+      const isIdentifyWithGeneralIntent = mightBeIdentifyQuestion && hasGenerallyAsking;
       let citationValidation = this.citationService.validateCitations(
         citations, 
         evidenceChunks, 
@@ -1345,7 +1344,7 @@ export class ChatService {
       // Handle citation validation
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
-        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, isIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState });
+        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
         
