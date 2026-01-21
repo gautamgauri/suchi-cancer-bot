@@ -522,6 +522,22 @@ export class ChatService {
       { hasGenerallyAsking }
     );
 
+    // DEBUG: Log evidence gate result for diagnosis
+    this.logger.log({
+      event: 'evidence_gate_result',
+      sessionId: dto.sessionId,
+      query: dto.userText.substring(0, 100),
+      gateResult: {
+        status: gateResult.status,
+        quality: gateResult.quality,
+        reasonCode: gateResult.reasonCode,
+        reason: gateResult.reason,
+        approvedChunksCount: gateResult.approvedChunks.length,
+      },
+      intent: intentResult.intent,
+      mode,
+    });
+
     // If evidence is weak or insufficient, try expanded retrieval
     if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
       const cancerType = detectCancerType(dto.userText, sessionCancerType);
@@ -859,7 +875,27 @@ export class ChatService {
     const avgSimilarity = evidenceChunks.length > 0
       ? evidenceChunks.reduce((sum, chunk) => sum + (chunk.similarity || 0), 0) / evidenceChunks.length
       : 0;
-    
+
+    // DEBUG: Log all answer-first trigger conditions for diagnosis
+    this.logger.log({
+      event: 'answer_first_condition_check',
+      sessionId: dto.sessionId,
+      query: dto.userText.substring(0, 100),
+      conditions: {
+        mode,
+        intent: intentResult.intent,
+        mightBeIdentifyQuestion,
+        evidenceChunksLength: evidenceChunks.length,
+        avgSimilarity: avgSimilarity.toFixed(3),
+        // Final eligibility
+        eligible: mode === "explain" &&
+                  (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
+                  !mightBeIdentifyQuestion &&
+                  evidenceChunks.length >= 2 &&
+                  avgSimilarity >= 0.40
+      }
+    });
+
     // Answer-first logic: For non-identify definitional queries with sufficient evidence
     // (isIdentifyQuestion already defined earlier at line 486)
     if (
@@ -998,6 +1034,13 @@ export class ChatService {
         });
         // Continue to full explain mode below
       }
+    } else {
+      // DEBUG: Log when answer-first was skipped
+      this.logger.log({
+        event: 'answer_first_skipped',
+        sessionId: dto.sessionId,
+        reason: 'One or more conditions not met - see answer_first_condition_check log',
+      });
     }
 
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
