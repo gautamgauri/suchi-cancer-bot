@@ -1045,15 +1045,22 @@ export class ChatService {
 
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
     if (mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) {
+      // DEBUG: Timing markers for explain mode performance diagnosis
+      const explainStarted = Date.now();
+      let llmCallCount = 0;
 
       // Detect cancer type for cancer-type-specific responses (check session first)
       const cancerType = mightBeIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;
 
       // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
+      const extractionStarted = Date.now();
       const extraction = this.structuredExtractor.extract(evidenceChunks, queryType);
       const checklist = this.structuredExtractor.formatForPrompt(extraction);
+      const extractionMs = Date.now() - extractionStarted;
 
       // Generate response with Explain Mode prompt + checklist
+      const llm1Started = Date.now();
+      llmCallCount++;
       let responseText = await this.llm.generateWithCitations(
         "explain",
         "",
@@ -1062,6 +1069,7 @@ export class ChatService {
         mightBeIdentifyQuestion,
         { hasGenerallyAsking, cancerType, emotionalState, checklist }
       );
+      const llm1Ms = Date.now() - llm1Started;
 
       // Structure with explainModeFrame
       responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks);
@@ -1191,6 +1199,8 @@ export class ChatService {
         if (!validation.ok) {
           this.logger.warn(`Identify response missing elements: ${validation.missing.join(", ")}`);
           // Regenerate with stricter prompt (cancerType already detected above)
+          const llm2Started = Date.now();
+          llmCallCount++;
           responseText = await this.llm.generateWithCitations(
             "explain",
             "",
@@ -1199,6 +1209,8 @@ export class ChatService {
             true,
             { hasGenerallyAsking, cancerType, emotionalState }
           );
+          const llm2Ms = Date.now() - llm2Started;
+          this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
           
           // Re-validate after regeneration
@@ -1387,7 +1399,11 @@ export class ChatService {
       // Handle citation validation
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
+        const llm3Started = Date.now();
+        llmCallCount++;
         responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState });
+        const llm3Ms = Date.now() - llm3Started;
+        this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
         
@@ -1524,6 +1540,20 @@ export class ChatService {
           )
         );
       }
+
+      // DEBUG: Log timing breakdown for explain mode
+      const explainTotalMs = Date.now() - explainStarted;
+      this.logger.log({
+        event: 'explain_mode_timing',
+        sessionId: dto.sessionId,
+        mightBeIdentifyQuestion,
+        llmCallCount,
+        timingMs: {
+          extraction: extractionMs,
+          llm1: llm1Ms,
+          total: explainTotalMs
+        }
+      });
 
       await this.analytics.emit("chat_turn_completed", {
         kbDocCount: kbDocIds.length,

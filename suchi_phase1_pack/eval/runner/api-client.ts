@@ -27,17 +27,46 @@ export class ApiClient {
   }
 
   /**
-   * Create a new session
+   * Create a new session with retry logic for transient failures
    */
   async createSession(channel: "web" | "app" | "whatsapp" = "web"): Promise<string> {
-    try {
-      const response = await this.client.post<{ sessionId: string; createdAt: string }>("/sessions", {
-        channel,
-      });
-      return response.data.sessionId;
-    } catch (error: any) {
-      throw new Error(`Failed to create session: ${error.message}`);
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.retries; attempt++) {
+      try {
+        const response = await this.client.post<{ sessionId: string; createdAt: string }>("/sessions", {
+          channel,
+        });
+
+        if (attempt > 0) {
+          console.log(`  ✅ Session creation retry ${attempt} succeeded`);
+        }
+
+        return response.data.sessionId;
+      } catch (error: any) {
+        lastError = error;
+
+        // Check if retryable (transient errors)
+        const isRetryable =
+          error.code === 'ECONNABORTED' || // Timeout
+          error.code === 'ECONNRESET' ||   // Connection reset
+          error.response?.status === 500 || // Internal server error (cold start)
+          error.response?.status === 502 || // Bad gateway
+          error.response?.status === 503 || // Service unavailable
+          error.response?.status === 504;   // Gateway timeout
+
+        if (!isRetryable || attempt === this.retries) {
+          throw new Error(`Failed to create session: ${error.message}`);
+        }
+
+        // Exponential backoff: 1s, 2s, 4s
+        const backoffMs = Math.pow(2, attempt) * 1000;
+        console.log(`  ⚠️ Session creation attempt ${attempt + 1} failed (${error.message}), retrying in ${backoffMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
     }
+
+    throw new Error(`Failed to create session after ${this.retries} retries: ${lastError?.message}`);
   }
 
   /**
@@ -66,10 +95,13 @@ export class ApiClient {
       } catch (error: any) {
         lastError = error;
         
-        // Check if retryable
-        const isRetryable = 
+        // Check if retryable (transient errors)
+        const isRetryable =
           error.code === 'ECONNABORTED' || // Timeout
+          error.code === 'ECONNRESET' ||   // Connection reset
           error.response?.status === 429 || // Rate limit
+          error.response?.status === 500 || // Internal server error (cold start)
+          error.response?.status === 502 || // Bad gateway
           error.response?.status === 503 || // Service unavailable
           error.response?.status === 504;   // Gateway timeout
 
