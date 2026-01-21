@@ -758,13 +758,13 @@ export class ChatService {
         
         // Extract and validate citations
         let citations = this.citationService.extractCitations(responseText, evidenceChunks);
-        
+
         // PHASE 2.5: CITATION REPAIR
-        // If LLM didn't generate citations but we have approved evidence, attach deterministically
-        if (citations.length === 0 && evidenceChunks.length > 0) {
+        // If LLM didn't generate enough citations (need 2+), attach deterministically
+        if (citations.length < 2 && evidenceChunks.length > 0) {
           this.logger.warn({
             event: 'citation_repair',
-            message: 'LLM generated response but no citations found - attaching deterministic citations',
+            message: `LLM generated ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
             sessionId: dto.sessionId,
             intent: intentResult.intent,
             queryType,
@@ -796,7 +796,7 @@ export class ChatService {
             citationsAttached: citations.length,
           });
         }
-        
+
         const citationValidation = this.citationService.validateCitations(
           citations, 
           evidenceChunks, 
@@ -929,10 +929,11 @@ export class ChatService {
         let citations = this.citationService.extractCitations(responseText, evidenceChunks);
         
         // PHASE 2.5: CITATION REPAIR (if needed)
-        if (citations.length === 0 && evidenceChunks.length > 0) {
+        // Ensure at least 2 citations for medical content credibility
+        if (citations.length < 2 && evidenceChunks.length > 0) {
           this.logger.warn({
             event: 'citation_repair_answer_first',
-            message: 'Answer-first response missing citations - attaching deterministically',
+            message: `Answer-first response has ${citations.length} citation(s) - attaching deterministically`,
             sessionId: dto.sessionId,
           });
 
@@ -1255,11 +1256,12 @@ export class ChatService {
       let citations = this.citationService.extractCitations(responseText, evidenceChunks);
       
       // PHASE 2.5: CITATION REPAIR
-      // If LLM didn't generate citations but we have approved evidence, attach deterministically
-      if (citations.length === 0 && evidenceChunks.length > 0) {
+      // If LLM didn't generate enough citations (need 2+), attach deterministically
+      // This handles both 0 citations and 1 citation cases that would fail enforcement
+      if (citations.length < 2 && evidenceChunks.length > 0) {
         this.logger.warn({
           event: 'citation_repair',
-          message: 'LLM generated response but no citations found - attaching deterministic citations',
+          message: `LLM generated ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
           sessionId: dto.sessionId,
           intent: intentResult.intent,
           queryType,
@@ -1408,11 +1410,11 @@ export class ChatService {
         citations = this.citationService.extractCitations(responseText, evidenceChunks);
         
         // PHASE 2.5: CITATION REPAIR (retry path)
-        // If LLM didn't generate citations but we have approved evidence, attach deterministically
-        if (citations.length === 0 && evidenceChunks.length > 0) {
+        // If LLM didn't generate enough citations (need 2+), attach deterministically
+        if (citations.length < 2 && evidenceChunks.length > 0) {
           this.logger.warn({
             event: 'citation_repair',
-            message: 'LLM retry generated response but no citations found - attaching deterministic citations',
+            message: `LLM retry generated ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
             sessionId: dto.sessionId,
             intent: intentResult.intent,
             queryType,
@@ -1735,11 +1737,11 @@ export class ChatService {
     let citations = this.citationService.extractCitations(responseText, evidenceChunks);
     
     // PHASE 2.5: CITATION REPAIR (patient mode)
-    // If LLM didn't generate citations but we have approved evidence, attach deterministically
-    if (citations.length === 0 && evidenceChunks.length > 0) {
+    // If LLM didn't generate enough citations (need 2+), attach deterministically
+    if (citations.length < 2 && evidenceChunks.length > 0) {
       this.logger.warn({
         event: 'citation_repair',
-        message: 'Patient mode LLM response has no citations - attaching deterministic citations',
+        message: `Patient mode LLM response has ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
         sessionId: dto.sessionId,
         intent: intentResult.intent,
         evidenceChunksAvailable: evidenceChunks.length,
@@ -1788,11 +1790,11 @@ export class ChatService {
       citations = this.citationService.extractCitations(responseText, evidenceChunks);
       
       // PHASE 2.5: CITATION REPAIR (patient mode retry)
-      // If LLM didn't generate citations but we have approved evidence, attach deterministically
-      if (citations.length === 0 && evidenceChunks.length > 0) {
+      // If LLM didn't generate enough citations (need 2+), attach deterministically
+      if (citations.length < 2 && evidenceChunks.length > 0) {
         this.logger.warn({
           event: 'citation_repair',
-          message: 'Patient mode retry - LLM response has no citations - attaching deterministic citations',
+          message: `Patient mode retry - LLM response has ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
           sessionId: dto.sessionId,
           intent: intentResult.intent,
           evidenceChunksAvailable: evidenceChunks.length,
