@@ -16,8 +16,8 @@ steps:
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/suchi-api:latest'
       - '-f'
-      - 'apps/api/Dockerfile'
-      - 'apps/api'
+      - 'suchi_phase1_pack/apps/api/Dockerfile'
+      - 'suchi_phase1_pack/apps/api'
 
   # Build Web Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -31,8 +31,8 @@ steps:
       - '--build-arg'
       - 'VITE_API_URL=${_API_URL}'
       - '-f'
-      - 'apps/web/Dockerfile'
-      - 'apps/web'
+      - 'suchi_phase1_pack/apps/web/Dockerfile'
+      - 'suchi_phase1_pack/apps/web'
 
   # Push API image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
