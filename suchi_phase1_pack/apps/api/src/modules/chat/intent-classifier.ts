@@ -485,9 +485,18 @@ export class IntentClassifier {
 
   private hasCancerRelatedKeywords(text: string): boolean {
     const cancerKeywords = [
+      // General cancer terms
       /\b(cancer|carcinoma|tumor|tumour|malignancy|oncology|oncologist)\b/i,
-      /\b(chemo|chemotherapy|radiation|radiotherapy)\b/i,
-      /\b(biopsy|pathology|oncology|tumor)\b/i
+      // Treatment terms
+      /\b(chemo|chemotherapy|radiation|radiotherapy|immunotherapy)\b/i,
+      // Diagnostic terms
+      /\b(biopsy|pathology|staging|metasta|prognosis)\b/i,
+      // Specific cancer types - blood cancers
+      /\b(lymphoma|leukemia|leukaemia|myeloma|hodgkin)\b/i,
+      // Specific cancer types - solid tumors
+      /\b(melanoma|sarcoma|adenocarcinoma|glioma|mesothelioma)\b/i,
+      // Common cancer sites (as shorthand for the cancer)
+      /\b(breast|lung|colon|colorectal|prostate|ovarian|pancreatic|liver|kidney|thyroid|bladder|brain)\s+(cancer|tumor|tumour)?\b/i,
     ];
     return cancerKeywords.some(pattern => pattern.test(text));
   }
