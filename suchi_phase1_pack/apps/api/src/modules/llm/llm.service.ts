@@ -247,6 +247,40 @@ REQUIREMENTS:
   }
 
   /**
+   * PHASE 3: Get simple definitional prompt for answer-first EXPLAIN mode
+   * Used for definitional queries like "What does staging mean for lymphoma?"
+   * Returns a brief, grounded explanation (2-3 sentences) with citations, optional clarifying question
+   */
+  getDefinitionalExplainPrompt(): string {
+    return `You are a cancer information specialist. Provide a clear, concise explanation using ONLY the evidence provided below.
+
+INSTRUCTIONS:
+1. Provide a brief (2-3 sentence) explanation based ONLY on the evidence chunks below
+2. Include [citation:docId:chunkId] for EVERY factual statement - use the EXACT docId and chunkId from the reference list
+3. Use plain language (avoid medical jargon when possible)
+4. If helpful, you may end with ONE optional clarifying question to help the user further
+
+CITATION FORMAT (CRITICAL):
+- You MUST use this exact format: [citation:docId:chunkId]
+- Example: "Staging describes how far cancer has spread [citation:kb_en_nci_staging_v1:chunk_123]."
+- Copy the docId and chunkId EXACTLY from the reference list below
+- DO NOT use numbered references like [1], [2] or parenthetical citations like (NCI, 2024)
+
+EXAMPLE RESPONSE:
+"Staging describes how far cancer has spread in the body [citation:nci-staging-guide:chunk-001]. For lymphoma, doctors commonly use the Ann Arbor system, which has four stages (I-IV) based on which lymph nodes are affected and whether the cancer has spread to other organs [citation:nci-lymphoma-staging:chunk-045].
+
+Would you like to know what a specific stage means, or are you asking generally about the staging system?"
+
+DO NOT:
+- Make up information not in the evidence chunks
+- Use general medical knowledge to fill gaps
+- Write long explanations (keep to 2-3 sentences + optional question)
+- Ask clarifying questions if the user has indicated general intent
+
+Your response MUST include at least 2 citations or it will be rejected.`;
+  }
+
+  /**
    * Generate response with mandatory inline citations
    * @param mode "explain" for Explain Mode, "navigate" for Navigate Mode, or custom systemPrompt
    * @param isIdentifyQuestion If true and mode is "explain", use enhanced prompt for identify questions
@@ -463,6 +497,75 @@ User question: ${userMessage}`;
     } catch (error) {
       this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
       return this.getFallbackResponse();
+    }
+  }
+
+  /**
+   * PHASE 3: Generate brief definitional response for answer-first EXPLAIN mode
+   * Used for simple definitional queries like "What does staging mean for lymphoma?"
+   * Returns a concise, grounded explanation (2-3 sentences) with citations
+   */
+  async generateDefinitionalResponse(
+    userMessage: string,
+    chunks: EvidenceChunk[],
+    conversationContext?: { hasGenerallyAsking?: boolean }
+  ): Promise<string> {
+    try {
+      // Build reference list with citation IDs
+      const referenceList = chunks.map((chunk, index) => {
+        const exampleCitation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
+        return `[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}
+   Example citation format: ${exampleCitation}
+   Title: ${chunk.document.title}
+   Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
+      }).join("\n\n");
+
+      const systemPrompt = this.getDefinitionalExplainPrompt();
+      const fullPrompt = `${systemPrompt}
+
+REFERENCE LIST (use the exact docId and chunkId shown for each reference):
+${referenceList}
+
+User question: ${userMessage}
+
+YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
+
+      // Single attempt for definitional responses (simpler, should be faster)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+      try {
+        const completion = await this.client.chat.completions.create({
+          model: this.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: fullPrompt },
+          ],
+          temperature: 0.2, // Lower temperature for factual responses
+          max_tokens: 500, // Shorter responses
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const text = completion.choices[0]?.message?.content;
+        if (!text || text.trim().length === 0) {
+          this.logger.warn("Empty definitional response from OpenAI, retrying with full explain mode");
+          return this.getFallbackResponse();
+        }
+        return text;
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+          this.logger.warn(`Definitional response timeout after ${this.timeoutMs}ms`);
+        }
+        throw error; // Re-throw to fall back to full explain mode
+      }
+    } catch (error) {
+      this.logger.error(`Error generating definitional response: ${error.message}`);
+      // Return a simple fallback that instructs to use full explain mode
+      throw error; // Let caller handle fallback to full explain mode
     }
   }
 

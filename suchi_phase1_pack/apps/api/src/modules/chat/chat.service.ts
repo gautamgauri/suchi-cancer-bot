@@ -854,14 +854,155 @@ export class ChatService {
       }
     }
 
+    // PHASE 3: Answer-First EXPLAIN Mode for definitional queries with sufficient evidence
+    // Check for simple definitional queries (not "identify" questions which need full structure)
+    const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
+    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
+    const isIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
+                                cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
+                                !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
+    
+    // Answer-first logic: For non-identify definitional queries with sufficient evidence
+    if (
+      mode === "explain" && 
+      (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
+      !isIdentifyQuestion && // Not an "identify" question (those need full structured response)
+      evidenceChunks.length >= 2 && // Sufficient chunks
+      avgSimilarity >= 0.40 // Moderate confidence threshold
+    ) {
+      try {
+        this.logger.log({
+          event: 'answer_first_explain_attempt',
+          sessionId: dto.sessionId,
+          intent: intentResult.intent,
+          chunksCount: evidenceChunks.length,
+          avgSimilarity,
+          query: dto.userText.substring(0, 100),
+        });
+
+        // Generate brief definitional response (2-3 sentences + optional clarifying question)
+        let responseText = await this.llm.generateDefinitionalResponse(
+          dto.userText,
+          evidenceChunks,
+          { hasGenerallyAsking }
+        );
+
+        // Add disclaimer at the start
+        responseText = "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n" + responseText;
+
+        // Extract and validate citations
+        let citations = this.citationService.extractCitations(responseText, evidenceChunks);
+        
+        // PHASE 2.5: CITATION REPAIR (if needed)
+        if (citations.length === 0 && evidenceChunks.length > 0) {
+          this.logger.warn({
+            event: 'citation_repair_answer_first',
+            message: 'Answer-first response missing citations - attaching deterministically',
+            sessionId: dto.sessionId,
+          });
+
+          // Attach citations from top evidence chunks (2-4 citations for brief response)
+          const numCitations = Math.min(4, evidenceChunks.length);
+          citations = evidenceChunks.slice(0, numCitations).map((chunk, idx) => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            position: idx * 100,
+            citationText: `[citation:${chunk.docId}:${chunk.chunkId}]`,
+          }));
+
+          // Append brief sources section
+          const sourcesSection = `\n\n**Sources:**\n${citations
+            .map((c, i) => {
+              const chunk = evidenceChunks[i];
+              return `- ${chunk.document.title}`;
+            })
+            .join('\n')}`;
+
+          responseText += sourcesSection;
+        }
+        
+        const citationValidation = this.citationService.validateCitations(
+          citations, 
+          evidenceChunks, 
+          responseText,
+          hasGenerallyAsking
+        );
+        
+        // Store assistant message
+        const assistant = await this.prisma.message.create({
+          data: {
+            sessionId: dto.sessionId,
+            role: "assistant",
+            text: responseText,
+            safetyClassification: "normal",
+            kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
+            latencyMs: Date.now() - started,
+            evidenceQuality: gateResult.quality,
+            evidenceGatePassed: true,
+            citationCount: citations.length
+          }
+        });
+        
+        // Store citations
+        if (citations.length > 0) {
+          const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
+          await Promise.all(
+            enrichedCitations.map(citation =>
+              this.prisma.messageCitation.create({
+                data: {
+                  messageId: assistant.id,
+                  docId: citation.docId,
+                  chunkId: citation.chunkId,
+                  citationText: citation.citationText,
+                  position: citation.position
+                }
+              })
+            )
+          );
+        }
+        
+        await this.analytics.emit("answer_first_explain_success", {
+          intent: intentResult.intent,
+          citationCount: citations.length,
+          confidenceLevel: citationValidation.confidenceLevel
+        }, dto.sessionId);
+        
+        this.logger.log({
+          event: 'answer_first_explain_success',
+          sessionId: dto.sessionId,
+          citationCount: citations.length,
+          responseLength: responseText.length,
+        });
+        
+        return {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          responseText: assistant.text,
+          safety: { classification: "normal" as const, actions: [] },
+          citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
+          citationConfidence: citationValidation.confidenceLevel,
+          retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+            docId: chunk.docId,
+            chunkId: chunk.chunkId,
+            sourceType: chunk.document.sourceType,
+            isTrustedSource: chunk.document.isTrustedSource,
+            similarity: chunk.similarity
+          }))
+        };
+      } catch (error: any) {
+        // If answer-first fails, fall through to full explain mode
+        this.logger.warn({
+          event: 'answer_first_explain_fallback',
+          sessionId: dto.sessionId,
+          error: error.message,
+          message: 'Answer-first failed, falling through to full explain mode',
+        });
+        // Continue to full explain mode below
+      }
+    }
+
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
     if (mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) {
-      // Check if this is an identify question (general, not personal)
-      const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
-      const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
-      const isIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
-                                  cancerKeywordPattern.test(dto.userText.toLowerCase()) &&
-                                  !ModeDetector.hasPersonalDiagnosisSignal(dto.userText);
 
       // Detect cancer type for cancer-type-specific responses (check session first)
       const cancerType = isIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;

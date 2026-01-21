@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 import { SynonymService } from "./synonym-service";
+import { QueryExpanderService } from "./query-expander.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/trusted-sources.config";
 import { QueryTypeClassifier } from "./query-type.classifier";
@@ -13,7 +14,8 @@ export class RagService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly embeddings: EmbeddingsService,
-    private readonly synonyms: SynonymService
+    private readonly synonyms: SynonymService,
+    private readonly queryExpander: QueryExpanderService
   ) {}
 
   /**
@@ -23,7 +25,7 @@ export class RagService {
    * @param cancerType Optional cancer type for query enhancement
    * @param queryType Optional pre-classified query type (to avoid re-classification)
    */
-  async retrieveWithMetadata(query: string, topK = 6, cancerType?: string | null, queryType?: string): Promise<EvidenceChunk[]> {
+  async retrieveWithMetadata(query: string, topK = 6, cancerType?: string | null, queryType?: string, intent?: string): Promise<EvidenceChunk[]> {
     try {
       // Step 1: Query rewrite using QueryTypeClassifier + cancer terms
       const rewrittenQuery = this.rewriteQuery(query, cancerType, queryType);
@@ -31,14 +33,31 @@ export class RagService {
         this.logger.debug(`Query rewritten from "${query}" to "${rewrittenQuery}"`);
       }
 
-      // Step 2: Expand query with synonyms if available
-      const expandedTerms = this.synonyms.expandQuery(rewrittenQuery);
+      // PHASE 3: Step 1.5: Medical term expansion for symptom queries (bloating → abdominal distension)
+      let finalQuery = rewrittenQuery;
+      // Try expansion for symptom-related queries (uses heuristics if intent not provided)
+      const expansion = this.queryExpander.expandQuery(rewrittenQuery, intent || 'INFORMATIONAL_GENERAL');
+      if (expansion.expanded.length > 1) {
+        // Use first expansion (original + first synonym) for hybrid search
+        // This gives us both colloquial and medical terms
+        finalQuery = expansion.expanded.slice(0, 2).join(" OR ");
+        this.logger.log({
+          event: 'symptom_query_expansion',
+          original: query,
+          rewritten: rewrittenQuery,
+          expanded: finalQuery,
+          synonymsMatched: Array.from(expansion.synonyms.keys()),
+        });
+      }
+
+      // Step 2: Expand query with general synonyms if available
+      const expandedTerms = this.synonyms.expandQuery(finalQuery);
       if (expandedTerms.length > 1) {
-        this.logger.debug(`Query expanded from "${rewrittenQuery}" to ${expandedTerms.length} terms`);
+        this.logger.debug(`Query expanded from "${finalQuery}" to ${expandedTerms.length} terms`);
       }
 
       // Step 3: PRIMARY PATH - Hybrid search (vector + FTS)
-      const hybridResults = await this.hybridSearchWithMetadata(rewrittenQuery, topK, cancerType);
+      const hybridResults = await this.hybridSearchWithMetadata(finalQuery, topK, cancerType);
       if (hybridResults.length > 0) {
         this.logger.debug(`Hybrid search returned ${hybridResults.length} results`);
         return hybridResults;
