@@ -1909,7 +1909,12 @@ export class ChatService {
 
     // Check if content contains medical information (keyword-based backup)
     const hasMedicalContent = this.isMedicalContent(responseText, intent);
-    const requiresCitations = citationRequiredIntents.includes(intent) || hasMedicalContent;
+    const requiresCitations =
+      citationRequiredIntents.includes(intent) ||
+      hasMedicalContent ||
+      // Trust-first: if we retrieved evidence and intent isn't pure navigation,
+      // always attach citations to prevent silent contract breaches.
+      (evidenceChunks.length > 0 && !noCitationIntents.includes(intent));
 
     if (!requiresCitations) {
       return { modifiedText: responseText, citations: [] };
