@@ -337,7 +337,7 @@ I can help you prepare what to say to the clinician. But please prioritize getti
    */
   static R1(context: TemplateContext): string {
     // Report request without text
-    return "I can help you prepare questions about your report, but I can't interpret medical reports, scans, or test results directly.\n\n**To help you prepare for your doctor visit:**\n• Please paste the **Impression** or **Conclusion** section from your report (remove personal details like name, date of birth, patient ID)\n• Or share the key findings you're concerned about\n\nI can then help you:\n• Understand medical terms in plain language\n• Prepare focused questions for your doctor\n• Organize the information for your consultation\n\nWhat sections of your report would you like help with?";
+    return "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\nI can help you prepare questions about your report, but I can't interpret medical reports, scans, or test results directly.\n\n**To help you prepare for your doctor visit:**\n• Please paste the **Impression** or **Conclusion** section from your report (remove personal details like name, date of birth, patient ID)\n• Or share the key findings you're concerned about\n\nI can then help you:\n• Understand medical terms in plain language\n• Prepare focused questions for your doctor\n• Organize the information for your consultation\n\nWhat sections of your report would you like help with?";
   }
 
   static R2(context: TemplateContext): string {

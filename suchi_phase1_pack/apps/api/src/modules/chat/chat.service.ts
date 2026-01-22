@@ -1885,6 +1885,7 @@ export class ChatService {
     const citationRequiredIntents = [
       'CARE_NAVIGATION_PROVIDER_CHOICE',
       'CARE_NAVIGATION_SECOND_OPINION',
+      'CAREGIVER_NAVIGATION',
       'ABSTENTION_WITH_RED_FLAGS',
       // Also include intents that might have medical content in templates
       'SYMPTOMS_URGENT_RED_FLAGS',
