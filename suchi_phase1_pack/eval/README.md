@@ -1,3 +1,20 @@
+## Eval Canonical Entry Points
+
+This folder contains the evaluation harness and test cases.
+
+Canonical entry points:
+- `eval/cli.ts` (ts-node entrypoint)
+- `eval/runner/` (core evaluation pipeline)
+- `eval/cases/` (YAML test suites)
+
+Run the micro-suite:
+```bash
+cd eval
+npx ts-node cli.ts run \
+  --cases cases/tier1/zero_citation_regression.yaml \
+  --output reports/zero-citation-regression.json \
+  --summary
+```
 # Suchi Bot Evaluation Framework
 
 Comprehensive evaluation framework for testing Suchi Cancer Bot responses across 20 cancer types and 5 interaction modes (100 test cases total).
