@@ -52,6 +52,44 @@ program
       if (options.cancer) filters.cancer = options.cancer;
       if (options.intent) filters.intent = options.intent;
 
+      // ✅ PREFLIGHT: Validate filters before running any tests
+      const validation = Evaluator.validateFilters(testCases, filters);
+      
+      // Print discovered values
+      console.log(`\n📋 Test Suite Summary:`);
+      console.log(`  Total cases in suite: ${validation.totalCases}`);
+      console.log(`  Selected cases: ${validation.selectedCases}`);
+      if (validation.availableCancerTypes.length > 0) {
+        console.log(`  Available cancer types: ${validation.availableCancerTypes.join(', ')}`);
+      }
+      if (validation.availableIntents.length > 0) {
+        console.log(`  Available intents: ${validation.availableIntents.join(', ')}`);
+      }
+      
+      // Print filter values (canonicalized)
+      if (filters.cancer) {
+        const { canonicalCancerType } = require('./utils/canonicalize');
+        console.log(`  Requested cancer: "${filters.cancer}" → canonicalized to "${canonicalCancerType(filters.cancer)}"`);
+      }
+      if (filters.intent) {
+        const { canonicalIntent } = require('./utils/canonicalize');
+        console.log(`  Requested intent: "${filters.intent}" → canonicalized to "${canonicalIntent(filters.intent)}"`);
+      }
+      
+      // ✅ FAIL-FAST: Abort if filter matches 0 cases
+      if (validation.errors.length > 0) {
+        console.error(`\n❌ PREFLIGHT VALIDATION FAILED:\n`);
+        validation.errors.forEach(err => console.error(`  ${err}`));
+        process.exit(1);
+      }
+      
+      // Warn if selection seems unexpected
+      if (validation.warnings.length > 0) {
+        console.warn(`\n⚠️  Warnings:`);
+        validation.warnings.forEach(warn => console.warn(`  ${warn}`));
+        console.warn(`  Continuing anyway...\n`);
+      }
+
       const filteredCases = Evaluator.filterTestCases(testCases, filters);
 
       // ✅ NEW: Warm-up API to prevent cold start on first test case
@@ -111,7 +149,12 @@ program
           allResults.push(result);
           
           // Write incremental report after each case
-          const partialReport = reportGenerator.generateReport(allResults, config);
+          const partialReport = reportGenerator.generateReport(
+            allResults,
+            config,
+            undefined,
+            { loadedCount: testCases.length, selectedCount: filteredCases.length }
+          );
           await reportGenerator.exportToFile(partialReport, outputPath);
           console.log(`  💾 Progress saved: ${allResults.length}/${filteredCases.length} cases`);
         }
@@ -119,8 +162,30 @@ program
         results = allResults;
       }
 
+      // ✅ FAIL-FAST: Check if we executed 0 cases
+      if (results.length === 0) {
+        console.error(`\n❌ ERROR: No test cases were executed!`);
+        console.error(`  Selected cases: ${filteredCases.length}`);
+        console.error(`  This indicates a filter or execution problem.`);
+        process.exit(1);
+      }
+
       // Generate final report
-      const report = reportGenerator.generateReport(results, config);
+      const report = reportGenerator.generateReport(
+        results,
+        config,
+        undefined,
+        { loadedCount: testCases.length, selectedCount: filteredCases.length }
+      );
+
+      // ✅ VALIDATION: Check if report is invalid (0 executed)
+      if (report.suite?.status === 'INVALID') {
+        console.error(`\n❌ ERROR: Report is INVALID - 0 cases executed!`);
+        console.error(`  Suite loaded: ${report.suite.loadedCount}`);
+        console.error(`  Suite selected: ${report.suite.selectedCount}`);
+        console.error(`  Suite executed: ${report.suite.executedCount}`);
+        process.exit(1);
+      }
 
       // Save final report (ensures completeness marker)
       await reportGenerator.exportToFile(report, outputPath);

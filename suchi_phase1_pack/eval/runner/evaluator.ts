@@ -12,6 +12,13 @@ import {
 } from "../types";
 import * as yaml from "js-yaml";
 import * as fs from "fs/promises";
+import {
+  canonicalCancerType,
+  canonicalIntent,
+  canonicalCaseId,
+  getAvailableCancerTypes,
+  getAvailableIntents,
+} from "../utils/canonicalize";
 
 // Trusted sources list (matches apps/api/src/config/trusted-sources.config.ts)
 const TRUSTED_SOURCES = [
@@ -135,11 +142,13 @@ export class Evaluator {
     startTime: number
   ): Promise<EvaluationResult> {
     try {
-      // Create session
+      // Create session (measure time)
+      const sessionStart = Date.now();
       sessionId = await this.apiClient.createSession("web");
+      const sessionCreateMs = Date.now() - sessionStart;
 
-      // Execute conversation
-      const { finalResponse, allResponses } = await this.apiClient.executeConversation(
+      // Execute conversation (measure send time)
+      const { finalResponse, allResponses, timingMs } = await this.apiClient.executeConversation(
         sessionId,
         testCase.user_messages,
         "web"
@@ -241,6 +250,11 @@ export class Evaluator {
           citationCoverage,
           hasAbstention,
         },
+        timingMs: {
+          sessionCreateMs,
+          chatSendMs: timingMs.totalMs,
+          perMessageMs: timingMs.perMessageMs,
+        },
         executionTimeMs: Date.now() - startTime,
       };
 
@@ -250,6 +264,12 @@ export class Evaluator {
 
       return result;
     } catch (error: any) {
+      const errorText = error?.message || "Unknown error";
+      const errorStep = errorText.includes("Failed to create session")
+        ? "session_create"
+        : errorText.includes("Failed to send message") || errorText.includes("timeout")
+        ? "chat_send"
+        : "unknown";
       return {
         testCaseId: testCase.id,
         passed: false,
@@ -260,7 +280,8 @@ export class Evaluator {
           sessionId: sessionId || "",
           messageId: "",
         },
-        error: error.message,
+        error: errorText,
+        errorStep,
         executionTimeMs: Date.now() - startTime,
       };
     }
@@ -319,6 +340,9 @@ export class Evaluator {
 
   /**
    * Filter test cases by criteria
+   * 
+   * ✅ CANONICALIZED: All string comparisons use canonicalized values
+   * This prevents case-sensitivity and whitespace issues
    */
   static filterTestCases(
     testCases: TestCase[],
@@ -329,21 +353,116 @@ export class Evaluator {
       caseId?: string;
     }
   ): TestCase[] {
+    // Canonicalize filter values
+    const canonicalCancer = filters.cancer ? canonicalCancerType(filters.cancer) : null;
+    const canonicalIntentFilter = filters.intent ? canonicalIntent(filters.intent) : null;
+    const canonicalCaseIdFilter = filters.caseId ? canonicalCaseId(filters.caseId) : null;
+
     return testCases.filter((testCase) => {
+      // Tier: exact match (number)
       if (filters.tier !== undefined && testCase.tier !== filters.tier) {
         return false;
       }
-      if (filters.cancer && testCase.cancer !== filters.cancer) {
-        return false;
+      
+      // Cancer: canonicalized comparison
+      if (canonicalCancer) {
+        const testCaseCancer = canonicalCancerType(testCase.cancer);
+        if (testCaseCancer !== canonicalCancer) {
+          return false;
+        }
       }
-      if (filters.intent && testCase.intent !== filters.intent) {
-        return false;
+      
+      // Intent: canonicalized comparison
+      if (canonicalIntentFilter) {
+        const testCaseIntent = canonicalIntent(testCase.intent);
+        if (testCaseIntent !== canonicalIntentFilter) {
+          return false;
+        }
       }
-      if (filters.caseId && testCase.id !== filters.caseId) {
-        return false;
+      
+      // Case ID: canonicalized comparison (preserves case but normalizes whitespace)
+      if (canonicalCaseIdFilter) {
+        const testCaseId = canonicalCaseId(testCase.id);
+        if (testCaseId !== canonicalCaseIdFilter) {
+          return false;
+        }
       }
+      
       return true;
     });
+  }
+
+  /**
+   * ✅ NEW: Preflight validation - fail fast if filters match zero cases
+   * 
+   * Returns validation info including:
+   * - Available values in suite
+   * - Selected count
+   * - Warnings if selection seems wrong
+   */
+  static validateFilters(
+    testCases: TestCase[],
+    filters: {
+      tier?: number;
+      cancer?: string;
+      intent?: string;
+      caseId?: string;
+    }
+  ): {
+    totalCases: number;
+    selectedCases: number;
+    availableCancerTypes: string[];
+    availableIntents: string[];
+    warnings: string[];
+    errors: string[];
+  } {
+    const selected = this.filterTestCases(testCases, filters);
+    const availableCancerTypes = getAvailableCancerTypes(testCases);
+    const availableIntents = getAvailableIntents(testCases);
+    
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    // ✅ FAIL-FAST: If filter matches 0 cases, that's an error
+    if (selected.length === 0) {
+      const filterDesc: string[] = [];
+      if (filters.cancer) filterDesc.push(`cancer="${filters.cancer}"`);
+      if (filters.intent) filterDesc.push(`intent="${filters.intent}"`);
+      if (filters.tier !== undefined) filterDesc.push(`tier=${filters.tier}`);
+      if (filters.caseId) filterDesc.push(`caseId="${filters.caseId}"`);
+      
+      errors.push(
+        `Filter matched 0 cases. Filters: ${filterDesc.join(', ')}`
+      );
+      
+      if (filters.cancer) {
+        const canonical = canonicalCancerType(filters.cancer);
+        const suggestions = availableCancerTypes.filter(ct => 
+          ct.includes(canonical) || canonical.includes(ct)
+        );
+        if (suggestions.length > 0) {
+          errors.push(`Did you mean one of: ${suggestions.join(', ')}?`);
+        } else {
+          errors.push(`Available cancer types: ${availableCancerTypes.join(', ')}`);
+        }
+      }
+    }
+
+    // Warn if selection is unexpectedly small
+    if (selected.length > 0 && selected.length < testCases.length * 0.1) {
+      warnings.push(
+        `Filter selected only ${selected.length} cases (${((selected.length / testCases.length) * 100).toFixed(1)}% of suite). Is this expected?`
+      );
+    }
+
+    return {
+      totalCases: testCases.length,
+      selectedCases: selected.length,
+      availableCancerTypes,
+      availableIntents,
+      warnings,
+      errors,
+    };
   }
 }
 

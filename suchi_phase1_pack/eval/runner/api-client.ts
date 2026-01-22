@@ -127,11 +127,20 @@ export class ApiClient {
     sessionId: string,
     userMessages: string[],
     channel: "web" | "app" | "whatsapp" = "web"
-  ): Promise<{ finalResponse: ChatResponse; allResponses: ChatResponse[] }> {
+  ): Promise<{ 
+    finalResponse: ChatResponse; 
+    allResponses: ChatResponse[];
+    timingMs: { perMessageMs: number[]; totalMs: number };
+  }> {
     const allResponses: ChatResponse[] = [];
+    const perMessageMs: number[] = [];
+    const conversationStart = Date.now();
 
     for (const userMessage of userMessages) {
+      const messageStart = Date.now();
       const response = await this.sendMessage(sessionId, userMessage, channel);
+      const messageMs = Date.now() - messageStart;
+      perMessageMs.push(messageMs);
       allResponses.push(response);
       
       // Small delay between messages to avoid rate limiting
@@ -140,9 +149,11 @@ export class ApiClient {
       }
     }
 
+    const totalMs = Date.now() - conversationStart;
     return {
       finalResponse: allResponses[allResponses.length - 1],
       allResponses,
+      timingMs: { perMessageMs, totalMs },
     };
   }
 

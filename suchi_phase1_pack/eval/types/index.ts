@@ -162,6 +162,12 @@ export interface EvaluationResult {
     citationCoverage: number; // Percentage of responses with citations
     hasAbstention: boolean;
   };
+  timingMs?: {
+    sessionCreateMs?: number;
+    chatSendMs?: number;
+    perMessageMs?: number[];
+  };
+  errorStep?: "session_create" | "chat_send" | "unknown";
   error?: string;
   timedOut?: boolean; // ✅ NEW: Flag for timeout failures
   executionTimeMs: number;
@@ -171,6 +177,13 @@ export interface EvaluationReport {
   runId: string;
   timestamp: string;
   config: EvaluationConfig;
+  suite?: {
+    // ✅ NEW: Suite metadata to prevent "empty but successful" reports
+    loadedCount: number;      // Total cases in YAML file
+    selectedCount: number;    // Cases after filters applied
+    executedCount: number;    // Cases actually executed
+    status: "VALID" | "INVALID" | "PARTIAL"; // INVALID if executedCount === 0
+  };
   summary: {
     total: number;
     passed: number;

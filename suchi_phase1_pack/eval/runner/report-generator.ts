@@ -3,11 +3,17 @@ import { EvaluationResult, EvaluationReport, EvaluationConfig, Rubric } from "..
 export class ReportGenerator {
   /**
    * Generate evaluation report from results
+   * 
+   * ✅ NEW: Includes suite metadata to prevent "empty but successful" reports
    */
   generateReport(
     results: EvaluationResult[],
     config: EvaluationConfig,
-    runId: string = `run-${Date.now()}`
+    runId: string = `run-${Date.now()}`,
+    suiteMetadata?: {
+      loadedCount: number;
+      selectedCount: number;
+    }
   ): EvaluationReport {
     const passed = results.filter((r) => r.passed);
     const failed = results.filter((r) => !r.passed);
@@ -34,10 +40,20 @@ export class ReportGenerator {
       abstentionRate: abstentionCount / resultsWithQuality.length,
     } : undefined;
 
+    // ✅ NEW: Suite metadata with status validation
+    const executedCount = results.length;
+    const suite = suiteMetadata ? {
+      loadedCount: suiteMetadata.loadedCount,
+      selectedCount: suiteMetadata.selectedCount,
+      executedCount,
+      status: executedCount === 0 ? 'INVALID' as const : 'VALID' as const,
+    } : undefined;
+
     return {
       runId,
       timestamp: new Date().toISOString(),
       config,
+      suite,
       summary: {
         total: results.length,
         passed: passed.length,
