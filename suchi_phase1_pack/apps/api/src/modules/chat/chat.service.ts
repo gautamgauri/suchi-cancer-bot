@@ -192,36 +192,18 @@ export class ChatService {
         urgentResponse = urgentResponse.split("\n\n**Next steps:**")[0]; // Remove generic next steps
         urgentResponse += "\n\n**Information from trusted sources:**\n\n" + ragResponse;
         
-        // Store citations if we have them
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: urgentResponse,
+        // Persist message + citations (consolidated)
+        const assistant = await this.persistAssistantMessage(
+          dto.sessionId,
+          urgentResponse,
+          citations,
+          earlyEvidenceChunks,
+          {
             safetyClassification: "red_flag",
-            kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
             latencyMs: Date.now() - started,
-            citationCount: citations.length
+            kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
           }
-        });
-        
-        // Store citations
-        if (citations.length > 0) {
-          const enrichedCitations = await this.citationService.enrichCitations(citations, earlyEvidenceChunks);
-          await Promise.all(
-            enrichedCitations.map(citation =>
-              this.prisma.messageCitation.create({
-                data: {
-                  messageId: assistant.id,
-                  docId: citation.docId,
-                  chunkId: citation.chunkId,
-                  citationText: citation.citationText,
-                  position: citation.position
-                }
-              })
-            )
-          );
-        }
+        );
 
         await this.prisma.safetyEvent.create({
           data: { sessionId: dto.sessionId, messageId: assistant.id, type: "red_flag", detail: "urgency_indicators_detected" }
@@ -598,37 +580,21 @@ export class ChatService {
         ? Array.from(new Set(citations.map(c => c.docId)))
         : [];
       
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: modifiedText,
+      // Persist message + citations (consolidated)
+      const assistant = await this.persistAssistantMessage(
+        dto.sessionId,
+        modifiedText,
+        citations,
+        evidenceChunks,
+        {
           safetyClassification: "normal",
-          kbDocIds,
           latencyMs: Date.now() - started,
+          kbDocIds,
           evidenceQuality: 'insufficient',
           evidenceGatePassed: false,
           abstentionReason: gateResult.reasonCode || 'no_evidence',
-          citationCount: citations.length
         }
-      });
-
-      if (citations.length > 0) {
-        const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-        await Promise.all(
-          enrichedCitations.map(citation =>
-            this.prisma.messageCitation.create({
-              data: {
-                messageId: assistant.id,
-                docId: citation.docId,
-                chunkId: citation.chunkId,
-                citationText: citation.citationText,
-                position: citation.position
-              }
-            })
-          )
-        );
-      }
+      );
 
       // Log structured event
       await this.analytics.emit("evidence_gate_blocked", {
@@ -697,38 +663,21 @@ export class ChatService {
         ? Array.from(new Set(citations.map(c => c.docId)))
         : [];
 
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: modifiedText,
+      // Persist message + citations (consolidated)
+      const assistant = await this.persistAssistantMessage(
+        dto.sessionId,
+        modifiedText,
+        citations,
+        evidenceChunks,
+        {
           safetyClassification: "normal",
-          kbDocIds,
           latencyMs: Date.now() - started,
+          kbDocIds,
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: !gateResult.shouldAbstain,
           abstentionReason: gateResult.shouldAbstain ? gateResult.reason || undefined : undefined,
-          citationCount: citations.length
         }
-      });
-
-      // Persist citations if generated
-      if (citations.length > 0) {
-        const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-        await Promise.all(
-          enrichedCitations.map(citation =>
-            this.prisma.messageCitation.create({
-              data: {
-                messageId: assistant.id,
-                docId: citation.docId,
-                chunkId: citation.chunkId,
-                citationText: citation.citationText,
-                position: citation.position
-              }
-            })
-          )
-        );
-      }
+      );
 
       await this.analytics.emit("template_response", {
         intent: templateResult.intent,
@@ -870,40 +819,22 @@ export class ChatService {
           responseText = uncertaintyPreamble + responseText;
         }
         
-        // Store assistant message with citations
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: responseText,
+        // Persist message + citations (consolidated)
+        const assistant = await this.persistAssistantMessage(
+          dto.sessionId,
+          responseText,
+          citations,
+          evidenceChunks,
+          {
             safetyClassification: "normal",
-            kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             latencyMs: Date.now() - started,
+            kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: gateResult.reason || undefined,
-            citationCount: citations.length
           }
-        });
-        
-        // Store citations
-        if (citations.length > 0) {
-          const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-          await Promise.all(
-            enrichedCitations.map(citation =>
-              this.prisma.messageCitation.create({
-                data: {
-                  messageId: assistant.id,
-                  docId: citation.docId,
-                  chunkId: citation.chunkId,
-                  citationText: citation.citationText,
-                  position: citation.position
-                }
-              })
-            )
-          );
-        }
-        
+        );
+
         await this.analytics.emit("abstention_with_rag", {
           intent: intentResult.intent,
           queryType,
@@ -1001,39 +932,21 @@ export class ChatService {
           hasGenerallyAsking
         );
         
-        // Store assistant message
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: responseText,
+        // Persist message + citations (consolidated)
+        const assistant = await this.persistAssistantMessage(
+          dto.sessionId,
+          responseText,
+          citations,
+          evidenceChunks,
+          {
             safetyClassification: "normal",
-            kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             latencyMs: Date.now() - started,
+            kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
-            citationCount: citations.length
           }
-        });
-        
-        // Store citations
-        if (citations.length > 0) {
-          const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-          await Promise.all(
-            enrichedCitations.map(citation =>
-              this.prisma.messageCitation.create({
-                data: {
-                  messageId: assistant.id,
-                  docId: citation.docId,
-                  chunkId: citation.chunkId,
-                  citationText: citation.citationText,
-                  position: citation.position
-                }
-              })
-            )
-          );
-        }
-        
+        );
+
         await this.analytics.emit("answer_first_explain_success", {
           intent: intentResult.intent,
           citationCount: citations.length,
@@ -1482,38 +1395,20 @@ export class ChatService {
         }
       }
 
-      // Store assistant message
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: responseText,
+      // Persist message + citations (consolidated)
+      const assistant = await this.persistAssistantMessage(
+        dto.sessionId,
+        responseText,
+        citations,
+        evidenceChunks,
+        {
           safetyClassification: "normal",
-          kbDocIds,
           latencyMs: Date.now() - started,
+          kbDocIds,
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: true,
-          citationCount: citations.length
         }
-      });
-
-      // Store citations
-      if (citations.length > 0) {
-        const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-        await Promise.all(
-          enrichedCitations.map(citation =>
-            this.prisma.messageCitation.create({
-              data: {
-                messageId: assistant.id,
-                docId: citation.docId,
-                chunkId: citation.chunkId,
-                citationText: citation.citationText,
-                position: citation.position
-              }
-            })
-          )
-        );
-      }
+      );
 
       // DEBUG: Log timing breakdown for explain mode
       const explainTotalMs = Date.now() - explainStarted;
@@ -1531,7 +1426,7 @@ export class ChatService {
 
       await this.analytics.emit("chat_turn_completed", {
         kbDocCount: kbDocIds.length,
-        latencyMs: assistant.latencyMs,
+        latencyMs: Date.now() - started,
         citationCount: citations.length,
         citationConfidence: citationValidation.confidenceLevel,
         evidenceQuality: gateResult.quality,
@@ -1720,37 +1615,21 @@ export class ChatService {
           ? Array.from(new Set(abstentionCitations.map(c => c.docId)))
           : [];
 
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: modifiedText,
+        // Persist message + citations (consolidated)
+        const assistant = await this.persistAssistantMessage(
+          dto.sessionId,
+          modifiedText,
+          abstentionCitations,
+          evidenceChunks,
+          {
             safetyClassification: "normal",
-            kbDocIds,
             latencyMs: Date.now() - started,
+            kbDocIds,
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: "citation_validation_failed",
-            citationCount: abstentionCitations.length
           }
-        });
-
-        if (abstentionCitations.length > 0) {
-          const enrichedCitations = await this.citationService.enrichCitations(abstentionCitations, evidenceChunks);
-          await Promise.all(
-            enrichedCitations.map(citation =>
-              this.prisma.messageCitation.create({
-                data: {
-                  messageId: assistant.id,
-                  docId: citation.docId,
-                  chunkId: citation.chunkId,
-                  citationText: citation.citationText,
-                  position: citation.position
-                }
-              })
-            )
-          );
-        }
+        );
 
         return {
           sessionId: dto.sessionId,
@@ -1787,43 +1666,24 @@ export class ChatService {
 
     // GREEN or YELLOW with citations - proceed with response
 
-    // 7. Store assistant message
-    const assistant = await this.prisma.message.create({
-      data: {
-        sessionId: dto.sessionId,
-        role: "assistant",
-        text: responseText,
+    // Persist message + citations (consolidated)
+    const assistant = await this.persistAssistantMessage(
+      dto.sessionId,
+      responseText,
+      citations,
+      evidenceChunks,
+      {
         safetyClassification: "normal",
-        kbDocIds,
         latencyMs: Date.now() - started,
+        kbDocIds,
         evidenceQuality: gateResult.quality,
         evidenceGatePassed: true,
-        citationCount: citations.length
       }
-    });
-
-    // 8. Store citations
-    if (citations.length > 0) {
-      const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-      
-      await Promise.all(
-        enrichedCitations.map(citation =>
-          this.prisma.messageCitation.create({
-            data: {
-              messageId: assistant.id,
-              docId: citation.docId,
-              chunkId: citation.chunkId,
-              citationText: citation.citationText,
-              position: citation.position
-            }
-          })
-        )
-      );
-    }
+    );
 
     await this.analytics.emit("chat_turn_completed", {
       kbDocCount: kbDocIds.length,
-      latencyMs: assistant.latencyMs,
+      latencyMs: Date.now() - started,
       citationCount: citations.length,
       citationConfidence: citationValidation.confidenceLevel,
       citationDensity: citationValidation.citationDensity,
@@ -2082,5 +1942,68 @@ export class ChatService {
     });
 
     return { modifiedText, citations };
+  }
+
+  /**
+   * CONSOLIDATED: Persist assistant message and citations to database.
+   * This is the single source of truth for message+citation storage.
+   * Replaces 22 duplicated message.create + 8 citation storage blocks.
+   *
+   * @param sessionId - Session ID
+   * @param text - Response text
+   * @param citations - Citations to persist (can be empty)
+   * @param evidenceChunks - Evidence chunks for enriching citations
+   * @param options - Additional message fields
+   * @returns The created message object
+   */
+  private async persistAssistantMessage(
+    sessionId: string,
+    text: string,
+    citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }>,
+    evidenceChunks: any[], // EvidenceChunk[] - using any to avoid type complexity
+    options: {
+      safetyClassification: string;
+      latencyMs: number;
+      kbDocIds?: string[];
+      evidenceQuality?: string;
+      evidenceGatePassed?: boolean;
+      abstentionReason?: string;
+    }
+  ): Promise<{ id: string; text: string }> {
+    // Create the message
+    const assistant = await this.prisma.message.create({
+      data: {
+        sessionId,
+        role: "assistant",
+        text,
+        safetyClassification: options.safetyClassification,
+        kbDocIds: options.kbDocIds || [],
+        latencyMs: options.latencyMs,
+        citationCount: citations.length,
+        ...(options.evidenceQuality && { evidenceQuality: options.evidenceQuality }),
+        ...(options.evidenceGatePassed !== undefined && { evidenceGatePassed: options.evidenceGatePassed }),
+        ...(options.abstentionReason && { abstentionReason: options.abstentionReason }),
+      }
+    });
+
+    // Persist citations if present
+    if (citations.length > 0) {
+      const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
+      await Promise.all(
+        enrichedCitations.map(citation =>
+          this.prisma.messageCitation.create({
+            data: {
+              messageId: assistant.id,
+              docId: citation.docId,
+              chunkId: citation.chunkId,
+              citationText: citation.citationText,
+              position: citation.position
+            }
+          })
+        )
+      );
+    }
+
+    return { id: assistant.id, text: assistant.text };
   }
 }
