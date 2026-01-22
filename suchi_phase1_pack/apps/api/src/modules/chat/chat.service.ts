@@ -1902,19 +1902,19 @@ export class ChatService {
       'SAFETY_RESTRICTED'
     ];
 
-    // Skip if this is a pure navigation intent
-    if (noCitationIntents.includes(intent)) {
+    // Check if content contains medical information (keyword-based backup)
+    const hasMedicalContent = this.isMedicalContent(responseText, intent);
+
+    // Skip only when it's a pure navigation/clarifying intent AND no medical content
+    if (noCitationIntents.includes(intent) && !hasMedicalContent) {
       return { modifiedText: responseText, citations: [] };
     }
 
-    // Check if content contains medical information (keyword-based backup)
-    const hasMedicalContent = this.isMedicalContent(responseText, intent);
     const requiresCitations =
       citationRequiredIntents.includes(intent) ||
       hasMedicalContent ||
-      // Trust-first: if we retrieved evidence and intent isn't pure navigation,
-      // always attach citations to prevent silent contract breaches.
-      (evidenceChunks.length > 0 && !noCitationIntents.includes(intent));
+      // Trust-first: if we retrieved evidence, always attach citations.
+      evidenceChunks.length > 0;
 
     if (!requiresCitations) {
       return { modifiedText: responseText, citations: [] };
