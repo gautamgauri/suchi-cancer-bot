@@ -73,7 +73,26 @@ export class LLMJudge {
       const response = await this.callLLM(prompt, judgeConfig);
       return this.parseResponse(response, checks);
     } catch (error: any) {
-      // Return failed results for all checks (actual runtime errors)
+      // Connection errors (network issues, API down) → skip, don't fail
+      // This allows deterministic checks to gate while LLM judge is advisory
+      const isConnectionError = error.message?.toLowerCase().includes('connection') ||
+        error.message?.toLowerCase().includes('econnrefused') ||
+        error.message?.toLowerCase().includes('timeout') ||
+        error.message?.toLowerCase().includes('network') ||
+        error.code === 'ECONNREFUSED' ||
+        error.code === 'ETIMEDOUT';
+
+      if (isConnectionError) {
+        console.warn(`⚠ LLM Judge skipped due to connection error: ${error.message}`);
+        return checks.map((check) => ({
+          checkId: check.id,
+          passed: false,
+          skipped: true,
+          error: `Connection error (skipped): ${error.message}`,
+        }));
+      }
+
+      // Other errors (auth, parsing, etc.) → actual failures
       return checks.map((check) => ({
         checkId: check.id,
         passed: false,
