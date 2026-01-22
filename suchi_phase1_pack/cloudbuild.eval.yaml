@@ -14,14 +14,24 @@ steps:
           echo "DEEPSEEK_API_KEY is NOT SET or empty"
         fi
 
-        # Diagnostic: Test connectivity to Deepseek API
-        echo "=== DIAGNOSTIC: Connectivity Test ==="
-        curl -sS -o /dev/null -w "Deepseek API: HTTP %{http_code}, time %{time_total}s\n" \
+        # Diagnostic: Test Deepseek API with real key
+        echo "=== DIAGNOSTIC: Deepseek API Auth Test ==="
+        RESPONSE=$$(curl -sS -w "\nHTTP_CODE:%{http_code}" \
           -X POST https://api.deepseek.com/v1/chat/completions \
           -H "Content-Type: application/json" \
-          -H "Authorization: Bearer test-connectivity-only" \
-          -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}' \
-          || echo "Curl failed with exit code $$?"
+          -H "Authorization: Bearer $$DEEPSEEK_API_KEY" \
+          -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"test"}],"max_tokens":5}')
+        HTTP_CODE=$$(echo "$$RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
+        echo "Deepseek API: HTTP $$HTTP_CODE"
+        if [ "$$HTTP_CODE" = "200" ]; then
+          echo "✓ Auth successful - key is valid"
+        elif [ "$$HTTP_CODE" = "401" ]; then
+          echo "✗ Auth failed (401) - key invalid or malformed"
+        elif [ "$$HTTP_CODE" = "429" ]; then
+          echo "⚠ Rate limited (429)"
+        else
+          echo "⚠ Unexpected response: $$HTTP_CODE"
+        fi
 
         echo "=== Running Eval ==="
         cd eval

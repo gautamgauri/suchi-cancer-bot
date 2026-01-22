@@ -173,7 +173,32 @@ export class ReportGenerator {
       lines.push(`Citation Coverage: ${(report.summary.retrievalQuality.citationCoverageRate * 100).toFixed(1)}%`);
       lines.push(`Abstention Rate: ${(report.summary.retrievalQuality.abstentionRate * 100).toFixed(1)}%`);
     }
-    
+
+    // LLM Judge status summary
+    const allLlmResults = report.results.flatMap(r => r.llmJudgeResults || []);
+    if (allLlmResults.length > 0) {
+      const skippedResults = allLlmResults.filter(r => r.skipped);
+      const passedResults = allLlmResults.filter(r => r.passed && !r.skipped);
+      const failedResults = allLlmResults.filter(r => !r.passed && !r.skipped);
+
+      lines.push("");
+      lines.push("LLM JUDGE STATUS");
+      lines.push("-".repeat(60));
+
+      if (skippedResults.length === allLlmResults.length) {
+        // All skipped - extract reason from first error
+        const reason = skippedResults[0]?.error?.split(':')[0] || 'unavailable';
+        lines.push(`Status: SKIPPED (${reason})`);
+        lines.push(`Checks skipped: ${skippedResults.length}`);
+      } else if (skippedResults.length > 0) {
+        lines.push(`Status: PARTIAL`);
+        lines.push(`Passed: ${passedResults.length}, Failed: ${failedResults.length}, Skipped: ${skippedResults.length}`);
+      } else {
+        lines.push(`Status: ACTIVE`);
+        lines.push(`Passed: ${passedResults.length}, Failed: ${failedResults.length}`);
+      }
+    }
+
     lines.push("");
 
     if (report.failures.length > 0) {

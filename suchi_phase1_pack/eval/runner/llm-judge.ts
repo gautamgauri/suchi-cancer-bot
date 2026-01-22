@@ -73,30 +73,56 @@ export class LLMJudge {
       const response = await this.callLLM(prompt, judgeConfig);
       return this.parseResponse(response, checks);
     } catch (error: any) {
-      // Connection errors (network issues, API down) → skip, don't fail
-      // This allows deterministic checks to gate while LLM judge is advisory
-      const isConnectionError = error.message?.toLowerCase().includes('connection') ||
-        error.message?.toLowerCase().includes('econnrefused') ||
-        error.message?.toLowerCase().includes('timeout') ||
-        error.message?.toLowerCase().includes('network') ||
-        error.code === 'ECONNREFUSED' ||
-        error.code === 'ETIMEDOUT';
+      // Classify error type for clear reporting
+      const statusCode = error.status || error.response?.status;
+      const errorMsg = error.message?.toLowerCase() || '';
 
-      if (isConnectionError) {
-        console.warn(`⚠ LLM Judge skipped due to connection error: ${error.message}`);
+      let errorType: 'auth_failed' | 'rate_limited' | 'provider_error' | 'network_error' | 'unknown';
+      let shouldSkip = false;
+
+      if (statusCode === 401 || statusCode === 403 || errorMsg.includes('unauthorized') || errorMsg.includes('forbidden')) {
+        errorType = 'auth_failed';
+        shouldSkip = true; // Auth issues are skippable (key problem, not code problem)
+      } else if (statusCode === 429 || errorMsg.includes('rate limit')) {
+        errorType = 'rate_limited';
+        shouldSkip = true;
+      } else if (statusCode >= 500 || errorMsg.includes('internal server error')) {
+        errorType = 'provider_error';
+        shouldSkip = true;
+      } else if (
+        errorMsg.includes('econnrefused') ||
+        errorMsg.includes('etimedout') ||
+        errorMsg.includes('timeout') ||
+        errorMsg.includes('network') ||
+        errorMsg.includes('dns') ||
+        error.code === 'ECONNREFUSED' ||
+        error.code === 'ETIMEDOUT'
+      ) {
+        errorType = 'network_error';
+        shouldSkip = true;
+      } else {
+        errorType = 'unknown';
+        shouldSkip = false; // Unknown errors should fail (might be code bug)
+      }
+
+      const errorLabel = `${errorType}${statusCode ? ` (HTTP ${statusCode})` : ''}`;
+
+      if (shouldSkip) {
+        console.warn(`⚠ LLM Judge skipped: ${errorLabel} - ${error.message}`);
         return checks.map((check) => ({
           checkId: check.id,
           passed: false,
           skipped: true,
-          error: `Connection error (skipped): ${error.message}`,
+          error: `${errorLabel}: ${error.message}`,
         }));
       }
 
-      // Other errors (auth, parsing, etc.) → actual failures
+      // Non-skippable errors (unknown/parsing issues)
+      console.error(`❌ LLM Judge failed: ${errorLabel} - ${error.message}`);
       return checks.map((check) => ({
         checkId: check.id,
         passed: false,
-        error: error.message,
+        error: `${errorLabel}: ${error.message}`,
       }));
     }
   }
