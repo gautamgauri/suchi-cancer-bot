@@ -69,9 +69,36 @@ scripts/youtube-transcripts/transcripts/
 # Generated files
 *.generated.*
 
+# Ad-hoc debugging scripts (root level)
+test-*.js
+test-*.ts
+tmp-*.js
 
+# Session summary/artifact files
+*_ANALYSIS.md
+*_SUMMARY.md
+*_SUCCESS.md
+*_COMPLETE.md
+*_READY.md
+*_REPORT.md
+*_CHECKLIST.md
+*_RESULTS.md
+DELEGATION_*.md
+ORCHESTRATION_*.md
+README_ORCHESTRATION.md
+recent-logs.json
+test_response.json
 
+# Eval reports (generated, not source)
+eval/reports/
 
+# Eval ad-hoc scripts
+eval/analyze-*.js
+eval/tmp-*.js
+eval/run-*.ps1
+
+# Root ad-hoc PowerShell scripts
+test-*.ps1
 
 
 
