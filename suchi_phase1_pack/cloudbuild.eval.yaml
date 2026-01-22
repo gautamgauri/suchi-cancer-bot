@@ -1,0 +1,23 @@
+steps:
+  - name: "node:20"
+    entrypoint: "bash"
+    args:
+      - "-lc"
+      - |
+        set -euo pipefail
+        cd eval
+        npm ci
+        npx ts-node cli.ts run \
+          --cases cases/tier1/zero_citation_regression.yaml \
+          --output reports/zero-citation-regression.json \
+          --summary
+    secretEnv: ["DEEPSEEK_API_KEY"]
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/gen-lang-client-0202543132/secrets/deepseek-api-key/versions/latest
+      env: "DEEPSEEK_API_KEY"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: "3600s"
