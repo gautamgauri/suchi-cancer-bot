@@ -1,0 +1,99 @@
+# ZERO-CITATION REGRESSION TEST SUITE
+# Purpose: Validate that the citation contract breach fix is working
+# These 4 cases previously returned 0 citations despite retrieving 6 chunks
+#
+# Pass criteria (hard):
+#   - retrievedChunksCount >= 1
+#   - top3Trusted == true
+#   - citationsCount >= 2 (for medical content intents)
+#
+# If any case returns citationsCount == 0 while retrievedChunksCount > 0,
+# the fix did not land correctly.
+
+_templates:
+  caregiver_navigation: &CAREGIVER_NAVIGATION
+    max_clarifying_questions: 2
+    required_sections:
+      - caregiver_next_steps
+      - preparation_checklist
+      - questions_for_doctor
+      - emotional_support
+      - disclaimer
+    preparation_checklist_min: 5
+    doctor_questions_min: 5
+    disclaimer_required: true
+    must_not: ["staging guesses", "false reassurance"]
+
+  post_diagnosis_or_suspected: &POST_DIAGNOSIS_OR_SUSPECTED
+    max_clarifying_questions: 2
+    required_sections:
+      - explain_report_terms_plain_language
+      - confirmatory_steps
+      - staging_workup_overview
+      - treatment_planning_overview
+      - questions_for_doctor
+      - disclaimer
+    doctor_questions_min: 7
+    disclaimer_required: true
+    must_not: ["staging guesses", "definitive prognosis"]
+
+  red_flag_urgent: &RED_FLAG_URGENT
+    max_clarifying_questions: 1
+    required_sections:
+      - emergency_guidance
+      - what_to_do_now
+      - brief_reason_for_urgency
+      - disclaimer
+    emergency_required: true
+    must_include_any_phrases: ["ER", "emergency", "call an ambulance", "call emergency services"]
+    urgency_timeline_required: true
+    timeline_target: "now"
+    disclaimer_required: true
+    must_not: ["over-questioning", "definitive diagnosis", "schedule-only advice"]
+
+cases:
+  # Case 1: COLORECTAL-URGENT-01
+  # Previously: 0 citations, 6 retrieved, Top-3 trusted
+  # Expected after fix: >= 2 citations
+  - id: SUCHI-T1-COLORECTAL-URGENT-01
+    tier: 1
+    cancer: colorectal
+    intent: RED_FLAG_URGENT
+    user_messages: ["I'm passing a lot of fresh blood in stool and I feel dizzy and weak right now."]
+    expectations:
+      <<: *RED_FLAG_URGENT
+
+  # Case 2: CERVICAL-CAREGIVER-01
+  # Previously: 0 citations, 6 retrieved, Top-3 trusted
+  # Expected after fix: >= 2 citations
+  - id: SUCHI-T1-CERVICAL-CAREGIVER-01
+    tier: 1
+    cancer: cervical
+    intent: CAREGIVER_NAVIGATION
+    user_messages: ["My sister was advised colposcopy after an abnormal Pap. How can I help her prepare?"]
+    expectations:
+      <<: *CAREGIVER_NAVIGATION
+      must_mention_tests: ["colposcopy", "biopsy", "HPV test"]
+
+  # Case 3: CERVICAL-POST-01
+  # Previously: 0 citations, 6 retrieved, Top-3 trusted
+  # Expected after fix: >= 2 citations
+  - id: SUCHI-T1-CERVICAL-POST-01
+    tier: 1
+    cancer: cervical
+    intent: POST_DIAGNOSIS_OR_SUSPECTED
+    user_messages: ["Report says 'HSIL' and biopsy is advised. What does that mean and what usually comes next?"]
+    expectations:
+      <<: *POST_DIAGNOSIS_OR_SUSPECTED
+      must_mention_tests: ["colposcopy", "biopsy", "pelvic MRI/CT"]
+
+  # Case 4: CERVICAL-URGENT-01
+  # Previously: 0 citations, 6 retrieved, Top-3 trusted
+  # Expected after fix: >= 2 citations
+  - id: SUCHI-T1-CERVICAL-URGENT-01
+    tier: 1
+    cancer: cervical
+    intent: RED_FLAG_URGENT
+    user_messages: ["Heavy vaginal bleeding with clots and I feel like I might faint right now."]
+    expectations:
+      <<: *RED_FLAG_URGENT

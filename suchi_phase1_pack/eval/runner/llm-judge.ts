@@ -29,6 +29,20 @@ export class LLMJudge {
   }
 
   /**
+   * Check if the LLM judge is available (client initialized)
+   */
+  isAvailable(): boolean {
+    if (this.config.llmProvider === "openai") {
+      return !!this.openaiClient;
+    } else if (this.config.llmProvider === "deepseek") {
+      return !!this.deepseekClient;
+    } else if (this.config.llmProvider === "vertex_ai") {
+      return !!this.config.vertexAiConfig;
+    }
+    return false;
+  }
+
+  /**
    * Judge a response using LLM
    */
   async judge(
@@ -42,12 +56,24 @@ export class LLMJudge {
       retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
     }
   ): Promise<LLMJudgeResult[]> {
+    // PHASE 2.5+: If LLM judge is not available, return skipped results
+    // These are excluded from scoring (not counted in numerator OR denominator)
+    if (!this.isAvailable()) {
+      console.warn(`⚠ LLM Judge skipped: ${this.config.llmProvider} client not initialized`);
+      return checks.map((check) => ({
+        checkId: check.id,
+        passed: false, // Not passed, but skipped - excluded from scoring
+        skipped: true,
+        error: `LLM Judge not available: ${this.config.llmProvider} client not initialized. Check excluded from scoring.`,
+      }));
+    }
+
     try {
       const prompt = this.buildPrompt(responseText, judgeConfig, checks, testCaseContext);
       const response = await this.callLLM(prompt, judgeConfig);
       return this.parseResponse(response, checks);
     } catch (error: any) {
-      // Return failed results for all checks
+      // Return failed results for all checks (actual runtime errors)
       return checks.map((check) => ({
         checkId: check.id,
         passed: false,

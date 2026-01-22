@@ -172,6 +172,49 @@ export class Evaluator {
         finalResponse.citationConfidence
       );
 
+      // PHASE 2.5+: Citation contract guardrail
+      // If retrievedChunks > 0 AND intent is medical, citations must be >= 2
+      const medicalIntents = [
+        'INFORMATIONAL_GENERAL',
+        'INFORMATIONAL_SYMPTOMS',
+        'SYMPTOMATIC_PATIENT',
+        'CAREGIVER_NAVIGATION',
+        'POST_DIAGNOSIS_OR_SUSPECTED',
+        'RED_FLAG_URGENT',
+        'TREATMENT_OPTIONS_GENERAL',
+        'SIDE_EFFECTS_GENERAL'
+      ];
+      const isMedicalIntent = medicalIntents.includes(testCase.intent);
+      const retrievedChunksCount = finalResponse.retrievedChunks?.length || 0;
+      const citationCount = finalResponse.citations?.length || 0;
+
+      if (isMedicalIntent && retrievedChunksCount > 0 && citationCount < 2) {
+        deterministicResults.push({
+          checkId: 'citation_contract',
+          passed: false,
+          required: true,
+          error: `Citation contract breach: retrieved ${retrievedChunksCount} chunks but only ${citationCount} citations (need >= 2 for medical intent ${testCase.intent})`,
+          details: {
+            retrievedChunksCount,
+            citationCount,
+            intent: testCase.intent,
+            reason: 'Medical content with retrieval must have >= 2 citations'
+          }
+        });
+      } else if (isMedicalIntent && retrievedChunksCount > 0) {
+        // Contract satisfied - log for visibility
+        deterministicResults.push({
+          checkId: 'citation_contract',
+          passed: true,
+          required: true,
+          details: {
+            retrievedChunksCount,
+            citationCount,
+            intent: testCase.intent
+          }
+        });
+      }
+
       // Check if we should skip LLM judge (if required deterministic checks failed)
       const requiredDeterministicFailed = deterministicResults.some(
         (r) => r.required && !r.passed

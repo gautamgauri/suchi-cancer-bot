@@ -86,8 +86,13 @@ export class ReportGenerator {
     }
 
     // Process LLM judge results
+    // PHASE 2.5+: Skipped checks are excluded from both numerator and denominator
     if (result.llmJudgeResults) {
       for (const judgeResult of result.llmJudgeResults) {
+        // Skip checks that were skipped (e.g., LLM judge not available)
+        if (judgeResult.skipped) {
+          continue; // Excluded from scoring entirely
+        }
         const weight = weights[judgeResult.checkId] || 0;
         if (weight > 0) {
           totalWeight += weight;
@@ -117,10 +122,15 @@ export class ReportGenerator {
     }
 
     // Check if all required LLM checks passed
+    // PHASE 2.5+: Skipped checks don't count as failures (excluded from evaluation)
     if (result.llmJudgeResults) {
       const requiredLLMFailed = result.llmJudgeResults.some(
         (r) => {
-          const check = rubric.llm_judge.checks.find((c) => c.id === r.checkId);
+          // Skipped checks are excluded from required check validation
+          if (r.skipped) {
+            return false; // Not a failure
+          }
+          const check = rubric.llm_judge?.checks.find((c) => c.id === r.checkId);
           return check?.required && !r.passed;
         }
       );

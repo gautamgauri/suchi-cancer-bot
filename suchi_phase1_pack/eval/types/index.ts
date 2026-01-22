@@ -128,6 +128,7 @@ export interface LLMJudgeResult {
   evidence?: string;
   count?: number;
   error?: string;
+  skipped?: boolean; // True if LLM judge was not available (not counted as failure)
 }
 
 export interface LLMJudgeResponse {
