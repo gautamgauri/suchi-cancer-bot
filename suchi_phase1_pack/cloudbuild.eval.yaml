@@ -5,6 +5,25 @@ steps:
       - "-lc"
       - |
         set -euo pipefail
+
+        # Diagnostic: Confirm key is injected (length only, not the key)
+        echo "=== DIAGNOSTIC: Secret Injection ==="
+        if [ -n "$DEEPSEEK_API_KEY" ]; then
+          echo "DEEPSEEK_API_KEY is SET, length=${#DEEPSEEK_API_KEY}"
+        else
+          echo "DEEPSEEK_API_KEY is NOT SET or empty"
+        fi
+
+        # Diagnostic: Test connectivity to Deepseek API
+        echo "=== DIAGNOSTIC: Connectivity Test ==="
+        curl -sS -o /dev/null -w "Deepseek API: HTTP %{http_code}, time %{time_total}s\n" \
+          -X POST https://api.deepseek.com/v1/chat/completions \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer test-connectivity-only" \
+          -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}' \
+          || echo "Curl failed with exit code $?"
+
+        echo "=== Running Eval ==="
         cd eval
         npm ci
         npx ts-node cli.ts run \
