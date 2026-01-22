@@ -8,8 +8,8 @@ steps:
 
         # Diagnostic: Confirm key is injected (length only, not the key)
         echo "=== DIAGNOSTIC: Secret Injection ==="
-        if [ -n "$DEEPSEEK_API_KEY" ]; then
-          echo "DEEPSEEK_API_KEY is SET, length=${#DEEPSEEK_API_KEY}"
+        if [ -n "$$DEEPSEEK_API_KEY" ]; then
+          echo "DEEPSEEK_API_KEY is SET, length=$${#DEEPSEEK_API_KEY}"
         else
           echo "DEEPSEEK_API_KEY is NOT SET or empty"
         fi
@@ -21,7 +21,7 @@ steps:
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer test-connectivity-only" \
           -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"hi"}]}' \
-          || echo "Curl failed with exit code $?"
+          || echo "Curl failed with exit code $$?"
 
         echo "=== Running Eval ==="
         cd eval
