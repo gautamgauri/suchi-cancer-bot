@@ -22,6 +22,20 @@ steps:
           --output reports/zero-citation-regression.json \
           --summary
     secretEnv: ["DEEPSEEK_API_KEY"]
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "bash"
+    args:
+      - "-lc"
+      - |
+        set -euo pipefail
+        REPORT_PATH="/workspace/eval/reports/zero-citation-regression.json"
+        DEST="gs://gen-lang-client-0202543132_cloudbuild/eval-reports/zero-citation-regression-${BUILD_ID}.json"
+        if [ -f "$$REPORT_PATH" ]; then
+          gsutil cp "$$REPORT_PATH" "$$DEST"
+          echo "Report uploaded to: $$DEST"
+        else
+          echo "Report not found at $$REPORT_PATH"
+        fi
 
 availableSecrets:
   secretManager:
