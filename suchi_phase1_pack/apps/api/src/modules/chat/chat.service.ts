@@ -876,6 +876,39 @@ export class ChatService {
       ? evidenceChunks.reduce((sum, chunk) => sum + (chunk.similarity || 0), 0) / evidenceChunks.length
       : 0;
 
+    // Detect queries that need FULL structured responses (not answer-first)
+    // These ask for lists of symptoms, tests, treatments, etc.
+    const needsStructuredResponse = (query: string): boolean => {
+      const lowerQuery = query.toLowerCase();
+
+      // Patterns that need full structured response with sections
+      const structuredPatterns = [
+        // Symptom/sign queries
+        /\b(what are|list|tell me).{0,20}(symptoms?|signs?|warning signs?)/i,
+        /\b(symptoms?|signs?|warning signs?) of\b/i,
+        /\b(common|early|typical|main).{0,10}(symptoms?|signs?)/i,
+
+        // Test/diagnosis queries
+        /\b(what|which).{0,20}(tests?|screening|diagnosis|diagnose)/i,
+        /\b(tests?|screening).{0,10}(used|for|to)\b/i,
+        /\bhow.{0,10}(diagnosed|detected|screened)\b/i,
+
+        // Treatment queries
+        /\b(what are|list|tell me).{0,20}(treatments?|options?|therapies?)/i,
+        /\b(treatment|therapy).{0,10}(options?|types?|methods?)\b/i,
+
+        // Side effect queries
+        /\b(side effects?|adverse effects?|complications?)\b/i,
+
+        // "What are" plural list queries
+        /\bwhat are.{0,30}(common|typical|main|possible|potential)\b/i,
+      ];
+
+      return structuredPatterns.some(pattern => pattern.test(lowerQuery));
+    };
+
+    const queryNeedsStructuredResponse = needsStructuredResponse(dto.userText);
+
     // DEBUG: Log all answer-first trigger conditions for diagnosis
     this.logger.log({
       event: 'answer_first_condition_check',
@@ -885,23 +918,27 @@ export class ChatService {
         mode,
         intent: intentResult.intent,
         mightBeIdentifyQuestion,
+        queryNeedsStructuredResponse,
         evidenceChunksLength: evidenceChunks.length,
         avgSimilarity: avgSimilarity.toFixed(3),
-        // Final eligibility
+        // Final eligibility (answer-first only for simple definitional queries)
         eligible: mode === "explain" &&
                   (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
                   !mightBeIdentifyQuestion &&
+                  !queryNeedsStructuredResponse &&
                   evidenceChunks.length >= 2 &&
                   avgSimilarity >= 0.40
       }
     });
 
-    // Answer-first logic: For non-identify definitional queries with sufficient evidence
+    // Answer-first logic: ONLY for simple definitional queries like "What is staging?"
+    // NOT for queries asking for lists of symptoms, tests, treatments, etc.
     // (isIdentifyQuestion already defined earlier at line 486)
     if (
-      mode === "explain" && 
+      mode === "explain" &&
       (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
       !mightBeIdentifyQuestion && // Not an "identify" question (those need full structured response)
+      !queryNeedsStructuredResponse && // Not asking for lists of symptoms/tests/treatments
       evidenceChunks.length >= 2 && // Sufficient chunks
       avgSimilarity >= 0.40 // Moderate confidence threshold
     ) {

@@ -102,17 +102,36 @@ Do NOT ask more clarifying questions if the user has indicated general intent (e
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private readonly openai: OpenAI;
+  private readonly client: OpenAI;
+  private readonly provider: "deepseek" | "openai";
+  private readonly model: string;
   private readonly timeoutMs: number;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>("OPENAI_API_KEY");
-    if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is required");
+    // Determine LLM provider - Deepseek is default (cost-effective for charitable project)
+    this.provider = (this.configService.get<string>("LLM_PROVIDER") as "deepseek" | "openai") || "deepseek";
+
+    if (this.provider === "openai") {
+      const apiKey = this.configService.get<string>("OPENAI_API_KEY");
+      if (!apiKey) {
+        throw new Error("OPENAI_API_KEY is required when LLM_PROVIDER=openai");
+      }
+      this.client = new OpenAI({ apiKey });
+      this.model = "gpt-4o";
+      this.logger.log("LLM Service initialized with OpenAI (gpt-4o)");
+    } else {
+      // Default: Deepseek (OpenAI-compatible API)
+      const apiKey = this.configService.get<string>("DEEPSEEK_API_KEY");
+      if (!apiKey) {
+        throw new Error("DEEPSEEK_API_KEY is required (default provider). Set DEEPSEEK_API_KEY or use LLM_PROVIDER=openai with OPENAI_API_KEY");
+      }
+      const baseURL = this.configService.get<string>("DEEPSEEK_BASE_URL") || "https://api.deepseek.com/v1";
+      this.model = this.configService.get<string>("DEEPSEEK_MODEL") || "deepseek-chat";
+      this.client = new OpenAI({ apiKey, baseURL });
+      this.logger.log(`LLM Service initialized with Deepseek (${this.model}) at ${baseURL}`);
     }
-    this.openai = new OpenAI({ apiKey });
+
     // Default timeout: 15s, configurable via LLM_TIMEOUT_MS env var
-    // Increased from 10s to handle complex queries better
     this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 15000;
   }
 
@@ -394,8 +413,8 @@ User question: ${userMessage}`;
         }, this.timeoutMs);
 
         try {
-          const completion = await this.openai.chat.completions.create({
-            model: "gpt-4o",
+          const completion = await this.client.chat.completions.create({
+            model: this.model,
             messages: [
               { role: "system", content: actualSystemPrompt },
               { role: "user", content: citationInstructions }
@@ -411,7 +430,7 @@ User question: ${userMessage}`;
           const text = completion.choices[0]?.message?.content;
 
           if (!text || text.trim().length === 0) {
-            this.logger.warn("Empty response from OpenAI, using fallback");
+            this.logger.warn(`Empty response from ${this.provider}, using fallback`);
             return this.getFallbackResponse();
           }
 
@@ -446,7 +465,7 @@ User question: ${userMessage}`;
       this.logger.error(`LLM generation failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
       return this.getFallbackResponse();
     } catch (error) {
-      this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
+      this.logger.error(`Error generating response with ${this.provider}: ${error.message}`, error.stack);
       return this.getFallbackResponse();
     }
   }
@@ -465,8 +484,8 @@ User question: ${userMessage}`;
       }, this.timeoutMs);
 
       try {
-        const completion = await this.openai.chat.completions.create({
-          model: "gpt-4o",
+        const completion = await this.client.chat.completions.create({
+          model: this.model,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: fullPrompt }
@@ -481,7 +500,7 @@ User question: ${userMessage}`;
 
         const text = completion.choices[0]?.message?.content;
         if (!text || text.trim().length === 0) {
-          this.logger.warn("Empty response from OpenAI, using fallback");
+          this.logger.warn(`Empty response from ${this.provider}, using fallback`);
           return this.getFallbackResponse();
         }
         return text;
@@ -495,7 +514,7 @@ User question: ${userMessage}`;
         throw error; // Re-throw non-timeout errors
       }
     } catch (error) {
-      this.logger.error(`Error generating response with OpenAI: ${error.message}`, error.stack);
+      this.logger.error(`Error generating response with ${this.provider}: ${error.message}`, error.stack);
       return this.getFallbackResponse();
     }
   }
@@ -535,8 +554,8 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
       try {
-        const completion = await this.openai.chat.completions.create({
-          model: "gpt-4o",
+        const completion = await this.client.chat.completions.create({
+          model: this.model,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: fullPrompt },
@@ -551,7 +570,7 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
 
         const text = completion.choices[0]?.message?.content;
         if (!text || text.trim().length === 0) {
-          this.logger.warn("Empty definitional response from OpenAI, retrying with full explain mode");
+          this.logger.warn(`Empty definitional response from ${this.provider}, retrying with full explain mode`);
           return this.getFallbackResponse();
         }
         return text;
