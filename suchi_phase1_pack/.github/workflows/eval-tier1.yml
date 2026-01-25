@@ -143,3 +143,88 @@ jobs:
               }
             "
           fi
+
+      - name: Generate email report
+        id: email-report
+        if: always()
+        working-directory: eval
+        run: |
+          if [ -f "reports/tier1-report.json" ]; then
+            node -e "
+              const fs = require('fs');
+              const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
+              const s = report.summary;
+              const q = s.retrievalQuality || {};
+
+              // Get failed cases (up to 5 with details)
+              const failed = report.results.filter(r => !r.passed).slice(0, 5);
+
+              let body = '# Suchi Daily Eval Report\\n\\n';
+              body += '## Summary\\n';
+              body += '| Metric | Value |\\n|--------|-------|\\n';
+              body += '| Total Tests | ' + s.total + ' |\\n';
+              body += '| Passed | ' + s.passed + ' (' + ((s.passed/s.total)*100).toFixed(1) + '%) |\\n';
+              body += '| Failed | ' + s.failed + ' |\\n';
+              body += '| Average Score | ' + (s.averageScore * 100).toFixed(1) + '% |\\n';
+              body += '| Trusted Source Rate | ' + (q.top3TrustedPresenceRate * 100).toFixed(1) + '% |\\n';
+              body += '| Citation Coverage | ' + (q.citationCoverageRate * 100).toFixed(1) + '% |\\n\\n';
+
+              if (failed.length > 0) {
+                body += '## Failed Cases (Top 5)\\n\\n';
+                failed.forEach((r, i) => {
+                  body += '### ' + (i+1) + '. ' + r.testCaseId + ' (Score: ' + (r.score*100).toFixed(1) + '%)\\n';
+
+                  // Deterministic failures
+                  const detFail = (r.deterministicResults || []).filter(c => !c.passed);
+                  if (detFail.length > 0) {
+                    body += '**Deterministic:** ' + detFail.map(c => c.checkId).join(', ') + '\\n';
+                  }
+
+                  // LLM failures
+                  const llmFail = (r.llmJudgeResults || []).filter(c => !c.passed && !c.skipped);
+                  if (llmFail.length > 0) {
+                    body += '**LLM Judge:** ' + llmFail.map(c => c.checkId + (c.count !== null ? ' ('+c.count+')' : '')).join(', ') + '\\n';
+                  }
+                  body += '\\n';
+                });
+
+                if (s.failed > 5) {
+                  body += '_...and ' + (s.failed - 5) + ' more failures. See full report in GitHub Actions._\\n';
+                }
+              } else {
+                body += '## All tests passed! ✅\\n';
+              }
+
+              body += '\\n---\\n';
+              body += 'View full report: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\\n';
+
+              // Output for email
+              const subject = s.failed > 0
+                ? 'Suchi Eval: ' + s.failed + ' failures (' + (s.averageScore*100).toFixed(0) + '% avg)'
+                : 'Suchi Eval: All ' + s.total + ' tests passed ✅';
+
+              fs.writeFileSync('email-subject.txt', subject);
+              fs.writeFileSync('email-body.md', body);
+
+              // Set outputs
+              console.log('should_send=' + (s.failed > 0 ? 'true' : 'false'));
+            " > /tmp/email-output.txt
+
+            echo "should_send=$(cat /tmp/email-output.txt | grep should_send | cut -d= -f2)" >> $GITHUB_OUTPUT
+          else
+            echo "should_send=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send email notification
+        if: always() && steps.email-report.outputs.should_send == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: ${{ steps.email-report.outputs.email_subject || 'Suchi Daily Eval Report' }}
+          to: gautamgauri@dikshafoundation.org
+          from: Suchi Eval Bot <noreply@suchi.org>
+          body: file://eval/email-body.md
+          content_type: text/markdown
