@@ -336,7 +336,7 @@ Return the JSON object with context, cancerType, and confidence.`;
 
     // Complete the greeting flow silently
     await this.updateSessionContext(sessionId, {
-      userContext: contextResult.context || session.userContext || "general",
+      userContext: (contextResult.context || session.userContext || "general") as UserContext,
       cancerType: contextResult.cancerType || session.cancerType,
       emotionalState: emotionalTone || (session.emotionalState as EmotionalTone),
       greetingCompleted: true,
