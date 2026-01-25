@@ -131,8 +131,9 @@ export class LlmService {
       this.logger.log(`LLM Service initialized with Deepseek (${this.model}) at ${baseURL}`);
     }
 
-    // Default timeout: 15s, configurable via LLM_TIMEOUT_MS env var
-    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 15000;
+    // Default timeout: 45s, configurable via LLM_TIMEOUT_MS env var
+    // Increased for Deepseek with longer responses (3000+ tokens)
+    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 45000;
   }
 
   /**
@@ -334,18 +335,20 @@ Your response MUST include at least 2 citations or it will be rejected.`;
       }).join("\n\n");
 
       // Enhanced prompt with citation requirements and structured sections
-      // OPTIMIZED FOR DEEPSEEK: Requirements at END for recency bias
+      // OPTIMIZED FOR DEEPSEEK: Clear instruction first, requirements at END for recency bias
       const citationInstructions = `
-REFERENCE LIST (use the exact docId and chunkId shown for each reference):
+You are a cancer information assistant. Answer the user's question using ONLY the reference material below. Generate a complete response with all 5 required sections.
+
+REFERENCE LIST:
 ${referenceList}
 
 ${conversationContext?.checklist || ""}
 
-User question: ${userMessage}
+USER QUESTION: ${userMessage}
 
 ---
 
-YOUR RESPONSE MUST INCLUDE ALL 5 SECTIONS BELOW. Each section is MANDATORY.
+GENERATE A RESPONSE WITH ALL 5 SECTIONS BELOW:
 
 **Section 1: Direct Answer**
 Write 3-5 bullet points directly answering the question. Each bullet must have a citation.
