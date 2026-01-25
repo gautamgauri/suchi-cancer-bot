@@ -247,16 +247,40 @@ Return the JSON object with context, cancerType, and confidence.`;
       currentGreetingStep?: number;
     }
   ): Promise<void> {
-    await this.prisma.session.update({
-      where: { id: sessionId },
-      data: {
+    try {
+      const updateData: any = {
         userContext: context.userContext || undefined,
         cancerType: context.cancerType || undefined,
         emotionalState: context.emotionalState || undefined,
         greetingCompleted: context.greetingCompleted !== undefined ? context.greetingCompleted : undefined,
-        currentGreetingStep: context.currentGreetingStep !== undefined ? context.currentGreetingStep : undefined,
-      },
-    });
+      };
+      
+      // Only include currentGreetingStep if migration has been applied
+      if (context.currentGreetingStep !== undefined) {
+        updateData.currentGreetingStep = context.currentGreetingStep;
+      }
+
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: updateData,
+      });
+    } catch (error: any) {
+      // If currentGreetingStep column doesn't exist, try update without it
+      if (error.message?.includes('currentGreetingStep') || error.code === 'P2021' || error.message?.includes('Unknown column') || error.message?.includes('column') && error.message?.includes('does not exist')) {
+        this.logger.warn(`currentGreetingStep column may not exist, updating without it: ${error.message}`);
+        await this.prisma.session.update({
+          where: { id: sessionId },
+          data: {
+            userContext: context.userContext || undefined,
+            cancerType: context.cancerType || undefined,
+            emotionalState: context.emotionalState || undefined,
+            greetingCompleted: context.greetingCompleted !== undefined ? context.greetingCompleted : undefined,
+          },
+        });
+      } else {
+        throw error; // Re-throw if it's a different error
+      }
+    }
   }
 
   /**
@@ -264,58 +288,103 @@ Return the JSON object with context, cancerType, and confidence.`;
    * Uses explicit currentGreetingStep if available, otherwise infers from state
    */
   async getGreetingStep(sessionId: string): Promise<number> {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-    });
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+      });
 
-    if (!session || session.greetingCompleted) {
-      return 0; // No greeting flow needed
-    }
-
-    // Use explicit step if available (preferred)
-    if (session.currentGreetingStep !== null && session.currentGreetingStep !== undefined) {
-      return session.currentGreetingStep;
-    }
-
-    // Fallback: Infer from message history and session state (for backward compatibility)
-    const messages = await this.prisma.message.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: "asc" },
-    });
-
-    const assistantMessages = messages.filter((m) => m.role === "assistant");
-
-    // If no assistant messages yet, we're at step 1
-    if (assistantMessages.length === 0) {
-      return 1;
-    }
-
-    // If we have context but no cancer type, we're at step 2
-    if (session.userContext && !session.cancerType) {
-      if (["patient", "caregiver", "post_diagnosis"].includes(session.userContext)) {
-        return 2;
+      if (!session || session.greetingCompleted) {
+        return 0; // No greeting flow needed
       }
-    }
 
-    // Otherwise, greeting should be complete
-    return 3;
+      // Use explicit step if available (preferred)
+      // Handle case where currentGreetingStep column might not exist (migration not applied)
+      const step = (session as any).currentGreetingStep;
+      if (step !== null && step !== undefined) {
+        return step;
+      }
+
+      // Fallback: Infer from message history and session state (for backward compatibility)
+      const messages = await this.prisma.message.findMany({
+        where: { sessionId },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const assistantMessages = messages.filter((m) => m.role === "assistant");
+
+      // If no assistant messages yet, we're at step 1
+      if (assistantMessages.length === 0) {
+        return 1;
+      }
+
+      // If we have context but no cancer type, we're at step 2
+      if (session.userContext && !session.cancerType) {
+        if (["patient", "caregiver", "post_diagnosis"].includes(session.userContext)) {
+          return 2;
+        }
+      }
+
+      // Otherwise, greeting should be complete
+      return 3;
+    } catch (error: any) {
+      // If column doesn't exist, fall through to inference logic
+      this.logger.warn(`Error getting greeting step (column may not exist): ${error.message}`);
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { greetingCompleted: true, userContext: true, cancerType: true },
+      });
+      if (!session || session.greetingCompleted) {
+        return 0;
+      }
+
+      // Infer from message history
+      const messages = await this.prisma.message.findMany({
+        where: { sessionId },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const assistantMessages = messages.filter((m) => m.role === "assistant");
+      if (assistantMessages.length === 0) {
+        return 1;
+      }
+
+      if (session.userContext && !session.cancerType) {
+        if (["patient", "caregiver", "post_diagnosis"].includes(session.userContext)) {
+          return 2;
+        }
+      }
+
+      return 3;
+    }
   }
 
   /**
    * Check if greeting flow is in progress (not completed but has started)
    */
   async isGreetingFlowInProgress(sessionId: string): Promise<boolean> {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-      select: { greetingCompleted: true, currentGreetingStep: true },
-    });
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { greetingCompleted: true, currentGreetingStep: true },
+      });
 
-    if (!session) {
-      return false;
+      if (!session) {
+        return false;
+      }
+
+      // Flow is in progress if not completed and step > 0
+      // Handle case where currentGreetingStep column might not exist (migration not applied)
+      const step = (session as any).currentGreetingStep;
+      return !session.greetingCompleted && (step ?? 0) > 0;
+    } catch (error: any) {
+      // If column doesn't exist (migration not applied), fall back to checking message count
+      this.logger.warn(`Error checking greeting flow progress (column may not exist): ${error.message}`);
+      const messageCount = await this.prisma.message.count({
+        where: { sessionId, role: "assistant" },
+      });
+      // If there are assistant messages but greeting not completed, flow might be in progress
+      return messageCount > 0;
     }
-
-    // Flow is in progress if not completed and step > 0
-    return !session.greetingCompleted && (session.currentGreetingStep ?? 0) > 0;
   }
 
   /**
