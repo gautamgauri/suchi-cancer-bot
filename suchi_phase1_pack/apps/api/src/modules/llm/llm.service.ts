@@ -374,10 +374,32 @@ YOU MUST LIST AT LEAST 4 TESTS. Extract ALL from references:
 Format: "- [test name] [citation:docId:chunkId]"
 
 **Section 4: When to Seek Care**
-YOU MUST INCLUDE A SPECIFIC TIMEFRAME. Use one of these formats:
-- "If symptoms persist for 2-4 weeks, seek medical evaluation"
-- "Seek care within 1-2 weeks if symptoms continue"
-- For urgent symptoms (severe pain, bleeding, breathing difficulty): "Seek care immediately"
+YOU MUST ALWAYS PROVIDE TIMELINE GUIDANCE. Even if the NCI references don't specify timelines, use this standard guidance based on NHS UK and WHO recommendations:
+
+ROUTINE (see doctor within 2-3 weeks):
+- New lump or mass that persists
+- Unexplained weight loss
+- Persistent cough (>2 weeks)
+- Changes in bowel/bladder habits
+- A sore that doesn't heal
+
+SOON (see doctor within 1 week):
+- Symptoms worsening over days
+- Multiple warning signs present
+- Symptoms affecting daily activities
+
+EMERGENCY (seek care immediately):
+- Severe or uncontrolled bleeding
+- Blood in vomit or black/tarry stools
+- Difficulty breathing or swallowing
+- Severe pain that doesn't respond to medication
+- Confusion or altered consciousness
+- High fever with other symptoms
+
+Format your response like:
+"Based on NHS UK and WHO guidance: If you notice [symptom], it's recommended to see a doctor within [timeframe]. For urgent symptoms like [examples], seek immediate medical attention."
+
+DO NOT say "I don't have enough information" - ALWAYS provide this navigation guidance.
 
 **Section 5: Questions to Ask Your Doctor**
 YOU MUST LIST AT LEAST 5 QUESTIONS. Include questions about:
@@ -399,11 +421,12 @@ CITATION FORMAT (CRITICAL - your response will be rejected without proper citati
 - Minimum 2 citations required, aim for 5+
 
 FINAL CHECKLIST (verify before submitting):
-[ ] Section 2 has AT LEAST 5 warning signs
-[ ] Section 3 has AT LEAST 4 tests
-[ ] Section 4 has a SPECIFIC timeframe (e.g., "2-4 weeks")
+[ ] Section 2 has AT LEAST 5 warning signs with citations
+[ ] Section 3 has AT LEAST 4 tests with citations
+[ ] Section 4 has SPECIFIC timeframes (routine: 2-3 weeks, urgent: immediately) - use NHS/WHO guidance
 [ ] Section 5 has AT LEAST 5 questions
-[ ] All medical facts have [citation:docId:chunkId] markers`;
+[ ] Medical facts from NCI have [citation:docId:chunkId] markers
+[ ] Section 4 timeline guidance attributed to "NHS UK and WHO recommendations"`;
 
       // Retry logic with exponential backoff (max 2 retries)
       const maxRetries = 2;
