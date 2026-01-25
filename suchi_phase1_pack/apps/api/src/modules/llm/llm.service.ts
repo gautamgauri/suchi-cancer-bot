@@ -333,66 +333,74 @@ Your response MUST include at least 2 citations or it will be rejected.`;
    Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
       }).join("\n\n");
 
-      // Enhanced prompt with citation requirements and structured sections - make it extremely explicit
+      // Enhanced prompt with citation requirements and structured sections
+      // OPTIMIZED FOR DEEPSEEK: Requirements at END for recency bias
       const citationInstructions = `
-CRITICAL CITATION REQUIREMENTS - YOU MUST FOLLOW THESE EXACTLY:
-1. You MUST cite EVERY medical claim, fact, symptom, diagnostic method, or piece of information using the format: [citation:docId:chunkId]
-2. Use the EXACT docId and chunkId from the reference list below - copy them exactly as shown
-3. Example: If reference [1] has docId "kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1" and chunkId "kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1::chunk::0", you would write: "Swollen lymph nodes are a symptom [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1::chunk::0]"
-4. You MUST include at least 2-3 citations in your response
-5. If you mention multiple facts, cite each one separately
-6. DO NOT write a response without citations - if you cannot cite something, do not include it
-7. DO NOT make up docId or chunkId values - use ONLY what is in the reference list below
-8. Every bullet point in structured sections (Warning Signs, Tests, etc.) MUST have a citation - if you cannot cite it, omit the bullet entirely
-
-GROUNDING PER BULLET REQUIREMENT:
-- Each bullet point MUST include: the medical claim + citation marker [citation:docId:chunkId]
-- Format: "- CT scan of the chest [citation:doc_123:chunk_456]"
-- If you cannot find supporting content in the references for a bullet point, DO NOT include that bullet point
-
 REFERENCE LIST (use the exact docId and chunkId shown for each reference):
 ${referenceList}
 
 ${conversationContext?.checklist || ""}
 
-RESPONSE FORMAT - YOU MUST INCLUDE THESE SECTIONS:
-1. Main Answer: 4-8 bullet points directly answering the question, all cited
-2. **Warning Signs to Watch For:** (if query mentions symptoms or is about symptoms)
-   - List 5+ SPECIFIC warning signs from references, each cited
-   - Extract ALL warning signs mentioned in references - don't stop at 2-3
-   - Example: "- A lump in the breast [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
-   - Include systemic symptoms (weight loss, fatigue, etc.) if mentioned in references
-   - DO NOT use generic text - use specific signs from references
+User question: ${userMessage}
 
-3. **Tests Doctors May Use:** (if query is about diagnosis/screening/symptoms)
-   - Extract ALL diagnostic tests mentioned in references - aim for 4+ tests
-   - Include: imaging tests (CT, MRI, X-ray, mammogram, ultrasound, PET scan, etc.), biopsy types, lab tests, physical exams
-   - Each test must be cited: "- Mammography (breast X-ray) [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
-   - If references mention multiple tests, list them all - don't stop at 2
-   - DO NOT use generic text like "various diagnostic tests" - list actual test names
+---
 
-4. **When to Seek Care:** (always include)
-   - FIRST: Check if references mention specific timeframes (e.g., "2-4 weeks", "within 1-2 weeks")
-   - If references mention timelines, use them EXACTLY: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:docId:chunkId]"
-   - If NO specific timeframe in references, provide reasonable guidance: "If symptoms persist for 2-4 weeks or worsen, seek medical evaluation. For urgent symptoms (severe pain, difficulty breathing, heavy bleeding), seek care immediately."
-   - DO NOT say "I don't have enough information" - provide actionable guidance based on standard medical practice
-   - Always cite if timeline is from references, or note it's general guidance
+YOUR RESPONSE MUST INCLUDE ALL 5 SECTIONS BELOW. Each section is MANDATORY.
 
-5. **Questions to Ask Your Doctor:** (always include)
-   - Generate 5-7 SPECIFIC, practical questions based on references
-   - Questions should be cancer-type-specific and reference-specific
-   - Include questions about: specific tests mentioned, biopsy types, staging, follow-up, symptoms to monitor
-   - Example: "What imaging tests are recommended for [cancer type]?" (if references discuss imaging)
-   - DO NOT use generic questions like "Can you explain this in more detail?"
+**Section 1: Direct Answer**
+Write 3-5 bullet points directly answering the question. Each bullet must have a citation.
 
-CRITICAL REQUIREMENTS:
-- Extract ALL available information from references - don't stop early
-- For tests: List ALL diagnostic methods mentioned, not just 2-3
-- For timeline: Provide actionable guidance even if references don't specify exact timeframe
-- All sections must contain SPECIFIC content from references with citations
-- If a section truly has no relevant content in references, state that clearly rather than using generic text
+**Section 2: Warning Signs to Watch For**
+YOU MUST LIST AT LEAST 5 WARNING SIGNS. Extract from references:
+- Lumps, masses, growths
+- Changes in size/shape/appearance
+- Discharge, bleeding, fluid changes
+- Skin changes
+- Swollen lymph nodes
+- Systemic symptoms (weight loss, fatigue, fever, night sweats)
+- Pain or discomfort
+Format: "- [warning sign] [citation:docId:chunkId]"
 
-User question: ${userMessage}`;
+**Section 3: Tests Doctors May Use**
+YOU MUST LIST AT LEAST 4 TESTS. Extract ALL from references:
+- Physical examination
+- Imaging: CT, MRI, X-ray, ultrasound, PET scan, mammogram
+- Biopsy (specify type if mentioned)
+- Lab tests, blood tests, tumor markers
+- Pathology, staging tests
+Format: "- [test name] [citation:docId:chunkId]"
+
+**Section 4: When to Seek Care**
+YOU MUST INCLUDE A SPECIFIC TIMEFRAME. Use one of these formats:
+- "If symptoms persist for 2-4 weeks, seek medical evaluation"
+- "Seek care within 1-2 weeks if symptoms continue"
+- For urgent symptoms (severe pain, bleeding, breathing difficulty): "Seek care immediately"
+
+**Section 5: Questions to Ask Your Doctor**
+YOU MUST LIST AT LEAST 5 QUESTIONS. Include questions about:
+- What tests do I need?
+- Do I need a biopsy?
+- What are the next steps?
+- How long until I get results?
+- What symptoms should I watch for?
+- Should I get a second opinion?
+- What are my treatment options if needed?
+
+---
+
+CITATION FORMAT (CRITICAL - your response will be rejected without proper citations):
+- Use EXACTLY: [citation:docId:chunkId]
+- Copy docId and chunkId EXACTLY from the reference list above
+- Example: "Swollen lymph nodes may indicate lymphoma [citation:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1:kb_en_nci_types_lymphoma_patient_adult_nhl_treatment_pdq_v1::chunk::0]"
+- EVERY medical fact needs a citation
+- Minimum 2 citations required, aim for 5+
+
+FINAL CHECKLIST (verify before submitting):
+[ ] Section 2 has AT LEAST 5 warning signs
+[ ] Section 3 has AT LEAST 4 tests
+[ ] Section 4 has a SPECIFIC timeframe (e.g., "2-4 weeks")
+[ ] Section 5 has AT LEAST 5 questions
+[ ] All medical facts have [citation:docId:chunkId] markers`;
 
       // Retry logic with exponential backoff (max 2 retries)
       const maxRetries = 2;
@@ -420,7 +428,7 @@ User question: ${userMessage}`;
               { role: "user", content: citationInstructions }
             ],
             temperature: 0.3,
-            max_tokens: isIdentifyQuestion ? 2500 : 1500 // Identify questions need more tokens for structured response with citations
+            max_tokens: isIdentifyQuestion ? 3500 : 3000 // Increased for Deepseek to complete all required sections
           }, {
             signal: controller.signal as any // OpenAI SDK may not support AbortSignal directly, but we'll handle timeout via catch
           });
