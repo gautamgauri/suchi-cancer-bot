@@ -51,9 +51,23 @@ export interface FeedbackResponse {
   createdAt: string;
 }
 
+export interface SessionInfo {
+  sessionId: string;
+  createdAt: string;
+  greetingCompleted: boolean;
+  currentGreetingStep: number | null;
+  userContext: string | null;
+  cancerType: string | null;
+}
+
 export const apiService = {
   async createSession(data: CreateSessionRequest): Promise<CreateSessionResponse> {
     const response = await api.post<CreateSessionResponse>("/sessions", data);
+    return response.data;
+  },
+
+  async getSession(sessionId: string): Promise<SessionInfo> {
+    const response = await api.get<SessionInfo>(`/sessions/${sessionId}`);
     return response.data;
   },
 

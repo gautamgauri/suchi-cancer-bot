@@ -295,6 +295,30 @@ export class ChatService {
       });
     }
 
+    // 1.6.5. Check for greeting flow interruption (before greeting check)
+    // If user sends non-greeting message during active greeting flow, complete it silently
+    const isGreetingFlowInProgress = await this.greetingFlow.isGreetingFlowInProgress(dto.sessionId);
+    const isSkipRequest = /\b(skip|skip this|not now|later|just answer|help me|I have a question)\b/i.test(dto.userText);
+    
+    if (isGreetingFlowInProgress && !GreetingDetector.isGreeting(dto.userText)) {
+      // User is interrupting greeting flow with a question or skip request
+      // Complete the flow silently using extracted context
+      await this.greetingFlow.handleGreetingFlowInterruption(
+        dto.sessionId,
+        contextResult,
+        emotionalToneResult.tone
+      );
+      
+      // If it's a skip request, add a brief acknowledgment
+      if (isSkipRequest) {
+        // Continue to process the message normally, but flow is now complete
+        this.logger.log(`Greeting flow skipped by user for session ${dto.sessionId}`);
+      } else {
+        // Medical query during greeting - complete flow silently and continue
+        this.logger.log(`Greeting flow interrupted by medical query for session ${dto.sessionId}`);
+      }
+    }
+
     // 1.7. Check for greeting (after safety and urgency checks, before RAG)
     // Handle interactive greeting flow if needed
     const needsGreeting = await this.greetingFlow.needsGreetingFlow(dto.sessionId);
@@ -312,6 +336,11 @@ export class ChatService {
             safetyClassification: "normal",
             latencyMs: Date.now() - started
           }
+        });
+
+        // Update explicit step state
+        await this.greetingFlow.updateSessionContext(dto.sessionId, {
+          currentGreetingStep: 1,
         });
 
         await this.analytics.emit("greeting_response", { step: 1, emotionalTone: emotionalToneResult.tone }, dto.sessionId);
@@ -350,6 +379,13 @@ export class ChatService {
             }
           });
 
+          // Update explicit step state
+          await this.greetingFlow.updateSessionContext(dto.sessionId, {
+            userContext: parseResult.context,
+            emotionalState: parseResult.emotionalTone,
+            currentGreetingStep: 2,
+          });
+
           await this.analytics.emit("greeting_response", { step: 2, context: parseResult.context }, dto.sessionId);
 
           return {
@@ -365,6 +401,7 @@ export class ChatService {
             cancerType: parseResult.cancerType,
             emotionalState: parseResult.emotionalTone,
             greetingCompleted: true,
+            currentGreetingStep: 3,
           });
 
           const greetingText = ResponseTemplates.greetingComplete(
@@ -402,6 +439,7 @@ export class ChatService {
           cancerType: parseResult.cancerType,
           emotionalState: parseResult.emotionalTone,
           greetingCompleted: true,
+          currentGreetingStep: 3,
         });
 
         // Reuse session fetched at start
@@ -432,6 +470,21 @@ export class ChatService {
           safety: { classification: "normal" as const, actions: [] }
         };
       }
+    }
+
+    // 1.7.5. Check for skip request even if not in greeting flow
+    // Allow users to explicitly skip greeting if they send skip keywords
+    // Re-check greeting state after potential interruption handling
+    const stillNeedsGreeting = await this.greetingFlow.needsGreetingFlow(dto.sessionId);
+    const stillInProgress = await this.greetingFlow.isGreetingFlowInProgress(dto.sessionId);
+    if (isSkipRequest && stillNeedsGreeting && !stillInProgress) {
+      // User wants to skip greeting - mark as completed with general context
+      await this.greetingFlow.updateSessionContext(dto.sessionId, {
+        userContext: "general",
+        greetingCompleted: true,
+        currentGreetingStep: 3,
+      });
+      this.logger.log(`Greeting flow skipped by user request for session ${dto.sessionId}`);
     }
 
     // Fallback to old greeting handling if not in interactive flow

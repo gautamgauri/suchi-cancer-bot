@@ -17,6 +17,7 @@ model Session {
   userContext String? // "general" | "patient" | "caregiver" | "post_diagnosis"
   cancerType String? // Detected or user-selected cancer type
   greetingCompleted Boolean @default(false) // Track if greeting flow is complete
+  currentGreetingStep Int? // Explicit greeting step: 0 = not started, 1 = context question, 2 = cancer type, 3 = complete
   emotionalState String? // "anxious" | "calm" | "urgent" | "sad" | "neutral"
 
   messages        Message[]

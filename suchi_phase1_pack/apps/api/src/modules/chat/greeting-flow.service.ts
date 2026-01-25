@@ -244,6 +244,7 @@ Return the JSON object with context, cancerType, and confidence.`;
       cancerType?: string;
       emotionalState?: EmotionalTone;
       greetingCompleted?: boolean;
+      currentGreetingStep?: number;
     }
   ): Promise<void> {
     await this.prisma.session.update({
@@ -253,12 +254,14 @@ Return the JSON object with context, cancerType, and confidence.`;
         cancerType: context.cancerType || undefined,
         emotionalState: context.emotionalState || undefined,
         greetingCompleted: context.greetingCompleted !== undefined ? context.greetingCompleted : undefined,
+        currentGreetingStep: context.currentGreetingStep !== undefined ? context.currentGreetingStep : undefined,
       },
     });
   }
 
   /**
    * Get current greeting step for session
+   * Uses explicit currentGreetingStep if available, otherwise infers from state
    */
   async getGreetingStep(sessionId: string): Promise<number> {
     const session = await this.prisma.session.findUnique({
@@ -269,14 +272,18 @@ Return the JSON object with context, cancerType, and confidence.`;
       return 0; // No greeting flow needed
     }
 
-    // Check message history to determine step
+    // Use explicit step if available (preferred)
+    if (session.currentGreetingStep !== null && session.currentGreetingStep !== undefined) {
+      return session.currentGreetingStep;
+    }
+
+    // Fallback: Infer from message history and session state (for backward compatibility)
     const messages = await this.prisma.message.findMany({
       where: { sessionId },
       orderBy: { createdAt: "asc" },
     });
 
     const assistantMessages = messages.filter((m) => m.role === "assistant");
-    const userMessages = messages.filter((m) => m.role === "user");
 
     // If no assistant messages yet, we're at step 1
     if (assistantMessages.length === 0) {
@@ -292,5 +299,50 @@ Return the JSON object with context, cancerType, and confidence.`;
 
     // Otherwise, greeting should be complete
     return 3;
+  }
+
+  /**
+   * Check if greeting flow is in progress (not completed but has started)
+   */
+  async isGreetingFlowInProgress(sessionId: string): Promise<boolean> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { greetingCompleted: true, currentGreetingStep: true },
+    });
+
+    if (!session) {
+      return false;
+    }
+
+    // Flow is in progress if not completed and step > 0
+    return !session.greetingCompleted && (session.currentGreetingStep ?? 0) > 0;
+  }
+
+  /**
+   * Handle greeting flow interruption - complete flow silently using extracted context
+   */
+  async handleGreetingFlowInterruption(
+    sessionId: string,
+    contextResult: ContextExtractionResult,
+    emotionalTone?: EmotionalTone
+  ): Promise<void> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.greetingCompleted) {
+      return; // Not in greeting flow
+    }
+
+    // Complete the greeting flow silently
+    await this.updateSessionContext(sessionId, {
+      userContext: contextResult.context || session.userContext || "general",
+      cancerType: contextResult.cancerType || session.cancerType,
+      emotionalState: emotionalTone || (session.emotionalState as EmotionalTone),
+      greetingCompleted: true,
+      currentGreetingStep: 3,
+    });
+
+    this.logger.log(`Greeting flow completed silently due to interruption for session ${sessionId}`);
   }
 }
