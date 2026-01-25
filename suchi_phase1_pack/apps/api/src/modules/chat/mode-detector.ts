@@ -15,6 +15,20 @@ export class ModeDetector {
     const text = userText.trim();
     const lowerText = text.toLowerCase();
 
+    // PRIORITY CHECK: "Generally asking" signals override personal pronouns
+    // User explicitly indicates educational/general intent, not personal symptoms
+    const generallyAskingPatterns = [
+      /\b(generally asking|asking generally|just asking|general question)\b/i,
+      /\b(not personal|not for me|not about me|for awareness|educational|learning about)\b/i,
+      /\b(information only|just curious|out of curiosity|in general)\b/i,
+      /\bI('m| am) asking generally\b/i,
+      /\bI('m| am) just (curious|asking|wondering)\b/i
+    ];
+    const hasGenerallyAskingSignal = generallyAskingPatterns.some(pattern => pattern.test(text));
+    if (hasGenerallyAskingSignal) {
+      return "explain"; // Override any personal pronouns
+    }
+
     // Identify patterns - check these first to gate properly
     const identifyPatterns = [
       /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i

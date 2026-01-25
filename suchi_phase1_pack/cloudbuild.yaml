@@ -80,7 +80,7 @@ steps:
       - '--add-cloudsql-instances'
       - '${_CLOUDSQL_CONNECTION_NAME}'
       - '--set-env-vars'
-      - 'NODE_ENV=production,EMBEDDING_MODEL=text-embedding-004,RATE_LIMIT_TTL_SEC=60,RATE_LIMIT_REQ_PER_TTL=20,LLM_PROVIDER=deepseek'
+      - 'NODE_ENV=production,EMBEDDING_MODEL=text-embedding-004,RATE_LIMIT_TTL_SEC=60,RATE_LIMIT_REQ_PER_TTL=20,LLM_PROVIDER=deepseek,LLM_TIMEOUT_MS=60000'
       - '--set-secrets'
       - 'DATABASE_URL=database-url:latest,DEEPSEEK_API_KEY=deepseek-api-key:latest,EMBEDDING_API_KEY=embedding-api-key:latest,ADMIN_BASIC_USER=admin-basic-user:latest,ADMIN_BASIC_PASS=admin-basic-pass:latest'
 
