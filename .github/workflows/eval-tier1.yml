@@ -1,0 +1,230 @@
+name: Eval Tier1 - Retrieval Quality
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API Base URL (optional, defaults to live service)'
+        required: false
+        default: 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
+  
+  # Nightly schedule (runs at 2 AM UTC)
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # On PRs touching RAG/evidence modules (non-blocking initially)
+  pull_request:
+    paths:
+      - 'apps/api/src/modules/rag/**'
+      - 'apps/api/src/modules/evidence/**'
+      - 'apps/api/src/modules/citations/**'
+      - 'apps/api/src/config/trusted-sources.config.ts'
+      - 'eval/cases/tier1/**'
+      - 'eval/**/*.ts'
+    # Non-blocking: continue-on-error is set on the eval step
+
+jobs:
+  eval-tier1:
+    name: Run Tier1 Retrieval Quality Eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: eval/package-lock.json
+
+      - name: Install eval dependencies
+        working-directory: eval
+        run: npm ci
+
+      - name: Build eval package
+        working-directory: eval
+        run: npm run build
+
+      - name: Check API health
+        run: |
+          API_URL="${{
+            github.event.inputs.api_url || 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
+          }}"
+          echo "Checking API health at: $API_URL"
+          curl -f "$API_URL/health" || echo "Warning: Health check failed, but continuing..."
+        continue-on-error: true
+
+      - name: Run Tier1 Eval
+        working-directory: eval
+        env:
+          EVAL_API_BASE_URL: ${{ github.event.inputs.api_url || 'https://suchi-api-lxiveognla-uc.a.run.app/v1' }}
+          EVAL_LLM_PROVIDER: ${{ secrets.EVAL_LLM_PROVIDER || 'deepseek' }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132' }}
+        run: |
+          npm run eval:tier1
+        continue-on-error: true  # Non-blocking until Pass 2/3 verified
+        id: eval-run
+
+      - name: Generate summary
+        working-directory: eval
+        if: always()
+        run: |
+          if [ -f "reports/tier1-report.json" ]; then
+            echo "## Tier1 Eval Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const fs = require('fs');
+              const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
+              const q = report.summary.retrievalQuality || {};
+              console.log('### Retrieval Quality Metrics');
+              console.log('');
+              console.log(\`- **Top-3 Trusted Source Presence:** \${(q.top3TrustedPresenceRate * 100).toFixed(1)}%\`);
+              console.log(\`- **Citation Coverage:** \${(q.citationCoverageRate * 100).toFixed(1)}%\`);
+              console.log(\`- **Abstention Rate:** \${(q.abstentionRate * 100).toFixed(1)}%\`);
+              console.log('');
+              console.log(\`- **Total Cases:** \${report.summary.total}\`);
+              console.log(\`- **Passed:** \${report.summary.passed}\`);
+              console.log(\`- **Failed:** \${report.summary.failed}\`);
+              console.log(\`- **Average Score:** \${(report.summary.averageScore * 100).toFixed(1)}%\`);
+            " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No report file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier1-eval-report-${{ github.run_number }}
+          path: |
+            eval/reports/tier1-report.json
+            eval/reports/tier1-*.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Check eval results
+        if: always()
+        run: |
+          if [ "${{ steps.eval-run.outcome }}" != "success" ]; then
+            echo "⚠️ Eval run completed with errors (non-blocking mode)"
+            echo "Review the report artifact to identify issues"
+            exit 0  # Don't fail the workflow in non-blocking mode
+          fi
+          
+          # Check if report exists and has reasonable metrics
+          if [ -f "eval/reports/tier1-report.json" ]; then
+            node -e "
+              const fs = require('fs');
+              const report = JSON.parse(fs.readFileSync('eval/reports/tier1-report.json', 'utf8'));
+              const q = report.summary.retrievalQuality || {};
+              
+              // Count improved cases (top3TrustedPresence === true)
+              const improved = report.results.filter(r => r.retrievalQuality?.top3TrustedPresence).length;
+              
+              console.log('Improved cases:', improved);
+              console.log('Top-3 Trusted Rate:', (q.top3TrustedPresenceRate * 100).toFixed(1) + '%');
+              console.log('Citation Coverage:', (q.citationCoverageRate * 100).toFixed(1) + '%');
+              
+              // Warn if metrics are below expectations (but don't fail in non-blocking mode)
+              if (improved < 3) {
+                console.warn('⚠️ WARNING: Less than 3 cases showing improved top-3 relevance');
+              }
+              if (q.citationCoverageRate < 0.90) {
+                console.warn('⚠️ WARNING: Citation coverage below 90%');
+              }
+              if (q.abstentionRate > 0.10) {
+                console.warn('⚠️ WARNING: Abstention rate above 10%');
+              }
+            "
+          fi
+
+      - name: Generate email report
+        id: email-report
+        if: always()
+        working-directory: eval
+        run: |
+          if [ -f "reports/tier1-report.json" ]; then
+            node -e "
+              const fs = require('fs');
+              const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
+              const s = report.summary;
+              const q = s.retrievalQuality || {};
+
+              // Get failed cases (up to 5 with details)
+              const failed = report.results.filter(r => !r.passed).slice(0, 5);
+
+              let body = '# Suchi Daily Eval Report\\n\\n';
+              body += '## Summary\\n';
+              body += '| Metric | Value |\\n|--------|-------|\\n';
+              body += '| Total Tests | ' + s.total + ' |\\n';
+              body += '| Passed | ' + s.passed + ' (' + ((s.passed/s.total)*100).toFixed(1) + '%) |\\n';
+              body += '| Failed | ' + s.failed + ' |\\n';
+              body += '| Average Score | ' + (s.averageScore * 100).toFixed(1) + '% |\\n';
+              body += '| Trusted Source Rate | ' + (q.top3TrustedPresenceRate * 100).toFixed(1) + '% |\\n';
+              body += '| Citation Coverage | ' + (q.citationCoverageRate * 100).toFixed(1) + '% |\\n\\n';
+
+              if (failed.length > 0) {
+                body += '## Failed Cases (Top 5)\\n\\n';
+                failed.forEach((r, i) => {
+                  body += '### ' + (i+1) + '. ' + r.testCaseId + ' (Score: ' + (r.score*100).toFixed(1) + '%)\\n';
+
+                  // Deterministic failures
+                  const detFail = (r.deterministicResults || []).filter(c => !c.passed);
+                  if (detFail.length > 0) {
+                    body += '**Deterministic:** ' + detFail.map(c => c.checkId).join(', ') + '\\n';
+                  }
+
+                  // LLM failures
+                  const llmFail = (r.llmJudgeResults || []).filter(c => !c.passed && !c.skipped);
+                  if (llmFail.length > 0) {
+                    body += '**LLM Judge:** ' + llmFail.map(c => c.checkId + (c.count !== null ? ' ('+c.count+')' : '')).join(', ') + '\\n';
+                  }
+                  body += '\\n';
+                });
+
+                if (s.failed > 5) {
+                  body += '_...and ' + (s.failed - 5) + ' more failures. See full report in GitHub Actions._\\n';
+                }
+              } else {
+                body += '## All tests passed! ✅\\n';
+              }
+
+              body += '\\n---\\n';
+              body += 'View full report: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\\n';
+
+              // Output for email
+              const subject = s.failed > 0
+                ? 'Suchi Eval: ' + s.failed + ' failures (' + (s.averageScore*100).toFixed(0) + '% avg)'
+                : 'Suchi Eval: All ' + s.total + ' tests passed ✅';
+
+              fs.writeFileSync('email-subject.txt', subject);
+              fs.writeFileSync('email-body.md', body);
+
+              // Set outputs
+              console.log('should_send=' + (s.failed > 0 ? 'true' : 'false'));
+            " > /tmp/email-output.txt
+
+            echo "should_send=$(cat /tmp/email-output.txt | grep should_send | cut -d= -f2)" >> $GITHUB_OUTPUT
+          else
+            echo "should_send=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send email notification
+        if: always() && steps.email-report.outputs.should_send == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: ${{ steps.email-report.outputs.email_subject || 'Suchi Daily Eval Report' }}
+          to: gautamgauri@dikshafoundation.org
+          from: Suchi Eval Bot <noreply@suchi.org>
+          body: file://eval/email-body.md
+          content_type: text/markdown
