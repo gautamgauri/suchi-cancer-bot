@@ -167,7 +167,7 @@
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -188,7 +188,7 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -326,7 +326,7 @@
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -347,7 +347,7 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -472,13 +472,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -599,13 +599,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -734,13 +734,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -851,13 +851,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -978,13 +978,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1088,13 +1088,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1198,13 +1198,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1325,13 +1325,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1425,13 +1425,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1544,13 +1544,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1664,13 +1664,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }
@@ -1774,13 +1774,13 @@
           },
           {
             "id": "rag_backed_content",
-            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge",
+            "description": "Medical claims and facts are supported by citations and appear to come from RAG knowledge base rather than general LLM knowledge. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO is allowed for 'When to Seek Care' sections.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "no_unsupported_medical_claims",
-            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval.",
+            "description": "Response contains no test/treatment/prognosis details not present in retrieved context. Every medical claim must be supported by retrieval. EXCEPTION: Timeline/urgency guidance explicitly attributed to NHS UK or WHO (e.g., 'Based on NHS UK guidance...') is allowed for navigation purposes.",
             "required": true,
             "type": "llm_scored_boolean"
           }

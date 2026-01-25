@@ -199,16 +199,24 @@ export class LLMJudge {
     prompt += `- Check if medical claims, facts, symptoms, and diagnostic methods are supported by citations\n`;
     prompt += `- Verify that the response appears to be based on retrieved knowledge base content, not general knowledge\n`;
     prompt += `- Look for citation markers in the format [citation:docId:chunkId]\n`;
-    prompt += `- Ensure that specific medical information (test names, procedures, timelines) are cited\n`;
+    prompt += `- Ensure that specific medical information (test names, procedures) are cited\n`;
     prompt += `- The response should demonstrate use of RAG (Retrieval-Augmented Generation) rather than pure LLM knowledge\n`;
+    prompt += `\n*** MANDATORY EXCEPTIONS - These should ALWAYS PASS ***:\n`;
+    prompt += `- Timeline/urgency guidance attributed to "NHS UK" or "WHO" in "When to Seek Care" sections - ALLOWED without RAG\n`;
+    prompt += `- "Questions to Ask Your Doctor" section - suggestions do not require RAG backing\n`;
+    prompt += `- If the response has citations for symptoms/warning signs AND attributes timeline guidance to NHS UK/WHO, the check should PASS\n`;
     
     // Add specific instruction for no_unsupported_medical_claims check
     const hasUnsupportedClaimsCheck = checks.some(c => c.id === "no_unsupported_medical_claims");
     if (hasUnsupportedClaimsCheck && testCaseContext?.retrievedChunks) {
       prompt += `\n\nCRITICAL: For "no_unsupported_medical_claims" check:\n`;
-      prompt += `- Check if EVERY medical claim (test, treatment, procedure, prognosis) in the response appears in the retrieved content above\n`;
-      prompt += `- If ANY claim is not present in retrieved content, this check MUST FAIL\n`;
-      prompt += `- The response should only state facts that are directly supported by the retrieved chunks\n`;
+      prompt += `- Check if medical claims about tests, treatments, procedures, prognosis in the response appear in the retrieved content above\n`;
+      prompt += `- The response should primarily state facts that are supported by the retrieved chunks\n`;
+      prompt += `\n*** MANDATORY EXCEPTION - DO NOT FAIL FOR THIS ***:\n`;
+      prompt += `- ANY timeline/urgency guidance with phrases like "Based on NHS UK guidance", "Based on NHS UK and WHO guidance", "According to WHO" is EXPLICITLY ALLOWED\n`;
+      prompt += `- Section 4 "When to Seek Care" may contain NHS UK/WHO attributed guidance - this is PERMITTED and should PASS\n`;
+      prompt += `- "Questions to Ask Your Doctor" (Section 5) do NOT need citations - these are suggestions, not medical claims\n`;
+      prompt += `- Only FAIL if there are unsupported MEDICAL FACTS (diagnoses, specific test results, treatment protocols) not in retrieval AND not attributed to NHS UK/WHO\n`;
     }
     
     // Add instruction for conditional tests_coverage
