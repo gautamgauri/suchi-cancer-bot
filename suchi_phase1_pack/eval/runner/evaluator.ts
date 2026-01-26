@@ -143,8 +143,9 @@ export class Evaluator {
   ): Promise<EvaluationResult> {
     try {
       // Create session (measure time)
+      // Pass cancer type from test case to improve retrieval relevance
       const sessionStart = Date.now();
-      sessionId = await this.apiClient.createSession("web");
+      sessionId = await this.apiClient.createSession("web", testCase.cancer || undefined, "general");
       const sessionCreateMs = Date.now() - sessionStart;
 
       // Execute conversation (measure send time)

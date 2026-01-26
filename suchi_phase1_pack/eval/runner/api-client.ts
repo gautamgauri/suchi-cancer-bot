@@ -28,15 +28,27 @@ export class ApiClient {
 
   /**
    * Create a new session with retry logic for transient failures
+   * @param channel Channel type (web, app, whatsapp)
+   * @param cancerType Optional cancer type for session context (improves retrieval)
+   * @param userContext Optional user context (general, patient, caregiver, post_diagnosis)
    */
-  async createSession(channel: "web" | "app" | "whatsapp" = "web"): Promise<string> {
+  async createSession(
+    channel: "web" | "app" | "whatsapp" = "web",
+    cancerType?: string,
+    userContext?: "general" | "patient" | "caregiver" | "post_diagnosis"
+  ): Promise<string> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.retries; attempt++) {
       try {
-        const response = await this.client.post<{ sessionId: string; createdAt: string }>("/sessions", {
-          channel,
-        });
+        const sessionData: Record<string, string> = { channel };
+        if (cancerType) {
+          sessionData.cancerType = cancerType;
+        }
+        if (userContext) {
+          sessionData.userContext = userContext;
+        }
+        const response = await this.client.post<{ sessionId: string; createdAt: string }>("/sessions", sessionData);
 
         if (attempt > 0) {
           console.log(`  ✅ Session creation retry ${attempt} succeeded`);
