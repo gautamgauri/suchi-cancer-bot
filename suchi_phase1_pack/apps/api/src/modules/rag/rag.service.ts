@@ -128,9 +128,12 @@ export class RagService {
           parts.push("symptoms");
           parts.push("warning signs");
         }
+        // Always add "signs and symptoms" - this matches NCI PDQ exact phrasing
+        parts.push("signs and symptoms");
         if (cancerType) {
           parts.push(`${cancerType} cancer symptoms`);
           parts.push(`${cancerType} cancer signs`);
+          parts.push(`signs and symptoms of ${cancerType}`);
         }
         break;
       case "prevention":

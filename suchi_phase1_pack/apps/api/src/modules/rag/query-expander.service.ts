@@ -36,8 +36,11 @@ export class QueryExpanderService {
     ['shortness of breath', ['dyspnea', 'breathlessness', 'difficulty breathing']],
     
     // General terms
-    ['early warning signs', ['symptoms', 'signs', 'clinical presentation', 'warning signs', 'indicators']],
-    ['warning signs', ['symptoms', 'signs', 'clinical presentation', 'indicators']],
+    ['early warning signs', ['signs and symptoms', 'symptoms', 'signs', 'clinical presentation', 'warning signs']],
+    ['warning signs', ['signs and symptoms', 'symptoms', 'signs', 'clinical presentation']],
+
+    // Cancer-specific symptom phrases (match NCI PDQ language)
+    ['signs of', ['signs and symptoms of', 'symptoms of']],
   ]);
 
   /**
