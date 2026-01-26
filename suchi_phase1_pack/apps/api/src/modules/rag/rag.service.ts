@@ -38,9 +38,10 @@ export class RagService {
       // Try expansion for symptom-related queries (uses heuristics if intent not provided)
       const expansion = this.queryExpander.expandQuery(rewrittenQuery, intent || 'INFORMATIONAL_GENERAL');
       if (expansion.expanded.length > 1) {
-        // Use first expansion (original + first synonym) for hybrid search
-        // This gives us both colloquial and medical terms
-        finalQuery = expansion.expanded.slice(0, 2).join(" OR ");
+        // Use the FIRST expanded query (which replaces colloquial with medical term)
+        // e.g., "early warning signs" → "signs and symptoms" to match NCI PDQ language
+        // Don't join with "OR" as embedding models don't understand that
+        finalQuery = expansion.expanded[1]; // Index 1 is first expansion (index 0 is original)
         this.logger.log({
           event: 'symptom_query_expansion',
           original: query,
