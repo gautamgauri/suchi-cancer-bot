@@ -229,6 +229,6 @@ jobs:
           password: ${{ secrets.SMTP_PASSWORD }}
           subject: ${{ steps.email-report.outputs.email_subject || 'Suchi Daily Eval Report' }}
           to: gautamgauri@dikshafoundation.org
-          from: Suchi Eval Bot <noreply@suchi.org>
+          from: ${{ secrets.SMTP_USERNAME }}
           body: file://suchi_phase1_pack/eval/email-body.md
-          content_type: text/markdown
+          convert_markdown: true
