@@ -332,6 +332,11 @@ I can help you prepare what to say to the clinician. But please prioritize getti
     return "Getting a second opinion is a reasonable step. I can help you prepare for this.\n\n**What I can help with:**\n• Organizing your current diagnosis and treatment information\n• Preparing a summary of your case\n• Drafting questions to ask the second opinion provider\n\n**To help you best, please share:**\n• Key lines from your diagnosis/report (remove personal details)\n• Current treatment plan (if any)\n• Specific concerns or questions you want addressed\n\nWhat information do you have available to share?";
   }
 
+  static N3(context: TemplateContext): string {
+    // Caregiver navigation - appointment preparation and support
+    return "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\nAs a caregiver, your support is valuable. Here's how to help prepare for appointments:\n\n**Warning Signs to Watch For:**\n• New or worsening symptoms like pain, shortness of breath, or unusual bleeding\n• Fever above 100.4°F (38°C), especially during chemotherapy\n• Confusion, dizziness, or sudden weakness\n• Signs of infection at surgical or treatment sites\n\n**Tests and Documents to Expect:**\n• Bring all medical records, test results, and imaging reports\n• Prepare a list of current medications with dosages\n• Note any allergies or previous reactions to treatments\n• Have insurance information and ID ready\n\n**When to Seek Care Timeline:**\n• Routine questions: Discuss at next scheduled appointment\n• New symptoms: Call the oncology nurse line within 24-48 hours\n• Urgent symptoms (fever, bleeding, severe pain): Contact the care team immediately or go to the ER\n\n**Questions to Ask the Doctor:**\n• What is the treatment plan and timeline?\n• What side effects should we expect and how do we manage them?\n• What symptoms require immediate attention?\n• Are there support services available (nutrition, counseling, social work)?\n• What can I do at home to support recovery?\n\nWould you like more specific guidance on any of these areas?";
+  }
+
   /**
    * R-series: Report templates
    */
@@ -389,6 +394,7 @@ I can help you prepare what to say to the clinician. But please prioritize getti
       UNCLEAR_REQUEST: this.C1,
       CARE_NAVIGATION_PROVIDER_CHOICE: this.N1,
       CARE_NAVIGATION_SECOND_OPINION: this.N2,
+      CAREGIVER_NAVIGATION: this.N3,
       REPORT_REQUEST_NO_TEXT: this.R1,
       // Note: SIDE_EFFECTS_GENERAL and TREATMENT_OPTIONS_GENERAL may route to RAG in Explain Mode
       // Keep templates for Navigate Mode fallback

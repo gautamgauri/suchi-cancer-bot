@@ -21,6 +21,7 @@ export type IntentType =
   | "SIDE_EFFECTS_POSSIBLY_URGENT"
   | "CARE_NAVIGATION_PROVIDER_CHOICE"
   | "CARE_NAVIGATION_SECOND_OPINION"
+  | "CAREGIVER_NAVIGATION"
   | "PREVENTION_SCREENING_INFO"
   | "TREATMENT_OPTIONS_GENERAL"
   | "REQUEST_OUT_OF_SCOPE"
@@ -108,6 +109,14 @@ export class IntentClassifier {
           intent: "CARE_NAVIGATION_SECOND_OPINION",
           confidence: "high",
           metadata: { reason: "Session context: caregiver" }
+        };
+      }
+      // General caregiver navigation (appointments, support, preparation)
+      if (this.isCaregiverNavigationRequest(lowerText)) {
+        return {
+          intent: "CAREGIVER_NAVIGATION",
+          confidence: "high",
+          metadata: { reason: "Session context: caregiver with navigation request" }
         };
       }
     } else if (userContext === "post_diagnosis") {
@@ -228,6 +237,14 @@ export class IntentClassifier {
     if (this.isSecondOpinionRequest(lowerText)) {
       return {
         intent: "CARE_NAVIGATION_SECOND_OPINION",
+        confidence: "high"
+      };
+    }
+
+    // Navigation - caregiver support (appointment preparation, helping loved ones)
+    if (this.isCaregiverNavigationRequest(lowerText)) {
+      return {
+        intent: "CAREGIVER_NAVIGATION",
         confidence: "high"
       };
     }
@@ -440,6 +457,24 @@ export class IntentClassifier {
     const patterns = [
       /\b(second opinion|second\s+opinion|another opinion|different doctor)\b/i,
       /\b(should i get|do i need|considering)\s+(second|another)\s+opinion\b/i
+    ];
+    return patterns.some(pattern => pattern.test(text));
+  }
+
+  private isCaregiverNavigationRequest(text: string): boolean {
+    const patterns = [
+      // Appointment preparation
+      /\b(prepare|preparing|preparation)\s+(for|before)\s+(appointment|visit|consultation|meeting)\b/i,
+      /\b(help|assist|support)\s+(with|during|at)\s+(appointment|visit|doctor|oncologist)\b/i,
+      // Caregiver support questions
+      /\b(how\s+(can|do)\s+i\s+(help|support|assist|care\s+for))\b/i,
+      /\b(what\s+(can|should)\s+i\s+(do|ask|prepare|bring))\b/i,
+      // Family member support
+      /\b(my\s+(mother|father|mom|dad|parent|spouse|husband|wife|partner|child|son|daughter|sibling|brother|sister|family\s+member))\b/i,
+      // Caregiver-specific terms
+      /\b(caregiver|caregiving|taking\s+care|looking\s+after)\b/i,
+      // Questions to ask doctor
+      /\b(questions?\s+(to\s+ask|for\s+the|for\s+doctor|for\s+oncologist))\b/i
     ];
     return patterns.some(pattern => pattern.test(text));
   }
