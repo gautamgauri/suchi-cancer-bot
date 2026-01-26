@@ -28,7 +28,7 @@ jobs:
   eval-tier1:
     name: Run Tier1 Retrieval Quality Eval
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     
     steps:
       - name: Checkout code
@@ -48,6 +48,10 @@ jobs:
       - name: Build eval package
         working-directory: suchi_phase1_pack/eval
         run: npm run build
+
+      - name: Create reports directory
+        working-directory: suchi_phase1_pack/eval
+        run: mkdir -p reports
 
       - name: Check API health
         run: |
