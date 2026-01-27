@@ -955,6 +955,18 @@ export class ChatService {
 
         // "What are" plural list queries
         /\bwhat are.{0,30}(common|typical|main|possible|potential)\b/i,
+
+        // Prognosis/outcome queries (need structured guidance)
+        /\b(prognosis|survival|outcome|affects?|factors?).{0,20}(cancer|leukemia|lymphoma)/i,
+        /\bwhat affects\b/i,
+
+        // Prevention/risk queries (need structured guidance)
+        /\b(prevent|prevention|reduce.{0,10}risk|risk factors?)/i,
+        /\bhow can.{0,10}(reduce|lower|prevent)/i,
+
+        // "What is [cancer type]" queries (need full explanation with sections)
+        /\bwhat is.{0,10}(cancer|carcinoma|tumor|tumour|leukemia|lymphoma|melanoma)/i,
+        /\bwhat is.{0,10}(breast|lung|colon|prostate|ovarian|pancreatic|cervical).{0,10}cancer/i,
       ];
 
       return structuredPatterns.some(pattern => pattern.test(lowerQuery));
