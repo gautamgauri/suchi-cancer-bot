@@ -230,6 +230,27 @@ export class LLMJudge {
       prompt += `- Do NOT penalize for omitting tests that are not in the retrieved content\n`;
     }
 
+    // Add instruction for conditional warning_signs_coverage
+    const hasWarningSignsCheck = checks.some(c => c.id === "warning_signs_coverage");
+    if (hasWarningSignsCheck && testCaseContext?.retrievedChunks) {
+      // Check if retrieval contains warning sign content
+      const allRetrievedContent = testCaseContext.retrievedChunks.map(c => c.content.toLowerCase()).join(" ");
+      const hasWarningSignsInRetrieval = /\b(symptom|sign|warning|notice|watch for|experience|feel)\b/i.test(allRetrievedContent);
+
+      prompt += `\n\nFor "warning_signs_coverage" check:\n`;
+      if (hasWarningSignsInRetrieval) {
+        prompt += `- The retrieved content appears to contain symptom/warning sign information\n`;
+        prompt += `- Count warning signs that are both: (a) mentioned in the response AND (b) supported by retrieved content\n`;
+        prompt += `- Require >=5 warning signs if the retrieval supports them\n`;
+      } else {
+        prompt += `- IMPORTANT: The retrieved content does NOT appear to contain symptom/warning sign information\n`;
+        prompt += `- If the response correctly states that the sources don't contain warning signs, this is ACCEPTABLE\n`;
+        prompt += `- Statements like "The provided references do not list specific warning signs" should PASS this check\n`;
+        prompt += `- Do NOT penalize for missing warning signs if they are not in the retrieved content\n`;
+        prompt += `- Set ok=true and count=0 with evidence noting the appropriate disclosure\n`;
+      }
+    }
+
     prompt += `\n\nReturn JSON-only in this exact format:\n`;
     prompt += JSON.stringify({
       pass: true,
