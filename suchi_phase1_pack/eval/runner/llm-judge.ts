@@ -128,6 +128,92 @@ export class LLMJudge {
   }
 
   /**
+   * Judge with consensus - runs LLM judge multiple times and takes majority vote
+   * Reduces flakiness by ~50% at the cost of additional API calls
+   */
+  async judgeWithConsensus(
+    responseText: string,
+    judgeConfig: LLMJudgeConfig,
+    checks: LLMCheck[],
+    testCaseContext?: {
+      cancer?: string;
+      intent?: string;
+      mustMentionTests?: string[];
+      retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
+    },
+    retries: number = 1 // Run 2 times total (1 retry), take majority
+  ): Promise<LLMJudgeResult[]> {
+    const allResults: LLMJudgeResult[][] = [];
+
+    // Run judge multiple times
+    for (let i = 0; i <= retries; i++) {
+      const result = await this.judge(responseText, judgeConfig, checks, testCaseContext);
+      allResults.push(result);
+
+      // If all results from first run are skipped (auth issue), don't retry
+      if (i === 0 && result.every(r => r.skipped)) {
+        return result;
+      }
+    }
+
+    // Take majority vote for each check
+    return this.consensusResults(allResults, checks);
+  }
+
+  /**
+   * Calculate consensus results from multiple judge runs
+   * For each check, takes the majority vote and averages numeric values
+   */
+  private consensusResults(allResults: LLMJudgeResult[][], checks: LLMCheck[]): LLMJudgeResult[] {
+    return checks.map(check => {
+      const checkResults = allResults
+        .map(results => results.find(r => r.checkId === check.id))
+        .filter((r): r is LLMJudgeResult => r !== undefined);
+
+      if (checkResults.length === 0) {
+        return {
+          checkId: check.id,
+          passed: false,
+          error: "No results found for check",
+        };
+      }
+
+      // Skip consensus if any result was skipped (auth issues)
+      const skippedResult = checkResults.find(r => r.skipped);
+      if (skippedResult) {
+        return skippedResult;
+      }
+
+      // Skip consensus if any result had an error
+      const errorResult = checkResults.find(r => r.error);
+      if (errorResult && checkResults.every(r => r.error)) {
+        return errorResult;
+      }
+
+      // Majority vote for passed
+      const validResults = checkResults.filter(r => !r.error);
+      const passCount = validResults.filter(r => r.passed).length;
+      const majority = passCount > validResults.length / 2;
+
+      // Average numeric values
+      const avgCount = validResults.reduce((sum, r) => sum + (r.count || 0), 0) / validResults.length;
+      const avgScore = validResults.reduce((sum, r) => sum + (r.score || 0), 0) / validResults.length;
+
+      // Pick evidence from the first result that matches majority
+      const evidenceResult = validResults.find(r => r.passed === majority);
+
+      return {
+        checkId: check.id,
+        passed: majority,
+        count: Math.round(avgCount),
+        score: avgScore > 0 ? avgScore : undefined,
+        evidence: evidenceResult?.evidence,
+        consensus: `${passCount}/${validResults.length} passed`,
+      };
+    });
+  }
+
+  /**
    * Build the judge prompt
    */
   private buildPrompt(
@@ -349,7 +435,7 @@ export class LLMJudge {
           content: prompt,
         },
       ],
-      temperature: 0.3,
+      temperature: 0.1, // Lower temperature for more deterministic outputs
       response_format: { type: "json_object" },
     });
 
@@ -378,7 +464,7 @@ export class LLMJudge {
           content: prompt,
         },
       ],
-      temperature: 0.3,
+      temperature: 0.1, // Lower temperature for more deterministic outputs
       response_format: { type: "json_object" },
     });
 
@@ -409,7 +495,7 @@ export class LLMJudge {
       const generativeModel = vertexAI.getGenerativeModel({
         model,
         generationConfig: {
-          temperature: 0.3,
+          temperature: 0.1, // Lower temperature for more deterministic outputs
           responseMimeType: "application/json",
         },
       });

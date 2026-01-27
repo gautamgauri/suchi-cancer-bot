@@ -137,6 +137,30 @@ export class LlmService {
   }
 
   /**
+   * Sanitize user input to prevent prompt injection attacks.
+   * This method escapes potential prompt manipulation markers and limits input length.
+   *
+   * SECURITY: Applied to all user-controlled input before interpolation into LLM prompts.
+   */
+  private sanitizeUserInput(input: string): string {
+    if (!input) return '';
+
+    return input
+      // Escape code block markers that could be used to break out of context
+      .replace(/```/g, '\\`\\`\\`')
+      // Escape role markers that could override system instructions
+      .replace(/\n(system|assistant|user):/gi, '\n[$1]:')
+      // Escape instruction markers used by some models
+      .replace(/\[INST\]/gi, '[instruction]')
+      .replace(/<\|.*?\|>/g, '')  // Remove special tokens like <|im_start|>
+      // Escape XML-like tags that could be interpreted as control structures
+      .replace(/<\/?system>/gi, '[system]')
+      .replace(/<\/?instructions?>/gi, '[instructions]')
+      // Limit length to prevent context overflow attacks
+      .substring(0, 2000);
+  }
+
+  /**
    * Get empathy guidelines based on emotional state
    */
   private getEmpathyGuidelines(emotionalState?: string): string {
@@ -227,9 +251,10 @@ After your main answer, you MUST include ALL of these sections with SPECIFIC con
    - Questions should be cancer-type-specific and reference-specific
    - Example: "What imaging tests are recommended for [cancer type]?" (if references discuss imaging)
    - DO NOT use generic questions like "Can you explain this in more detail?"
-${conversationContext?.hasGenerallyAsking 
-  ? "- Do NOT ask clarifying questions - user has indicated general/educational intent"
-  : "- End with ONE optional follow-up: \"Are you asking generally or about your symptoms?\""}
+   - All questions in this section must be questions for the DOCTOR, not questions to the user
+${conversationContext?.hasGenerallyAsking
+  ? "- Do NOT include any clarifying questions to the user in this section"
+  : ""}
 
 DO NOT:
 - Say "I understand you're experiencing symptoms" unless user said they are
@@ -239,7 +264,11 @@ DO NOT:
 - Add general medical knowledge not in retrieved chunks`;
 
     if (isIdentifyQuestion) {
-      return basePrompt + `\n\n${getIdentifyRequirements(conversationContext?.cancerType || null)}`;
+      // SECURITY: Sanitize cancer type to prevent prompt injection
+      const sanitizedCancerType = conversationContext?.cancerType
+        ? this.sanitizeUserInput(conversationContext.cancerType)
+        : null;
+      return basePrompt + `\n\n${getIdentifyRequirements(sanitizedCancerType)}`;
     }
 
     return basePrompt;
@@ -307,6 +336,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
    * @param mode "explain" for Explain Mode, "navigate" for Navigate Mode, or custom systemPrompt
    * @param isIdentifyQuestion If true and mode is "explain", use enhanced prompt for identify questions
    * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state)
+   * @param isTimeoutRetry Internal flag - true if this is a retry after timeout with reduced context
    */
   async generateWithCitations(
     systemPrompt: string | "explain" | "navigate",
@@ -314,7 +344,8 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string },
+    isTimeoutRetry: boolean = false
   ): Promise<string> {
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
@@ -338,6 +369,8 @@ Your response MUST include at least 2 citations or it will be rejected.`;
 
       // Enhanced prompt with citation requirements and structured sections
       // OPTIMIZED FOR DEEPSEEK: Clear instruction first, requirements at END for recency bias
+      // SECURITY: Sanitize user input to prevent prompt injection
+      const sanitizedUserMessage = this.sanitizeUserInput(userMessage);
       const citationInstructions = `
 You are a cancer information assistant. Answer the user's question using ONLY the reference material below. Generate a complete response with all 5 required sections.
 
@@ -346,7 +379,7 @@ ${referenceList}
 
 ${conversationContext?.checklist || ""}
 
-USER QUESTION: ${userMessage}
+USER QUESTION: ${sanitizedUserMessage}
 
 ---
 
@@ -475,10 +508,25 @@ FINAL CHECKLIST (verify before submitting):
           clearTimeout(timeoutId);
           lastError = error;
           
-          // Don't retry on timeout or abort errors
+          // Handle timeout or abort errors with smart retry
           if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('aborted')) {
-            this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms, using fallback`);
-            return this.getFallbackResponse();
+            if (!isTimeoutRetry && chunks.length > 3) {
+              // First timeout: retry with reduced context (top 3 chunks only)
+              this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms - retrying with reduced context (3 chunks)`);
+              const reducedChunks = chunks.slice(0, 3);
+              return this.generateWithCitations(
+                systemPrompt,
+                context,
+                userMessage,
+                reducedChunks,
+                isIdentifyQuestion,
+                conversationContext,
+                true // Mark as retry
+              );
+            }
+            // Second timeout or already minimal context: return abstention
+            this.logger.error(`LLM generation timeout after retry - returning abstention response`);
+            return this.getAbstentionResponse();
           }
           
           // Retry on rate limit or network errors (if not last attempt)
@@ -511,7 +559,9 @@ FINAL CHECKLIST (verify before submitting):
    */
   async generate(systemPrompt: string, context: string, userMessage: string): Promise<string> {
     try {
-      const fullPrompt = `${context}\n\nUser question: ${userMessage}\n\nPlease provide a helpful response based on the reference information above. Format your response with clear sections when appropriate.`;
+      // SECURITY: Sanitize user input to prevent prompt injection
+      const sanitizedUserMessage = this.sanitizeUserInput(userMessage);
+      const fullPrompt = `${context}\n\nUser question: ${sanitizedUserMessage}\n\nPlease provide a helpful response based on the reference information above. Format your response with clear sections when appropriate.`;
 
       // Add timeout using AbortController
       const controller = new AbortController();
@@ -576,12 +626,14 @@ FINAL CHECKLIST (verify before submitting):
       }).join("\n\n");
 
       const systemPrompt = this.getDefinitionalExplainPrompt();
+      // SECURITY: Sanitize user input to prevent prompt injection
+      const sanitizedUserMessage = this.sanitizeUserInput(userMessage);
       const fullPrompt = `${systemPrompt}
 
 REFERENCE LIST (use the exact docId and chunkId shown for each reference):
 ${referenceList}
 
-User question: ${userMessage}
+User question: ${sanitizedUserMessage}
 
 YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
 
@@ -639,6 +691,23 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
       "Questions to ask a doctor:",
       "- What are the likely causes of my symptoms?",
       "- What tests are recommended next, and why?"
+    ].join("\n");
+  }
+
+  /**
+   * Return an abstention response when we can't reliably process the request
+   * (e.g., timeout after retry). This is safer than returning generic advice.
+   */
+  private getAbstentionResponse(): string {
+    return [
+      "I'm sorry, I couldn't process your request in time. This may be due to high demand or a complex query.",
+      "",
+      "**What you can do:**",
+      "- Try asking your question again in a moment",
+      "- If your question is complex, try breaking it into smaller parts",
+      "- For urgent health concerns, please contact your healthcare provider directly",
+      "",
+      "I apologize for the inconvenience."
     ].join("\n");
   }
 }

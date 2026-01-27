@@ -158,13 +158,15 @@ export class ChatService {
         );
 
         // Extract citations from RAG response
-        let citations = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
+        const extractionResult = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
+        let citations = extractionResult.citations;
+        const orphanCount = extractionResult.orphanCount;
 
         // PHASE 2.5+: Citation repair for urgent path - ensure citations are attached
         // NOTE: Not using consolidated helper because urgent path has different flow:
         // - ragResponse is embedded in urgentResponse under "Information from trusted sources"
         // - Adding another sources section would be redundant
-        if (citations.length < 2 && earlyEvidenceChunks.length > 0) {
+        if (citations.length < 2 && earlyEvidenceChunks.length > 0 && orphanCount === 0) {
           this.logger.warn({
             event: 'urgent_citation_repair',
             message: `Urgent path: LLM generated ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
@@ -182,10 +184,13 @@ export class ChatService {
         }
         
         // Validate citations to determine confidence level (required for eval)
+        // Pass orphanCount to fail with RED if hallucinated citations were detected
         const citationValidation = this.citationService.validateCitations(
           citations,
           earlyEvidenceChunks,
-          urgentResponse + "\n\n**Information from trusted sources:**\n\n" + ragResponse
+          urgentResponse + "\n\n**Information from trusted sources:**\n\n" + ragResponse,
+          false, // isIdentifyQuestionWithGeneralIntent
+          orphanCount
         );
         
         // Combine urgent guidance with RAG content (urgent guidance first, then RAG with citations)
@@ -858,21 +863,26 @@ export class ChatService {
         
         // Structure with explainModeFrame
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-        
-        // Extract and validate citations
-        let citations = this.citationService.extractCitations(responseText, evidenceChunks);
 
-        // Citation repair (consolidated)
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, mode: 'explain', queryType }
-        ));
+        // Extract and validate citations
+        const extractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
+        let citations = extractionResult.citations;
+        const orphanCount = extractionResult.orphanCount;
+
+        // Citation repair (consolidated) - only if no orphan citations detected
+        if (orphanCount === 0) {
+          ({ responseText, citations } = this.repairCitationsIfNeeded(
+            citations, responseText, evidenceChunks, dto.sessionId,
+            { intent: intentResult.intent, mode: 'explain', queryType }
+          ));
+        }
 
         const citationValidation = this.citationService.validateCitations(
-          citations, 
-          evidenceChunks, 
+          citations,
+          evidenceChunks,
           responseText,
-          hasGenerallyAsking
+          hasGenerallyAsking,
+          orphanCount
         );
         
         // Handle YELLOW confidence (weak evidence but still answer)
@@ -1033,19 +1043,24 @@ export class ChatService {
         responseText = "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n" + responseText;
 
         // Extract and validate citations
-        let citations = this.citationService.extractCitations(responseText, evidenceChunks);
-        
-        // Citation repair (consolidated)
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, path: 'answer_first' }
-        ));
-        
+        const extractionResult2 = this.citationService.extractCitations(responseText, evidenceChunks);
+        let citations = extractionResult2.citations;
+        const orphanCount2 = extractionResult2.orphanCount;
+
+        // Citation repair (consolidated) - only if no orphan citations detected
+        if (orphanCount2 === 0) {
+          ({ responseText, citations } = this.repairCitationsIfNeeded(
+            citations, responseText, evidenceChunks, dto.sessionId,
+            { intent: intentResult.intent, path: 'answer_first' }
+          ));
+        }
+
         const citationValidation = this.citationService.validateCitations(
-          citations, 
-          evidenceChunks, 
+          citations,
+          evidenceChunks,
           responseText,
-          hasGenerallyAsking
+          hasGenerallyAsking,
+          orphanCount2
         );
         
         // Persist message + citations (consolidated)
@@ -1327,13 +1342,17 @@ export class ChatService {
       }
 
       // Extract and validate citations (before formatting)
-      let citations = this.citationService.extractCitations(responseText, evidenceChunks);
-      
-      // Citation repair (consolidated)
-      ({ responseText, citations } = this.repairCitationsIfNeeded(
-        citations, responseText, evidenceChunks, dto.sessionId,
-        { intent: intentResult.intent, queryType, path: 'navigate_main' }
-      ));
+      const extractionResult3 = this.citationService.extractCitations(responseText, evidenceChunks);
+      let citations = extractionResult3.citations;
+      const orphanCount3 = extractionResult3.orphanCount;
+
+      // Citation repair (consolidated) - only if no orphan citations detected
+      if (orphanCount3 === 0) {
+        ({ responseText, citations } = this.repairCitationsIfNeeded(
+          citations, responseText, evidenceChunks, dto.sessionId,
+          { intent: intentResult.intent, queryType, path: 'navigate_main' }
+        ));
+      }
       
       // RUNTIME ENFORCEMENT: Medical content requires 2-5 citations
       const isMedicalContent = this.isMedicalContent(responseText, intentResult.intent);
@@ -1416,10 +1435,11 @@ export class ChatService {
       // For identify questions with general intent, pass flag to allow 0 citations with YELLOW
       const isIdentifyWithGeneralIntent = mightBeIdentifyQuestion && hasGenerallyAsking;
       let citationValidation = this.citationService.validateCitations(
-        citations, 
-        evidenceChunks, 
+        citations,
+        evidenceChunks,
         responseText,
-        isIdentifyWithGeneralIntent
+        isIdentifyWithGeneralIntent,
+        orphanCount3
       );
 
       // Apply response formatting rules (E1, E2, E3)
@@ -1448,19 +1468,24 @@ export class ChatService {
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-        citations = this.citationService.extractCitations(responseText, evidenceChunks);
-        
-        // Citation repair (consolidated)
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, queryType, path: 'explain_retry' }
-        ));
-        
+        const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
+        citations = retryExtractionResult.citations;
+        const retryOrphanCount = retryExtractionResult.orphanCount;
+
+        // Citation repair (consolidated) - only if no orphan citations detected
+        if (retryOrphanCount === 0) {
+          ({ responseText, citations } = this.repairCitationsIfNeeded(
+            citations, responseText, evidenceChunks, dto.sessionId,
+            { intent: intentResult.intent, queryType, path: 'explain_retry' }
+          ));
+        }
+
         citationValidation = this.citationService.validateCitations(
-          citations, 
-          evidenceChunks, 
+          citations,
+          evidenceChunks,
           responseText,
-          isIdentifyWithGeneralIntent
+          isIdentifyWithGeneralIntent,
+          retryOrphanCount
         );
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
@@ -1627,14 +1652,21 @@ export class ChatService {
 
       // Extract citations from response text if RAG chunks were used
       let citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }> = [];
+      let navigateOrphanCount = 0;
       if (evidenceChunks.length > 0) {
-        citations = this.citationService.extractCitations(responseText, evidenceChunks);
+        const navigateExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
+        citations = navigateExtractionResult.citations;
+        navigateOrphanCount = navigateExtractionResult.orphanCount;
 
-        // Citation repair (consolidated)
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, path: 'navigate_mode' }
-        ));
+        // Citation repair (consolidated) - only if no orphan citations detected
+        if (navigateOrphanCount === 0) {
+          ({ responseText, citations } = this.repairCitationsIfNeeded(
+            citations, responseText, evidenceChunks, dto.sessionId,
+            { intent: intentResult.intent, path: 'navigate_mode' }
+          ));
+        } else {
+          this.logger.error(`Navigate mode: ${navigateOrphanCount} orphan citations detected - skipping repair, response will be flagged`);
+        }
       }
 
       const assistant = await this.prisma.message.create({
@@ -1694,15 +1726,19 @@ export class ChatService {
     );
 
     // 6. Extract and validate citations with confidence levels
-    let citations = this.citationService.extractCitations(responseText, evidenceChunks);
-    
-    // Citation repair (consolidated)
-    ({ responseText, citations } = this.repairCitationsIfNeeded(
-      citations, responseText, evidenceChunks, dto.sessionId,
-      { intent: intentResult.intent, path: 'patient_mode' }
-    ));
-    
-    let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
+    const patientExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
+    let citations = patientExtractionResult.citations;
+    let patientOrphanCount = patientExtractionResult.orphanCount;
+
+    // Citation repair (consolidated) - only if no orphan citations detected
+    if (patientOrphanCount === 0) {
+      ({ responseText, citations } = this.repairCitationsIfNeeded(
+        citations, responseText, evidenceChunks, dto.sessionId,
+        { intent: intentResult.intent, path: 'patient_mode' }
+      ));
+    }
+
+    let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount);
 
     // Handle RED (no citations) - retry once, then abstain
     if (citationValidation.confidenceLevel === "RED") {
@@ -1716,15 +1752,19 @@ export class ChatService {
         false,
         { emotionalState, cancerType: sessionCancerType }
       );
-      citations = this.citationService.extractCitations(responseText, evidenceChunks);
-      
-      // Citation repair (consolidated)
-      ({ responseText, citations } = this.repairCitationsIfNeeded(
-        citations, responseText, evidenceChunks, dto.sessionId,
-        { intent: intentResult.intent, path: 'patient_mode_retry' }
-      ));
-      
-      citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText);
+      const patientRetryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
+      citations = patientRetryExtractionResult.citations;
+      patientOrphanCount = patientRetryExtractionResult.orphanCount;
+
+      // Citation repair (consolidated) - only if no orphan citations detected
+      if (patientOrphanCount === 0) {
+        ({ responseText, citations } = this.repairCitationsIfNeeded(
+          citations, responseText, evidenceChunks, dto.sessionId,
+          { intent: intentResult.intent, path: 'patient_mode_retry' }
+        ));
+      }
+
+      citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount);
 
       if (citationValidation.confidenceLevel === "RED") {
         // Still RED after retry - abstain

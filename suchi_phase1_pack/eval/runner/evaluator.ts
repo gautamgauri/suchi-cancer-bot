@@ -238,8 +238,8 @@ export class Evaluator {
           })));
         }
         
-        // Run LLM judge
-        llmJudgeResults = await this.llmJudge.judge(
+        // Run LLM judge with consensus (runs 2x, takes majority vote to reduce flakiness)
+        llmJudgeResults = await this.llmJudge.judgeWithConsensus(
           fullResponseText,
           rubric.llm_judge,
           rubric.llm_judge.checks,

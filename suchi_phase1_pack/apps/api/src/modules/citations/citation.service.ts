@@ -20,12 +20,19 @@ export interface EnrichedCitation extends Citation {
 
 export type CitationConfidenceLevel = "GREEN" | "YELLOW" | "RED";
 
+export interface CitationExtractionResult {
+  citations: Citation[];
+  orphanCount: number; // Number of hallucinated citations that referenced non-existent chunks
+  orphanCitations: string[]; // The actual orphan citation markers
+}
+
 export interface CitationValidationResult {
   isValid: boolean;
   confidenceLevel: CitationConfidenceLevel;
   citations: Citation[];
   errors?: string[];
   citationDensity: number; // Citations per sentence
+  orphanCount?: number; // If > 0, indicates hallucinated citations were detected
 }
 
 /**
@@ -41,12 +48,14 @@ export class CitationService {
   /**
    * Extract citations from LLM response text
    * Enforces strict 1:1 mapping: only citations that reference actual retrieved chunks are included
-   * Orphan citations (not in retrieved chunks) are filtered out
+   * Orphan citations (not in retrieved chunks) are tracked and reported
+   *
+   * @returns CitationExtractionResult with valid citations and orphan count
    */
-  extractCitations(response: string, retrievedChunks: EvidenceChunk[]): Citation[] {
+  extractCitations(response: string, retrievedChunks: EvidenceChunk[]): CitationExtractionResult {
     const citations: Citation[] = [];
     const chunkMap = new Map<string, EvidenceChunk>();
-    
+
     // Build map for quick lookup
     for (const chunk of retrievedChunks) {
       chunkMap.set(`${chunk.docId}:${chunk.chunkId}`, chunk);
@@ -70,19 +79,23 @@ export class CitationService {
           citationText: fullMatch
         });
       } else {
-        // Orphan citation - not in retrieved chunks, filter it out
+        // Orphan citation - LLM hallucinated a citation to non-existent chunk
         orphanCitations.push(fullMatch);
         const availableKeys = Array.from(chunkMap.keys()).slice(0, 5);
-        this.logger.warn(`[CITATION_INTEGRITY] Orphan citation filtered: ${fullMatch} - chunk not in retrieved set. Looking for key: "${key}". Available chunks (first 5): ${availableKeys.join(", ")}`);
+        this.logger.error(`[CITATION_INTEGRITY] HALLUCINATED citation detected: ${fullMatch} - chunk not in retrieved set. Looking for key: "${key}". Available chunks (first 5): ${availableKeys.join(", ")}`);
       }
     }
 
     // Log citation integrity summary
     if (orphanCitations.length > 0) {
-      this.logger.warn(`[CITATION_INTEGRITY] Filtered ${orphanCitations.length} orphan citation(s). Only ${citations.length} valid citations remain.`);
+      this.logger.error(`[CITATION_INTEGRITY] ${orphanCitations.length} hallucinated citation(s) detected! This indicates LLM generated fake references. Valid citations: ${citations.length}`);
     }
 
-    return citations.sort((a, b) => a.position - b.position);
+    return {
+      citations: citations.sort((a, b) => a.position - b.position),
+      orphanCount: orphanCitations.length,
+      orphanCitations
+    };
   }
 
   /**
@@ -91,15 +104,20 @@ export class CitationService {
    * Citation Threshold Ladder:
    * - GREEN (high confidence): 2+ citations, good density (>0.3 citations/sentence)
    * - YELLOW (low confidence): 1 citation OR low density - answer with uncertainty
-   * - RED (abstain): 0 citations - unsafe to answer
-   * 
+   * - RED (abstain): 0 citations OR orphan citations detected - unsafe to answer
+   *
+   * IMPORTANT: If orphan (hallucinated) citations are detected, this returns RED confidence
+   * regardless of valid citation count. Hallucinated citations are a safety concern.
+   *
    * @param isIdentifyQuestionWithGeneralIntent If true, allows 0 citations with YELLOW (not RED) for identify questions
+   * @param orphanCount Number of hallucinated citations detected (from extractCitations)
    */
   validateCitations(
-    citations: Citation[], 
-    chunks: EvidenceChunk[], 
+    citations: Citation[],
+    chunks: EvidenceChunk[],
     responseText?: string,
-    isIdentifyQuestionWithGeneralIntent?: boolean
+    isIdentifyQuestionWithGeneralIntent?: boolean,
+    orphanCount?: number
   ): CitationValidationResult {
     const errors: string[] = [];
 
@@ -137,6 +155,23 @@ export class CitationService {
     // Determine confidence level using threshold ladder
     let confidenceLevel: CitationConfidenceLevel;
     let isValid: boolean;
+
+    // CRITICAL: Orphan (hallucinated) citations detected → RED confidence
+    // This is a safety concern: LLM generated fake references to non-existent chunks
+    if (orphanCount && orphanCount > 0) {
+      confidenceLevel = "RED";
+      isValid = false;
+      errors.push(`${orphanCount} hallucinated citation(s) detected - LLM referenced non-existent chunks. Response is unsafe.`);
+      this.logger.error(`[CITATION_INTEGRITY] Failing validation: ${orphanCount} orphan citations. Valid: ${citations.length}. Returning RED confidence.`);
+      return {
+        isValid,
+        confidenceLevel,
+        citations,
+        citationDensity,
+        errors,
+        orphanCount
+      };
+    }
 
     if (citations.length === 0) {
       // Special case: For identify questions with general intent, allow with YELLOW (strong disclaimer)

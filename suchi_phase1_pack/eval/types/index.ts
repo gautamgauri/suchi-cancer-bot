@@ -129,6 +129,7 @@ export interface LLMJudgeResult {
   count?: number;
   error?: string;
   skipped?: boolean; // True if LLM judge was not available (not counted as failure)
+  consensus?: string; // e.g., "2/2 passed" - shows majority vote result when using judgeWithConsensus
 }
 
 export interface LLMJudgeResponse {

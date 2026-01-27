@@ -137,6 +137,13 @@
           "required": false,
           "type": "citation_format",
           "params": {}
+        },
+        {
+          "id": "no_misplaced_clarifying_questions",
+          "description": "Questions to Ask Your Doctor section must contain only doctor-directed questions, not chatbot clarifying questions to the user (e.g., 'Are you asking generally or about your symptoms?' should not appear in this section)",
+          "required": true,
+          "type": "no_misplaced_clarifying_questions",
+          "params": {}
         }
       ],
       "llm_judge": {

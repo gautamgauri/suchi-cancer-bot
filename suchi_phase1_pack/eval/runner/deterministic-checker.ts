@@ -91,10 +91,49 @@ export class DeterministicChecker {
           const citationMatches = responseText.match(citationPattern) || [];
           const hasValidFormat = citationMatches.length > 0;
           passed = hasValidFormat;
-          details = { 
+          details = {
             citationMatchesFound: citationMatches.length,
             hasValidFormat,
             sampleMatches: citationMatches.slice(0, 3)
+          };
+          break;
+        }
+
+        case "no_misplaced_clarifying_questions": {
+          // Check that "Questions to Ask Your Doctor" section only contains doctor-directed questions,
+          // not chatbot clarifying questions to the user
+          const questionsSection = responseText.match(
+            /questions?\s+to\s+ask\s+(?:your\s+)?doctor[:\s]*\n?([\s\S]*?)(?=\n##|\n\*\*[A-Z]|\n\n\*\*|\n\nAre you asking|$)/i
+          );
+
+          if (!questionsSection || !questionsSection[1]) {
+            // No questions section found - pass (nothing to validate)
+            passed = true;
+            details = { reason: "No 'Questions to Ask Your Doctor' section found" };
+            break;
+          }
+
+          // Patterns that indicate user-directed clarifying questions (NOT doctor questions)
+          const userDirectedPatterns = [
+            /are you asking generally/i,
+            /about your symptoms\?/i,
+            /would you like me to/i,
+            /can you tell me more/i,
+            /is this for you or/i,
+            /do you have any other questions/i,
+            /what specific aspect/i,
+            /could you share/i
+          ];
+
+          const sectionContent = questionsSection[1];
+          const foundMisplaced = userDirectedPatterns.filter(p => p.test(sectionContent));
+          const hasMisplaced = foundMisplaced.length > 0;
+
+          passed = !hasMisplaced;
+          details = {
+            hasMisplacedQuestions: hasMisplaced,
+            misplacedPatterns: foundMisplaced.map(p => p.source),
+            sectionPreview: sectionContent.substring(0, 200)
           };
           break;
         }
