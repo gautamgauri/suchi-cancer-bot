@@ -200,27 +200,29 @@ REQUIREMENTS:
 - Every bullet point in structured sections MUST have a citation or be omitted
 
 STRUCTURED SECTIONS REQUIREMENT:
-After your main answer, you MUST include these sections with SPECIFIC content from the references (not generic placeholders):
+After your main answer, you MUST include ALL of these sections with SPECIFIC content from the references (not generic placeholders):
 
-1) **Warning Signs to Watch For:** (if query is about symptoms)
-   - List 5+ SPECIFIC warning signs mentioned in the references
+1) **Warning Signs to Watch For:** (ALWAYS INCLUDE)
+   - List 5+ SPECIFIC warning signs for this cancer type mentioned in the references
    - Each sign must be cited: "- [specific sign] [citation:docId:chunkId]"
    - Example: "- A lump in the breast [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
    - DO NOT use generic text like "persistent symptoms" - use specific signs from references
+   - If the references don't contain warning signs, state: "The provided references focus on [topic] and do not list specific warning signs. For warning signs of [cancer type], please consult your healthcare provider."
 
-2) **Tests Doctors May Use:** (if query is about diagnosis/screening/symptoms)
-   - List SPECIFIC diagnostic tests mentioned in the references
+2) **Tests Doctors May Use:** (ALWAYS INCLUDE)
+   - List 3+ SPECIFIC diagnostic tests mentioned in the references
    - Each test must be cited: "- [specific test name] [citation:docId:chunkId]"
    - Example: "- Mammography (breast X-ray) [citation:kb_en_nci_types_breast_symptoms_v1:chunk-id]"
    - DO NOT use generic text like "various diagnostic tests" - list actual tests from references
+   - If the references don't contain test information, state: "The provided references focus on [topic] and do not list specific diagnostic tests. Ask your healthcare provider about appropriate tests."
 
-3) **When to Seek Care:** (always include for symptom/diagnosis queries)
-   - Include SPECIFIC timeframe from references (e.g., "within 2-4 weeks", "within 1-2 weeks")
-   - If references mention specific timelines, use them exactly
-   - If no specific timeframe in references, state: "I don't have enough information in my NCI sources to provide a specific timeline. Please consult a clinician for guidance."
-   - Cite timeline information: "If symptoms persist for 2-4 weeks, seek medical evaluation [citation:docId:chunkId]"
+3) **When to Seek Care:** (ALWAYS INCLUDE)
+   - Include SPECIFIC timeframe guidance based on NHS UK or WHO recommendations
+   - Standard guidance: "See a doctor within 2-3 weeks if symptoms persist. Seek immediate care for severe symptoms (difficulty breathing, heavy bleeding, severe pain)."
+   - If references mention specific timelines, cite them
+   - Always include urgency guidance for red flag symptoms
 
-4) **Questions to Ask Your Doctor:** (always include)
+4) **Questions to Ask Your Doctor:** (ALWAYS INCLUDE)
    - Generate 5-7 SPECIFIC, practical questions based on the references
    - Questions should be cancer-type-specific and reference-specific
    - Example: "What imaging tests are recommended for [cancer type]?" (if references discuss imaging)
