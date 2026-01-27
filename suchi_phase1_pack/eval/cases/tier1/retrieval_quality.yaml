@@ -103,7 +103,7 @@ cases:
   - id: RQ-NHL-01
     tier: 1
     cancer: non_hodgkin_lymphoma
-    intent: POST_DIAGNOSIS_OR_SUSPECTED
+    intent: STAGING_BASICS
     user_messages: ["What does staging mean for lymphoma? In simple terms."]
     expectations:
       <<: *RETRIEVAL_QUALITY

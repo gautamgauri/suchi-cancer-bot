@@ -967,6 +967,11 @@ export class ChatService {
         // "What is [cancer type]" queries (need full explanation with sections)
         /\bwhat is.{0,10}(cancer|carcinoma|tumor|tumour|leukemia|lymphoma|melanoma)/i,
         /\bwhat is.{0,10}(breast|lung|colon|prostate|ovarian|pancreatic|cervical).{0,10}cancer/i,
+
+        // Staging queries (need structured guidance with staging explanation)
+        /\b(what (does|is)).{0,10}staging\b/i,
+        /\bstaging\b.{0,20}(mean|cancer|lymphoma|tumor)/i,
+        /\bhow.{0,10}(staging|staged)\b/i,
       ];
 
       return structuredPatterns.some(pattern => pattern.test(lowerQuery));
