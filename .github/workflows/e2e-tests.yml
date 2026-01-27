@@ -1,10 +1,10 @@
-name: E2E Tests
+name: Web Tests
 
 on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Web app URL to test'
+        description: 'Web app URL to test (for E2E)'
         required: false
         default: ''
   push:
@@ -17,9 +17,34 @@ on:
       - 'suchi_phase1_pack/apps/web/**'
 
 jobs:
-  e2e:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'suchi_phase1_pack/apps/web/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: suchi_phase1_pack/apps/web
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: suchi_phase1_pack/apps/web
+        run: npx vitest run --reporter=verbose
+
+  e2e-tests:
+    name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: unit-tests
 
     steps:
       - uses: actions/checkout@v4
