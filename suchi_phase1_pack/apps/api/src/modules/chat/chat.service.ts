@@ -1207,7 +1207,9 @@ export class ChatService {
       // Validate response for ungrounded medical entities
       // For informational/general queries, don't abstain on ungrounded entities - allow response with warning
       const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
-      const isInformationalQuery = hasGenerallyAsking || intentResult.intent === "INFORMATIONAL_GENERAL";
+      const isInformationalQuery = hasGenerallyAsking ||
+        intentResult.intent === "INFORMATIONAL_GENERAL" ||
+        intentResult.intent === "INFORMATIONAL_SYMPTOMS";
       
       if (validationResult.shouldAbstain && !isInformationalQuery) {
         // Only abstain for non-informational queries (personal symptoms, etc.)
