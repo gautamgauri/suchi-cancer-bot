@@ -132,7 +132,6 @@ describe('MessageInput', () => {
       const onSend = vi.fn();
       render(<MessageInput onSend={onSend} disabled={true} />);
 
-      const textarea = screen.getByRole('textbox');
       // Note: Can't change value when disabled, but test the button click anyway
       fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
 
