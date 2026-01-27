@@ -1284,7 +1284,8 @@ export class ChatService {
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
-          if (revalidationResult.shouldAbstain) {
+          if (revalidationResult.shouldAbstain && !isInformationalQuery) {
+            // Only abstain for non-informational queries
             this.logger.warn(`Regenerated response still contains ungrounded entities`);
             const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
             const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
@@ -1316,6 +1317,11 @@ export class ChatService {
                 similarity: chunk.similarity
               }))
             };
+          } else if (revalidationResult.shouldAbstain && isInformationalQuery) {
+            // For informational queries, allow through with warning
+            this.logger.warn(
+              `Regenerated identify response contains ungrounded entities (allowing through for informational query): ${revalidationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
+            );
           }
         }
       }
