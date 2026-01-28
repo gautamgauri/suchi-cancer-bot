@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 import { SynonymService } from "./synonym-service";
 import { QueryExpanderService } from "./query-expander.service";
+import { RerankerService } from "./reranker.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/trusted-sources.config";
 import { QueryTypeClassifier } from "./query-type.classifier";
@@ -15,7 +16,8 @@ export class RagService {
     private readonly prisma: PrismaService,
     private readonly embeddings: EmbeddingsService,
     private readonly synonyms: SynonymService,
-    private readonly queryExpander: QueryExpanderService
+    private readonly queryExpander: QueryExpanderService,
+    private readonly reranker: RerankerService
   ) {}
 
   /**
@@ -488,8 +490,19 @@ export class RagService {
       similarity: s.finalScore
     }));
 
-    // Apply existing trust-aware reranking
-    const reranked = this.rerankByTrustedSource(hybridChunks, query);
+    // Step 1: Cross-encoder reranking (if enabled) - use more candidates for better precision
+    // Cross-encoder looks at query-document pairs holistically, so it's better at semantic relevance
+    let semanticReranked: EvidenceChunk[];
+    if (this.reranker.isEnabled()) {
+      // Retrieve more candidates for cross-encoder to consider (improves recall before precision)
+      const rerankerCandidates = hybridChunks.slice(0, Math.max(topK * 3, 18));
+      semanticReranked = await this.reranker.rerank(query, rerankerCandidates, topK * 2);
+    } else {
+      semanticReranked = hybridChunks;
+    }
+
+    // Step 2: Apply trust-aware reranking (preserves source quality guarantees)
+    const reranked = this.rerankByTrustedSource(semanticReranked, query);
 
     this.logger.debug(
       `Hybrid search: ${vectorChunks.length} vector + ${ftsChunks.length} FTS = ${chunkMap.size} unique chunks, returning top ${topK}`
@@ -506,6 +519,7 @@ export class RagService {
       vectorCount: vectorChunks.length,
       ftsCount: ftsChunks.length,
       mergedCount: chunkMap.size,
+      crossEncoderEnabled: this.reranker.isEnabled(),
       top3TrustedCount: top3Trusted,
       topScore: reranked[0]?.similarity || 0,
       top3SourceTypes: reranked.slice(0, 3).map(c => c.document.sourceType)
