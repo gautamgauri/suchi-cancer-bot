@@ -650,8 +650,14 @@ FINAL CHECKLIST (verify before submitting):
                 true // Mark as retry
               );
             }
-            // Second timeout or already minimal context: return abstention
-            this.logger.error(`LLM generation timeout after retry - returning abstention response`);
+            // Second timeout or already minimal context: try Gemini fallback before abstention
+            this.logger.warn(`LLM generation timeout after retry - trying Gemini fallback...`);
+            const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000);
+            if (fallbackResult) {
+              this.logger.log(`Gemini fallback succeeded after Deepseek timeout`);
+              return fallbackResult;
+            }
+            this.logger.error(`Gemini fallback also failed - returning abstention response`);
             return this.getAbstentionResponse();
           }
           
