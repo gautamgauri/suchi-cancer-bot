@@ -61,23 +61,6 @@ export class RerankerService {
       return chunks;
     }
 
-    // Cost optimization: Skip rerank if top result is already high confidence
-    // This saves ~30-40% of rerank calls while preserving quality
-    const topScore = chunks[0]?.similarity || 0;
-    const secondScore = chunks[1]?.similarity || 0;
-    const scoreDelta = topScore - secondScore;
-
-    // Skip if: top score > 0.85 AND gap to second > 0.1 (clear winner)
-    if (topScore > 0.85 && scoreDelta > 0.1) {
-      this.logger.debug({
-        event: 'rerank_skipped_high_confidence',
-        topScore,
-        scoreDelta,
-        reason: 'Clear top result, reranking unlikely to help'
-      });
-      return chunks.slice(0, topK);
-    }
-
     try {
       const startTime = Date.now();
 
