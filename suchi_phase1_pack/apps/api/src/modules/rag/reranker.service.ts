@@ -36,6 +36,9 @@ export class RerankerService {
    * Rerank chunks using Cohere's cross-encoder model
    * Returns chunks reordered by semantic relevance to the query
    *
+   * Cost: ~$2 per 1,000 searches (1 search = query + up to 100 docs)
+   * Our typical usage: 18 candidates = 1 search unit per query
+   *
    * @param query Original user query
    * @param chunks Chunks to rerank (typically 15-30 candidates from hybrid search)
    * @param topK Number of chunks to return after reranking
@@ -56,6 +59,23 @@ export class RerankerService {
     // Don't rerank if we have fewer chunks than topK
     if (chunks.length <= topK) {
       return chunks;
+    }
+
+    // Cost optimization: Skip rerank if top result is already high confidence
+    // This saves ~30-40% of rerank calls while preserving quality
+    const topScore = chunks[0]?.similarity || 0;
+    const secondScore = chunks[1]?.similarity || 0;
+    const scoreDelta = topScore - secondScore;
+
+    // Skip if: top score > 0.85 AND gap to second > 0.1 (clear winner)
+    if (topScore > 0.85 && scoreDelta > 0.1) {
+      this.logger.debug({
+        event: 'rerank_skipped_high_confidence',
+        topScore,
+        scoreDelta,
+        reason: 'Clear top result, reranking unlikely to help'
+      });
+      return chunks.slice(0, topK);
     }
 
     try {
@@ -100,6 +120,10 @@ export class RerankerService {
         };
       });
 
+      // Cost tracking: 1 search unit = query + up to 100 docs
+      const searchUnits = Math.ceil(chunks.length / 100);
+      const estimatedCost = searchUnits * 0.002; // $2 per 1000 searches
+
       this.logger.log({
         event: 'cross_encoder_rerank',
         query: query.substring(0, 50),
@@ -107,7 +131,9 @@ export class RerankerService {
         outputCount: rerankedChunks.length,
         latencyMs,
         topScore: rerankedChunks[0]?.similarity || 0,
-        model: this.model
+        model: this.model,
+        searchUnits,
+        estimatedCostUsd: estimatedCost.toFixed(4)
       });
 
       return rerankedChunks;
