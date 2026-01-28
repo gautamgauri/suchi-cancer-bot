@@ -961,7 +961,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           false,
-          { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState }
+          { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent }
         );
         
         // Structure with explainModeFrame
@@ -1252,7 +1252,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         mightBeIdentifyQuestion,
-        { hasGenerallyAsking, cancerType, emotionalState, checklist }
+        { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent }
       );
       const llm1Ms = Date.now() - llm1Started;
 
@@ -1394,7 +1394,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             true,
-            { hasGenerallyAsking, cancerType, emotionalState }
+            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent }
           );
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
@@ -1567,7 +1567,7 @@ export class ChatService {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
         const llm3Started = Date.now();
         llmCallCount++;
-        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState });
+        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent });
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);

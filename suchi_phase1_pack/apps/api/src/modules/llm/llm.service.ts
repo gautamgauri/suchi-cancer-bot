@@ -304,13 +304,90 @@ EMPATHY REQUIREMENTS (CRITICAL - user is sad/grieving):
   }
 
   /**
+   * Get intent-specific section requirements for the LLM prompt.
+   * Different intents (POST_DIAGNOSIS, CAREGIVER, PATIENT) require different response sections.
+   */
+  private getIntentSpecificSections(intent?: string): string {
+    if (!intent) return "";
+
+    // POST_DIAGNOSIS: Needs staging and treatment planning sections
+    if (intent === "POST_DIAGNOSIS_OR_SUSPECTED" || intent.includes("POST")) {
+      return `
+
+**ADDITIONAL SECTIONS FOR POST-DIAGNOSIS CONTEXT:**
+Since the user appears to be post-diagnosis or has suspected cancer, include these additional sections:
+
+5) **Staging Workup Overview:** (INCLUDE FOR POST-DIAGNOSIS)
+   - Explain what staging means and why it's important
+   - List typical staging tests for this cancer type (imaging, biopsies, labs)
+   - Explain the staging system used (TNM, stages I-IV, etc.)
+   - Each item must be cited if from references
+
+6) **Treatment Planning Considerations:** (INCLUDE FOR POST-DIAGNOSIS)
+   - Describe factors that influence treatment decisions (stage, grade, markers)
+   - Mention common treatment approaches for this cancer type
+   - Note that treatment plans are individualized
+   - Each medical claim must be cited
+
+Use PLAIN LANGUAGE throughout - explain medical terms when first used.`;
+    }
+
+    // CAREGIVER: Needs caregiver-specific action items
+    if (intent === "CAREGIVER_NAVIGATION" || intent.includes("CAREGIVER")) {
+      return `
+
+**ADDITIONAL SECTIONS FOR CAREGIVER CONTEXT:**
+Since this is a caregiver seeking information, include these additional sections:
+
+5) **Caregiver Action Steps:** (INCLUDE FOR CAREGIVERS)
+   - List 5-7 specific, practical actions caregivers can take
+   - Include: medication management, symptom tracking, appointment preparation
+   - Include: emotional support strategies for the patient
+   - Include: self-care reminders for the caregiver
+   - Use clear, actionable language (e.g., "Keep a symptom diary", "Prepare a medication list")
+
+6) **What to Watch For (Caregiver Guide):** (INCLUDE FOR CAREGIVERS)
+   - List warning signs that require immediate attention
+   - Include when to call the oncology team vs. go to ER
+   - Provide specific symptoms to monitor after treatments
+
+Use SUPPORTIVE, PRACTICAL language - caregivers need actionable guidance.`;
+    }
+
+    // SYMPTOMATIC_PATIENT: Needs confirmatory steps and plain language
+    if (intent === "SYMPTOMATIC_PATIENT" || intent.includes("PATIENT")) {
+      return `
+
+**ADDITIONAL SECTIONS FOR SYMPTOMATIC PATIENT:**
+Since this appears to be someone experiencing symptoms, include these additional sections:
+
+5) **Confirmatory Steps:** (INCLUDE FOR SYMPTOMATIC PATIENTS)
+   - Explain the typical diagnostic pathway step-by-step
+   - Start with: initial consultation and physical exam
+   - Then: imaging tests that may be ordered
+   - Then: biopsy if needed (explain what this involves)
+   - Finally: getting results and next steps
+   - Use reassuring but honest language
+
+6) **Plain Language Summary:** (INCLUDE FOR SYMPTOMATIC PATIENTS)
+   - Provide a 2-3 sentence summary in very simple terms
+   - Avoid medical jargon entirely in this section
+   - Example: "If you're worried about these symptoms, see your doctor within the next few weeks. They'll likely do some scans and maybe a small tissue sample to check what's going on."
+
+Use PLAIN, REASSURING language throughout - patients need clarity and calm guidance.`;
+    }
+
+    return "";
+  }
+
+  /**
    * Get system prompt for Explain Mode (information-first)
    * @param isIdentifyQuestion If true, provide structured answer for "how to identify" questions
-   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state)
+   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state, user intent)
    */
   getExplainModePrompt(
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; intent?: string }
   ): string {
     // Empathy guidelines moved to END of prompt for better LLM attention (recency bias)
     const empathyGuidelines = this.getEmpathyGuidelines(conversationContext?.emotionalState);
@@ -382,15 +459,18 @@ DO NOT:
 - Use coaching/triage script language for general questions
 - Add general medical knowledge not in retrieved chunks${empathyGuidelines}`;
 
+    // Get intent-specific sections based on user intent
+    const intentSections = this.getIntentSpecificSections(conversationContext?.intent);
+
     if (isIdentifyQuestion) {
       // SECURITY: Sanitize cancer type to prevent prompt injection
       const sanitizedCancerType = conversationContext?.cancerType
         ? this.sanitizeUserInput(conversationContext.cancerType)
         : null;
-      return basePrompt + `\n\n${getIdentifyRequirements(sanitizedCancerType)}${empathyGuidelines}`;
+      return basePrompt + intentSections + `\n\n${getIdentifyRequirements(sanitizedCancerType)}${empathyGuidelines}`;
     }
 
-    return basePrompt;
+    return basePrompt + intentSections;
   }
 
   /**
@@ -470,7 +550,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string },
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string },
     isTimeoutRetry: boolean = false
   ): Promise<string> {
     // Resolve mode to actual prompt
