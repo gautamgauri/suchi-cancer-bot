@@ -46,6 +46,7 @@ export class RerankerService {
   private readonly voyageApiKey: string | undefined;
   private readonly cohereApiKey: string | undefined;
   private readonly jinaApiKey: string | undefined;
+  private readonly RERANK_TIMEOUT_MS = 8000; // 8 second timeout for reranking
 
   constructor(private readonly configService: ConfigService) {
     this.voyageApiKey = this.configService.get<string>("VOYAGE_API_KEY");
@@ -244,6 +245,10 @@ export class RerankerService {
           : chunk.content
       );
 
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.RERANK_TIMEOUT_MS);
+
       const response = await fetch("https://api.voyageai.com/v1/rerank", {
         method: "POST",
         headers: {
@@ -256,8 +261,11 @@ export class RerankerService {
           documents,
           top_k: topK,
           return_documents: false
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -289,7 +297,11 @@ export class RerankerService {
 
       return rerankedChunks;
     } catch (error) {
-      this.logger.error(`Voyage rerank error: ${error.message}`, error.stack);
+      if (error.name === 'AbortError') {
+        this.logger.warn(`Voyage rerank timeout after ${this.RERANK_TIMEOUT_MS}ms - falling back to unsorted`);
+      } else {
+        this.logger.error(`Voyage rerank error: ${error.message}`, error.stack);
+      }
       return chunks.slice(0, topK);
     }
   }
@@ -312,6 +324,10 @@ export class RerankerService {
           : chunk.content
       );
 
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.RERANK_TIMEOUT_MS);
+
       const response = await fetch("https://api.cohere.ai/v1/rerank", {
         method: "POST",
         headers: {
@@ -324,8 +340,11 @@ export class RerankerService {
           documents,
           top_n: topK,
           return_documents: false
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -356,7 +375,11 @@ export class RerankerService {
 
       return rerankedChunks;
     } catch (error) {
-      this.logger.error(`Cohere rerank error: ${error.message}`, error.stack);
+      if (error.name === 'AbortError') {
+        this.logger.warn(`Cohere rerank timeout after ${this.RERANK_TIMEOUT_MS}ms - falling back to unsorted`);
+      } else {
+        this.logger.error(`Cohere rerank error: ${error.message}`, error.stack);
+      }
       return chunks.slice(0, topK);
     }
   }
@@ -380,6 +403,10 @@ export class RerankerService {
           : chunk.content
       );
 
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.RERANK_TIMEOUT_MS);
+
       const response = await fetch("https://api.jina.ai/v1/rerank", {
         method: "POST",
         headers: {
@@ -391,8 +418,11 @@ export class RerankerService {
           query,
           documents,
           top_n: topK
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -418,7 +448,11 @@ export class RerankerService {
 
       return rerankedChunks;
     } catch (error) {
-      this.logger.error(`Jina rerank error: ${error.message}`, error.stack);
+      if (error.name === 'AbortError') {
+        this.logger.warn(`Jina rerank timeout after ${this.RERANK_TIMEOUT_MS}ms - falling back to unsorted`);
+      } else {
+        this.logger.error(`Jina rerank error: ${error.message}`, error.stack);
+      }
       return chunks.slice(0, topK);
     }
   }

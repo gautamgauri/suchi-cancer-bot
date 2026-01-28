@@ -10,12 +10,12 @@ export const envSchema = z.object({
   DEEPSEEK_BASE_URL: z.string().optional().default("https://api.deepseek.com/v1"),
   DEEPSEEK_MODEL: z.string().optional().default("deepseek-chat"),
   EMBEDDING_API_KEY: z.string().min(1).optional(), // For Google embeddings
-  EMBEDDING_MODEL: z.string().optional().default("google-text-embedding-004"),
+  EMBEDDING_MODEL: z.string().optional().default("text-embedding-004"),
   PORT: z.coerce.number().optional(),
   RATE_LIMIT_TTL_SEC: z.coerce.number().optional(),
   RATE_LIMIT_REQ_PER_TTL: z.coerce.number().optional(),
   NODE_ENV: z.string().optional(),
-  LLM_TIMEOUT_MS: z.coerce.number().optional().default(15000)
+  LLM_TIMEOUT_MS: z.coerce.number().optional().default(45000)
 }).refine(
   (data) => {
     // Validate that the required API key is present based on provider
