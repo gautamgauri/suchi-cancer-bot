@@ -1,10 +1,11 @@
 {
   "apiBaseUrl": "https://suchi-api-lxiveognla-uc.a.run.app/v1",
   "llmProvider": "deepseek",
+  "fallbackLlmProvider": "vertex_ai",
   "vertexAiConfig": {
     "project": "",
     "location": "us-central1",
-    "model": "gemini-1.5-pro"
+    "model": "gemini-2.0-flash-001"
   },
   "openAiConfig": {
     "model": "gpt-4o",

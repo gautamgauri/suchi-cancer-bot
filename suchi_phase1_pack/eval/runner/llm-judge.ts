@@ -1,20 +1,46 @@
 import { LLMCheck, LLMJudgeConfig, LLMJudgeResult, LLMJudgeResponse, EvaluationConfig } from "../types";
 import OpenAI from "openai";
 
+// Cost tracking for Deepseek API usage
+interface DeepseekCostLog {
+  timestamp: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCost: number; // USD
+}
+
+// Deepseek pricing (as of Jan 2026): $0.14/1M input, $0.28/1M output for deepseek-chat
+const DEEPSEEK_PRICING = {
+  "deepseek-chat": { input: 0.00000014, output: 0.00000028 },
+  "deepseek-reasoner": { input: 0.00000055, output: 0.0000022 },
+};
+
+// Gemini pricing for Vertex AI (as of Jan 2026)
+const GEMINI_PRICING = {
+  "gemini-2.0-flash-001": { input: 0.000000075, output: 0.0000003 },
+  "gemini-1.5-flash": { input: 0.000000075, output: 0.0000003 },
+  "gemini-1.5-pro": { input: 0.00000125, output: 0.000005 },
+};
+
 export class LLMJudge {
   private config: EvaluationConfig;
   private openaiClient?: OpenAI;
   private deepseekClient?: OpenAI;
+  private costLog: DeepseekCostLog[] = [];
+  private totalCost: number = 0;
+  private fallbackUsedCount: number = 0;
 
   constructor(config: EvaluationConfig) {
     this.config = config;
-    
+
     if (config.llmProvider === "openai" && config.openAiConfig?.apiKey) {
       this.openaiClient = new OpenAI({
         apiKey: config.openAiConfig.apiKey,
       });
     }
-    
+
     if (config.llmProvider === "deepseek") {
       if (config.deepseekConfig?.apiKey && config.deepseekConfig.apiKey.trim().length > 0) {
         this.deepseekClient = new OpenAI({
@@ -26,6 +52,27 @@ export class LLMJudge {
         console.warn("  Set DEEPSEEK_API_KEY environment variable or ensure Secret Manager is accessible.");
       }
     }
+
+    // Log fallback configuration
+    if (config.fallbackLlmProvider) {
+      console.log(`📋 Fallback LLM: ${config.fallbackLlmProvider} (${config.vertexAiConfig?.model || 'gemini-2.0-flash-001'})`);
+    }
+  }
+
+  /**
+   * Check if fallback provider is available
+   */
+  private isFallbackAvailable(): boolean {
+    if (!this.config.fallbackLlmProvider) return false;
+
+    if (this.config.fallbackLlmProvider === "vertex_ai") {
+      return !!this.config.vertexAiConfig?.project;
+    } else if (this.config.fallbackLlmProvider === "openai") {
+      return !!this.openaiClient;
+    } else if (this.config.fallbackLlmProvider === "deepseek") {
+      return !!this.deepseekClient;
+    }
+    return false;
   }
 
   /**
@@ -78,17 +125,17 @@ export class LLMJudge {
       const errorMsg = error.message?.toLowerCase() || '';
 
       let errorType: 'auth_failed' | 'rate_limited' | 'provider_error' | 'network_error' | 'unknown';
-      let shouldSkip = false;
+      let shouldTryFallback = false;
 
       if (statusCode === 401 || statusCode === 403 || errorMsg.includes('unauthorized') || errorMsg.includes('forbidden')) {
         errorType = 'auth_failed';
-        shouldSkip = true; // Auth issues are skippable (key problem, not code problem)
+        shouldTryFallback = true;
       } else if (statusCode === 429 || errorMsg.includes('rate limit')) {
         errorType = 'rate_limited';
-        shouldSkip = true;
+        shouldTryFallback = true;
       } else if (statusCode >= 500 || errorMsg.includes('internal server error')) {
         errorType = 'provider_error';
-        shouldSkip = true;
+        shouldTryFallback = true;
       } else if (
         errorMsg.includes('econnrefused') ||
         errorMsg.includes('etimedout') ||
@@ -99,15 +146,30 @@ export class LLMJudge {
         error.code === 'ETIMEDOUT'
       ) {
         errorType = 'network_error';
-        shouldSkip = true;
+        shouldTryFallback = true;
       } else {
         errorType = 'unknown';
-        shouldSkip = false; // Unknown errors should fail (might be code bug)
+        shouldTryFallback = false; // Unknown errors should fail (might be code bug)
       }
 
       const errorLabel = `${errorType}${statusCode ? ` (HTTP ${statusCode})` : ''}`;
 
-      if (shouldSkip) {
+      // Try fallback provider if available
+      if (shouldTryFallback && this.isFallbackAvailable()) {
+        console.warn(`⚠ Primary LLM failed: ${errorLabel} - trying fallback (${this.config.fallbackLlmProvider})`);
+        try {
+          const prompt = this.buildPrompt(responseText, judgeConfig, checks, testCaseContext);
+          const response = await this.callFallbackLLM(prompt, judgeConfig);
+          this.fallbackUsedCount++;
+          console.log(`✅ Fallback LLM succeeded (${this.config.fallbackLlmProvider})`);
+          return this.parseResponse(response, checks);
+        } catch (fallbackError: any) {
+          console.error(`❌ Fallback LLM also failed: ${fallbackError.message}`);
+          // Continue to skip logic below
+        }
+      }
+
+      if (shouldTryFallback) {
         console.warn(`⚠ LLM Judge skipped: ${errorLabel} - ${error.message}`);
         return checks.map((check) => ({
           checkId: check.id,
@@ -414,6 +476,26 @@ export class LLMJudge {
   }
 
   /**
+   * Call the fallback LLM provider
+   */
+  private async callFallbackLLM(prompt: string, judgeConfig: LLMJudgeConfig): Promise<string> {
+    const fallback = this.config.fallbackLlmProvider;
+    if (!fallback) {
+      throw new Error("No fallback LLM provider configured");
+    }
+
+    if (fallback === "vertex_ai") {
+      return this.callVertexAI(prompt, judgeConfig);
+    } else if (fallback === "openai") {
+      return this.callOpenAI(prompt, judgeConfig);
+    } else if (fallback === "deepseek") {
+      return this.callDeepseek(prompt, judgeConfig);
+    } else {
+      throw new Error(`Unsupported fallback LLM provider: ${fallback}`);
+    }
+  }
+
+  /**
    * Call OpenAI API
    */
   private async callOpenAI(prompt: string, _judgeConfig: LLMJudgeConfig): Promise<string> {
@@ -451,7 +533,7 @@ export class LLMJudge {
     }
 
     const model = this.config.deepseekConfig?.model || "deepseek-chat";
-    
+
     const response = await this.deepseekClient.chat.completions.create({
       model,
       messages: [
@@ -468,7 +550,52 @@ export class LLMJudge {
       response_format: { type: "json_object" },
     });
 
+    // Track token usage and estimated cost
+    const usage = response.usage;
+    if (usage) {
+      const pricing = DEEPSEEK_PRICING[model as keyof typeof DEEPSEEK_PRICING] || DEEPSEEK_PRICING["deepseek-chat"];
+      const estimatedCost = (usage.prompt_tokens * pricing.input) + (usage.completion_tokens * pricing.output);
+
+      const costEntry: DeepseekCostLog = {
+        timestamp: new Date().toISOString(),
+        model,
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        estimatedCost,
+      };
+
+      this.costLog.push(costEntry);
+      this.totalCost += estimatedCost;
+
+      // Log cost for visibility
+      console.log(`  💰 Deepseek: ${usage.total_tokens} tokens, $${estimatedCost.toFixed(6)} (running total: $${this.totalCost.toFixed(4)})`);
+    }
+
     return response.choices[0]?.message?.content || "{}";
+  }
+
+  /**
+   * Get LLM cost summary (Deepseek + fallback usage)
+   */
+  getCostSummary(): { totalCost: number; totalTokens: number; callCount: number; fallbackUsedCount: number; costLog: DeepseekCostLog[] } {
+    const totalTokens = this.costLog.reduce((sum, entry) => sum + entry.totalTokens, 0);
+    return {
+      totalCost: this.totalCost,
+      totalTokens,
+      callCount: this.costLog.length,
+      fallbackUsedCount: this.fallbackUsedCount,
+      costLog: this.costLog,
+    };
+  }
+
+  /**
+   * Reset cost tracking (useful between test batches)
+   */
+  resetCostTracking(): void {
+    this.costLog = [];
+    this.totalCost = 0;
+    this.fallbackUsedCount = 0;
   }
 
   /**

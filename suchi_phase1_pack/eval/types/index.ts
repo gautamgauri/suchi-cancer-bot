@@ -207,6 +207,7 @@ export interface EvaluationConfig {
   apiBaseUrl: string;
   authBearer?: string; // Optional bearer token for API authentication
   llmProvider: "vertex_ai" | "openai" | "deepseek";
+  fallbackLlmProvider?: "vertex_ai" | "openai" | "deepseek"; // Backup if primary fails
   vertexAiConfig?: {
     project: string;
     location: string;

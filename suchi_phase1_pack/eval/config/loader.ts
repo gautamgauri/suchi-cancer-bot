@@ -55,20 +55,21 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
     apiBaseUrl: process.env.EVAL_API_BASE_URL || config.apiBaseUrl || "http://localhost:3001",
     authBearer: process.env.EVAL_AUTH_BEARER || config.authBearer, // Optional bearer token for API auth
     llmProvider: (process.env.EVAL_LLM_PROVIDER || secrets["eval-llm-provider"] || config.llmProvider || "openai") as "vertex_ai" | "openai" | "deepseek",
+    fallbackLlmProvider: (process.env.EVAL_FALLBACK_LLM_PROVIDER || config.fallbackLlmProvider || "vertex_ai") as "vertex_ai" | "openai" | "deepseek",
     timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || String(config.timeoutMs || 60000), 10),
     retries: parseInt(process.env.EVAL_RETRIES || String(config.retries || 2), 10),
     parallel: process.env.EVAL_PARALLEL === "true" || config.parallel || false,
     maxConcurrency: parseInt(process.env.EVAL_MAX_CONCURRENCY || String(config.maxConcurrency || 5), 10),
   };
 
-  // Vertex AI config
-  if (envConfig.llmProvider === "vertex_ai" || config.llmProvider === "vertex_ai") {
-    envConfig.vertexAiConfig = {
-      project: process.env.GOOGLE_CLOUD_PROJECT || config.vertexAiConfig?.project || "",
-      location: process.env.VERTEX_AI_LOCATION || config.vertexAiConfig?.location || "us-central1",
-      model: process.env.VERTEX_AI_MODEL || config.vertexAiConfig?.model || "gemini-1.5-pro",
-    };
-  }
+  // Vertex AI config - always load for fallback support (Gemini Flash is cheap backup)
+  // Even if primary is Deepseek, we want Vertex AI available as fallback
+  envConfig.vertexAiConfig = {
+    project: process.env.GOOGLE_CLOUD_PROJECT || config.vertexAiConfig?.project || "",
+    location: process.env.VERTEX_AI_LOCATION || config.vertexAiConfig?.location || "us-central1",
+    // Use Gemini Flash for fallback (cheap: $0.075/1M input, $0.30/1M output)
+    model: process.env.VERTEX_AI_MODEL || config.vertexAiConfig?.model || "gemini-2.0-flash-001",
+  };
 
   // OpenAI config
   if (envConfig.llmProvider === "openai" || config.llmProvider === "openai") {

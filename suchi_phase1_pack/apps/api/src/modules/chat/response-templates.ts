@@ -377,6 +377,64 @@ I can help you prepare what to say to the clinician. But please prioritize getti
   }
 
   /**
+   * MH-series: Mental Health Support templates
+   * These templates provide crisis resources and emotional support for cancer patients
+   * India-focused resources
+   */
+  static MH1(context: TemplateContext): string {
+    // Crisis response - highest priority (suicidal ideation, self-harm)
+    // CRITICAL: This template is used when crisis indicators are detected
+    return `I hear you, and I'm deeply concerned about what you're sharing. Please know that you're not alone, and there are people who want to help right now.
+
+**Please reach out for support now:**
+- **Vandrevala Foundation**: 9999666555 (24/7 mental health support)
+- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)
+- **Indian Cancer Society**: 1800-22-1951 (toll-free cancer helpline)
+
+These services are confidential and staffed by trained professionals who understand what you're going through.
+
+**If you're in immediate danger**, please call 112 or go to your nearest emergency room.
+
+Cancer is incredibly hard, and the emotional weight can feel unbearable at times. But there is help, and you deserve support through this. Would you like me to share more resources or information about what you're going through?`;
+  }
+
+  static MH2(context: TemplateContext): string {
+    // Depression/emotional distress support (non-crisis)
+    return `I hear how difficult this is for you. Cancer is not just a physical journey—the emotional weight can be overwhelming, and what you're feeling is completely valid.
+
+**Support resources available to you:**
+- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST) - trained counselors
+- **Muktaa Charitable Foundation**: 7887889882 (Mon-Sat, 9:30am-5:30pm IST) - mental health helpline
+- **Indian Cancer Society**: 1800-22-1951 (toll-free) - cancer helpline
+- **Vandrevala Foundation**: 9999666555 (24/7) - mental health helpline
+
+**Many cancer patients find these helpful:**
+- **Support groups**: Connecting with others who truly understand
+- **Counseling**: Talking to someone trained in cancer-related distress
+- **Self-compassion**: Acknowledging that you're dealing with something incredibly hard
+
+Would you like me to share more information about cancer support groups or mental health resources?`;
+  }
+
+  static MH3(context: TemplateContext): string {
+    // Support-seeking / isolation (lightest touch)
+    return `It's a sign of strength to seek support. Dealing with cancer—whether as a patient or caregiver—takes an emotional toll, and you deserve support through this journey.
+
+**Mental health resources for cancer patients:**
+- **iCall (TISS)**: 9152987821 - psychosocial helpline with trained counselors
+- **Muktaa Charitable Foundation**: 7887889882 (Mon-Sat, 9:30am-5:30pm) - mental health helpline
+- **Indian Cancer Society**: 1800-22-1951 (toll-free) - cancer helpline
+- Many hospitals have onco-psychology or counseling services - ask your care team
+
+**What kind of support might help you?**
+- **Support groups**: Connect with others on a similar journey
+- **Counseling**: One-on-one support with a professional
+- **Online communities**: Virtual spaces to share and connect
+
+Let me know if you'd like more information about any of these options, or if there's something specific you're looking for.`;
+  }
+
+  /**
    * Helper: Select appropriate template based on intent
    * Note: INFORMATIONAL_* intents should use explainModeFrame (called from chat service)
    * PERSONAL_SYMPTOMS should use navigateModeFrame (called from chat service)
@@ -400,6 +458,10 @@ I can help you prepare what to say to the clinician. But please prioritize getti
       // Keep templates for Navigate Mode fallback
       SIDE_EFFECTS_GENERAL: this.T1,
       TREATMENT_OPTIONS_GENERAL: this.T2,
+      // Mental health support templates
+      PSYCHOLOGICAL_CRISIS: this.MH1,
+      MENTAL_HEALTH_SUPPORT: this.MH2,
+      MENTAL_HEALTH_ISOLATION: this.MH3,
       // PERSONAL_SYMPTOMS uses navigateModeFrame (not in template map)
       // INFORMATIONAL_* intents use explainModeFrame (not in template map)
     };

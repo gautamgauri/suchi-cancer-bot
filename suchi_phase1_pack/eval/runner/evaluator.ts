@@ -45,6 +45,16 @@ export class Evaluator {
   private rubricPack: RubricPack;
   private globalConfig: GlobalConfig;
 
+  /**
+   * Get LLM judge cost summary (for Deepseek + fallback tracking)
+   */
+  getLLMCostSummary(): { totalCost: number; totalTokens: number; callCount: number; fallbackUsedCount: number } | null {
+    if (this.llmJudge && typeof (this.llmJudge as any).getCostSummary === 'function') {
+      return (this.llmJudge as any).getCostSummary();
+    }
+    return null;
+  }
+
   constructor(config: EvaluationConfig, rubricPack: RubricPack) {
     this.config = config;
     this.rubricPack = rubricPack;
@@ -92,8 +102,8 @@ export class Evaluator {
     const startTime = Date.now();
     let sessionId: string | null = null;
 
-    // ✅ NEW: Wrap in timeout promise (2 minutes per case)
-    const PER_CASE_TIMEOUT = 120000; // 2 minutes
+    // ✅ NEW: Wrap in timeout promise (3 minutes per case)
+    const PER_CASE_TIMEOUT = 180000; // 3 minutes
 
     try {
       const result = await Promise.race([

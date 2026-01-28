@@ -30,7 +30,11 @@ export type IntentType =
   | "CONFLICTING_INFO"
   | "TECHNICAL_FAILURE"
   | "SAFETY_RESTRICTED"
-  | "ABSTENTION_WITH_RED_FLAGS";
+  | "ABSTENTION_WITH_RED_FLAGS"
+  // Mental health support intents
+  | "PSYCHOLOGICAL_CRISIS" // Suicidal ideation, self-harm - highest priority
+  | "MENTAL_HEALTH_SUPPORT" // Depression, emotional distress
+  | "MENTAL_HEALTH_ISOLATION"; // Loneliness, isolation - lightest touch
 
 export interface IntentClassificationResult {
   intent: IntentType;

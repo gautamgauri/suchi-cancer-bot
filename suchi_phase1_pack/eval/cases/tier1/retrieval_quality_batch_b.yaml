@@ -1,0 +1,98 @@
+# Tier1 Retrieval Quality Test Cases - Batch B (7 cases)
+# Cases 8-14: NHL, Leukemia, Pancreas, Breast-02, Lung-02, Colorectal-02, Prostate-02
+
+_templates:
+  retrieval_quality: &RETRIEVAL_QUALITY
+    max_clarifying_questions: 2
+    required_sections:
+      - disclaimer
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+    expected_top3_trusted: true
+    min_citations: 2
+    citation_integrity: true
+
+cases:
+  # 8. Lymphoma - Staging
+  - id: RQ-NHL-01
+    tier: 1
+    cancer: non_hodgkin_lymphoma
+    intent: STAGING_BASICS
+    user_messages: ["What does staging mean for lymphoma? In simple terms."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "general"
+      notes: "Should retrieve staging information from trusted sources"
+
+  # 9. Leukemia - Prognosis Factors
+  - id: RQ-LEUKEMIA-01
+    tier: 1
+    cancer: leukemia
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What affects prognosis for leukemia generally? Just asking for information."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "general"
+      notes: "Should retrieve general prognosis factors without specific survival numbers"
+
+  # 10. Pancreatic - Visit Preparation
+  - id: RQ-PANCREAS-01
+    tier: 1
+    cancer: pancreas
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["How should someone prepare for the first oncology visit? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["99_local_navigation", "02_nci_core"]
+      query_type: "navigation"
+      notes: "Should retrieve navigation and preparation resources"
+
+  # 11. Breast - Caregiver Navigation
+  - id: RQ-BREAST-02
+    tier: 1
+    cancer: breast
+    intent: CAREGIVER_NAVIGATION
+    user_messages: ["My mother was diagnosed with breast cancer. How can I help her prepare for appointments?"]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["99_local_navigation", "02_nci_core"]
+      query_type: "caregiver"
+      notes: "Should retrieve caregiver navigation resources"
+
+  # 12. Lung - Symptomatic Patient
+  - id: RQ-LUNG-02
+    tier: 1
+    cancer: lung
+    intent: SYMPTOMATIC_PATIENT
+    user_messages: ["I've had a persistent cough for 8 weeks. What should I do?"]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "symptoms"
+      notes: "Should not abstain, should provide guidance with trusted sources"
+
+  # 13. Colorectal - Prevention
+  - id: RQ-COLORECTAL-02
+    tier: 1
+    cancer: colorectal
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["How can someone reduce their risk of colorectal cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core", "03_who_public_health"]
+      query_type: "prevention"
+      notes: "Should retrieve prevention information from trusted sources"
+
+  # 14. Prostate - General Info
+  - id: RQ-PROSTATE-02
+    tier: 1
+    cancer: prostate
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What is prostate cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "general"
+      notes: "Should retrieve basic information from trusted sources"

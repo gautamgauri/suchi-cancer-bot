@@ -300,6 +300,109 @@ export class ChatService {
       });
     }
 
+    // 1.6.3. Mental health support check (after safety, before greeting flow)
+    // Detect if user needs mental health support - crisis takes highest priority
+    const mentalHealthNeed = this.empathyDetector.detectMentalHealthNeed(dto.userText);
+
+    if (mentalHealthNeed.isCrisis) {
+      // CRISIS DETECTED - Immediate response with crisis resources
+      this.logger.warn({
+        event: 'mental_health_crisis_detected',
+        sessionId: dto.sessionId,
+        keywords: mentalHealthNeed.keywords,
+      });
+
+      const crisisResponse = ResponseTemplates.MH1({
+        isFirstMessage,
+        userText: dto.userText,
+        locale: session.locale || dto.locale,
+      });
+
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: crisisResponse,
+          safetyClassification: "mental_health_crisis",
+          latencyMs: Date.now() - started,
+        },
+      });
+
+      // Log crisis event for monitoring
+      await this.prisma.safetyEvent.create({
+        data: {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          type: "mental_health_crisis",
+          detail: mentalHealthNeed.keywords.join(","),
+        },
+      });
+
+      this.analytics.emit("mental_health_crisis_detected", {
+        keywords: mentalHealthNeed.keywords,
+      }, dto.sessionId).catch(err =>
+        this.logger.warn(`Analytics emit failed: ${err.message}`)
+      );
+
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: crisisResponse,
+        safety: { classification: "mental_health_crisis" as const, actions: ["show_crisis_resources"] },
+      };
+    }
+
+    if (mentalHealthNeed.needsSupport) {
+      // Non-crisis mental health support needed
+      this.logger.log({
+        event: 'mental_health_support_detected',
+        sessionId: dto.sessionId,
+        category: mentalHealthNeed.category,
+        keywords: mentalHealthNeed.keywords,
+      });
+
+      // Select appropriate template based on category
+      let mentalHealthResponse: string;
+      if (mentalHealthNeed.category === "isolation") {
+        mentalHealthResponse = ResponseTemplates.MH3({
+          isFirstMessage,
+          userText: dto.userText,
+          locale: session.locale || dto.locale,
+        });
+      } else {
+        // depression or support-seeking
+        mentalHealthResponse = ResponseTemplates.MH2({
+          isFirstMessage,
+          userText: dto.userText,
+          locale: session.locale || dto.locale,
+        });
+      }
+
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: mentalHealthResponse,
+          safetyClassification: "mental_health_support",
+          latencyMs: Date.now() - started,
+        },
+      });
+
+      this.analytics.emit("mental_health_support_provided", {
+        category: mentalHealthNeed.category,
+        keywords: mentalHealthNeed.keywords,
+      }, dto.sessionId).catch(err =>
+        this.logger.warn(`Analytics emit failed: ${err.message}`)
+      );
+
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: mentalHealthResponse,
+        safety: { classification: "mental_health_support" as const, actions: [] },
+      };
+    }
+
     // 1.6.5. Check for greeting flow interruption (before greeting check)
     // If user sends non-greeting message during active greeting flow, complete it silently
     const isGreetingFlowInProgress = await this.greetingFlow.isGreetingFlowInProgress(dto.sessionId);

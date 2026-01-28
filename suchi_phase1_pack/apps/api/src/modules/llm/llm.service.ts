@@ -107,6 +107,13 @@ export class LlmService {
   private readonly model: string;
   private readonly timeoutMs: number;
 
+  // Fallback LLM (Gemini Flash via Vertex AI) - cheap backup when primary fails
+  private readonly fallbackEnabled: boolean;
+  private readonly fallbackProject: string;
+  private readonly fallbackLocation: string;
+  private readonly fallbackModel: string;
+  private fallbackUsedCount: number = 0;
+
   constructor(private readonly configService: ConfigService) {
     // Determine LLM provider - Deepseek is default (cost-effective for charitable project)
     this.provider = (this.configService.get<string>("LLM_PROVIDER") as "deepseek" | "openai") || "deepseek";
@@ -134,6 +141,64 @@ export class LlmService {
     // Default timeout: 45s, configurable via LLM_TIMEOUT_MS env var
     // Increased for Deepseek with longer responses (3000+ tokens)
     this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 45000;
+
+    // Configure fallback LLM (Gemini Flash via Vertex AI)
+    // Enabled by default on GCP, uses ADC (Application Default Credentials)
+    this.fallbackProject = this.configService.get<string>("GOOGLE_CLOUD_PROJECT") || "";
+    this.fallbackLocation = this.configService.get<string>("VERTEX_AI_LOCATION") || "us-central1";
+    this.fallbackModel = this.configService.get<string>("FALLBACK_LLM_MODEL") || "gemini-2.0-flash-001";
+    this.fallbackEnabled = this.configService.get<string>("LLM_FALLBACK_ENABLED") !== "false" && !!this.fallbackProject;
+
+    if (this.fallbackEnabled) {
+      this.logger.log(`Fallback LLM enabled: Gemini Flash (${this.fallbackModel}) on Vertex AI`);
+    }
+  }
+
+  /**
+   * Call fallback LLM (Gemini Flash via Vertex AI)
+   * Used when primary LLM fails with rate limit, timeout, or server error
+   */
+  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000): Promise<string | null> {
+    if (!this.fallbackEnabled) {
+      return null;
+    }
+
+    try {
+      // Dynamic import to avoid requiring the package if not using Vertex AI
+      const { VertexAI } = await import("@google-cloud/vertexai");
+
+      const vertexAI = new VertexAI({
+        project: this.fallbackProject,
+        location: this.fallbackLocation,
+      });
+
+      const generativeModel = vertexAI.getGenerativeModel({
+        model: this.fallbackModel,
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: maxTokens,
+        },
+      });
+
+      const result = await generativeModel.generateContent({
+        contents: [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+        ],
+      });
+
+      const response = result.response;
+      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      if (text) {
+        this.fallbackUsedCount++;
+        this.logger.log(`Fallback LLM (Gemini Flash) succeeded - total fallback uses: ${this.fallbackUsedCount}`);
+      }
+
+      return text || null;
+    } catch (error: any) {
+      this.logger.error(`Fallback LLM (Gemini Flash) failed: ${error.message}`);
+      return null;
+    }
   }
 
   /**
@@ -161,7 +226,45 @@ export class LlmService {
   }
 
   /**
+   * Get empathy opener - a warm, supportive opening line based on emotional state
+   * This appears at the START of the response to immediately acknowledge the user
+   */
+  private getEmpathyOpener(emotionalState?: string): string {
+    if (!emotionalState || emotionalState === "neutral" || emotionalState === "calm") {
+      return "";
+    }
+
+    const openers: Record<string, string[]> = {
+      anxious: [
+        "I understand this can feel overwhelming, and I want you to know you're not alone in this.",
+        "I can hear that you're worried, and that's completely understandable.",
+        "It's natural to feel anxious about this. Let me help you with some information.",
+        "I understand you're concerned. Let me share some information that might help.",
+      ],
+      urgent: [
+        "I understand this feels urgent. Let me help you with the most important information first.",
+        "I can see you need answers quickly. Here's what you should know.",
+        "I understand time feels critical right now. Let me help you prioritize.",
+      ],
+      sad: [
+        "I'm so sorry you're going through this. It's okay to feel this way.",
+        "This is incredibly difficult, and I want you to know I'm here to support you.",
+        "I understand this is a hard time. Please know that reaching out takes courage.",
+        "I hear how difficult this is. You don't have to face this alone.",
+      ],
+    };
+
+    const openerList = openers[emotionalState];
+    if (!openerList || openerList.length === 0) return "";
+
+    // Pick a random opener for variety
+    const opener = openerList[Math.floor(Math.random() * openerList.length)];
+    return opener;
+  }
+
+  /**
    * Get empathy guidelines based on emotional state
+   * IMPORTANT: These should be placed at the END of the prompt for better LLM attention (recency bias)
    */
   private getEmpathyGuidelines(emotionalState?: string): string {
     if (!emotionalState || emotionalState === "neutral" || emotionalState === "calm") {
@@ -169,27 +272,35 @@ export class LlmService {
     }
 
     const guidelines: Record<string, string> = {
-      anxious: `EMPATHY GUIDELINES (for anxious user):
-- Acknowledge their concern: "I understand this can be overwhelming/concerning"
-- Provide reassurance: "I'm here to help you find reliable information"
-- Use calming language: avoid alarmist phrasing
-- Be supportive while maintaining evidence-only policy
-- Balance empathy with accuracy`,
-      urgent: `EMPATHY GUIDELINES (for urgent user):
-- Acknowledge urgency: "I understand this is urgent"
-- Prioritize actionable information
-- Provide clear next steps
-- Maintain calm, supportive tone
-- Balance empathy with evidence-only policy`,
-      sad: `EMPATHY GUIDELINES (for sad user):
-- Use supportive language: "I understand this is a difficult time"
-- Acknowledge difficulty: "I'm here to support you"
-- Provide hope without false promises
-- Be compassionate while maintaining evidence-only policy
-- Balance empathy with accuracy`,
+      anxious: `
+---
+EMPATHY REQUIREMENTS (CRITICAL - user is anxious/worried):
+1. START your response by acknowledging their feelings: "I understand this can be concerning..."
+2. Use calming, reassuring language throughout - avoid alarming phrases
+3. Emphasize what IS known and actionable, not worst-case scenarios
+4. End with reassurance: "Your healthcare team is there to help you through this"
+5. Avoid: "you might have", "this could be serious", "you should worry if"
+6. Prefer: "let's look at what we know", "here's helpful information", "your doctor can clarify"`,
+      urgent: `
+---
+EMPATHY REQUIREMENTS (CRITICAL - user feels urgency):
+1. START your response acknowledging the urgency: "I understand you need answers quickly..."
+2. Lead with the most important/actionable information first
+3. Be direct but compassionate - don't add unnecessary caveats that delay key info
+4. Provide clear next steps prominently
+5. If truly urgent (emergency symptoms), prioritize safety instructions over information`,
+      sad: `
+---
+EMPATHY REQUIREMENTS (CRITICAL - user is sad/grieving):
+1. START your response with compassion: "I'm sorry you're going through this..."
+2. Acknowledge their feelings before providing information
+3. Use gentle, supportive language throughout
+4. Don't minimize their experience or rush to "fix" things
+5. Offer hope where appropriate, but don't make false promises
+6. End with support: "You don't have to face this alone" or similar`,
     };
 
-    return `\n\n${guidelines[emotionalState] || ""}`;
+    return guidelines[emotionalState] || "";
   }
 
   /**
@@ -201,8 +312,16 @@ export class LlmService {
     isIdentifyQuestion: boolean = false,
     conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string }
   ): string {
+    // Empathy guidelines moved to END of prompt for better LLM attention (recency bias)
     const empathyGuidelines = this.getEmpathyGuidelines(conversationContext?.emotionalState);
-    const basePrompt = `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.${empathyGuidelines}
+    const empathyOpener = this.getEmpathyOpener(conversationContext?.emotionalState);
+
+    // Add empathy opener instruction if user is emotional
+    const empathyOpenerInstruction = empathyOpener
+      ? `\n\nIMPORTANT: The user appears to be ${conversationContext?.emotionalState}. Start your response with this empathetic opener (or similar):\n"${empathyOpener}"\nThen continue with the information.\n`
+      : "";
+
+    const basePrompt = `You are Suchi (Suchitra Cancer Bot). For general informational questions, provide direct, evidence-based answers from the provided references.${empathyOpenerInstruction}
 
 EVIDENCE-ONLY POLICY (CRITICAL - YOU MUST FOLLOW THIS):
 - You may ONLY state medical facts that are directly supported by retrieved NCI chunks
@@ -261,14 +380,14 @@ DO NOT:
 - Push "prepare for healthcare visit" unless user indicates personal situation
 - Show red-flag warnings unless urgency signals exist
 - Use coaching/triage script language for general questions
-- Add general medical knowledge not in retrieved chunks`;
+- Add general medical knowledge not in retrieved chunks${empathyGuidelines}`;
 
     if (isIdentifyQuestion) {
       // SECURITY: Sanitize cancer type to prevent prompt injection
       const sanitizedCancerType = conversationContext?.cancerType
         ? this.sanitizeUserInput(conversationContext.cancerType)
         : null;
-      return basePrompt + `\n\n${getIdentifyRequirements(sanitizedCancerType)}`;
+      return basePrompt + `\n\n${getIdentifyRequirements(sanitizedCancerType)}${empathyGuidelines}`;
     }
 
     return basePrompt;
@@ -280,7 +399,14 @@ DO NOT:
    */
   getNavigateModePrompt(emotionalState?: string): string {
     const empathyGuidelines = this.getEmpathyGuidelines(emotionalState);
-    return `You are Suchi (Suchitra Cancer Bot). For personal symptom questions, provide brief acknowledgment, then 1-2 targeted questions to gather context. Provide a short "what to do next" checklist (max 3 bullets).${empathyGuidelines}
+    const empathyOpener = this.getEmpathyOpener(emotionalState);
+
+    // Add empathy opener instruction if user is emotional
+    const empathyOpenerInstruction = empathyOpener
+      ? `\n\nIMPORTANT: The user appears to be ${emotionalState}. Start your response with this empathetic opener (or similar):\n"${empathyOpener}"\nThen continue with your acknowledgment and questions.\n`
+      : "";
+
+    return `You are Suchi (Suchitra Cancer Bot). For personal symptom questions, provide brief acknowledgment, then 1-2 targeted questions to gather context. Provide a short "what to do next" checklist (max 3 bullets).${empathyOpenerInstruction}
 
 EVIDENCE-ONLY POLICY (CRITICAL):
 - You may ONLY state medical facts that are directly supported by retrieved NCI chunks
@@ -294,7 +420,7 @@ REQUIREMENTS:
 - Provide a short next-step list (max 3 bullets)
 - Use warm, supportive tone
 - Cite any medical information using [citation:docId:chunkId]
-- Every bullet point with medical information MUST have a citation or be omitted`;
+- Every bullet point with medical information MUST have a citation or be omitted${empathyGuidelines}`;
   }
 
   /**
@@ -530,26 +656,48 @@ FINAL CHECKLIST (verify before submitting):
           }
           
           // Retry on rate limit or network errors (if not last attempt)
-          const isRetryable = error.status === 429 || error.status === 503 || 
-                             error.message?.includes('ECONNRESET') || 
+          const isRetryable = error.status === 429 || error.status === 503 ||
+                             error.message?.includes('ECONNRESET') ||
                              error.message?.includes('ETIMEDOUT') ||
                              (error.status >= 500 && error.status < 600);
-          
+
           if (isRetryable && attempt < maxRetries) {
             this.logger.warn(`LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${error.message}, will retry`);
             continue;
           }
-          
-          // Non-retryable error or last attempt - throw
+
+          // Non-retryable error or last attempt - try fallback
+          this.logger.warn(`Primary LLM failed after ${attempt + 1} attempts: ${error.message}, trying fallback...`);
+          const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000);
+          if (fallbackResult) {
+            return fallbackResult;
+          }
+
           throw error;
         }
       }
-      
+
       // Should not reach here, but handle just in case
       this.logger.error(`LLM generation failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
+
+      // Try fallback before giving up
+      const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000);
+      if (fallbackResult) {
+        return fallbackResult;
+      }
+
       return this.getFallbackResponse();
     } catch (error) {
       this.logger.error(`Error generating response with ${this.provider}: ${error.message}`, error.stack);
+
+      // Try fallback as last resort
+      // We need to rebuild the prompt here since we're outside the try block
+      const fallbackPrompt = `Answer the user's question based on medical information. Be helpful and cite sources when available.\n\nUser question: ${this.sanitizeUserInput(userMessage)}`;
+      const fallbackResult = await this.callFallbackLLM(systemPrompt === "explain" ? this.getExplainModePrompt() : this.getNavigateModePrompt(), fallbackPrompt);
+      if (fallbackResult) {
+        return fallbackResult;
+      }
+
       return this.getFallbackResponse();
     }
   }
@@ -592,15 +740,30 @@ FINAL CHECKLIST (verify before submitting):
         return text;
       } catch (error: any) {
         clearTimeout(timeoutId);
-        
+
         if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('aborted')) {
-          this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms, using fallback`);
+          this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms, trying fallback...`);
+          const fallbackResult = await this.callFallbackLLM(systemPrompt, fullPrompt, 1500);
+          if (fallbackResult) {
+            return fallbackResult;
+          }
           return this.getFallbackResponse();
         }
         throw error; // Re-throw non-timeout errors
       }
     } catch (error) {
       this.logger.error(`Error generating response with ${this.provider}: ${error.message}`, error.stack);
+
+      // Try fallback before returning generic response
+      const fallbackResult = await this.callFallbackLLM(
+        "You are a helpful cancer information assistant.",
+        `${context}\n\nUser question: ${this.sanitizeUserInput(userMessage)}`,
+        1500
+      );
+      if (fallbackResult) {
+        return fallbackResult;
+      }
+
       return this.getFallbackResponse();
     }
   }
@@ -664,9 +827,13 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
         return text;
       } catch (error: any) {
         clearTimeout(timeoutId);
-        
+
         if (error.name === 'AbortError' || error.message?.includes('timeout')) {
-          this.logger.warn(`Definitional response timeout after ${this.timeoutMs}ms`);
+          this.logger.warn(`Definitional response timeout after ${this.timeoutMs}ms, trying fallback...`);
+          const fallbackResult = await this.callFallbackLLM(systemPrompt, fullPrompt, 500);
+          if (fallbackResult) {
+            return fallbackResult;
+          }
         }
         throw error; // Re-throw to fall back to full explain mode
       }

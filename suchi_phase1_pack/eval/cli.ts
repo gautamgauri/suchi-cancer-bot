@@ -178,6 +178,22 @@ program
         { loadedCount: testCases.length, selectedCount: filteredCases.length }
       );
 
+      // Include LLM cost summary if available
+      const costSummary = evaluator.getLLMCostSummary();
+      if (costSummary && (costSummary.totalCost > 0 || costSummary.fallbackUsedCount > 0)) {
+        (report as any).llmCost = {
+          totalCost: costSummary.totalCost,
+          totalTokens: costSummary.totalTokens,
+          callCount: costSummary.callCount,
+          fallbackUsedCount: costSummary.fallbackUsedCount,
+          formatted: `$${costSummary.totalCost.toFixed(4)} (${costSummary.totalTokens.toLocaleString()} tokens, ${costSummary.callCount} calls)`
+        };
+        console.log(`\n💰 LLM cost: ${(report as any).llmCost.formatted}`);
+        if (costSummary.fallbackUsedCount > 0) {
+          console.log(`  🔄 Fallback used: ${costSummary.fallbackUsedCount} times (Gemini Flash)`);
+        }
+      }
+
       // ✅ VALIDATION: Check if report is invalid (0 executed)
       if (report.suite?.status === 'INVALID') {
         console.error(`\n❌ ERROR: Report is INVALID - 0 cases executed!`);

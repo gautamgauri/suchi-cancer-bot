@@ -1,0 +1,99 @@
+# Tier1 Retrieval Quality Test Cases - Batch C (7 cases)
+# Cases 15-21: Cervical-02, Stomach, Liver, Brain, Thyroid, Kidney, Bladder
+
+_templates:
+  retrieval_quality: &RETRIEVAL_QUALITY
+    max_clarifying_questions: 2
+    required_sections:
+      - disclaimer
+    disclaimer_required: true
+    must_not: ["definitive diagnosis"]
+    expected_top3_trusted: true
+    min_citations: 2
+    citation_integrity: true
+
+cases:
+  # 15. Cervical - Screening Guidelines
+  - id: RQ-CERVICAL-02
+    tier: 1
+    cancer: cervical
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are the screening guidelines for cervical cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core", "05_india_ncg"]
+      query_type: "screening"
+      notes: "Should retrieve screening guidelines from trusted, recent sources"
+
+  # 16. Stomach - Symptoms
+  - id: RQ-STOMACH-01
+    tier: 1
+    cancer: stomach
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common symptoms of stomach cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "symptoms"
+      notes: "Should retrieve NCI sources for stomach cancer symptoms and warning signs"
+
+  # 17. Liver - Treatment Options
+  - id: RQ-LIVER-01
+    tier: 1
+    cancer: liver
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common treatment options for liver cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core", "05_india_ncg"]
+      query_type: "treatment"
+      notes: "Should retrieve multiple trusted sources for liver cancer treatment options"
+
+  # 18. Brain - Side Effects
+  - id: RQ-BRAIN-01
+    tier: 1
+    cancer: brain
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common side effects of brain cancer treatment? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "sideEffects"
+      notes: "Should retrieve relevant sources for brain cancer treatment side effects"
+
+  # 19. Thyroid - Symptoms
+  - id: RQ-THYROID-01
+    tier: 1
+    cancer: thyroid
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common symptoms of thyroid cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "symptoms"
+      notes: "Should retrieve NCI sources for thyroid cancer symptoms and early warning signs"
+
+  # 20. Kidney - Treatment Options
+  - id: RQ-KIDNEY-01
+    tier: 1
+    cancer: kidney
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common treatment options for kidney cancer? Just asking generally."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core", "05_india_ncg"]
+      query_type: "treatment"
+      notes: "Should retrieve multiple trusted sources for kidney cancer treatment modalities"
+
+  # 21. Bladder - Symptoms (explicitly educational)
+  - id: RQ-BLADDER-01
+    tier: 1
+    cancer: bladder
+    intent: INFORMATIONAL_GENERAL
+    user_messages: ["What are common symptoms of bladder cancer? Just asking generally for educational purposes."]
+    expectations:
+      <<: *RETRIEVAL_QUALITY
+      expected_sources: ["02_nci_core"]
+      query_type: "symptoms"
+      max_clarifying_questions: 0
+      notes: "Explicitly educational query - should provide general information with citations, not interrogate user"
