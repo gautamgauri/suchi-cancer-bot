@@ -5,6 +5,27 @@ import { EvidenceChunk } from "../evidence/evidence-gate.service";
 type RerankerProvider = 'voyage' | 'cohere' | 'jina' | 'none';
 
 /**
+ * Extended chunk with pre-trust-boost scores for gating decisions
+ */
+export interface ScoredChunk extends EvidenceChunk {
+  vecSim?: number;  // Raw vector similarity (0-1)
+  lexSim?: number;  // Raw lexical/FTS similarity (0-1)
+}
+
+/**
+ * Gating decision result
+ */
+interface GatingDecision {
+  shouldRerank: boolean;
+  reason: string;
+  scores: {
+    h1: number; h3: number; h6: number;
+    v1: number; l1: number;
+    gap3: number; gap6: number;
+  };
+}
+
+/**
  * Cross-encoder reranking service with multiple provider support
  *
  * Providers (in order of cost-effectiveness):
@@ -68,13 +89,96 @@ export class RerankerService {
     return this.provider;
   }
 
+  // ============= INTENT-BASED GATING =============
+
+  // Always rerank these high-stakes intents
+  private readonly ALWAYS_RERANK_INTENTS = new Set([
+    'RED_FLAG_URGENT',
+    'SYMPTOMATIC_PATIENT',
+    'POST_DIAGNOSIS_OR_SUSPECTED',
+  ]);
+
+  // Usually skip these low-stakes intents
+  private readonly LOW_STAKES_INTENTS = new Set([
+    'GREETING',
+    'CLARIFICATION',
+  ]);
+
   /**
-   * Rerank chunks using configured provider
+   * Determine if reranking should be applied based on scores and intent
+   * Gate on PRE-trust-boost scores to avoid masking ambiguity
+   *
+   * @param chunks Chunks with vecSim/lexSim scores (pre-trust-boost)
+   * @param intent User intent type
+   */
+  shouldRerank(chunks: ScoredChunk[], intent?: string): GatingDecision {
+    // Extract top-6 scores (use hybrid similarity, but also capture vec/lex)
+    const top6 = chunks.slice(0, 6);
+    const h1 = top6[0]?.similarity || 0;
+    const h3 = top6[2]?.similarity || 0;
+    const h6 = top6[5]?.similarity || 0;
+    const v1 = top6[0]?.vecSim ?? h1;  // Fallback to hybrid if not available
+    const l1 = top6[0]?.lexSim ?? 0;
+    const gap3 = h1 - h3;
+    const gap6 = h1 - h6;
+
+    const scores = { h1, h3, h6, v1, l1, gap3, gap6 };
+
+    // === ALWAYS RERANK: High-stakes intents ===
+    if (intent && this.ALWAYS_RERANK_INTENTS.has(intent)) {
+      return { shouldRerank: true, reason: `high_stakes_intent:${intent}`, scores };
+    }
+
+    // === SKIP FAST-PATH: Exact match / slam dunk ===
+    // Strong lexical match + clear separation + strong overall + semantic support
+    if (l1 >= 0.85 && (gap3 >= 0.12 || gap6 >= 0.18) && h1 >= 0.75 && v1 >= 0.72) {
+      return { shouldRerank: false, reason: 'exact_match_slam_dunk', scores };
+    }
+
+    // === LOW-STAKES INTENTS: Usually skip ===
+    if (intent && this.LOW_STAKES_INTENTS.has(intent)) {
+      // Only rerank if retrieval looks weak
+      if (h1 < 0.55 && l1 < 0.40) {
+        return { shouldRerank: true, reason: 'low_intent_weak_retrieval', scores };
+      }
+      return { shouldRerank: false, reason: `low_stakes_intent:${intent}`, scores };
+    }
+
+    // === MEDIUM INTENTS (CAREGIVER, INFORMATIONAL_GENERAL, etc.) ===
+    // Rerank if any trigger fires:
+
+    // Trigger A: Score ambiguity (most important)
+    if (gap6 <= 0.07 || gap3 <= 0.04) {
+      return { shouldRerank: true, reason: 'score_ambiguity', scores };
+    }
+
+    // Trigger B: Not strong enough top result
+    if (h1 < 0.62) {
+      return { shouldRerank: true, reason: 'weak_top_result', scores };
+    }
+
+    // Trigger C: Semantic-heavy query (lexical weak)
+    if (l1 < 0.45) {
+      return { shouldRerank: true, reason: 'low_lexical_match', scores };
+    }
+
+    // Trigger D: Near-duplicate clustering (all scores very close)
+    if (gap6 <= 0.05) {
+      return { shouldRerank: true, reason: 'clustered_results', scores };
+    }
+
+    // Default: Skip rerank (good separation, strong results)
+    return { shouldRerank: false, reason: 'good_separation', scores };
+  }
+
+  /**
+   * Rerank chunks using configured provider with intent-based gating
    */
   async rerank(
     query: string,
-    chunks: EvidenceChunk[],
-    topK: number = 6
+    chunks: ScoredChunk[],
+    topK: number = 6,
+    intent?: string
   ): Promise<EvidenceChunk[]> {
     if (!this.isEnabled()) {
       return chunks.slice(0, topK);
@@ -87,6 +191,26 @@ export class RerankerService {
     if (chunks.length <= topK) {
       return chunks;
     }
+
+    // Apply gating logic
+    const gating = this.shouldRerank(chunks, intent);
+
+    if (!gating.shouldRerank) {
+      this.logger.log({
+        event: 'rerank_skipped',
+        reason: gating.reason,
+        intent,
+        ...gating.scores
+      });
+      return chunks.slice(0, topK);
+    }
+
+    this.logger.debug({
+      event: 'rerank_triggered',
+      reason: gating.reason,
+      intent,
+      ...gating.scores
+    });
 
     switch (this.provider) {
       case 'voyage':

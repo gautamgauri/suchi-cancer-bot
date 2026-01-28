@@ -52,7 +52,7 @@ export class RagService {
 
         // Use multi-query retrieval: run hybrid search on top 3 query variations
         const queriesToSearch = expansion.expanded.slice(0, 3);
-        const results = await this.multiQueryRetrieve(queriesToSearch, topK, cancerType);
+        const results = await this.multiQueryRetrieve(queriesToSearch, topK, cancerType, intent);
 
         if (results.length > 0) {
           return results;
@@ -69,7 +69,7 @@ export class RagService {
       }
 
       // Step 6: PRIMARY PATH - Hybrid search (vector + FTS)
-      const hybridResults = await this.hybridSearchWithMetadata(finalQuery, topK, cancerType);
+      const hybridResults = await this.hybridSearchWithMetadata(finalQuery, topK, cancerType, intent);
       if (hybridResults.length > 0) {
         this.logger.debug(`Hybrid search returned ${hybridResults.length} results`);
         return hybridResults;
@@ -99,15 +99,17 @@ export class RagService {
    * @param queries Array of query variations (e.g., original + medical synonyms)
    * @param topK Number of chunks to return
    * @param cancerType Optional cancer type for filtering
+   * @param intent User intent for reranker gating
    */
   private async multiQueryRetrieve(
     queries: string[],
     topK: number,
-    cancerType?: string | null
+    cancerType?: string | null,
+    intent?: string
   ): Promise<EvidenceChunk[]> {
     // Run hybrid searches in parallel for each query variation
     const searchPromises = queries.map(q =>
-      this.hybridSearchWithMetadata(q, topK, cancerType).catch(err => {
+      this.hybridSearchWithMetadata(q, topK, cancerType, intent).catch(err => {
         this.logger.warn(`Multi-query search failed for "${q.substring(0, 30)}...": ${err.message}`);
         return [] as EvidenceChunk[];
       })
@@ -495,12 +497,13 @@ export class RagService {
 
   /**
    * Hybrid search combining vector similarity and full-text search
-   * Scoring: 60% vector + 40% lexical, then trust-aware reranking
+   * Scoring: 55% vector + 45% lexical, then cross-encoder rerank (if gating passes), then trust rerank
    */
   private async hybridSearchWithMetadata(
     query: string,
     topK: number,
-    cancerType?: string | null
+    cancerType?: string | null,
+    intent?: string
   ): Promise<EvidenceChunk[]> {
     // Parallel retrieval: vector + FTS
     const [vectorChunks, ftsChunks] = await Promise.all([
@@ -562,19 +565,21 @@ export class RagService {
     // Sort by finalScore descending
     scored.sort((a, b) => b.finalScore - a.finalScore);
 
-    // Update similarity field with hybrid score
+    // Update similarity field with hybrid score, preserve vecSim/lexSim for gating
     const hybridChunks = scored.map(s => ({
       ...s.chunk,
-      similarity: s.finalScore
+      similarity: s.finalScore,
+      vecSim: s.vecSim,  // Preserve for reranker gating
+      lexSim: s.lexSim   // Preserve for reranker gating
     }));
 
-    // Step 1: Cross-encoder reranking (if enabled) - use more candidates for better precision
-    // Cross-encoder looks at query-document pairs holistically, so it's better at semantic relevance
+    // Step 1: Cross-encoder reranking with intent-based gating
+    // Gating uses PRE-trust-boost scores (vecSim, lexSim) to decide if reranking helps
     let semanticReranked: EvidenceChunk[];
     if (this.reranker.isEnabled()) {
-      // Retrieve more candidates for cross-encoder to consider (improves recall before precision)
+      // Pass more candidates + intent for intelligent gating
       const rerankerCandidates = hybridChunks.slice(0, Math.max(topK * 3, 18));
-      semanticReranked = await this.reranker.rerank(query, rerankerCandidates, topK * 2);
+      semanticReranked = await this.reranker.rerank(query, rerankerCandidates, topK * 2, intent);
     } else {
       semanticReranked = hybridChunks;
     }
