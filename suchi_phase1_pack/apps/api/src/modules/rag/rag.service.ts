@@ -35,31 +35,40 @@ export class RagService {
         this.logger.debug(`Query rewritten from "${query}" to "${rewrittenQuery}"`);
       }
 
-      // PHASE 3: Step 1.5: Medical term expansion for symptom queries (bloating → abdominal distension)
-      let finalQuery = rewrittenQuery;
-      // Try expansion for symptom-related queries (uses heuristics if intent not provided)
+      // Step 2: Medical term expansion (patient language → medical terminology)
       const expansion = this.queryExpander.expandQuery(rewrittenQuery, intent || 'INFORMATIONAL_GENERAL');
+
+      // Step 3: Multi-query retrieval for improved recall
+      // If we have expanded queries, search with multiple queries and merge results
       if (expansion.expanded.length > 1) {
-        // Use the FIRST expanded query (which replaces colloquial with medical term)
-        // e.g., "early warning signs" → "signs and symptoms" to match NCI PDQ language
-        // Don't join with "OR" as embedding models don't understand that
-        finalQuery = expansion.expanded[1]; // Index 1 is first expansion (index 0 is original)
         this.logger.log({
-          event: 'symptom_query_expansion',
+          event: 'multi_query_expansion',
           original: query,
           rewritten: rewrittenQuery,
-          expanded: finalQuery,
+          expandedCount: expansion.expanded.length,
           synonymsMatched: Array.from(expansion.synonyms.keys()),
+          abbreviationsExpanded: expansion.abbreviationsExpanded,
         });
+
+        // Use multi-query retrieval: run hybrid search on top 3 query variations
+        const queriesToSearch = expansion.expanded.slice(0, 3);
+        const results = await this.multiQueryRetrieve(queriesToSearch, topK, cancerType);
+
+        if (results.length > 0) {
+          return results;
+        }
       }
 
-      // Step 2: Expand query with general synonyms if available
+      // Step 4: Single query fallback (original or rewritten)
+      const finalQuery = expansion.expanded[0] || rewrittenQuery;
+
+      // Step 5: Expand query with general synonyms if available
       const expandedTerms = this.synonyms.expandQuery(finalQuery);
       if (expandedTerms.length > 1) {
         this.logger.debug(`Query expanded from "${finalQuery}" to ${expandedTerms.length} terms`);
       }
 
-      // Step 3: PRIMARY PATH - Hybrid search (vector + FTS)
+      // Step 6: PRIMARY PATH - Hybrid search (vector + FTS)
       const hybridResults = await this.hybridSearchWithMetadata(finalQuery, topK, cancerType);
       if (hybridResults.length > 0) {
         this.logger.debug(`Hybrid search returned ${hybridResults.length} results`);
@@ -72,7 +81,7 @@ export class RagService {
       if (vectorResults.length > 0) {
         return vectorResults;
       }
-      
+
       // Final fallback: Keyword search
       this.logger.warn("Vector search failed, falling back to keyword search");
       return this.keywordSearchWithMetadata(expandedTerms.join(" "), topK);
@@ -81,6 +90,75 @@ export class RagService {
       // Fallback to keyword search on error
       return this.keywordSearchWithMetadata(query, topK);
     }
+  }
+
+  /**
+   * Multi-query retrieval: run parallel searches with multiple query variations
+   * Improves recall by capturing different phrasings of the same intent
+   *
+   * @param queries Array of query variations (e.g., original + medical synonyms)
+   * @param topK Number of chunks to return
+   * @param cancerType Optional cancer type for filtering
+   */
+  private async multiQueryRetrieve(
+    queries: string[],
+    topK: number,
+    cancerType?: string | null
+  ): Promise<EvidenceChunk[]> {
+    // Run hybrid searches in parallel for each query variation
+    const searchPromises = queries.map(q =>
+      this.hybridSearchWithMetadata(q, topK, cancerType).catch(err => {
+        this.logger.warn(`Multi-query search failed for "${q.substring(0, 30)}...": ${err.message}`);
+        return [] as EvidenceChunk[];
+      })
+    );
+
+    const allResults = await Promise.all(searchPromises);
+
+    // Merge and deduplicate results
+    const chunkMap = new Map<string, { chunk: EvidenceChunk; maxScore: number; queryCount: number }>();
+
+    for (const results of allResults) {
+      for (const chunk of results) {
+        const existing = chunkMap.get(chunk.chunkId);
+        if (existing) {
+          // Boost score for chunks that appear in multiple query results
+          existing.queryCount++;
+          existing.maxScore = Math.max(existing.maxScore, chunk.similarity || 0);
+        } else {
+          chunkMap.set(chunk.chunkId, {
+            chunk,
+            maxScore: chunk.similarity || 0,
+            queryCount: 1
+          });
+        }
+      }
+    }
+
+    // Score with bonus for appearing in multiple queries (Reciprocal Rank Fusion-lite)
+    const scored = Array.from(chunkMap.values()).map(item => ({
+      chunk: item.chunk,
+      // Boost chunks found by multiple queries: 1.0 + 0.1 per additional query
+      finalScore: item.maxScore * (1.0 + (item.queryCount - 1) * 0.1)
+    }));
+
+    // Sort by score and return topK
+    scored.sort((a, b) => b.finalScore - a.finalScore);
+
+    const results = scored.slice(0, topK).map(s => ({
+      ...s.chunk,
+      similarity: s.finalScore
+    }));
+
+    this.logger.log({
+      event: 'multi_query_retrieval',
+      queryCount: queries.length,
+      totalChunksFound: chunkMap.size,
+      chunksInMultipleQueries: scored.filter(s => s.finalScore > (s.chunk.similarity || 0)).length,
+      returningCount: results.length
+    });
+
+    return results;
   }
 
   /**
