@@ -304,10 +304,28 @@ EMPATHY REQUIREMENTS (CRITICAL - user is sad/grieving):
   }
 
   /**
+   * Check if a query is about appointment preparation.
+   */
+  private isAppointmentQuery(query?: string): boolean {
+    if (!query) return false;
+    const appointmentPatterns = [
+      /\bappointment\b/i,
+      /\bdoctor.?s?\s+(visit|meeting|consultation)\b/i,
+      /\bprepare\s+for\b.*\b(oncolog|doctor|specialist|hospital|consultation|visit)\b/i,
+      /\bfirst\s+(oncology|cancer|specialist)\s+(visit|appointment|consultation)\b/i,
+      /\bmeeting\s+with\s+(oncolog|doctor|specialist)\b/i,
+      /\bwhat\s+to\s+(bring|expect|ask)\b.*\b(appointment|visit|doctor)\b/i,
+    ];
+    return appointmentPatterns.some(pattern => pattern.test(query));
+  }
+
+  /**
    * Get intent-specific section requirements for the LLM prompt.
    * Different intents (POST_DIAGNOSIS, CAREGIVER, PATIENT) require different response sections.
+   * @param intent The detected user intent
+   * @param userQuery Optional user query to detect specific sub-intents (e.g., appointment preparation)
    */
-  private getIntentSpecificSections(intent?: string): string {
+  private getIntentSpecificSections(intent?: string, userQuery?: string): string {
     if (!intent) return "";
 
     // POST_DIAGNOSIS: Needs staging and treatment planning sections
@@ -334,7 +352,11 @@ Use PLAIN LANGUAGE throughout - explain medical terms when first used.`;
 
     // CAREGIVER: Needs caregiver-specific action items
     if (intent === "CAREGIVER_NAVIGATION" || intent.includes("CAREGIVER")) {
-      return `
+      // Check if this is specifically about appointment preparation
+      const isAppointment = this.isAppointmentQuery(userQuery);
+
+      // Base caregiver sections
+      let sections = `
 
 **ADDITIONAL SECTIONS FOR CAREGIVER CONTEXT:**
 Since this is a caregiver seeking information, include these additional sections:
@@ -349,9 +371,27 @@ Since this is a caregiver seeking information, include these additional sections
 6) **What to Watch For (Caregiver Guide):** (INCLUDE FOR CAREGIVERS)
    - List warning signs that require immediate attention
    - Include when to call the oncology team vs. go to ER
-   - Provide specific symptoms to monitor after treatments
+   - Provide specific symptoms to monitor after treatments`;
+
+      // Add appointment-specific requirement if the query is about appointments
+      if (isAppointment) {
+        sections += `
+
+7) **Appointment Preparation Checklist:** (REQUIRED - USER IS ASKING ABOUT APPOINTMENTS)
+   THIS SECTION IS MANDATORY. Extract preparation advice from the retrieved references:
+   - Look for advice about documents, records, questions to prepare, what to bring
+   - Include at least 5 specific, actionable items FROM THE REFERENCES
+   - Each item MUST be cited: "- [preparation item] [citation:docId:chunkId]"
+   - If the references mention: bringing someone to appointments, writing questions, recording discussions, bringing medication lists - include these WITH CITATIONS
+   - DO NOT include preparation items that are not supported by the retrieved references
+   - If references don't contain enough preparation advice, state: "The provided references contain limited appointment preparation guidance. Please ask your healthcare team for a complete preparation checklist."`;
+      }
+
+      sections += `
 
 Use SUPPORTIVE, PRACTICAL language - caregivers need actionable guidance.`;
+
+      return sections;
     }
 
     // SYMPTOMATIC_PATIENT: Needs confirmatory steps and plain language
@@ -383,11 +423,11 @@ Use PLAIN, REASSURING language throughout - patients need clarity and calm guida
   /**
    * Get system prompt for Explain Mode (information-first)
    * @param isIdentifyQuestion If true, provide structured answer for "how to identify" questions
-   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state, user intent)
+   * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state, user intent, user query)
    */
   getExplainModePrompt(
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; intent?: string }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; intent?: string; userQuery?: string }
   ): string {
     // Empathy guidelines moved to END of prompt for better LLM attention (recency bias)
     const empathyGuidelines = this.getEmpathyGuidelines(conversationContext?.emotionalState);
@@ -459,8 +499,8 @@ DO NOT:
 - Use coaching/triage script language for general questions
 - Add general medical knowledge not in retrieved chunks${empathyGuidelines}`;
 
-    // Get intent-specific sections based on user intent
-    const intentSections = this.getIntentSpecificSections(conversationContext?.intent);
+    // Get intent-specific sections based on user intent (pass userQuery for sub-intent detection like appointment prep)
+    const intentSections = this.getIntentSpecificSections(conversationContext?.intent, conversationContext?.userQuery);
 
     if (isIdentifyQuestion) {
       // SECURITY: Sanitize cancer type to prevent prompt injection
@@ -556,7 +596,8 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
     if (systemPrompt === "explain") {
-      actualSystemPrompt = this.getExplainModePrompt(isIdentifyQuestion, conversationContext);
+      // Pass userMessage as userQuery for intent-specific sub-detection (e.g., appointment prep for caregivers)
+      actualSystemPrompt = this.getExplainModePrompt(isIdentifyQuestion, { ...conversationContext, userQuery: userMessage });
     } else if (systemPrompt === "navigate") {
       actualSystemPrompt = this.getNavigateModePrompt(conversationContext?.emotionalState);
     } else {

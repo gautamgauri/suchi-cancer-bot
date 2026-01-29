@@ -164,6 +164,36 @@ export class QueryExpanderService {
     ['onco', ['oncologist', 'oncology']],
   ]);
 
+  // ============= CAREGIVER/NAVIGATION SYNONYMS =============
+  // Caregiver and appointment-related terms for better retrieval
+  // These map user queries to phrases found in NCI KB content (e.g., communication-pdq)
+  private readonly NAVIGATION_SYNONYMS = new Map<string, string[]>([
+    // Appointment preparation - mapped to NCI communication-pdq content phrases
+    ['prepare for appointments', ['communication in cancer care', 'questions to ask before visit', 'remember what doctor said', 'list of questions']],
+    ['prepare for appointment', ['communication in cancer care', 'questions to ask before visit', 'remember what doctor said', 'list of questions']],
+    ['appointment preparation', ['communication in cancer care', 'improve communication with doctors', 'questions before visit']],
+    ['first appointment', ['initial consultation', 'first visit', 'meet with doctor', 'health care team']],
+    ['doctor visit', ['meet with your doctor', 'health care team', 'communicate with doctors']],
+    ['oncologist appointment', ['oncology consultation', 'cancer care team', 'meet with doctor']],
+    ['what to bring', ['copy of information', 'record the discussion', 'family member go with you']],
+    ['help with appointments', ['family member go with you', 'support for caregivers', 'communication']],
+
+    // Caregiver terms - mapped to NCI caregiver-support content
+    ['caregiver', ['family caregiver', 'support for caregivers', 'when someone you love']],
+    ['help her', ['support for caregivers', 'family member', 'loved one has cancer']],
+    ['help him', ['support for caregivers', 'family member', 'loved one has cancer']],
+    ['taking care of', ['caregiving', 'when someone you love', 'support for caregivers']],
+    ['support my', ['family caregiver', 'support for caregivers', 'when someone you love']],
+    ['mother diagnosed', ['family member', 'loved one has cancer', 'when someone you love']],
+    ['father diagnosed', ['family member', 'loved one has cancer', 'when someone you love']],
+
+    // Communication with doctors - mapped to NCI content
+    ['talk to doctor', ['communicate with doctors', 'health care team', 'questions to ask']],
+    ['questions to ask', ['list of questions', 'questions before visit', 'questions to ask doctor']],
+    ['understand doctor', ['remember what doctor said', 'copy of information', 'communication']],
+    ['remember what doctor', ['list of questions', 'record the discussion', 'copy of information']],
+  ]);
+
   // ============= CANCER TYPE SYNONYMS =============
   // Common names → medical terminology
   private readonly CANCER_SYNONYMS = new Map<string, string[]>([
@@ -234,6 +264,9 @@ export class QueryExpanderService {
 
     // 4. Expand cancer type synonyms
     this.expandTerms(lowerQuery, this.CANCER_SYNONYMS, expanded, matchedSynonyms);
+
+    // 5. Expand navigation/caregiver terms (for appointment prep, caregiver queries)
+    this.expandTerms(lowerQuery, this.NAVIGATION_SYNONYMS, expanded, matchedSynonyms);
 
     // Deduplicate expanded queries
     const uniqueExpanded = [...new Set(expanded)];
@@ -315,6 +348,7 @@ export class QueryExpanderService {
     return this.SYMPTOM_SYNONYMS.get(lower)
       || this.TREATMENT_SYNONYMS.get(lower)
       || this.CANCER_SYNONYMS.get(lower)
+      || this.NAVIGATION_SYNONYMS.get(lower)
       || this.ABBREVIATIONS.get(lower)
       || [];
   }
