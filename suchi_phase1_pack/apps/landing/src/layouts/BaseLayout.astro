@@ -1,0 +1,86 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Suchitra Cancer Care Foundation - Cancer awareness and navigation support for patients and families in Eastern India" } = Astro.props;
+const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} | SCCF</title>
+  <meta name="description" content={description} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/global.css" />
+</head>
+<body>
+  <div class="disclaimer-banner">
+    <p><strong>SCCF is not a hospital or diagnostic service.</strong> For diagnosis or treatment, consult a qualified healthcare professional.</p>
+  </div>
+
+  <nav class="main-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <span class="logo-mark"></span>
+        <span class="logo-text">
+          <span class="logo-title">Suchitra Cancer Care</span>
+          <span class="logo-subtitle">Awareness | Guidance | Navigation</span>
+        </span>
+      </a>
+
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/watch">Watch</a>
+        <a href="/about">About</a>
+      </div>
+
+      <div class="nav-actions">
+        <a href={botUrl} target="_blank" rel="noopener" class="btn-primary btn-sm">
+          Try Suchi
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <slot />
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <h3>Suchitra Cancer Care Foundation</h3>
+          <p>In loving memory of Late Suchitra Gauri</p>
+          <p class="footer-tagline">Awareness | Guidance | Navigation</p>
+        </div>
+
+        <div class="footer-links">
+          <h4>Quick Links</h4>
+          <a href="/">Home</a>
+          <a href="/watch">Watch Onco Talks</a>
+          <a href="/about">About Us</a>
+        </div>
+
+        <div class="footer-contact">
+          <h4>Contact</h4>
+          <p>Email: <a href="mailto:info@suchitracancercare.org">info@suchitracancercare.org</a></p>
+          <p>Focus: Eastern India</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2025 Suchitra Cancer Care Foundation. All rights reserved.</p>
+        <p class="footer-disclaimer">SCCF does not provide medical treatment or diagnostic services. For emergencies, contact local medical services immediately.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,159 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import VideoCard from '../../components/VideoCard.astro';
+import videosData from '../../content/videos.json';
+
+const videos = videosData.videos;
+const cancerTypes = videosData.cancerTypes;
+const situations = videosData.situations;
+---
+
+<BaseLayout title="Watch" description="Browse all Onco Talks videos - educational conversations with oncologists about cancer topics">
+  <section class="section">
+    <div class="section-inner">
+      <div class="page-header">
+        <h1>Watch Onco Talks</h1>
+        <p>Educational conversations with oncologists from Tata Memorial Hospital and other leading institutions</p>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar" id="filters">
+        <div class="filter-group">
+          <label for="cancer-filter">Cancer Type</label>
+          <select id="cancer-filter">
+            <option value="">All Types</option>
+            {cancerTypes.map((type) => (
+              <option value={type.id}>{type.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="situation-filter">Situation</label>
+          <select id="situation-filter">
+            <option value="">All Situations</option>
+            {situations.map((sit) => (
+              <option value={sit.id}>{sit.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="search-input">Search</label>
+          <input type="text" id="search-input" placeholder="Search videos..." />
+        </div>
+      </div>
+
+      <!-- Video Grid -->
+      <div class="video-grid" id="video-grid">
+        {videos.map((video) => (
+          <div
+            class="video-item"
+            data-cancer={video.cancerTypes.join(',')}
+            data-situation={video.situations.join(',')}
+            data-title={video.title.toLowerCase()}
+          >
+            <VideoCard
+              youtubeId={video.youtubeId}
+              title={video.title}
+              slug={video.slug}
+              speaker={video.speaker}
+              duration={video.duration}
+              cancerTypes={video.cancerTypes}
+              situations={video.situations}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div id="no-results" class="no-results" style="display: none;">
+        <p>No videos match your filters. Try adjusting your selection.</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Client-side filtering
+  const cancerFilter = document.getElementById('cancer-filter') as HTMLSelectElement;
+  const situationFilter = document.getElementById('situation-filter') as HTMLSelectElement;
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+  const videoGrid = document.getElementById('video-grid');
+  const noResults = document.getElementById('no-results');
+
+  // Parse URL params for initial filter state
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('cancer')) {
+    cancerFilter.value = params.get('cancer') || '';
+  }
+  if (params.get('situation')) {
+    situationFilter.value = params.get('situation') || '';
+  }
+
+  function filterVideos() {
+    const cancerValue = cancerFilter.value.toLowerCase();
+    const situationValue = situationFilter.value.toLowerCase();
+    const searchValue = searchInput.value.toLowerCase();
+
+    const items = videoGrid?.querySelectorAll('.video-item');
+    let visibleCount = 0;
+
+    items?.forEach((item) => {
+      const el = item as HTMLElement;
+      const cancerTypes = el.dataset.cancer?.toLowerCase() || '';
+      const situations = el.dataset.situation?.toLowerCase() || '';
+      const title = el.dataset.title || '';
+
+      const matchesCancer = !cancerValue || cancerTypes.includes(cancerValue);
+      const matchesSituation = !situationValue || situations.includes(situationValue);
+      const matchesSearch = !searchValue || title.includes(searchValue);
+
+      if (matchesCancer && matchesSituation && matchesSearch) {
+        el.style.display = '';
+        visibleCount++;
+      } else {
+        el.style.display = 'none';
+      }
+    });
+
+    if (noResults) {
+      noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+  }
+
+  cancerFilter?.addEventListener('change', filterVideos);
+  situationFilter?.addEventListener('change', filterVideos);
+  searchInput?.addEventListener('input', filterVideos);
+
+  // Apply initial filters
+  filterVideos();
+</script>
+
+<style>
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .page-header h1 {
+    margin-bottom: 0.5rem;
+  }
+
+  .page-header p {
+    color: var(--color-text-secondary);
+    font-size: 1.125rem;
+  }
+
+  .filter-bar input {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    min-width: 200px;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-secondary);
+  }
+</style>

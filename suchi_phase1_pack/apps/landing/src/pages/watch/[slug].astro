@@ -1,0 +1,209 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LiteYouTube from '../../components/LiteYouTube.astro';
+import videosData from '../../content/videos.json';
+
+export function getStaticPaths() {
+  return videosData.videos.map((video) => ({
+    params: { slug: video.slug },
+    props: { video }
+  }));
+}
+
+const { video } = Astro.props;
+const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
+
+// Create a prefilled prompt for the "Ask Suchi" button
+const suchiPrompt = encodeURIComponent(
+  `I just watched the video "${video.title}" on SCCF. Can you summarize the key points and tell me what questions I should ask my doctor about ${video.cancerTypes[0] || 'this topic'}?`
+);
+const suchiUrlWithPrompt = `${botUrl}?prompt=${suchiPrompt}`;
+
+// Find related videos (same cancer type or situation)
+const relatedVideos = videosData.videos
+  .filter(v => v.slug !== video.slug)
+  .filter(v =>
+    v.cancerTypes.some(t => video.cancerTypes.includes(t)) ||
+    v.situations.some(s => video.situations.includes(s))
+  )
+  .slice(0, 3);
+
+const cancerTypeLabels = video.cancerTypes.map(id =>
+  videosData.cancerTypes.find(t => t.id === id)?.label || id
+);
+
+const situationLabels = video.situations.map(id =>
+  videosData.situations.find(s => s.id === id)?.label || id
+);
+---
+
+<BaseLayout title={video.title} description={`Watch ${video.title} - ${video.takeaways?.[0] || 'Educational video from Onco Talks by SCCF'}`}>
+  <section class="video-detail">
+    <div class="video-detail-inner">
+      <!-- Video Embed -->
+      <div class="video-embed">
+        <LiteYouTube youtubeId={video.youtubeId} title={video.title} />
+      </div>
+
+      <!-- Video Info -->
+      <div class="video-info">
+        <h1>{video.title}</h1>
+        <div class="video-meta">
+          {video.speaker && <span>Dr. {video.speaker}</span>}
+          {video.affiliation && <span>{video.affiliation}</span>}
+          {video.duration && <span>{video.duration}</span>}
+        </div>
+
+        <div class="video-tags">
+          {cancerTypeLabels.map((label) => (
+            <span class="tag">{label}</span>
+          ))}
+          {situationLabels.map((label) => (
+            <span class="tag tag-situation">{label}</span>
+          ))}
+        </div>
+      </div>
+
+      <!-- Key Takeaways -->
+      {video.takeaways && video.takeaways.length > 0 && (
+        <div class="content-card">
+          <h3>Key Takeaways</h3>
+          <ul>
+            {video.takeaways.map((takeaway) => (
+              <li>{takeaway}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <!-- Who Is This For -->
+      {video.whoIsThisFor && video.whoIsThisFor.length > 0 && (
+        <div class="content-card">
+          <h3>Who is this video for?</h3>
+          <p class="who-for-tags">
+            {video.whoIsThisFor.map((who) => (
+              <span class="who-tag">{who === 'patients' ? 'Patients' : who === 'caregivers' ? 'Caregivers' : 'General audience'}</span>
+            ))}
+          </p>
+        </div>
+      )}
+
+      <!-- Questions to Ask -->
+      {video.questionsToAsk && video.questionsToAsk.length > 0 && (
+        <div class="content-card">
+          <h3>Questions to ask your doctor</h3>
+          <ul>
+            {video.questionsToAsk.map((question) => (
+              <li>{question}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <!-- Ask Suchi CTA -->
+      <div class="ask-suchi-cta">
+        <h3>Have questions about this topic?</h3>
+        <p>Suchi can summarize key points and help you prepare questions for your doctor.</p>
+        <a href={suchiUrlWithPrompt} target="_blank" rel="noopener" class="btn-primary">
+          Ask Suchi about this video
+        </a>
+      </div>
+
+      <!-- Related Videos -->
+      {relatedVideos.length > 0 && (
+        <div class="related-videos">
+          <h3>Related Videos</h3>
+          <div class="related-grid">
+            {relatedVideos.map((related) => (
+              <a href={`/watch/${related.slug}`} class="related-card">
+                <img src={`https://img.youtube.com/vi/${related.youtubeId}/mqdefault.jpg`} alt={related.title} loading="lazy" />
+                <div class="related-info">
+                  <h4>{related.title}</h4>
+                  <p>{related.speaker}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .video-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .who-for-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .who-tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: #f1f5f9;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .related-videos {
+    margin-top: 3rem;
+  }
+
+  .related-videos h3 {
+    margin-bottom: 1.5rem;
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .related-card {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .related-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .related-card img {
+    width: 120px;
+    height: 68px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+  }
+
+  .related-info {
+    flex: 1;
+  }
+
+  .related-info h4 {
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+  }
+
+  .related-info p {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+</style>

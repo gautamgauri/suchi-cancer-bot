@@ -1,0 +1,44 @@
+---
+export interface Props {
+  youtubeId: string;
+  title: string;
+  slug: string;
+  speaker?: string;
+  duration?: string;
+  cancerTypes: string[];
+  situations: string[];
+}
+
+const { youtubeId, title, slug, speaker, duration, cancerTypes, situations } = Astro.props;
+const thumbnail = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+---
+
+<a href={`/watch/${slug}`} class="video-card">
+  <div class="video-card-thumb">
+    <img src={thumbnail} alt={title} loading="lazy" />
+    <div class="video-card-play">&#9658;</div>
+  </div>
+  <div class="video-card-body">
+    <h3 class="video-card-title">{title}</h3>
+    <p class="video-card-meta">
+      {speaker && <span>{speaker}</span>}
+      {speaker && duration && <span> | </span>}
+      {duration && <span>{duration}</span>}
+    </p>
+    <div class="video-card-tags">
+      {cancerTypes.map((type) => (
+        <span class="tag">{type}</span>
+      ))}
+      {situations.slice(0, 2).map((situation) => (
+        <span class="tag tag-situation">{situation}</span>
+      ))}
+    </div>
+  </div>
+</a>
+
+<style>
+  .video-card {
+    text-decoration: none;
+    display: block;
+  }
+</style>

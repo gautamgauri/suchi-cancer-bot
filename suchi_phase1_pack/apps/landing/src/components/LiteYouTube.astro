@@ -1,0 +1,99 @@
+---
+export interface Props {
+  youtubeId: string;
+  title: string;
+}
+
+const { youtubeId, title } = Astro.props;
+const thumbnail = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+---
+
+<div
+  class="lite-youtube"
+  data-youtube-id={youtubeId}
+  style={`background-image: url('${thumbnail}')`}
+  role="button"
+  tabindex="0"
+  aria-label={`Play video: ${title}`}
+>
+  <button class="play-button" aria-hidden="true">
+    <svg viewBox="0 0 68 48" width="68" height="48">
+      <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"/>
+      <path d="M 45,24 27,14 27,34" fill="#fff"/>
+    </svg>
+  </button>
+</div>
+
+<script>
+  document.querySelectorAll('.lite-youtube').forEach((el) => {
+    const activate = () => {
+      const id = el.getAttribute('data-youtube-id');
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      el.classList.add('activated');
+      el.innerHTML = '';
+      el.appendChild(iframe);
+    };
+
+    el.addEventListener('click', activate);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate();
+      }
+    });
+  });
+</script>
+
+<style>
+  .lite-youtube {
+    aspect-ratio: 16/9;
+    background-color: #1e293b;
+    background-position: center;
+    background-size: cover;
+    cursor: pointer;
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .lite-youtube::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 1;
+  }
+
+  .lite-youtube:hover .play-button {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+
+  .lite-youtube.activated {
+    background: none;
+  }
+
+  .lite-youtube.activated::before {
+    display: none;
+  }
+
+  .lite-youtube iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+</style>

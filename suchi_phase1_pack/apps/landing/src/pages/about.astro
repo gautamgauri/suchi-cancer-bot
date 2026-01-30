@@ -1,0 +1,235 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="About Us" description="About Suchitra Cancer Care Foundation - our mission, story, and founders. A nonprofit initiative in memory of Late Suchitra Gauri.">
+  <!-- Hero -->
+  <section class="page-hero">
+    <div class="page-hero-inner">
+      <h1>About Suchitra Cancer Care Foundation</h1>
+      <p class="hero-subtitle">In loving memory of Late Suchitra Gauri</p>
+    </div>
+  </section>
+
+  <!-- Mission -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="mission-block">
+        <h2>Our Mission</h2>
+        <p class="mission-text">
+          To empower patients, caregivers, and communities with clear, responsible, and compassionate
+          cancer information and guidance—especially for those in underserved and semi-urban areas of Eastern India.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Story -->
+  <section class="section section-alt">
+    <div class="section-inner">
+      <div class="story-section">
+        <h2>Our Story</h2>
+        <p>
+          SCCF was established in loving memory of Late Suchitra Gauri. Guided by compassion and dignity,
+          we work to make cancer-related information and guidance more accessible and humane for patients and families.
+        </p>
+        <p>
+          We work to reduce fear, confusion, and misinformation by offering calm, trustworthy information
+          and conversations with experienced oncologists, with a special focus on underserved and semi-urban
+          communities in Eastern India.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Founders -->
+  <section class="section">
+    <div class="section-inner">
+      <h2 class="section-title">Founders</h2>
+      <p class="section-subtitle">
+        Together, they bring lived experience, clinical expertise, and a shared commitment
+        to calm, responsible cancer communication.
+      </p>
+
+      <div class="founders-list">
+        <article class="founder-card">
+          <h3>Gautam Gauri</h3>
+          <p class="founder-role">Co-Founder and Director</p>
+          <p>
+            Leading patient support, counselling and medical education initiatives to strengthen
+            cancer care in Bihar and neighbouring regions. MPhil in Education from the University
+            of Cambridge, with over 15 years of social sector leadership experience.
+          </p>
+        </article>
+
+        <article class="founder-card">
+          <h3>Dr. Amit Kumar</h3>
+          <p class="founder-role">Co-Founder</p>
+          <p>
+            Associate Director, Medical and Hemato-Oncology at Jay Prabha Medanta Super Speciality
+            Hospital in Patna. DM (Medical Oncology) from Tata Memorial Hospital with expertise in
+            chemotherapy, immunotherapy, targeted therapy and bone marrow transplantation.
+          </p>
+        </article>
+
+        <article class="founder-card">
+          <h3>Dr. Nandini Thakur Jha</h3>
+          <p class="founder-role">Co-Founder</p>
+          <p>
+            Clinical Radiologist with MD in Radiodiagnosis. Clinical Director and Chief Radiologist
+            at Niramaya Jha's Superspeciality Centre in Kolkata. Over a decade of clinical and research
+            experience in imaging support for cancer patients.
+          </p>
+        </article>
+      </div>
+
+      <div class="founders-photo">
+        <img src="/assets/founders_photo.jpg" alt="SCCF Founders: Gautam Gauri, Dr. Amit Kumar, and Dr. Nandini Thakur Jha" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Focus -->
+  <section class="section section-alt">
+    <div class="section-inner">
+      <div class="focus-banner">
+        <h3>Geographic Focus</h3>
+        <p>Primary focus on Eastern India, with relevance for underserved and semi-urban communities.</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .page-hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    color: white;
+    padding: 4rem 1.5rem;
+    text-align: center;
+  }
+
+  .page-hero-inner {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .page-hero h1 {
+    color: white;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    opacity: 0.9;
+    font-style: italic;
+  }
+
+  .mission-block {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    padding: 3rem;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .mission-block h2 {
+    margin-bottom: 1rem;
+    color: var(--color-primary);
+  }
+
+  .mission-text {
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .story-section {
+    max-width: 700px;
+  }
+
+  .story-section h2 {
+    margin-bottom: 1.5rem;
+  }
+
+  .story-section p {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: var(--color-text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  .section-title {
+    margin-bottom: 0.5rem;
+  }
+
+  .section-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 1.125rem;
+    max-width: 600px;
+    margin-bottom: 2rem;
+  }
+
+  .founders-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .founder-card {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .founder-card h3 {
+    margin-bottom: 0.25rem;
+  }
+
+  .founder-role {
+    color: var(--color-primary);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .founder-card p:last-child {
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+
+  .founders-photo {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .founders-photo img {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .focus-banner {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #0ea5e9 100%);
+    color: white;
+    padding: 2rem 3rem;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .focus-banner h3 {
+    color: white;
+    margin-bottom: 0.5rem;
+  }
+
+  .focus-banner p {
+    opacity: 0.95;
+    margin: 0;
+  }
+</style>

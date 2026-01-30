@@ -1,0 +1,1199 @@
+{
+  "channelId": "UCI242a2_VRTCdCbpXzyeW4w",
+  "channelUrl": "https://www.youtube.com/@suchitracancercarefoundati1877",
+  "videos": [
+    {
+      "youtubeId": "fa-i0SavbXU",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 1)",
+      "slug": "breast-cancer-awareness-1",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["newly-diagnosed", "prevention"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-01",
+      "featured": true,
+      "takeaways": [
+        "Breast cancer is the most common cancer in women",
+        "Early detection significantly improves outcomes",
+        "Self-examination is an important first step",
+        "Regular screening mammograms are recommended"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "When should I start getting mammograms?",
+        "What are the warning signs to watch for?",
+        "Does family history affect my risk?"
+      ]
+    },
+    {
+      "youtubeId": "UZU6fb6bk1A",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 2)",
+      "slug": "breast-cancer-awareness-2",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["newly-diagnosed", "prevention"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-02",
+      "featured": true,
+      "takeaways": [
+        "Screening can detect cancer before symptoms appear",
+        "Mammography is the gold standard for screening",
+        "Risk factors determine screening frequency"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "How often should I be screened?",
+        "What happens if something is found?"
+      ]
+    },
+    {
+      "youtubeId": "faFyxDN_2Ws",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 3)",
+      "slug": "breast-cancer-awareness-3",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["prevention"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-03",
+      "featured": false,
+      "takeaways": [
+        "Some risk factors can be modified",
+        "Maintaining healthy weight helps reduce risk",
+        "Regular physical activity is protective"
+      ],
+      "whoIsThisFor": ["general"],
+      "questionsToAsk": [
+        "Should I consider genetic testing?",
+        "What lifestyle changes are most impactful?"
+      ]
+    },
+    {
+      "youtubeId": "A7KXJNbo3Ew",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 4)",
+      "slug": "breast-cancer-awareness-4",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["newly-diagnosed"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-04",
+      "featured": false,
+      "takeaways": [
+        "Biopsy confirms the diagnosis",
+        "Staging determines the extent of cancer",
+        "Hormone receptor status guides treatment"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What type of breast cancer do I have?",
+        "What stage is my cancer?"
+      ]
+    },
+    {
+      "youtubeId": "41p4gxKcbVI",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 5)",
+      "slug": "breast-cancer-awareness-5",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-05",
+      "featured": true,
+      "takeaways": [
+        "Surgery is often the first treatment",
+        "Lumpectomy vs mastectomy depends on many factors",
+        "Radiation may follow surgery"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What are my surgical options?",
+        "Will I need chemotherapy?"
+      ]
+    },
+    {
+      "youtubeId": "aFIF9SwjJD0",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 6)",
+      "slug": "breast-cancer-awareness-6",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices", "side-effects"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-06",
+      "featured": false,
+      "takeaways": [
+        "Chemotherapy uses drugs to kill cancer cells",
+        "Treatment is given in cycles",
+        "Side effects are manageable for most patients"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "How many cycles will I need?",
+        "What side effects should I expect?"
+      ]
+    },
+    {
+      "youtubeId": "zEanLkUpnsA",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 7)",
+      "slug": "breast-cancer-awareness-7",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["side-effects", "caregiving"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-07",
+      "featured": false,
+      "takeaways": [
+        "Daily routines may need adjustment",
+        "Fatigue is common but manageable",
+        "Nutrition plays an important role"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What activities can I continue?",
+        "How should I adjust my diet?"
+      ]
+    },
+    {
+      "youtubeId": "V9SMABvec20",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 8)",
+      "slug": "breast-cancer-awareness-8",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["caregiving"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-08",
+      "featured": false,
+      "takeaways": [
+        "Caregivers need support too",
+        "Self-care is not selfish",
+        "Asking for help is important"
+      ],
+      "whoIsThisFor": ["caregivers"],
+      "questionsToAsk": [
+        "How can I best support my loved one?",
+        "Where can I find caregiver support groups?"
+      ]
+    },
+    {
+      "youtubeId": "_bdgVdMu6Z4",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 9)",
+      "slug": "breast-cancer-awareness-9",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-09",
+      "featured": false,
+      "takeaways": [
+        "Follow-up care is crucial",
+        "Regular check-ups detect recurrence early",
+        "Survivorship care plans guide recovery"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "How often will I need follow-up visits?",
+        "What signs of recurrence should I watch for?"
+      ]
+    },
+    {
+      "youtubeId": "LdgCLmz2YFQ",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 10)",
+      "slug": "breast-cancer-awareness-10",
+      "playlist": "breast-awareness",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices", "caregiving"],
+      "speaker": "SCCF Medical Team",
+      "date": "2024-01-10",
+      "featured": false,
+      "takeaways": [
+        "Many breast cancer patients become long-term survivors",
+        "Quality of life improves after treatment",
+        "Survivorship communities provide support"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "What does survivorship look like?",
+        "How can I connect with other survivors?"
+      ]
+    },
+    {
+      "youtubeId": "AmWyqSkCuqE",
+      "title": "Onco Talks Episode 1: Oral Cancer",
+      "slug": "onco-talks-episode-1-oral-cancer",
+      "playlist": "onco-talks",
+      "cancerTypes": ["oral"],
+      "situations": ["prevention", "newly-diagnosed"],
+      "speaker": "Dr. Amit Kumar",
+      "affiliation": "SCCF",
+      "date": "2024-02-01",
+      "featured": true,
+      "takeaways": [
+        "Tobacco use is the primary risk factor for oral cancer",
+        "Betel nut chewing significantly increases risk",
+        "Early signs include non-healing mouth sores",
+        "Regular dental check-ups help with early detection",
+        "Quitting tobacco substantially reduces risk"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "What symptoms should I watch for?",
+        "How is oral cancer diagnosed?",
+        "What treatment options exist?",
+        "How can I quit tobacco?"
+      ]
+    },
+    {
+      "youtubeId": "N8CmiHcXcok",
+      "title": "Onco Talks Episode 2: Prostate Cancer",
+      "slug": "onco-talks-episode-2-prostate-cancer",
+      "playlist": "onco-talks",
+      "cancerTypes": ["prostate"],
+      "situations": ["prevention", "newly-diagnosed"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-02",
+      "featured": true,
+      "takeaways": [
+        "Prostate cancer is common in older men",
+        "PSA testing can help with early detection",
+        "Many prostate cancers grow slowly",
+        "Treatment options range from surveillance to surgery",
+        "Quality of life considerations are important"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "Should I get PSA testing?",
+        "What does my PSA level mean?",
+        "Is active surveillance right for me?",
+        "What are the side effects of treatment?"
+      ]
+    },
+    {
+      "youtubeId": "ModQvH5WTXk",
+      "title": "Onco Talks Episode 3: Cancer Surgery",
+      "slug": "onco-talks-episode-3-cancer-surgery",
+      "playlist": "onco-talks",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-03",
+      "featured": true,
+      "takeaways": [
+        "Surgery can be curative for many cancers",
+        "Minimally invasive techniques reduce recovery time",
+        "Staging surgery helps plan treatment",
+        "Reconstruction options are available",
+        "Recovery varies by procedure"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Is surgery recommended for my cancer?",
+        "What type of surgery will be performed?",
+        "What is the recovery time?",
+        "What are the risks?"
+      ]
+    },
+    {
+      "youtubeId": "X3dCbyG-GnE",
+      "title": "Onco Talks Episode 4: Ovarian Cancer",
+      "slug": "onco-talks-episode-4-ovarian-cancer",
+      "playlist": "onco-talks",
+      "cancerTypes": ["ovarian"],
+      "situations": ["prevention", "newly-diagnosed"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-04",
+      "featured": true,
+      "takeaways": [
+        "Ovarian cancer often has vague early symptoms",
+        "Bloating and pelvic pain can be warning signs",
+        "Family history increases risk",
+        "Genetic testing may be recommended",
+        "Surgery and chemotherapy are main treatments"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "What are the early warning signs?",
+        "Should I consider genetic testing?",
+        "What is the treatment approach?",
+        "What is the prognosis?"
+      ]
+    },
+    {
+      "youtubeId": "8dwnK_jiyUQ",
+      "title": "Onco Talks Episode 5: Childhood Cancer",
+      "slug": "onco-talks-episode-5-childhood-cancer",
+      "playlist": "onco-talks",
+      "cancerTypes": ["pediatric"],
+      "situations": ["newly-diagnosed", "caregiving"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-05",
+      "featured": false,
+      "takeaways": [
+        "Childhood cancers differ from adult cancers",
+        "Leukemia is the most common childhood cancer",
+        "Treatment success rates have improved significantly",
+        "Children often tolerate treatment well",
+        "Long-term follow-up is important for survivors"
+      ],
+      "whoIsThisFor": ["caregivers"],
+      "questionsToAsk": [
+        "What type of cancer does my child have?",
+        "What is the treatment plan?",
+        "How will this affect school?",
+        "What support is available for families?"
+      ]
+    },
+    {
+      "youtubeId": "6edsfQY1TZU",
+      "title": "Onco Talks Episode 6: Precision Oncology",
+      "slug": "onco-talks-episode-6-precision-oncology",
+      "playlist": "onco-talks",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-06",
+      "featured": false,
+      "takeaways": [
+        "Precision oncology tailors treatment to tumor genetics",
+        "Targeted therapies attack specific cancer features",
+        "Not all cancers have targetable mutations",
+        "Genetic testing guides treatment selection",
+        "Often fewer side effects than traditional chemotherapy"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Should my tumor be genetically tested?",
+        "Are there targeted therapies for my cancer?",
+        "What are the benefits of precision oncology?",
+        "Is immunotherapy an option?"
+      ]
+    },
+    {
+      "youtubeId": "8QbjErXl8DM",
+      "title": "Onco Talks Episode 7: Bone Marrow & Stem Cell Transplants",
+      "slug": "onco-talks-episode-7-bone-marrow-transplants",
+      "playlist": "onco-talks",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-07",
+      "featured": false,
+      "takeaways": [
+        "Transplants can be curative for blood cancers",
+        "Autologous uses patient's own cells",
+        "Allogeneic uses donor cells",
+        "Preparation involves intensive treatment",
+        "Recovery requires careful monitoring"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Am I a candidate for transplant?",
+        "What type of transplant is recommended?",
+        "What are the risks?",
+        "What is the recovery timeline?"
+      ]
+    },
+    {
+      "youtubeId": "3C0RUiaIuQQ",
+      "title": "Onco Talks Episode 8: Lung & Head and Neck Cancers",
+      "slug": "onco-talks-episode-8-lung-head-neck",
+      "playlist": "onco-talks",
+      "cancerTypes": ["lung", "oral"],
+      "situations": ["prevention", "newly-diagnosed"],
+      "speaker": "Guest Oncologist",
+      "affiliation": "Tata Memorial Hospital",
+      "date": "2024-02-08",
+      "featured": true,
+      "takeaways": [
+        "Smoking is the leading cause of lung cancer",
+        "Non-smokers can also develop lung cancer",
+        "Head and neck cancers often linked to tobacco and alcohol",
+        "Early symptoms may be subtle",
+        "Treatment advances have improved outcomes"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": [
+        "What stage is my cancer?",
+        "What are the treatment options?",
+        "How can I quit smoking?",
+        "What support is available?"
+      ]
+    },
+    {
+      "youtubeId": "u3H_YEUySe0",
+      "title": "Newer Advances in the Management of SCLC",
+      "slug": "panel-advances-sclc-management",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["lung"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-01",
+      "featured": false,
+      "takeaways": [
+        "Small cell lung cancer treatment is evolving",
+        "Immunotherapy combinations show promise",
+        "Case-based approach helps tailor treatment",
+        "Multidisciplinary care is essential"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What are the newest treatment options?",
+        "Is immunotherapy right for me?",
+        "What clinical trials are available?"
+      ]
+    },
+    {
+      "youtubeId": "hBVjnVOm-to",
+      "title": "Treatment Dilemma: Monotherapy vs Combination in Advanced EGFR-mutant NSCLC",
+      "slug": "panel-monotherapy-vs-combination-nsclc",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["lung"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-02",
+      "featured": false,
+      "takeaways": [
+        "EGFR mutations guide treatment selection",
+        "Combination therapy may offer benefits",
+        "Side effect profiles differ between approaches",
+        "Personalized decisions are key"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What is the best approach for my mutation?",
+        "What are the side effects of each option?",
+        "How do we monitor response?"
+      ]
+    },
+    {
+      "youtubeId": "d5AUvSTixGI",
+      "title": "Peri-Operative Immunotherapy in Head & Neck Cancer",
+      "slug": "panel-perioperative-immuno-head-neck",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["oral"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-03",
+      "featured": false,
+      "takeaways": [
+        "Immunotherapy is expanding to perioperative setting",
+        "Treatment before and after surgery may improve outcomes",
+        "Patient selection is important",
+        "Research is ongoing"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Am I a candidate for perioperative immunotherapy?",
+        "What are the potential benefits?",
+        "What are the risks?"
+      ]
+    },
+    {
+      "youtubeId": "kcVR4RpncPM",
+      "title": "Importance of TBS in 1L Treatment for RM SCCHN Patients (Part 1)",
+      "slug": "panel-tbs-scchn-treatment-1",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["oral"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-04",
+      "featured": false,
+      "takeaways": [
+        "Tumor burden score guides treatment decisions",
+        "First-line treatment selection is crucial",
+        "Biomarkers help personalize therapy"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What is my tumor burden score?",
+        "How does it affect my treatment?"
+      ]
+    },
+    {
+      "youtubeId": "T_dZJQ9Hetg",
+      "title": "Importance of TBS in 1L Treatment for RM SCCHN Patients (Part 2)",
+      "slug": "panel-tbs-scchn-treatment-2",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["oral"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-05",
+      "featured": false,
+      "takeaways": [
+        "Continued discussion on treatment selection",
+        "Case examples illustrate decision-making",
+        "Expert perspectives on optimal approach"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What factors determine my treatment plan?",
+        "What are my options?"
+      ]
+    },
+    {
+      "youtubeId": "5Q9RkMKJnUU",
+      "title": "Redefining NSCLC Management with Atezolizumab",
+      "slug": "panel-atezolizumab-nsclc",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["lung"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-06",
+      "featured": false,
+      "takeaways": [
+        "Atezolizumab is an immunotherapy option",
+        "Used in various NSCLC settings",
+        "Biomarker testing guides selection",
+        "Combination approaches are evolving"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Is this immunotherapy right for me?",
+        "What are the side effects?",
+        "How is response monitored?"
+      ]
+    },
+    {
+      "youtubeId": "UYA6uaBpj6Y",
+      "title": "Role of 4-Factor PCC in Uncontrolled Bleeding",
+      "slug": "panel-pcc-bleeding-management",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-07",
+      "featured": false,
+      "takeaways": [
+        "Managing bleeding is critical in cancer care",
+        "PCC can reverse anticoagulation",
+        "Rapid response saves lives",
+        "Multidisciplinary approach is important"
+      ],
+      "whoIsThisFor": ["caregivers"],
+      "questionsToAsk": [
+        "What are the bleeding risks during treatment?",
+        "How are bleeding complications managed?"
+      ]
+    },
+    {
+      "youtubeId": "o7Wna9zx6EA",
+      "title": "Future of PICC Line Insertion",
+      "slug": "panel-picc-line-future",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-08",
+      "featured": false,
+      "takeaways": [
+        "PICC lines facilitate chemotherapy delivery",
+        "Proper care prevents complications",
+        "Advances improve patient comfort",
+        "Training ensures safe placement"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Do I need a PICC line?",
+        "How do I care for it?",
+        "What complications should I watch for?"
+      ]
+    },
+    {
+      "youtubeId": "o1z05WqsxDI",
+      "title": "NIAGARA Insights: Perioperative Strategies in Urothelial Carcinoma",
+      "slug": "panel-niagara-urothelial-carcinoma",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-09",
+      "featured": false,
+      "takeaways": [
+        "Perioperative treatment is evolving for bladder cancer",
+        "NIAGARA trial provides new insights",
+        "Immunotherapy shows promise in this setting",
+        "Patient selection is key"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What is the recommended treatment approach?",
+        "Am I a candidate for this treatment?"
+      ]
+    },
+    {
+      "youtubeId": "dtJDJSniP3k",
+      "title": "Setting a New Course with PADCEV in LA/mUC",
+      "slug": "panel-padcev-urothelial-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-10",
+      "featured": false,
+      "takeaways": [
+        "New targeted therapy for urothelial cancer",
+        "ADC therapy represents an advance",
+        "Efficacy demonstrated in clinical trials",
+        "Side effect management is important"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Is this treatment available for me?",
+        "What are the expected outcomes?"
+      ]
+    },
+    {
+      "youtubeId": "1IQ7JrKunvI",
+      "title": "Darolutamide: Expanding Horizons in Prostate Cancer Management",
+      "slug": "panel-darolutamide-prostate-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["prostate"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-11",
+      "featured": false,
+      "takeaways": [
+        "New treatment option for prostate cancer",
+        "Effective in multiple disease stages",
+        "Generally well tolerated",
+        "Improves survival outcomes"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Is this medication right for my situation?",
+        "What are the side effects?",
+        "How long will I need to take it?"
+      ]
+    },
+    {
+      "youtubeId": "ZV4X-FW7TIk",
+      "title": "Evolving Treatment Paradigm with Immunotherapy in Endometrial Cancer",
+      "slug": "panel-immunotherapy-endometrial-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-12",
+      "featured": false,
+      "takeaways": [
+        "Immunotherapy is changing endometrial cancer treatment",
+        "MSI status guides treatment selection",
+        "Combination approaches show promise",
+        "Research continues to expand options"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Should my tumor be tested for MSI?",
+        "Am I a candidate for immunotherapy?"
+      ]
+    },
+    {
+      "youtubeId": "0WKn963G2yw",
+      "title": "Toripalimab in HCC: New-Gen Immunotherapy in Liver Cancer",
+      "slug": "panel-toripalimab-liver-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-13",
+      "featured": false,
+      "takeaways": [
+        "New immunotherapy option for liver cancer",
+        "HCC treatment landscape is evolving",
+        "Combination with targeted therapy",
+        "Patient selection criteria"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What immunotherapy options are available?",
+        "How is liver function monitored during treatment?"
+      ]
+    },
+    {
+      "youtubeId": "uIBdYzmhtnw",
+      "title": "PARPi in Ovarian Cancer: Beyond BRCA and HRD Status",
+      "slug": "panel-parpi-ovarian-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["ovarian"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-14",
+      "featured": false,
+      "takeaways": [
+        "PARP inhibitors are effective in ovarian cancer",
+        "Benefits extend beyond BRCA mutations",
+        "HRD testing helps guide treatment",
+        "Maintenance therapy improves outcomes"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Should I be tested for BRCA mutations?",
+        "Am I a candidate for PARP inhibitors?",
+        "What is maintenance therapy?"
+      ]
+    },
+    {
+      "youtubeId": "OMAUKiwpQrA",
+      "title": "Identifying Hidden Threat in EGFR Exon 20 Insertion",
+      "slug": "panel-egfr-exon20-insertion",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["lung"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-15",
+      "featured": false,
+      "takeaways": [
+        "EGFR exon 20 insertions are unique mutations",
+        "Traditional EGFR inhibitors less effective",
+        "New targeted therapies available",
+        "Comprehensive testing is important"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What type of EGFR mutation do I have?",
+        "What treatments target my mutation?"
+      ]
+    },
+    {
+      "youtubeId": "KwEg-s7iOoo",
+      "title": "Peri-Operative Treatment in Resectable Gastric/GEJ Cancer",
+      "slug": "panel-perioperative-gastric-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-16",
+      "featured": false,
+      "takeaways": [
+        "Treatment before and after surgery improves outcomes",
+        "Latest perspectives on optimal approach",
+        "Multidisciplinary planning is essential",
+        "Patient factors guide treatment selection"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What treatment will I receive before surgery?",
+        "What is the overall treatment timeline?"
+      ]
+    },
+    {
+      "youtubeId": "r54S4FZD6YE",
+      "title": "TDXd in HER2-Low Breast Cancer: A New Frontier in ADC Therapeutics",
+      "slug": "panel-tdxd-her2-low-breast-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-17",
+      "featured": true,
+      "takeaways": [
+        "HER2-low is a newly defined category",
+        "ADC therapy effective in this group",
+        "Expands treatment options significantly",
+        "Testing for HER2-low status is important"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What is my HER2 status?",
+        "Am I eligible for this new therapy?",
+        "What are the side effects?"
+      ]
+    },
+    {
+      "youtubeId": "JRdT4eCYRe0",
+      "title": "HCC Surveillance to Treatment: An Interdisciplinary Dialogue",
+      "slug": "panel-hcc-surveillance-treatment",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["prevention", "treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-18",
+      "featured": false,
+      "takeaways": [
+        "Surveillance detects liver cancer early",
+        "High-risk patients benefit from screening",
+        "Treatment options depend on stage",
+        "Multidisciplinary care improves outcomes"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Am I at high risk for liver cancer?",
+        "What surveillance do I need?",
+        "What are my treatment options?"
+      ]
+    },
+    {
+      "youtubeId": "yyvW59WeWRs",
+      "title": "Tislelizumab in Esophageal and Gastric Cancer Management",
+      "slug": "panel-tislelizumab-esophageal-gastric",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-19",
+      "featured": false,
+      "takeaways": [
+        "New immunotherapy option for GI cancers",
+        "Potential in esophageal and gastric cancer",
+        "Clinical trial data supports use",
+        "Combination approaches being studied"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Is immunotherapy an option for my cancer?",
+        "What combinations are being used?"
+      ]
+    },
+    {
+      "youtubeId": "0-5lJpexanw",
+      "title": "Precision Sequencing in HR-Positive mBC: ADCs, Endocrine Agents, Biomarkers",
+      "slug": "panel-precision-sequencing-hr-positive-mbc",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-20",
+      "featured": false,
+      "takeaways": [
+        "Treatment sequencing optimizes outcomes",
+        "Multiple therapy options available",
+        "Biomarkers guide treatment selection",
+        "ADCs add to treatment options"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What is the best sequence of treatments?",
+        "What biomarker testing do I need?"
+      ]
+    },
+    {
+      "youtubeId": "idOPLjUiH2k",
+      "title": "Integrating Scalp Cooling into Cancer Care",
+      "slug": "panel-scalp-cooling-cancer-care",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["general"],
+      "situations": ["side-effects"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-21",
+      "featured": false,
+      "takeaways": [
+        "Scalp cooling can prevent hair loss during chemo",
+        "Evidence supports effectiveness",
+        "Not suitable for all patients or cancers",
+        "Practical considerations for implementation"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Is scalp cooling available at my center?",
+        "Am I a candidate for this?",
+        "How effective is it likely to be for me?"
+      ]
+    },
+    {
+      "youtubeId": "3jk8ONat100",
+      "title": "Transform the Journey for HER2+ Early Breast Cancer Patients",
+      "slug": "panel-her2-positive-early-breast-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-22",
+      "featured": false,
+      "takeaways": [
+        "HER2+ breast cancer treatment has transformed",
+        "Targeted therapies improve outcomes",
+        "Treatment duration and sequencing matter",
+        "Long-term survival rates have improved"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "What HER2-targeted treatments will I receive?",
+        "What is the expected outcome?",
+        "How long will treatment last?"
+      ]
+    },
+    {
+      "youtubeId": "2uxFpS8u-Ig",
+      "title": "Optimizing 1L HR+/HER2- ABC Treatment with CDK4/6i",
+      "slug": "panel-cdk46i-hr-positive-breast-cancer",
+      "playlist": "panel-discussions",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Medical Panel",
+      "date": "2024-03-23",
+      "featured": false,
+      "takeaways": [
+        "CDK4/6 inhibitors are standard of care",
+        "Combined with endocrine therapy",
+        "Significant improvement in outcomes",
+        "Manageable side effect profile"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": [
+        "Should I receive CDK4/6 inhibitor therapy?",
+        "What are the common side effects?",
+        "How is treatment monitored?"
+      ]
+    },
+    {
+      "youtubeId": "dc9jpspsE5w",
+      "title": "Ovarian and Endometrial Cancer Conference",
+      "slug": "conference-ovarian-endometrial-cancer",
+      "playlist": "conferences",
+      "cancerTypes": ["ovarian"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2024-04-01",
+      "featured": false,
+      "takeaways": [
+        "Latest advances in gynecologic oncology",
+        "Multidisciplinary approaches discussed",
+        "New treatment options reviewed"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "PwxJ7P1Uatw",
+      "title": "HCC Meeting Session 2",
+      "slug": "conference-hcc-meeting-session-2",
+      "playlist": "conferences",
+      "cancerTypes": ["general"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2024-04-02",
+      "featured": false,
+      "takeaways": [
+        "Liver cancer treatment updates",
+        "Expert discussions on management",
+        "Case-based learning"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "-pcwMMKo20I",
+      "title": "Breast Cancer Conference - September 25th",
+      "slug": "conference-breast-cancer-sept-25",
+      "playlist": "conferences",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2023-09-25",
+      "featured": false,
+      "takeaways": [
+        "Expert perspectives on breast cancer",
+        "Treatment advances discussed",
+        "Multidisciplinary approach"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "7Jx9fehlWyw",
+      "title": "Breast Cancer Conference - September 26th, 2023",
+      "slug": "conference-breast-cancer-sept-26",
+      "playlist": "conferences",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2023-09-26",
+      "featured": false,
+      "takeaways": [
+        "Continuation of breast cancer discussions",
+        "Clinical cases reviewed",
+        "Latest research presented"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "610iHu8Drpw",
+      "title": "Breast Cancer Conference - September 27th",
+      "slug": "conference-breast-cancer-sept-27",
+      "playlist": "conferences",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2023-09-27",
+      "featured": false,
+      "takeaways": [
+        "Final day of breast cancer conference",
+        "Summary and key takeaways",
+        "Future directions discussed"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "665TY6V6j08",
+      "title": "Colorectal & HCC Conference - January 19th, 2023",
+      "slug": "conference-colorectal-hcc-jan-2023",
+      "playlist": "conferences",
+      "cancerTypes": ["colorectal"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2023-01-19",
+      "featured": false,
+      "takeaways": [
+        "Colorectal cancer updates",
+        "Liver cancer treatment advances",
+        "Expert panel discussions"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "oVL4Sm-Gbyo",
+      "title": "Ovarian Cancer Symposium - March 15th, 2022",
+      "slug": "conference-ovarian-symposium-march-2022",
+      "playlist": "conferences",
+      "cancerTypes": ["ovarian"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2022-03-15",
+      "featured": false,
+      "takeaways": [
+        "Ovarian cancer management updates",
+        "Expert discussions",
+        "Treatment advances"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "C5JJCCTYjE8",
+      "title": "Post ASCO 2022 Updates in GU Cancer",
+      "slug": "conference-post-asco-2022-gu-cancer",
+      "playlist": "conferences",
+      "cancerTypes": ["prostate"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2022-07-01",
+      "featured": false,
+      "takeaways": [
+        "Key updates from ASCO 2022",
+        "Genitourinary cancer advances",
+        "Clinical practice implications"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "bZlz0VM37fM",
+      "title": "Breaking the Myths in Breast Cancer",
+      "slug": "conference-breaking-myths-breast-cancer",
+      "playlist": "conferences",
+      "cancerTypes": ["breast"],
+      "situations": ["prevention", "newly-diagnosed"],
+      "speaker": "Conference Faculty",
+      "date": "2022-06-09",
+      "featured": true,
+      "takeaways": [
+        "Common misconceptions addressed",
+        "Evidence-based facts presented",
+        "Patient education focus"
+      ],
+      "whoIsThisFor": ["patients", "caregivers", "general"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "S5AyTKA0H18",
+      "title": "HER2 Positive Breast Cancer Symposium",
+      "slug": "conference-her2-positive-symposium",
+      "playlist": "conferences",
+      "cancerTypes": ["breast"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2022-05-01",
+      "featured": false,
+      "takeaways": [
+        "HER2+ treatment advances",
+        "Targeted therapy discussions",
+        "Clinical outcomes data"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "fjAC37dAlQs",
+      "title": "Prostate Cancer Conference",
+      "slug": "conference-prostate-cancer",
+      "playlist": "conferences",
+      "cancerTypes": ["prostate"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2022-04-01",
+      "featured": false,
+      "takeaways": [
+        "Prostate cancer treatment updates",
+        "Expert panel discussions",
+        "Latest research findings"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "eT70YNcbNO8",
+      "title": "Ovarian Symposium Part 2",
+      "slug": "conference-ovarian-symposium-part-2",
+      "playlist": "conferences",
+      "cancerTypes": ["ovarian"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2022-03-15",
+      "featured": false,
+      "takeaways": [
+        "Continuation of ovarian cancer discussions",
+        "Treatment approaches reviewed",
+        "Expert perspectives"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    },
+    {
+      "youtubeId": "wfI1pQVrInc",
+      "title": "Ovarian Symposium - March 15th, 2022",
+      "slug": "conference-ovarian-symposium-march-2022-full",
+      "playlist": "conferences",
+      "cancerTypes": ["ovarian"],
+      "situations": ["treatment-choices"],
+      "speaker": "Conference Faculty",
+      "date": "2022-03-15",
+      "featured": false,
+      "takeaways": [
+        "Comprehensive ovarian cancer symposium",
+        "Multiple expert presentations",
+        "State of the art treatment"
+      ],
+      "whoIsThisFor": ["patients", "caregivers"],
+      "questionsToAsk": []
+    }
+  ],
+  "cancerTypes": [
+    { "id": "breast", "label": "Breast Cancer" },
+    { "id": "oral", "label": "Oral & Head/Neck Cancer" },
+    { "id": "prostate", "label": "Prostate Cancer" },
+    { "id": "ovarian", "label": "Ovarian Cancer" },
+    { "id": "lung", "label": "Lung Cancer" },
+    { "id": "colorectal", "label": "Colorectal Cancer" },
+    { "id": "pediatric", "label": "Pediatric Cancers" },
+    { "id": "general", "label": "General / Multiple" }
+  ],
+  "situations": [
+    { "id": "newly-diagnosed", "label": "Newly Diagnosed" },
+    { "id": "treatment-choices", "label": "Treatment Options" },
+    { "id": "side-effects", "label": "Managing Side Effects" },
+    { "id": "caregiving", "label": "Caregiving" },
+    { "id": "prevention", "label": "Prevention & Screening" }
+  ],
+  "playlists": [
+    { "id": "onco-talks", "label": "Onco Talks" },
+    { "id": "breast-awareness", "label": "Breast Cancer Awareness" },
+    { "id": "panel-discussions", "label": "Medical Panel Discussions" },
+    { "id": "conferences", "label": "Conferences & Symposiums" }
+  ]
+}
