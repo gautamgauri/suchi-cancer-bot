@@ -13,10 +13,11 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
   <section class="hero">
     <div class="hero-content">
       <span class="hero-badge">Suchitra Cancer Care Foundation</span>
-      <h1>Clear cancer guidance for patients and families in Eastern India</h1>
+      <h1>A calmer way to find your next step</h1>
       <p class="hero-lead">
-        Watch doctor-led conversations, ask questions in Hindi or English,
-        and prepare for your care journey with trusted information.
+        Cancer doesn't arrive politely. SCCF helps patients and caregivers access
+        reliable, oncologist-led information and clear next-step guidance —
+        so your next conversation with a doctor is more informed and less frightening.
       </p>
       <div class="hero-actions">
         <a href="/watch" class="btn btn-primary btn-lg">
@@ -145,7 +146,7 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
     <div class="container">
       <header class="section-header">
         <h2>Onco Talks</h2>
-        <p>Doctor-led conversations on common cancers and treatment decisions</p>
+        <p>Oncologists answering the questions families actually ask — what terms mean, how decisions are made, what to expect, and what to ask.</p>
       </header>
 
       <div class="video-grid">
@@ -276,27 +277,27 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
     <div class="container">
       <div class="suchi-cta">
         <div class="suchi-body">
-          <h2>Have Questions? Ask Suchi</h2>
+          <h2>Meet Suchi</h2>
           <p>
-            Suchi is an AI assistant trained on trusted sources like NCI.
-            Ask in Hindi or English to understand cancer topics, prepare for
-            doctor visits, or learn about your situation.
+            Suchi is SCCF's digital guide — built to help you navigate information with more confidence.
+            Get clear explanations in simple language, prepare questions to ask your doctor,
+            and find reliable resources — especially when you're feeling overwhelmed.
           </p>
           <p class="suchi-example">
             <em>"Meri maa ko breast cancer hai, next step kya hoga?"</em>
           </p>
           <div class="suchi-features">
-            <span>✓ Trusted sources</span>
-            <span>✓ Simple language</span>
-            <span>✓ Privacy-focused</span>
+            <span>✓ Clear explanations</span>
+            <span>✓ Questions to ask your doctor</span>
+            <span>✓ Reliable resources</span>
           </div>
           <a href={botUrl} target="_blank" rel="noopener" class="btn btn-white btn-lg">
-            Try Suchi Now
+            Ask Suchi
           </a>
         </div>
         <div class="suchi-notice">
-          <strong>Important:</strong> Suchi provides information only. It does not diagnose,
-          does not replace your doctor, and cannot handle emergencies.
+          <strong>Suchi is not a doctor.</strong> It's a guide to help you learn and prepare —
+          not a substitute for medical consultation. For emergencies, seek immediate care.
         </div>
       </div>
     </div>
@@ -308,7 +309,7 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
       <div class="contact-grid">
         <div class="contact-info">
           <h2>Contact Us</h2>
-          <p class="contact-lead">For cancer-related guidance and support, reach out to us.</p>
+          <p class="contact-lead">Have a question, feedback, or a suggestion for a future Onco Talks episode? Send us a note — we read every message.</p>
 
           <div class="contact-details">
             <div class="detail-row">
@@ -384,7 +385,8 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
               <polyline points="22 4 12 14.01 9 11.01"/>
             </svg>
             <p><strong>Thank you!</strong></p>
-            <p>We've received your message and will reply within 2–3 working days.</p>
+            <p>We've received your message. We'll reply within 2–3 working days.</p>
+            <p class="form-success-note">If your message is urgent or medical in nature, please contact a clinician or nearby hospital.</p>
           </div>
         </div>
       </div>
@@ -913,8 +915,16 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
     margin-bottom: 0.25rem;
   }
 
-  .form-success p:last-of-type {
+  .form-success p:nth-of-type(2) {
     font-size: var(--text-sm);
     opacity: 0.9;
+  }
+
+  .form-success-note {
+    margin-top: 1rem !important;
+    padding-top: 1rem;
+    border-top: 1px solid #a7f3d0;
+    font-size: var(--text-xs) !important;
+    opacity: 0.8 !important;
   }
 </style>
