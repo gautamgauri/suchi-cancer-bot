@@ -49,7 +49,16 @@ export class AbstentionService {
       /\b(fainting|fainted|passed\s+out|unconscious)\b/i,
       /\b(rapidly\s+worsening|getting\s+worse\s+quickly|suddenly\s+worse)\b/i,
       /\b(emergency|urgent|immediate|right\s+now)\b/i,
-      /\b(chest\s+pain|heart\s+attack|stroke)\b/i
+      /\b(chest\s+pain|heart\s+attack|stroke)\b/i,
+      // Febrile neutropenia - fever during chemo is oncology emergency
+      /\b(fever|temperature|high\s+temp)\b.*\b(chemo|chemotherapy|treatment|during\s+treatment)\b/i,
+      /\b(chemo|chemotherapy|treatment)\b.*\b(fever|temperature|high\s+temp)\b/i,
+      // Stroke symptoms - one-sided weakness/numbness + headache
+      /\b(weakness|numb|numbness)\b.*\b(one\s+side|left\s+side|right\s+side)\b/i,
+      /\b(one\s+side|left\s+side|right\s+side)\b.*\b(weakness|weak|numb|numbness)\b/i,
+      // Post-surgical complications
+      /\b(bleeding)\b.*\b(after\s+surgery|post\s+surgery|surgical)\b/i,
+      /\b(surgery|surgical)\b.*\b(bleeding|blood)\b/i
     ];
 
     return urgencyPatterns.some(pattern => pattern.test(userText));
