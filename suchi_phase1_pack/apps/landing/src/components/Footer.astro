@@ -4,35 +4,42 @@ const currentYear = new Date().getFullYear();
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-grid">
+    <div class="footer-top">
       <div class="footer-brand">
-        <h3>Suchitra Cancer Care Foundation</h3>
-        <p>In loving memory of Late Suchitra Gauri</p>
-        <p class="tagline">Awareness | Guidance | Navigation</p>
-      </div>
-
-      <div class="footer-links">
-        <h4>Quick Links</h4>
-        <a href="/">Home</a>
-        <a href="/watch">Watch Onco Talks</a>
-        <a href="/about">About Us</a>
-        <a href="/#contact">Contact</a>
-      </div>
-
-      <div class="footer-contact">
-        <h4>Contact</h4>
-        <p>
-          <a href="mailto:info@suchitracancercare.org">info@suchitracancercare.org</a>
+        <a href="/" class="footer-logo">
+          <span class="footer-logo-mark"></span>
+          <span class="footer-logo-text">Suchitra Cancer Care</span>
+        </a>
+        <p class="footer-tagline">
+          In loving memory of Late Suchitra Gauri. Empowering patients, caregivers, and
+          communities with clear, compassionate cancer information and guidance.
         </p>
-        <p>Focus: Eastern India</p>
+      </div>
+
+      <div class="footer-nav">
+        <h4 class="footer-nav-title">Navigate</h4>
+        <ul class="footer-nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/watch">Onco Talks</a></li>
+          <li><a href="/about">About Us</a></li>
+          <li><a href="/#contact">Contact</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav">
+        <h4 class="footer-nav-title">Resources</h4>
+        <ul class="footer-nav-list">
+          <li><a href="https://suchi-web-621946741407.asia-south1.run.app" target="_blank" rel="noopener">Ask Suchi</a></li>
+          <li><a href="https://www.youtube.com/channel/UCI242a2_VRTCdCbpXzyeW4w" target="_blank" rel="noopener">YouTube Channel</a></li>
+          <li><a href="mailto:info@suchitracancercare.org">Email Us</a></li>
+        </ul>
       </div>
     </div>
 
     <div class="footer-bottom">
-      <p>&copy; {currentYear} Suchitra Cancer Care Foundation. All rights reserved.</p>
-      <p class="disclaimer">
-        SCCF does not provide medical treatment or diagnostic services.
-        For emergencies, contact local medical services immediately.
+      <p class="footer-copy">&copy; {currentYear} Suchitra Cancer Care Foundation. All rights reserved.</p>
+      <p class="footer-disclaimer">
+        SCCF does not provide medical treatment or diagnostic services. For emergencies, contact local medical services immediately.
       </p>
     </div>
   </div>
@@ -40,93 +47,126 @@ const currentYear = new Date().getFullYear();
 
 <style>
   .site-footer {
-    background: #0f172a;
-    color: #94a3b8;
-    padding: 3rem 1.5rem 1.5rem;
+    background: linear-gradient(135deg, #0a1626 0%, #0f172a 100%);
+    color: #a6b0d4;
+    padding: 3.5rem 1.5rem 2rem;
   }
 
   .footer-inner {
-    max-width: 1120px;
+    max-width: 1200px;
     margin: 0 auto;
   }
 
-  .footer-grid {
+  .footer-top {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
     gap: 3rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #1e293b;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   @media (max-width: 768px) {
-    .footer-grid {
+    .footer-top {
       grid-template-columns: 1fr;
       gap: 2rem;
     }
   }
 
-  .footer-brand h3 {
-    color: white;
-    font-size: 1.125rem;
-    margin-bottom: 0.5rem;
+  /* Brand */
+  .footer-brand {
+    max-width: 340px;
   }
 
-  .footer-brand p {
-    font-size: 0.875rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .footer-brand .tagline {
-    color: #22d3ee;
-    font-weight: 500;
-    margin-top: 0.5rem;
-  }
-
-  .footer-links h4,
-  .footer-contact h4 {
-    color: white;
-    font-size: 0.9375rem;
-    margin-bottom: 0.875rem;
-  }
-
-  .footer-links a {
-    display: block;
-    color: #94a3b8;
-    font-size: 0.875rem;
-    padding: 0.25rem 0;
+  .footer-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
     text-decoration: none;
-    transition: color 0.15s;
+    margin-bottom: 1rem;
   }
 
-  .footer-links a:hover {
-    color: white;
+  .footer-logo-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: conic-gradient(from 210deg, #f4b41a, #ff7d6b, #ff4b6b, #4de2c1, #f4b41a);
+    flex-shrink: 0;
   }
 
-  .footer-contact p {
+  .footer-logo-text {
+    font-family: var(--font-serif, 'Fraunces', Georgia, serif);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #f5f7ff;
+  }
+
+  .footer-tagline {
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: #a6b0d4;
+    margin: 0;
+  }
+
+  /* Nav columns */
+  .footer-nav-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #f5f7ff;
+    margin-bottom: 1rem;
+  }
+
+  .footer-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .footer-nav-list li {
+    margin-bottom: 0.625rem;
+  }
+
+  .footer-nav-list a {
+    color: #a6b0d4;
     font-size: 0.875rem;
-    margin-bottom: 0.375rem;
-  }
-
-  .footer-contact a {
-    color: #22d3ee;
     text-decoration: none;
+    transition: color 0.15s ease;
   }
 
-  .footer-contact a:hover {
-    text-decoration: underline;
+  .footer-nav-list a:hover {
+    color: #4de2c1;
   }
 
+  /* Bottom */
   .footer-bottom {
-    padding-top: 1.5rem;
+    padding-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
     text-align: center;
   }
 
-  .footer-bottom p {
-    font-size: 0.8125rem;
-    color: #64748b;
+  @media (min-width: 640px) {
+    .footer-bottom {
+      flex-direction: row;
+      justify-content: space-between;
+      text-align: left;
+    }
   }
 
-  .footer-bottom .disclaimer {
-    margin-top: 0.375rem;
+  .footer-copy {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0;
+  }
+
+  .footer-disclaimer {
+    font-size: 0.6875rem;
+    color: #475569;
+    margin: 0;
+    max-width: 400px;
   }
 </style>

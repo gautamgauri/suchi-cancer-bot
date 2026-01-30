@@ -1,37 +1,36 @@
 ---
 const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
+const currentPath = Astro.url.pathname;
 ---
 
-<!-- Compact disclaimer -->
-<div class="disclaimer-bar">
-  <strong>SCCF is not a hospital.</strong> For diagnosis or treatment, consult a healthcare professional.
-</div>
-
-<!-- Main Header -->
-<header class="site-header">
-  <div class="header-inner">
-    <a href="/" class="logo" aria-label="Suchitra Cancer Care Foundation - Home">
-      <span class="logo-icon"></span>
-      <span class="logo-text">
-        <span class="logo-name">Suchitra Cancer Care</span>
-        <span class="logo-tagline">Awareness | Guidance | Navigation</span>
+<!-- Floating Nav Wrapper -->
+<div class="nav-wrapper">
+  <nav class="site-nav" aria-label="Primary navigation">
+    <!-- Logo -->
+    <a href="/" class="nav-logo" aria-label="Suchitra Cancer Care Foundation - Home">
+      <span class="nav-logo-mark" aria-hidden="true"></span>
+      <span class="nav-logo-text">
+        <span class="nav-title">Suchitra Cancer Care</span>
+        <span class="nav-subtitle">Awareness · Guidance · Navigation</span>
       </span>
     </a>
 
-    <nav class="main-nav" id="main-nav">
-      <a href="/">Home</a>
-      <a href="/about">About</a>
-      <a href="/watch">Onco Talks</a>
-      <a href="/#contact">Contact</a>
-    </nav>
+    <!-- Desktop Links -->
+    <div class="nav-links">
+      <a href="/" class={`nav-link ${currentPath === '/' ? 'nav-link--active' : ''}`}>Home</a>
+      <a href="/about" class={`nav-link ${currentPath === '/about' ? 'nav-link--active' : ''}`}>About</a>
+      <a href="/watch" class={`nav-link ${currentPath.startsWith('/watch') ? 'nav-link--active' : ''}`}>Onco Talks</a>
+      <a href="/#contact" class="nav-link">Contact</a>
+    </div>
 
-    <div class="header-actions">
-      <a href={botUrl} target="_blank" rel="noopener" class="btn btn-cta">
+    <!-- Actions -->
+    <div class="nav-actions">
+      <a href={botUrl} target="_blank" rel="noopener" class="nav-cta">
         Ask Suchi
       </a>
       <button
-        class="menu-toggle"
-        id="menu-toggle"
+        class="nav-toggle"
+        id="nav-toggle"
         aria-label="Toggle menu"
         aria-expanded="false"
         aria-controls="mobile-menu"
@@ -44,30 +43,33 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
         </svg>
       </button>
     </div>
-  </div>
-
-  <!-- Mobile Menu -->
-  <nav class="mobile-menu" id="mobile-menu" aria-hidden="true">
-    <a href="/">Home</a>
-    <a href="/about">About</a>
-    <a href="/watch">Onco Talks</a>
-    <a href="/#contact">Contact</a>
-    <a href={botUrl} target="_blank" rel="noopener" class="btn btn-cta mobile-cta">
-      Ask Suchi
-    </a>
   </nav>
-</header>
+</div>
+
+<!-- Mobile Menu Panel -->
+<nav class="mobile-menu" id="mobile-menu" aria-hidden="true">
+  <a href="/">Home</a>
+  <a href="/about">About</a>
+  <a href="/watch">Onco Talks</a>
+  <a href="/#contact">Contact</a>
+  <a href={botUrl} target="_blank" rel="noopener" class="mobile-cta">
+    Ask Suchi
+  </a>
+</nav>
+
+<!-- Disclaimer Banner -->
+<div class="disclaimer-banner" role="status" aria-label="Important disclaimer">
+  <strong>SCCF is not a hospital or clinic.</strong> For diagnosis or treatment, consult a qualified healthcare professional.
+</div>
 
 <script>
-  const toggle = document.getElementById('menu-toggle');
+  const toggle = document.getElementById('nav-toggle');
   const menu = document.getElementById('mobile-menu');
-  const header = document.querySelector('.site-header');
 
   toggle?.addEventListener('click', () => {
     const isOpen = menu?.getAttribute('aria-hidden') === 'false';
     menu?.setAttribute('aria-hidden', String(!isOpen));
     toggle.setAttribute('aria-expanded', String(!isOpen));
-    header?.classList.toggle('menu-open', !isOpen);
   });
 
   // Close on link click
@@ -75,200 +77,14 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
     link.addEventListener('click', () => {
       menu.setAttribute('aria-hidden', 'true');
       toggle?.setAttribute('aria-expanded', 'false');
-      header?.classList.remove('menu-open');
     });
   });
+
+  // Close on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu?.getAttribute('aria-hidden') === 'false') {
+      menu.setAttribute('aria-hidden', 'true');
+      toggle?.setAttribute('aria-expanded', 'false');
+    }
+  });
 </script>
-
-<style>
-  .disclaimer-bar {
-    background: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
-    padding: 0.375rem 1rem;
-    text-align: center;
-    font-size: 0.75rem;
-    color: #475569;
-  }
-
-  .disclaimer-bar strong {
-    color: #1e293b;
-  }
-
-  .site-header {
-    background: white;
-    border-bottom: 1px solid #e2e8f0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .header-inner {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-  }
-
-  /* Logo */
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    text-decoration: none;
-    flex-shrink: 0;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, var(--color-primary, #0f766e) 0%, #0891b2 100%);
-    border-radius: 0.5rem;
-  }
-
-  .logo-text {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-  }
-
-  .logo-name {
-    font-weight: 700;
-    font-size: 0.9375rem;
-    color: #1e293b;
-  }
-
-  .logo-tagline {
-    font-size: 0.625rem;
-    color: #64748b;
-  }
-
-  /* Main Nav */
-  .main-nav {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .main-nav a {
-    color: #475569;
-    font-size: 0.9375rem;
-    font-weight: 500;
-    text-decoration: none;
-    padding: 0.5rem 0;
-    transition: color 0.15s;
-  }
-
-  .main-nav a:hover {
-    color: #1e40af;
-  }
-
-  /* Header Actions */
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .btn-cta {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 40px;
-    padding: 0.5rem 1.25rem;
-    background: #0891b2;
-    color: white;
-    font-size: 0.875rem;
-    font-weight: 600;
-    border-radius: 0.5rem;
-    text-decoration: none;
-    transition: background 0.15s;
-  }
-
-  .btn-cta:hover {
-    background: #0e7490;
-    color: white;
-  }
-
-  /* Menu Toggle */
-  .menu-toggle {
-    display: none;
-    width: 44px;
-    height: 44px;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #1e293b;
-  }
-
-  .menu-toggle svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .menu-toggle .icon-close {
-    display: none;
-  }
-
-  .site-header.menu-open .menu-toggle .icon-menu {
-    display: none;
-  }
-
-  .site-header.menu-open .menu-toggle .icon-close {
-    display: block;
-  }
-
-  /* Mobile Menu */
-  .mobile-menu {
-    display: none;
-    flex-direction: column;
-    padding: 1rem;
-    background: white;
-    border-top: 1px solid #e2e8f0;
-  }
-
-  .mobile-menu[aria-hidden="false"] {
-    display: flex;
-  }
-
-  .mobile-menu a {
-    display: block;
-    padding: 0.875rem 1rem;
-    color: #1e293b;
-    font-size: 1rem;
-    font-weight: 500;
-    text-decoration: none;
-    border-radius: 0.5rem;
-  }
-
-  .mobile-menu a:hover {
-    background: #f8fafc;
-  }
-
-  .mobile-cta {
-    margin-top: 0.5rem;
-  }
-
-  @media (max-width: 768px) {
-    .main-nav {
-      display: none;
-    }
-
-    .menu-toggle {
-      display: flex;
-    }
-
-    .header-inner {
-      height: 56px;
-    }
-
-    .logo-tagline {
-      display: none;
-    }
-  }
-</style>
