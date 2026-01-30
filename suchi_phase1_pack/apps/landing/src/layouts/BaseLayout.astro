@@ -21,14 +21,16 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
   <link rel="stylesheet" href="/styles/global.css" />
 </head>
 <body>
+  <!-- Compact disclaimer banner -->
   <div class="disclaimer-banner">
-    <p><strong>SCCF is not a hospital or diagnostic service.</strong> For diagnosis or treatment, consult a qualified healthcare professional.</p>
+    <strong>SCCF is not a hospital or diagnostic service.</strong> For diagnosis or treatment, consult a healthcare professional.
   </div>
 
+  <!-- Main Navigation -->
   <nav class="main-nav">
     <div class="nav-inner">
-      <a href="/" class="nav-logo">
-        <span class="logo-mark"></span>
+      <a href="/" class="nav-logo" aria-label="Suchitra Cancer Care Foundation - Home">
+        <span class="logo-mark" role="img" aria-label="SCCF Logo"></span>
         <span class="logo-text">
           <span class="logo-title">Suchitra Cancer Care</span>
           <span class="logo-subtitle">Awareness | Guidance | Navigation</span>
@@ -37,15 +39,32 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
 
       <div class="nav-links">
         <a href="/">Home</a>
-        <a href="/watch">Watch</a>
         <a href="/about">About</a>
+        <a href="/watch">Onco Talks</a>
+        <a href="/#contact">Contact</a>
       </div>
 
       <div class="nav-actions">
-        <a href={botUrl} target="_blank" rel="noopener" class="btn-primary btn-sm">
-          Try Suchi
+        <a href={botUrl} target="_blank" rel="noopener" class="btn btn-accent btn-sm">
+          Ask Suchi
         </a>
+        <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" id="nav-toggle">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
       </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobile-nav">
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/watch">Onco Talks</a>
+      <a href="/#contact">Contact</a>
+      <a href={botUrl} target="_blank" rel="noopener" class="btn btn-accent">
+        Ask Suchi
+      </a>
     </div>
   </nav>
 
@@ -67,6 +86,7 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
           <a href="/">Home</a>
           <a href="/watch">Watch Onco Talks</a>
           <a href="/about">About Us</a>
+          <a href="/#contact">Contact</a>
         </div>
 
         <div class="footer-contact">
@@ -82,5 +102,24 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
       </div>
     </div>
   </footer>
+
+  <script>
+    // Mobile navigation toggle
+    const toggle = document.getElementById('nav-toggle');
+    const mobileNav = document.getElementById('mobile-nav');
+
+    toggle?.addEventListener('click', () => {
+      const isOpen = mobileNav?.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(isOpen));
+    });
+
+    // Close mobile nav when clicking a link
+    mobileNav?.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileNav.classList.remove('open');
+        toggle?.setAttribute('aria-expanded', 'false');
+      });
+    });
+  </script>
 </body>
 </html>

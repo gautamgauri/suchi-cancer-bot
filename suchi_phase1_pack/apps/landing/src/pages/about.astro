@@ -45,11 +45,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <!-- Founders -->
   <section class="section">
     <div class="section-inner">
-      <h2 class="section-title">Founders</h2>
-      <p class="section-subtitle">
-        Together, they bring lived experience, clinical expertise, and a shared commitment
-        to calm, responsible cancer communication.
-      </p>
+      <div class="section-header text-left">
+        <h2>Founders</h2>
+        <p>
+          Together, they bring lived experience, clinical expertise, and a shared commitment
+          to calm, responsible cancer communication.
+        </p>
+      </div>
 
       <div class="founders-list">
         <article class="founder-card">
@@ -139,7 +141,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 
   .mission-text {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     line-height: 1.7;
     color: var(--color-text);
     margin: 0;
@@ -154,45 +156,36 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 
   .story-section p {
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
     line-height: 1.8;
     color: var(--color-text-secondary);
     margin-bottom: 1rem;
   }
 
-  .section-title {
-    margin-bottom: 0.5rem;
-  }
-
-  .section-subtitle {
-    color: var(--color-text-secondary);
-    font-size: 1.125rem;
-    max-width: 600px;
-    margin-bottom: 2rem;
-  }
-
   .founders-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
   }
 
   .founder-card {
-    background: #f8fafc;
+    background: var(--color-bg-soft);
     padding: 1.5rem;
     border-radius: var(--radius-lg);
+    border: 1px solid #e2e8f0;
   }
 
   .founder-card h3 {
     margin-bottom: 0.25rem;
+    font-size: 1.125rem;
   }
 
   .founder-role {
     color: var(--color-primary);
     font-weight: 600;
     margin-bottom: 1rem;
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
   }
 
   .founder-card p:last-child {
@@ -214,7 +207,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 
   .focus-banner {
-    background: linear-gradient(135deg, var(--color-primary) 0%, #0ea5e9 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
     color: white;
     padding: 2rem 3rem;
     border-radius: var(--radius-lg);
@@ -231,5 +224,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .focus-banner p {
     opacity: 0.95;
     margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .page-hero {
+      padding: 3rem 1rem;
+    }
+
+    .mission-block {
+      padding: 2rem 1.5rem;
+    }
+
+    .focus-banner {
+      padding: 1.5rem;
+    }
   }
 </style>

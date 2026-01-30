@@ -12,33 +12,79 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
   <!-- Hero Section -->
   <section class="hero">
     <div class="hero-inner">
-      <div class="hero-content">
-        <p class="hero-eyebrow">Onco Talks by Suchitra Cancer Care</p>
-        <h1 class="hero-title">Conversations with oncologists that help you understand cancer</h1>
-        <p class="hero-subtitle">
-          Educational videos from doctors at Tata Memorial Hospital and leading institutions.
-          Clear, calm guidance for patients and families in Eastern India.
-        </p>
-        <div class="hero-cta">
-          <a href="/watch" class="btn-primary">Watch Onco Talks</a>
-          <a href={botUrl} target="_blank" rel="noopener" class="btn-secondary">Ask Suchi</a>
+      <span class="hero-eyebrow">Suchitra Cancer Care Foundation</span>
+      <h1 class="hero-title">Clear cancer guidance for patients and families in Eastern India</h1>
+      <p class="hero-tagline">
+        Educational videos and AI-powered support to help you understand cancer,
+        prepare for doctor visits, and navigate your care journey.
+      </p>
+      <div class="hero-cta">
+        <a href={botUrl} target="_blank" rel="noopener" class="btn btn-accent btn-lg">
+          Ask Suchi
+        </a>
+        <a href="/watch" class="btn btn-secondary btn-lg" style="border-color: white; color: white;">
+          Watch Onco Talks
+        </a>
+      </div>
+      <p class="hero-cta-note">Ask questions in simple Hindi or English</p>
+
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number">54+</span>
+          <span class="stat-label">Videos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">8</span>
+          <span class="stat-label">Onco Talks Episodes</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">20+</span>
+          <span class="stat-label">Cities Reached</span>
         </div>
       </div>
-      <div class="hero-visual">
-        <div class="hero-stats">
-          <div class="stat-item">
-            <span class="stat-number">54+</span>
-            <span class="stat-label">Videos</span>
+    </div>
+  </section>
+
+  <!-- What Brings You Here -->
+  <section class="section section-alt">
+    <div class="section-inner">
+      <div class="section-header">
+        <h2>What brings you here?</h2>
+        <p>Find the right resources for your situation</p>
+      </div>
+      <div class="situation-grid">
+        <a href="/watch?situation=newly-diagnosed" class="situation-card">
+          <div class="situation-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
           </div>
-          <div class="stat-item">
-            <span class="stat-number">8</span>
-            <span class="stat-label">Onco Talks Episodes</span>
+          <span class="situation-label">For Patients</span>
+          <h3>Newly Diagnosed</h3>
+          <p>Just heard the word "cancer"? Start here for calm, step-by-step guidance.</p>
+        </a>
+        <a href="/watch?situation=treatment-choices" class="situation-card">
+          <div class="situation-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
-          <div class="stat-item">
-            <span class="stat-number">20+</span>
-            <span class="stat-label">Cities Reached</span>
+          <span class="situation-label">Treatment</span>
+          <h3>Treatment Options</h3>
+          <p>Understanding surgery, chemotherapy, radiation, and newer therapies.</p>
+        </a>
+        <a href="/watch?situation=caregiving" class="situation-card">
+          <div class="situation-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           </div>
-        </div>
+          <span class="situation-label">For Caregivers</span>
+          <h3>Caregiving</h3>
+          <p>Supporting a loved one through their cancer journey.</p>
+        </a>
+        <a href="/watch?situation=prevention" class="situation-card">
+          <div class="situation-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <span class="situation-label">Prevention</span>
+          <h3>Early Detection</h3>
+          <p>Learn about screening, risk factors, and reducing your risk.</p>
+        </a>
       </div>
     </div>
   </section>
@@ -47,7 +93,7 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
   <section class="section">
     <div class="section-inner">
       <div class="section-header">
-        <h2>Featured Videos</h2>
+        <h2>Onco Talks by Suchitra Cancer Care</h2>
         <p>Doctor-led conversations on common cancers and treatment decisions</p>
       </div>
       <div class="video-grid">
@@ -64,53 +110,16 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
         ))}
       </div>
       <div class="section-cta">
-        <a href="/watch" class="btn-secondary">View All 54 Videos</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- What Brings You Here -->
-  <section class="section section-alt">
-    <div class="section-inner">
-      <div class="section-header">
-        <h2>What brings you here?</h2>
-        <p>Find the right resources for your situation</p>
-      </div>
-      <div class="situation-grid">
-        <a href="/watch?situation=newly-diagnosed" class="situation-card">
-          <div class="situation-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          </div>
-          <h3>Newly Diagnosed</h3>
-          <p>Just heard the word "cancer"? Start here for calm, step-by-step guidance.</p>
-        </a>
-        <a href="/watch?situation=treatment-choices" class="situation-card">
-          <div class="situation-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          </div>
-          <h3>Treatment Options</h3>
-          <p>Understanding surgery, chemotherapy, radiation, and newer therapies.</p>
-        </a>
-        <a href="/watch?situation=caregiving" class="situation-card">
-          <div class="situation-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          </div>
-          <h3>Caregiving</h3>
-          <p>Supporting a loved one through their cancer journey.</p>
-        </a>
-        <a href="/watch?situation=prevention" class="situation-card">
-          <div class="situation-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
-          <h3>Prevention</h3>
-          <p>Learn about early detection, screening, and reducing risk.</p>
+        <a href="/watch" class="btn btn-primary">Watch Onco Talks</a>
+        <a href={botUrl} target="_blank" rel="noopener" class="btn btn-secondary" style="margin-left: 0.75rem;">
+          Ask Suchi
         </a>
       </div>
     </div>
   </section>
 
   <!-- Browse by Cancer Type -->
-  <section class="section">
+  <section class="section section-alt">
     <div class="section-inner">
       <div class="section-header">
         <h2>Browse by Cancer Type</h2>
@@ -126,7 +135,7 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
   </section>
 
   <!-- What SCCF Is / Is Not -->
-  <section class="section section-alt">
+  <section class="section">
     <div class="section-inner">
       <div class="section-header">
         <h2>What is Suchitra Cancer Care Foundation?</h2>
@@ -156,66 +165,76 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
     </div>
   </section>
 
-  <!-- Myths vs Facts -->
-  <section class="section">
+  <!-- Myths vs Facts - 2 column layout -->
+  <section class="section section-alt">
     <div class="section-inner">
       <div class="section-header">
         <h2>Common Myths About Cancer</h2>
       </div>
-      <div class="myths-grid">
-        <div class="myth-card">
-          <span class="myth-badge">Myth</span>
-          <p class="myth-text">"If there is no pain, it cannot be cancer."</p>
-          <span class="fact-badge">Fact</span>
-          <p class="fact-text">Some cancers cause few symptoms early. Don't wait for pain to seek advice.</p>
+      <div class="myths-list">
+        <div class="myth-row">
+          <div class="myth-side">
+            <span class="myth-label">Myth</span>
+            <p>"If there is no pain, it cannot be cancer."</p>
+          </div>
+          <div class="fact-side">
+            <span class="fact-label">Fact</span>
+            <p>Many cancers cause few symptoms early. Don't wait for pain to seek advice.</p>
+          </div>
         </div>
-        <div class="myth-card">
-          <span class="myth-badge">Myth</span>
-          <p class="myth-text">"Chewing tobacco is safer than smoking."</p>
-          <span class="fact-badge">Fact</span>
-          <p class="fact-text">Tobacco in any form increases cancer risk significantly.</p>
+        <div class="myth-row">
+          <div class="myth-side">
+            <span class="myth-label">Myth</span>
+            <p>"Chewing tobacco is safer than smoking."</p>
+          </div>
+          <div class="fact-side">
+            <span class="fact-label">Fact</span>
+            <p>Tobacco in any form significantly increases cancer risk.</p>
+          </div>
         </div>
-        <div class="myth-card">
-          <span class="myth-badge">Myth</span>
-          <p class="myth-text">"Screening is only for sick people."</p>
-          <span class="fact-badge">Fact</span>
-          <p class="fact-text">Screening finds problems early when treatment works better.</p>
+        <div class="myth-row">
+          <div class="myth-side">
+            <span class="myth-label">Myth</span>
+            <p>"Screening is only for sick people."</p>
+          </div>
+          <div class="fact-side">
+            <span class="fact-label">Fact</span>
+            <p>Screening finds problems early when treatment works best.</p>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- Try Suchi -->
-  <section class="section section-alt">
+  <section class="section">
     <div class="section-inner">
       <div class="suchi-banner">
-        <div class="suchi-content">
-          <h2>Have Questions? Ask Suchi</h2>
-          <p>
-            Suchi is an AI assistant that helps you understand cancer information based on
-            trusted sources like NCI. Get answers, prepare for doctor visits, or learn about your situation.
-          </p>
-          <div class="suchi-features">
-            <span>✓ Trusted sources</span>
-            <span>✓ Simple language</span>
-            <span>✓ Privacy-focused</span>
-          </div>
-          <a href={botUrl} target="_blank" rel="noopener" class="btn-primary btn-lg">
-            Try Suchi Now
-          </a>
+        <h2>Have Questions? Ask Suchi</h2>
+        <p>
+          Suchi is an AI assistant that helps you understand cancer information based on
+          trusted sources like NCI. Get answers, prepare for doctor visits, or learn about your situation.
+        </p>
+        <div class="suchi-features">
+          <span>✓ Trusted sources</span>
+          <span>✓ Simple language</span>
+          <span>✓ Privacy-focused</span>
         </div>
-        <div class="suchi-note">
-          <p><strong>Note:</strong> Suchi provides information only. For diagnosis or treatment, consult a qualified doctor.</p>
+        <a href={botUrl} target="_blank" rel="noopener" class="btn btn-white btn-lg">
+          Try Suchi Now
+        </a>
+        <div class="suchi-disclaimer">
+          <p><strong>Important:</strong> Suchi does not diagnose, does not replace your doctor, and cannot handle emergencies. For urgent issues, contact your nearest hospital.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- Contact -->
-  <section id="contact" class="section">
+  <section id="contact" class="section section-alt">
     <div class="section-inner">
-      <div class="contact-section">
-        <div class="contact-info">
+      <div class="contact-grid">
+        <div class="contact-intro">
           <h2>Contact Us</h2>
           <p>For cancer-related guidance and support, reach out to us.</p>
 
@@ -230,28 +249,53 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
             </div>
           </div>
 
-          <div class="contact-warning">
+          <div class="info-box info-box-warning">
             <p><strong>For emergencies:</strong> Contact your nearest hospital immediately.</p>
-            <p><strong>For diagnosis/treatment:</strong> Consult a qualified healthcare professional.</p>
+            <p style="margin-top: 0.5rem;"><strong>For diagnosis/treatment:</strong> Consult a qualified healthcare professional.</p>
           </div>
         </div>
 
-        <form class="contact-form" id="contact-form">
-          <div class="form-field">
-            <label for="name">Name</label>
-            <input id="name" name="name" type="text" required />
+        <div class="contact-form-wrapper">
+          <div class="contact-form-notice">
+            We are not an emergency service. For urgent medical issues, please call your nearest hospital.
           </div>
-          <div class="form-field">
-            <label for="email">Email</label>
-            <input id="email" name="email" type="email" required />
-          </div>
-          <div class="form-field">
-            <label for="message">How can we help?</label>
-            <textarea id="message" name="message" rows="4" required></textarea>
-          </div>
-          <button type="submit" class="btn-primary">Send Message</button>
-          <p class="form-note">We'll respond within 2-3 business days.</p>
-        </form>
+          <form class="contact-form" id="contact-form">
+            <div class="form-field">
+              <label for="name">Full Name</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Your name (first name is fine)"
+                autocomplete="name"
+                required
+              />
+            </div>
+            <div class="form-field">
+              <label for="email">Email Address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="your.email@example.com"
+                autocomplete="email"
+                required
+              />
+            </div>
+            <div class="form-field">
+              <label for="message">Your Question or Concern</label>
+              <textarea
+                id="message"
+                name="message"
+                rows="4"
+                placeholder="Tell us how we can help..."
+                required
+              ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Send Message</button>
+            <p class="form-note">We'll respond within 2-3 business days. We use your details only to respond to your message.</p>
+          </form>
+        </div>
       </div>
     </div>
   </section>
@@ -262,370 +306,6 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     alert('Thank you for reaching out. We will respond soon.');
-    form.reset();
+    (form as HTMLFormElement).reset();
   });
 </script>
-
-<style>
-  /* Hero */
-  .hero-visual {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .hero-stats {
-    display: flex;
-    gap: 2rem;
-    background: rgba(255,255,255,0.1);
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-    backdrop-filter: blur(10px);
-  }
-
-  .stat-item {
-    text-align: center;
-  }
-
-  .stat-number {
-    display: block;
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: white;
-    font-family: var(--font-serif);
-  }
-
-  .stat-label {
-    font-size: 0.875rem;
-    opacity: 0.9;
-  }
-
-  @media (max-width: 768px) {
-    .hero-stats {
-      flex-direction: column;
-      gap: 1rem;
-    }
-  }
-
-  .section-cta {
-    text-align: center;
-    margin-top: 2rem;
-  }
-
-  /* Situations */
-  .situation-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .situation-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid #e2e8f0;
-    text-decoration: none;
-    transition: all 0.2s;
-  }
-
-  .situation-card:hover {
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-  }
-
-  .situation-icon {
-    color: var(--color-primary);
-    margin-bottom: 1rem;
-  }
-
-  .situation-card h3 {
-    color: var(--color-text);
-    font-size: 1.125rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .situation-card p {
-    color: var(--color-text-secondary);
-    font-size: 0.9375rem;
-    margin: 0;
-    line-height: 1.5;
-  }
-
-  /* Cancer Pills */
-  .cancer-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    justify-content: center;
-  }
-
-  .cancer-pill {
-    padding: 0.625rem 1.25rem;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 9999px;
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    font-size: 0.9375rem;
-    transition: all 0.2s;
-  }
-
-  .cancer-pill:hover {
-    background: var(--color-primary);
-    color: white;
-    border-color: var(--color-primary);
-  }
-
-  /* What Is / Is Not */
-  .what-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-  }
-
-  .what-card {
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-  }
-
-  .what-card h3 {
-    margin-bottom: 1.5rem;
-  }
-
-  .what-card ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .what-card li {
-    position: relative;
-    padding-left: 1.75rem;
-    margin-bottom: 0.75rem;
-    line-height: 1.5;
-  }
-
-  .what-card li::before {
-    position: absolute;
-    left: 0;
-    font-weight: bold;
-  }
-
-  .what-is {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-  }
-
-  .what-is h3 { color: #15803d; }
-  .what-is li::before { content: "✓"; color: #15803d; }
-
-  .what-not {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-  }
-
-  .what-not h3 { color: #dc2626; }
-  .what-not li::before { content: "✗"; color: #dc2626; }
-
-  /* Myths */
-  .myths-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .myth-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid #e2e8f0;
-  }
-
-  .myth-badge, .fact-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  .myth-badge {
-    background: #fef2f2;
-    color: #dc2626;
-  }
-
-  .fact-badge {
-    background: #f0fdf4;
-    color: #15803d;
-  }
-
-  .myth-text {
-    font-style: italic;
-    margin: 0.5rem 0 1rem;
-    color: var(--color-text);
-  }
-
-  .fact-text {
-    margin: 0.5rem 0 0;
-    color: var(--color-text-secondary);
-    font-size: 0.9375rem;
-  }
-
-  /* Suchi Banner */
-  .suchi-banner {
-    background: linear-gradient(135deg, var(--color-primary) 0%, #0ea5e9 100%);
-    color: white;
-    border-radius: var(--radius-lg);
-    padding: 3rem;
-    text-align: center;
-  }
-
-  .suchi-banner h2 {
-    color: white;
-    margin-bottom: 1rem;
-  }
-
-  .suchi-content > p {
-    max-width: 600px;
-    margin: 0 auto 1.5rem;
-    opacity: 0.95;
-    line-height: 1.6;
-  }
-
-  .suchi-features {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-  }
-
-  .suchi-features span {
-    font-size: 0.9375rem;
-  }
-
-  .suchi-banner .btn-primary {
-    background: white;
-    color: var(--color-primary);
-  }
-
-  .suchi-banner .btn-primary:hover {
-    background: #f8fafc;
-  }
-
-  .suchi-note {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255,255,255,0.2);
-  }
-
-  .suchi-note p {
-    font-size: 0.875rem;
-    opacity: 0.9;
-    margin: 0;
-  }
-
-  /* Contact */
-  .contact-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-  }
-
-  @media (max-width: 768px) {
-    .contact-section {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .contact-info h2 {
-    margin-bottom: 0.5rem;
-  }
-
-  .contact-info > p {
-    color: var(--color-text-secondary);
-    margin-bottom: 2rem;
-  }
-
-  .contact-details {
-    margin-bottom: 2rem;
-  }
-
-  .contact-item {
-    margin-bottom: 1rem;
-  }
-
-  .contact-item strong {
-    display: block;
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-    margin-bottom: 0.25rem;
-  }
-
-  .contact-item a, .contact-item span {
-    color: var(--color-text);
-  }
-
-  .contact-warning {
-    background: #fef3c7;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-  }
-
-  .contact-warning p {
-    margin: 0 0 0.5rem;
-    color: #92400e;
-  }
-
-  .contact-warning p:last-child {
-    margin-bottom: 0;
-  }
-
-  .contact-form {
-    background: #f8fafc;
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-  }
-
-  .form-field {
-    margin-bottom: 1.25rem;
-  }
-
-  .form-field label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    font-size: 0.9375rem;
-  }
-
-  .form-field input,
-  .form-field textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: var(--radius-md);
-    font-size: 1rem;
-    font-family: inherit;
-  }
-
-  .form-field input:focus,
-  .form-field textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-
-  .form-note {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-    margin-top: 1rem;
-    margin-bottom: 0;
-  }
-
-  .btn-lg {
-    padding: 0.875rem 1.75rem;
-    font-size: 1rem;
-  }
-</style>
