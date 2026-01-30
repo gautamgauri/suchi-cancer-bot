@@ -20,6 +20,11 @@ model Session {
   currentGreetingStep Int? // Explicit greeting step: 0 = not started, 1 = context question, 2 = cancer type, 3 = complete
   emotionalState String? // "anxious" | "calm" | "urgent" | "sad" | "neutral"
 
+  // Geolocation (from IP, city-level for analytics)
+  city    String? // City name from IP geolocation
+  region  String? // State/region from IP geolocation
+  country String? // Country code (e.g., "IN", "US")
+
   messages        Message[]
   feedback        Feedback[]
   safetyEvents    SafetyEvent[]

@@ -3,12 +3,31 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { CreateSessionDto } from "./dto";
 
+export interface GeoData {
+  city: string | null;
+  region: string | null;
+  country: string | null;
+}
+
 @Injectable()
 export class SessionsService {
   constructor(private readonly prisma: PrismaService, private readonly analytics: AnalyticsService) {}
-  async create(dto: CreateSessionDto) {
-    const s = await this.prisma.session.create({ data: { channel: dto.channel, locale: dto.locale, userType: dto.userType } });
-    await this.analytics.emit("session_created", { channel: dto.channel }, s.id);
+  async create(dto: CreateSessionDto, geoData?: GeoData) {
+    const s = await this.prisma.session.create({
+      data: {
+        channel: dto.channel,
+        locale: dto.locale,
+        userType: dto.userType,
+        city: geoData?.city,
+        region: geoData?.region,
+        country: geoData?.country,
+      },
+    });
+    await this.analytics.emit("session_created", {
+      channel: dto.channel,
+      city: geoData?.city,
+      country: geoData?.country,
+    }, s.id);
     return s;
   }
 
