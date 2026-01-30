@@ -176,12 +176,12 @@ cases:
     tier: 1
     cancer: prostate
     intent: INFORMATIONAL_GENERAL
-    user_messages: ["What is prostate cancer? Just asking generally."]
+    user_messages: ["What is prostate cancer and how is it diagnosed? Just asking generally."]
     expectations:
       <<: *RETRIEVAL_QUALITY
       expected_sources: ["02_nci_core"]
       query_type: "general"
-      notes: "Should retrieve basic information from trusted sources"
+      notes: "Should retrieve basic info and diagnostic tests (PSA, DRE) from trusted sources"
 
   # Cervical - Screening Guidelines (should get recent guidelines)
   - id: RQ-CERVICAL-02
