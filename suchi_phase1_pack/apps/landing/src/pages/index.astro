@@ -378,12 +378,13 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
             <button type="submit" class="btn btn-primary btn-full">Send Message</button>
           </form>
 
-          <div class="form-success" id="form-success">
+          <div class="form-success" id="form-success" style="display: none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
               <polyline points="22 4 12 14.01 9 11.01"/>
             </svg>
-            <p><strong>Thank you!</strong> We've received your message and will reply soon.</p>
+            <p><strong>Thank you!</strong></p>
+            <p>We've received your message and will reply within 2–3 working days.</p>
           </div>
         </div>
       </div>
@@ -885,21 +886,35 @@ const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 2rem 1rem;
-    background: var(--color-success-bg);
-    border-radius: var(--radius-md);
-    margin-top: 1rem;
+    padding: 2.5rem 1.5rem;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 2px solid #a7f3d0;
+    border-radius: var(--radius-lg);
   }
 
   .form-success svg {
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     color: var(--color-success);
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    background: white;
+    padding: 0.75rem;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);
   }
 
   .form-success p {
     color: #065f46;
     margin: 0;
+  }
+
+  .form-success p:first-of-type {
+    font-size: var(--text-lg);
+    margin-bottom: 0.25rem;
+  }
+
+  .form-success p:last-of-type {
+    font-size: var(--text-sm);
+    opacity: 0.9;
   }
 </style>
