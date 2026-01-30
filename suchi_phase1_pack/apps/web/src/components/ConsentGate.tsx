@@ -35,7 +35,7 @@ export const ConsentGate: React.FC<ConsentGateProps> = ({ onAccept, error }) => 
             <li>This chatbot provides general information and cannot diagnose cancer or any medical condition.</li>
             <li>It cannot prescribe medications, recommend dosages, or interpret test results.</li>
             <li>Always consult with qualified healthcare professionals for medical advice.</li>
-            <li>Your conversations are anonymous by default.</li>
+            <li>Your conversations are anonymous by default. <span style={styles.privacyNote}>(We don't ask your name or contact info. Anonymized data may be used to improve the service.)</span></li>
           </ul>
         </div>
 
@@ -136,6 +136,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "var(--color-text)",
     lineHeight: "1.8",
     paddingLeft: "20px"
+  },
+  privacyNote: {
+    fontSize: "var(--font-size-xs)",
+    color: "var(--color-text-secondary)",
+    fontStyle: "italic"
   },
   form: {
     display: "flex",
