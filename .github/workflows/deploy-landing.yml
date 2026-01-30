@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "apps/landing/**"
+      - "suchi_phase1_pack/apps/landing/**"
       - ".github/workflows/deploy-landing.yml"
   workflow_dispatch:
 
@@ -29,15 +29,15 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: apps/landing/package-lock.json
+          cache-dependency-path: suchi_phase1_pack/apps/landing/package-lock.json
 
       - name: Install dependencies
         run: npm ci
-        working-directory: apps/landing
+        working-directory: suchi_phase1_pack/apps/landing
 
       - name: Build landing site
         run: npm run build
-        working-directory: apps/landing
+        working-directory: suchi_phase1_pack/apps/landing
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -45,7 +45,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/landing/dist
+          path: suchi_phase1_pack/apps/landing/dist
 
   deploy:
     environment:
