@@ -11,9 +11,10 @@ export interface Props {
 
 const { youtubeId, title, slug, speaker, duration, cancerTypes, situations } = Astro.props;
 const thumbnail = `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+const base = import.meta.env.BASE_URL;
 ---
 
-<a href={`/watch/${slug}`} class="video-card">
+<a href={`${base}watch/${slug}/`} class="video-card">
   <div class="video-card-thumb">
     <img src={thumbnail} alt={title} loading="lazy" />
     <div class="video-card-play">&#9658;</div>

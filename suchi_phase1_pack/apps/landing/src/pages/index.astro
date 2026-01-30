@@ -23,7 +23,7 @@ const base = import.meta.env.BASE_URL;
         </p>
         <div class="hero-cta-row">
           <a href="#patients" class="btn btn-primary">I am a patient or caregiver</a>
-          <a href="/watch" class="btn btn-secondary">Watch Onco Talks</a>
+          <a href={`${base}watch/`} class="btn btn-secondary">Watch Onco Talks</a>
           <a href={botUrl} target="_blank" rel="noopener" class="btn btn-secondary">Ask Suchi</a>
         </div>
         <p class="hero-supporting">
@@ -80,7 +80,7 @@ const base = import.meta.env.BASE_URL;
       </header>
 
       <div class="path-grid">
-        <a href="/watch?situation=newly-diagnosed" class="path-card card card-hover">
+        <a href={`${base}watch/?situation=newly-diagnosed`} class="path-card card card-hover">
           <div class="path-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <circle cx="12" cy="12" r="10"/>
@@ -99,7 +99,7 @@ const base = import.meta.env.BASE_URL;
           <span class="path-arrow" aria-hidden="true">→</span>
         </a>
 
-        <a href="/watch?situation=treatment-choices" class="path-card card card-hover">
+        <a href={`${base}watch/?situation=treatment-choices`} class="path-card card card-hover">
           <div class="path-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
@@ -117,7 +117,7 @@ const base = import.meta.env.BASE_URL;
           <span class="path-arrow" aria-hidden="true">→</span>
         </a>
 
-        <a href="/watch?situation=caregiving" class="path-card card card-hover">
+        <a href={`${base}watch/?situation=caregiving`} class="path-card card card-hover">
           <div class="path-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -135,7 +135,7 @@ const base = import.meta.env.BASE_URL;
           <span class="path-arrow" aria-hidden="true">→</span>
         </a>
 
-        <a href="/watch?situation=prevention" class="path-card card card-hover">
+        <a href={`${base}watch/?situation=prevention`} class="path-card card card-hover">
           <div class="path-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -179,7 +179,7 @@ const base = import.meta.env.BASE_URL;
       </div>
 
       <div class="section-cta">
-        <a href="/watch" class="btn btn-primary">View All Videos</a>
+        <a href={`${base}watch/`} class="btn btn-primary">View All Videos</a>
       </div>
     </div>
   </section>
@@ -192,7 +192,7 @@ const base = import.meta.env.BASE_URL;
       </header>
       <div class="pill-grid">
         {cancerTypes.map((type) => (
-          <a href={`/watch?cancer=${type.id}`} class="pill">
+          <a href={`${base}watch/?cancer=${type.id}`} class="pill">
             {type.label}
           </a>
         ))}

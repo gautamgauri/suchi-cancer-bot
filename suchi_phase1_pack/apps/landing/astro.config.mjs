@@ -6,6 +6,7 @@ export default defineConfig({
   output: 'static',
   site: 'https://gautamgauri.github.io',
   base: '/suchi-cancer-bot/',
+  trailingSlash: 'always',
   build: {
     assets: '_assets'
   }

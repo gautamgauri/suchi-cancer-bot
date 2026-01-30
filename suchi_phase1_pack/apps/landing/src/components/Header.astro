@@ -1,5 +1,6 @@
 ---
 const botUrl = "https://suchi-web-621946741407.asia-south1.run.app";
+const base = import.meta.env.BASE_URL;
 const currentPath = Astro.url.pathname;
 ---
 
@@ -7,7 +8,7 @@ const currentPath = Astro.url.pathname;
 <div class="nav-wrapper">
   <nav class="site-nav" aria-label="Primary navigation">
     <!-- Logo -->
-    <a href="/" class="nav-logo" aria-label="Suchitra Cancer Care Foundation - Home">
+    <a href={base} class="nav-logo" aria-label="Suchitra Cancer Care Foundation - Home">
       <span class="nav-logo-mark" aria-hidden="true"></span>
       <span class="nav-logo-text">
         <span class="nav-title">Suchitra Cancer Care</span>
@@ -17,10 +18,10 @@ const currentPath = Astro.url.pathname;
 
     <!-- Desktop Links -->
     <div class="nav-links">
-      <a href="/" class={`nav-link ${currentPath === '/' ? 'nav-link--active' : ''}`}>Home</a>
-      <a href="/about" class={`nav-link ${currentPath === '/about' ? 'nav-link--active' : ''}`}>About</a>
-      <a href="/watch" class={`nav-link ${currentPath.startsWith('/watch') ? 'nav-link--active' : ''}`}>Onco Talks</a>
-      <a href="/#contact" class="nav-link">Contact</a>
+      <a href={base} class={`nav-link ${currentPath === base || currentPath === base.slice(0, -1) ? 'nav-link--active' : ''}`}>Home</a>
+      <a href={`${base}about/`} class={`nav-link ${currentPath.includes('/about') ? 'nav-link--active' : ''}`}>About</a>
+      <a href={`${base}watch/`} class={`nav-link ${currentPath.includes('/watch') ? 'nav-link--active' : ''}`}>Onco Talks</a>
+      <a href={`${base}#contact`} class="nav-link">Contact</a>
     </div>
 
     <!-- Actions -->
@@ -48,10 +49,10 @@ const currentPath = Astro.url.pathname;
 
 <!-- Mobile Menu Panel -->
 <nav class="mobile-menu" id="mobile-menu" aria-hidden="true">
-  <a href="/">Home</a>
-  <a href="/about">About</a>
-  <a href="/watch">Onco Talks</a>
-  <a href="/#contact">Contact</a>
+  <a href={base}>Home</a>
+  <a href={`${base}about/`}>About</a>
+  <a href={`${base}watch/`}>Onco Talks</a>
+  <a href={`${base}#contact`}>Contact</a>
   <a href={botUrl} target="_blank" rel="noopener" class="mobile-cta">
     Ask Suchi
   </a>
