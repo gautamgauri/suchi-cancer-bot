@@ -1,36 +1,71 @@
 /**
- * Suchi Cancer Bot - Sage Green + Cream Theme
- * Healing/nature aesthetic for gentle, approachable design
+ * Suchi Cancer Bot - Bridge Theme System
+ * Combines therapeutic bot feel (sage + rose) with brand continuity (gold + teal)
+ *
+ * Design rules:
+ * - Gold (#F4B41A) = primary actions (Send, Continue, Start)
+ * - Teal (#4DE2C1) = interactive affordances (links, focus, citations)
+ * - Sage (#4C7C6B) = therapeutic atmosphere, bot identity
+ * - Rose (#C97C86) = empathetic/soft callouts
  */
 
 :root {
-  /* Primary Colors */
-  --color-primary: #4C7C6B; /* Sage Green */
+  /* ========================================
+     SHARED BRAND TOKENS (synced with landing)
+     ======================================== */
+
+  /* Unified background - single source of truth */
+  --color-background: #F7F4EF;
+  --color-text: #1F2937;
+
+  /* Action color - Gold (primary CTAs) */
+  --color-action: #F4B41A;
+  --color-action-hover: #D9A218;
+  --color-action-text: #1F2937; /* Dark text on gold for contrast */
+
+  /* Interactive color - Teal (links, focus, citations) */
+  --color-interactive: #4DE2C1;
+  --color-interactive-hover: #3FCBAB;
+  --color-interactive-dark: #0f766e;
+
+  /* ========================================
+     THERAPEUTIC TOKENS (bot-specific calm)
+     ======================================== */
+
+  /* Primary - Sage Green (calm anchor, bot identity) */
+  --color-primary: #4C7C6B;
   --color-primary-light: #6B9A87;
   --color-primary-dark: #3A5F4F;
   --color-primary-hover: #5A8C7A;
-  
-  /* Background Colors */
-  --color-background: #FBF7EF; /* Cream */
-  --color-surface: #FFFFFF; /* White */
+
+  /* Accent - Dusty Rose (empathetic states) */
+  --color-accent: #C97C86;
+  --color-accent-light: #E5A5AD;
+  --color-accent-dark: #B05A66;
+
+  /* ========================================
+     SURFACE & TEXT
+     ======================================== */
+
+  --color-surface: #FFFFFF;
   --color-surface-alt: #F5F1E8;
-  
-  /* Text Colors */
-  --color-text: #1F2937; /* Dark Gray */
+
   --color-text-secondary: #6B7280;
   --color-text-muted: #9CA3AF;
   --color-text-on-primary: #FFFFFF;
-  
-  /* Accent Colors */
-  --color-accent: #C97C86; /* Dusty Rose */
-  --color-accent-light: #E5A5AD;
-  --color-accent-dark: #B05A66;
-  
-  /* Semantic Colors */
+
+  /* ========================================
+     SEMANTIC COLORS (standardized)
+     ======================================== */
+
   --color-success: #4C7C6B; /* Sage Green */
-  --color-warning: #F59E0B; /* Amber */
-  --color-error: #DC2626; /* Soft Red */
-  --color-info: #3B82F6; /* Blue */
+  --color-warning: #F59E0B;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-text: #92400E;
+  --color-error: #DC2626;
+  --color-error-bg: #FEE2E2;
+  --color-error-text: #991B1B;
+  --color-info: #3B82F6;
   
   /* Border Colors */
   --color-border: #E5E7EB;
@@ -80,23 +115,23 @@ button:not(:disabled):active {
   transform: translateY(0);
 }
 
-/* Input Focus States */
+/* Input Focus States - Teal focus ring */
 input:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(76, 124, 107, 0.1);
+  border-color: var(--color-interactive);
+  box-shadow: 0 0 0 3px rgba(77, 226, 193, 0.2);
 }
 
-/* Link Styles */
+/* Link Styles - Teal for interactive affordances */
 a {
-  color: var(--color-primary);
+  color: var(--color-interactive-dark);
   text-decoration: none;
   transition: var(--transition-base);
 }
 
 a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-interactive-hover);
   text-decoration: underline;
 }
 

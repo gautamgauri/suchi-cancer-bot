@@ -103,8 +103,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "12px 24px",
     fontSize: "var(--font-size-base)",
     fontWeight: "600",
-    color: "var(--color-text-on-primary)",
-    backgroundColor: "var(--color-primary)",
+    color: "var(--color-action-text)",
+    backgroundColor: "var(--color-action)",
     border: "none",
     borderRadius: "var(--radius-md)",
     cursor: "pointer",
@@ -112,7 +112,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignSelf: "flex-end"
   },
   buttonHover: {
-    backgroundColor: "var(--color-primary-hover)",
+    backgroundColor: "var(--color-action-hover)",
     transform: "translateY(-1px)",
     boxShadow: "var(--shadow-md)"
   },

@@ -101,7 +101,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "32px"
   },
   warningBox: {
-    backgroundColor: "#FEF3C7",
+    backgroundColor: "var(--color-warning-bg)",
     border: "1px solid var(--color-warning)",
     borderRadius: "var(--radius-md)",
     padding: "20px",
@@ -111,11 +111,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "var(--font-size-lg)",
     fontWeight: "bold",
     marginBottom: "12px",
-    color: "#92400E"
+    color: "var(--color-warning-text)"
   },
   warningText: {
     fontSize: "var(--font-size-sm)",
-    color: "#92400E",
+    color: "var(--color-warning-text)",
     lineHeight: "1.6"
   },
   disclaimerBox: {
@@ -159,8 +159,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "14px 28px",
     fontSize: "var(--font-size-base)",
     fontWeight: "600",
-    color: "var(--color-text-on-primary)",
-    backgroundColor: "var(--color-primary)",
+    color: "var(--color-action-text)",
+    backgroundColor: "var(--color-action)",
     border: "none",
     borderRadius: "var(--radius-md)",
     cursor: "pointer",
@@ -172,12 +172,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     opacity: 0.5
   },
   errorBox: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: "var(--color-error-bg)",
     border: "2px solid var(--color-error)",
     borderRadius: "var(--radius-md)",
     padding: "16px",
     marginBottom: "20px",
-    color: "#991B1B",
+    color: "var(--color-error-text)",
     fontSize: "var(--font-size-sm)",
     lineHeight: "1.6"
   }

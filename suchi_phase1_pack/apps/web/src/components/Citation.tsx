@@ -66,7 +66,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   citation: {
     position: "relative",
     display: "inline-block",
-    color: "var(--color-primary)",
+    color: "var(--color-interactive-dark)",
     fontWeight: "600",
     cursor: "pointer",
     textDecoration: "underline",
@@ -118,7 +118,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "8px"
   },
   tooltipLink: {
-    color: "var(--color-primary)",
+    color: "var(--color-interactive-dark)",
     textDecoration: "none",
     fontSize: "12px",
     fontWeight: "500"

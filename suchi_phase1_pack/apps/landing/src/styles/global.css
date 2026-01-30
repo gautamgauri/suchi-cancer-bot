@@ -3,23 +3,39 @@
    Ported from original sccf_website with Astro architecture
    ========================================================================== */
 
-/* CSS Variables - Original Premium Palette */
+/* CSS Variables - Bridge Theme System
+   Synced with Suchi bot for brand continuity.
+   Design rules:
+   - Gold (#F4B41A) = primary actions
+   - Teal (#4DE2C1) = interactive affordances
+   - Shared background (#F7F4EF) and text (#1F2937) across both sites
+*/
 :root {
-  /* Primary Colors - Gold/Amber accent */
-  --color-accent: #f4b41a;
+  /* ========================================
+     SHARED BRAND TOKENS (synced with bot)
+     ======================================== */
+
+  /* Unified background - single source of truth */
+  --color-bg-warm: #F7F4EF;
+  --color-text: #1F2937;
+
+  /* Action color - Gold (primary CTAs) */
+  --color-accent: #F4B41A;
   --color-accent-soft: rgba(244, 180, 26, 0.08);
   --color-accent-glow: rgba(244, 180, 26, 0.55);
+  --color-accent-hover: #D9A218;
 
-  /* Secondary - Teal */
-  --color-teal: #4de2c1;
+  /* Interactive color - Teal (links, focus, hover) */
+  --color-teal: #4DE2C1;
   --color-teal-soft: rgba(77, 226, 193, 0.1);
+  --color-teal-dark: #0f766e;
 
-  /* Legacy teal for compatibility */
+  /* Legacy aliases for compatibility */
   --color-primary: #0f766e;
   --color-primary-dark: #0d655e;
   --color-primary-light: #14b8a6;
 
-  /* Dark backgrounds */
+  /* Dark backgrounds (nav, hero overlays) */
   --nav-bg: rgba(4, 9, 20, 0.9);
   --color-bg-dark: #0f172a;
   --color-bg-dark-alt: rgba(10, 16, 38, 0.85);
@@ -28,12 +44,10 @@
   --color-bg: #ffffff;
   --color-bg-soft: #f8fafc;
   --color-bg-muted: #f1f5f9;
-  --color-bg-warm: #F7F4EF;
   --color-bg-warm-alt: #E8E0D4;
   --color-bg-teal: #f0fdfa;
 
   /* Text */
-  --color-text: #1e293b;
   --color-text-dark: #222222;
   --color-text-secondary: #475569;
   --color-text-muted: #64748b;
@@ -41,13 +55,17 @@
   --text-main: #f5f7ff;
   --text-muted-light: #a6b0d4;
 
-  /* Semantic */
+  /* ========================================
+     SEMANTIC COLORS (standardized with bot)
+     ======================================== */
   --color-success: #059669;
   --color-success-bg: #ecfdf5;
-  --color-warning: #d97706;
-  --color-warning-bg: #fffbeb;
-  --color-danger: #dc2626;
-  --color-danger-bg: #fef2f2;
+  --color-warning: #F59E0B;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-text: #92400E;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEE2E2;
+  --color-danger-text: #991B1B;
 
   /* Borders */
   --color-border: #e2e8f0;
