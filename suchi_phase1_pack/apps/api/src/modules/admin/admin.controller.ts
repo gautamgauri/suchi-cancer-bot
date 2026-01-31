@@ -1,11 +1,11 @@
 import { Controller, Get, Post, Query, UseGuards, Logger } from "@nestjs/common";
 import { BasicAuthGuard } from "../../common/guards/basic-auth.guard";
+import { SchedulerOidcGuard } from "../../common/guards/scheduler-oidc.guard";
 import { AdminService } from "./admin.service";
 import { DailyReportService } from "../analytics/daily-report.service";
 import { EmailService } from "../email/email.service";
 import { generateMarkdownReport } from "../analytics/report-generator";
 
-@UseGuards(BasicAuthGuard)
 @Controller("admin")
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
@@ -16,22 +16,37 @@ export class AdminController {
     private readonly email: EmailService,
   ) {}
 
-  @Get("conversations") async conversations(@Query("from") from?: string, @Query("to") to?: string, @Query("filter") filter?: string) {
+  @UseGuards(BasicAuthGuard)
+  @Get("conversations")
+  async conversations(
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("filter") filter?: string,
+  ) {
     return this.admin.listConversations({ from, to, filter });
   }
 
-  @Get("metrics") async metrics(@Query("from") from?: string, @Query("to") to?: string) { return this.admin.metrics({ from, to }); }
+  @UseGuards(BasicAuthGuard)
+  @Get("metrics")
+  async metrics(@Query("from") from?: string, @Query("to") to?: string) {
+    return this.admin.metrics({ from, to });
+  }
 
-  @Get("kb-stats") async kbStats() { return this.admin.kbStats(); }
+  @UseGuards(BasicAuthGuard)
+  @Get("kb-stats")
+  async kbStats() {
+    return this.admin.kbStats();
+  }
 
   /**
    * Generate and optionally email the daily beta report
    *
    * Usage:
-   *   GET /admin/daily-report                    - Yesterday's report (returns JSON)
-   *   GET /admin/daily-report?date=2026-01-30   - Specific date
-   *   POST /admin/daily-report?email=true       - Generate and email the report
+   *   GET /admin/daily-report                    - Yesterday's report (returns JSON, requires Basic Auth)
+   *   GET /admin/daily-report?date=2026-01-30   - Specific date (requires Basic Auth)
+   *   POST /admin/daily-report                   - Generate and email (requires OIDC from Cloud Scheduler)
    */
+  @UseGuards(BasicAuthGuard)
   @Get("daily-report")
   async getDailyReport(@Query("date") date?: string) {
     const { from, to } = this.parseDateRange(date);
@@ -43,6 +58,11 @@ export class AdminController {
     };
   }
 
+  /**
+   * Cloud Scheduler endpoint - secured with OIDC token verification
+   * Only accepts requests from the configured scheduler service account
+   */
+  @UseGuards(SchedulerOidcGuard)
   @Post("daily-report")
   async generateAndEmailReport(
     @Query("date") date?: string,
