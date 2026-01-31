@@ -1,4 +1,9 @@
 import { Module } from "@nestjs/common";
 import { AnalyticsService } from "./analytics.service";
-@Module({ providers: [AnalyticsService], exports: [AnalyticsService] })
+import { DailyReportService } from "./daily-report.service";
+
+@Module({
+  providers: [AnalyticsService, DailyReportService],
+  exports: [AnalyticsService, DailyReportService],
+})
 export class AnalyticsModule {}
