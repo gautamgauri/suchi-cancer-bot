@@ -84,9 +84,6 @@ export class DailyReportService {
         createdAt: { gte: from, lt: to },
         role: 'assistant',
       },
-      include: {
-        session: true,
-      },
     });
 
     const userMessages = await this.prisma.message.findMany({
@@ -215,10 +212,15 @@ export class DailyReportService {
     const uniqueSessions = uniqueSessionIds.size;
     const avgQueriesPerSession = uniqueSessions > 0 ? totalQueries / uniqueSessions : 0;
 
-    // User context breakdown
+    // User context breakdown - only select fields that exist in production
     const sessions = await this.prisma.session.findMany({
       where: {
         id: { in: Array.from(uniqueSessionIds) },
+      },
+      select: {
+        id: true,
+        userContext: true,
+        cancerType: true,
       },
     });
 
@@ -241,18 +243,8 @@ export class DailyReportService {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // Geo breakdown (country field may not be in all Prisma clients)
-    const geoCounts = new Map<string, number>();
-    sessions.forEach(s => {
-      const country = (s as any).country;
-      if (country) {
-        geoCounts.set(country, (geoCounts.get(country) || 0) + 1);
-      }
-    });
-    const geoBreakdown = Array.from(geoCounts.entries())
-      .map(([country, count]) => ({ country, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    // Geo breakdown - disabled until city/country migration is applied to production
+    const geoBreakdown: Array<{ country: string; count: number }> = [];
 
     return {
       dateRange: { from, to },
