@@ -7,6 +7,7 @@ import { RerankerService } from "./reranker.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/trusted-sources.config";
 import { QueryTypeClassifier } from "./query-type.classifier";
+import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer-topics";
 
 @Injectable()
 export class RagService {
@@ -29,6 +30,25 @@ export class RagService {
    */
   async retrieveWithMetadata(query: string, topK = 6, cancerType?: string | null, queryType?: string, intent?: string): Promise<EvidenceChunk[]> {
     try {
+      // Step 0: Check for cross-cancer topics (e.g., smoking, obesity, HPV)
+      // These topics span multiple cancer types and need diversified retrieval
+      const crossCancerTopic = detectCrossCancerTopic(query);
+      if (crossCancerTopic) {
+        this.logger.log({
+          event: 'cross_cancer_topic_detected',
+          topic: crossCancerTopic.topic,
+          cancerTypes: crossCancerTopic.cancerTypes.slice(0, 5),
+          query: query.substring(0, 50)
+        });
+
+        const crossCancerResults = await this.crossCancerRetrieve(query, crossCancerTopic, topK, intent);
+        if (crossCancerResults.length >= 3) {
+          return crossCancerResults;
+        }
+        // Fall through to normal retrieval if cross-cancer didn't find enough
+        this.logger.debug(`Cross-cancer retrieval returned ${crossCancerResults.length} chunks, falling through to normal retrieval`);
+      }
+
       // Step 1: Query rewrite using QueryTypeClassifier + cancer terms
       const rewrittenQuery = this.rewriteQuery(query, cancerType, queryType);
       if (rewrittenQuery !== query) {
@@ -161,6 +181,176 @@ export class RagService {
     });
 
     return results;
+  }
+
+  /**
+   * Cross-cancer retrieval for topics that span multiple cancer types (e.g., smoking, obesity, HPV)
+   * Diversifies results across cancer types instead of returning only the closest semantic match.
+   *
+   * @param query Original user query
+   * @param topic Detected cross-cancer topic with related cancer types
+   * @param topK Number of chunks to return
+   * @param intent User intent for reranker gating
+   */
+  private async crossCancerRetrieve(
+    query: string,
+    topic: DetectedCrossCancerTopic,
+    topK: number,
+    intent?: string
+  ): Promise<EvidenceChunk[]> {
+    // Strategy 1: Multi-query with topic enhancements and cancer-type-specific queries
+    const queries = [
+      query,
+      ...topic.enhancements.slice(0, 2), // Topic-specific query enhancements
+      ...topic.cancerTypes.slice(0, 3).map(ct => `${query} ${ct} cancer`) // Cancer-type-specific queries
+    ];
+
+    // Strategy 2: Direct DB query using cancerTypes array filter
+    const [multiQueryResults, cancerTypeFilterResults] = await Promise.all([
+      this.multiQueryRetrieve(queries.slice(0, 5), topK * 2, null, intent).catch(err => {
+        this.logger.warn(`Multi-query cross-cancer retrieval failed: ${err.message}`);
+        return [] as EvidenceChunk[];
+      }),
+      this.retrieveByCancerTypes(query, topic.cancerTypes, Math.min(topK, 4)).catch(err => {
+        this.logger.warn(`Cancer type filter retrieval failed: ${err.message}`);
+        return [] as EvidenceChunk[];
+      })
+    ]);
+
+    // Merge and deduplicate results
+    const chunkMap = new Map<string, EvidenceChunk>();
+    for (const chunk of [...multiQueryResults, ...cancerTypeFilterResults]) {
+      if (!chunkMap.has(chunk.chunkId)) {
+        chunkMap.set(chunk.chunkId, chunk);
+      }
+    }
+
+    // Diversify by cancer type: ensure we don't return all chunks from one cancer type
+    const results = Array.from(chunkMap.values());
+    const diversified = this.diversifyByCancerType(results, topK);
+
+    this.logger.log({
+      event: 'cross_cancer_retrieval',
+      topic: topic.topic,
+      multiQueryCount: multiQueryResults.length,
+      cancerTypeFilterCount: cancerTypeFilterResults.length,
+      mergedCount: chunkMap.size,
+      diversifiedCount: diversified.length
+    });
+
+    return diversified;
+  }
+
+  /**
+   * Retrieve chunks from documents tagged with specific cancer types
+   * Uses the cancerTypes array field in KbDocument with Postgres array overlap operator
+   */
+  private async retrieveByCancerTypes(
+    query: string,
+    cancerTypes: string[],
+    limit: number
+  ): Promise<EvidenceChunk[]> {
+    try {
+      // Generate embedding for semantic matching within filtered docs
+      const queryEmbedding = await this.embeddings.generateEmbedding(query);
+      const embeddingStr = `[${queryEmbedding.join(",")}]`;
+
+      // Query with cancerTypes filter using Postgres array overlap operator (&&)
+      const results = await this.prisma.$queryRaw<Array<{
+        id: string;
+        docId: string;
+        content: string;
+        distance: number;
+        title: string;
+        url: string | null;
+        sourceType: string | null;
+        source: string | null;
+        citation: string | null;
+        lastReviewed: Date | null;
+        isTrustedSource: boolean;
+      }>>`
+        SELECT
+          c.id,
+          c."docId",
+          c.content,
+          1 - (c.embedding <=> ${embeddingStr}::vector) AS distance,
+          d.title,
+          d.url,
+          d."sourceType",
+          d.source,
+          d.citation,
+          d."lastReviewed",
+          d."isTrustedSource"
+        FROM "KbChunk" c
+        INNER JOIN "KbDocument" d ON c."docId" = d.id
+        WHERE d.status = 'active'
+          AND c.embedding IS NOT NULL
+          AND d."cancerTypes" && ${cancerTypes}::text[]
+        ORDER BY c.embedding <=> ${embeddingStr}::vector
+        LIMIT ${limit * 2}
+      `;
+
+      return results.map((r) => ({
+        chunkId: r.id,
+        docId: r.docId,
+        content: r.content,
+        similarity: r.distance,
+        document: {
+          title: r.title,
+          url: r.url || undefined,
+          sourceType: r.sourceType,
+          source: r.source,
+          citation: r.citation,
+          lastReviewed: r.lastReviewed || undefined,
+          isTrustedSource: r.isTrustedSource
+        }
+      }));
+    } catch (error) {
+      this.logger.error(`retrieveByCancerTypes error: ${error.message}`, error.stack);
+      return [];
+    }
+  }
+
+  /**
+   * Diversify results by cancer type to avoid returning all chunks from one cancer type
+   * Uses round-robin selection from different source documents
+   */
+  private diversifyByCancerType(chunks: EvidenceChunk[], maxResults: number): EvidenceChunk[] {
+    if (chunks.length <= maxResults) {
+      return chunks;
+    }
+
+    // Group by document (proxy for cancer type, since docs are cancer-type specific)
+    const byDoc = new Map<string, EvidenceChunk[]>();
+    for (const chunk of chunks) {
+      const docChunks = byDoc.get(chunk.docId) || [];
+      docChunks.push(chunk);
+      byDoc.set(chunk.docId, docChunks);
+    }
+
+    // Round-robin selection from different documents
+    const diversified: EvidenceChunk[] = [];
+    const docIds = Array.from(byDoc.keys());
+    let docIndex = 0;
+    const docPointers = new Map<string, number>(docIds.map(id => [id, 0]));
+
+    while (diversified.length < maxResults) {
+      const docId = docIds[docIndex % docIds.length];
+      const docChunks = byDoc.get(docId)!;
+      const pointer = docPointers.get(docId)!;
+
+      if (pointer < docChunks.length) {
+        diversified.push(docChunks[pointer]);
+        docPointers.set(docId, pointer + 1);
+      }
+
+      docIndex++;
+
+      // Safety: break if we've cycled through all docs without adding anything
+      if (docIndex > docIds.length * 10) break;
+    }
+
+    return diversified;
   }
 
   /**

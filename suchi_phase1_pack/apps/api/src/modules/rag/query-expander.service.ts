@@ -224,6 +224,35 @@ export class QueryExpanderService {
     ['sarcoma', ['soft tissue sarcoma', 'mesenchymal tumor']],
   ]);
 
+  // ============= RISK FACTOR SYNONYMS =============
+  // Cross-cutting risk factors that apply to multiple cancer types
+  // Helps retrieve content about smoking, obesity, HPV, etc. across all related cancers
+  private readonly RISK_FACTOR_SYNONYMS = new Map<string, string[]>([
+    // Smoking - the most important cross-cancer risk factor
+    ['smoking', ['tobacco use', 'cigarette smoking', 'smoking risk factor', 'tobacco causes cancer']],
+    ['cigarette', ['tobacco', 'smoking', 'cigarette smoking', 'tobacco use']],
+    ['tobacco', ['smoking', 'cigarette', 'tobacco use', 'tobacco causes cancer']],
+    ['does smoking cause', ['smoking causes cancer', 'smoking risk factor', 'tobacco related cancers', 'cancers caused by smoking']],
+    ['smoking cancer', ['smoking causes cancer', 'tobacco related cancer types', 'cancers caused by smoking']],
+    ['other cancers', ['multiple cancer types', 'various cancers', 'different types of cancer']],
+    ['smoking other cancer', ['smoking causes multiple cancers', 'tobacco related cancers', 'cancers linked to smoking']],
+
+    // Obesity risk factors
+    ['obesity cancer', ['obesity risk factor cancer', 'weight gain cancer risk', 'overweight cancer']],
+    ['overweight cancer', ['obesity cancer risk', 'body weight cancer', 'BMI cancer risk']],
+
+    // Alcohol risk factors
+    ['alcohol cancer', ['alcohol risk factor', 'drinking cancer risk', 'alcohol related cancer']],
+    ['drinking cancer', ['alcohol cancer risk', 'alcohol related cancer types']],
+
+    // Sun/UV risk factors
+    ['sun exposure cancer', ['UV radiation cancer', 'ultraviolet light cancer risk', 'sun damage skin cancer']],
+    ['uv cancer', ['sun exposure cancer', 'ultraviolet cancer risk', 'sunlight cancer']],
+
+    // HPV risk factors
+    ['hpv cancer', ['human papillomavirus cancer', 'hpv related cancer', 'hpv infection cancer risk']],
+  ]);
+
   // ============= INTENTS TO EXPAND =============
   // Only expand queries for these informational intents
   private readonly EXPANDABLE_INTENTS = new Set([
@@ -267,6 +296,9 @@ export class QueryExpanderService {
 
     // 5. Expand navigation/caregiver terms (for appointment prep, caregiver queries)
     this.expandTerms(lowerQuery, this.NAVIGATION_SYNONYMS, expanded, matchedSynonyms);
+
+    // 6. Expand risk factor terms (for cross-cancer risk factor queries like smoking, obesity)
+    this.expandTerms(lowerQuery, this.RISK_FACTOR_SYNONYMS, expanded, matchedSynonyms);
 
     // Deduplicate expanded queries
     const uniqueExpanded = [...new Set(expanded)];
@@ -349,6 +381,7 @@ export class QueryExpanderService {
       || this.TREATMENT_SYNONYMS.get(lower)
       || this.CANCER_SYNONYMS.get(lower)
       || this.NAVIGATION_SYNONYMS.get(lower)
+      || this.RISK_FACTOR_SYNONYMS.get(lower)
       || this.ABBREVIATIONS.get(lower)
       || [];
   }

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { containsEstablishedFact } from "./established-facts";
 
 export interface Citation {
   docId: string;
@@ -111,13 +112,15 @@ export class CitationService {
    *
    * @param isIdentifyQuestionWithGeneralIntent If true, allows 0 citations with YELLOW (not RED) for identify questions
    * @param orphanCount Number of hallucinated citations detected (from extractCitations)
+   * @param userQuery Original user query for established fact detection
    */
   validateCitations(
     citations: Citation[],
     chunks: EvidenceChunk[],
     responseText?: string,
     isIdentifyQuestionWithGeneralIntent?: boolean,
-    orphanCount?: number
+    orphanCount?: number,
+    userQuery?: string
   ): CitationValidationResult {
     const errors: string[] = [];
 
@@ -187,10 +190,30 @@ export class CitationService {
         errors.push("Response contains no citations - all medical claims must be cited");
       }
     } else if (citations.length < 2 || citationDensity < 0.3) {
-      // YELLOW: Limited citations - answer with caution and uncertainty
-      confidenceLevel = "YELLOW";
-      isValid = true; // Allow response but flag as low confidence
-      this.logger.warn(`Low citation density: ${citations.length} citations, density ${citationDensity.toFixed(2)}`);
+      // Check for established medical facts before applying YELLOW
+      // Well-established facts (e.g., "smoking causes cancer") don't need hedging
+      const establishedFactCheck = containsEstablishedFact(
+        responseText || '',
+        userQuery || ''
+      );
+
+      if (establishedFactCheck.isEstablished && citations.length >= 1) {
+        // Established fact with at least 1 citation → GREEN confidence (no hedging)
+        confidenceLevel = "GREEN";
+        isValid = true;
+        this.logger.log({
+          event: 'established_fact_confidence_upgrade',
+          category: establishedFactCheck.matchedFact?.category,
+          description: establishedFactCheck.matchedFact?.description,
+          citationCount: citations.length,
+          reason: 'Well-established medical fact with citation support'
+        });
+      } else {
+        // YELLOW: Limited citations - answer with caution and uncertainty
+        confidenceLevel = "YELLOW";
+        isValid = true; // Allow response but flag as low confidence
+        this.logger.warn(`Low citation density: ${citations.length} citations, density ${citationDensity.toFixed(2)}`);
+      }
     } else {
       // GREEN: Good citation coverage - high confidence
       confidenceLevel = "GREEN";

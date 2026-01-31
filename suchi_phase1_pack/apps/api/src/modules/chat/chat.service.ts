@@ -190,7 +190,8 @@ export class ChatService {
           earlyEvidenceChunks,
           urgentResponse + "\n\n**Information from trusted sources:**\n\n" + ragResponse,
           false, // isIdentifyQuestionWithGeneralIntent
-          orphanCount
+          orphanCount,
+          dto.userText
         );
         
         // Combine urgent guidance with RAG content (urgent guidance first, then RAG with citations)
@@ -985,9 +986,10 @@ export class ChatService {
           evidenceChunks,
           responseText,
           hasGenerallyAsking,
-          orphanCount
+          orphanCount,
+          dto.userText
         );
-        
+
         // Handle YELLOW confidence (weak evidence but still answer)
         if (citationValidation.confidenceLevel === "YELLOW") {
           const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
@@ -1163,9 +1165,10 @@ export class ChatService {
           evidenceChunks,
           responseText,
           hasGenerallyAsking,
-          orphanCount2
+          orphanCount2,
+          dto.userText
         );
-        
+
         // Persist message + citations (consolidated)
         const assistant = await this.persistAssistantMessage(
           dto.sessionId,
@@ -1542,7 +1545,8 @@ export class ChatService {
         evidenceChunks,
         responseText,
         isIdentifyWithGeneralIntent,
-        orphanCount3
+        orphanCount3,
+        dto.userText
       );
 
       // Apply response formatting rules (E1, E2, E3)
@@ -1588,7 +1592,8 @@ export class ChatService {
           evidenceChunks,
           responseText,
           isIdentifyWithGeneralIntent,
-          retryOrphanCount
+          retryOrphanCount,
+          dto.userText
         );
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
@@ -1841,7 +1846,7 @@ export class ChatService {
       ));
     }
 
-    let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount);
+    let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
 
     // Handle RED (no citations) - retry once, then abstain
     if (citationValidation.confidenceLevel === "RED") {
@@ -1867,7 +1872,7 @@ export class ChatService {
         ));
       }
 
-      citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount);
+      citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
 
       if (citationValidation.confidenceLevel === "RED") {
         // Still RED after retry - abstain
