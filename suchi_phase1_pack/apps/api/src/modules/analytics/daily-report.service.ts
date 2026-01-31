@@ -295,13 +295,17 @@ export class DailyReportService {
         createdAt: { gte: from, lt: to },
         rating: 'down',
       },
-      include: {
+      select: {
+        sessionId: true,
+        reason: true,
+        createdAt: true,
         session: {
-          include: {
+          select: {
             messages: {
               where: { role: 'user' },
               orderBy: { createdAt: 'desc' },
               take: 1,
+              select: { text: true },
             },
           },
         },
@@ -323,13 +327,17 @@ export class DailyReportService {
       where: {
         createdAt: { gte: from, lt: to },
       },
-      include: {
+      select: {
+        sessionId: true,
+        type: true,
+        createdAt: true,
         session: {
-          include: {
+          select: {
             messages: {
               where: { role: 'user' },
               orderBy: { createdAt: 'desc' },
               take: 1,
+              select: { text: true },
             },
           },
         },
@@ -356,13 +364,17 @@ export class DailyReportService {
         role: 'assistant',
         abstentionReason: { not: null },
       },
-      include: {
+      select: {
+        sessionId: true,
+        abstentionReason: true,
+        createdAt: true,
         session: {
-          include: {
+          select: {
             messages: {
               where: { role: 'user' },
               orderBy: { createdAt: 'desc' },
               take: 1,
+              select: { text: true },
             },
           },
         },
