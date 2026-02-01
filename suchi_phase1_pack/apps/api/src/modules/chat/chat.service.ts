@@ -48,14 +48,35 @@ export class ChatService {
 
   /**
    * Get session with caching (60s TTL)
+   * Uses raw SQL to avoid Prisma schema validation issues when columns don't exist in DB
    */
   private async getSession(sessionId: string) {
     const cached = this.sessionCache.get(sessionId);
     if (cached && cached.expires > Date.now()) {
       return cached.data;
     }
-    
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+
+    // Use raw SQL to only select columns that definitely exist in production
+    const results = await this.prisma.$queryRaw<Array<{
+      id: string;
+      createdAt: Date;
+      channel: string;
+      locale: string | null;
+      userType: string | null;
+      status: string;
+      userContext: string | null;
+      cancerType: string | null;
+      greetingCompleted: boolean;
+      emotionalState: string | null;
+    }>>`
+      SELECT id, "createdAt", channel, locale, "userType", status,
+             "userContext", "cancerType", "greetingCompleted", "emotionalState"
+      FROM "Session"
+      WHERE id = ${sessionId}
+      LIMIT 1
+    `;
+
+    const session = results[0] || null;
     if (session) {
       this.sessionCache.set(sessionId, {
         data: session,
