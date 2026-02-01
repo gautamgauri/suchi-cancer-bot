@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { CreateSessionDto } from "./dto";
@@ -11,6 +11,8 @@ export interface GeoData {
 
 @Injectable()
 export class SessionsService {
+  private readonly logger = new Logger(SessionsService.name);
+
   constructor(private readonly prisma: PrismaService, private readonly analytics: AnalyticsService) {}
   async create(dto: CreateSessionDto, geoData?: GeoData, isEval = false) {
     let s;
@@ -28,13 +30,9 @@ export class SessionsService {
         },
       });
     } catch (error: any) {
-      // If geo/isEval columns don't exist, fall back to basic fields
-      // P2021 = unknown table, P2022 = unknown column
-      const isColumnMissing = error.code === 'P2021' ||
-                              error.code === 'P2022' ||
-                              error.message?.includes('does not exist') ||
-                              error.message?.includes('Unknown column');
-      if (isColumnMissing) {
+      // Fall back to basic fields for ANY Prisma error (handles missing columns gracefully)
+      this.logger.warn(`Session create with geo/isEval failed (${error.code || 'unknown'}), falling back to basic fields: ${error.message?.substring(0, 100)}`);
+      try {
         s = await this.prisma.session.create({
           data: {
             channel: dto.channel,
@@ -42,7 +40,9 @@ export class SessionsService {
             userType: dto.userType,
           },
         });
-      } else {
+      } catch (fallbackError: any) {
+        // If fallback also fails, throw original error
+        this.logger.error(`Session create fallback also failed: ${fallbackError.message}`);
         throw error;
       }
     }
