@@ -543,15 +543,20 @@ export class RagService {
   }
 
   private async vectorSearchWithMetadata(query: string, topK: number): Promise<EvidenceChunk[]> {
+    // TIMING: Track embedding generation
+    const embedStarted = Date.now();
     // Generate query embedding
     const queryEmbedding = await this.embeddings.generateEmbedding(query);
+    const embedMs = Date.now() - embedStarted;
     const embeddingStr = `[${queryEmbedding.join(",")}]`;
 
     // Use raw SQL for pgvector similarity search with document metadata
     // Cosine distance: <=> operator (smaller is more similar)
     // Retrieve more than topK to allow reranking
     const retrieveCount = Math.max(topK * 2, 20); // Retrieve 2x for reranking buffer
-    
+
+    // TIMING: Track database query
+    const dbStarted = Date.now();
     const results = await this.prisma.$queryRaw<Array<{
       id: string;
       docId: string;
@@ -584,6 +589,15 @@ export class RagService {
       ORDER BY c.embedding <=> ${embeddingStr}::vector
       LIMIT ${retrieveCount}
     `;
+    const dbMs = Date.now() - dbStarted;
+
+    // Log vector search timing breakdown
+    this.logger.debug({
+      event: 'vector_search_timing',
+      embedMs,
+      dbMs,
+      resultCount: results.length
+    });
 
     const chunks = results.map((r) => ({
       chunkId: r.id,
@@ -695,6 +709,9 @@ export class RagService {
     cancerType?: string | null,
     intent?: string
   ): Promise<EvidenceChunk[]> {
+    // TIMING: Track search components
+    const searchStarted = Date.now();
+
     // Parallel retrieval: vector + FTS
     const [vectorChunks, ftsChunks] = await Promise.all([
       this.vectorSearchWithMetadata(query, topK * 2).catch(err => {
@@ -706,6 +723,7 @@ export class RagService {
         return [];
       })
     ]);
+    const searchMs = Date.now() - searchStarted;
 
     if (vectorChunks.length === 0 && ftsChunks.length === 0) {
       this.logger.warn("Both vector and FTS returned no results");
@@ -765,6 +783,7 @@ export class RagService {
 
     // Step 1: Cross-encoder reranking with intent-based gating
     // Gating uses PRE-trust-boost scores (vecSim, lexSim) to decide if reranking helps
+    const rerankStarted = Date.now();
     let semanticReranked: EvidenceChunk[];
     if (this.reranker.isEnabled()) {
       // Pass more candidates + intent for intelligent gating
@@ -773,16 +792,20 @@ export class RagService {
     } else {
       semanticReranked = hybridChunks;
     }
+    const rerankMs = Date.now() - rerankStarted;
 
     // Step 2: Apply trust-aware reranking (preserves source quality guarantees)
     const reranked = this.rerankByTrustedSource(semanticReranked, query);
+
+    // Total hybrid search time
+    const totalMs = Date.now() - searchStarted;
 
     this.logger.debug(
       `Hybrid search: ${vectorChunks.length} vector + ${ftsChunks.length} FTS = ${chunkMap.size} unique chunks, returning top ${topK}`
     );
 
-    // Log top-K metadata for debugging
-    const top3Trusted = reranked.slice(0, 3).filter(c => 
+    // Log top-K metadata for debugging with timing breakdown
+    const top3Trusted = reranked.slice(0, 3).filter(c =>
       c.document.isTrustedSource || isTrustedSource(c.document.sourceType || '')
     ).length;
 
@@ -795,7 +818,12 @@ export class RagService {
       crossEncoderEnabled: this.reranker.isEnabled(),
       top3TrustedCount: top3Trusted,
       topScore: reranked[0]?.similarity || 0,
-      top3SourceTypes: reranked.slice(0, 3).map(c => c.document.sourceType)
+      top3SourceTypes: reranked.slice(0, 3).map(c => c.document.sourceType),
+      timingMs: {
+        search: searchMs,        // Vector + FTS parallel search (includes embedding)
+        rerank: rerankMs,        // Cross-encoder reranking
+        total: totalMs           // Total hybrid search time
+      }
     });
 
     // Return top-K

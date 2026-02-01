@@ -657,9 +657,11 @@ export class ChatService {
     // Use expanded retrieval if this might be an identify question or if we expect weak evidence
     const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
     const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
-    const mightBeIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) && 
+    const mightBeIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
                                     cancerKeywordPattern.test(dto.userText.toLowerCase());
-    
+
+    // TIMING: Track RAG retrieval time
+    const ragStarted = Date.now();
     let evidenceChunks;
     if (earlyEvidenceChunks.length > 0) {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
@@ -673,6 +675,7 @@ export class ChatService {
         evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, queryType);
       }
     }
+    const ragMs = Date.now() - ragStarted;
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 5. Intent classification (moved before evidence gate to provide context)
@@ -1667,17 +1670,25 @@ export class ChatService {
         }
       );
 
-      // DEBUG: Log timing breakdown for explain mode
+      // DEBUG: Log timing breakdown for explain mode (comprehensive latency analysis)
       const explainTotalMs = Date.now() - explainStarted;
+      const totalMs = Date.now() - started;
       this.logger.log({
         event: 'explain_mode_timing',
         sessionId: dto.sessionId,
         mightBeIdentifyQuestion,
         llmCallCount,
         timingMs: {
-          extraction: extractionMs,
-          llm1: llm1Ms,
-          total: explainTotalMs
+          rag: ragMs,           // RAG retrieval (embedding + vector/FTS + reranking)
+          extraction: extractionMs, // Structured extraction from chunks
+          llm1: llm1Ms,         // First LLM call
+          explain: explainTotalMs, // Explain mode total (extraction + LLM + post-processing)
+          total: totalMs        // Full request latency
+        },
+        breakdown: {
+          ragPct: Math.round((ragMs / totalMs) * 100),
+          llmPct: Math.round((llm1Ms / totalMs) * 100),
+          otherPct: Math.round(((totalMs - ragMs - llm1Ms) / totalMs) * 100)
         }
       });
 
