@@ -32,12 +32,20 @@ export class GreetingFlowService {
 
   /**
    * Check if greeting flow is needed for this session
+   * Uses raw SQL to avoid schema drift issues
    */
   async needsGreetingFlow(sessionId: string): Promise<boolean> {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-    });
+    // Use raw SQL to only select columns that definitely exist
+    const sessions = await this.prisma.$queryRaw<Array<{
+      greetingCompleted: boolean;
+    }>>`
+      SELECT "greetingCompleted"
+      FROM "Session"
+      WHERE id = ${sessionId}
+      LIMIT 1
+    `;
 
+    const session = sessions[0];
     if (!session) {
       return false;
     }
@@ -374,15 +382,29 @@ Return the JSON object with context, cancerType, and confidence.`;
   /**
    * Handle greeting flow interruption - complete flow silently using extracted context
    */
+  /**
+   * Handle greeting flow interruption - complete flow silently using extracted context
+   * Uses raw SQL to avoid schema drift issues
+   */
   async handleGreetingFlowInterruption(
     sessionId: string,
     contextResult: ContextExtractionResult,
     emotionalTone?: EmotionalTone
   ): Promise<void> {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-    });
+    // Use raw SQL to only select columns that definitely exist
+    const sessions = await this.prisma.$queryRaw<Array<{
+      greetingCompleted: boolean;
+      userContext: string | null;
+      cancerType: string | null;
+      emotionalState: string | null;
+    }>>`
+      SELECT "greetingCompleted", "userContext", "cancerType", "emotionalState"
+      FROM "Session"
+      WHERE id = ${sessionId}
+      LIMIT 1
+    `;
 
+    const session = sessions[0];
     if (!session || session.greetingCompleted) {
       return; // Not in greeting flow
     }
