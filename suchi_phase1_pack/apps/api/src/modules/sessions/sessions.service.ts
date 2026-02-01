@@ -29,7 +29,12 @@ export class SessionsService {
       });
     } catch (error: any) {
       // If geo/isEval columns don't exist, fall back to basic fields
-      if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      // P2021 = unknown table, P2022 = unknown column
+      const isColumnMissing = error.code === 'P2021' ||
+                              error.code === 'P2022' ||
+                              error.message?.includes('does not exist') ||
+                              error.message?.includes('Unknown column');
+      if (isColumnMissing) {
         s = await this.prisma.session.create({
           data: {
             channel: dto.channel,
