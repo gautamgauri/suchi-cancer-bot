@@ -78,11 +78,35 @@ export class DailyReportService {
   async generateMetrics(from: Date, to: Date): Promise<DailyReportMetrics> {
     this.logger.log(`Generating daily report metrics from ${from.toISOString()} to ${to.toISOString()}`);
 
+    // Get non-eval session IDs to filter out test traffic
+    // Using raw query to avoid issues with isEval column not existing in older schemas
+    let realSessionIds: string[] = [];
+    try {
+      const realSessions = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Session"
+        WHERE "createdAt" >= ${from} AND "createdAt" < ${to}
+        AND ("isEval" = false OR "isEval" IS NULL)
+      `;
+      realSessionIds = realSessions.map(s => s.id);
+    } catch (e) {
+      // If isEval column doesn't exist, get all sessions
+      this.logger.warn('isEval column not found, including all sessions');
+      const allSessions = await this.prisma.session.findMany({
+        where: { createdAt: { gte: from, lt: to } },
+        select: { id: true },
+      });
+      realSessionIds = allSessions.map(s => s.id);
+    }
+
+    this.logger.log(`Found ${realSessionIds.length} non-eval sessions in date range`);
+
     // Fetch all messages in date range (assistant messages only for response metrics)
+    // Filter to only include messages from non-eval sessions
     const assistantMessages = await this.prisma.message.findMany({
       where: {
         createdAt: { gte: from, lt: to },
         role: 'assistant',
+        sessionId: { in: realSessionIds },
       },
     });
 
@@ -90,6 +114,7 @@ export class DailyReportService {
       where: {
         createdAt: { gte: from, lt: to },
         role: 'user',
+        sessionId: { in: realSessionIds },
       },
       select: {
         id: true,
@@ -99,24 +124,27 @@ export class DailyReportService {
       },
     });
 
-    // Fetch feedback
+    // Fetch feedback (only from real sessions)
     const feedback = await this.prisma.feedback.findMany({
       where: {
         createdAt: { gte: from, lt: to },
+        sessionId: { in: realSessionIds },
       },
     });
 
-    // Fetch safety events
+    // Fetch safety events (only from real sessions)
     const safetyEvents = await this.prisma.safetyEvent.findMany({
       where: {
         createdAt: { gte: from, lt: to },
+        sessionId: { in: realSessionIds },
       },
     });
 
-    // Fetch analytics events for hallucination detection
+    // Fetch analytics events for hallucination detection (only from real sessions)
     const analyticsEvents = await this.prisma.analyticsEvent.findMany({
       where: {
         createdAt: { gte: from, lt: to },
+        sessionId: { in: realSessionIds },
         eventName: { in: ['citation_enforcement_failed', 'abstention_response'] },
       },
     });
@@ -204,8 +232,8 @@ export class DailyReportService {
       return payload?.orphanCount > 0 || e.eventName === 'citation_enforcement_failed';
     }).length;
 
-    // Flagged conversations
-    const flaggedConversations = await this.getFlaggedConversations(from, to);
+    // Flagged conversations (only from real sessions)
+    const flaggedConversations = await this.getFlaggedConversations(from, to, realSessionIds);
 
     // Session stats
     const uniqueSessionIds = new Set(userMessages.map(m => m.sessionId));
@@ -285,15 +313,17 @@ export class DailyReportService {
    */
   private async getFlaggedConversations(
     from: Date,
-    to: Date
+    to: Date,
+    realSessionIds: string[]
   ): Promise<Array<{ sessionId: string; reason: string; userQuery: string; createdAt: Date }>> {
     const flagged: Array<{ sessionId: string; reason: string; userQuery: string; createdAt: Date }> = [];
 
-    // Sessions with thumbs down feedback
+    // Sessions with thumbs down feedback (only real sessions)
     const negativeFeedback = await this.prisma.feedback.findMany({
       where: {
         createdAt: { gte: from, lt: to },
         rating: 'down',
+        sessionId: { in: realSessionIds },
       },
       select: {
         sessionId: true,
@@ -322,10 +352,11 @@ export class DailyReportService {
       });
     });
 
-    // Sessions with safety events
+    // Sessions with safety events (only real sessions)
     const safetyEventSessions = await this.prisma.safetyEvent.findMany({
       where: {
         createdAt: { gte: from, lt: to },
+        sessionId: { in: realSessionIds },
       },
       select: {
         sessionId: true,
@@ -357,12 +388,13 @@ export class DailyReportService {
       }
     });
 
-    // Sessions with abstentions
+    // Sessions with abstentions (only real sessions)
     const abstentionMessages = await this.prisma.message.findMany({
       where: {
         createdAt: { gte: from, lt: to },
         role: 'assistant',
         abstentionReason: { not: null },
+        sessionId: { in: realSessionIds },
       },
       select: {
         sessionId: true,

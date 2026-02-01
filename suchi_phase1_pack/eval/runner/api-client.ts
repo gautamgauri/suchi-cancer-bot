@@ -9,16 +9,17 @@ export class ApiClient {
   constructor(baseUrl: string, timeoutMs: number = 120000, authorizationHeader?: string, retries: number = 2) {
     this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
     this.retries = retries;
-    
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      "X-Suchi-Eval": "true", // Mark all eval traffic for filtering in analytics
     };
-    
+
     // Add authorization header if provided
     if (authorizationHeader) {
       headers["Authorization"] = `Bearer ${authorizationHeader}`;
     }
-    
+
     this.client = axios.create({
       baseURL: this.baseUrl,
       headers,

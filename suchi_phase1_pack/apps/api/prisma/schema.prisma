@@ -25,6 +25,9 @@ model Session {
   region  String? // State/region from IP geolocation
   country String? // Country code (e.g., "IN", "US")
 
+  // Eval/test traffic marker
+  isEval  Boolean @default(false) // True if session is from automated eval/test
+
   messages        Message[]
   feedback        Feedback[]
   safetyEvents    SafetyEvent[]

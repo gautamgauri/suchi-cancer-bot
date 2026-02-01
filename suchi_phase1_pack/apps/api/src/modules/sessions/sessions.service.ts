@@ -12,7 +12,7 @@ export interface GeoData {
 @Injectable()
 export class SessionsService {
   constructor(private readonly prisma: PrismaService, private readonly analytics: AnalyticsService) {}
-  async create(dto: CreateSessionDto, geoData?: GeoData) {
+  async create(dto: CreateSessionDto, geoData?: GeoData, isEval = false) {
     const s = await this.prisma.session.create({
       data: {
         channel: dto.channel,
@@ -21,12 +21,14 @@ export class SessionsService {
         city: geoData?.city,
         region: geoData?.region,
         country: geoData?.country,
+        isEval,
       },
     });
     await this.analytics.emit("session_created", {
       channel: dto.channel,
       city: geoData?.city,
       country: geoData?.country,
+      isEval,
     }, s.id);
     return s;
   }

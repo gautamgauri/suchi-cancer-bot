@@ -23,7 +23,10 @@ export class SessionsController {
       ? { city: geo.city || null, region: geo.region || null, country: geo.country || null }
       : { city: null, region: null, country: null };
 
-    const s = await this.sessions.create(dto, geoData);
+    // Check for eval marker header (used by automated tests/evals)
+    const isEval = req.headers["x-suchi-eval"] === "true";
+
+    const s = await this.sessions.create(dto, geoData, isEval);
     return { sessionId: s.id, createdAt: s.createdAt };
   }
 
