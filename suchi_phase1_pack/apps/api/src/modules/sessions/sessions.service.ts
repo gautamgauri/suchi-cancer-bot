@@ -13,17 +13,34 @@ export interface GeoData {
 export class SessionsService {
   constructor(private readonly prisma: PrismaService, private readonly analytics: AnalyticsService) {}
   async create(dto: CreateSessionDto, geoData?: GeoData, isEval = false) {
-    const s = await this.prisma.session.create({
-      data: {
-        channel: dto.channel,
-        locale: dto.locale,
-        userType: dto.userType,
-        city: geoData?.city,
-        region: geoData?.region,
-        country: geoData?.country,
-        isEval,
-      },
-    });
+    let s;
+    try {
+      // Try with all fields including geo and isEval
+      s = await this.prisma.session.create({
+        data: {
+          channel: dto.channel,
+          locale: dto.locale,
+          userType: dto.userType,
+          city: geoData?.city,
+          region: geoData?.region,
+          country: geoData?.country,
+          isEval,
+        },
+      });
+    } catch (error: any) {
+      // If geo/isEval columns don't exist, fall back to basic fields
+      if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+        s = await this.prisma.session.create({
+          data: {
+            channel: dto.channel,
+            locale: dto.locale,
+            userType: dto.userType,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
     await this.analytics.emit("session_created", {
       channel: dto.channel,
       city: geoData?.city,
