@@ -17,33 +17,29 @@ export class SessionsService {
   async create(dto: CreateSessionDto, geoData?: GeoData, isEval = false) {
     let s;
     try {
-      // Try with all fields including geo and isEval
-      s = await this.prisma.session.create({
-        data: {
-          channel: dto.channel,
-          locale: dto.locale,
-          userType: dto.userType,
-          city: geoData?.city,
-          region: geoData?.region,
-          country: geoData?.country,
-          isEval,
-        },
-      });
+      // Try with all fields including geo and isEval using raw SQL
+      // This avoids Prisma schema validation issues when columns don't exist in DB
+      const result = await this.prisma.$queryRaw<Array<{ id: string; createdAt: Date }>>`
+        INSERT INTO "Session" (id, "createdAt", channel, locale, "userType", status, city, region, country, "isEval")
+        VALUES (gen_random_uuid(), NOW(), ${dto.channel}, ${dto.locale || null}, ${dto.userType || null}, 'active',
+                ${geoData?.city || null}, ${geoData?.region || null}, ${geoData?.country || null}, ${isEval})
+        RETURNING id, "createdAt"
+      `;
+      s = { id: result[0].id, createdAt: result[0].createdAt };
     } catch (error: any) {
-      // Fall back to basic fields for ANY Prisma error (handles missing columns gracefully)
-      this.logger.warn(`Session create with geo/isEval failed (${error.code || 'unknown'}), falling back to basic fields: ${error.message?.substring(0, 100)}`);
+      // Fall back to basic fields using raw SQL (no geo/isEval columns)
+      this.logger.warn(`Session create with geo/isEval failed, falling back to basic fields: ${error.message?.substring(0, 80)}`);
       try {
-        s = await this.prisma.session.create({
-          data: {
-            channel: dto.channel,
-            locale: dto.locale,
-            userType: dto.userType,
-          },
-        });
+        const result = await this.prisma.$queryRaw<Array<{ id: string; createdAt: Date }>>`
+          INSERT INTO "Session" (id, "createdAt", channel, locale, "userType", status)
+          VALUES (gen_random_uuid(), NOW(), ${dto.channel}, ${dto.locale || null}, ${dto.userType || null}, 'active')
+          RETURNING id, "createdAt"
+        `;
+        s = { id: result[0].id, createdAt: result[0].createdAt };
       } catch (fallbackError: any) {
-        // If fallback also fails, throw original error
+        // If fallback also fails, throw the fallback error (more relevant)
         this.logger.error(`Session create fallback also failed: ${fallbackError.message}`);
-        throw error;
+        throw fallbackError;
       }
     }
     await this.analytics.emit("session_created", {
