@@ -5,13 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { fundingApiService } from "../../../services/fundingApi";
-import type { ActivityType } from "../../../services/fundingApi";
+import { fundingApiService, type ActivityType } from "../../../services/fundingApi";
 import { EmptyState } from "../EmptyState";
 import { DrawerSkeleton } from "../Skeletons";
 import { formatDate } from "../../../utils/format";
 
-const ACTIVITY_TYPES: ActivityType[] = ["call", "meeting", "email_sent", "note"];
+type QuickLogActivityType = "call" | "meeting" | "email_sent" | "note";
+const ACTIVITY_TYPES: QuickLogActivityType[] = ["call", "meeting", "email_sent", "note"];
 
 const addActivitySchema = z.object({
   type: z.enum(["call", "meeting", "email_sent", "note"]),
@@ -29,7 +29,7 @@ export function ActivityTab({ entryId, compact = false }: ActivityTabProps) {
   const { t } = useTranslation("funding");
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [quickLogType, setQuickLogType] = useState<ActivityType | null>(null);
+  const [_quickLogType, setQuickLogType] = useState<QuickLogActivityType | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["pipeline-entry-activities", entryId],
@@ -73,7 +73,7 @@ export function ActivityTab({ entryId, compact = false }: ActivityTabProps) {
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-  const onQuickLog = (type: ActivityType) => {
+  const onQuickLog = (type: QuickLogActivityType) => {
     setQuickLogType(type);
     setValue("type", type);
     setShowForm(true);

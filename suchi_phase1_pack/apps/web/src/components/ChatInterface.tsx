@@ -39,7 +39,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   const [greetingCompleted, setGreetingCompleted] = useState<boolean>(false);
   const [showSourcesDisclosure, setShowSourcesDisclosure] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Check session state to coordinate with backend greeting flow
