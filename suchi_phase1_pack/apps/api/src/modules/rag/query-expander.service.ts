@@ -51,26 +51,26 @@ export class QueryExpanderService {
     ['blood in urine', ['hematuria', 'bloody urine', 'gross hematuria']],
     ['trouble peeing', ['urinary retention', 'difficulty urinating', 'weak urine stream']],
 
-    // Respiratory symptoms - with cancer warning context
-    ['shortness of breath', ['dyspnea', 'breathlessness', 'respiratory distress', 'lung cancer symptoms']],
-    ['coughing blood', ['hemoptysis', 'bloody sputum', 'lung cancer symptoms', 'cancer warning signs']],
-    ['persistent cough', ['chronic cough', 'prolonged cough', 'lung cancer symptoms', 'cancer warning signs']],
-    ['cough', ['persistent cough', 'chronic cough', 'lung cancer symptoms']],
-    ['wheezing', ['wheezing', 'stridor', 'breathing difficulty', 'lung cancer symptoms']],
+    // Respiratory symptoms - cancer context FIRST for retrieval priority
+    ['shortness of breath', ['lung cancer symptoms', 'dyspnea', 'breathlessness', 'respiratory distress']],
+    ['coughing blood', ['lung cancer symptoms', 'hemoptysis', 'bloody sputum', 'cancer warning signs']],
+    ['persistent cough', ['lung cancer symptoms', 'cancer warning signs', 'chronic cough', 'prolonged cough']],
+    ['cough', ['lung cancer symptoms', 'persistent cough', 'chronic cough']],
+    ['wheezing', ['lung cancer symptoms', 'wheezing', 'stridor', 'breathing difficulty']],
 
-    // Systemic symptoms - with cancer warning context
-    ['tired', ['fatigue', 'tiredness', 'exhaustion', 'asthenia']],
-    ['always tired', ['chronic fatigue', 'persistent fatigue', 'profound fatigue', 'cancer symptoms']],
-    ['weight loss', ['unintentional weight loss', 'unexplained weight loss', 'cachexia', 'cancer warning signs']],
-    ['lost weight', ['weight loss', 'unintentional weight loss', 'cancer symptoms']],
-    ['night sweats', ['nocturnal diaphoresis', 'night sweating', 'drenching sweats', 'lymphoma symptoms']],
+    // Systemic symptoms - cancer context FIRST for retrieval priority
+    ['tired', ['cancer symptoms', 'fatigue', 'tiredness', 'exhaustion']],
+    ['always tired', ['cancer symptoms', 'chronic fatigue', 'persistent fatigue', 'profound fatigue']],
+    ['weight loss', ['cancer warning signs', 'unintentional weight loss', 'unexplained weight loss', 'cachexia']],
+    ['lost weight', ['cancer symptoms', 'weight loss', 'unintentional weight loss']],
+    ['night sweats', ['lymphoma symptoms', 'nocturnal diaphoresis', 'night sweating', 'drenching sweats']],
     ['fever', ['pyrexia', 'elevated temperature', 'febrile']],
     ['loss of appetite', ['anorexia', 'decreased appetite', 'poor appetite']],
     ['not hungry', ['anorexia', 'loss of appetite', 'decreased appetite']],
 
-    // Skin symptoms - with cancer warning context
-    ['lump', ['mass', 'nodule', 'tumor', 'swelling', 'cancer warning signs']],
-    ['bump', ['mass', 'nodule', 'lesion', 'cancer symptoms']],
+    // Skin symptoms - cancer context FIRST for retrieval priority
+    ['lump', ['cancer warning signs', 'mass', 'nodule', 'tumor', 'swelling']],
+    ['bump', ['cancer symptoms', 'mass', 'nodule', 'lesion']],
     ['mole changes', ['changing mole', 'atypical nevus', 'dysplastic nevus', 'melanoma signs']],
     ['new mole', ['new skin lesion', 'pigmented lesion']],
     ['skin sore', ['skin ulcer', 'non-healing wound', 'skin lesion']],
