@@ -1,0 +1,89 @@
+{
+  "nav": {
+    "pipeline": "Pipeline",
+    "settings": "Settings",
+    "docs": "Docs"
+  },
+  "header": {
+    "apiConfigured": "API configured",
+    "apiNotConfigured": "API not configured",
+    "userMenu": "User menu"
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "searchPlaceholder": "Search org, contact, notes…",
+    "filterStage": "Stage",
+    "filterOwner": "Owner",
+    "filterPriority": "Priority",
+    "noEntries": "No pipeline entries yet",
+    "addFirst": "Add your first entry",
+    "orgName": "Org name",
+    "stage": "Stage",
+    "nextAction": "Next action",
+    "owner": "Owner",
+    "priority": "Priority",
+    "lastActivity": "Last activity"
+  },
+  "drawer": {
+    "overview": "Overview",
+    "activity": "Activity",
+    "drafts": "Drafts",
+    "copyOrgName": "Copy org name",
+    "printSnapshot": "Print snapshot",
+    "localOnlyBanner": "Edits are local-only until saving is enabled",
+    "copyNotes": "Copy notes"
+  },
+  "activity": {
+    "noActivity": "No activity recorded yet",
+    "call": "Call",
+    "meeting": "Meeting",
+    "emailSent": "Email sent",
+    "note": "Note",
+    "addActivity": "Add activity",
+    "type": "Type",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional notes…",
+    "donorIdOrOrgId": "Donor ID or Org ID (at least one required)"
+  },
+  "drafts": {
+    "draftEmail": "Draft Email",
+    "template": "Template",
+    "context": "Context (what's the situation?)",
+    "donorSnippet": "Donor profile snippet (optional)",
+    "generate": "Generate",
+    "generateRefine": "Generate + Refine",
+    "needStatementRefine": "Need Statement Refine",
+    "userPrompt": "User prompt (draft a need statement for…)",
+    "draft": "Draft",
+    "evaluation": "Evaluation",
+    "refined": "Refined",
+    "copyRefined": "Copy refined",
+    "logAsActivity": "Log as activity",
+    "downloadTxt": "Download as .txt",
+    "missingEvidence": "Missing evidence",
+    "missingEvidenceDesc": "No reference material was provided. Add chunks to generate a grounded draft.",
+    "copyChecklist": "Copy checklist",
+    "templates": {
+      "intro": "Intro",
+      "follow_up": "Follow up",
+      "meeting_request": "Meeting request",
+      "proposal_nudge": "Proposal nudge",
+      "thank_you": "Thank you"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "apiBaseUrl": "API base URL",
+    "apiBaseUrlPlaceholder": "http://localhost:3001/v1",
+    "testSuccess": "Connection successful",
+    "testFailed": "Connection failed",
+    "resetUiConfirm": "Clear all UI preferences (language, compact mode, API URL)?"
+  },
+  "print": {
+    "title": "Funding Pipeline Snapshot",
+    "printedAt": "Printed at"
+  },
+  "banner": {
+    "apiNotConfigured": "API not configured. Set the API URL in Settings."
+  }
+}

@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("FUNDING_DATABASE_URL")
+}
+
+model PipelineEntry {
+  id                 String    @id @default(uuid())
+  orgName            String
+  contactName        String?
+  contactEmail       String?
+  stage              String
+  owner              String?
+  nextAction         String?
+  nextActionDate     DateTime?
+  lastContactDate    DateTime?
+  probability        Int?
+  notes              String?
+  sectorTags         String[]  @default([])
+  geography          String?
+  estimatedGrantSize String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  version            Int       @default(1)
+  activities         Activity[]
+}
+
+model Activity {
+  id               String         @id @default(uuid())
+  pipelineEntryId  String?
+  donorId          String?
+  orgId            String?
+  type             String
+  notes            String?
+  timestamp        DateTime       @default(now())
+  createdBy        String?
+  createdAt        DateTime       @default(now())
+  pipelineEntry    PipelineEntry? @relation(fields: [pipelineEntryId], references: [id])
+}

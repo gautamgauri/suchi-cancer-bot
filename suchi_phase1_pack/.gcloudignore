@@ -66,6 +66,26 @@ docs/
 # Prisma migrations (already in repo, don't need to copy)
 apps/api/prisma/migrations/*.sql
 
+# Knowledge Base (large JSON files, not needed for Docker build)
+kb/
+kb_sources/
+
+# Test artifacts
+eval/results/
+apps/web/playwright-report/
+apps/web/test-results/
+
+# IDE and CI config (not needed in build context)
+.cursor/
+.github/
+.claude/
+
+# Eval dependencies (only needed for eval runner, not main app)
+eval/
+
+# Landing page (separate deployment)
+apps/landing/
+
 
 
 

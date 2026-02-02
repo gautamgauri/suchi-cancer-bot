@@ -25,6 +25,7 @@ const SUGGESTED_PROMPTS = [
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStartOver }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Answering...");
   const [safetyBanner, setSafetyBanner] = useState<{
     classification: "red_flag" | "self_harm";
     message: string;
@@ -36,7 +37,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   const [showWelcome, setShowWelcome] = useState(false);
   const [greetingStep, setGreetingStep] = useState<number | null>(null);
   const [greetingCompleted, setGreetingCompleted] = useState<boolean>(false);
+  const [showSourcesDisclosure, setShowSourcesDisclosure] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check session state to coordinate with backend greeting flow
@@ -87,6 +90,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
 
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
+    setLoadingMessage("Answering...");
+
+    // Set timer to change message after 10 seconds
+    if (loadingTimerRef.current) {
+      clearTimeout(loadingTimerRef.current);
+    }
+    loadingTimerRef.current = setTimeout(() => {
+      setLoadingMessage("Still working—this can take a few extra seconds.");
+    }, 10000);
 
     try {
       const response: ChatResponse = await apiService.sendMessage({
@@ -104,6 +116,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
 
       setMessages((prev) => [...prev, assistantMessage]);
       setLastMessageId(response.messageId);
+
+      // Show sources disclosure on first assistant response (one-time)
+      const hasSeenSourcesDisclosure = localStorage.getItem("suchi_sources_disclosure_seen");
+      if (!hasSeenSourcesDisclosure) {
+        setShowSourcesDisclosure(true);
+        localStorage.setItem("suchi_sources_disclosure_seen", "true");
+      }
 
       // Update greeting state after message
       try {
@@ -133,6 +152,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       console.error("Error sending message:", error);
       setError("I'm sorry, there was an error processing your message. Please try again.");
     } finally {
+      // Clear loading timer
+      if (loadingTimerRef.current) {
+        clearTimeout(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
       setLoading(false);
     }
   };
@@ -218,7 +242,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
           }}
         />
         {loading && (
-          <LoadingIndicator />
+          <LoadingIndicator message={loadingMessage} />
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -286,6 +310,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
             // Focus on input or show suggested prompts
           }}
         />
+      )}
+
+      {showSourcesDisclosure && (
+        <div style={styles.sourcesDisclosureOverlay} onClick={() => setShowSourcesDisclosure(false)}>
+          <div style={styles.sourcesDisclosureModal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.sourcesDisclosureTitle}>About Our Sources</h3>
+            <p style={styles.sourcesDisclosureText}>
+              Suchi's answers are based on information from trusted sources including the National Cancer Institute (NCI) and other authoritative medical organizations. Each response includes citations so you can verify the information.
+            </p>
+            <button
+              onClick={() => setShowSourcesDisclosure(false)}
+              style={styles.sourcesDisclosureButton}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -421,6 +462,51 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "var(--radius-md)",
     cursor: "pointer",
     color: "var(--color-text)",
+    transition: "var(--transition-base)"
+  },
+  sourcesDisclosureOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000
+  },
+  sourcesDisclosureModal: {
+    backgroundColor: "var(--color-surface)",
+    borderRadius: "var(--radius-lg)",
+    padding: "24px",
+    maxWidth: "400px",
+    margin: "20px",
+    boxShadow: "var(--shadow-lg)",
+    textAlign: "center" as const
+  },
+  sourcesDisclosureTitle: {
+    fontSize: "var(--font-size-lg)",
+    fontWeight: "600",
+    color: "var(--color-text)",
+    marginTop: 0,
+    marginBottom: "12px"
+  },
+  sourcesDisclosureText: {
+    fontSize: "var(--font-size-sm)",
+    color: "var(--color-text-secondary)",
+    lineHeight: "1.6",
+    marginBottom: "20px"
+  },
+  sourcesDisclosureButton: {
+    padding: "10px 24px",
+    fontSize: "var(--font-size-base)",
+    fontWeight: "600",
+    backgroundColor: "var(--color-primary)",
+    color: "var(--color-text-on-primary)",
+    border: "none",
+    borderRadius: "var(--radius-md)",
+    cursor: "pointer",
     transition: "var(--transition-base)"
   }
 };

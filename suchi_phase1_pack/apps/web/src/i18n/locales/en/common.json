@@ -1,0 +1,20 @@
+{
+  "appName": "Funding Bot",
+  "skipToContent": "Skip to content",
+  "loading": "Loading...",
+  "retry": "Retry",
+  "save": "Save",
+  "saved": "Saved",
+  "close": "Close",
+  "copy": "Copy",
+  "cancel": "Cancel",
+  "testConnection": "Test connection",
+  "checkApiUrl": "Check API URL in Settings",
+  "compactMode": "Compact mode",
+  "language": "Language",
+  "english": "English",
+  "hindi": "Hindi",
+  "resetUi": "Reset UI",
+  "print": "Print",
+  "printPipeline": "Print Pipeline"
+}

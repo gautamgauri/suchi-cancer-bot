@@ -1,0 +1,89 @@
+{
+  "nav": {
+    "pipeline": "पाइपलाइन",
+    "settings": "सेटिंग्स",
+    "docs": "दस्तावेज़"
+  },
+  "header": {
+    "apiConfigured": "API कॉन्फ़िगर",
+    "apiNotConfigured": "API कॉन्फ़िगर नहीं",
+    "userMenu": "उपयोगकर्ता मेनू"
+  },
+  "pipeline": {
+    "title": "पाइपलाइन",
+    "searchPlaceholder": "संगठन, संपर्क, नोट्स खोजें…",
+    "filterStage": "चरण",
+    "filterOwner": "मालिक",
+    "filterPriority": "प्राथमिकता",
+    "noEntries": "अभी कोई पाइपलाइन एंट्री नहीं",
+    "addFirst": "पहली एंट्री जोड़ें",
+    "orgName": "संगठन का नाम",
+    "stage": "चरण",
+    "nextAction": "अगली क्रिया",
+    "owner": "मालिक",
+    "priority": "प्राथमिकता",
+    "lastActivity": "अंतिम गतिविधि"
+  },
+  "drawer": {
+    "overview": "अवलोकन",
+    "activity": "गतिविधि",
+    "drafts": "ड्राफ्ट",
+    "copyOrgName": "संगठन का नाम कॉपी करें",
+    "printSnapshot": "स्नैपशॉट प्रिंट करें",
+    "localOnlyBanner": "सेव सक्षम होने तक संपादन स्थानीय हैं",
+    "copyNotes": "नोट्स कॉपी करें"
+  },
+  "activity": {
+    "noActivity": "अभी कोई गतिविधि दर्ज नहीं",
+    "call": "कॉल",
+    "meeting": "मीटिंग",
+    "emailSent": "ईमेल भेजा",
+    "note": "नोट",
+    "addActivity": "गतिविधि जोड़ें",
+    "type": "प्रकार",
+    "notes": "नोट्स",
+    "notesPlaceholder": "वैकल्पिक नोट्स…",
+    "donorIdOrOrgId": "Donor ID या Org ID (कम से कम एक आवश्यक)"
+  },
+  "drafts": {
+    "draftEmail": "ईमेल ड्राफ्ट",
+    "template": "टेम्पलेट",
+    "context": "संदर्भ (स्थिति क्या है?)",
+    "donorSnippet": "दानदाता प्रोफ़ाइल स्निपेट (वैकल्पिक)",
+    "generate": "जनरेट करें",
+    "generateRefine": "जनरेट + रिफाइन",
+    "needStatementRefine": "निड स्टेटमेंट रिफाइन",
+    "userPrompt": "उपयोगकर्ता प्रॉम्प्ट (के लिए निड स्टेटमेंट ड्राफ्ट करें…)",
+    "draft": "ड्राफ्ट",
+    "evaluation": "मूल्यांकन",
+    "refined": "रिफाइंड",
+    "copyRefined": "रिफाइंड कॉपी करें",
+    "logAsActivity": "गतिविधि के रूप में लॉग करें",
+    "downloadTxt": ".txt के रूप में डाउनलोड",
+    "missingEvidence": "साक्ष्य नहीं मिला",
+    "missingEvidenceDesc": "कोई संदर्भ सामग्री नहीं दी गई। ग्राउंडेड ड्राफ्ट के लिए चंक जोड़ें।",
+    "copyChecklist": "चेकलिस्ट कॉपी करें",
+    "templates": {
+      "intro": "परिचय",
+      "follow_up": "फॉलो अप",
+      "meeting_request": "मीटिंग अनुरोध",
+      "proposal_nudge": "प्रस्ताव नज",
+      "thank_you": "धन्यवाद"
+    }
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "apiBaseUrl": "API बेस URL",
+    "apiBaseUrlPlaceholder": "http://localhost:3001/v1",
+    "testSuccess": "कनेक्शन सफल",
+    "testFailed": "कनेक्शन विफल",
+    "resetUiConfirm": "सभी UI प्राथमिकताएं साफ करें (भाषा, कॉम्पैक्ट मोड, API URL)?"
+  },
+  "print": {
+    "title": "Funding Pipeline Snapshot",
+    "printedAt": "प्रिंट समय"
+  },
+  "banner": {
+    "apiNotConfigured": "API कॉन्फ़िगर नहीं। सेटिंग्स में API URL सेट करें।"
+  }
+}

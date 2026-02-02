@@ -201,39 +201,47 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginLeft: "4px"
   },
   sourcesSection: {
-    marginTop: "16px",
-    paddingTop: "16px",
-    borderTop: "1px solid var(--color-border)"
+    marginTop: "12px",
+    paddingTop: "10px",
+    borderTop: "1px dashed var(--color-border)",
+    opacity: 0.85
   },
   sourcesHeader: {
-    fontSize: "var(--font-size-sm)",
-    fontWeight: "600",
-    color: "var(--color-text)",
-    marginBottom: "8px"
+    fontSize: "var(--font-size-xs)",
+    fontWeight: "500",
+    color: "var(--color-text-muted)",
+    marginBottom: "6px",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.5px"
   },
   sourcesList: {
     display: "flex",
     flexDirection: "column",
-    gap: "6px"
+    gap: "4px"
   },
   sourceItem: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    fontSize: "var(--font-size-sm)",
-    color: "var(--color-text-secondary)"
+    gap: "6px",
+    fontSize: "var(--font-size-xs)",
+    color: "var(--color-text-muted)"
   },
   sourceNumber: {
-    fontWeight: "600",
-    color: "var(--color-primary)"
+    fontWeight: "500",
+    color: "var(--color-text-secondary)",
+    fontSize: "var(--font-size-xs)"
   },
   sourceTitle: {
-    flex: 1
+    flex: 1,
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis" as const
   },
   sourceLink: {
-    color: "var(--color-primary)",
+    color: "var(--color-text-secondary)",
     textDecoration: "none",
-    fontSize: "var(--font-size-xs)"
+    fontSize: "10px",
+    opacity: 0.8
   }
 };
 
