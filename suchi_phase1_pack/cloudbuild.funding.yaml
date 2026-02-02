@@ -1,9 +1,8 @@
-# Cloud Build for funding-api (FundingBot) — mirrors root cloudbuild.yaml pattern.
-# Build from apps/funding-api, deploy to Cloud Run as funding-api. No CloudSQL.
+# Cloud Build for Diksha Funding Bot (API + Web)
+# Deploys both funding-api and funding-web to Cloud Run
 #
-# Manual (from repo root): gcloud builds submit --config suchi_phase1_pack/cloudbuild.funding.yaml .
-# Override secret name: --substitutions _FUNDING_LLM_API_KEY_SECRET=YOUR_SECRET_NAME
-# Trigger: point at this file; included files e.g. suchi_phase1_pack/apps/funding-api/**
+# Manual: gcloud builds submit --config suchi_phase1_pack/cloudbuild.funding.yaml .
+# Trigger: point at this file; included files e.g. suchi_phase1_pack/apps/funding-api/** suchi_phase1_pack/apps/funding-web/**
 
 steps:
   # Build Funding API Docker image
@@ -19,13 +18,36 @@ steps:
       - 'suchi_phase1_pack/apps/funding-api/Dockerfile'
       - 'suchi_phase1_pack/apps/funding-api'
 
-  # Push Funding API image to Artifact Registry
+  # Build Funding Web Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-funding-web'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-web:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-web:latest'
+      - '--build-arg'
+      - 'VITE_API_URL=${_FUNDING_API_URL}'
+      - '-f'
+      - 'suchi_phase1_pack/apps/funding-web/Dockerfile'
+      - 'suchi_phase1_pack/apps/funding-web'
+
+  # Push Funding API image
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-funding-api'
     args:
       - 'push'
       - '--all-tags'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api'
+
+  # Push Funding Web image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-funding-web'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-web'
 
   # Deploy Funding API to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -59,16 +81,42 @@ steps:
       - '--set-secrets'
       - 'FUNDING_OPENAI_API_KEY=${_FUNDING_LLM_API_KEY_SECRET}:latest'
 
+  # Deploy Funding Web to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-funding-web'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_FUNDING_WEB_SERVICE_NAME}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-web:$BUILD_ID'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '256Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '60'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '5'
+      - '--port'
+      - '8080'
+
 substitutions:
   _REGION: 'us-central1'
   _ARTIFACT_REGISTRY: 'suchi-images'
   _FUNDING_API_SERVICE_NAME: 'funding-api'
-
-  # Keep defaults low-friction; override in trigger if needed
+  _FUNDING_WEB_SERVICE_NAME: 'funding-web'
+  _FUNDING_API_URL: 'https://funding-api-lxiveognla-uc.a.run.app'
   _FUNDING_MODEL_DRAFT: 'deepseek-chat'
   _FUNDING_LLM_TIMEOUT_MS: '45000'
-
-  # Same Secret Manager secret Suchi uses (DEEPSEEK_API_KEY=deepseek-api-key:latest). Env var name stays FUNDING_OPENAI_API_KEY.
   _FUNDING_LLM_API_KEY_SECRET: 'deepseek-api-key'
 
 options:
