@@ -51,25 +51,26 @@ export class QueryExpanderService {
     ['blood in urine', ['hematuria', 'bloody urine', 'gross hematuria']],
     ['trouble peeing', ['urinary retention', 'difficulty urinating', 'weak urine stream']],
 
-    // Respiratory symptoms
-    ['shortness of breath', ['dyspnea', 'breathlessness', 'respiratory distress']],
-    ['coughing blood', ['hemoptysis', 'bloody sputum']],
-    ['persistent cough', ['chronic cough', 'prolonged cough']],
-    ['wheezing', ['wheezing', 'stridor', 'breathing difficulty']],
+    // Respiratory symptoms - with cancer warning context
+    ['shortness of breath', ['dyspnea', 'breathlessness', 'respiratory distress', 'lung cancer symptoms']],
+    ['coughing blood', ['hemoptysis', 'bloody sputum', 'lung cancer symptoms', 'cancer warning signs']],
+    ['persistent cough', ['chronic cough', 'prolonged cough', 'lung cancer symptoms', 'cancer warning signs']],
+    ['cough', ['persistent cough', 'chronic cough', 'lung cancer symptoms']],
+    ['wheezing', ['wheezing', 'stridor', 'breathing difficulty', 'lung cancer symptoms']],
 
-    // Systemic symptoms
+    // Systemic symptoms - with cancer warning context
     ['tired', ['fatigue', 'tiredness', 'exhaustion', 'asthenia']],
-    ['always tired', ['chronic fatigue', 'persistent fatigue', 'profound fatigue']],
-    ['weight loss', ['unintentional weight loss', 'unexplained weight loss', 'cachexia']],
-    ['lost weight', ['weight loss', 'unintentional weight loss']],
-    ['night sweats', ['nocturnal diaphoresis', 'night sweating', 'drenching sweats']],
+    ['always tired', ['chronic fatigue', 'persistent fatigue', 'profound fatigue', 'cancer symptoms']],
+    ['weight loss', ['unintentional weight loss', 'unexplained weight loss', 'cachexia', 'cancer warning signs']],
+    ['lost weight', ['weight loss', 'unintentional weight loss', 'cancer symptoms']],
+    ['night sweats', ['nocturnal diaphoresis', 'night sweating', 'drenching sweats', 'lymphoma symptoms']],
     ['fever', ['pyrexia', 'elevated temperature', 'febrile']],
     ['loss of appetite', ['anorexia', 'decreased appetite', 'poor appetite']],
     ['not hungry', ['anorexia', 'loss of appetite', 'decreased appetite']],
 
-    // Skin symptoms
-    ['lump', ['mass', 'nodule', 'tumor', 'swelling']],
-    ['bump', ['mass', 'nodule', 'lesion']],
+    // Skin symptoms - with cancer warning context
+    ['lump', ['mass', 'nodule', 'tumor', 'swelling', 'cancer warning signs']],
+    ['bump', ['mass', 'nodule', 'lesion', 'cancer symptoms']],
     ['mole changes', ['changing mole', 'atypical nevus', 'dysplastic nevus', 'melanoma signs']],
     ['new mole', ['new skin lesion', 'pigmented lesion']],
     ['skin sore', ['skin ulcer', 'non-healing wound', 'skin lesion']],

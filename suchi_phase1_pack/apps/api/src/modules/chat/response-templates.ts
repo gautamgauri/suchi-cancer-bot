@@ -62,15 +62,46 @@ export class ResponseTemplates {
   }
 
   /**
+   * Check if text contains symptom-related words (not just "symptom")
+   */
+  private static hasSymptomIndicators(text: string): boolean {
+    const symptomPatterns = [
+      /\bsymptom/i,
+      /\bcough/i,
+      /\bpain\b/i,
+      /\bhurt/i,
+      /\blump\b/i,
+      /\bbleeding\b/i,
+      /\bblood\b/i,
+      /\bswelling\b/i,
+      /\bfatigue\b/i,
+      /\btired\b/i,
+      /\bweight loss\b/i,
+      /\bnausea\b/i,
+      /\bvomit/i,
+      /\bbreath/i,
+      /\bfever\b/i,
+      /\bheadache/i,
+      /\bnumbness\b/i,
+      /\bitch/i,
+      /\brash\b/i,
+      /\bsore\b/i,
+      /\bache\b/i,
+    ];
+    return symptomPatterns.some(pattern => pattern.test(text));
+  }
+
+  /**
    * Navigate Mode micro-structure - for personal symptom support
    * Structure: Acknowledge → 1-2 questions → Short next-step list (max 3 bullets)
    */
   static navigateModeFrame(userText: string, topic?: string): string {
     const lowerText = userText.toLowerCase();
     let response = "";
+    const hasSymptoms = this.hasSymptomIndicators(lowerText);
 
     // Acknowledge (brief)
-    if (lowerText.includes("symptom")) {
+    if (hasSymptoms) {
       response += "I understand you're experiencing symptoms. ";
     } else if (lowerText.includes("report") || lowerText.includes("scan") || lowerText.includes("test")) {
       response += "I understand you have questions about your report. ";
@@ -80,7 +111,7 @@ export class ResponseTemplates {
 
     // 1-2 targeted questions
     const questions: string[] = [];
-    if (lowerText.includes("symptom")) {
+    if (hasSymptoms) {
       questions.push("When did these symptoms start?");
       questions.push("How often do they occur?");
     } else if (lowerText.includes("weight loss")) {
@@ -98,7 +129,7 @@ export class ResponseTemplates {
 
     // Short next-step list (max 3 bullets)
     response += "\n\n**Next steps:**\n";
-    if (lowerText.includes("symptom")) {
+    if (hasSymptoms) {
       response += "• Track your symptoms and when they occur\n• Prepare questions for your healthcare provider\n• Seek urgent care if symptoms worsen or become severe";
     } else if (lowerText.includes("report")) {
       response += "• Review your report with your healthcare provider\n• Prepare specific questions about findings\n• Bring your report to your appointment";
