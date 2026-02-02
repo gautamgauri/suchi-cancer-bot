@@ -6,11 +6,11 @@ interface DraftsTabProps {
   compact?: boolean;
 }
 
-export function DraftsTab({ entryId, compact = false }: DraftsTabProps) {
+export function DraftsTab({ entryId: _entryId, compact = false }: DraftsTabProps) {
   const { t } = useTranslation("funding");
   const p = compact ? "p-2" : "p-4";
 
-  // TODO: Implement drafts list with API integration
+  // TODO: Implement drafts list with API integration using _entryId
   // For now, show empty state
   return (
     <div className={p}>
