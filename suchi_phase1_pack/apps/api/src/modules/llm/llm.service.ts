@@ -102,55 +102,68 @@ Do NOT ask more clarifying questions if the user has indicated general intent (e
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private readonly client: OpenAI;
-  private readonly provider: "deepseek" | "openai";
+  private readonly client: OpenAI | null = null;
+  private readonly provider: "deepseek" | "openai" | "gemini";
   private readonly model: string;
   private readonly timeoutMs: number;
 
-  // Fallback LLM (Gemini Flash via Vertex AI) - cheap backup when primary fails
+  // Gemini via Vertex AI - used as primary when LLM_PROVIDER=gemini, or as fallback
+  private readonly geminiProject: string;
+  private readonly geminiLocation: string;
+  private readonly geminiModel: string;
   private readonly fallbackEnabled: boolean;
-  private readonly fallbackProject: string;
-  private readonly fallbackLocation: string;
-  private readonly fallbackModel: string;
   private fallbackUsedCount: number = 0;
 
   constructor(private readonly configService: ConfigService) {
-    // Determine LLM provider - Deepseek is default (cost-effective for charitable project)
-    this.provider = (this.configService.get<string>("LLM_PROVIDER") as "deepseek" | "openai") || "deepseek";
+    // Determine LLM provider - Gemini Flash is now default for better latency
+    this.provider = (this.configService.get<string>("LLM_PROVIDER") as "deepseek" | "openai" | "gemini") || "gemini";
 
-    if (this.provider === "openai") {
+    // Gemini config (used as primary or fallback)
+    this.geminiProject = this.configService.get<string>("GOOGLE_CLOUD_PROJECT") || "";
+    this.geminiLocation = this.configService.get<string>("VERTEX_AI_LOCATION") || "us-central1";
+    this.geminiModel = this.configService.get<string>("GEMINI_MODEL") ||
+                       this.configService.get<string>("FALLBACK_LLM_MODEL") ||
+                       "gemini-2.0-flash-001";
+
+    if (this.provider === "gemini") {
+      // Primary: Gemini Flash via Vertex AI (fast, cost-effective)
+      if (!this.geminiProject) {
+        throw new Error("GOOGLE_CLOUD_PROJECT is required when LLM_PROVIDER=gemini");
+      }
+      this.model = this.geminiModel;
+      this.logger.log(`LLM Service initialized with Gemini Flash (${this.model}) on Vertex AI`);
+      // No OpenAI client needed for Gemini
+    } else if (this.provider === "openai") {
       const apiKey = this.configService.get<string>("OPENAI_API_KEY");
       if (!apiKey) {
         throw new Error("OPENAI_API_KEY is required when LLM_PROVIDER=openai");
       }
-      this.client = new OpenAI({ apiKey });
+      (this as any).client = new OpenAI({ apiKey });
       this.model = "gpt-4o";
       this.logger.log("LLM Service initialized with OpenAI (gpt-4o)");
     } else {
-      // Default: Deepseek (OpenAI-compatible API)
+      // Deepseek (OpenAI-compatible API)
       const apiKey = this.configService.get<string>("DEEPSEEK_API_KEY");
       if (!apiKey) {
-        throw new Error("DEEPSEEK_API_KEY is required (default provider). Set DEEPSEEK_API_KEY or use LLM_PROVIDER=openai with OPENAI_API_KEY");
+        throw new Error("DEEPSEEK_API_KEY is required when LLM_PROVIDER=deepseek");
       }
       const baseURL = this.configService.get<string>("DEEPSEEK_BASE_URL") || "https://api.deepseek.com/v1";
       this.model = this.configService.get<string>("DEEPSEEK_MODEL") || "deepseek-chat";
-      this.client = new OpenAI({ apiKey, baseURL });
+      (this as any).client = new OpenAI({ apiKey, baseURL });
       this.logger.log(`LLM Service initialized with Deepseek (${this.model}) at ${baseURL}`);
     }
 
-    // Default timeout: 45s, configurable via LLM_TIMEOUT_MS env var
-    // Increased for Deepseek with longer responses (3000+ tokens)
-    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || 45000;
+    // Default timeout: 15s for Gemini (fast), 45s for others
+    const defaultTimeout = this.provider === "gemini" ? 15000 : 45000;
+    this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || defaultTimeout;
 
-    // Configure fallback LLM (Gemini Flash via Vertex AI)
-    // Enabled by default on GCP, uses ADC (Application Default Credentials)
-    this.fallbackProject = this.configService.get<string>("GOOGLE_CLOUD_PROJECT") || "";
-    this.fallbackLocation = this.configService.get<string>("VERTEX_AI_LOCATION") || "us-central1";
-    this.fallbackModel = this.configService.get<string>("FALLBACK_LLM_MODEL") || "gemini-2.0-flash-001";
-    this.fallbackEnabled = this.configService.get<string>("LLM_FALLBACK_ENABLED") !== "false" && !!this.fallbackProject;
+    // Fallback enabled for non-Gemini providers (uses Gemini as fallback)
+    this.fallbackEnabled = this.provider !== "gemini" &&
+                           this.configService.get<string>("LLM_FALLBACK_ENABLED") !== "false" &&
+                           !!this.geminiProject;
 
     if (this.fallbackEnabled) {
-      this.logger.log(`Fallback LLM enabled: Gemini Flash (${this.fallbackModel}) on Vertex AI`);
+      this.logger.log(`Fallback LLM enabled: Gemini Flash (${this.geminiModel}) on Vertex AI`);
     }
   }
 
@@ -158,8 +171,11 @@ export class LlmService {
    * Call fallback LLM (Gemini Flash via Vertex AI)
    * Used when primary LLM fails with rate limit, timeout, or server error
    */
-  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000): Promise<string | null> {
-    if (!this.fallbackEnabled) {
+  /**
+   * Call Gemini via Vertex AI - used as primary (when provider=gemini) or fallback
+   */
+  private async callGeminiLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, isPrimary: boolean = false): Promise<string | null> {
+    if (!this.geminiProject) {
       return null;
     }
 
@@ -168,12 +184,12 @@ export class LlmService {
       const { VertexAI } = await import("@google-cloud/vertexai");
 
       const vertexAI = new VertexAI({
-        project: this.fallbackProject,
-        location: this.fallbackLocation,
+        project: this.geminiProject,
+        location: this.geminiLocation,
       });
 
       const generativeModel = vertexAI.getGenerativeModel({
-        model: this.fallbackModel,
+        model: this.geminiModel,
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: maxTokens,
@@ -189,16 +205,27 @@ export class LlmService {
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-      if (text) {
+      if (text && !isPrimary) {
         this.fallbackUsedCount++;
         this.logger.log(`Fallback LLM (Gemini Flash) succeeded - total fallback uses: ${this.fallbackUsedCount}`);
       }
 
       return text || null;
     } catch (error: any) {
-      this.logger.error(`Fallback LLM (Gemini Flash) failed: ${error.message}`);
+      this.logger.error(`Gemini LLM ${isPrimary ? '(primary)' : '(fallback)'} failed: ${error.message}`);
       return null;
     }
+  }
+
+  /**
+   * Call fallback LLM (Gemini Flash via Vertex AI)
+   * Used when primary LLM fails with rate limit, timeout, or server error
+   */
+  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000): Promise<string | null> {
+    if (!this.fallbackEnabled) {
+      return null;
+    }
+    return this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, false);
   }
 
   /**
@@ -710,10 +737,21 @@ FINAL CHECKLIST (verify before submitting):
 [ ] Medical facts from NCI have [citation:docId:chunkId] markers
 [ ] Section 4 timeline guidance attributed to "NHS UK and WHO recommendations"`;
 
-      // Retry logic with exponential backoff (max 2 retries)
+      // Use Gemini directly if provider is "gemini"
+      if (this.provider === "gemini") {
+        const maxTokens = isIdentifyQuestion ? 3500 : 3000;
+        const result = await this.callGeminiLLM(actualSystemPrompt, citationInstructions, maxTokens, true);
+        if (result) {
+          return result;
+        }
+        this.logger.error(`Gemini primary call failed - returning abstention response`);
+        return this.getAbstentionResponse();
+      }
+
+      // Retry logic with exponential backoff (max 2 retries) for OpenAI-compatible providers
       const maxRetries = 2;
       let lastError: any;
-      
+
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         if (attempt > 0) {
           // Exponential backoff: 1s, 2s
@@ -729,7 +767,7 @@ FINAL CHECKLIST (verify before submitting):
         }, this.timeoutMs);
 
         try {
-          const completion = await this.client.chat.completions.create({
+          const completion = await this.client!.chat.completions.create({
             model: this.model,
             messages: [
               { role: "system", content: actualSystemPrompt },
@@ -838,6 +876,15 @@ FINAL CHECKLIST (verify before submitting):
       const sanitizedUserMessage = this.sanitizeUserInput(userMessage);
       const fullPrompt = `${context}\n\nUser question: ${sanitizedUserMessage}\n\nPlease provide a helpful response based on the reference information above. Format your response with clear sections when appropriate.`;
 
+      // Use Gemini directly if provider is "gemini"
+      if (this.provider === "gemini") {
+        const result = await this.callGeminiLLM(systemPrompt, fullPrompt, 1500, true);
+        if (result) {
+          return result;
+        }
+        return this.getFallbackResponse();
+      }
+
       // Add timeout using AbortController
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
@@ -845,7 +892,7 @@ FINAL CHECKLIST (verify before submitting):
       }, this.timeoutMs);
 
       try {
-        const completion = await this.client.chat.completions.create({
+        const completion = await this.client!.chat.completions.create({
           model: this.model,
           messages: [
             { role: "system", content: systemPrompt },
@@ -927,12 +974,21 @@ User question: ${sanitizedUserMessage}
 
 YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
 
+      // Use Gemini directly if provider is "gemini"
+      if (this.provider === "gemini") {
+        const result = await this.callGeminiLLM(systemPrompt, fullPrompt, 500, true);
+        if (result) {
+          return result;
+        }
+        return this.getFallbackResponse();
+      }
+
       // Single attempt for definitional responses (simpler, should be faster)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
       try {
-        const completion = await this.client.chat.completions.create({
+        const completion = await this.client!.chat.completions.create({
           model: this.model,
           messages: [
             { role: "system", content: systemPrompt },
