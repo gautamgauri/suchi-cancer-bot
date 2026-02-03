@@ -12,7 +12,8 @@ async function bootstrap() {
   app.use(helmet());
   app.use(requestIdMiddleware);
   // Exclude root-level health endpoints from /v1 prefix
-  app.setGlobalPrefix("v1", { exclude: ["healthz", "readyz"] });
+  // Note: /healthz is intercepted by Cloud Run GFE, so we use /live instead
+  app.setGlobalPrefix("v1", { exclude: ["live", "ready"] });
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
@@ -26,7 +27,7 @@ async function bootstrap() {
     path: "/v1",
     gitSha,
     env: process.env.NODE_ENV || "development",
-    healthEndpoints: ["/healthz (liveness)", "/readyz (readiness)", "/v1/health", "/v1/version"],
+    healthEndpoints: ["/live (liveness)", "/ready (readiness)", "/v1/health", "/v1/version"],
   });
 }
 bootstrap();

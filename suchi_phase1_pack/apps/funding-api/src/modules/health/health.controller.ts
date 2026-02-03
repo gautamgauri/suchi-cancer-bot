@@ -18,14 +18,14 @@ export class HealthController {
 
   // Root-level endpoints (excluded from /v1 prefix)
   // Used by Cloud Run, load balancers, uptime checks
-  @Get("healthz")
-  healthz() {
+  @Get("live")
+  live() {
     // Liveness: server is up (no DB check)
     return { status: "ok" };
   }
 
-  @Get("readyz")
-  async readyz() {
+  @Get("ready")
+  async ready() {
     // Readiness: server is up AND DB is connected
     const ready = await this.healthService.checkReadiness();
     if (!ready.ok) {
