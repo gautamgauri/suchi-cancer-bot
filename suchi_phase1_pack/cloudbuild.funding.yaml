@@ -110,9 +110,9 @@ steps:
       - '--add-cloudsql-instances'
       - '${_CLOUDSQL_CONNECTION_NAME}'
       - '--set-env-vars'
-      - 'NODE_ENV=production,GIT_SHA=$BUILD_ID,FUNDING_MODEL_DRAFT=${_FUNDING_MODEL_DRAFT},FUNDING_LLM_TIMEOUT_MS=${_FUNDING_LLM_TIMEOUT_MS}'
+      - 'NODE_ENV=production,GIT_SHA=$BUILD_ID,FUNDING_MODEL_DRAFT=${_FUNDING_MODEL_DRAFT},FUNDING_LLM_TIMEOUT_MS=${_FUNDING_LLM_TIMEOUT_MS},EVIDENCE_DRIVE_FOLDER_ID=${_EVIDENCE_DRIVE_FOLDER_ID}'
       - '--set-secrets'
-      - 'FUNDING_OPENAI_API_KEY=${_FUNDING_LLM_API_KEY_SECRET}:latest,DATABASE_URL=${_FUNDING_DATABASE_SECRET}:latest'
+      - 'FUNDING_OPENAI_API_KEY=${_FUNDING_LLM_API_KEY_SECRET}:latest,DATABASE_URL=${_FUNDING_DATABASE_SECRET}:latest,FUNDING_GOOGLE_SERVICE_ACCOUNT_JSON=${_FUNDING_GOOGLE_SA_SECRET}:latest'
 
   # Deploy Funding Web to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -152,6 +152,8 @@ substitutions:
   _FUNDING_LLM_TIMEOUT_MS: '45000'
   _FUNDING_LLM_API_KEY_SECRET: 'deepseek-api-key'
   _FUNDING_DATABASE_SECRET: 'funding-database-url'
+  _FUNDING_GOOGLE_SA_SECRET: 'funding-google-sa-key'
+  _EVIDENCE_DRIVE_FOLDER_ID: '0B66dYZSUOOxbeEFLQ19uVnJsdGs'
   _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:diksha-db'
 
 options:
