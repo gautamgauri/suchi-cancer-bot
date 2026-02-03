@@ -30,8 +30,8 @@ ENV PORT=8080
 # Install OpenSSL for Prisma runtime
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Install Prisma CLI globally for migrations
-RUN npm install -g prisma
+# Install Prisma CLI globally for migrations (pinned to v5.x to match project)
+RUN npm install -g prisma@5.20.0
 
 # Copy pruned node_modules (production only) with generated Prisma client
 COPY --from=build /app/node_modules ./node_modules
