@@ -9,6 +9,10 @@ import { PipelineModule } from "./modules/pipeline/pipeline.module";
 import { SheetsModule } from "./modules/sheets/sheets.module";
 import { DonorModule } from "./modules/donor/donor.module";
 import { AdminModule } from "./modules/admin/admin.module";
+import { ApprovalsModule } from "./modules/approvals/approvals.module";
+import { ReportsModule } from "./modules/reports/reports.module";
+import { SourceRegistryModule } from "./modules/source_registry/source-registry.module";
+import { EvidenceIngestModule } from "./modules/evidence_ingest/evidence-ingest.module";
 
 @Module({
   imports: [
@@ -17,8 +21,12 @@ import { AdminModule } from "./modules/admin/admin.module";
     SheetsModule,
     HealthModule,
     CoreAiModule,
+    SourceRegistryModule,
+    EvidenceIngestModule,
     DraftModule,
     PipelineModule,
+    ApprovalsModule,
+    ReportsModule,
     DonorModule,
     AdminModule,
   ],
