@@ -4,11 +4,11 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("FUNDING_DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model PipelineEntry {
-  id                 String    @id @default(uuid())
+  id                 String          @id @default(uuid())
   orgName            String
   contactName        String?
   contactEmail       String?
@@ -19,13 +19,14 @@ model PipelineEntry {
   lastContactDate    DateTime?
   probability        Int?
   notes              String?
-  sectorTags         String[]  @default([])
+  sectorTags         String[]        @default([])
   geography          String?
   estimatedGrantSize String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  version            Int       @default(1)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  version            Int             @default(1)
   activities         Activity[]
+  draftArtifacts     DraftArtifact[]
 }
 
 model Activity {
@@ -39,4 +40,146 @@ model Activity {
   createdBy        String?
   createdAt        DateTime       @default(now())
   pipelineEntry    PipelineEntry? @relation(fields: [pipelineEntryId], references: [id])
+}
+
+model SourceDocument {
+  id          String   @id @default(uuid())
+  docId       String   @unique
+  url         String?
+  title       String?
+  retrievedAt DateTime @default(now())
+  trustTier   String?
+  snapshotUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DraftArtifact {
+  id               String        @id @default(uuid())
+  pipelineEntryId  String
+  type             String        // "need_statement" | "email"
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  pipelineEntry    PipelineEntry  @relation(fields: [pipelineEntryId], references: [id], onDelete: Cascade)
+  versions         DraftVersion[]
+}
+
+model DraftVersion {
+  id         String     @id @default(uuid())
+  artifactId String
+  content    String
+  createdBy  String?
+  createdAt  DateTime   @default(now())
+  artifact   DraftArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  approval   Approval?
+}
+
+model Approval {
+  id              String       @id @default(uuid())
+  versionId      String       @unique
+  status         String       // "approved" | "changes_requested"
+  decidedBy      String?
+  decidedAt      DateTime     @default(now())
+  comment        String?
+  draftVersion   DraftVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+// --- Evidence Library (Phase 1 + 2) ---
+
+model EvidenceDocument {
+  id                    String    @id @default(uuid())
+  driveFileId           String    @unique
+  sourceFolder          String
+  name                  String
+  mimeType              String
+  size                  BigInt    @default(0)
+  createdTime           DateTime
+  modifiedTime          DateTime
+  parents               Json?
+  driveUrl              String?
+  owners                String?
+  sharedWithDomain      String?   // access control (gotcha 2)
+  permissionsSummary   Json?     // access control
+  visibilityScope       String?   // internal | restricted | public-safe
+  versionKey            String?
+  checksum              String?
+  needsProcessing       Boolean   @default(true)
+  rawStorageUri         String?
+  downloadStatus        String?   // pending | success | failed
+  downloadError         String?   @db.Text
+  downloadedAt          DateTime?
+  rawText               String?   @db.Text
+  cleanText             String?   @db.Text
+  extractionMeta        Json?
+  extractionStatus      String?   // success | failed | LOW_TEXT
+  needsOcr              Boolean   @default(false)
+  canonicalDocId        String?
+  docType               String?   // proposal | concept_note | report | budget | presentation | mou | misc
+  program               String?   // KHEL | fellowship | life_skills | etc (gotcha 3)
+  geography             String?
+  docPurpose            String?
+  funderName            String?
+  qualityScore          Int?
+  qualityTier           String?   // A | B | C | X
+  flags                 Json?     // array of needs_ocr, low_text, duplicate, etc.
+  publicSafe            Boolean   @default(false) // legal/brand (gotcha 9)
+  piiDetected           Boolean   @default(false)
+  sensitivityLevel      String?   // low | med | high
+  cleanTextRedacted     String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  documentChunks        DocumentChunk[]
+  reviewQueue           ReviewQueueEntry?
+  @@index([sourceFolder])
+  @@index([needsProcessing])
+  @@index([qualityTier])
+  @@index([visibilityScope])
+}
+
+model ReviewQueueEntry {
+  id                String           @id @default(uuid())
+  documentId        String           @unique
+  reviewStatus      String           // pending | approved | override | exclude
+  tierOverride      String?
+  docTypeOverride   String?
+  notes             String?
+  tags              String[]         @default([])
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  document          EvidenceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model DocumentChunk {
+  id             String          @id @default(uuid())
+  documentId     String
+  chunkIndex     Int
+  content        String          @db.Text
+  sectionTitle   String?
+  tokenCount     Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  document       EvidenceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkEmbedding ChunkEmbedding?
+}
+
+model ChunkEmbedding {
+  id             String       @id @default(uuid())
+  chunkId        String       @unique
+  embeddingModel String
+  vector         String       @db.Text // JSON array of numbers for portability; can migrate to pgvector later
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  chunk          DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+}
+
+// Run logs for ingestion observability (gotcha 8)
+model IngestRun {
+  id            String   @id @default(uuid())
+  step          String   // inventory | download | extract | score | etc.
+  countsIndexed Int?     @default(0)
+  countsExtracted Int?   @default(0)
+  countsScored  Int?    @default(0)
+  errorTypes    Json?   // summary of error types
+  durationMs    Int?
+  createdAt     DateTime @default(now())
 }

@@ -49,6 +49,37 @@ steps:
       - '--all-tags'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-web'
 
+  # Update migration job to use the same image as this build
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'update-funding-migrate-job'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        MIGRATE_IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api:$BUILD_ID"
+        gcloud run jobs update funding-migrate \
+          --project="${PROJECT_ID}" \
+          --region="${_REGION}" \
+          --image="$${MIGRATE_IMAGE}" \
+          --set-cloudsql-instances="${_CLOUDSQL_CONNECTION_NAME}" \
+          --set-secrets="DATABASE_URL=${_FUNDING_DATABASE_SECRET}:latest" \
+          --command="prisma" \
+          --args="migrate,deploy,--schema,prisma/schema.prisma"
+
+  # Execute migration job and WAIT for completion
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'execute-funding-migrations'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud run jobs execute funding-migrate \
+          --project="${PROJECT_ID}" \
+          --region="${_REGION}" \
+          --wait
+
   # Deploy Funding API to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy-funding-api'
@@ -81,7 +112,7 @@ steps:
       - '--set-env-vars'
       - 'NODE_ENV=production,GIT_SHA=$BUILD_ID,FUNDING_MODEL_DRAFT=${_FUNDING_MODEL_DRAFT},FUNDING_LLM_TIMEOUT_MS=${_FUNDING_LLM_TIMEOUT_MS}'
       - '--set-secrets'
-      - 'FUNDING_OPENAI_API_KEY=${_FUNDING_LLM_API_KEY_SECRET}:latest,FUNDING_DATABASE_URL=${_FUNDING_DATABASE_SECRET}:latest'
+      - 'FUNDING_OPENAI_API_KEY=${_FUNDING_LLM_API_KEY_SECRET}:latest,DATABASE_URL=${_FUNDING_DATABASE_SECRET}:latest'
 
   # Deploy Funding Web to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
