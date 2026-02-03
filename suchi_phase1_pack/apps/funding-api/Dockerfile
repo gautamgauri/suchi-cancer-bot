@@ -1,27 +1,39 @@
 # suchi_phase1_pack/apps/funding-api/Dockerfile
-# Three-stage: deps (prod only), build (TS → dist), runner. Matches Nest build/run; Cloud Run uses PORT=8080.
-
-FROM node:20-slim AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
+# Two-stage build: build (compile TS + generate Prisma), runner (minimal runtime)
 
 FROM node:20-slim AS build
 WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+# Install all dependencies (including devDeps for build)
 COPY package*.json ./
+COPY prisma ./prisma/
 RUN npm ci
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build TypeScript
 COPY . .
 RUN npm run build
+
+# Prune dev dependencies for smaller image
+RUN npm prune --omit=dev
 
 FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-# Cloud Run sets PORT; we default to 8080 for safety
 ENV PORT=8080
 
-# Only copy what we need
-COPY --from=deps /app/node_modules ./node_modules
+# Install OpenSSL for Prisma runtime
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+# Copy pruned node_modules (production only) with generated Prisma client
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
 
 EXPOSE 8080
 CMD ["node", "dist/main.js"]
