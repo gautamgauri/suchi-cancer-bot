@@ -10,6 +10,7 @@ import { ErrorState } from "../components/funding/ErrorState";
 import { PipelineTableSkeleton } from "../components/funding/Skeletons";
 import { TopBanner } from "../components/funding/TopBanner";
 import { EntryDrawer } from "../components/funding/EntryDrawer";
+import { CreateEntryModal } from "../components/funding/CreateEntryModal";
 import { formatDateShort, formatDate } from "../utils/format";
 
 const STAGE_OPTIONS: PipelineStage[] = [
@@ -29,6 +30,7 @@ export function PipelinePage() {
   const [filterPriority, setFilterPriority] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data, isLoading, error, refetch, isError } = useQuery({
     queryKey: ["pipeline"],
@@ -137,8 +139,16 @@ export function PipelinePage() {
           </select>
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={() => setShowCreateModal(true)}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            aria-label={t("pipeline.createEntry", "Create New Entry")}
+          >
+            + {t("pipeline.createEntry", "New Entry")}
+          </button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             aria-label={t("pipeline.title")}
           >
             {t("common:printPipeline")}
@@ -238,6 +248,10 @@ export function PipelinePage() {
           onClose={() => setSelectedId(null)}
           compact={compact}
         />
+      )}
+
+      {showCreateModal && (
+        <CreateEntryModal onClose={() => setShowCreateModal(false)} />
       )}
     </AppShell>
   );

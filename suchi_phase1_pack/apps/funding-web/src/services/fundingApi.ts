@@ -137,6 +137,25 @@ export interface DraftRefineResponse {
   refined: string;
 }
 
+export interface CreateEntryPayload {
+  orgName: string;
+  contactName?: string;
+  contactEmail?: string;
+  stage?: PipelineStage;
+  owner?: string;
+  nextAction?: string;
+  nextActionDate?: string;
+  probability?: number;
+  notes?: string;
+  sectorTags?: string[];
+  geography?: string;
+  estimatedGrantSize?: string;
+}
+
+export interface UpdateEntryPayload extends Partial<CreateEntryPayload> {
+  version: number; // Required for optimistic locking
+}
+
 export const fundingApiService = {
   getBaseURL: () => getFundingApiBaseURL(),
 
@@ -167,6 +186,16 @@ export const fundingApiService = {
 
   async logActivity(payload: LogActivityPayload): Promise<ActivityRecord> {
     const { data } = await fundingApi.post<ActivityRecord>("/pipeline/activity", payload);
+    return data;
+  },
+
+  async createEntry(payload: CreateEntryPayload): Promise<PipelineEntry> {
+    const { data } = await fundingApi.post<PipelineEntry>("/pipeline", payload);
+    return data;
+  },
+
+  async updateEntry(id: string, payload: UpdateEntryPayload): Promise<PipelineEntry> {
+    const { data } = await fundingApi.patch<PipelineEntry>(`/pipeline/${id}`, payload);
     return data;
   },
 
