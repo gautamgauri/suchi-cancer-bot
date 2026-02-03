@@ -121,7 +121,7 @@ substitutions:
   _FUNDING_LLM_TIMEOUT_MS: '45000'
   _FUNDING_LLM_API_KEY_SECRET: 'deepseek-api-key'
   _FUNDING_DATABASE_SECRET: 'funding-database-url'
-  _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:suchi-db'
+  _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:diksha-db'
 
 options:
   machineType: 'E2_HIGHCPU_8'
