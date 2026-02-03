@@ -1,5 +1,6 @@
 # suchi_phase1_pack/apps/funding-api/Dockerfile
 # Two-stage build: build (compile TS + generate Prisma), runner (minimal runtime)
+# Database connection format: postgresql://user:pass@localhost/db?host=/cloudsql/...
 
 FROM node:20-slim AS build
 WORKDIR /app
