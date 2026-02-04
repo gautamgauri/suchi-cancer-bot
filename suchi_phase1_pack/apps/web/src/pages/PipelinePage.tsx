@@ -10,9 +10,10 @@ import { ErrorState } from "../components/funding/ErrorState";
 import { PipelineTableSkeleton } from "../components/funding/Skeletons";
 import { TopBanner } from "../components/funding/TopBanner";
 import { EntryDrawer } from "../components/funding/EntryDrawer";
-import { formatDateShort } from "../utils/format";
+import { formatDateShort, formatDate } from "../utils/format";
 
 const STAGE_OPTIONS: PipelineStage[] = [
+  "RFP_received",
   "lead",
   "qualified",
   "proposal_sent",
@@ -77,7 +78,7 @@ export function PipelinePage() {
     (localStorage.getItem("funding_banner_api") !== "dismissed" || true);
 
   return (
-    <AppShell apiConfigured={!!data || !error}>
+    <AppShell apiConfigured={!isError}>
       {showBanner && (
         <TopBanner
           message={t("banner.apiNotConfigured")}
@@ -161,6 +162,12 @@ export function PipelinePage() {
         )}
         {!isLoading && !isError && filtered.length > 0 && (
           <div className="overflow-auto rounded-lg border border-border bg-card">
+            <div className="hidden print:block mb-4" aria-hidden="true">
+              <h1 className="text-lg font-semibold text-foreground">{t("print.title")}</h1>
+              <p className="text-sm text-muted-foreground">
+                {t("print.printedAt")} {formatDate(new Date())}
+              </p>
+            </div>
             <table className="w-full border-collapse text-left">
               <thead className="sticky top-0 z-10 border-b border-border bg-muted/80">
                 <tr>
@@ -175,6 +182,9 @@ export function PipelinePage() {
                   </th>
                   <th className="p-2 text-sm font-semibold text-foreground">
                     {t("pipeline.owner")}
+                  </th>
+                  <th className="p-2 text-sm font-semibold text-foreground">
+                    {t("pipeline.deadline")}
                   </th>
                   <th className="p-2 text-sm font-semibold text-foreground">
                     {t("pipeline.priority")}
@@ -207,7 +217,10 @@ export function PipelinePage() {
                       </span>
                     </TableCell>
                     <TableCell compact={compact} value={entry.nextAction ?? "—"} />
-                    <TableCell compact={compact} value={entry.owner ?? "—"} />
+                    <TableCell compact={compact} value={entry.owner ?? entry.assignedTo ?? "—"} />
+                    <TableCell compact={compact}>
+                      {entry.deadline ? formatDateShort(entry.deadline) : "—"}
+                    </TableCell>
                     <TableCell compact={compact}>
                       <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {entry.probability != null ? `${entry.probability}%` : "—"}

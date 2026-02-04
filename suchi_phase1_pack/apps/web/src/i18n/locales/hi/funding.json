@@ -21,6 +21,7 @@
     "stage": "चरण",
     "nextAction": "अगली क्रिया",
     "owner": "मालिक",
+    "deadline": "अंतिम तिथि",
     "priority": "प्राथमिकता",
     "lastActivity": "अंतिम गतिविधि"
   },
@@ -38,6 +39,7 @@
     "call": "कॉल",
     "meeting": "मीटिंग",
     "emailSent": "ईमेल भेजा",
+    "email_sent": "ईमेल भेजा",
     "note": "नोट",
     "addActivity": "गतिविधि जोड़ें",
     "type": "प्रकार",

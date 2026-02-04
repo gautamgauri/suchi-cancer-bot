@@ -38,6 +38,7 @@ export const fundingApi: AxiosInstance = axios.create({
 
 // Pipeline
 export type PipelineStage =
+  | "RFP_received"
   | "lead"
   | "qualified"
   | "proposal_sent"
@@ -51,6 +52,7 @@ export interface PipelineEntry {
   contactEmail?: string;
   stage: PipelineStage;
   owner?: string;
+  assignedTo?: string;
   nextAction?: string;
   nextActionDate?: string;
   lastContactDate?: string;
@@ -59,6 +61,9 @@ export interface PipelineEntry {
   sectorTags?: string[];
   geography?: string;
   estimatedGrantSize?: string;
+  deadline?: string;
+  submissionEmail?: string;
+  driveFolderUrl?: string;
   createdAt?: string;
   updatedAt?: string;
   version?: number;

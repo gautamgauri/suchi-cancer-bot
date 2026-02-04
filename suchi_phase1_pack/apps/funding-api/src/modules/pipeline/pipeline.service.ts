@@ -91,6 +91,9 @@ export class PipelineService {
         sectorTags: dto.sectorTags ?? [],
         geography: dto.geography ?? null,
         estimatedGrantSize: dto.estimatedGrantSize ?? null,
+        deadline: dto.deadline ? new Date(dto.deadline) : null,
+        submissionEmail: dto.submissionEmail ?? null,
+        driveFolderUrl: dto.driveFolderUrl ?? null,
       },
     });
     return dbToPipelineEntry(row);
@@ -134,6 +137,15 @@ export class PipelineService {
         ...(dto.geography !== undefined && { geography: dto.geography }),
         ...(dto.estimatedGrantSize !== undefined && {
           estimatedGrantSize: dto.estimatedGrantSize,
+        }),
+        ...(dto.deadline !== undefined && {
+          deadline: dto.deadline ? new Date(dto.deadline) : null,
+        }),
+        ...(dto.submissionEmail !== undefined && {
+          submissionEmail: dto.submissionEmail,
+        }),
+        ...(dto.driveFolderUrl !== undefined && {
+          driveFolderUrl: dto.driveFolderUrl,
         }),
         version: { increment: 1 },
       },
@@ -209,11 +221,15 @@ function dbToPipelineEntry(row: {
   sectorTags: string[];
   geography: string | null;
   estimatedGrantSize: string | null;
+  deadline: Date | null;
+  submissionEmail: string | null;
+  driveFolderUrl: string | null;
 }): PipelineEntry {
   return {
     id: row.id,
     orgName: row.orgName,
     contactName: row.contactName ?? undefined,
+    contactEmail: row.contactEmail ?? undefined,
     stage: row.stage as PipelineEntry["stage"],
     assignedTo: row.owner ?? undefined,
     nextAction: row.nextAction ?? undefined,
@@ -224,5 +240,8 @@ function dbToPipelineEntry(row: {
     sectorTags: row.sectorTags?.length ? row.sectorTags : undefined,
     geography: row.geography ?? undefined,
     estimatedGrantSize: row.estimatedGrantSize ?? undefined,
+    deadline: row.deadline?.toISOString() ?? undefined,
+    submissionEmail: row.submissionEmail ?? undefined,
+    driveFolderUrl: row.driveFolderUrl ?? undefined,
   };
 }

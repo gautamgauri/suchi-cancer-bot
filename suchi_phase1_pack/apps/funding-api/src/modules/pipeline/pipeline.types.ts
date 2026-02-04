@@ -1,4 +1,5 @@
 export type PipelineStage =
+  | "RFP_received"
   | "lead"
   | "qualified"
   | "proposal_sent"
@@ -9,6 +10,7 @@ export interface PipelineEntry {
   id?: string;
   orgName: string;
   contactName?: string;
+  contactEmail?: string;
   stage: PipelineStage;
   assignedTo?: string;
   nextAction?: string;
@@ -19,6 +21,9 @@ export interface PipelineEntry {
   sectorTags?: string[];
   geography?: string;
   estimatedGrantSize?: string;
+  deadline?: string;
+  submissionEmail?: string;
+  driveFolderUrl?: string;
 }
 
 export type ActivityType =

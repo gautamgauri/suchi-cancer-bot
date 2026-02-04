@@ -14,6 +14,7 @@ import { CreateEntryModal } from "../components/funding/CreateEntryModal";
 import { formatDateShort, formatDate } from "../utils/format";
 
 const STAGE_OPTIONS: PipelineStage[] = [
+  "RFP_received",
   "lead",
   "qualified",
   "proposal_sent",
@@ -133,17 +134,17 @@ export function PipelinePage() {
             aria-label={t("pipeline.filterPriority")}
           >
             <option value="">{t("pipeline.filterPriority")}</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+            <option value="high">{t("pipeline.priorityHigh")}</option>
+            <option value="medium">{t("pipeline.priorityMedium")}</option>
+            <option value="low">{t("pipeline.priorityLow")}</option>
           </select>
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            aria-label={t("pipeline.createEntry", "Create New Entry")}
+            aria-label={t("pipeline.createEntry")}
           >
-            + {t("pipeline.createEntry", "New Entry")}
+            + {t("pipeline.createEntry")}
           </button>
           <button
             type="button"
@@ -159,14 +160,14 @@ export function PipelinePage() {
         {isLoading && <PipelineTableSkeleton compact={compact} />}
         {!isLoading && isError && (
           <ErrorState
-            message={error instanceof Error ? error.message : "Failed to load pipeline"}
+            message={error instanceof Error ? error.message : t("errors.loadPipelineFailed")}
             onRetry={() => refetch()}
             showApiHint
           />
         )}
         {!isLoading && !isError && filtered.length === 0 && (
           <EmptyState
-            message={entries.length === 0 ? t("pipeline.noEntries") : "No matches"}
+            message={entries.length === 0 ? t("pipeline.noEntries") : t("pipeline.noMatches")}
           />
         )}
         {!isLoading && !isError && filtered.length > 0 && (
@@ -191,6 +192,9 @@ export function PipelinePage() {
                   </th>
                   <th className="p-2 text-sm font-semibold text-foreground">
                     {t("pipeline.owner")}
+                  </th>
+                  <th className="p-2 text-sm font-semibold text-foreground">
+                    {t("pipeline.deadline")}
                   </th>
                   <th className="p-2 text-sm font-semibold text-foreground">
                     {t("pipeline.priority")}
@@ -223,7 +227,10 @@ export function PipelinePage() {
                       </span>
                     </TableCell>
                     <TableCell compact={compact} value={entry.nextAction ?? "—"} />
-                    <TableCell compact={compact} value={entry.owner ?? "—"} />
+                    <TableCell compact={compact} value={entry.owner ?? (entry as { assignedTo?: string }).assignedTo ?? "—"} />
+                    <TableCell compact={compact}>
+                      {entry.deadline ? formatDateShort(entry.deadline) : "—"}
+                    </TableCell>
                     <TableCell compact={compact}>
                       <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {entry.probability != null ? `${entry.probability}%` : "—"}

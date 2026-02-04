@@ -38,6 +38,7 @@ export const fundingApi: AxiosInstance = axios.create({
 
 // Pipeline
 export type PipelineStage =
+  | "RFP_received"
   | "lead"
   | "qualified"
   | "proposal_sent"
@@ -51,6 +52,7 @@ export interface PipelineEntry {
   contactEmail?: string;
   stage: PipelineStage;
   owner?: string;
+  assignedTo?: string;
   nextAction?: string;
   nextActionDate?: string;
   lastContactDate?: string;
@@ -59,6 +61,9 @@ export interface PipelineEntry {
   sectorTags?: string[];
   geography?: string;
   estimatedGrantSize?: string;
+  deadline?: string;
+  submissionEmail?: string;
+  driveFolderUrl?: string;
   createdAt?: string;
   updatedAt?: string;
   version?: number;
@@ -137,6 +142,43 @@ export interface DraftRefineResponse {
   refined: string;
 }
 
+export interface SourceDocumentRecord {
+  docId: string;
+  url?: string;
+  title?: string;
+  retrievedAt: string;
+  trustTier?: string;
+  snapshotUrl?: string;
+}
+
+export type DraftArtifactType = "need_statement" | "email";
+export type ApprovalStatus = "approved" | "changes_requested";
+
+export interface DraftArtifactRecord {
+  id: string;
+  pipelineEntryId: string;
+  type: DraftArtifactType;
+  createdAt: string;
+}
+
+export interface ApprovalRecord {
+  id: string;
+  versionId: string;
+  status: ApprovalStatus;
+  decidedBy?: string;
+  decidedAt: string;
+  comment?: string;
+}
+
+export interface DraftVersionRecord {
+  id: string;
+  artifactId: string;
+  content: string;
+  createdBy?: string;
+  createdAt: string;
+  approval?: ApprovalRecord;
+}
+
 export interface CreateEntryPayload {
   orgName: string;
   contactName?: string;
@@ -150,6 +192,9 @@ export interface CreateEntryPayload {
   sectorTags?: string[];
   geography?: string;
   estimatedGrantSize?: string;
+  deadline?: string;
+  submissionEmail?: string;
+  driveFolderUrl?: string;
 }
 
 export interface UpdateEntryPayload extends Partial<CreateEntryPayload> {
@@ -210,6 +255,79 @@ export const fundingApiService = {
     const { data } = await fundingApi.post<DraftRefineResponse>(
       "/draft/need-statement/refine",
       body
+    );
+    return data;
+  },
+
+  async getSource(docId: string): Promise<{ source: SourceDocumentRecord | null }> {
+    const { data } = await fundingApi.get<{ source: SourceDocumentRecord | null }>(
+      `/sources/${encodeURIComponent(docId)}`
+    );
+    return data;
+  },
+
+  async getSourcesBatch(docIds: string[]): Promise<{ sources: SourceDocumentRecord[] }> {
+    const { data } = await fundingApi.post<{ sources: SourceDocumentRecord[] }>(
+      "/sources/batch",
+      { docIds }
+    );
+    return data;
+  },
+
+  async createArtifact(pipelineEntryId: string, type: DraftArtifactType): Promise<DraftArtifactRecord> {
+    const { data } = await fundingApi.post<DraftArtifactRecord>("/approvals/artifacts", {
+      pipelineEntryId,
+      type,
+    });
+    return data;
+  },
+
+  async createVersion(
+    artifactId: string,
+    content: string,
+    createdBy?: string
+  ): Promise<DraftVersionRecord> {
+    const { data } = await fundingApi.post<DraftVersionRecord>(
+      `/approvals/artifacts/${artifactId}/versions`,
+      { content, createdBy }
+    );
+    return data;
+  },
+
+  async submitApproval(
+    versionId: string,
+    status: ApprovalStatus,
+    decidedBy?: string,
+    comment?: string
+  ): Promise<ApprovalRecord> {
+    const { data } = await fundingApi.post<ApprovalRecord>(
+      `/approvals/versions/${versionId}/approve`,
+      { status, decidedBy, comment }
+    );
+    return data;
+  },
+
+  async getPendingForEntry(pipelineEntryId: string): Promise<{ pending: DraftVersionRecord[] }> {
+    const { data } = await fundingApi.get<{ pending: DraftVersionRecord[] }>(
+      `/approvals/entries/${pipelineEntryId}/pending`
+    );
+    return data;
+  },
+
+  async getArtifactsForEntry(
+    pipelineEntryId: string
+  ): Promise<{ artifacts: DraftArtifactRecord[] }> {
+    const { data } = await fundingApi.get<{ artifacts: DraftArtifactRecord[] }>(
+      `/approvals/entries/${pipelineEntryId}/artifacts`
+    );
+    return data;
+  },
+
+  async getVersionsForArtifact(
+    artifactId: string
+  ): Promise<{ versions: DraftVersionRecord[] }> {
+    const { data } = await fundingApi.get<{ versions: DraftVersionRecord[] }>(
+      `/approvals/artifacts/${artifactId}/versions`
     );
     return data;
   },

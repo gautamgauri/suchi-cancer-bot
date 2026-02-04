@@ -21,6 +21,7 @@
     "stage": "Stage",
     "nextAction": "Next action",
     "owner": "Owner",
+    "deadline": "Deadline",
     "priority": "Priority",
     "lastActivity": "Last activity"
   },
@@ -38,6 +39,7 @@
     "call": "Call",
     "meeting": "Meeting",
     "emailSent": "Email sent",
+    "email_sent": "Email sent",
     "note": "Note",
     "addActivity": "Add activity",
     "type": "Type",

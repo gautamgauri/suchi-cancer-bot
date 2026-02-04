@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Readable } from "stream";
 import { google, drive_v3 } from "googleapis";
 import { JWT } from "google-auth-library";
 import { EvidenceConfig } from "../../config/evidence.config";
@@ -31,8 +32,10 @@ export class DriveClientService {
             email: credentials.client_email,
             key: credentials.private_key.replace(/\\n/g, "\n"),
             scopes: [
+              // Use drive.file scope for minimal permissions - only access files created/opened by app
+              "https://www.googleapis.com/auth/drive.file",
+              // Keep readonly for listing/reading existing evidence files
               "https://www.googleapis.com/auth/drive.readonly",
-              "https://www.googleapis.com/auth/drive.metadata.readonly",
             ],
           });
           this.logger.log("Drive client configured for evidence ingestion");
@@ -110,6 +113,84 @@ export class DriveClientService {
       webViewLink: f.webViewLink ?? undefined,
       owners: f.owners as DriveFileItem["owners"],
     };
+  }
+
+  /**
+   * Create a folder in Drive. parentId must be a folder the service account can write to (e.g. shared with it).
+   */
+  async createFolder(params: {
+    name: string;
+    parentId: string;
+  }): Promise<{ id: string; name: string; webViewLink?: string }> {
+    const drive = await this.getDrive();
+    const res = await drive.files.create({
+      requestBody: {
+        name: params.name,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [params.parentId],
+      },
+      fields: "id, name, webViewLink",
+    });
+    const id = res.data.id!;
+    const name = res.data.name ?? params.name;
+    const webViewLink = res.data.webViewLink ?? undefined;
+    this.logger.log(`Created folder ${name} (${id})`);
+    return { id, name, webViewLink };
+  }
+
+  /**
+   * Ensure a folder path exists under parentId, creating any missing folders. Returns the final folder id.
+   */
+  async ensureFolderPath(parentId: string, pathSegments: string[]): Promise<{ id: string; webViewLink?: string }> {
+    let currentId = parentId;
+    for (const segment of pathSegments) {
+      if (!segment.trim()) continue;
+      const drive = await this.getDrive();
+      const list = await drive.files.list({
+        q: `'${currentId}' in parents and name = '${segment.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        fields: "files(id, webViewLink)",
+        pageSize: 1,
+      });
+      const existing = list.data.files?.[0];
+      if (existing?.id) {
+        currentId = existing.id;
+      } else {
+        const created = await this.createFolder({ name: segment, parentId: currentId });
+        currentId = created.id;
+      }
+    }
+    const drive = await this.getDrive();
+    const file = await drive.files.get({ fileId: currentId, fields: "id, webViewLink" });
+    return { id: file.data.id!, webViewLink: file.data.webViewLink ?? undefined };
+  }
+
+  /**
+   * Upload a file (buffer) to a folder. Returns file id and webViewLink.
+   */
+  async uploadFile(params: {
+    name: string;
+    mimeType: string;
+    parentId: string;
+    buffer: Buffer;
+  }): Promise<{ id: string; name: string; webViewLink?: string }> {
+    const drive = await this.getDrive();
+    const res = await drive.files.create({
+      requestBody: {
+        name: params.name,
+        mimeType: params.mimeType,
+        parents: [params.parentId],
+      },
+      media: {
+        mimeType: params.mimeType,
+        body: Readable.from(params.buffer),
+      },
+      fields: "id, name, webViewLink",
+    });
+    const id = res.data.id!;
+    const name = res.data.name ?? params.name;
+    const webViewLink = res.data.webViewLink ?? undefined;
+    this.logger.log(`Uploaded file ${name} (${id})`);
+    return { id, name, webViewLink };
   }
 
   /**

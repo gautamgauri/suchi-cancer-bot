@@ -9,7 +9,7 @@ import {
   IsDateString,
 } from "class-validator";
 
-const STAGES = ["lead", "qualified", "proposal_sent", "won", "lost"] as const;
+const STAGES = ["RFP_received", "lead", "qualified", "proposal_sent", "won", "lost"] as const;
 
 export class CreatePipelineEntryDto {
   @IsString()
@@ -65,6 +65,18 @@ export class CreatePipelineEntryDto {
   @IsOptional()
   @IsString()
   estimatedGrantSize?: string;
+
+  @IsOptional()
+  @IsDateString()
+  deadline?: string;
+
+  @IsOptional()
+  @IsString()
+  submissionEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  driveFolderUrl?: string;
 }
 
 export class UpdatePipelineEntryDto {
@@ -123,6 +135,18 @@ export class UpdatePipelineEntryDto {
   @IsOptional()
   @IsString()
   estimatedGrantSize?: string;
+
+  @IsOptional()
+  @IsDateString()
+  deadline?: string;
+
+  @IsOptional()
+  @IsString()
+  submissionEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  driveFolderUrl?: string;
 
   @IsInt()
   @Min(1)
