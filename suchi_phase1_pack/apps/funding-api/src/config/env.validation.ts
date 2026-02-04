@@ -20,10 +20,24 @@ export const envSchema = z.object({
   FUNDING_EXPORT_TOKEN: z.string().optional(),
   // Evidence library (Phase 1) — optional; required only when running ingestion
   EVIDENCE_DRIVE_FOLDER_ID: z.string().optional(),
+  FUNDING_DRIVE_ARCHIVE_ROOT_ID: z.string().optional(),
   EVIDENCE_CUTOFF_IST: z.string().optional(),
   EVIDENCE_MIME_ALLOWLIST: z.string().optional(),
   EVIDENCE_STORAGE_DIR: z.string().optional(), // local temp dir for raw files; if unset uses os.tmpdir()/evidence
   // Phase 2: embeddings (optional; required for embedding pipeline)
   EVIDENCE_EMBEDDING_MODEL: z.string().optional().default("text-embedding-3-small"),
   EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN: z.coerce.number().min(1).max(1000).optional().default(60),
+  // Funding Bot: Gmail intake (optional; required when running email ingestion)
+  FUNDING_GMAIL_USER: z.string().email().optional(),
+  FUNDING_GMAIL_TOPIC: z.string().optional(),
+  FUNDING_GMAIL_SUBSCRIPTION: z.string().optional(),
+  // Funding Bot: Default owner/reviewer config (optional; prevents hardcoded PII)
+  // Format for owner: "Name|email@domain.com|Role"
+  // Format for reviewers: "Name1|email1|Role1,Name2|email2|Role2"
+  FUNDING_ORG_NAME: z.string().optional(),
+  FUNDING_DEFAULT_OWNER: z.string().optional(),
+  FUNDING_DEFAULT_REVIEWERS: z.string().optional(),
+  // Funding Bot: Slack notifications (optional; for proposal generation alerts)
+  FUNDING_SLACK_WEBHOOK_URL: z.string().url().optional(),
+  FUNDING_SLACK_CHANNEL: z.string().optional().default("#funding-bot"),
 });

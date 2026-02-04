@@ -22,11 +22,16 @@ model PipelineEntry {
   sectorTags         String[]        @default([])
   geography          String?
   estimatedGrantSize String?
+  deadline           DateTime?       // RFP submission deadline
+  submissionEmail    String?         // Funder submission email
+  driveFolderUrl     String?         // Link to opportunity folder
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   version            Int             @default(1)
   activities         Activity[]
   draftArtifacts     DraftArtifact[]
+  opportunity        Opportunity?
+  projectCapabilities ProjectCapability[]
 }
 
 model Activity {
@@ -130,6 +135,8 @@ model EvidenceDocument {
   updatedAt             DateTime  @updatedAt
   documentChunks        DocumentChunk[]
   reviewQueue           ReviewQueueEntry?
+  documentCapabilities  DocumentCapability[]
+  documentModalities    DocumentMIModality[]
   @@index([sourceFolder])
   @@index([needsProcessing])
   @@index([qualityTier])
@@ -182,4 +189,378 @@ model IngestRun {
   errorTypes    Json?   // summary of error types
   durationMs    Int?
   createdAt     DateTime @default(now())
+}
+
+// --- Funding Bot: Email-triggered RFP intake ---
+
+model ProcessedEmail {
+  id          String   @id @default(uuid())
+  messageId   String   @unique  // Gmail message ID for idempotency
+  threadId    String?
+  processedAt DateTime @default(now())
+  opportunityId String?
+  createdAt   DateTime @default(now())
+  // Foreign key to Opportunity for referential integrity
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  @@index([messageId])
+}
+
+model Opportunity {
+  id               String    @id @default(uuid())
+  opportunityId    String    @unique  // e.g. RF-ESA-2026-27-001
+  schemaVersion    String    @default("1.0")
+  emailMessageId   String?   @unique
+  threadId         String?
+  driveFolderId    String?
+  driveFolderUrl   String?
+  jsonBlob         Json      // full BRD Opportunity JSON
+  status           String    @default("received")  // received | extracted | draft_generated | blocked_missing_inputs
+  missingInputs   Json?     // array of { field, question, priority }
+  pipelineEntryId  String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  pipelineEntry    PipelineEntry? @relation(fields: [pipelineEntryId], references: [id])
+  auditEvents      OpportunityAuditEvent[]
+  proposalRuns     ProposalRun[]
+  opportunityCapabilities OpportunityCapability[]
+  processedEmails  ProcessedEmail[]
+  @@index([status])
+  @@index([emailMessageId])
+  @@index([opportunityId])
+  @@index([createdAt])
+  @@index([pipelineEntryId])
+}
+
+model ProposalRun {
+  id               String   @id @default(uuid())
+  opportunityId    String
+  status           String   @default("pending") // pending | planning | drafting | qa | complete | failed
+  modelConfig      Json     // { planner, writer, reviewer, retriever }
+  outline          Json?    // ProposalOutline JSON
+  retrievalPlan    Json?    // RetrievalPlan JSON
+  complianceReport Json?    // QA results
+  artifacts        Json?    // { driveFolderId, docId, evidencePackId }
+  gaps             Json?    // Array of missing inputs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  sections         ProposalSection[]
+  @@index([opportunityId])
+  @@index([status])
+}
+
+model ProposalSection {
+  id               String   @id @default(uuid())
+  runId            String
+  name             String
+  targetWords      Int?
+  retrievalQueries Json?    // Array of query strings
+  retrievedChunks  Json?    // Array of { chunkId, docId, score }
+  draftText        String?  @db.Text
+  citations        Json?    // Array of { chunkId, inlineMarker }
+  gaps             Json?    // Array of missing evidence descriptions
+  status           String   @default("pending") // pending | retrieved | drafted | reviewed
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  run              ProposalRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  @@index([runId])
+}
+
+model OpportunityAuditEvent {
+  id             String     @id @default(uuid())
+  opportunityId  String
+  action         String     // create_tracker_row | generate_ack_email | generate_outline | populate_annexure | etc.
+  status         String     // success | failed | skipped
+  details        Json?
+  createdAt      DateTime   @default(now())
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  @@index([opportunityId])
+}
+
+// --- Framework Integration (Capabilities + MI + Cards) ---
+
+model FrameworkCapability {
+  id                   String   @id @default(uuid())
+  capabilityId         String   @unique // C1, C2, ..., C10
+  name                 String
+  definitionShort      String   @db.VarChar(240)
+  definitionLong       String   @db.Text
+  subdimensions        String[] @default([])
+  biharContextExamples String[] @default([])
+  measurementIdeas     String[] @default([])
+  ethicsRisks          String[] @default([])
+  sourceRefs           String[] @default([])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  methodCardCapabilities    MethodCardCapability[]
+  patternCardCapabilities   PatternCardCapability[]
+  comparableCaseCapabilities ComparableCaseCapability[]
+  projectCapabilities       ProjectCapability[]
+  opportunityCapabilities   OpportunityCapability[]
+  documentCapabilities      DocumentCapability[]
+}
+
+model FrameworkMI {
+  id                  String   @id @default(uuid())
+  miId                String   @unique // MI1, MI2, ..., MI8
+  name                String
+  definitionShort     String   @db.VarChar(240)
+  activitySignals     String[] @default([])
+  assessmentArtifacts String[] @default([])
+  sourceRefs          String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  methodCardMIs    MethodCardMI[]
+  patternCardMIs   PatternCardMI[]
+  documentModalities DocumentMIModality[]
+}
+
+model FrameworkMethodCard {
+  id                  String   @id @default(uuid())
+  methodId            String   @unique
+  title               String
+  intent              String   @db.Text
+  steps               String[] @default([])
+  whenToUse           String?  @db.Text
+  whenNotToUse        String?  @db.Text
+  ageBand             String?
+  settingTags         String[] @default([])
+  assessmentArtifacts  String[] @default([])
+  sourceDocId         String?
+  sourceUrl           String?
+  licenseFlag         String   @default("UNKNOWN") // OK_INTERNAL | NEEDS_REVIEW | UNKNOWN
+  qualityScore        Int?     @default(0)
+  status              String   @default("draft") // draft | validated | archived
+  validatedAt         DateTime?
+  validatedBy         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  methodCardMIs         MethodCardMI[]
+  methodCardCapabilities MethodCardCapability[]
+  chunks                MethodCardChunk[]
+}
+
+model MethodCardMI {
+  id           String   @id @default(uuid())
+  methodCardId String
+  miId         String
+  isPrimary    Boolean  @default(true)
+  methodCard   FrameworkMethodCard @relation(fields: [methodCardId], references: [id], onDelete: Cascade)
+  mi           FrameworkMI @relation(fields: [miId], references: [id], onDelete: Cascade)
+  @@unique([methodCardId, miId])
+}
+
+model MethodCardCapability {
+  id           String   @id @default(uuid())
+  methodCardId String
+  capabilityId String
+  methodCard   FrameworkMethodCard @relation(fields: [methodCardId], references: [id], onDelete: Cascade)
+  capability   FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  @@unique([methodCardId, capabilityId])
+}
+
+model MethodCardChunk {
+  id         String   @id @default(uuid())
+  cardId     String
+  chunkIndex Int
+  content    String   @db.Text
+  tokenCount Int?
+  card       FrameworkMethodCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  embedding  MethodCardChunkEmbedding?
+  @@index([cardId])
+}
+
+model MethodCardChunkEmbedding {
+  id             String   @id @default(uuid())
+  chunkId        String   @unique
+  embeddingModel String
+  vector         String   @db.Text
+  chunk          MethodCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+}
+
+model FrameworkPatternCard {
+  id                  String   @id @default(uuid())
+  patternId           String   @unique
+  title               String
+  durationMins        Int?
+  materials           String[] @default([])
+  facilitatorScript   String[] @default([])
+  adaptations         String[] @default([])
+  assessmentArtifacts String[] @default([])
+  sourceDocId         String?
+  sourceUrl           String?
+  evidenceLevel       String   @default("ANECDOTAL") // RESEARCH | PRACTICE_GUIDE | ANECDOTAL
+  qualityScore        Int?     @default(0)
+  status              String   @default("draft")
+  validatedAt         DateTime?
+  validatedBy         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  patternCardMIs          PatternCardMI[]
+  patternCardCapabilities PatternCardCapability[]
+  chunks                  PatternCardChunk[]
+}
+
+model PatternCardMI {
+  id            String   @id @default(uuid())
+  patternCardId String
+  miId          String
+  isPrimary     Boolean  @default(true)
+  patternCard   FrameworkPatternCard @relation(fields: [patternCardId], references: [id], onDelete: Cascade)
+  mi            FrameworkMI @relation(fields: [miId], references: [id], onDelete: Cascade)
+  @@unique([patternCardId, miId])
+}
+
+model PatternCardCapability {
+  id            String   @id @default(uuid())
+  patternCardId String
+  capabilityId  String
+  isPrimary     Boolean  @default(true)
+  patternCard   FrameworkPatternCard @relation(fields: [patternCardId], references: [id], onDelete: Cascade)
+  capability    FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  @@unique([patternCardId, capabilityId])
+}
+
+model PatternCardChunk {
+  id         String   @id @default(uuid())
+  cardId     String
+  chunkIndex Int
+  content    String   @db.Text
+  tokenCount Int?
+  card       FrameworkPatternCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  embedding  PatternCardChunkEmbedding?
+  @@index([cardId])
+}
+
+model PatternCardChunkEmbedding {
+  id             String   @id @default(uuid())
+  chunkId        String   @unique
+  embeddingModel String
+  vector         String   @db.Text
+  chunk          PatternCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+}
+
+model FrameworkComparableCase {
+  id                    String   @id @default(uuid())
+  caseId                String   @unique
+  programName           String
+  orgName               String
+  geography             String
+  targetGroup           String   // children | youth | women | mixed
+  deliveryModelTags     String[] @default([])
+  outcomesSummary       String   @db.Text
+  indicatorsUsed        String[] @default([])
+  costNotes             String?  @db.Text
+  programConstraints    String?  @db.Text
+  contextConstraints    String?  @db.Text
+  transferabilityBihar  String?  @db.Text
+  sourceDocId           String?
+  sourceUrl             String?
+  confidenceScore       Int      @default(3) // 1-5
+  qualityScore          Int?     @default(0)
+  status                String   @default("draft")
+  validatedAt           DateTime?
+  validatedBy           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  comparableCaseCapabilities ComparableCaseCapability[]
+  chunks                     ComparableCaseChunk[]
+}
+
+model ComparableCaseCapability {
+  id        String   @id @default(uuid())
+  caseId    String
+  capabilityId String
+  isPrimary Boolean  @default(true)
+  case      FrameworkComparableCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  capability FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  @@unique([caseId, capabilityId])
+}
+
+model ComparableCaseChunk {
+  id         String   @id @default(uuid())
+  cardId     String
+  chunkIndex Int
+  content    String   @db.Text
+  tokenCount Int?
+  card       FrameworkComparableCase @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  embedding  ComparableCaseChunkEmbedding?
+  @@index([cardId])
+}
+
+model ComparableCaseChunkEmbedding {
+  id             String   @id @default(uuid())
+  chunkId        String   @unique
+  embeddingModel String
+  vector         String   @db.Text
+  chunk          ComparableCaseChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+}
+
+// Entity tagging junction tables
+model ProjectCapability {
+  id              String   @id @default(uuid())
+  pipelineEntryId String
+  capabilityId    String
+  isPrimary       Boolean  @default(false)
+  strength        Int?     // 1-5
+  isApplicable    Boolean  @default(true)
+  pipelineEntry   PipelineEntry @relation(fields: [pipelineEntryId], references: [id], onDelete: Cascade)
+  capability      FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  @@unique([pipelineEntryId, capabilityId])
+  @@index([pipelineEntryId])
+}
+
+model OpportunityCapability {
+  id            String   @id @default(uuid())
+  opportunityId String
+  capabilityId  String
+  isPrimary     Boolean  @default(false)
+  strength      Int?
+  isApplicable  Boolean  @default(true)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  capability    FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  @@unique([opportunityId, capabilityId])
+  @@index([opportunityId])
+}
+
+model DocumentCapability {
+  id           String   @id @default(uuid())
+  documentId   String
+  capabilityId String
+  isPrimary    Boolean  @default(false)
+  strength     Int?
+  document     EvidenceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  capability   FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+  @@unique([documentId, capabilityId])
+  @@index([documentId])
+}
+
+model DocumentMIModality {
+  id           String   @id @default(uuid())
+  documentId   String
+  modalityId   String
+  isPrimary    Boolean  @default(false)
+  document     EvidenceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  modality     FrameworkMI @relation(fields: [modalityId], references: [id], onDelete: Cascade)
+  @@unique([documentId, modalityId])
+  @@index([documentId])
+}
+
+model FrameworkAnalyticsEvent {
+  id         String   @id @default(uuid())
+  eventType  String
+  userId     String?
+  projectId  String?
+  metadata   Json     @default("{}")
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([eventType])
+  @@index([projectId])
+  @@index([createdAt])
 }

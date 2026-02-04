@@ -13,6 +13,10 @@ import { ApprovalsModule } from "./modules/approvals/approvals.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SourceRegistryModule } from "./modules/source_registry/source-registry.module";
 import { EvidenceIngestModule } from "./modules/evidence_ingest/evidence-ingest.module";
+import { OpportunityModule } from "./modules/opportunity/opportunity.module";
+import { GmailModule } from "./modules/gmail/gmail.module";
+import { ProposalModule } from "./modules/proposal/proposal.module";
+import { FrameworkModule } from "./modules/framework/framework.module";
 
 @Module({
   imports: [
@@ -23,8 +27,12 @@ import { EvidenceIngestModule } from "./modules/evidence_ingest/evidence-ingest.
     CoreAiModule,
     SourceRegistryModule,
     EvidenceIngestModule,
+    GmailModule,
     DraftModule,
     PipelineModule,
+    OpportunityModule,
+    ProposalModule,
+    FrameworkModule,
     ApprovalsModule,
     ReportsModule,
     DonorModule,
