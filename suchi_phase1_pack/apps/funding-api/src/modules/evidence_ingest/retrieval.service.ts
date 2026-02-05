@@ -77,10 +77,19 @@ export class RetrievalService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const apiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
-    const baseURL = this.configService.get<string>("FUNDING_OPENAI_BASE_URL");
+    // Split provider: embeddings use separate API key/base URL from LLM
+    const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
+    const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
+    const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
+
+    // Use embeddings-specific key if available, otherwise fall back to LLM key
+    const apiKey = embeddingsApiKey || llmApiKey;
+    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
+    const baseURL = embeddingsBaseUrl || undefined;
+
     if (apiKey) {
       this.openai = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
+      this.logger.log(`Retrieval embeddings client configured (using ${embeddingsApiKey ? 'dedicated' : 'shared LLM'} API key)`);
     }
     this.embeddingModel =
       this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
