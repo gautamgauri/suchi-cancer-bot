@@ -1,8 +1,12 @@
+export interface CapabilityTagInput {
+  capabilityId: string;
+  isPrimary: boolean;
+  strength: number | null;
+  isApplicable: boolean;
+}
+
 export class TagProjectDto {
-  capabilityIds!: string[];
-  isPrimary?: boolean[];
-  strength?: (number | null)[];
-  isApplicable?: boolean[];
+  tags!: CapabilityTagInput[];
 }
 
 export class ProjectTagsDto {

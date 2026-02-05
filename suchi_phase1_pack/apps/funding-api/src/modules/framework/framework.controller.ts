@@ -200,7 +200,7 @@ export class FrameworkController {
     await this.analytics.track({
       eventType: "capability_tag_applied",
       projectId,
-      metadata: { capabilityCount: dto.capabilityIds?.length ?? 0 },
+      metadata: { capabilityCount: dto.tags?.length ?? 0 },
     });
     return result;
   }
