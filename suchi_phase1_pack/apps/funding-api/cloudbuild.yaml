@@ -64,7 +64,7 @@ steps:
       - '--add-cloudsql-instances'
       - '${_CLOUDSQL_CONNECTION_NAME}'
       - '--set-env-vars'
-      - 'NODE_ENV=production,GIT_SHA=$BUILD_ID,FUNDING_MODEL_DRAFT=deepseek-chat,FUNDING_LLM_TIMEOUT_MS=45000'
+      - 'NODE_ENV=production,GIT_SHA=$BUILD_ID,FUNDING_MODEL_DRAFT=deepseek-chat,FUNDING_LLM_TIMEOUT_MS=45000,FUNDING_OPENAI_BASE_URL=https://api.deepseek.com/v1'
       - '--set-secrets'
       - 'FUNDING_OPENAI_API_KEY=${_LLM_API_KEY_SECRET}:latest,DATABASE_URL=${_DATABASE_SECRET}:latest,FUNDING_GOOGLE_SERVICE_ACCOUNT_JSON=${_GOOGLE_SA_SECRET}:latest'
 
