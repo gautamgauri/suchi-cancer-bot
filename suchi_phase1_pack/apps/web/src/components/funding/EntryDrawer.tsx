@@ -164,7 +164,7 @@ export function EntryDrawer({ entryId, onClose, compact = false }: EntryDrawerPr
               )}
               {activeTab === "drafts" && (
                 <div id="panel-drafts" role="tabpanel" aria-labelledby="tab-drafts">
-                  <DraftsTab entryId={entry.id} compact={compact} />
+                  <DraftsTab entryId={entry.id} entry={entry} compact={compact} />
                 </div>
               )}
             </div>

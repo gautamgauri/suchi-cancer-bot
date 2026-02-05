@@ -53,7 +53,8 @@ export function ActivityTab({ entryId, compact = false }: ActivityTabProps) {
       reset();
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to log activity");
+      const msg = err.message || "Failed to log activity";
+      toast.error(`${msg} ${t("common:retry", { ns: "common" })}`);
     },
   });
 

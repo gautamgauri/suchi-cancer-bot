@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -122,4 +126,55 @@ code {
 
 .loading-dot-3 {
   animation-delay: 0s;
+}
+
+/* Print: A4 snapshot – title, date, table only */
+@media print {
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  #root,
+  main {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Ensure table and content are visible with minimal styling */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #000;
+    padding: 0.25rem 0.5rem;
+    color: #000;
+    background: white !important;
+  }
+
+  table thead th {
+    font-weight: 600;
+    background: #f0f0f0 !important;
+  }
 }
