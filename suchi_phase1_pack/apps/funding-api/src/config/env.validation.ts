@@ -25,6 +25,9 @@ export const envSchema = z.object({
   EVIDENCE_MIME_ALLOWLIST: z.string().optional(),
   EVIDENCE_STORAGE_DIR: z.string().optional(), // local temp dir for raw files; if unset uses os.tmpdir()/evidence
   // Phase 2: embeddings (optional; required for embedding pipeline)
+  // Split provider: embeddings can use different API than LLM (e.g., OpenAI for embeddings, Deepseek for generation)
+  FUNDING_EMBEDDINGS_API_KEY: z.string().optional(), // Falls back to FUNDING_OPENAI_API_KEY if not set
+  FUNDING_EMBEDDINGS_BASE_URL: z.string().url().optional(), // Falls back to OpenAI default if not set
   EVIDENCE_EMBEDDING_MODEL: z.string().optional().default("text-embedding-3-small"),
   EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN: z.coerce.number().min(1).max(1000).optional().default(60),
   // Funding Bot: Gmail intake (optional; required when running email ingestion)

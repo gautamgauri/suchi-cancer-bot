@@ -18,10 +18,22 @@ export class EmbeddingService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const apiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
-    const baseURL = this.configService.get<string>("FUNDING_OPENAI_BASE_URL");
+    // Split provider: embeddings use separate API key/base URL from LLM
+    // Falls back to LLM config if embeddings-specific vars not set
+    const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
+    const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
+    const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
+
+    // Use embeddings-specific key if available, otherwise fall back to LLM key
+    const apiKey = embeddingsApiKey || llmApiKey;
+    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
+    const baseURL = embeddingsBaseUrl || undefined;
+
     if (apiKey) {
       this.client = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
+      this.logger.log(`Embeddings client configured (using ${embeddingsApiKey ? 'dedicated' : 'shared LLM'} API key)`);
+    } else {
+      this.logger.warn("Embeddings client not configured - FUNDING_EMBEDDINGS_API_KEY or FUNDING_OPENAI_API_KEY required");
     }
     this.model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
     this.rateLimitPerMin = this.configService.get<number>("EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN") ?? 60;
@@ -41,7 +53,7 @@ export class EmbeddingService {
     durationMs: number;
     tokenCountProxy: number;
   }> {
-    if (!this.client) throw new Error("Embedding API not configured (FUNDING_OPENAI_API_KEY)");
+    if (!this.client) throw new Error("Embedding API not configured (set FUNDING_EMBEDDINGS_API_KEY for OpenAI embeddings)");
 
     const docIds = await this.prisma.evidenceDocument.findMany({
       where: { qualityTier: { in: ["A", "B"] } },
