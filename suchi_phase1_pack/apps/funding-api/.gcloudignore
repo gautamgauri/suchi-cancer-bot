@@ -1,0 +1,39 @@
+# Same as .dockerignore for Cloud Build uploads
+#!include:.dockerignore
+
+# Dependencies - installed fresh in Docker
+node_modules/
+
+# Build output - built fresh in Docker
+dist/
+
+# Test files
+**/*.spec.ts
+**/*.test.ts
+**/__tests__/
+coverage/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Docs (except README)
+*.md
+!README.md
+
+# Development scripts
+scripts/
+src/scripts/
+
+# Logs
+*.log
