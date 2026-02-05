@@ -1,11 +1,18 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import { EvidenceChunk } from "../core_ai/types";
+import { SourceRegistryService } from "../source_registry/source-registry.service";
 import { ChunkDto, ConversationContextDto, EmailTemplate, PipelineContextDto } from "./dto";
+import { logStructured } from "../../common/structured-logger";
 
 @Injectable()
 export class DraftService {
-  constructor(private readonly fundingLlm: FundingLlmService) {}
+  private readonly logger = new Logger(DraftService.name);
+
+  constructor(
+    private readonly fundingLlm: FundingLlmService,
+    private readonly sourceRegistry: SourceRegistryService
+  ) {}
 
   private mapChunkToEvidenceChunk(chunk: ChunkDto): EvidenceChunk {
     return {
@@ -18,6 +25,22 @@ export class DraftService {
         source: chunk.source,
       },
     };
+  }
+
+  private async registerSourcesFromChunks(chunks: EvidenceChunk[]): Promise<void> {
+    const byDocId = new Map<string, EvidenceChunk["document"]>();
+    for (const c of chunks) {
+      if (!byDocId.has(c.docId)) byDocId.set(c.docId, c.document);
+    }
+    await Promise.all(
+      [...byDocId.entries()].map(([docId, doc]) =>
+        this.sourceRegistry.upsertFromEvidence({
+          docId,
+          url: doc.url ?? undefined,
+          title: doc.title ?? undefined,
+        })
+      )
+    );
   }
 
   private buildEmailUserMessage(
@@ -45,7 +68,9 @@ export class DraftService {
     chunks: ChunkDto[],
     conversationContext?: ConversationContextDto
   ): Promise<{ text: string }> {
+    const startTime = Date.now();
     const mappedChunks: EvidenceChunk[] = chunks.map((c) => this.mapChunkToEvidenceChunk(c));
+    await this.registerSourcesFromChunks(mappedChunks);
     const text = await this.fundingLlm.generateWithCitations(
       "draft",
       context,
@@ -54,6 +79,20 @@ export class DraftService {
       false,
       conversationContext ?? undefined
     );
+
+    // Count citations in output
+    const citationCount = (text.match(/\[citation:[^\]]+\]/g) || []).length;
+    const durationMs = Date.now() - startTime;
+
+    logStructured.log("Draft generation complete", {
+      context: DraftService.name,
+      type: "need_statement",
+      chunksUsed: chunks.length,
+      outputLength: text.length,
+      citationCount,
+      durationMs,
+    });
+
     return { text };
   }
 
@@ -67,6 +106,7 @@ export class DraftService {
     const userMessage = this.buildEmailUserMessage(template, pipelineContext, donorProfileSnippet);
     if (chunks && chunks.length > 0) {
       const mappedChunks: EvidenceChunk[] = chunks.map((c) => this.mapChunkToEvidenceChunk(c));
+      await this.registerSourcesFromChunks(mappedChunks);
       const text = await this.fundingLlm.generateWithCitations(
         "email",
         context,
@@ -88,13 +128,32 @@ export class DraftService {
     chunks: ChunkDto[],
     conversationContext?: ConversationContextDto
   ): Promise<{ draft: string; evaluation: { score: number; weaknesses: string[] }; refined: string }> {
+    const startTime = Date.now();
+
     const { text: draft } = await this.draftNeedStatement(context, userMessage, chunks, conversationContext);
+    const draftTime = Date.now() - startTime;
+
     const evaluation = await this.fundingLlm.evaluateDraft(draft);
+    const evalTime = Date.now() - startTime - draftTime;
+
     const evaluationNotes = [
       `Score: ${evaluation.score}/5`,
       ...evaluation.weaknesses.map((w) => `- ${w}`),
     ].join("\n");
     const refined = await this.fundingLlm.refineDraft(draft, evaluationNotes);
+    const refineTime = Date.now() - startTime - draftTime - evalTime;
+
+    logStructured.log("Draft refinement complete", {
+      context: DraftService.name,
+      type: "refine_flow",
+      evalScore: evaluation.score,
+      weaknessCount: evaluation.weaknesses.length,
+      draftDurationMs: draftTime,
+      evalDurationMs: evalTime,
+      refineDurationMs: refineTime,
+      totalDurationMs: Date.now() - startTime,
+    });
+
     return {
       draft,
       evaluation: { score: evaluation.score, weaknesses: evaluation.weaknesses },

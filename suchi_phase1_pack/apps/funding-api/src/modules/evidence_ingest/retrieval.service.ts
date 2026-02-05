@@ -4,8 +4,49 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import OpenAI from "openai";
+import { logStructured } from "../../common/structured-logger";
 
 export type RetrievalPolicyMode = "proposal_drafting" | "org_background" | "internal_research";
+
+/** Simple LRU cache for query embeddings to avoid redundant API calls */
+interface CacheEntry {
+  embedding: number[];
+  timestamp: number;
+}
+
+class QueryEmbeddingCache {
+  private cache = new Map<string, CacheEntry>();
+  private readonly maxSize: number;
+  private readonly ttlMs: number;
+
+  constructor(maxSize = 100, ttlMs = 5 * 60 * 1000) {
+    this.maxSize = maxSize;
+    this.ttlMs = ttlMs;
+  }
+
+  get(query: string): number[] | null {
+    const entry = this.cache.get(query);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.ttlMs) {
+      this.cache.delete(query);
+      return null;
+    }
+    return entry.embedding;
+  }
+
+  set(query: string, embedding: number[]): void {
+    // Evict oldest entries if at capacity
+    if (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) this.cache.delete(oldestKey);
+    }
+    this.cache.set(query, { embedding, timestamp: Date.now() });
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+}
 
 const POLICY_TIERS: Record<RetrievalPolicyMode, string[]> = {
   proposal_drafting: ["A", "B"],
@@ -21,6 +62,8 @@ export interface RetrievalChunkDto {
   section?: string;
   urlOrPath?: string;
   claimType?: "hard" | "context";
+  /** Similarity score from retrieval (0-1, higher is more relevant) */
+  score?: number;
 }
 
 @Injectable()
@@ -28,6 +71,7 @@ export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
   private readonly openai: OpenAI | null = null;
   private readonly embeddingModel: string;
+  private readonly queryCache = new QueryEmbeddingCache(100, 5 * 60 * 1000); // 100 entries, 5 min TTL
 
   constructor(
     private readonly configService: ConfigService,
@@ -56,6 +100,7 @@ export class RetrievalService {
 
   /**
    * P2-03 + P2-04: Retrieve chunks by vector similarity (or keyword). Filter by policy mode and visibility.
+   * Optional framework filter: capabilities (C1-C10) to restrict to documents tagged with those capabilities.
    */
   async retrieve(
     query: string,
@@ -64,8 +109,11 @@ export class RetrievalService {
       limit?: number;
       visibilityScope?: string;
       publicSafeOnly?: boolean;
+      /** Framework filter: only documents tagged with at least one of these capability codes (C1-C10) */
+      capabilities?: string[];
     } = {},
   ): Promise<RetrievalChunkDto[]> {
+    const startTime = Date.now();
     const mode = options.mode ?? "proposal_drafting";
     const limit = Math.min(options.limit ?? 20, 50);
     const allowedTiers = POLICY_TIERS[mode];
@@ -77,6 +125,11 @@ export class RetrievalService {
           qualityTier: { in: allowedTiers },
           ...(options.publicSafeOnly && { publicSafe: true }),
           ...(options.visibilityScope && { visibilityScope: options.visibilityScope }),
+          ...(options.capabilities?.length && {
+            documentCapabilities: {
+              some: { capability: { capabilityId: { in: options.capabilities } } },
+            },
+          }),
         },
       },
       include: {
@@ -113,11 +166,24 @@ export class RetrievalService {
       );
     }
 
-    const queryEmbedding = await this.openai.embeddings.create({
-      model: this.embeddingModel,
-      input: query.slice(0, 8000),
-    });
-    const qVec = queryEmbedding.data[0]?.embedding;
+    // Check cache first
+    const normalizedQuery = query.slice(0, 8000).trim().toLowerCase();
+    let qVec = this.queryCache.get(normalizedQuery);
+
+    if (!qVec) {
+      const queryEmbedding = await this.openai.embeddings.create({
+        model: this.embeddingModel,
+        input: query.slice(0, 8000),
+      });
+      qVec = queryEmbedding.data[0]?.embedding ?? null;
+      if (qVec) {
+        this.queryCache.set(normalizedQuery, qVec);
+        this.logger.debug(`Query embedding cached (cache size: ${this.queryCache.size})`);
+      }
+    } else {
+      this.logger.debug("Query embedding cache hit");
+    }
+
     if (!qVec)
       return this.keywordFallback(
         query,
@@ -145,7 +211,23 @@ export class RetrievalService {
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 
-    return scored.map(({ chunk }) => this.toChunkDto(chunk));
+    const results = scored.map(({ chunk, score }) => this.toChunkDto(chunk, score));
+
+    // Log retrieval metrics
+    const durationMs = Date.now() - startTime;
+    const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + (r.score ?? 0), 0) / results.length : 0;
+    logStructured.log("RAG retrieval complete", {
+      context: RetrievalService.name,
+      queryLength: query.length,
+      mode,
+      limit,
+      chunksRetrieved: results.length,
+      avgSimilarityScore: Math.round(avgScore * 100) / 100,
+      durationMs,
+      cacheHit: this.queryCache.size > 0,
+    });
+
+    return results;
   }
 
   private keywordFallback(
@@ -168,15 +250,20 @@ export class RetrievalService {
       return { chunk: c, score };
     });
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, limit).map(({ chunk }) => this.toChunkDto(chunk));
+    // Normalize keyword scores to 0-1 range
+    const maxScore = Math.max(...scored.map((s) => s.score), 1);
+    return scored.slice(0, limit).map(({ chunk, score }) => this.toChunkDto(chunk, score / maxScore));
   }
 
-  private toChunkDto(c: {
-    id: string;
-    content: string;
-    sectionTitle: string | null;
-    document: { id: string; name: string; driveUrl: string | null; qualityTier?: string | null };
-  }): RetrievalChunkDto {
+  private toChunkDto(
+    c: {
+      id: string;
+      content: string;
+      sectionTitle: string | null;
+      document: { id: string; name: string; driveUrl: string | null; qualityTier?: string | null };
+    },
+    score?: number,
+  ): RetrievalChunkDto {
     const tier = c.document.qualityTier ?? "X";
     return {
       id: c.id,
@@ -186,6 +273,7 @@ export class RetrievalService {
       section: c.sectionTitle ?? undefined,
       urlOrPath: c.document.driveUrl ?? undefined,
       claimType: tier === "A" ? "hard" : "context",
+      score,
     };
   }
 

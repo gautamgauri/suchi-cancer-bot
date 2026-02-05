@@ -5,7 +5,7 @@
   "entryFile": "main",
   "compilerOptions": {
     "tsConfigPath": "tsconfig.json",
-    "assets": [],
+    "assets": [{ "include": "modules/evidence_ingest/gold-queries.json", "outDir": "dist" }],
     "watchAssets": false,
     "deleteOutDir": true
   }

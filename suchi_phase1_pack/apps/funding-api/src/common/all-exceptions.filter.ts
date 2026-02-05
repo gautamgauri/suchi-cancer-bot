@@ -4,9 +4,9 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
-  Logger,
 } from "@nestjs/common";
 import { Request, Response } from "express";
+import { logStructured } from "./structured-logger";
 
 interface ErrorResponse {
   statusCode: number;
@@ -18,12 +18,11 @@ interface ErrorResponse {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger(AllExceptionsFilter.name);
-
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+    const requestId = request.requestId;
 
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = "Internal server error";
@@ -53,14 +52,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
-    // Log the error
+    const logExtra = {
+      context: AllExceptionsFilter.name,
+      requestId,
+      method: request.method,
+      path: request.url,
+      statusCode,
+      message,
+      error,
+      ...(statusCode >= 500 && exception instanceof Error && exception.stack
+        ? { stack: exception.stack }
+        : {}),
+    };
+
     if (statusCode >= 500) {
-      this.logger.error(
-        `${request.method} ${request.url} ${statusCode} - ${message}`,
-        exception instanceof Error ? exception.stack : undefined
-      );
+      logStructured.error(`${request.method} ${request.url} ${statusCode} - ${message}`, logExtra);
     } else {
-      this.logger.warn(`${request.method} ${request.url} ${statusCode} - ${message}`);
+      logStructured.warn(`${request.method} ${request.url} ${statusCode} - ${message}`, logExtra);
     }
 
     response.status(statusCode).json(errorResponse);

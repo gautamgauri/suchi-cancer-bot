@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import OpenAI from "openai";
+import { logStructured } from "../../common/structured-logger";
 import { EvidenceChunk, FundingConversationContext } from "./types";
 import { buildFundingCitationInstructions } from "./funding-citation-instructions";
 
@@ -19,6 +20,52 @@ export interface EvaluateResult {
   weaknesses: string[];
 }
 
+function isTimeoutOrAbort(err: unknown): boolean {
+  const e = err as { name?: string; message?: string };
+  return e?.name === "AbortError" || (typeof e?.message === "string" && (e.message.includes("timeout") || e.message.includes("aborted")));
+}
+
+function isRetryableError(err: unknown): boolean {
+  if (isTimeoutOrAbort(err)) return true;
+  const e = err as { status?: number; code?: string; message?: string };
+  if (typeof e?.status === "number") {
+    if (e.status === 429) return true;
+    if (e.status >= 500) return true;
+    return false;
+  }
+  const code = e?.code as string | undefined;
+  if (code === "ECONNRESET" || code === "ETIMEDOUT" || code === "ECONNREFUSED" || code === "ENOTFOUND") return true;
+  return false;
+}
+
+/** Citation validation result */
+interface CitationValidationResult {
+  validCount: number;
+  invalidCount: number;
+  invalidCitations: string[];
+}
+
+/** Extract and validate citations against provided chunks */
+function validateCitations(text: string, chunks: EvidenceChunk[]): CitationValidationResult {
+  const citationPattern = /\[citation:([^:\]]+):([^\]]+)\]/g;
+  const validChunkIds = new Set(chunks.map((c) => `${c.docId}:${c.chunkId}`));
+
+  const citations: string[] = [];
+  let match;
+  while ((match = citationPattern.exec(text)) !== null) {
+    citations.push(`${match[1]}:${match[2]}`);
+  }
+
+  const invalidCitations = citations.filter((c) => !validChunkIds.has(c));
+  const validCount = citations.length - invalidCitations.length;
+
+  return {
+    validCount,
+    invalidCount: invalidCitations.length,
+    invalidCitations,
+  };
+}
+
 @Injectable()
 export class FundingLlmService {
   private readonly logger = new Logger(FundingLlmService.name);
@@ -26,6 +73,8 @@ export class FundingLlmService {
   private readonly model: string;
   private readonly evalModel: string;
   private readonly timeoutMs: number;
+  private readonly maxRetries: number;
+  private readonly retryDelayMs: number;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
@@ -37,7 +86,59 @@ export class FundingLlmService {
     this.model = this.configService.get<string>("FUNDING_MODEL_DRAFT") ?? "deepseek-chat";
     this.evalModel = this.configService.get<string>("FUNDING_MODEL_EVAL") ?? this.model;
     this.timeoutMs = this.configService.get<number>("FUNDING_LLM_TIMEOUT_MS") ?? 45000;
-    this.logger.log(`FundingLlmService initialized with model ${this.model}, eval model ${this.evalModel}, timeout ${this.timeoutMs}ms`);
+    this.maxRetries = this.configService.get<number>("FUNDING_LLM_MAX_RETRIES") ?? 2;
+    this.retryDelayMs = this.configService.get<number>("FUNDING_LLM_RETRY_DELAY_MS") ?? 1500;
+    this.logger.log(
+      `FundingLlmService initialized with model ${this.model}, eval model ${this.evalModel}, timeout ${this.timeoutMs}ms, maxRetries ${this.maxRetries}`
+    );
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>, opts?: { fallbackOnTimeout?: () => T }): Promise<T> {
+    const maxAttempts = this.maxRetries + 1;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (attempt === maxAttempts) break;
+        if (!isRetryableError(error)) throw error;
+        const delay = this.retryDelayMs * (attempt === 1 ? 1 : 2);
+        this.logger.warn(
+          `LLM attempt ${attempt}/${maxAttempts} failed (retryable), retrying in ${delay}ms`,
+          (error as Error)?.message
+        );
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+    if (opts?.fallbackOnTimeout && isTimeoutOrAbort(lastError)) {
+      return opts.fallbackOnTimeout();
+    }
+    throw lastError;
+  }
+
+  private async logLlmCall<T>(modelUsed: string, fn: () => Promise<T>): Promise<T> {
+    const start = Date.now();
+    logStructured.log("LLM call start", { context: FundingLlmService.name, model: modelUsed });
+    try {
+      const out = await fn();
+      logStructured.log("LLM call success", {
+        context: FundingLlmService.name,
+        model: modelUsed,
+        durationMs: Date.now() - start,
+      });
+      return out;
+    } catch (e) {
+      const err = e as { status?: number; message?: string };
+      logStructured.error("LLM call failed", {
+        context: FundingLlmService.name,
+        model: modelUsed,
+        durationMs: Date.now() - start,
+        message: err?.message,
+        errorCode: err?.status,
+      });
+      throw e;
+    }
   }
 
   private sanitizeUserInput(input: string): string {
@@ -115,39 +216,60 @@ Your response MUST include at least 2 citations or it will be rejected.`;
           ? `REFERENCE LIST (optional - cite with [citation:docId:chunkId] when used):\n${referenceList}\n\n${checklist ? `Checklist: ${checklist}\n\n` : ""}Context and request: ${sanitizedUserMessage}\n\nGenerate the email body only (no subject line unless requested).`
           : `${context}\n\nUser question: ${sanitizedUserMessage}\n\nProvide a helpful response based on the reference information above. Use [citation:docId:chunkId] for every factual claim.`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+    return this.logLlmCall(this.model, () =>
+      this.withRetry(
+        async () => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+          try {
+            const completion = await this.client.chat.completions.create(
+              {
+                model: this.model,
+                messages: [
+                  { role: "system", content: actualSystemPrompt },
+                  { role: "user", content: userContent },
+                ],
+                temperature: 0.1, // Low temp for accurate citations
+                max_tokens: 3000,
+              },
+              { signal: controller.signal as AbortSignal }
+            );
+            clearTimeout(timeoutId);
+            const text = completion.choices[0]?.message?.content;
+            if (!text || !text.trim()) {
+              this.logger.warn("Empty response from LLM");
+              return MISSING_EVIDENCE_RESPONSE;
+            }
 
-    try {
-      const completion = await this.client.chat.completions.create(
-        {
-          model: this.model,
-          messages: [
-            { role: "system", content: actualSystemPrompt },
-            { role: "user", content: userContent },
-          ],
-          temperature: 0.3,
-          max_tokens: 3000,
+            // Validate citations against provided chunks
+            const citationValidation = validateCitations(text, chunks);
+            if (citationValidation.invalidCount > 0) {
+              this.logger.warn(
+                `Citation validation: ${citationValidation.validCount} valid, ${citationValidation.invalidCount} invalid`,
+                { invalidCitations: citationValidation.invalidCitations.slice(0, 5) }
+              );
+            }
+            logStructured.log("Citation validation", {
+              context: FundingLlmService.name,
+              validCitations: citationValidation.validCount,
+              invalidCitations: citationValidation.invalidCount,
+            });
+
+            return text;
+          } catch (error: unknown) {
+            clearTimeout(timeoutId);
+            const err = error as { name?: string; message?: string };
+            if (err.name === "AbortError" || err.message?.includes("timeout") || err.message?.includes("aborted")) {
+              this.logger.warn(`LLM timeout after ${this.timeoutMs}ms`);
+              throw error;
+            }
+            this.logger.error(`LLM error: ${err.message}`, (error as Error).stack);
+            throw error;
+          }
         },
-        { signal: controller.signal as AbortSignal }
-      );
-      clearTimeout(timeoutId);
-      const text = completion.choices[0]?.message?.content;
-      if (!text || !text.trim()) {
-        this.logger.warn("Empty response from LLM");
-        return MISSING_EVIDENCE_RESPONSE;
-      }
-      return text;
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      const err = error as { name?: string; message?: string };
-      if (err.name === "AbortError" || err.message?.includes("timeout") || err.message?.includes("aborted")) {
-        this.logger.warn(`LLM timeout after ${this.timeoutMs}ms`);
-        return MISSING_EVIDENCE_RESPONSE;
-      }
-      this.logger.error(`LLM error: ${err.message}`, (error as Error).stack);
-      throw error;
-    }
+        { fallbackOnTimeout: () => MISSING_EVIDENCE_RESPONSE }
+      )
+    );
   }
 
   async generate(systemPrompt: string, context: string, userMessage: string): Promise<string> {
@@ -160,37 +282,44 @@ Your response MUST include at least 2 citations or it will be rejected.`;
   async generatePlain(systemPrompt: string, context: string, userMessage: string): Promise<string> {
     const sanitized = this.sanitizeUserInput(userMessage);
     const userContent = `${context}\n\n${sanitized}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const completion = await this.client.chat.completions.create(
-        {
-          model: this.model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-          temperature: 0.3,
-          max_tokens: 1500,
-        },
-        { signal: controller.signal as AbortSignal }
-      );
-      clearTimeout(timeoutId);
-      const text = completion.choices[0]?.message?.content;
-      if (!text || !text.trim()) {
-        this.logger.warn("Empty response from LLM (generatePlain)");
-        return "";
-      }
-      return text;
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      const err = error as { name?: string; message?: string };
-      if (err.name === "AbortError" || err.message?.includes("timeout") || err.message?.includes("aborted")) {
-        this.logger.warn(`LLM timeout after ${this.timeoutMs}ms (generatePlain)`);
-        return "";
-      }
-      throw error;
-    }
+    return this.logLlmCall(this.model, () =>
+      this.withRetry(
+        async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+        try {
+          const completion = await this.client.chat.completions.create(
+            {
+              model: this.model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent },
+              ],
+              temperature: 0.3,
+              max_tokens: 1500,
+            },
+            { signal: controller.signal as AbortSignal }
+          );
+          clearTimeout(timeoutId);
+          const text = completion.choices[0]?.message?.content;
+          if (!text || !text.trim()) {
+            this.logger.warn("Empty response from LLM (generatePlain)");
+            return "";
+          }
+          return text;
+        } catch (error: unknown) {
+          clearTimeout(timeoutId);
+          const err = error as { name?: string; message?: string };
+          if (err.name === "AbortError" || err.message?.includes("timeout") || err.message?.includes("aborted")) {
+            this.logger.warn(`LLM timeout after ${this.timeoutMs}ms (generatePlain)`);
+            throw error;
+          }
+          throw error;
+        }
+      },
+        { fallbackOnTimeout: () => "" }
+      )
+    );
   }
 
   async generateDefinitionalResponse(
@@ -221,57 +350,73 @@ User question: ${sanitized}
 
 YOUR RESPONSE (2-3 sentences with citations):`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+    return this.logLlmCall(this.model, () =>
+      this.withRetry(async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+        try {
+          const completion = await this.client.chat.completions.create(
+            {
+              model: this.model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent },
+              ],
+              temperature: 0.2,
+              max_tokens: 500,
+            },
+            { signal: controller.signal as AbortSignal }
+          );
+          clearTimeout(timeoutId);
+          const text = completion.choices[0]?.message?.content;
+          if (!text || !text.trim()) {
+            return MISSING_EVIDENCE_RESPONSE;
+          }
 
-    try {
-      const completion = await this.client.chat.completions.create(
-        {
-          model: this.model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-          temperature: 0.2,
-          max_tokens: 500,
-        },
-        { signal: controller.signal as AbortSignal }
-      );
-      clearTimeout(timeoutId);
-      const text = completion.choices[0]?.message?.content;
-      if (!text || !text.trim()) {
-        return MISSING_EVIDENCE_RESPONSE;
-      }
-      return text;
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      throw error;
-    }
+          // Validate citations
+          const citationValidation = validateCitations(text, chunks);
+          if (citationValidation.invalidCount > 0) {
+            this.logger.warn(
+              `Definitional citation validation: ${citationValidation.validCount} valid, ${citationValidation.invalidCount} invalid`
+            );
+          }
+
+          return text;
+        } catch (error: unknown) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      })
+    );
   }
 
   private async callEvalModel(systemPrompt: string, userContent: string, maxTokens: number = 1000): Promise<string> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const completion = await this.client.chat.completions.create(
-        {
-          model: this.evalModel,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-          temperature: 0.2,
-          max_tokens: maxTokens,
-        },
-        { signal: controller.signal as AbortSignal }
-      );
-      clearTimeout(timeoutId);
-      const text = completion.choices[0]?.message?.content;
-      return text?.trim() ?? "";
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      throw error;
-    }
+    return this.logLlmCall(this.evalModel, () =>
+      this.withRetry(async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+        try {
+          const completion = await this.client.chat.completions.create(
+            {
+              model: this.evalModel,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent },
+              ],
+              temperature: 0.2,
+              max_tokens: maxTokens,
+            },
+            { signal: controller.signal as AbortSignal }
+          );
+          clearTimeout(timeoutId);
+          const text = completion.choices[0]?.message?.content;
+          return text?.trim() ?? "";
+        } catch (error: unknown) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      })
+    );
   }
 
   async evaluateDraft(draftText: string): Promise<EvaluateResult> {

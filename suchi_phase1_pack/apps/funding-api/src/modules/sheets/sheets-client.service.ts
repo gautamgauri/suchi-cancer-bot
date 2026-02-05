@@ -5,7 +5,7 @@ import { JWT } from "google-auth-library";
 import { ActivityRecord } from "../pipeline/pipeline.types";
 import type { PipelineEntry, PipelineStage } from "../pipeline/pipeline.types";
 
-const STAGES: PipelineStage[] = ["lead", "qualified", "proposal_sent", "won", "lost"];
+const STAGES: PipelineStage[] = ["RFP_received", "lead", "qualified", "proposal_sent", "won", "lost"];
 
 @Injectable()
 export class SheetsClientService {
