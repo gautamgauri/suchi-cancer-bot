@@ -75,7 +75,7 @@ substitutions:
   _DATABASE_SECRET: 'funding-database-url'
   _LLM_API_KEY_SECRET: 'deepseek-api-key'
   _GOOGLE_SA_SECRET: 'funding-google-sa-key'
-  _EMBEDDINGS_API_KEY_SECRET: 'openai-embeddings-api-key'
+  _EMBEDDINGS_API_KEY_SECRET: 'openai-api-key'
 
 options:
   machineType: 'E2_HIGHCPU_8'
