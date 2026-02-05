@@ -16,6 +16,7 @@ export function AppShell({ children, apiConfigured }: AppShellProps) {
 
   const nav = [
     { to: "/pipeline", labelKey: "funding:nav.pipeline" },
+    { to: "/framework", labelKey: "funding:framework.nav" },
     { to: "/settings", labelKey: "funding:nav.settings" },
   ] as const;
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,36 +6,42 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { fundingApiService, type PipelineEntry, type PipelineStage } from "../../../services/fundingApi";
+import { CapabilityTagger } from "./CapabilityTagger";
 
-const STAGE_OPTIONS: PipelineStage[] = ["lead", "qualified", "proposal_sent", "won", "lost"];
-
-const editEntrySchema = z.object({
-  orgName: z.string().min(1, "Organization name is required"),
-  contactName: z.string().optional(),
-  contactEmail: z.string().email().optional().or(z.literal("")),
-  stage: z.enum(["lead", "qualified", "proposal_sent", "won", "lost"]),
-  owner: z.string().optional(),
-  nextAction: z.string().optional(),
-  nextActionDate: z.string().optional(),
-  probability: z.coerce.number().min(0).max(100).optional().nullable(),
-  notes: z.string().optional(),
-  geography: z.string().optional(),
-  estimatedGrantSize: z.string().optional(),
-  sectorTags: z.string().optional(),
-});
-
-type EditEntryForm = z.infer<typeof editEntrySchema>;
+const STAGE_OPTIONS: PipelineStage[] = ["RFP_received", "lead", "qualified", "proposal_sent", "won", "lost"];
 
 interface OverviewTabProps {
   entry: PipelineEntry;
   compact?: boolean;
 }
 
+function getEditEntrySchema(orgNameRequiredMsg: string) {
+  return z.object({
+    orgName: z.string().min(1, orgNameRequiredMsg),
+    contactName: z.string().optional(),
+    contactEmail: z.string().email().optional().or(z.literal("")),
+    stage: z.enum(["RFP_received", "lead", "qualified", "proposal_sent", "won", "lost"]),
+    owner: z.string().optional(),
+    nextAction: z.string().optional(),
+    nextActionDate: z.string().optional(),
+    probability: z.coerce.number().min(0).max(100).optional().nullable(),
+    notes: z.string().optional(),
+    geography: z.string().optional(),
+    estimatedGrantSize: z.string().optional(),
+    sectorTags: z.string().optional(),
+  });
+}
+type EditEntryForm = z.infer<ReturnType<typeof getEditEntrySchema>>;
+
 export function OverviewTab({ entry, compact = false }: OverviewTabProps) {
   const { t } = useTranslation(["funding", "common"]);
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const p = compact ? "p-2" : "p-4";
+  const editEntrySchema = useMemo(
+    () => getEditEntrySchema(t("funding:validation.orgNameRequired")),
+    [t]
+  );
 
   const updateMutation = useMutation({
     mutationFn: (data: EditEntryForm) => {
@@ -56,9 +62,9 @@ export function OverviewTab({ entry, compact = false }: OverviewTabProps) {
     },
     onError: (err: Error) => {
       if (err.message.includes("version") || err.message.includes("conflict")) {
-        toast.error("Entry was modified by someone else. Please refresh and try again.");
+        toast.error(t("funding:errors.entryConflict"));
       } else {
-        toast.error(err.message || "Failed to save changes");
+        toast.error(err.message || t("funding:errors.saveFailed"));
       }
     },
   });
@@ -149,6 +155,10 @@ export function OverviewTab({ entry, compact = false }: OverviewTabProps) {
             {entry.notes || "—"}
           </div>
         </div>
+
+        <div className="mt-4 border-t border-border pt-4">
+          <CapabilityTagger entryId={entry.id} compact={compact} />
+        </div>
       </div>
     );
   }
@@ -202,7 +212,7 @@ export function OverviewTab({ entry, compact = false }: OverviewTabProps) {
         </Field>
 
         <Field label={t("funding:pipeline.probability", "Probability")} error={errors.probability?.message}>
-          <input type="number" min={0} max={100} {...register("probability")} className="input-field" placeholder="0-100" />
+          <input type="number" min={0} max={100} {...register("probability")} className="input-field" placeholder={t("funding:pipeline.placeholders.probability")} />
         </Field>
 
         <Field label={t("funding:pipeline.geography", "Geography")}>
@@ -222,7 +232,7 @@ export function OverviewTab({ entry, compact = false }: OverviewTabProps) {
         </Field>
 
         <Field label={t("funding:pipeline.sectorTags", "Sector Tags") + " (comma-separated)"}>
-          <input type="text" {...register("sectorTags")} className="input-field" placeholder="Health, Education" />
+          <input type="text" {...register("sectorTags")} className="input-field" placeholder={t("funding:pipeline.placeholders.sectorTagsComma")} />
         </Field>
 
         <Field label={t("funding:pipeline.notes", "Notes")}>
