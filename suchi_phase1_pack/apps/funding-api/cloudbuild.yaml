@@ -1,0 +1,83 @@
+# Standalone Cloud Build for funding-api
+# Run from apps/funding-api: gcloud builds submit --config cloudbuild.yaml .
+
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api:latest'
+      - '.'
+
+  # Push image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api'
+
+  # Run migrations
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'migrate'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run jobs update funding-migrate \
+          --project="${PROJECT_ID}" \
+          --region="${_REGION}" \
+          --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api:$BUILD_ID" \
+          --set-cloudsql-instances="${_CLOUDSQL_CONNECTION_NAME}" \
+          --set-secrets="DATABASE_URL=${_DATABASE_SECRET}:latest" \
+          --command="prisma" \
+          --args="migrate,deploy,--schema,prisma/schema.prisma"
+        gcloud run jobs execute funding-migrate --project="${PROJECT_ID}" --region="${_REGION}" --wait
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'funding-api'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY}/funding-api:$BUILD_ID'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+      - '--port'
+      - '8080'
+      - '--add-cloudsql-instances'
+      - '${_CLOUDSQL_CONNECTION_NAME}'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,GIT_SHA=$BUILD_ID,FUNDING_MODEL_DRAFT=deepseek-chat,FUNDING_LLM_TIMEOUT_MS=45000'
+      - '--set-secrets'
+      - 'FUNDING_OPENAI_API_KEY=${_LLM_API_KEY_SECRET}:latest,DATABASE_URL=${_DATABASE_SECRET}:latest,FUNDING_GOOGLE_SERVICE_ACCOUNT_JSON=${_GOOGLE_SA_SECRET}:latest'
+
+substitutions:
+  _REGION: 'us-central1'
+  _ARTIFACT_REGISTRY: 'suchi-images'
+  _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:diksha-db'
+  _DATABASE_SECRET: 'funding-database-url'
+  _LLM_API_KEY_SECRET: 'deepseek-api-key'
+  _GOOGLE_SA_SECRET: 'funding-google-sa-key'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '900s'
