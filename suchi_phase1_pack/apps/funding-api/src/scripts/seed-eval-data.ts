@@ -220,7 +220,7 @@ async function seedEvalData() {
   ];
 
   for (const opp of testOpportunities) {
-    await prisma.opportunitySnapshot.upsert({
+    await prisma.opportunity.upsert({
       where: { opportunityId: opp.opportunityId },
       update: {
         jsonBlob: opp.jsonBlob,
@@ -235,7 +235,7 @@ async function seedEvalData() {
   const chunkCount = await prisma.documentChunk.count();
   const embeddingCount = await prisma.chunkEmbedding.count();
   const capCount = await prisma.frameworkCapability.count();
-  const oppCount = await prisma.opportunitySnapshot.count();
+  const oppCount = await prisma.opportunity.count();
 
   console.log("\nSeed complete:");
   console.log(`  Evidence documents: ${docCount}`);
