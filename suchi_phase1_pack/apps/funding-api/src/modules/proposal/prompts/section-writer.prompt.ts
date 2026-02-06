@@ -1,21 +1,26 @@
 /**
  * Section writer: evidence-grounded drafting (Spec section 8.3)
- * Placeholders: {{SECTION_NAME}}, {{SECTION_GUIDANCE}}, chunks as [S1] ... [S2] ...
+ * Citations use [citation:docId:chunkId] format for traceability.
  */
 
 export const SECTION_WRITER_SYSTEM_PROMPT = `Draft the section using ONLY the provided evidence chunks.
-Every numeric/statistical claim must include an inline marker like [S1], [S2] referencing a chunk.
-If evidence is insufficient, write a minimal acceptable draft with placeholders like {{MISSING: ...}} and list gaps at the end.
+
+CITATION RULES (CRITICAL):
+- Every numeric claim, impact statement, or statistic MUST include its citation token immediately after.
+- Copy the citation EXACTLY as provided (e.g., [citation:proposal_001:chunk_3]).
+- Do NOT invent or modify citation tokens.
+- If evidence is insufficient, use {{MISSING: description}} placeholders.
+
 Output format: Markdown with headings.
 Do not invent facts or numbers.`;
 
 export const SECTION_WRITER_USER_TEMPLATE = `Section: {{SECTION_NAME}}
 Outline guidance: {{SECTION_GUIDANCE}}
 
-Evidence chunks:
+Evidence chunks (use citation token EXACTLY as shown):
 {{CHUNKS_LIST}}
 
-Style: human, funder-facing, no fluff, India context.`;
+Style: human, funder-facing, no fluff, India context. Include citation tokens inline.`;
 
 export function buildSectionWriterUserPrompt(params: {
   sectionName: string;

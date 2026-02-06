@@ -25,12 +25,17 @@ export class SectionWriterService {
       };
     }
 
-    // Format chunks as [S1], [S2], etc. with citation markers
+    // Format chunks with citation tokens prominently displayed for LLM to copy
     const chunksList = params.chunks
       .map((chunk, idx) => {
-        const marker = `[S${idx + 1}]`;
         const citation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
-        return `${marker} ${chunk.content.substring(0, 800)}${chunk.content.length > 800 ? "..." : ""} (source: ${chunk.document.title || chunk.docId}, citation: ${citation})`;
+        const title = chunk.document?.title || chunk.docId;
+        const content = chunk.content.substring(0, 800) + (chunk.content.length > 800 ? "..." : "");
+        return `---
+CHUNK ${idx + 1}: ${title}
+CITATION TOKEN: ${citation}
+CONTENT: ${content}
+---`;
       })
       .join("\n\n");
 
