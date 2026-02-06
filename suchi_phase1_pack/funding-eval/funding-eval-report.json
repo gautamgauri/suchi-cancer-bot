@@ -1,0 +1,470 @@
+{
+  "runAt": "2026-02-05T21:23:25.317Z",
+  "apiBaseUrl": "http://localhost:3001",
+  "totalCases": 45,
+  "passed": 2,
+  "failed": 43,
+  "citationCoverageRate": 0.7142857142857143,
+  "abstainCorrectnessRate": 0.5,
+  "latencyMs": {
+    "p50": 2,
+    "p95": 3,
+    "mean": 1.9555555555555555
+  },
+  "results": [
+    {
+      "caseId": "NS-01",
+      "type": "need_statement",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 29,
+      "error": ""
+    },
+    {
+      "caseId": "NS-REFINE-01",
+      "type": "need_statement_refine",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "NS-ABSTAIN-01",
+      "type": "need_statement",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": true,
+      "abstainCorrect": false,
+      "latencyMs": 3,
+      "error": ""
+    },
+    {
+      "caseId": "PIPE-01",
+      "type": "pipeline_crud",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "PIPE-02",
+      "type": "pipeline_crud",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "PIPE-03",
+      "type": "pipeline_crud",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "params.id required for get"
+    },
+    {
+      "caseId": "PIPE-04",
+      "type": "pipeline_crud",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "params.id required for update"
+    },
+    {
+      "caseId": "ACT-SETUP",
+      "type": "pipeline_crud",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 3,
+      "error": ""
+    },
+    {
+      "caseId": "ACT-01",
+      "type": "activity_log",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "ACT-02",
+      "type": "activity_log",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "ACT-03",
+      "type": "activity_log",
+      "passed": true,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "responseStatus": 400,
+      "responsePreview": "400 as expected"
+    },
+    {
+      "caseId": "ACT-04",
+      "type": "activity_log",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "entryId required"
+    },
+    {
+      "caseId": "EMAIL-01",
+      "type": "email_draft",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "EMAIL-02",
+      "type": "email_draft",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "EMAIL-03",
+      "type": "email_draft",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "DONOR-01",
+      "type": "donor_profile",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "DONOR-02",
+      "type": "donor_profile",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "DONOR-03",
+      "type": "donor_profile",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "OPP-01",
+      "type": "opportunity_intake",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "OPP-02",
+      "type": "opportunity_intake",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "OPP-03",
+      "type": "opportunity_intake",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": "params.id required"
+    },
+    {
+      "caseId": "OPP-04",
+      "type": "opportunity_intake",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "PROP-SETUP",
+      "type": "opportunity_intake",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "PROP-01",
+      "type": "proposal_generate",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "opportunityId required"
+    },
+    {
+      "caseId": "PROP-02",
+      "type": "proposal_generate",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "params.runId required"
+    },
+    {
+      "caseId": "PROP-03",
+      "type": "proposal_generate",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "params.runId required"
+    },
+    {
+      "caseId": "PROP-04",
+      "type": "proposal_generate",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "params.runId required"
+    },
+    {
+      "caseId": "FW-01",
+      "type": "framework_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "FW-02",
+      "type": "framework_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "FW-03",
+      "type": "framework_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "FW-04",
+      "type": "framework_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "EV-01",
+      "type": "evidence_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "EV-02",
+      "type": "evidence_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 3,
+      "error": ""
+    },
+    {
+      "caseId": "EV-03",
+      "type": "evidence_retrieve",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "APPR-SETUP",
+      "type": "pipeline_crud",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "APPR-01",
+      "type": "approvals",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "pipelineEntryId required"
+    },
+    {
+      "caseId": "APPR-02",
+      "type": "approvals",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "error": "artifactId required"
+    },
+    {
+      "caseId": "APPR-03",
+      "type": "approvals",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "versionId required"
+    },
+    {
+      "caseId": "APPR-04",
+      "type": "approvals",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 0,
+      "error": "pipelineEntryId required"
+    },
+    {
+      "caseId": "ABSTAIN-01",
+      "type": "need_statement",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": true,
+      "abstainCorrect": false,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "ABSTAIN-02",
+      "type": "need_statement",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": true,
+      "abstainCorrect": false,
+      "latencyMs": 1,
+      "error": ""
+    },
+    {
+      "caseId": "ABSTAIN-03",
+      "type": "need_statement_refine",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": true,
+      "abstainCorrect": false,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "FAB-01",
+      "type": "email_draft",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 2,
+      "error": ""
+    },
+    {
+      "caseId": "LLM-01",
+      "type": "safety",
+      "passed": true,
+      "citationCount": 0,
+      "expectAbstain": false,
+      "abstainCorrect": true,
+      "latencyMs": 1,
+      "responseStatus": 400
+    },
+    {
+      "caseId": "FAB-02",
+      "type": "need_statement",
+      "passed": false,
+      "citationCount": 0,
+      "expectAbstain": true,
+      "abstainCorrect": false,
+      "latencyMs": 2,
+      "error": ""
+    }
+  ],
+  "crudSuccessRate": 0.05263157894736842,
+  "placeholderCompliance": 0.25,
+  "fabricationRate": 1
+}

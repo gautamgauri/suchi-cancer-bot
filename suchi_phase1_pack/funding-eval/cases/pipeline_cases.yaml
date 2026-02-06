@@ -1,0 +1,35 @@
+# Pipeline CRUD - PIPE-01 through PIPE-04
+# Run: npx tsx cli.ts run --api-url http://localhost:3001 --cases cases/pipeline_cases.yaml --summary
+
+cases:
+  - id: PIPE-01
+    type: pipeline_crud
+    action: list
+    expectations:
+      expect_array: true
+
+  - id: PIPE-02
+    type: pipeline_crud
+    action: create
+    body:
+      orgName: "Eval Test Foundation"
+      stage: "lead"
+      contactName: "Test Contact"
+      notes: "Created by funding-eval"
+    expectations:
+      expect_keys: ["id", "orgName", "stage"]
+
+  - id: PIPE-03
+    type: pipeline_crud
+    action: get
+    params:
+      id: "$ref:PIPE-02.id"
+
+  - id: PIPE-04
+    type: pipeline_crud
+    action: update
+    params:
+      id: "$ref:PIPE-02.id"
+    body:
+      notes: "Updated by funding-eval"
+      version: 1

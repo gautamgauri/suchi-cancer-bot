@@ -1,0 +1,44 @@
+# Proposal generation - PROP-01 through PROP-04
+# Creates an opportunity first (PROP-SETUP), then generates proposal.
+# Run: npx tsx cli.ts run --api-url http://localhost:3001 --cases cases/proposal_cases.yaml --summary
+
+cases:
+  - id: PROP-SETUP
+    type: opportunity_intake
+    action: create
+    body:
+      opportunityId: "eval-proposal-opp-01"
+      jsonBlob:
+        schemaVersion: "1.0"
+        funder:
+          name: "Proposal Eval Funder"
+          programName: "RFP 2025"
+        keyConstraints:
+          deadline: "2025-06-30"
+        status: "received"
+
+  - id: PROP-01
+    type: proposal_generate
+    action: generate
+    body:
+      opportunityId: "$ref:PROP-SETUP.id"
+    expectations:
+      expect_keys: ["runId"]
+
+  - id: PROP-02
+    type: proposal_generate
+    action: get_run
+    params:
+      runId: "$ref:PROP-01.runId"
+
+  - id: PROP-03
+    type: proposal_generate
+    action: get_gaps
+    params:
+      runId: "$ref:PROP-01.runId"
+
+  - id: PROP-04
+    type: proposal_generate
+    action: get_run
+    params:
+      runId: "$ref:PROP-01.runId"

@@ -1,0 +1,39 @@
+# Opportunity / RFP intake - OPP-01 through OPP-04
+# Run: npx tsx cli.ts run --api-url http://localhost:3001 --cases cases/opportunity_cases.yaml --summary
+
+cases:
+  - id: OPP-01
+    type: opportunity_intake
+    action: list
+    query:
+      limit: 10
+      offset: 0
+
+  - id: OPP-02
+    type: opportunity_intake
+    action: create
+    body:
+      opportunityId: "eval-opp-01" 
+      jsonBlob:
+        schemaVersion: "1.0"
+        funder:
+          name: "Eval Test Funder"
+          programName: "Education Grants"
+        keyConstraints:
+          deadline: "2025-12-31"
+        status: "received"
+
+  - id: OPP-03
+    type: opportunity_intake
+    action: update
+    params:
+      id: "$ref:OPP-02.id"
+    body:
+      status: "extracted"
+
+  - id: OPP-04
+    type: opportunity_intake
+    action: list
+    query:
+      status: "extracted"
+      limit: 5

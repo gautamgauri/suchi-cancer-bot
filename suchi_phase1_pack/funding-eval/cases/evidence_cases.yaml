@@ -1,0 +1,31 @@
+# Evidence library retrieval - EV-01 through EV-03
+# Requires evidence-ingest to have data; optional FUNDING_EXPORT_TOKEN if set on API.
+# Run: npx tsx cli.ts run --api-url http://localhost:3001 --cases cases/evidence_cases.yaml --summary
+
+cases:
+  - id: EV-01
+    type: evidence_retrieve
+    action: retrieve
+    body:
+      query: "teacher training impact student outcomes"
+      limit: 5
+    expectations:
+      expect_keys: []
+
+  - id: EV-02
+    type: evidence_retrieve
+    action: retrieve
+    body:
+      query: "rural education India"
+      publicSafeOnly: true
+      limit: 3
+    expectations:
+      expect_keys: []
+
+  - id: EV-03
+    type: evidence_retrieve
+    action: eval
+    body:
+      limit: 5
+    expectations:
+      expect_keys: []

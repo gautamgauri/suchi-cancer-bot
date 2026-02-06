@@ -1,0 +1,52 @@
+# Approvals workflow - APPR-01 through APPR-04
+# Creates pipeline entry first (APPR-SETUP), then artifact, version, approval, get pending.
+# Run: npx tsx cli.ts run --api-url http://localhost:3001 --cases cases/approvals_cases.yaml --summary
+
+cases:
+  - id: APPR-SETUP
+    type: pipeline_crud
+    action: create
+    body:
+      orgName: "Approvals Eval Org"
+      stage: "lead"
+      notes: "For approvals workflow eval"
+
+  - id: APPR-01
+    type: approvals
+    action: create_artifact
+    body:
+      pipelineEntryId: "$ref:APPR-SETUP.id"
+      type: "need_statement"
+    expectations:
+      expect_keys: ["id", "pipelineEntryId", "type"]
+
+  - id: APPR-02
+    type: approvals
+    action: create_version
+    params:
+      artifactId: "$ref:APPR-01.id"
+    body:
+      content: "This is a draft need statement for eval."
+      createdBy: "eval-runner"
+    expectations:
+      expect_keys: ["id", "artifactId", "content"]
+
+  - id: APPR-03
+    type: approvals
+    action: submit_approval
+    params:
+      versionId: "$ref:APPR-02.id"
+    body:
+      status: "approved"
+      decidedBy: "eval-runner"
+      comment: "Eval approval"
+    expectations:
+      expect_keys: []
+
+  - id: APPR-04
+    type: approvals
+    action: get_pending
+    params:
+      pipelineEntryId: "$ref:APPR-SETUP.id"
+    expectations:
+      expect_keys: ["pending"]

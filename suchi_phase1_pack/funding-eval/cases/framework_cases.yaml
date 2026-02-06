@@ -1,0 +1,49 @@
+# Framework card retrieval - FW-01 through FW-04
+# Run: npx tsx cli.ts run --api-url http://localhost:3001 --cases cases/framework_cases.yaml --summary
+
+cases:
+  - id: FW-01
+    type: framework_retrieve
+    action: retrieve
+    body:
+      capabilities:
+        - "education"
+      cardTypes:
+        - method
+        - pattern
+      limit: 5
+    expectations:
+      expect_keys: []
+
+  - id: FW-02
+    type: framework_retrieve
+    action: recommend_methods
+    body:
+      ageBand: "6-14"
+      setting: "school"
+      capabilities: "literacy,numeracy"
+    expectations:
+      expect_keys: []
+
+  - id: FW-03
+    type: framework_retrieve
+    action: check_consistency
+    body:
+      projectId: "eval-project-01"
+      draftText: "Our program delivers teacher training in rural schools to improve literacy and numeracy outcomes."
+      claimedCapabilities:
+        - "education"
+        - "teacher_training"
+    expectations:
+      expect_keys: ["overallScore", "passesQualityGate", "flags"]
+
+  - id: FW-04
+    type: framework_retrieve
+    action: generate_mel_pack
+    body:
+      projectId: "eval-mel-01"
+      capabilities:
+        - "education"
+        - "teacher_training"
+    expectations:
+      expect_keys: []
