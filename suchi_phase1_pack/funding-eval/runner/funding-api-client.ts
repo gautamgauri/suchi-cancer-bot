@@ -216,12 +216,12 @@ export class FundingApiClient {
     return data;
   }
 
-  async frameworkCheckConsistency(body: { projectId: string; [key: string]: unknown }): Promise<{ overallScore?: number; passesQualityGate?: boolean; flags?: unknown[] }> {
+  async frameworkCheckConsistency(body: { draftText: string; claimedCapabilities: string[]; projectId?: string; [key: string]: unknown }): Promise<{ overallScore?: number; passesQualityGate?: boolean; flags?: unknown[] }> {
     const { data } = await this.client.post(this.v1("/framework/check/consistency"), body);
     return data;
   }
 
-  async frameworkGenerateMelPack(body: { projectId: string; capabilities: string[]; [key: string]: unknown }): Promise<unknown> {
+  async frameworkGenerateMelPack(body: { capabilities: string[]; targetGroup: string; projectId?: string; [key: string]: unknown }): Promise<unknown> {
     const { data } = await this.client.post(this.v1("/framework/generate/mel-pack"), body);
     return data;
   }

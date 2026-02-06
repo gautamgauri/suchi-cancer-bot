@@ -268,18 +268,34 @@ export class FundingEvaluator {
           };
         }
         if (action === "create") {
-          const out = await client.opportunityCreate(body ?? {});
-          response = out;
-          const created = out as { id?: string };
-          const ok = created?.id != null;
-          return {
-            ...resultBase,
-            passed: ok,
-            latencyMs: Date.now() - start,
-            responseStatus: 201,
-            responsePreview: JSON.stringify(out).slice(0, 300),
-            response: out,
-          };
+          try {
+            const out = await client.opportunityCreate(body ?? {});
+            response = out;
+            const created = out as { id?: string };
+            const ok = created?.id != null;
+            return {
+              ...resultBase,
+              passed: ok,
+              latencyMs: Date.now() - start,
+              responseStatus: 201,
+              responsePreview: JSON.stringify(out).slice(0, 300),
+              response: out,
+            };
+          } catch (err: unknown) {
+            // 409 = already exists, treat as success for idempotency
+            const status = FundingApiClient.getStatus(err);
+            if (status === 409) {
+              return {
+                ...resultBase,
+                passed: true,
+                latencyMs: Date.now() - start,
+                responseStatus: 409,
+                responsePreview: "409 Conflict - already exists (idempotent success)",
+                response: { alreadyExists: true },
+              };
+            }
+            throw err;
+          }
         }
         if (action === "update") {
           const id = params?.id;
@@ -381,7 +397,11 @@ export class FundingEvaluator {
           };
         }
         if (action === "check_consistency") {
-          const out = await client.frameworkCheckConsistency(body as { projectId: string });
+          const payload = body as { draftText: string; claimedCapabilities: string[]; projectId?: string };
+          if (!payload?.draftText || !Array.isArray(payload.claimedCapabilities)) {
+            return { ...resultBase, latencyMs: Date.now() - start, error: "draftText and claimedCapabilities required" };
+          }
+          const out = await client.frameworkCheckConsistency(payload);
           response = out;
           const ok = out != null && typeof (out as { overallScore?: number }).overallScore === "number";
           return {
@@ -394,9 +414,9 @@ export class FundingEvaluator {
           };
         }
         if (action === "generate_mel_pack") {
-          const payload = body as { projectId: string; capabilities: string[] };
-          if (!payload?.projectId || !Array.isArray(payload.capabilities)) {
-            return { ...resultBase, latencyMs: Date.now() - start, error: "projectId and capabilities required" };
+          const payload = body as { capabilities: string[]; targetGroup: string; projectId?: string };
+          if (!Array.isArray(payload?.capabilities) || !payload?.targetGroup) {
+            return { ...resultBase, latencyMs: Date.now() - start, error: "capabilities and targetGroup required" };
           }
           const out = await client.frameworkGenerateMelPack(payload);
           response = out;
