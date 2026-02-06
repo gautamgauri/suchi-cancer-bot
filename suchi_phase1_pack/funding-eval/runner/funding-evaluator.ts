@@ -355,6 +355,18 @@ export class FundingEvaluator {
           if (!runId) return { ...resultBase, latencyMs: Date.now() - start, error: "params.runId required" };
           const out = await client.proposalGetRun(runId);
           response = out;
+
+          // Extract proposal metrics for reporting
+          const run = out as { sections?: Array<{ name: string; draftText?: string; citations?: unknown[] }>; complianceReport?: { coverage_score?: number } };
+          const sections = run?.sections ?? [];
+          const allDraftText = sections.map((s) => s.draftText ?? "").join("\n\n");
+          const totalCitations = countCitations(allDraftText);
+          const sectionsWithCitations = sections.filter((s) => countCitations(s.draftText ?? "") > 0).length;
+          const coverageScore = run?.complianceReport?.coverage_score ?? 0;
+
+          // Run citation integrity on combined draft
+          const citationIntegrityResult = validateCitationIntegrity(allDraftText, []);
+
           return {
             ...resultBase,
             passed: out != null,
@@ -362,6 +374,16 @@ export class FundingEvaluator {
             responseStatus: 200,
             responsePreview: JSON.stringify(out).slice(0, 300),
             response: out,
+            citationCount: totalCitations,
+            textPreview: allDraftText.slice(0, 200),
+            proposalMetrics: {
+              totalSections: sections.length,
+              sectionsWithCitations,
+              totalCitations,
+              coverageScore,
+              hardClaimCount: citationIntegrityResult.hardClaimCount,
+              unsupportedHardClaimCount: citationIntegrityResult.unsupportedHardClaimCount,
+            },
           };
         }
         if (action === "get_gaps") {

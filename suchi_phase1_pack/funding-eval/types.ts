@@ -220,6 +220,15 @@ export interface FundingCaseResult {
     placeholderCount: number;
     violations: string[];
   };
+  /** Proposal-specific metrics (for proposal_generate cases) */
+  proposalMetrics?: {
+    totalSections: number;
+    sectionsWithCitations: number;
+    totalCitations: number;
+    coverageScore: number;
+    hardClaimCount: number;
+    unsupportedHardClaimCount: number;
+  };
 }
 
 export interface FundingEvalReport {

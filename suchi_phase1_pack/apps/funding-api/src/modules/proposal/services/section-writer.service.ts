@@ -56,6 +56,26 @@ CONTENT: ${content}
       const gapMatches = draftText.match(/\{\{MISSING:\s*([^}]+)\}\}/gi);
       const gaps = gapMatches ? gapMatches.map((m) => m.replace(/\{\{MISSING:\s*|\}\}/gi, "").trim()) : [];
 
+      // Count citations in output for debugging
+      const citationMatches = draftText.match(/\[citation:[^\]]+\]/g);
+      const citationCount = citationMatches ? citationMatches.length : 0;
+      this.logger.log({
+        section: params.sectionName,
+        chunksProvided: params.chunks.length,
+        citationsProduced: citationCount,
+        gapsDetected: gaps.length,
+        draftLength: draftText.length,
+      });
+
+      // Warning if chunks provided but no citations produced
+      if (params.chunks.length > 0 && citationCount === 0) {
+        this.logger.warn({
+          message: "CITATION_LEAK: chunks provided but no citations in output",
+          section: params.sectionName,
+          chunksProvided: params.chunks.length,
+        });
+      }
+
       return { draftText, gaps };
     } catch (e) {
       this.logger.error("Failed to draft section", (e as Error).message);

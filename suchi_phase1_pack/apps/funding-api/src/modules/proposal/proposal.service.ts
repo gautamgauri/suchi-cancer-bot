@@ -178,6 +178,15 @@ export class ProposalService {
 
           const evidenceChunks = Array.from(allChunks.values()).slice(0, 12);
 
+          // Log retrieval results for debugging
+          this.logger.log({
+            section: sectionName,
+            queriesUsed: queries.slice(0, 5).length,
+            chunksRetrieved: allChunks.size,
+            chunksPassedToWriter: evidenceChunks.length,
+            sampleChunkIds: evidenceChunks.slice(0, 3).map(c => c.chunkId),
+          });
+
           // Store retrieved chunks
           await this.prisma.proposalSection.update({
             where: { id: sectionRecord.id },
