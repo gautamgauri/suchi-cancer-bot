@@ -1,4 +1,4 @@
-name: Funding Eval (Cloud SQL + Real LLM)
+name: Funding Eval (Cloud SQL + Deepseek LLM)
 
 on:
   workflow_dispatch:
@@ -20,9 +20,13 @@ jobs:
 
     env:
       PORT: "3001"
-      FUNDING_OPENAI_API_KEY: ${{ secrets.FUNDING_OPENAI_API_KEY }}
-      FUNDING_LLM_BASE_URL: "https://api.openai.com/v1"
-      FUNDING_LLM_MODEL: "gpt-4o-mini"
+      # Split provider: Deepseek for LLM (cheap), OpenAI for embeddings (quality)
+      FUNDING_OPENAI_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      FUNDING_OPENAI_BASE_URL: "https://api.deepseek.com/v1"
+      FUNDING_LLM_MODEL: "deepseek-chat"
+      # Embeddings use OpenAI (Deepseek doesn't have good embedding API)
+      FUNDING_EMBEDDINGS_API_KEY: ${{ secrets.FUNDING_OPENAI_API_KEY }}
+      # Database
       DATABASE_URL: postgresql://${{ secrets.CLOUDSQL_DB_USER }}:${{ secrets.CLOUDSQL_DB_PASSWORD }}@127.0.0.1:5432/funding_ci
       FUNDING_DATABASE_URL: postgresql://${{ secrets.CLOUDSQL_DB_USER }}:${{ secrets.CLOUDSQL_DB_PASSWORD }}@127.0.0.1:5432/funding_ci
 
@@ -84,6 +88,10 @@ jobs:
 
       # On push: run CRUD-only (cheap, no LLM tokens)
       # On manual dispatch with full_suite=true: run full batch (LLM costs tokens)
+      - name: Seed test data
+        working-directory: suchi_phase1_pack/apps/funding-api
+        run: npx tsx src/scripts/seed-eval-data.ts
+
       - name: Run eval (CRUD-only)
         if: ${{ github.event_name == 'push' || inputs.full_suite != true }}
         working-directory: suchi_phase1_pack/funding-eval
@@ -92,7 +100,8 @@ jobs:
           npx tsx cli.ts run --api-url http://localhost:3001 \
             --cases cases/pipeline_cases.yaml \
             --output funding-eval-report.json \
-            --summary
+            --summary \
+            --fail-on-regression
 
       - name: Run eval (full suite with LLM)
         if: ${{ inputs.full_suite == true }}
@@ -102,7 +111,8 @@ jobs:
           npx tsx cli.ts run --api-url http://localhost:3001 \
             --batch \
             --output funding-eval-report.json \
-            --summary
+            --summary \
+            --fail-on-regression
 
       - name: Upload report + logs
         if: always()
