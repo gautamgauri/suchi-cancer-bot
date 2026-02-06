@@ -58,6 +58,12 @@ const PLAN_EXEMPT_PATTERNS = [
   /^\*?\s*\*?\*?Month \d+/i, // Markdown formatted timeline
   /\b(target|goal|objective|milestone)\b/i,
   /\b(by the end of|at month|in phase)\b/i,
+  /\d+%\s*of\s*(budget|funding|grant|allocation)/i, // Budget allocations
+  /\bbudget line\b/i,       // Budget descriptions
+  /\bwe will monitor\b/i,   // Monitoring plans
+  /\bwe will track\b/i,     // Tracking plans
+  /\bindicators such as\b/i, // Indicator descriptions
+  /\bthat trained\b/i,      // "That trained teachers will..." is assumption, not claim
 ];
 
 export interface EvidenceChunk {

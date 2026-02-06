@@ -20,7 +20,10 @@ const SOFTEN_RULES: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\buniquely effective\b/gi, replacement: "designed to be effective" },
   { pattern: /\bmost effective\b/gi, replacement: "highly effective" },
   { pattern: /\bonly organization\b/gi, replacement: "one of the organizations" },
+  { pattern: /\bnot only\b/gi, replacement: "not just" },  // "not only X but also Y"
+  { pattern: /\bthe only\b/gi, replacement: "a key" },
   { pattern: /\bfirst to\b/gi, replacement: "among those who" },
+  { pattern: /\bthe first\b/gi, replacement: "an initial" },
   { pattern: /\bleading\b/gi, replacement: "established" },
   { pattern: /\btop\b(?=\s+(organization|partner|funder|foundation))/gi, replacement: "prominent" },
   { pattern: /\bunprecedented\b/gi, replacement: "significant" },
@@ -34,6 +37,11 @@ const PLAN_EXEMPT_PATTERNS = [
   /\b(will|shall|plan to|aim to|intend to|propose to|expect to)\b/i,
   /\b(target|goal|objective|milestone)\b/i,
   /\b(by the end of|at month|in phase)\b/i,
+  /\d+%\s*of\s*(budget|funding|grant|allocation)/i, // Budget allocations
+  /\bbudget line\b/i,       // Budget descriptions
+  /\bwe will monitor\b/i,   // Monitoring plans
+  /\bwe will track\b/i,     // Tracking plans
+  /\bindicators such as\b/i, // Indicator descriptions
 ];
 
 // Hard claim patterns (for detection)
