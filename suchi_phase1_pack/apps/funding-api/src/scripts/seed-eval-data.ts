@@ -183,6 +183,7 @@ async function seedEvalData() {
   });
 
   // 5. Create test opportunities for proposal tests
+  // The proposal service expects jsonBlob.opportunity.funder structure
   console.log("  Seeding test opportunities...");
   const testOpportunities = [
     {
@@ -190,14 +191,21 @@ async function seedEvalData() {
       schemaVersion: "1.0",
       jsonBlob: {
         schemaVersion: "1.0",
-        funder: {
-          name: "Eval Test Funder",
-          programName: "Education Grants",
+        opportunity: {
+          funder: {
+            name: "Eval Test Funder",
+            programName: "Education Grants",
+          },
+          keyConstraints: {
+            deadline: "2025-12-31",
+          },
+          source: {
+            attachments: [],
+          },
+          extractedRequirements: {
+            summary: "Education grant for teacher training programs",
+          },
         },
-        keyConstraints: {
-          deadline: "2025-12-31",
-        },
-        status: "received",
       },
       status: "extracted",
     },
@@ -206,14 +214,21 @@ async function seedEvalData() {
       schemaVersion: "1.0",
       jsonBlob: {
         schemaVersion: "1.0",
-        funder: {
-          name: "Proposal Eval Funder",
-          programName: "RFP 2025",
+        opportunity: {
+          funder: {
+            name: "Proposal Eval Funder",
+            programName: "RFP 2025",
+          },
+          keyConstraints: {
+            deadline: "2025-06-30",
+          },
+          source: {
+            attachments: [],
+          },
+          extractedRequirements: {
+            summary: "RFP for educational development programs",
+          },
         },
-        keyConstraints: {
-          deadline: "2025-06-30",
-        },
-        status: "received",
       },
       status: "received",
     },
