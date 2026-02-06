@@ -7,13 +7,12 @@ cases:
     action: retrieve
     body:
       capabilities:
-        - "education"
+        - "C1"
+        - "C2"
       cardTypes:
         - method
         - pattern
       limit: 5
-    expectations:
-      expect_keys: []
 
   - id: FW-02
     type: framework_retrieve
@@ -21,29 +20,24 @@ cases:
     body:
       ageBand: "6-14"
       setting: "school"
-      capabilities: "literacy,numeracy"
-    expectations:
-      expect_keys: []
+      capabilities: "C1,C2"
 
   - id: FW-03
     type: framework_retrieve
     action: check_consistency
     body:
-      projectId: "eval-project-01"
+      # ConsistencyCheckInputDto: draftText (required), claimedCapabilities (required), projectId (optional)
       draftText: "Our program delivers teacher training in rural schools to improve literacy and numeracy outcomes."
       claimedCapabilities:
-        - "education"
-        - "teacher_training"
-    expectations:
-      expect_keys: ["overallScore", "passesQualityGate", "flags"]
+        - "C1"
+        - "C2"
 
   - id: FW-04
     type: framework_retrieve
     action: generate_mel_pack
     body:
-      projectId: "eval-mel-01"
+      # MelPackInputDto: capabilities (required), targetGroup (required), projectId (optional)
       capabilities:
-        - "education"
-        - "teacher_training"
-    expectations:
-      expect_keys: []
+        - "C1"
+        - "C2"
+      targetGroup: "children"

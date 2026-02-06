@@ -21,7 +21,8 @@ cases:
     type: proposal_generate
     action: generate
     body:
-      opportunityId: "$ref:PROP-SETUP.id"
+      # Use the opportunityId field, not the internal UUID id
+      opportunityId: "eval-proposal-opp-01"
     expectations:
       expect_keys: ["runId"]
 
