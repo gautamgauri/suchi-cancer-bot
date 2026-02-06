@@ -12,6 +12,7 @@ import {
   countCitations,
   hasAbstain,
   hasPlaceholder,
+  validateCitationIntegrity,
 } from "./funding-api-client.js";
 
 const CRUD_TYPES: FundingCaseType[] = [
@@ -254,7 +255,7 @@ export class FundingEvaluator {
         return { ...resultBase, latencyMs: Date.now() - start, error: `Unknown activity_log action: ${action}` };
       } else if (tc.type === "opportunity_intake") {
         if (action === "list") {
-          const q = tc.query ? { status: tc.query.status, limit: Number(tc.query.limit) || 10, offset: Number(tc.query.offset) || 0 } : undefined;
+          const q = tc.query ? { status: tc.query.status ? String(tc.query.status) : undefined, limit: Number(tc.query.limit) || 10, offset: Number(tc.query.offset) || 0 } : undefined;
           const out = await client.opportunityList(q);
           response = out;
           const ok = Array.isArray(out.items) && typeof out.total === "number";
@@ -283,15 +284,28 @@ export class FundingEvaluator {
             };
           } catch (err: unknown) {
             // 409 = already exists, treat as success for idempotency
+            // Look up the existing resource to get its id for $ref resolution
             const status = FundingApiClient.getStatus(err);
             if (status === 409) {
+              const opportunityId = (body as { opportunityId?: string })?.opportunityId;
+              let existingId: string | undefined;
+              if (opportunityId) {
+                try {
+                  // List opportunities and find the one with matching opportunityId
+                  const list = await client.opportunityList({ limit: 100 });
+                  const found = list.items.find((item) => (item as { opportunityId?: string })?.opportunityId === opportunityId);
+                  existingId = (found as { id?: string })?.id;
+                } catch {
+                  // Ignore lookup errors - we'll still mark as passed
+                }
+              }
               return {
                 ...resultBase,
                 passed: true,
                 latencyMs: Date.now() - start,
                 responseStatus: 409,
-                responsePreview: "409 Conflict - already exists (idempotent success)",
-                response: { alreadyExists: true },
+                responsePreview: `409 Conflict - already exists (idempotent success)${existingId ? `, id=${existingId}` : ""}`,
+                response: { alreadyExists: true, id: existingId },
               };
             }
             throw err;
@@ -557,7 +571,21 @@ export class FundingEvaluator {
       const placeholderOk = !expectPlaceholder || hasPlaceholder(text);
       const expectNoFabrication = tc.expectations?.expect_no_fabrication ?? false;
       const noFabricationOk = !expectNoFabrication || hasPlaceholder(text) || citationCount > 0;
-      const passed = citationsOk && abstainCorrect && placeholderOk && noFabricationOk;
+
+      // v1 Citation Policy: citation integrity validation
+      const useCitationIntegrity = tc.expectations?.citation_integrity ?? false;
+      const evidenceChunks = tc.chunks ?? [];
+      const citationIntegrityResult = useCitationIntegrity
+        ? validateCitationIntegrity(text, evidenceChunks)
+        : undefined;
+
+      // Determine pass/fail
+      let passed = citationsOk && abstainCorrect && placeholderOk && noFabricationOk;
+
+      // If citation integrity is enabled, it must pass
+      if (useCitationIntegrity && citationIntegrityResult && !citationIntegrityResult.ok) {
+        passed = false;
+      }
 
       return {
         ...resultBase,
@@ -567,6 +595,14 @@ export class FundingEvaluator {
         latencyMs,
         textPreview: text.slice(0, 200),
         response: response ?? (text ? { text } : undefined),
+        citationIntegrity: citationIntegrityResult ? {
+          ok: citationIntegrityResult.ok,
+          invalidCitationCount: citationIntegrityResult.invalidCitationCount,
+          hardClaimCount: citationIntegrityResult.hardClaimCount,
+          unsupportedHardClaimCount: citationIntegrityResult.unsupportedHardClaimCount,
+          placeholderCount: citationIntegrityResult.placeholderCount,
+          violations: citationIntegrityResult.violations,
+        } : undefined,
       };
     } catch (err: unknown) {
       const latencyMs = Date.now() - start;
@@ -636,6 +672,22 @@ export class FundingEvaluator {
     const fabricationRate =
       fabricationRelevant.length > 0 ? noFabrication / fabricationRelevant.length : 1;
 
+    // v1 Citation Policy: compute citation integrity metrics
+    const citationIntegrityResults = results.filter((r) => r.citationIntegrity != null);
+    const citationIntegrityPassed = citationIntegrityResults.filter((r) => r.citationIntegrity?.ok).length;
+    const totalInvalidCitations = citationIntegrityResults.reduce(
+      (sum, r) => sum + (r.citationIntegrity?.invalidCitationCount ?? 0),
+      0
+    );
+    const totalHardClaims = citationIntegrityResults.reduce(
+      (sum, r) => sum + (r.citationIntegrity?.hardClaimCount ?? 0),
+      0
+    );
+    const totalUnsupportedHardClaims = citationIntegrityResults.reduce(
+      (sum, r) => sum + (r.citationIntegrity?.unsupportedHardClaimCount ?? 0),
+      0
+    );
+
     return {
       runAt: new Date().toISOString(),
       apiBaseUrl: this.apiBaseUrl,
@@ -649,6 +701,16 @@ export class FundingEvaluator {
       crudSuccessRate,
       placeholderCompliance,
       fabricationRate,
+      citationIntegrity: citationIntegrityResults.length > 0
+        ? {
+            evaluatedCount: citationIntegrityResults.length,
+            passedCount: citationIntegrityPassed,
+            totalInvalidCitations,
+            totalHardClaims,
+            totalUnsupportedHardClaims,
+            integrityRate: citationIntegrityPassed / citationIntegrityResults.length,
+          }
+        : undefined,
     };
   }
 }

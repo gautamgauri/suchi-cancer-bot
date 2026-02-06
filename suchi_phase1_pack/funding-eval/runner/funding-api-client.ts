@@ -1,22 +1,14 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 import type { FundingTestCase, EvidenceChunk, ConversationContext } from "../types.js";
 
-const CITATION_REGEX = /\[citation:[^:\]]+:[^:\]]+\]/g;
-const MISSING_EVIDENCE = "MISSING_EVIDENCE";
-const PLACEHOLDER_REGEX = /\(insert[^)]*\)|TODO|\[.*metric.*\]/i;
-
-export function countCitations(text: string): number {
-  const m = text.match(CITATION_REGEX);
-  return m ? m.length : 0;
-}
-
-export function hasAbstain(text: string): boolean {
-  return text.includes(MISSING_EVIDENCE);
-}
-
-export function hasPlaceholder(text: string): boolean {
-  return PLACEHOLDER_REGEX.test(text);
-}
+// Re-export citation integrity functions from the dedicated module
+export {
+  countCitations,
+  hasAbstain,
+  hasPlaceholder,
+  validateCitationIntegrity,
+  type CitationIntegrityResult,
+} from "./citation-integrity.js";
 
 export interface FundingApiClientOptions {
   timeoutMs?: number;
@@ -168,10 +160,13 @@ export class FundingApiClient {
   }
 
   // --- Proposal ---
+  // Proposal generation involves multiple sequential LLM calls, so we use a much longer timeout (180s)
   async proposalGenerate(opportunityId: string, options?: Record<string, unknown>): Promise<{ runId: string; status?: string; sections?: unknown[] }> {
+    const PROPOSAL_TIMEOUT_MS = 180_000; // 3 minutes for multi-step LLM pipeline
     const { data } = await this.client.post<{ runId: string; status?: string; sections?: unknown[] }>(
       this.v1("/proposals/generate"),
-      { opportunityId, options }
+      { opportunityId, options },
+      { timeout: PROPOSAL_TIMEOUT_MS }
     );
     return data;
   }

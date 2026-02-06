@@ -127,11 +127,27 @@ export class DraftService {
     userMessage: string,
     chunks: ChunkDto[],
     conversationContext?: ConversationContextDto
-  ): Promise<{ draft: string; evaluation: { score: number; weaknesses: string[] }; refined: string }> {
+  ): Promise<{ draft: string; evaluation: { score: number; weaknesses: string[] }; refined: string; warning?: string }> {
     const startTime = Date.now();
 
     const { text: draft } = await this.draftNeedStatement(context, userMessage, chunks, conversationContext);
     const draftTime = Date.now() - startTime;
+
+    // SAFETY: If the initial draft is an abstention (MISSING_EVIDENCE), do NOT attempt to refine.
+    // Refining an abstention would fabricate content, violating the no-fabrication policy.
+    if (draft.includes("MISSING_EVIDENCE")) {
+      logStructured.log("Draft refinement skipped - abstention detected", {
+        context: DraftService.name,
+        type: "refine_flow_abstained",
+        draftDurationMs: draftTime,
+      });
+      return {
+        draft,
+        evaluation: { score: 0, weaknesses: ["Cannot evaluate: no evidence provided"] },
+        refined: draft, // Return the abstention as-is
+        warning: "Refinement skipped: initial draft abstained due to missing evidence",
+      };
+    }
 
     const evaluation = await this.fundingLlm.evaluateDraft(draft);
     const evalTime = Date.now() - startTime - draftTime;
