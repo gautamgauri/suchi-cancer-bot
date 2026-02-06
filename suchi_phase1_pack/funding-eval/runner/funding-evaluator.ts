@@ -356,33 +356,93 @@ export class FundingEvaluator {
           const out = await client.proposalGetRun(runId);
           response = out;
 
-          // Extract proposal metrics for reporting
-          const run = out as { sections?: Array<{ name: string; draftText?: string; citations?: unknown[] }>; complianceReport?: { coverage_score?: number } };
+          // Extract proposal metrics with provenance validation
+          interface ProposalSection {
+            name: string;
+            draftText?: string;
+            retrievedChunks?: Array<{ chunkId: string; docId: string }>;
+            citations?: unknown[];
+          }
+          const run = out as { sections?: ProposalSection[]; complianceReport?: { coverage_score?: number } };
           const sections = run?.sections ?? [];
-          const allDraftText = sections.map((s) => s.draftText ?? "").join("\n\n");
-          const totalCitations = countCitations(allDraftText);
-          const sectionsWithCitations = sections.filter((s) => countCitations(s.draftText ?? "") > 0).length;
           const coverageScore = run?.complianceReport?.coverage_score ?? 0;
 
-          // Run citation integrity on combined draft
-          const citationIntegrityResult = validateCitationIntegrity(allDraftText, []);
+          // Validate citations against section provenance
+          let totalCitations = 0;
+          let validCitations = 0;
+          let invalidCitations = 0;
+          let sectionsWithCitations = 0;
+          let totalHardClaims = 0;
+          let supportedHardClaims = 0;
+          const allDraftText: string[] = [];
+
+          for (const section of sections) {
+            const draftText = section.draftText ?? "";
+            allDraftText.push(draftText);
+
+            // Build provenance set for this section: "docId:chunkId"
+            const provenance = new Set<string>();
+            for (const chunk of section.retrievedChunks ?? []) {
+              provenance.add(`${chunk.docId}:${chunk.chunkId}`);
+              // Also add just chunkId for flexibility
+              provenance.add(chunk.chunkId);
+            }
+
+            // Extract citations from section text
+            const citationRegex = /\[citation:([^:]+):([^\]]+)\]/g;
+            let match: RegExpExecArray | null;
+            const sectionCitations: Array<{ docId: string; chunkId: string; valid: boolean }> = [];
+            while ((match = citationRegex.exec(draftText)) !== null) {
+              const docId = match[1];
+              const chunkId = match[2];
+              const key = `${docId}:${chunkId}`;
+              const valid = provenance.has(key) || provenance.has(chunkId);
+              sectionCitations.push({ docId, chunkId, valid });
+              totalCitations++;
+              if (valid) validCitations++;
+              else invalidCitations++;
+            }
+
+            if (sectionCitations.length > 0) sectionsWithCitations++;
+
+            // Run hard claim detection with provenance-aware validation
+            const integrityResult = validateCitationIntegrity(
+              draftText,
+              (section.retrievedChunks ?? []).map((c) => ({
+                id: c.chunkId,
+                chunkId: c.chunkId,
+                docId: c.docId,
+              }))
+            );
+            totalHardClaims += integrityResult.hardClaimCount;
+            // Supported = hard claims that have valid citation OR placeholder
+            const unsupported = integrityResult.unsupportedHardClaimCount;
+            supportedHardClaims += integrityResult.hardClaimCount - unsupported;
+          }
+
+          const combinedDraft = allDraftText.join("\n\n");
+          const unsupportedHardClaimRate = totalHardClaims > 0 ? (totalHardClaims - supportedHardClaims) / totalHardClaims : 0;
 
           return {
             ...resultBase,
-            passed: out != null,
+            passed: out != null && invalidCitations === 0, // Fail if any bogus citations
             latencyMs: Date.now() - start,
             responseStatus: 200,
             responsePreview: JSON.stringify(out).slice(0, 300),
             response: out,
             citationCount: totalCitations,
-            textPreview: allDraftText.slice(0, 200),
+            textPreview: combinedDraft.slice(0, 200),
             proposalMetrics: {
               totalSections: sections.length,
               sectionsWithCitations,
               totalCitations,
+              validCitations,
+              invalidCitations,
               coverageScore,
-              hardClaimCount: citationIntegrityResult.hardClaimCount,
-              unsupportedHardClaimCount: citationIntegrityResult.unsupportedHardClaimCount,
+              hardClaimCount: totalHardClaims,
+              supportedHardClaimCount: supportedHardClaims,
+              unsupportedHardClaimCount: totalHardClaims - supportedHardClaims,
+              unsupportedHardClaimRate: Math.round(unsupportedHardClaimRate * 100) / 100,
             },
           };
         }

@@ -225,9 +225,17 @@ export interface FundingCaseResult {
     totalSections: number;
     sectionsWithCitations: number;
     totalCitations: number;
+    /** Citations that reference chunks in the section's retrieval provenance */
+    validCitations: number;
+    /** Citations that don't reference any retrieved chunk (bogus/fabricated) */
+    invalidCitations: number;
     coverageScore: number;
     hardClaimCount: number;
+    /** Hard claims with valid citation OR placeholder */
+    supportedHardClaimCount: number;
     unsupportedHardClaimCount: number;
+    /** Ratio of unsupported hard claims (0.0 = all supported, 1.0 = none supported) */
+    unsupportedHardClaimRate: number;
   };
 }
 
