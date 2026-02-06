@@ -23,21 +23,23 @@ import { ProgramDesignGeneratorService } from "./services/program-design-generat
 import { ComparablesGeneratorService } from "./services/comparables-generator.service";
 import { ConsistencyCheckerService } from "./services/consistency-checker.service";
 import { AnalyticsService } from "./services/analytics.service";
-import type {
+import {
   CreateMethodCardDto,
   UpdateMethodCardDto,
-  MethodCardQueryDto,
   CreatePatternCardDto,
   UpdatePatternCardDto,
-  PatternCardQueryDto,
   CreateComparableCaseDto,
   UpdateComparableCaseDto,
-  ComparableCaseQueryDto,
   TagProjectDto,
   MelPackInputDto,
   ProgramDesignInputDto,
   ComparablesInputDto,
   ConsistencyCheckInputDto,
+} from "./dto";
+import type {
+  MethodCardQueryDto,
+  PatternCardQueryDto,
+  ComparableCaseQueryDto,
 } from "./dto";
 
 function parseStringArray(v: string | string[] | undefined): string[] | undefined {
