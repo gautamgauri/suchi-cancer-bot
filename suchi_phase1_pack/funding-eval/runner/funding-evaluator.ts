@@ -339,7 +339,8 @@ export class FundingEvaluator {
           if (!opportunityId) return { ...resultBase, latencyMs: Date.now() - start, error: "opportunityId required" };
           const out = await client.proposalGenerate(opportunityId, body?.options as Record<string, unknown>);
           response = out;
-          const ok = (out as { runId?: string })?.runId != null;
+          // API returns 'id' as the proposal run identifier (not 'runId')
+          const ok = (out as { id?: string; runId?: string })?.id != null || (out as { runId?: string })?.runId != null;
           return {
             ...resultBase,
             passed: ok,

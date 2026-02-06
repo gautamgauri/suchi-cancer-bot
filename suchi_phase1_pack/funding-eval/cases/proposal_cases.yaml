@@ -24,22 +24,24 @@ cases:
       # Use the opportunityId field, not the internal UUID id
       opportunityId: "eval-proposal-opp-01"
     expectations:
-      expect_keys: ["runId"]
+      # API returns 'id' as the proposal run identifier
+      expect_keys: ["id"]
 
   - id: PROP-02
     type: proposal_generate
     action: get_run
     params:
-      runId: "$ref:PROP-01.runId"
+      # API returns 'id' not 'runId'
+      runId: "$ref:PROP-01.id"
 
   - id: PROP-03
     type: proposal_generate
     action: get_gaps
     params:
-      runId: "$ref:PROP-01.runId"
+      runId: "$ref:PROP-01.id"
 
   - id: PROP-04
     type: proposal_generate
     action: get_run
     params:
-      runId: "$ref:PROP-01.runId"
+      runId: "$ref:PROP-01.id"
