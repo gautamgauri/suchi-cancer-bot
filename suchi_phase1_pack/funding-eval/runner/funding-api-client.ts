@@ -160,9 +160,10 @@ export class FundingApiClient {
   }
 
   // --- Proposal ---
-  // Proposal generation involves multiple sequential LLM calls, so we use a much longer timeout (180s)
+  // Proposal generation involves multiple sequential LLM calls (6+ sections, each with RAG + LLM).
+  // Total time can be 3-4 minutes, so we use a 5-minute timeout.
   async proposalGenerate(opportunityId: string, options?: Record<string, unknown>): Promise<{ runId: string; status?: string; sections?: unknown[] }> {
-    const PROPOSAL_TIMEOUT_MS = 180_000; // 3 minutes for multi-step LLM pipeline
+    const PROPOSAL_TIMEOUT_MS = 300_000; // 5 minutes for multi-step LLM pipeline
     const { data } = await this.client.post<{ runId: string; status?: string; sections?: unknown[] }>(
       this.v1("/proposals/generate"),
       { opportunityId, options },
