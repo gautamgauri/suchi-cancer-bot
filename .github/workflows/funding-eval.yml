@@ -51,7 +51,15 @@ jobs:
           curl -fsSL -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.12.0/cloud-sql-proxy.linux.amd64
           chmod +x cloud-sql-proxy
           ./cloud-sql-proxy "${{ secrets.CLOUDSQL_INSTANCE_CONNECTION_NAME }}" --port 5432 &
-          sleep 3
+          # Wait for proxy to be ready (up to 60s)
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 >/dev/null 2>&1; then
+              echo "Cloud SQL proxy is ready"
+              break
+            fi
+            echo "Waiting for Cloud SQL proxy... ($i/30)"
+            sleep 2
+          done
 
       - name: Install deps (funding-api)
         working-directory: suchi_phase1_pack/apps/funding-api
@@ -66,6 +74,10 @@ jobs:
         run: |
           npx prisma generate
           npx prisma migrate deploy
+
+      - name: Build funding-api
+        working-directory: suchi_phase1_pack/apps/funding-api
+        run: npm run build
 
       - name: Start funding-api
         working-directory: suchi_phase1_pack/apps/funding-api
