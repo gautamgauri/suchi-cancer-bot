@@ -182,17 +182,67 @@ async function seedEvalData() {
     },
   });
 
+  // 5. Create test opportunities for proposal tests
+  console.log("  Seeding test opportunities...");
+  const testOpportunities = [
+    {
+      opportunityId: "eval-opp-01",
+      schemaVersion: "1.0",
+      jsonBlob: {
+        schemaVersion: "1.0",
+        funder: {
+          name: "Eval Test Funder",
+          programName: "Education Grants",
+        },
+        keyConstraints: {
+          deadline: "2025-12-31",
+        },
+        status: "received",
+      },
+      status: "extracted",
+    },
+    {
+      opportunityId: "eval-proposal-opp-01",
+      schemaVersion: "1.0",
+      jsonBlob: {
+        schemaVersion: "1.0",
+        funder: {
+          name: "Proposal Eval Funder",
+          programName: "RFP 2025",
+        },
+        keyConstraints: {
+          deadline: "2025-06-30",
+        },
+        status: "received",
+      },
+      status: "received",
+    },
+  ];
+
+  for (const opp of testOpportunities) {
+    await prisma.opportunitySnapshot.upsert({
+      where: { opportunityId: opp.opportunityId },
+      update: {
+        jsonBlob: opp.jsonBlob,
+        status: opp.status,
+      },
+      create: opp,
+    });
+  }
+
   // Summary
   const docCount = await prisma.evidenceDocument.count();
   const chunkCount = await prisma.documentChunk.count();
   const embeddingCount = await prisma.chunkEmbedding.count();
   const capCount = await prisma.frameworkCapability.count();
+  const oppCount = await prisma.opportunitySnapshot.count();
 
   console.log("\nSeed complete:");
   console.log(`  Evidence documents: ${docCount}`);
   console.log(`  Document chunks: ${chunkCount}`);
   console.log(`  Chunk embeddings: ${embeddingCount}`);
   console.log(`  Framework capabilities: ${capCount}`);
+  console.log(`  Opportunities: ${oppCount}`);
 }
 
 seedEvalData()
