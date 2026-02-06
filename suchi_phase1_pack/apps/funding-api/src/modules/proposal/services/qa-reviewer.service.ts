@@ -60,9 +60,13 @@ export class QaReviewerService {
 
     // From QA ungrounded claims
     qaResult.ungrounded_claims.forEach((claim) => {
+      // Skip malformed claims (LLM sometimes returns incomplete objects)
+      if (!claim.text && !claim.suggestion) return;
+      const claimText = claim.text || "unspecified claim";
+      const suggestion = claim.suggestion || "Please add evidence or replace with placeholder.";
       gaps.push({
-        section: claim.location,
-        question: `Ungrounded claim: ${claim.text}. ${claim.suggestion}`,
+        section: claim.location || undefined,
+        question: `Ungrounded claim: ${claimText}. ${suggestion}`,
         priority: "high",
       });
     });
