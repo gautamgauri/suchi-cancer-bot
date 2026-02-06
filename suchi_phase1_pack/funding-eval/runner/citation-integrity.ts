@@ -52,6 +52,14 @@ const NAMED_RELATIONSHIP_PATTERNS = [
   /\b(funded by|supported by|partnered with|in partnership with|in collaboration with|working with)\s+[A-Z][a-zA-Z\s&]+/g,
 ];
 
+// Patterns that indicate plan/intent statements (exempt from hard-claim rules)
+const PLAN_EXEMPT_PATTERNS = [
+  /^Month \d+:/i,           // Timeline milestones
+  /^\*?\s*\*?\*?Month \d+/i, // Markdown formatted timeline
+  /\b(target|goal|objective|milestone)\b/i,
+  /\b(by the end of|at month|in phase)\b/i,
+];
+
 export interface EvidenceChunk {
   id: string;
   source?: string;
@@ -149,9 +157,19 @@ function splitIntoSentences(text: string): Array<{ text: string; start: number; 
 }
 
 /**
+ * Check if a sentence is exempt (plan/timeline statement)
+ */
+function isExemptPlanStatement(sentence: string): boolean {
+  return PLAN_EXEMPT_PATTERNS.some((p) => p.test(sentence));
+}
+
+/**
  * Check if a sentence is a hard claim
  */
 function isHardClaim(sentence: string): boolean {
+  // Skip plan/timeline statements entirely
+  if (isExemptPlanStatement(sentence)) return false;
+
   // Skip if it's clearly a plan/intent statement (unless it has metrics)
   if (/\b(we will|we propose|we plan|we intend|we aim|proposed|planned)\b/i.test(sentence)) {
     const hasMetrics = NUMERIC_TRIGGERS.some((p) => new RegExp(p.source, p.flags).test(sentence));

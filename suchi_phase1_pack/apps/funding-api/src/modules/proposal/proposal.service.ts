@@ -10,6 +10,7 @@ import { SectionWriterService } from "./services/section-writer.service";
 import { QaReviewerService } from "./services/qa-reviewer.service";
 import { ArtifactExporterService } from "./services/artifact-exporter.service";
 import { SlackClientService } from "./services/slack-client.service";
+import { CitationRepairService } from "./services/citation-repair.service";
 import {
   ProposalRunStatus,
   ProposalSectionStatus,
@@ -36,6 +37,7 @@ export class ProposalService {
     private readonly qaReviewer: QaReviewerService,
     private readonly artifactExporter: ArtifactExporterService,
     private readonly slackClient: SlackClientService,
+    private readonly citationRepair: CitationRepairService,
   ) {}
 
   /**
@@ -200,11 +202,15 @@ export class ProposalService {
 
           // Draft section
           const sectionGuidance = `Target words: ${sectionOutline.target_words || 0}. Must answer: ${sectionOutline.must_answer.join(", ") || "N/A"}`;
-          const { draftText, gaps } = await this.sectionWriter.draftSection({
+          const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
             sectionName,
             sectionGuidance,
             chunks: evidenceChunks,
           });
+
+          // Auto-repair: soften unsupported hard claims
+          const repairResult = this.citationRepair.repairSection(rawDraft);
+          const draftText = repairResult.repaired;
 
           sectionGaps.push({ section: sectionName, gaps });
           allDraftTexts.push(draftText);
@@ -416,11 +422,15 @@ export class ProposalService {
     // Draft section with additional context
     const sectionGuidance = `${sectionOutline.target_words ? `Target words: ${sectionOutline.target_words}. ` : ""}Must answer: ${sectionOutline.must_answer.join(", ") || "N/A"}${options?.additionalContext ? `. Additional context: ${options.additionalContext}` : ""}${options?.userNotes ? `. User notes: ${options.userNotes}` : ""}`;
 
-    const { draftText, gaps } = await this.sectionWriter.draftSection({
+    const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
       sectionName,
       sectionGuidance,
       chunks: evidenceChunks,
     });
+
+    // Auto-repair: soften unsupported hard claims
+    const repairResult = this.citationRepair.repairSection(rawDraft);
+    const draftText = repairResult.repaired;
 
     // Update section
     await this.prisma.proposalSection.update({

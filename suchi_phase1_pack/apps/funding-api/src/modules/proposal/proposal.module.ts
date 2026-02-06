@@ -12,6 +12,7 @@ import { SectionWriterService } from "./services/section-writer.service";
 import { QaReviewerService } from "./services/qa-reviewer.service";
 import { ArtifactExporterService } from "./services/artifact-exporter.service";
 import { SlackClientService } from "./services/slack-client.service";
+import { CitationRepairService } from "./services/citation-repair.service";
 
 @Module({
   imports: [PrismaModule, CoreAiModule, EvidenceIngestModule, OpportunityModule],
@@ -25,6 +26,7 @@ import { SlackClientService } from "./services/slack-client.service";
     QaReviewerService,
     ArtifactExporterService,
     SlackClientService,
+    CitationRepairService,
   ],
   exports: [ProposalService],
 })
