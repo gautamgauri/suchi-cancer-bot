@@ -95,6 +95,8 @@ model EvidenceDocument {
   id                    String    @id @default(uuid())
   driveFileId           String    @unique
   sourceFolder          String
+  orgId                 String?   // tenant isolation: e.g. "diksha", "alok"
+  isGlobal              Boolean   @default(false)  // true = shared evidence (WHO, UNICEF, etc.)
   name                  String
   mimeType              String
   size                  BigInt    @default(0)
@@ -138,6 +140,7 @@ model EvidenceDocument {
   documentCapabilities  DocumentCapability[]
   documentModalities    DocumentMIModality[]
   @@index([sourceFolder])
+  @@index([orgId])
   @@index([needsProcessing])
   @@index([qualityTier])
   @@index([visibilityScope])
@@ -173,7 +176,8 @@ model ChunkEmbedding {
   id             String       @id @default(uuid())
   chunkId        String       @unique
   embeddingModel String
-  vector         String       @db.Text // JSON array of numbers for portability; can migrate to pgvector later
+  vector         String       @db.Text // JSON array of numbers (legacy); kept for backward compat
+  embedding      Unsupported("vector(1536)")?  // pgvector native column
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   chunk          DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
@@ -378,6 +382,7 @@ model MethodCardChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
+  embedding      Unsupported("vector(1536)")?  // pgvector native column
   chunk          MethodCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -441,6 +446,7 @@ model PatternCardChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
+  embedding      Unsupported("vector(1536)")?  // pgvector native column
   chunk          PatternCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -498,6 +504,7 @@ model ComparableCaseChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
+  embedding      Unsupported("vector(1536)")?  // pgvector native column
   chunk          ComparableCaseChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -563,4 +570,54 @@ model FrameworkAnalyticsEvent {
   @@index([eventType])
   @@index([projectId])
   @@index([createdAt])
+}
+
+// --- Funder Scraper (TFIx / BDC) ---
+
+model FunderOrg {
+  id          String   @id @default(uuid())
+  orgName     String
+  orgWebsite  String
+  network     String   // e.g. TFIx | BDC
+  status      String   @default("pending") // pending | in_progress | done | failed
+  lastRunAt   DateTime?
+  error       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  funders     FunderFact[]
+
+  @@index([network])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model FunderFact {
+  id               String   @id @default(uuid())
+  funderOrgId      String
+  orgName          String
+  orgWebsite       String
+  network          String   // TFIx | BDC
+  funderName       String?
+  funderType       String   // CSR | Foundation | HNI | Gov | Multilateral | Other
+  evidenceType     String
+  evidenceExcerpt  String   @db.Text
+  evidenceUrl      String
+  financialAmount  String?
+  grantYears       String?
+  programFocus     String?
+  geography        String?
+  confidenceScore  String   // High | Medium | Low
+  notes            String?  @db.Text
+  normalizedFunder String?
+  matchConfidence  Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  org FunderOrg @relation(fields: [funderOrgId], references: [id], onDelete: Cascade)
+
+  @@index([funderOrgId])
+  @@index([normalizedFunder])
+  @@index([funderType])
+  @@index([confidenceScore])
 }

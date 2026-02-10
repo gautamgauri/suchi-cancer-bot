@@ -8,7 +8,8 @@ export type ProposalRunStatus =
   | "drafting"
   | "qa"
   | "complete"
-  | "failed";
+  | "failed"
+  | "blocked_missing_inputs";
 
 export type ProposalSectionStatus =
   | "pending"

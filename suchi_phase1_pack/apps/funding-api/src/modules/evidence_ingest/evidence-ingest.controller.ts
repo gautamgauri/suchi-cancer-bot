@@ -106,12 +106,14 @@ export class EvidenceIngestController {
     @Body("limit") limit?: number,
     @Body("publicSafeOnly") publicSafeOnly?: boolean,
     @Body("visibilityScope") visibilityScope?: string,
+    @Body("orgId") orgId?: string,
   ) {
     return this.retrievalService.retrieve(query || "", {
       mode,
       limit,
       publicSafeOnly,
       visibilityScope,
+      orgId,
     });
   }
 

@@ -66,12 +66,38 @@ export interface RetrievalChunkDto {
   score?: number;
 }
 
+interface RetrievalOptions {
+  mode?: RetrievalPolicyMode;
+  limit?: number;
+  visibilityScope?: string;
+  publicSafeOnly?: boolean;
+  /** Framework filter: only documents tagged with at least one of these capability codes (C1-C10) */
+  capabilities?: string[];
+  /** Minimum cosine similarity score (0-1). Chunks below this are discarded. Default: 0 (no filter) */
+  minScore?: number;
+  /** Tenant isolation: only retrieve docs belonging to this org (plus global docs) */
+  orgId?: string;
+}
+
+/** Raw row returned by pgvector SQL query */
+interface PgvectorRow {
+  chunkId: string;
+  content: string;
+  sectionTitle: string | null;
+  docId: string;
+  docName: string;
+  driveUrl: string | null;
+  effectiveTier: string;
+  score: number;
+}
+
 @Injectable()
 export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
   private readonly openai: OpenAI | null = null;
   private readonly embeddingModel: string;
   private readonly queryCache = new QueryEmbeddingCache(100, 5 * 60 * 1000); // 100 entries, 5 min TTL
+  private readonly usePgvector: boolean;
 
   constructor(
     private readonly configService: ConfigService,
@@ -93,18 +119,11 @@ export class RetrievalService {
     }
     this.embeddingModel =
       this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
-  }
 
-  private async getEffectiveTier(documentId: string): Promise<string> {
-    const doc = await this.prisma.evidenceDocument.findUnique({
-      where: { id: documentId },
-      select: { qualityTier: true },
-    });
-    const review = await this.prisma.reviewQueueEntry.findUnique({
-      where: { documentId },
-      select: { tierOverride: true },
-    });
-    return (review?.tierOverride ?? doc?.qualityTier) ?? "X";
+    // Feature flag: USE_PGVECTOR (default true after migration)
+    const pgvecFlag = this.configService.get<string>("USE_PGVECTOR");
+    this.usePgvector = pgvecFlag !== "false" && pgvecFlag !== "0";
+    this.logger.log(`Retrieval mode: ${this.usePgvector ? "pgvector (SQL)" : "legacy (JS cosine)"}`);
   }
 
   /**
@@ -113,33 +132,193 @@ export class RetrievalService {
    */
   async retrieve(
     query: string,
-    options: {
-      mode?: RetrievalPolicyMode;
-      limit?: number;
-      visibilityScope?: string;
-      publicSafeOnly?: boolean;
-      /** Framework filter: only documents tagged with at least one of these capability codes (C1-C10) */
-      capabilities?: string[];
-    } = {},
+    options: RetrievalOptions = {},
+  ): Promise<RetrievalChunkDto[]> {
+    const mode = options.mode ?? "proposal_drafting";
+
+    // Hard guardrail: org isolation is mandatory for sensitive modes
+    if (mode === "proposal_drafting" && !options.orgId) {
+      throw new Error("orgId is required for proposal_drafting retrieval — prevents cross-org contamination");
+    }
+
+    if (this.usePgvector) {
+      return this.retrievePgvector(query, options);
+    }
+    return this.retrieveLegacy(query, options);
+  }
+
+  /**
+   * pgvector path: single SQL query pushes similarity search + all filters to PostgreSQL.
+   * Expected latency: <100ms per query (vs 20-80s legacy).
+   */
+  private async retrievePgvector(
+    query: string,
+    options: RetrievalOptions = {},
+  ): Promise<RetrievalChunkDto[]> {
+    const startTime = Date.now();
+    const mode = options.mode ?? "proposal_drafting";
+    const limit = Math.min(options.limit ?? 20, 50);
+    const allowedTiers = POLICY_TIERS[mode];
+    const minScore = options.minScore ?? 0;
+
+    if (!this.openai) {
+      this.logger.warn("pgvector: no embeddings client, falling back to legacy");
+      return this.retrieveLegacy(query, options);
+    }
+
+    // Get query embedding (with cache)
+    const normalizedQuery = query.slice(0, 8000).trim().toLowerCase();
+    let qVec = this.queryCache.get(normalizedQuery);
+    let embedMs = 0;
+    const cacheHit = !!qVec;
+
+    if (!qVec) {
+      const embedStart = Date.now();
+      const queryEmbedding = await this.openai.embeddings.create({
+        model: this.embeddingModel,
+        input: query.slice(0, 8000),
+      });
+      embedMs = Date.now() - embedStart;
+      qVec = queryEmbedding.data[0]?.embedding ?? null;
+      if (qVec) {
+        this.queryCache.set(normalizedQuery, qVec);
+      }
+    }
+
+    if (!qVec) {
+      this.logger.warn("pgvector: failed to generate query embedding, falling back to legacy");
+      return this.retrieveLegacy(query, options);
+    }
+
+    // Format embedding as pgvector literal: [0.1,0.2,...]
+    const embeddingStr = `[${qVec.join(",")}]`;
+
+    // Build the pgvector SQL query
+    const hasCapabilityFilter = options.capabilities && options.capabilities.length > 0;
+    const visibilityScope = options.visibilityScope ?? null;
+    const publicSafeOnly = options.publicSafeOnly ?? false;
+
+    // Two-phase query: first HNSW search on ChunkEmbedding alone (uses index),
+    // then join/filter the top candidates. Overselect 5x to account for post-filters.
+    const overselect = Math.min(limit * 5, 200);
+    const hasOrgFilter = !!options.orgId;
+    const dbStart = Date.now();
+    const rows = await this.prisma.$queryRawUnsafe<PgvectorRow[]>(
+      `
+      WITH top_vectors AS (
+        SELECT ce."chunkId",
+               1 - (ce."embedding" <=> $1::vector) AS score
+        FROM "ChunkEmbedding" ce
+        WHERE ce."embedding" IS NOT NULL
+        ORDER BY ce."embedding" <=> $1::vector
+        LIMIT $2::int
+      )
+      SELECT
+        dc."id"        AS "chunkId",
+        dc."content",
+        dc."sectionTitle",
+        ed."id"        AS "docId",
+        ed."name"      AS "docName",
+        ed."driveUrl",
+        COALESCE(rq."tierOverride", ed."qualityTier", 'X') AS "effectiveTier",
+        tv.score
+      FROM top_vectors tv
+      JOIN "DocumentChunk" dc ON dc."id" = tv."chunkId"
+      JOIN "EvidenceDocument" ed ON ed."id" = dc."documentId"
+      LEFT JOIN "ReviewQueueEntry" rq ON rq."documentId" = ed."id"
+      WHERE COALESCE(rq."tierOverride", ed."qualityTier", 'X') = ANY($3::text[])
+        AND ($5::boolean IS FALSE OR ed."orgId" = $4::text OR ed."isGlobal" = true)
+        AND ($6::text IS NULL OR ed."visibilityScope" = $6)
+        AND ($7::boolean IS FALSE OR ed."publicSafe" = true)
+        AND (
+          $8::boolean IS FALSE
+          OR EXISTS (
+            SELECT 1 FROM "DocumentCapability" dcap
+            JOIN "FrameworkCapability" fc ON fc."id" = dcap."capabilityId"
+            WHERE dcap."documentId" = ed."id"
+              AND fc."capabilityId" = ANY($9::text[])
+          )
+        )
+        AND tv.score >= $10::float
+      ORDER BY tv.score DESC
+      LIMIT $11::int
+      `,
+      embeddingStr,                         // $1
+      overselect,                           // $2
+      allowedTiers,                         // $3
+      options.orgId ?? null,                // $4
+      hasOrgFilter,                         // $5
+      visibilityScope,                      // $6
+      publicSafeOnly,                       // $7
+      hasCapabilityFilter ?? false,         // $8
+      options.capabilities ?? [],           // $9
+      minScore,                             // $10
+      limit,                                // $11
+    );
+
+    const dbMs = Date.now() - dbStart;
+
+    const results: RetrievalChunkDto[] = rows.map((r) => ({
+      id: r.chunkId,
+      source: r.docId,
+      text: r.content,
+      title: r.docName,
+      section: r.sectionTitle ?? undefined,
+      urlOrPath: r.driveUrl ?? undefined,
+      claimType: r.effectiveTier === "A" ? "hard" as const : "context" as const,
+      score: typeof r.score === "number" ? r.score : Number(r.score),
+    }));
+
+    const totalMs = Date.now() - startTime;
+    const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + (r.score ?? 0), 0) / results.length : 0;
+    logStructured.log("RAG retrieval complete (pgvector)", {
+      context: RetrievalService.name,
+      queryLength: query.length,
+      mode,
+      limit,
+      chunksRetrieved: results.length,
+      avgSimilarityScore: Math.round(avgScore * 100) / 100,
+      embed_ms: embedMs,
+      db_ms: dbMs,
+      total_ms: totalMs,
+      cacheHit,
+    });
+
+    return results;
+  }
+
+  /**
+   * Legacy path: loads chunks to JS memory and computes cosine similarity in a loop.
+   * Kept as fallback when USE_PGVECTOR=false.
+   */
+  private async retrieveLegacy(
+    query: string,
+    options: RetrievalOptions = {},
   ): Promise<RetrievalChunkDto[]> {
     const startTime = Date.now();
     const mode = options.mode ?? "proposal_drafting";
     const limit = Math.min(options.limit ?? 20, 50);
     const allowedTiers = POLICY_TIERS[mode];
 
+    // Build document filter; use AND to wrap OR (avoids Prisma discriminated union type conflict)
+    const docFilter: Record<string, unknown> = {
+      qualityTier: { in: allowedTiers },
+    };
+    if (options.publicSafeOnly) docFilter.publicSafe = true;
+    if (options.visibilityScope) docFilter.visibilityScope = options.visibilityScope;
+    if (options.orgId) {
+      docFilter.OR = [{ orgId: options.orgId }, { isGlobal: true }];
+    }
+    if (options.capabilities?.length) {
+      docFilter.documentCapabilities = {
+        some: { capability: { capabilityId: { in: options.capabilities } } },
+      };
+    }
+
     const chunksWithEmbeddings = await this.prisma.documentChunk.findMany({
       where: {
         chunkEmbedding: { isNot: null },
-        document: {
-          qualityTier: { in: allowedTiers },
-          ...(options.publicSafeOnly && { publicSafe: true }),
-          ...(options.visibilityScope && { visibilityScope: options.visibilityScope }),
-          ...(options.capabilities?.length && {
-            documentCapabilities: {
-              some: { capability: { capabilityId: { in: options.capabilities } } },
-            },
-          }),
-        },
+        document: docFilter as any,
       },
       include: {
         document: { select: { id: true, name: true, driveUrl: true, qualityTier: true } },
@@ -205,6 +384,7 @@ export class RetrievalService {
         limit,
       );
 
+    const minScore = options.minScore ?? 0;
     const scored = withEffectiveTier
       .map((c) => {
         const vecJson = (c.chunkEmbedding as { vector?: string } | null)?.vector;
@@ -217,15 +397,21 @@ export class RetrievalService {
           return { chunk: c, score: 0 };
         }
       })
+      .filter((item) => item.score >= minScore)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
+
+    if (minScore > 0) {
+      const totalBeforeFilter = withEffectiveTier.length;
+      this.logger.debug(`Relevance filter: ${scored.length}/${totalBeforeFilter} chunks passed minScore=${minScore}`);
+    }
 
     const results = scored.map(({ chunk, score }) => this.toChunkDto(chunk, score));
 
     // Log retrieval metrics
     const durationMs = Date.now() - startTime;
     const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + (r.score ?? 0), 0) / results.length : 0;
-    logStructured.log("RAG retrieval complete", {
+    logStructured.log("RAG retrieval complete (legacy)", {
       context: RetrievalService.name,
       queryLength: query.length,
       mode,
@@ -237,6 +423,18 @@ export class RetrievalService {
     });
 
     return results;
+  }
+
+  private getEffectiveTier(documentId: string): Promise<string> {
+    return this.prisma.evidenceDocument
+      .findUnique({ where: { id: documentId }, select: { qualityTier: true } })
+      .then(async (doc) => {
+        const review = await this.prisma.reviewQueueEntry.findUnique({
+          where: { documentId },
+          select: { tierOverride: true },
+        });
+        return (review?.tierOverride ?? doc?.qualityTier) ?? "X";
+      });
   }
 
   private keywordFallback(
@@ -335,7 +533,7 @@ export class RetrievalService {
     const tierCompliance = 100;
 
     const summary = [
-      `Eval: ${queryResults.length} queries, mode=${mode}`,
+      `Eval: ${queryResults.length} queries, mode=${mode}, engine=${this.usePgvector ? "pgvector" : "legacy"}`,
       `Latency p50=${p50Ms}ms p95=${p95Ms}ms`,
       `Tier compliance: ${tierCompliance}% (filter: ${allowedTiers.join("/")})`,
     ].join("; ");

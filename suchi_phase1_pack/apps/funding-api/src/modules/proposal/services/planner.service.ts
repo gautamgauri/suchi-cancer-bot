@@ -18,11 +18,43 @@ export class PlannerService {
     orgProfileSummary: string;
     userOverrides: string;
     capabilityContext?: { primary: string[]; secondary?: string[] };
+    /** Mandatory sections from the opportunity's extractedRequirements */
+    mandatorySections?: Array<{ title: string; description?: string }>;
+    /** Funder name for context */
+    funderName?: string;
   }): Promise<ProposalOutline> {
+    // === DIAGNOSTIC: Step B — log what planner receives ===
+    this.logger.log({
+      diagnostic: "STEP_B_PLANNER_INPUT",
+      mandatorySectionsCount: params.mandatorySections?.length ?? 0,
+      mandatorySectionTitles: params.mandatorySections?.map((s) => s.title) ?? [],
+      rfpTextLength: params.rfpText?.length ?? 0,
+    });
+
     const userPrompt = buildPlannerUserPrompt(params);
     try {
-      const raw = await this.llm.generatePlain(PLANNER_SYSTEM_PROMPT, "Generate proposal outline:", userPrompt);
-      const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+      // Planner needs more tokens for large section counts (11 sections + retrieval plan + compliance ≈ 4000 tokens)
+      const raw = await this.llm.generatePlain(PLANNER_SYSTEM_PROMPT, "Generate proposal outline:", userPrompt, { maxTokens: 4000 });
+      // Extract JSON: handle ```json blocks, trailing truncation, and whitespace
+      let jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+      // If JSON is truncated (common with long outputs), try to repair by closing open structures
+      if (!jsonStr.endsWith("}")) {
+        this.logger.warn(`Planner JSON appears truncated (ends with: "${jsonStr.slice(-20)}"), attempting repair`);
+        // Find the last valid JSON object boundary
+        const lastBrace = jsonStr.lastIndexOf("}");
+        if (lastBrace > 0) {
+          // Count unclosed braces/brackets and close them
+          let braces = 0, brackets = 0;
+          const truncated = jsonStr.substring(0, lastBrace + 1);
+          for (const ch of truncated) {
+            if (ch === "{") braces++;
+            if (ch === "}") braces--;
+            if (ch === "[") brackets++;
+            if (ch === "]") brackets--;
+          }
+          jsonStr = truncated + "]".repeat(Math.max(0, brackets)) + "}".repeat(Math.max(0, braces));
+        }
+      }
       const parsed = JSON.parse(jsonStr) as Partial<ProposalOutline>;
 
       // Validate and normalize
@@ -63,10 +95,39 @@ export class PlannerService {
           : undefined,
       };
 
+      // Log planner output quality
+      this.logger.log({
+        diagnostic: "PLANNER_OUTPUT",
+        parsedSections: outline.outline.length,
+        sectionTitles: outline.outline.map((s) => s.section),
+        retrievalPlanItems: outline.retrieval_plan.length,
+        complianceItems: outline.compliance_checklist.length,
+      });
+
       return outline;
     } catch (e) {
       this.logger.warn("Failed to parse planner JSON, using fallback outline", (e as Error).message);
-      // Fallback: minimal outline
+      // Fallback: use mandatory sections from opportunity if available, otherwise generic
+      if (params.mandatorySections?.length) {
+        this.logger.log(`Using ${params.mandatorySections.length} mandatory sections from opportunity as fallback`);
+        return {
+          outline: params.mandatorySections.map((s) => ({
+            section: s.title,
+            target_words: 400,
+            must_answer: s.description ? [s.description] : [],
+          })),
+          retrieval_plan: params.mandatorySections.map((s) => ({
+            section: s.title,
+            query_intents: [s.title, s.description || ""].filter(Boolean),
+            required_evidence_types: ["org_data", "program_report"],
+          })),
+          compliance_checklist: params.mandatorySections.map((s) => ({
+            item: `Include "${s.title}" section`,
+            source: "RFP",
+            status: "pending",
+          })),
+        };
+      }
       return {
         outline: [
           { section: "Executive Summary", target_words: 250, must_answer: [] },

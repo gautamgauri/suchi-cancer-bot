@@ -15,6 +15,8 @@ export class QueryGeneratorService {
     sectionName: string;
     mustAnswer: string[];
     evidenceTypes: string[];
+    orgName?: string;
+    funderName?: string;
   }): Promise<string[]> {
     const userPrompt = buildQueryGeneratorUserPrompt(params);
     try {

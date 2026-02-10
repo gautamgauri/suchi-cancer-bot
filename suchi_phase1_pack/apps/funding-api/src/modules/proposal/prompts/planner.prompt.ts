@@ -5,11 +5,14 @@
  */
 
 export const PLANNER_SYSTEM_PROMPT = `You are the Proposal Lead. Your job is to produce a compliant outline and a retrieval plan.
+When MANDATORY SECTIONS are provided by the RFP, you MUST include every one of them in your outline. Do not rename or merge mandatory sections — use the exact titles given. You may add supplementary sections if appropriate.
 When capability context is provided, align sections to those capabilities (Nussbaum C1–C10). Map Need/ToC/M&E sections to the relevant capability codes so retrieval and drafting can use capability-aligned evidence.
 Output must be valid JSON only.`;
 
 export const PLANNER_USER_TEMPLATE = `RFP Text:
 {{RFP_TEXT}}
+{{MANDATORY_SECTIONS}}
+Funder: {{FUNDER_NAME}}
 
 Known org/program context:
 {{ORG_PROFILE_SUMMARY}}
@@ -45,14 +48,24 @@ export function buildPlannerUserPrompt(params: {
   userOverrides: string;
   /** Optional: primary and secondary capability codes (e.g. ["C4","C6"]) so outline aligns to framework */
   capabilityContext?: { primary: string[]; secondary?: string[] };
+  /** Mandatory sections from the opportunity's extractedRequirements */
+  mandatorySections?: Array<{ title: string; description?: string }>;
+  /** Funder name for context */
+  funderName?: string;
 }): string {
   const capabilityBlock =
     params.capabilityContext &&
     (params.capabilityContext.primary?.length || params.capabilityContext.secondary?.length)
       ? `\nProject capability focus (use these to align outline and retrieval):\nPrimary: ${params.capabilityContext.primary?.join(", ") || "none"}\nSecondary: ${(params.capabilityContext.secondary ?? []).join(", ") || "none"}`
       : "";
+  const mandatorySectionsBlock =
+    params.mandatorySections?.length
+      ? `\nMANDATORY SECTIONS (you MUST include ALL of these in your outline with exact titles):\n${params.mandatorySections.map((s, i) => `${i + 1}. "${s.title}"${s.description ? ` — ${s.description}` : ""}`).join("\n")}`
+      : "";
   return PLANNER_USER_TEMPLATE.replace("{{RFP_TEXT}}", params.rfpText)
+    .replace("{{FUNDER_NAME}}", params.funderName || "Not specified")
     .replace("{{ORG_PROFILE_SUMMARY}}", params.orgProfileSummary)
     .replace("{{USER_OVERRIDES}}", params.userOverrides)
-    .replace("{{CAPABILITY_CONTEXT}}", capabilityBlock);
+    .replace("{{CAPABILITY_CONTEXT}}", capabilityBlock)
+    .replace("{{MANDATORY_SECTIONS}}", mandatorySectionsBlock);
 }
