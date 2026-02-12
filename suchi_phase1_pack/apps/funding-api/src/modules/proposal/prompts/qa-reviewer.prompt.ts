@@ -4,6 +4,7 @@
  */
 
 export const QA_REVIEWER_SYSTEM_PROMPT = `You are the QA reviewer. Find: (1) requirement gaps, (2) ungrounded claims, (3) internal inconsistencies, (4) tone issues.
+When "mandatorySections" are listed in the requirements, every one of them MUST appear in the draft. Flag any missing mandatory section as a missing_requirement with high priority.
 Output must be valid JSON only.`;
 
 export const QA_REVIEWER_USER_TEMPLATE = `RFP requirements: {{REQUIREMENTS_JSON}}

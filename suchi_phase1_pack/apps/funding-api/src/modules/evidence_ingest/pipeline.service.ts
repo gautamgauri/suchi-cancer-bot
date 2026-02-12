@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { inferCorpus } from "./corpus.constants";
 
 const DOC_TYPES = ["proposal", "concept_note", "report", "budget", "presentation", "mou", "misc"] as const;
 type DocType = (typeof DOC_TYPES)[number];
@@ -156,7 +157,7 @@ export class PipelineService {
   async classifyDocTypes(): Promise<{ updated: number }> {
     const docs = await this.prisma.evidenceDocument.findMany({
       where: { cleanText: { not: null } },
-      select: { id: true, name: true, cleanText: true },
+      select: { id: true, name: true, cleanText: true, sourceFolder: true },
     });
     let updated = 0;
     for (const doc of docs) {
@@ -164,12 +165,14 @@ export class PipelineService {
       const docType = inferDocType(doc.name, text);
       const program = inferProgram(doc.name, text);
       const funderName = inferFunderName(doc.name, text);
+      const corpus = inferCorpus(doc.sourceFolder, doc.name, docType);
       await this.prisma.evidenceDocument.update({
         where: { id: doc.id },
         data: {
           docType,
           program: program ?? undefined,
           funderName: funderName ?? undefined,
+          corpus,
         },
       });
       updated++;

@@ -41,3 +41,23 @@ Target communities: Economically disadvantaged children, youth facing barriers t
 
 Staff: Dedicated educators and youth fellows, available 10 AM–6 PM Tue–Sun
 `.trim();
+
+/**
+ * Program Snapshot box — inserted as preamble before first proposal section.
+ * Update when org data changes.
+ */
+export const PROGRAM_SNAPSHOT_MD = `
+## Program Snapshot
+
+| Metric | Value |
+|--------|-------|
+| **Organization** | Diksha Foundation |
+| **Founded** | 2010, Bihar, India |
+| **Legal Status** | Registered Society, 12A, 80G, FCRA, CSR-1 |
+| **Core Program** | KHEL (Knowledge Hub for Education and Learning) — Hub & Spoke model |
+| **Centers** | 3 (Patna-Rukanpura, Bihta, Sarairanjan) |
+| **Direct Beneficiaries** | ~476 students across 3 centers + ~10 govt schools |
+| **Key Streams** | Academic support, digital literacy, sports, SEE Learning, civic engagement |
+| **Geography** | Patna, Bihta, Samastipur — Bihar, India |
+| **Assessment** | Baseline–midline–endline, Khan Academy tracking, pen-and-paper tests 3x/year |
+`.trim();

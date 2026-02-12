@@ -13,7 +13,10 @@ import { ArtifactExporterService } from "./services/artifact-exporter.service";
 import { SlackClientService } from "./services/slack-client.service";
 import { CitationRepairService } from "./services/citation-repair.service";
 import { EmailNotificationService } from "../notifications/email-notification.service";
-import { DIKSHA_ORG_PROFILE } from "./prompts/org-profile";
+import { DIKSHA_ORG_PROFILE, PROGRAM_SNAPSHOT_MD } from "./prompts/org-profile";
+import { resolveCitations } from "./utils/citation-resolver";
+import { getCorpusRoute } from "./utils/corpus-router";
+import { computeRetrievalConfidence } from "./utils/retrieval-confidence";
 import {
   ProposalRunStatus,
   ProposalSectionStatus,
@@ -213,7 +216,7 @@ export class ProposalService {
         : outline.outline;
 
       const sectionGaps: Array<{ section: string; gaps: string[] }> = [];
-      const allEvidencePack: Array<{ chunkId: string; docId: string; text: string; title?: string }> = [];
+      const allEvidencePack: Array<{ chunkId: string; docId: string; text: string; title?: string; url?: string }> = [];
       const citationMap: Record<string, string> = {};
 
       // Parallel section drafting with concurrency pool (3 concurrent, configurable)
@@ -253,13 +256,16 @@ export class ProposalService {
           });
 
           // Retrieve chunks (combine results from all queries, limit to 8-12 per section)
+          const corpusRoute = getCorpusRoute(sectionName);
           const allChunks = new Map<string, EvidenceChunk & { score?: number }>();
           for (const query of queries.slice(0, 5)) {
             const chunks = await this.retrieval.retrieve(query, {
               mode: "proposal_drafting",
-              limit: 3,
+              limit: corpusRoute.limit ?? 3,
               minScore: 0.3,
               orgId: "diksha",
+              corpus: corpusRoute.corpus,
+              docTypes: corpusRoute.docTypes,
             });
             chunks.forEach((chunk) => {
               const existing = allChunks.get(chunk.id);
@@ -281,6 +287,17 @@ export class ProposalService {
           const evidenceChunks = Array.from(allChunks.values())
             .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
             .slice(0, 12);
+
+          // Retrieval confidence gate
+          const confidence = computeRetrievalConfidence(
+            evidenceChunks.map((c) => ({ score: c.score, docId: c.docId })),
+          );
+          this.logger.log(
+            `[${sectionName}] Retrieval confidence: ${confidence.level} (avg=${confidence.avgScore.toFixed(3)}, chunks=${confidence.chunkCount}, docs=${confidence.uniqueDocCount}, corpus=${corpusRoute.corpus.join(",") || "all"})`,
+          );
+          if (confidence.level === "low") {
+            this.logger.warn(`[${sectionName}] LOW retrieval confidence: ${confidence.reason}`);
+          }
 
           // Enhanced retrieval diagnostics
           const scores = evidenceChunks.map((c) => c.score ?? 0);
@@ -410,11 +427,39 @@ export class ProposalService {
           priority: "high" as const,
         }));
 
+        // Build evidence pack for citation resolution in blocked path
+        const blockedEvidencePack: Array<{ chunkId: string; docId: string; text: string; title?: string; url?: string }> = [];
+        for (const result of sectionResults) {
+          (result.evidenceChunks as Array<EvidenceChunk & { score?: number }>).forEach((c) => {
+            if (!blockedEvidencePack.find((e) => e.chunkId === c.chunkId)) {
+              blockedEvidencePack.push({
+                chunkId: c.chunkId, docId: c.docId,
+                text: c.content.substring(0, 500),
+                title: c.document.title, url: c.document.url,
+              });
+            }
+          });
+        }
+
+        // Build annotated draft with visual gate warnings + resolve citations
+        const rawBlockedDraft = this.formatBlockedProposal(
+          sectionResults,
+          sectionsToDraft.map(s => s.section),
+          placeholderHits,
+        );
+        const blockedCitationResult = resolveCitations(rawBlockedDraft, blockedEvidencePack);
+        const blockedDraftText = blockedCitationResult.resolvedText;
+
         await this.prisma.proposalRun.update({
           where: { id: run.id },
           data: {
             status: "blocked_missing_inputs",
             gaps: missingInputs as object,
+            complianceReport: {
+              blockedDraftFormatted: blockedDraftText,
+              placeholderHits,
+              citationReferences: blockedCitationResult.references,
+            } as object,
           },
         });
 
@@ -452,6 +497,7 @@ export class ProposalService {
               docId: c.docId,
               text: c.content.substring(0, 500),
               title: c.document.title,
+              url: c.document.url,
             });
           }
         });
@@ -464,7 +510,18 @@ export class ProposalService {
         message: "Running QA review...",
       });
 
-      const fullDraftText = allDraftTexts.join("\n\n");
+      // Assemble: Program Snapshot preamble + section drafts
+      const assembledSections = [PROGRAM_SNAPSHOT_MD, ...allDraftTexts];
+      const citationResult = resolveCitations(
+        assembledSections.join("\n\n"),
+        allEvidencePack,
+      );
+      const fullDraftText = citationResult.resolvedText;
+
+      this.logger.log({
+        diagnostic: "CITATION_RESOLUTION",
+        uniqueCitationsResolved: citationResult.references.length,
+      });
 
       // Build QA requirements with explicit mandatory section list
       const generatedSectionTitles = outline.outline.map((s) => s.section);
@@ -553,7 +610,11 @@ export class ProposalService {
       await this.prisma.proposalRun.update({
         where: { id: run.id },
         data: {
-          complianceReport: qaResult as object,
+          complianceReport: {
+            ...qaResult,
+            rawDraftText: citationResult.rawDraftText,
+            citationReferences: citationResult.references,
+          } as object,
           gaps: gaps as object,
           status: "qa",
         },
@@ -694,13 +755,16 @@ export class ProposalService {
     });
 
     // Retrieve chunks
+    const regenCorpusRoute = getCorpusRoute(sectionName);
     const allChunks = new Map<string, EvidenceChunk>();
     for (const query of queries.slice(0, 5)) {
       const chunks = await this.retrieval.retrieve(query, {
         mode: "proposal_drafting",
-        limit: 3,
+        limit: regenCorpusRoute.limit ?? 3,
         minScore: 0.3,
         orgId: "diksha",
+        corpus: regenCorpusRoute.corpus,
+        docTypes: regenCorpusRoute.docTypes,
       });
       chunks.forEach((chunk) => {
         if (!allChunks.has(chunk.id)) {
@@ -718,6 +782,14 @@ export class ProposalService {
     }
 
     const evidenceChunks = Array.from(allChunks.values()).slice(0, 12);
+
+    // Retrieval confidence for regeneration
+    const regenConfidence = computeRetrievalConfidence(
+      evidenceChunks.map((c) => ({ score: (c as any).score, docId: c.docId })),
+    );
+    this.logger.log(
+      `[regen:${sectionName}] Retrieval confidence: ${regenConfidence.level} (avg=${regenConfidence.avgScore.toFixed(3)}, chunks=${regenConfidence.chunkCount}, docs=${regenConfidence.uniqueDocCount})`,
+    );
 
     // Draft section with additional context
     const sectionGuidance = `${sectionOutline.target_words ? `Target words: ${sectionOutline.target_words}. ` : ""}Must answer: ${sectionOutline.must_answer.join(", ") || "N/A"}${options?.additionalContext ? `. Additional context: ${options.additionalContext}` : ""}${options?.userNotes ? `. User notes: ${options.userNotes}` : ""}`;
@@ -780,6 +852,61 @@ export class ProposalService {
       throw new NotFoundException(`ProposalRun ${runId} not found`);
     }
     return (run.gaps as unknown as ProposalGap[]) || [];
+  }
+
+  /**
+   * Format draft sections with visual warnings when placeholders are detected.
+   */
+  private formatBlockedProposal(
+    sectionResults: Array<{ index: number; draftText: string; gaps: string[]; evidenceChunks: unknown[] }>,
+    sectionNames: string[],
+    placeholderHits: Array<{ section: string; placeholder: string; field: string }>,
+  ): string {
+    const lines: string[] = [];
+
+    // Global warning header
+    lines.push("## DRAFT — DO NOT SUBMIT");
+    lines.push("");
+    lines.push("This proposal draft contains unresolved placeholders and is **not ready for submission**.");
+    lines.push("");
+    lines.push("| # | Section | Missing Field |");
+    lines.push("|---|---------|---------------|");
+    placeholderHits.forEach((hit, idx) => {
+      lines.push(`| ${idx + 1} | ${hit.section} | ${hit.field} |`);
+    });
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+
+    // Program Snapshot preamble
+    lines.push(PROGRAM_SNAPSHOT_MD);
+    lines.push("");
+
+    // Per-section output with callouts on affected sections
+    const hitsBySection = new Map<string, Array<{ placeholder: string; field: string }>>();
+    for (const hit of placeholderHits) {
+      const arr = hitsBySection.get(hit.section) || [];
+      arr.push(hit);
+      hitsBySection.set(hit.section, arr);
+    }
+
+    for (const result of sectionResults) {
+      const sectionName = sectionNames[result.index];
+      const sectionHits = hitsBySection.get(sectionName);
+
+      if (sectionHits && sectionHits.length > 0) {
+        lines.push(`> **This section contains unresolved placeholders:**`);
+        for (const hit of sectionHits) {
+          lines.push(`> - ${hit.field}`);
+        }
+        lines.push("");
+      }
+
+      lines.push(result.draftText);
+      lines.push("");
+    }
+
+    return lines.join("\n");
   }
 
   /**

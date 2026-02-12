@@ -11,6 +11,11 @@ CITATION RULES (CRITICAL):
 - Do NOT invent or modify citation tokens.
 - If evidence is insufficient, use {{MISSING: description}} placeholders.
 
+SCOPE RULE (CRITICAL):
+- Only describe programs and activities that are deliverables under THIS grant.
+- If referencing other org programs for context, label them: "Organizational context — not a deliverable under this proposal."
+- Never mix in-scope and out-of-scope programs in the same list, table, or bullet group.
+
 Output format: Markdown with headings.
 Do not invent facts or numbers.`;
 
@@ -54,14 +59,19 @@ export const SECTION_TYPE_GUIDANCE: Record<string, string> = {
 - Selection criteria (how beneficiaries are identified)
 - Vulnerability criteria (what makes them eligible)
 Do NOT reference child labour or waste picking unless explicitly part of this program.
-Use ONLY the organization's own program data for beneficiary descriptions.`,
+Use ONLY the organization's own program data for beneficiary descriptions.
+Reconcile all program components mentioned across the proposal. If a program (e.g., Empowering Futures, Poonji) is not in scope for this grant, state clearly: "Not included in this proposal scope."
+Present a single consistent beneficiary table. Do NOT present different totals in different sections.
+Cross-check: the total beneficiary count here must match numbers used in Objectives and Budget sections.`,
 
   objectives: `REQUIRED for this section:
 - 5-7 SMART objectives (Specific, Measurable, Achievable, Relevant, Time-bound)
 - Each objective must have a measurable indicator
 - Categories to cover: learning outcomes, attendance/retention, sports/physical, digital skills, life skills/agency, teacher capacity
 - Use numeric targets where evidence supports them (e.g., "improve grade-level reading by 20%")
-Do NOT list vague aspirations. Every objective needs a metric.`,
+Do NOT list vague aspirations. Every objective needs a metric.
+Avoid absolute 100% targets unless justified by evidence. Use "at least 90%" with exception logic where appropriate.
+Each objective must specify ALL of: indicator, assessment tool, baseline definition, target value, timeline.`,
 
   budget: `REQUIRED for this section:
 - 8-12 line items minimum
@@ -74,7 +84,10 @@ Do NOT list vague aspirations. Every objective needs a metric.`,
 - Contingency (5-10%)
 - Total must be plausible for the described scope
 If budget ceiling is specified in guidance, all items must sum to within that ceiling.
-Do NOT write "will be finalized later" — provide specific amounts.`,
+Do NOT write "will be finalized later" — provide specific amounts.
+Total must not exceed the grant ceiling specified in the outline guidance.
+Each line item must have a unit cost x quantity breakdown (e.g., "Fellow Teacher stipend: INR 12,000/month x 12 months x 8 fellows = INR 11,52,000").
+Cross-check: staff counts in budget must match the Team/Staffing section.`,
 
   monitoring: `REQUIRED for this section:
 - Baseline-midline-endline schedule with dates
@@ -83,7 +96,10 @@ Do NOT write "will be finalized later" — provide specific amounts.`,
 - Reporting cadence (monthly, quarterly, annual)
 - Key indicators table (indicator, data source, frequency, target)
 - Data quality assurance mechanism
-- Dashboard or reporting format`,
+- Dashboard or reporting format
+Present the M&E framework as a table with columns: Indicator | Data Source | Frequency | Baseline | Target | Responsible Staff.
+Include explicit baseline-midline-endline dates (e.g., "Baseline: Month 1, Midline: Month 6, Endline: Month 12").
+Each indicator must have a named responsible person or role, not just "project team".`,
 
   activities: `REQUIRED for this section:
 - Weekly schedule (hours/week per activity type)
@@ -99,7 +115,10 @@ Do NOT write "will be finalized later" — provide specific amounts.`,
 - Key positions: Project Lead, Center Coordinators, Fellow Teachers, M&E Officer
 - Qualifications and experience for each role
 - Staffing plan (how many per center, per school)
-Do NOT reference staff from other organizations.`,
+Do NOT reference staff from other organizations.
+Use actual staff names where known. Include brief qualifications (2-3 lines per key role).
+Specify exact Fellow Teacher count per center (e.g., "KHEL Patna: 4 Fellow Teachers").
+Do NOT use generic "experienced professional" — state years of experience and relevant qualifications.`,
 
   need: `REQUIRED for this section:
 - Problem statement grounded in Bihar-specific data

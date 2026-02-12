@@ -77,6 +77,10 @@ interface RetrievalOptions {
   minScore?: number;
   /** Tenant isolation: only retrieve docs belonging to this org (plus global docs) */
   orgId?: string;
+  /** Corpus filter: restrict to specific corpus values (e.g. ["diksha_internal", "donor_funder"]) */
+  corpus?: string[];
+  /** DocType filter: restrict to specific docType values (e.g. ["budget", "report"]) */
+  docTypes?: string[];
 }
 
 /** Raw row returned by pgvector SQL query */
@@ -203,6 +207,9 @@ export class RetrievalService {
     const overselect = Math.min(limit * 5, 200);
     const hasOrgFilter = !!options.orgId;
     const dbStart = Date.now();
+    const hasCorpusFilter = !!(options.corpus?.length);
+    const hasDocTypeFilter = !!(options.docTypes?.length);
+
     const rows = await this.prisma.$queryRawUnsafe<PgvectorRow[]>(
       `
       WITH top_vectors AS (
@@ -239,9 +246,11 @@ export class RetrievalService {
               AND fc."capabilityId" = ANY($9::text[])
           )
         )
-        AND tv.score >= $10::float
+        AND ($10::boolean IS FALSE OR ed."corpus" = ANY($11::text[]))
+        AND ($12::boolean IS FALSE OR ed."docType" = ANY($13::text[]))
+        AND tv.score >= $14::float
       ORDER BY tv.score DESC
-      LIMIT $11::int
+      LIMIT $15::int
       `,
       embeddingStr,                         // $1
       overselect,                           // $2
@@ -252,8 +261,12 @@ export class RetrievalService {
       publicSafeOnly,                       // $7
       hasCapabilityFilter ?? false,         // $8
       options.capabilities ?? [],           // $9
-      minScore,                             // $10
-      limit,                                // $11
+      hasCorpusFilter,                      // $10
+      options.corpus ?? [],                 // $11
+      hasDocTypeFilter,                     // $12
+      options.docTypes ?? [],               // $13
+      minScore,                             // $14
+      limit,                                // $15
     );
 
     const dbMs = Date.now() - dbStart;
@@ -276,6 +289,8 @@ export class RetrievalService {
       queryLength: query.length,
       mode,
       limit,
+      corpus: options.corpus ?? [],
+      docTypes: options.docTypes ?? [],
       chunksRetrieved: results.length,
       avgSimilarityScore: Math.round(avgScore * 100) / 100,
       embed_ms: embedMs,

@@ -20,6 +20,7 @@ import matter from "gray-matter";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
 import OpenAI from "openai";
+import { inferCorpus } from "../modules/evidence_ingest/corpus.constants";
 
 // Types
 type ManifestDoc = {
@@ -153,7 +154,10 @@ function generateChunkId(docId: string, chunkIndex: number): string {
 function normalizeContent(content: string): string {
   let normalized = content;
 
-  // 1. Normalize line endings to \n
+  // 1. Strip NUL bytes (PostgreSQL rejects 0x00 in TEXT columns)
+  normalized = normalized.replace(/\0/g, "");
+
+  // 2. Normalize line endings to \n
   normalized = normalized.replace(/\r\n/g, "\n");
 
   // 2. Trim trailing whitespace per line
@@ -317,6 +321,7 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
         program: doc.program,
         qualityTier: doc.qualityTier,
         qualityScore: doc.qualityScore,
+        corpus: inferCorpus(doc.sourceType, doc.title, doc.docType),
         versionKey: versionHash,
         modifiedTime: modifiedDate,
         needsProcessing: false,
@@ -335,6 +340,7 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
         program: doc.program,
         qualityTier: doc.qualityTier,
         qualityScore: doc.qualityScore,
+        corpus: inferCorpus(doc.sourceType, doc.title, doc.docType),
         versionKey: versionHash,
         needsProcessing: false,
         cleanText: normalizedContent,

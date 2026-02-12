@@ -128,6 +128,7 @@ model EvidenceDocument {
   funderName            String?
   qualityScore          Int?
   qualityTier           String?   // A | B | C | X
+  corpus                String?   // diksha_internal | theory_frameworks | donor_funder | external_evidence
   flags                 Json?     // array of needs_ocr, low_text, duplicate, etc.
   publicSafe            Boolean   @default(false) // legal/brand (gotcha 9)
   piiDetected           Boolean   @default(false)
@@ -144,6 +145,7 @@ model EvidenceDocument {
   @@index([needsProcessing])
   @@index([qualityTier])
   @@index([visibilityScope])
+  @@index([corpus])
 }
 
 model ReviewQueueEntry {
