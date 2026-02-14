@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { FundingLlmService } from "../../core_ai/funding-llm.service";
 import { PLANNER_SYSTEM_PROMPT, buildPlannerUserPrompt } from "../prompts/planner.prompt";
-import { ProposalOutline, RetrievalPlanItem } from "../proposal.types";
+import { ProposalOutline, ProposalScope, ProposalScopeCenter, ProposalScopeDeliverable, ProposalScopeMissingInput } from "../proposal.types";
 
 @Injectable()
 export class PlannerService {
@@ -122,25 +122,7 @@ export class PlannerService {
             }))
           : [],
         // Extract proposal_scope from planner output (accept alternate field names)
-        proposal_scope: rawScope ? (() => {
-          const ps = rawScope;
-          const str = (v: unknown) => v ? String(v) : "";
-          const arr = (v: unknown) => Array.isArray(v) ? v.map(String) : [];
-          const durationToGrant = (d: unknown) => {
-            if (typeof d === "number") return `${d} months`;
-            return str(d);
-          };
-          return {
-            programName: str(ps.programName || ps.title || ps.program_name || parsed.proposal_title),
-            centers: arr(ps.centers || ps.sites || ps.locations),
-            totalDirectBeneficiaries: str(ps.totalDirectBeneficiaries || ps.primary_beneficiaries || ps.direct_beneficiaries || ps.total_beneficiaries),
-            totalIndirectBeneficiaries: str(ps.totalIndirectBeneficiaries || ps.indirect_beneficiaries) || undefined,
-            geographicScope: str(ps.geographicScope || ps.geographic_focus || ps.geography || ps.location),
-            grantPeriod: str(ps.grantPeriod || ps.grant_period) || durationToGrant(ps.duration_months || ps.duration),
-            budgetCeiling: str(ps.budgetCeiling || ps.budget_ceiling || ps.budget),
-            keyDeliverables: arr(ps.keyDeliverables || ps.key_deliverables || ps.deliverables),
-          };
-        })() : undefined,
+        proposal_scope: rawScope ? this.parseProposalScope(rawScope, parsed) : undefined,
         suggested_primary_capabilities: Array.isArray(parsed.suggested_primary_capabilities)
           ? parsed.suggested_primary_capabilities as string[]
           : undefined,
@@ -149,21 +131,20 @@ export class PlannerService {
           : undefined,
       };
 
-      // Validate scope quality: if essential fields are empty, discard it
-      // (an empty scope is worse than no scope — it causes "0 centers", "0 fellows" etc.)
+      // Validate scope quality with detailed diagnostics
       if (outline.proposal_scope) {
-        const s = outline.proposal_scope;
-        const hasEssentials = s.programName && s.centers.length > 0 && s.totalDirectBeneficiaries;
-        if (!hasEssentials) {
+        const validation = this.validateScope(outline.proposal_scope, !!params.activitiesContext);
+        if (!validation.valid) {
           this.logger.warn({
-            diagnostic: "PLANNER_SCOPE_INCOMPLETE",
-            programName: s.programName || "(empty)",
-            centers: s.centers,
-            beneficiaries: s.totalDirectBeneficiaries || "(empty)",
-            budgetCeiling: s.budgetCeiling || "(empty)",
-            message: "Discarding incomplete proposal_scope — essential fields missing",
+            diagnostic: "PLANNER_SCOPE_VALIDATION_FAILED",
+            failures: validation.failures,
+            scope: outline.proposal_scope,
           });
-          outline.proposal_scope = undefined;
+          // Don't discard — patch missing_inputs instead so downstream knows what's wrong
+          outline.proposal_scope.missing_inputs = [
+            ...(outline.proposal_scope.missing_inputs || []),
+            ...validation.failures.map(f => ({ field: f.field, reason: f.reason, severity: f.severity as "low" | "medium" | "high" })),
+          ];
         }
       }
 
@@ -216,5 +197,121 @@ export class PlannerService {
         compliance_checklist: [],
       };
     }
+  }
+
+  /** Parse proposal_scope from planner JSON, handling both old and new schema formats. */
+  private parseProposalScope(ps: Record<string, unknown>, parsed: Record<string, unknown>): ProposalScope {
+    const str = (v: unknown) => (v != null && v !== "") ? String(v) : "";
+    const arr = (v: unknown) => Array.isArray(v) ? v.map(String) : [];
+
+    // Parse centers — accept array of strings OR array of objects
+    const rawCenters = ps.centers || ps.sites || ps.locations || ps.hubs;
+    let centers: ProposalScopeCenter[] = [];
+    if (Array.isArray(rawCenters)) {
+      centers = rawCenters.map((c: unknown) => {
+        if (typeof c === "string") return { name: c };
+        if (typeof c === "object" && c !== null) {
+          const obj = c as Record<string, unknown>;
+          return {
+            name: str(obj.name || obj.center || obj.site),
+            location: str(obj.location || obj.district) || null,
+            targetGroup: str(obj.targetGroup || obj.target_group) || null,
+          };
+        }
+        return { name: String(c) };
+      });
+    }
+
+    // Parse deliverables — accept array of strings OR array of objects
+    const rawDeliverables = ps.deliverables || ps.keyDeliverables || ps.key_deliverables;
+    let deliverables: ProposalScopeDeliverable[] = [];
+    if (Array.isArray(rawDeliverables)) {
+      deliverables = rawDeliverables.map((d: unknown) => {
+        if (typeof d === "string") return { name: d };
+        if (typeof d === "object" && d !== null) {
+          const obj = d as Record<string, unknown>;
+          return {
+            name: str(obj.name || obj.activity || obj.deliverable),
+            quantity: typeof obj.quantity === "number" ? obj.quantity : null,
+            unit: str(obj.unit) || null,
+            frequency: str(obj.frequency) || null,
+          };
+        }
+        return { name: String(d) };
+      });
+    }
+
+    // Parse grant period — accept string or {start, end} object or projectDurationMonths
+    const rawGrant = ps.grantPeriod || ps.grant_period || ps.duration_months || ps.duration || ps.projectDurationMonths || ps.project_duration_months;
+    let grantPeriod: string | { start?: string | null; end?: string | null } = "";
+    if (typeof rawGrant === "object" && rawGrant !== null) {
+      const g = rawGrant as Record<string, unknown>;
+      grantPeriod = { start: str(g.start) || null, end: str(g.end) || null };
+    } else if (typeof rawGrant === "number") {
+      grantPeriod = `${rawGrant} months`;
+    } else {
+      grantPeriod = str(rawGrant);
+    }
+
+    // Parse staffing
+    const rawStaffing = ps.staffing as Record<string, unknown> | undefined;
+    const staffing = rawStaffing ? {
+      totalStaff: typeof rawStaffing.totalStaff === "number" ? rawStaffing.totalStaff
+        : typeof rawStaffing.total_staff === "number" ? rawStaffing.total_staff : null,
+      keyRoles: arr(rawStaffing.keyRoles || rawStaffing.key_roles),
+    } : undefined;
+
+    // Parse missing_inputs
+    const rawMissing = ps.missing_inputs as Array<Record<string, unknown>> | undefined;
+    const missingInputs: ProposalScopeMissingInput[] = Array.isArray(rawMissing)
+      ? rawMissing.map(m => ({
+          field: str(m.field),
+          reason: str(m.reason),
+          severity: (["low", "medium", "high"].includes(str(m.severity)) ? str(m.severity) : "medium") as "low" | "medium" | "high",
+        }))
+      : [];
+
+    return {
+      programName: str(ps.programName || ps.title || ps.program_name || parsed.proposal_title),
+      centers,
+      totalDirectBeneficiaries: str(ps.totalDirectBeneficiaries || ps.primary_beneficiaries || ps.direct_beneficiaries || ps.total_beneficiaries || ps.targetBeneficiaries || ps.target_beneficiaries || ps.beneficiaries),
+      totalIndirectBeneficiaries: str(ps.totalIndirectBeneficiaries || ps.indirect_beneficiaries) || undefined,
+      geographicScope: str(ps.geographicScope || ps.geographicFocus || ps.geographic_focus || ps.geography || ps.location || ps.geographic_scope),
+      grantPeriod,
+      budgetCeiling: str(ps.budgetCeiling || ps.budget_ceiling || ps.budget),
+      deliverables,
+      staffing,
+      assumptions: arr(ps.assumptions),
+      constraints: arr(ps.constraints),
+      missing_inputs: missingInputs.length > 0 ? missingInputs : undefined,
+      // Back-compat
+      keyDeliverables: deliverables.map(d => d.name),
+    };
+  }
+
+  /** Validate scope has minimum viable content. Returns failures list. */
+  private validateScope(scope: ProposalScope, hasRegistryContext: boolean): {
+    valid: boolean;
+    failures: Array<{ field: string; reason: string; severity: string }>;
+  } {
+    const failures: Array<{ field: string; reason: string; severity: string }> = [];
+
+    if (!scope.programName) {
+      failures.push({ field: "programName", reason: "Program name is empty", severity: "high" });
+    }
+    if (scope.centers.length === 0 && hasRegistryContext) {
+      failures.push({ field: "centers", reason: "No centers listed despite activity registry containing center data", severity: "high" });
+    }
+    if (!scope.totalDirectBeneficiaries && hasRegistryContext) {
+      failures.push({ field: "totalDirectBeneficiaries", reason: "No beneficiary count despite registry context", severity: "high" });
+    }
+    if (scope.deliverables.length === 0 && hasRegistryContext) {
+      failures.push({ field: "deliverables", reason: "No deliverables listed despite activity registry containing activities with frequencies", severity: "high" });
+    }
+    if (!scope.geographicScope) {
+      failures.push({ field: "geographicScope", reason: "Geographic scope is empty", severity: "medium" });
+    }
+
+    return { valid: failures.length === 0, failures };
   }
 }

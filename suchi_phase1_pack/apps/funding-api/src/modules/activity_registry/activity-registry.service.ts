@@ -179,4 +179,89 @@ export class ActivityRegistryService {
 
     return lines.join("\n");
   }
+
+  /**
+   * Build compact activity facts JSON for section writer injection.
+   * Returns structured data the writer can directly reference.
+   */
+  async buildActivityFacts(orgId?: string): Promise<Record<string, unknown> | null> {
+    const activities = await this.prisma.programActivity.findMany({
+      where: { isActive: true, ...(orgId && { orgId }) },
+      include: {
+        instances: { orderBy: { reportDate: "desc" }, take: 3 },
+      },
+      orderBy: { programArea: "asc" },
+    });
+
+    if (activities.length === 0) return null;
+
+    // Aggregate facts
+    const allCenters = new Set<string>();
+    let totalBeneficiaries = 0;
+    const activitiesByArea: Record<string, Array<{
+      name: string;
+      frequency: string;
+      centers: string[];
+      unitCost: number | null;
+      targetGroup: string;
+    }>> = {};
+
+    // Aggregate metrics from latest instances
+    let totalEnrollment = 0;
+    let avgAttendance = 0;
+    let attendanceCount = 0;
+    let totalMeals = 0;
+    let totalSelSessions = 0;
+    let totalKaStudents = 0;
+
+    for (const act of activities) {
+      act.centers.forEach(c => allCenters.add(c));
+      if (!activitiesByArea[act.programArea]) {
+        activitiesByArea[act.programArea] = [];
+      }
+      activitiesByArea[act.programArea].push({
+        name: act.activityName,
+        frequency: act.frequency || "not specified",
+        centers: act.centers,
+        unitCost: act.unitCostINR,
+        targetGroup: act.targetGroup || "",
+      });
+
+      // Parse beneficiary count from targetGroup (e.g. "476 students ages 6-14")
+      const benefMatch = act.targetGroup?.match(/(\d+)\s*(?:students|children|youth|girls|participants)/i);
+      if (benefMatch) {
+        totalBeneficiaries = Math.max(totalBeneficiaries, parseInt(benefMatch[1], 10));
+      }
+
+      // Aggregate instance metrics
+      for (const inst of act.instances) {
+        if (inst.enrollmentTotal) totalEnrollment = Math.max(totalEnrollment, inst.enrollmentTotal);
+        if (inst.attendancePercent) { avgAttendance += inst.attendancePercent; attendanceCount++; }
+        if (inst.mealsServed) totalMeals += inst.mealsServed;
+        if (inst.selSessions) totalSelSessions += inst.selSessions;
+        if (inst.kaActiveStudents) totalKaStudents = Math.max(totalKaStudents, inst.kaActiveStudents);
+      }
+    }
+
+    return {
+      centers: [...allCenters],
+      totalDirectBeneficiaries: totalBeneficiaries || null,
+      programAreas: Object.entries(activitiesByArea).map(([area, acts]) => ({
+        area,
+        activities: acts.map(a => ({
+          name: a.name,
+          frequency: a.frequency,
+          unitCostINR: a.unitCost,
+        })),
+      })),
+      latestMetrics: {
+        enrollment: totalEnrollment || null,
+        avgAttendancePercent: attendanceCount > 0 ? Math.round(avgAttendance / attendanceCount) : null,
+        totalMealsPerFortnight: totalMeals || null,
+        selSessionsRecent: totalSelSessions || null,
+        kaActiveStudents: totalKaStudents || null,
+      },
+      staffing: activities.flatMap(a => a.staffInvolved || []).filter((v, i, arr) => arr.indexOf(v) === i),
+    };
+  }
 }

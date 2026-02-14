@@ -133,11 +133,14 @@ export class ProposalService {
 
     // Build activities context with capability mappings and latest metrics from fortnightly reports
     const activitiesContext = await this.activityRegistry.buildActivitiesContext("diksha");
+    const activityFacts = await this.activityRegistry.buildActivityFacts("diksha");
     if (activitiesContext) {
       this.logger.log({
         diagnostic: "ACTIVITIES_CONTEXT_BUILT",
         contextLength: activitiesContext.length,
         preview: activitiesContext.substring(0, 200),
+        hasActivityFacts: !!activityFacts,
+        factsCenters: activityFacts?.centers,
       });
     }
 
@@ -238,14 +241,63 @@ export class ProposalService {
       // Log proposal scope if planner produced one
       if (outline.proposal_scope) {
         this.logger.log({
-          diagnostic: "PLANNER_SCOPE",
+          diagnostic: "PLANNER_SCOPE_RAW",
           programName: outline.proposal_scope.programName,
-          centers: outline.proposal_scope.centers,
+          centersCount: outline.proposal_scope.centers.length,
+          centers: outline.proposal_scope.centers.map(c => typeof c === "string" ? c : c.name),
           beneficiaries: outline.proposal_scope.totalDirectBeneficiaries,
           geography: outline.proposal_scope.geographicScope,
           grantPeriod: outline.proposal_scope.grantPeriod,
           budgetCeiling: outline.proposal_scope.budgetCeiling,
+          deliverablesCount: outline.proposal_scope.deliverables?.length ?? 0,
+          missingInputs: outline.proposal_scope.missing_inputs?.length ?? 0,
         });
+
+        // === DETERMINISTIC REGISTRY FALLBACK ===
+        // If planner missed fields that the activity registry clearly has, fill them from registry
+        if (activityFacts) {
+          const scope = outline.proposal_scope;
+          const patched: string[] = [];
+
+          // Centers: registry has specific center names
+          const registryCenters = (activityFacts.centers as string[]) || [];
+          const scopeCenterNames = scope.centers.map(c => typeof c === "string" ? c : c.name);
+          const hasGenericCenters = scope.centers.length <= 1 || scopeCenterNames.some(n => /hub|center/i.test(n) && !/patna|bihta|sarai/i.test(n));
+          if (registryCenters.length > scope.centers.length || hasGenericCenters) {
+            scope.centers = registryCenters.map(name => ({ name }));
+            patched.push(`centers: ${registryCenters.join(", ")}`);
+          }
+
+          // Beneficiaries: registry has total count. Also override if planner gave generic text without a number.
+          const hasNumericBeneficiaries = scope.totalDirectBeneficiaries && /\d/.test(scope.totalDirectBeneficiaries);
+          if (!hasNumericBeneficiaries && activityFacts.totalDirectBeneficiaries) {
+            scope.totalDirectBeneficiaries = `${activityFacts.totalDirectBeneficiaries} students`;
+            patched.push(`beneficiaries: ${scope.totalDirectBeneficiaries}`);
+          }
+
+          // Geography: infer from center names
+          if (!scope.geographicScope && registryCenters.length > 0) {
+            // Extract location hints from center names (e.g. "KHEL Patna" → "Patna")
+            const locations = registryCenters.map(c => c.replace(/^KHEL\s*/i, "").trim()).filter(Boolean);
+            scope.geographicScope = locations.length > 0 ? `${locations.join(", ")} — Bihar, India` : "Bihar, India";
+            patched.push(`geography: ${scope.geographicScope}`);
+          }
+
+          // Staffing: registry has staff info
+          const registryStaff = activityFacts.staffing as string[] | undefined;
+          if (!scope.staffing && registryStaff?.length) {
+            scope.staffing = { totalStaff: null, keyRoles: registryStaff };
+            patched.push(`staffing: ${registryStaff.length} roles`);
+          }
+
+          if (patched.length > 0) {
+            this.logger.log({
+              diagnostic: "SCOPE_REGISTRY_FALLBACK",
+              patched,
+              message: `Patched ${patched.length} scope fields from activity registry`,
+            });
+          }
+        }
       } else if (effectiveBudgetCeiling) {
         // Planner didn't produce a valid scope, but we have a budget ceiling constraint.
         // Inject a minimal scope so section writers at least respect the ceiling.
@@ -261,6 +313,7 @@ export class ProposalService {
           geographicScope: "",
           grantPeriod: "",
           budgetCeiling: effectiveBudgetCeiling,
+          deliverables: [],
           keyDeliverables: [],
         };
       }
@@ -430,11 +483,20 @@ export class ProposalService {
             ? ` | Themes: ${funderThemes.primary.join(", ")}${funderThemes.secondary?.length ? ` + ${funderThemes.secondary.join(", ")}` : ""}`
             : "";
           const funderContext = `${funderName}${programName ? " — " + programName : ""}${themeSuffix}`;
+          // Build org context with activity facts as a compact, structured block
+          let orgCtx = orgProfileSummary;
+          if (activityFacts) {
+            orgCtx += `\n\nACTIVITY FACTS (you MUST use these wherever relevant — if you do not use them, explain why):\n${JSON.stringify(activityFacts, null, 2)}`;
+          }
+          if (activitiesContext) {
+            orgCtx += `\n\nStructured Activities Registry:\n${activitiesContext}`;
+          }
+
           const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
             sectionName,
             sectionGuidance,
             chunks: evidenceChunks,
-            orgContext: orgProfileSummary + (activitiesContext ? `\n\nStructured Activities Registry:\n${activitiesContext}` : ""),
+            orgContext: orgCtx,
             funderContext,
             proposalScope: outline.proposal_scope,
           });
@@ -512,15 +574,19 @@ export class ProposalService {
       }
       const hasCeilingBreach = budgetWarnings.some(w => w.startsWith("CEILING BREACH"));
 
-      // Hard gate: detect placeholder leakage ({{MISSING:}}, {{VERIFY:}}, {{INSERT:}})
-      const placeholderHits: Array<{ section: string; placeholder: string; field: string }> = [];
+      // === SPLIT PLACEHOLDER COUNTING ===
+      // Hard missing: {{MISSING:}}, {{VERIFY:}}, {{INSERT:}} — these block submission
+      // Soft numeric flags: [UNVERIFIED_NUMERIC_CLAIM] — these warn but don't block
+      const hardPlaceholders: Array<{ section: string; placeholder: string; field: string }> = [];
+      const emptyTableCells: Array<{ section: string; placeholder: string; field: string }> = [];
+
       for (const result of sectionResults) {
         const sectionName = sectionsToDraft[result.index].section;
 
-        // Detect explicit placeholders
+        // Detect explicit hard placeholders
         const matches = result.draftText.matchAll(/\{\{(?:MISSING|VERIFY|INSERT):\s*([^}]+)\}\}/gi);
         for (const m of matches) {
-          placeholderHits.push({
+          hardPlaceholders.push({
             section: sectionName,
             placeholder: m[0],
             field: m[1].trim(),
@@ -530,13 +596,12 @@ export class ProposalService {
         // Detect empty table cells (blank, "-", "TBD", "N/A" in data rows)
         const tableRows = result.draftText.match(/^\|.+\|$/gm) || [];
         for (const row of tableRows) {
-          // Skip header separator rows (|---|---|)
           if (/^\|[\s\-:]+\|$/.test(row)) continue;
-          const cells = row.split("|").slice(1, -1); // trim outer pipes
+          const cells = row.split("|").slice(1, -1);
           cells.forEach((cell, cellIdx) => {
             const trimmed = cell.trim();
             if (trimmed === "" || trimmed === "-" || /^(TBD|N\/A|tbd|n\/a)$/i.test(trimmed)) {
-              placeholderHits.push({
+              emptyTableCells.push({
                 section: sectionName,
                 placeholder: `Empty table cell (col ${cellIdx + 1})`,
                 field: `Empty cell in table row: ${row.substring(0, 80)}`,
@@ -546,11 +611,32 @@ export class ProposalService {
         }
       }
 
+      // Combine hard placeholders + empty table cells for the blocking gate
+      const placeholderHits = [...hardPlaceholders, ...emptyTableCells];
+
+      // Count soft [UNVERIFIED_NUMERIC_CLAIM] flags (added by governance guard later, but also pre-existing)
+      // These are NON-BLOCKING — just a warning
+      let softNumericFlagCount = 0;
+      for (const result of sectionResults) {
+        const softMatches = result.draftText.match(/\[UNVERIFIED_NUMERIC_CLAIM[^\]]*\]/gi);
+        softNumericFlagCount += softMatches?.length ?? 0;
+      }
+
+      this.logger.log({
+        diagnostic: "PLACEHOLDER_SPLIT",
+        hardMissing: hardPlaceholders.length,
+        emptyTableCells: emptyTableCells.length,
+        softNumericFlags: softNumericFlagCount,
+        totalBlocking: placeholderHits.length,
+        hasCeilingBreach,
+      });
+
       if (placeholderHits.length > 0 || hasCeilingBreach) {
         if (placeholderHits.length > 0) {
           this.logger.warn({
             gate: "PLACEHOLDER_HARD_GATE",
-            placeholderCount: placeholderHits.length,
+            hardMissing: hardPlaceholders.length,
+            emptyTableCells: emptyTableCells.length,
             sections: [...new Set(placeholderHits.map(h => h.section))],
             placeholders: placeholderHits.slice(0, 20),
           });
@@ -607,6 +693,9 @@ export class ProposalService {
             complianceReport: {
               blockedDraftFormatted: blockedDraftText,
               placeholderHits,
+              hardMissingCount: hardPlaceholders.length,
+              emptyTableCellCount: emptyTableCells.length,
+              softNumericFlagCount,
               budgetWarnings,
               citationReferences: blockedCitationResult.references,
             } as object,
@@ -1110,23 +1199,53 @@ export class ProposalService {
 
     const text = budgetResult.draftText;
 
-    // Extract all INR amounts: "INR 1,152,000" or "INR 45,00,000" or "**INR 4,500,000**"
+    // Strategy 1: Extract line items from markdown tables (most reliable)
+    const tableLineItems = this.extractBudgetTableItems(text);
+
+    // Strategy 2: Extract all inline INR amounts as fallback
     const amountMatches = [...text.matchAll(/INR\s*([\d,]+)/gi)];
-    const amounts = amountMatches.map(m => ({
+    const allAmounts = amountMatches.map(m => ({
       raw: m[0],
       value: parseInt(m[1].replace(/,/g, ""), 10),
-    })).filter(a => !isNaN(a.value));
+    })).filter(a => !isNaN(a.value) && a.value > 0);
 
-    if (amounts.length < 3) return warnings;
+    // Determine line item sum and stated total
+    let lineItemSum: number;
+    let statedTotal: number;
 
-    const largest = Math.max(...amounts.map(a => a.value));
-    const lineItems = amounts.filter(a => a.value < largest * 0.5);
-    const lineItemSum = lineItems.reduce((s, a) => s + a.value, 0);
+    if (tableLineItems.length >= 3) {
+      // Table-based extraction: last row with "total" in it is the stated total
+      const totalRow = tableLineItems.find(item => /total/i.test(item.name));
+      const nonTotalItems = tableLineItems.filter(item => !/total/i.test(item.name));
+      lineItemSum = nonTotalItems.reduce((s, item) => s + item.amount, 0);
+      statedTotal = totalRow?.amount ?? lineItemSum;
+    } else if (allAmounts.length >= 3) {
+      // Fallback: largest amount is the stated total, rest are line items
+      const largest = Math.max(...allAmounts.map(a => a.value));
+      const lineItems = allAmounts.filter(a => a.value < largest * 0.5);
+      lineItemSum = lineItems.reduce((s, a) => s + a.value, 0);
+      statedTotal = largest;
+    } else {
+      return warnings;
+    }
 
-    if (Math.abs(lineItemSum - largest) > largest * 0.05) {
+    // Check: line items vs stated total
+    if (statedTotal > 0 && Math.abs(lineItemSum - statedTotal) > statedTotal * 0.01) {
       warnings.push(
-        `Line items sum to INR ${lineItemSum.toLocaleString("en-IN")} but stated total is INR ${largest.toLocaleString("en-IN")} (diff: INR ${Math.abs(lineItemSum - largest).toLocaleString("en-IN")})`,
+        `Line items sum to INR ${lineItemSum.toLocaleString("en-IN")} but stated total is INR ${statedTotal.toLocaleString("en-IN")} (diff: INR ${Math.abs(lineItemSum - statedTotal).toLocaleString("en-IN")})`,
       );
+
+      // AUTO-REPAIR: Replace the stated total with the computed sum
+      const computedTotal = lineItemSum;
+      const computedFormatted = `INR ${computedTotal.toLocaleString("en-IN")}`;
+
+      // Find the line with "total" and the wrong amount, replace it
+      const totalLinePattern = /(total[^|]*\|[^|]*?)INR\s*[\d,]+/gi;
+      const repaired = budgetResult.draftText.replace(totalLinePattern, `$1${computedFormatted}`);
+      if (repaired !== budgetResult.draftText) {
+        budgetResult.draftText = repaired;
+        warnings.push(`AUTO-REPAIRED: Total replaced with computed sum ${computedFormatted}`);
+      }
     }
 
     // Check for multiple different "total" amounts
@@ -1149,13 +1268,49 @@ export class ProposalService {
     }
 
     // Check against grant ceiling (hard constraint)
-    if (ceilingINR && ceilingINR > 0 && largest > ceilingINR) {
+    const effectiveTotal = lineItemSum || statedTotal;
+    if (ceilingINR && ceilingINR > 0 && effectiveTotal > ceilingINR) {
       warnings.push(
-        `CEILING BREACH: Proposed budget INR ${largest.toLocaleString("en-IN")} exceeds grant ceiling INR ${ceilingINR.toLocaleString("en-IN")} by INR ${(largest - ceilingINR).toLocaleString("en-IN")}`,
+        `CEILING BREACH: Proposed budget INR ${effectiveTotal.toLocaleString("en-IN")} exceeds grant ceiling INR ${ceilingINR.toLocaleString("en-IN")} by INR ${(effectiveTotal - ceilingINR).toLocaleString("en-IN")}`,
       );
     }
 
     return warnings;
+  }
+
+  /**
+   * Extract budget line items from markdown tables.
+   * Looks for rows with INR amounts in the last numeric column.
+   */
+  private extractBudgetTableItems(text: string): Array<{ name: string; amount: number }> {
+    const items: Array<{ name: string; amount: number }> = [];
+    const tableRows = text.match(/^\|.+\|$/gm) || [];
+
+    for (const row of tableRows) {
+      // Skip header separator rows
+      if (/^\|[\s\-:]+\|$/.test(row)) continue;
+
+      const cells = row.split("|").slice(1, -1).map(c => c.trim());
+      if (cells.length < 2) continue;
+
+      // Find the cell with the largest INR amount (typically the total for that row)
+      let maxAmount = 0;
+      let name = cells[0].replace(/\*\*/g, "").trim();
+
+      for (const cell of cells) {
+        const amountMatch = cell.match(/(?:INR\s*)?(\d[\d,]*)/);
+        if (amountMatch) {
+          const val = parseInt(amountMatch[1].replace(/,/g, ""), 10);
+          if (val > maxAmount) maxAmount = val;
+        }
+      }
+
+      if (maxAmount > 0 && name) {
+        items.push({ name, amount: maxAmount });
+      }
+    }
+
+    return items;
   }
 
   /**

@@ -4,13 +4,26 @@
  * Placeholders: {{RFP_TEXT}}, {{ORG_PROFILE_SUMMARY}}, {{USER_OVERRIDES}}, {{CAPABILITY_CONTEXT}}, {{FUNDER_THEMES}}, {{ACTIVITIES_CONTEXT}}
  */
 
-export const PLANNER_SYSTEM_PROMPT = `You are the Proposal Lead. Your job is to produce a compliant outline and a retrieval plan.
-When MANDATORY SECTIONS are provided by the RFP, you MUST include every one of them in your outline. Do not rename or merge mandatory sections — use the exact titles given. You may add supplementary sections if appropriate.
-When capability context is provided, align sections to those capabilities (Nussbaum C1–C10). Map Need/ToC/M&E sections to the relevant capability codes so retrieval and drafting can use capability-aligned evidence.
-When funder program themes are provided, the outline MUST demonstrate alignment — at least one section should directly address each primary theme. Map the organization's strongest programs and activities to those themes. For example, if the funder themes include "sports", emphasize the organization's sports programming (football, volleyball, tournaments) as a core vehicle for holistic education.
-When a budget ceiling is provided in constraints, the proposal_scope.budgetCeiling MUST reflect it exactly, and all budget line items in the outline must be designed to fit within that ceiling. Do NOT plan a budget that exceeds the ceiling.
-When a structured activities registry is provided, use it to ground your outline in specific, costed activities — prefer referencing real program data (frequencies, unit costs, outcomes, indicators) over generic descriptions.
-Output must be valid JSON only.`;
+export const PLANNER_SYSTEM_PROMPT = `You are the Proposal Planner. Output MUST be valid JSON only.
+
+You MUST produce TWO required objects:
+1) proposal_scope (REQUIRED — MUST be fully populated)
+2) outline (REQUIRED)
+
+PROPOSAL SCOPE RULES (CRITICAL — DO NOT SKIP):
+- proposal_scope MUST be fully populated using the Activity Registry context and RFP.
+- If a value exists in the Activity Registry, you MUST use it verbatim. Do NOT paraphrase or round numbers.
+- If a value is not available from any source, set the field to null and add an entry to missing_inputs.
+- If you output empty strings ("") or empty arrays ([]) for fields that ARE available in the registry, it is a FAILURE.
+- programName MUST NOT be empty if the org profile or registry names a program.
+- centers MUST NOT be empty if the registry lists centers/sites.
+- deliverables MUST NOT be empty if the registry lists activities with frequencies.
+
+MANDATORY SECTIONS: When provided by the RFP, include every one in your outline with exact titles. Do not rename or merge.
+CAPABILITY ALIGNMENT: When capability context is provided, align sections to Nussbaum C1–C10.
+FUNDER THEMES: The outline MUST address each primary funder theme. Map the organization's strongest programs to those themes.
+BUDGET CEILING: proposal_scope.budgetCeiling MUST match the constraint exactly. All line items must fit within it.
+ACTIVITIES REGISTRY: Use it to ground the outline in specific, costed activities — prefer real program data (frequencies, unit costs, outcomes, indicators) over generic descriptions. Extract hours/week, sessions/week, device ratios, cohort sizes, and staff counts into deliverables.`;
 
 export const PLANNER_USER_TEMPLATE = `RFP Text:
 {{RFP_TEXT}}
@@ -27,14 +40,18 @@ Constraints:
 Produce valid JSON in this exact schema (no other text):
 {
   "proposal_scope": {
-    "programName": "string — the single program being proposed",
-    "centers": ["list of center/site names"],
-    "totalDirectBeneficiaries": "string — single canonical count",
-    "totalIndirectBeneficiaries": "string — optional",
+    "programName": "string — REQUIRED, the single program being proposed (from registry or org profile)",
+    "grantPeriod": {"start": "YYYY-MM-DD or null", "end": "YYYY-MM-DD or null"},
+    "centers": [{"name": "string", "location": "string or null", "targetGroup": "string or null"}],
+    "totalDirectBeneficiaries": "string — single canonical count from registry",
+    "totalIndirectBeneficiaries": "string or null",
     "geographicScope": "string — districts/states",
-    "grantPeriod": "string — start to end",
     "budgetCeiling": "string — MUST match the budget ceiling from constraints if provided",
-    "keyDeliverables": ["list of 4-6 core deliverables"]
+    "deliverables": [{"name": "string — activity name", "quantity": "number or null", "unit": "string or null (e.g. sessions, hours)", "frequency": "string or null (e.g. 3x/week)"}],
+    "staffing": {"totalStaff": "number or null", "keyRoles": ["string"]},
+    "assumptions": ["string — key planning assumptions"],
+    "constraints": ["string — known constraints or limitations"],
+    "missing_inputs": [{"field": "string — which field is missing", "reason": "string", "severity": "low|medium|high"}]
   },
   "outline": [
     { "section": "string", "target_words": number, "must_answer": ["string"], "capability_focus": ["C1"] }
@@ -53,7 +70,12 @@ Produce valid JSON in this exact schema (no other text):
   "suggested_primary_capabilities": ["string"],
   "suggested_secondary_capabilities": ["string"]
 }
-Rules: Use capability codes C1–C10 only (e.g. C1=Life, C2=Bodily Health, C3=Bodily Integrity, C4=Senses/Thought, C5=Emotions, C6=Practical Reason, C7=Affiliation, C8=Other Species, C9=Play, C10=Control over Environment). Include capability_focus in outline and retrieval_plan items where the section clearly addresses a capability. If capability context was provided, use it for suggested_primary/secondary; otherwise infer from RFP and org context. suggested_* arrays may be empty if not applicable.`;
+Rules:
+- proposal_scope.programName MUST NOT be empty. proposal_scope.centers MUST NOT be empty if registry lists centers. proposal_scope.deliverables MUST NOT be empty if registry lists activities.
+- If the registry provides hours/week, sessions/week, device ratios, cohort sizes — put them in deliverables.
+- Use capability codes C1–C10 only (C1=Life, C2=Bodily Health, C3=Bodily Integrity, C4=Senses/Thought, C5=Emotions, C6=Practical Reason, C7=Affiliation, C8=Other Species, C9=Play, C10=Control over Environment).
+- Include capability_focus in outline and retrieval_plan where applicable.
+- suggested_* arrays may be empty if not applicable.`;
 
 export function buildPlannerUserPrompt(params: {
   rfpText: string;

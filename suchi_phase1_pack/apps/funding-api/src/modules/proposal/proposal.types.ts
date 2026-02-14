@@ -39,15 +39,41 @@ export interface ComplianceChecklistItem {
   status: string;
 }
 
+export interface ProposalScopeCenter {
+  name: string;
+  location?: string | null;
+  targetGroup?: string | null;
+}
+
+export interface ProposalScopeDeliverable {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  frequency?: string | null;
+}
+
+export interface ProposalScopeMissingInput {
+  field: string;
+  reason: string;
+  severity: "low" | "medium" | "high";
+}
+
 export interface ProposalScope {
   programName: string;
-  centers: string[];
+  centers: ProposalScopeCenter[];
   totalDirectBeneficiaries: string;
   totalIndirectBeneficiaries?: string;
   geographicScope: string;
-  grantPeriod: string;
+  grantPeriod: string | { start?: string | null; end?: string | null };
   budgetCeiling?: string;
-  keyDeliverables: string[];
+  deliverables: ProposalScopeDeliverable[];
+  staffing?: { totalStaff?: number | null; keyRoles?: string[] };
+  assumptions?: string[];
+  constraints?: string[];
+  missing_inputs?: ProposalScopeMissingInput[];
+
+  /** @deprecated Use deliverables instead */
+  keyDeliverables?: string[];
 }
 
 export interface ProposalOutline {

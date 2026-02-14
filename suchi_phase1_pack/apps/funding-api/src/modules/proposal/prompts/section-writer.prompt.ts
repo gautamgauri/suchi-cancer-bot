@@ -46,16 +46,7 @@ export function buildSectionWriterUserPrompt(params: {
   funderContext?: string;
   sectionTypeRequirements?: string;
   orgContext?: string;
-  proposalScope?: {
-    programName: string;
-    centers: string[];
-    totalDirectBeneficiaries: string;
-    totalIndirectBeneficiaries?: string;
-    geographicScope: string;
-    grantPeriod: string;
-    budgetCeiling?: string;
-    keyDeliverables: string[];
-  };
+  proposalScope?: import("../proposal.types").ProposalScope;
 }): string {
   let scopeBlock = "";
   if (params.proposalScope) {
@@ -63,13 +54,35 @@ export function buildSectionWriterUserPrompt(params: {
     // Only render non-empty fields to avoid misleading the LLM with "0 centers" etc.
     const lines: string[] = [];
     if (s.programName) lines.push(`- Program: ${s.programName}`);
-    if (s.centers.length > 0) lines.push(`- Centers: ${s.centers.join(", ")} (${s.centers.length} centers)`);
+    if (s.centers.length > 0) {
+      const centerNames = s.centers.map(c => typeof c === "string" ? c : c.name).filter(Boolean);
+      lines.push(`- Centers: ${centerNames.join(", ")} (${centerNames.length} centers)`);
+    }
     if (s.totalDirectBeneficiaries) lines.push(`- Direct beneficiaries: ${s.totalDirectBeneficiaries}`);
     if (s.totalIndirectBeneficiaries) lines.push(`- Indirect beneficiaries: ${s.totalIndirectBeneficiaries}`);
     if (s.geographicScope) lines.push(`- Geography: ${s.geographicScope}`);
-    if (s.grantPeriod) lines.push(`- Grant period: ${s.grantPeriod}`);
+    if (s.grantPeriod) {
+      if (typeof s.grantPeriod === "string") {
+        lines.push(`- Grant period: ${s.grantPeriod}`);
+      } else if (s.grantPeriod.start || s.grantPeriod.end) {
+        lines.push(`- Grant period: ${s.grantPeriod.start || "TBD"} to ${s.grantPeriod.end || "TBD"}`);
+      }
+    }
     if (s.budgetCeiling) lines.push(`- Budget ceiling: ${s.budgetCeiling}`);
-    if (s.keyDeliverables.length > 0) lines.push(`- Key deliverables: ${s.keyDeliverables.join(", ")}`);
+    if (s.deliverables && s.deliverables.length > 0) {
+      lines.push(`- Deliverables:`);
+      for (const d of s.deliverables) {
+        const parts = [d.name];
+        if (d.frequency) parts.push(d.frequency);
+        if (d.quantity && d.unit) parts.push(`${d.quantity} ${d.unit}`);
+        lines.push(`  * ${parts.join(" — ")}`);
+      }
+    } else if (s.keyDeliverables && s.keyDeliverables.length > 0) {
+      lines.push(`- Key deliverables: ${s.keyDeliverables.join(", ")}`);
+    }
+    if (s.staffing?.keyRoles?.length) {
+      lines.push(`- Staff: ${s.staffing.totalStaff ? `${s.staffing.totalStaff} total — ` : ""}${s.staffing.keyRoles.join(", ")}`);
+    }
     if (lines.length > 0) {
       scopeBlock = `\nCANONICAL SCOPE (all sections MUST use these exact numbers):\n${lines.join("\n")}\n`;
     }
@@ -173,6 +186,45 @@ Do NOT use generic "experienced professional" — state years of experience and 
 - How the proposed intervention addresses the gap
 - Reference to national/state policies or frameworks (NEP 2020, SDGs)
 PARTNERSHIP CLAIMS: Do NOT claim formal government partnerships, MoUs, or integration into government systems unless evidence explicitly confirms them. Use careful language: "collaborates with nearby government schools" or "supports FLN goals" rather than "delivers within the public system."`,
+
+  results: `REQUIRED for this section:
+- 5-8 expected outcomes organized as: short-term (within 6 months) and intermediate (within 12 months)
+- Each outcome MUST reference at least ONE Activity Fact (e.g., sessions/week, hours/week, device ratio, enrollment, attendance %)
+- Use a table with columns: Outcome | Indicator | Activity Link | Timeline | Target
+- Short-term outcomes: attendance improvement, enrollment stabilization, baseline assessments completed, initial sports participation
+- Intermediate outcomes: learning level improvement, digital literacy gains, life skills behavior change, community engagement
+- At least 3 outcomes must cite specific Activity Facts data (e.g., "SEL sessions: 2x/week → expected 15% improvement in emotional regulation scores")
+- Do NOT leave this section empty. If evidence is thin, use Activity Facts + org context to construct plausible outcomes.`,
+
+  communication: `REQUIRED for this section:
+- 3 audiences: funder, community, internal team
+- 2 channels per audience (minimum 6 total tactics)
+- Frequency for each channel (monthly, quarterly, etc.)
+- At least 1 item must tie to the Activity Registry cadence (e.g., "Fortnightly progress reports aligned to existing data collection cycle")
+Audience-channel matrix:
+1. FUNDER: (a) Quarterly narrative + financial reports, (b) Annual impact report with photos/case studies
+2. COMMUNITY: (a) Monthly parent meetings/PTMs (tie to PTM data in registry), (b) Community events and open houses (tie to events data in registry)
+3. INTERNAL: (a) Fortnightly team review meetings (tie to fortnightly reporting cycle), (b) Monthly M&E dashboard review
+Include a simple table: Audience | Channel | Frequency | Content | Responsible Person
+Do NOT leave this section empty — every proposal needs a communication plan.`,
+
+  sustainability: `REQUIRED for this section:
+- Financial sustainability plan (post-grant funding sources)
+- Programmatic sustainability (capacity built within communities, trained staff retention)
+- Institutional sustainability (systems, processes, local partnerships that persist)
+- Phased handover plan (if applicable)
+- At least 3 concrete sustainability mechanisms (not just "will seek funding")
+Do NOT leave this section empty. Use org context to describe existing sustainability practices.`,
+
+  experience: `REQUIRED for this section:
+- Years of operation in the project location
+- Specific programs delivered and their outcomes
+- Beneficiary numbers served historically (cite Activity Facts if available)
+- Key achievements and milestones
+- Relevant partnerships and collaborations
+- Staff expertise and capacity
+Present as a narrative with concrete numbers, not vague claims.
+Use Activity Facts (enrollment, attendance, meals, etc.) to demonstrate track record.`,
 };
 
 export function getSectionTypeGuidance(sectionName: string): string | null {
@@ -183,6 +235,10 @@ export function getSectionTypeGuidance(sectionName: string): string | null {
   if (lower.includes("monitor") || lower.includes("evaluat") || lower.includes("m&e") || lower.includes("m & e")) return SECTION_TYPE_GUIDANCE.monitoring;
   if (lower.includes("activit") || lower.includes("implementation") || lower.includes("methodology")) return SECTION_TYPE_GUIDANCE.activities;
   if (lower.includes("team") || lower.includes("staff") || lower.includes("personnel") || lower.includes("core team")) return SECTION_TYPE_GUIDANCE.team;
-  if (lower.includes("need") || lower.includes("problem") || lower.includes("rationale") || lower.includes("context")) return SECTION_TYPE_GUIDANCE.need;
+  if (lower.includes("need") || lower.includes("problem") || lower.includes("rationale") || lower.includes("context") || lower.includes("background")) return SECTION_TYPE_GUIDANCE.need;
+  if (lower.includes("result") || lower.includes("outcome") || lower.includes("impact") || lower.includes("expected")) return SECTION_TYPE_GUIDANCE.results;
+  if (lower.includes("communicat") || lower.includes("disseminat") || lower.includes("stakeholder engag")) return SECTION_TYPE_GUIDANCE.communication;
+  if (lower.includes("sustainab") || lower.includes("exit") || lower.includes("scale")) return SECTION_TYPE_GUIDANCE.sustainability;
+  if (lower.includes("experience") || lower.includes("track record") || lower.includes("past work")) return SECTION_TYPE_GUIDANCE.experience;
   return null;
 }
