@@ -10,7 +10,7 @@ Legal entity: Society (Reg. S/RS/SW/0019/2010), 12A, 80G, FCRA, CSR-1 registered
 Founded: 2010, Bihar, India
 Website: www.dikshafoundation.org
 
-Mission: Creating inclusive and vibrant learning spaces for children, youth, and women from marginalized backgrounds.
+Mission: Holistic education and life skills for children and youth from marginalized backgrounds — creating inclusive learning spaces that combine academic support, digital literacy, sports, social-emotional learning (SEE Learning), and civic engagement through the KHEL Hub & Spoke model and allied programmes (Teaching Fellowship, Empowering Futures). Not limited to digital literacy or youth employment alone; emphasis on whole-child development and agency.
 
 Programs:
 1. KHEL (Knowledge Hub for Education and Learning) — Hub & Spoke model

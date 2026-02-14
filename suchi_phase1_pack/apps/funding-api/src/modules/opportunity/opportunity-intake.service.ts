@@ -124,8 +124,30 @@ export class OpportunityIntakeService {
           const existingEntry = existingOpp.pipelineEntryId
             ? await tx.pipelineEntry.findUnique({ where: { id: existingOpp.pipelineEntryId } })
             : null;
+          await tx.processedEmail.update({
+            where: { messageId: parsed.messageId },
+            data: { opportunityId: existingOpp.opportunityId },
+          });
           return {
             created: existingOpp,
+            entry: existingEntry ?? { id: "existing" },
+          };
+        }
+
+        // Dedupe across different sources/messages by deterministic opportunityId
+        const existingByOpportunityId = await tx.opportunity.findUnique({
+          where: { opportunityId },
+        });
+        if (existingByOpportunityId) {
+          const existingEntry = existingByOpportunityId.pipelineEntryId
+            ? await tx.pipelineEntry.findUnique({ where: { id: existingByOpportunityId.pipelineEntryId } })
+            : null;
+          await tx.processedEmail.update({
+            where: { messageId: parsed.messageId },
+            data: { opportunityId: existingByOpportunityId.opportunityId },
+          });
+          return {
+            created: existingByOpportunityId,
             entry: existingEntry ?? { id: "existing" },
           };
         }

@@ -2,6 +2,9 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
 import { DraftService } from "./draft.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
+import { SourceRegistryService } from "../source_registry/source-registry.service";
+import { EmailNotificationService } from "../notifications/email-notification.service";
+import { GovernanceDeliveryGuard } from "../notifications/governance-delivery.guard";
 
 describe("DraftService", () => {
   let draftService: DraftService;
@@ -18,6 +21,26 @@ describe("DraftService", () => {
     }),
   };
 
+  const mockSourceRegistryService = {
+    upsertFromEvidence: jest.fn().mockResolvedValue(null),
+    getByDocId: jest.fn().mockResolvedValue(null),
+    getByDocIds: jest.fn().mockResolvedValue([]),
+    setSnapshotUrl: jest.fn().mockResolvedValue(null),
+  };
+
+  const mockEmailNotificationService = {
+    sendGeneratedContent: jest.fn().mockResolvedValue({ sent: false, blocked: true }),
+  };
+
+  const mockGovernanceGuard = {
+    enforceNumericClaimDiscipline: jest.fn((text: string) => ({
+      text,
+      flaggedCount: 0,
+      flaggedLines: [],
+    })),
+    logAudit: jest.fn(),
+  };
+
   describe("empty chunks -> MISSING_EVIDENCE + checklist (real behavior)", () => {
     beforeEach(async () => {
       const module: TestingModule = await Test.createTestingModule({
@@ -25,6 +48,9 @@ describe("DraftService", () => {
           DraftService,
           FundingLlmService,
           { provide: ConfigService, useValue: mockConfigService },
+          { provide: SourceRegistryService, useValue: mockSourceRegistryService },
+          { provide: EmailNotificationService, useValue: mockEmailNotificationService },
+          { provide: GovernanceDeliveryGuard, useValue: mockGovernanceGuard },
         ],
       }).compile();
 
@@ -57,6 +83,9 @@ describe("DraftService", () => {
               generateWithCitations: jest.fn().mockResolvedValue(mockLlmResponse),
             },
           },
+          { provide: SourceRegistryService, useValue: mockSourceRegistryService },
+          { provide: EmailNotificationService, useValue: mockEmailNotificationService },
+          { provide: GovernanceDeliveryGuard, useValue: mockGovernanceGuard },
         ],
       }).compile();
 
@@ -90,6 +119,9 @@ describe("DraftService", () => {
               generateWithCitations: jest.fn().mockResolvedValue(mockEmailText),
             },
           },
+          { provide: SourceRegistryService, useValue: mockSourceRegistryService },
+          { provide: EmailNotificationService, useValue: mockEmailNotificationService },
+          { provide: GovernanceDeliveryGuard, useValue: mockGovernanceGuard },
         ],
       }).compile();
 
@@ -132,6 +164,9 @@ describe("DraftService", () => {
               refineDraft: jest.fn().mockResolvedValue(mockRefined),
             },
           },
+          { provide: SourceRegistryService, useValue: mockSourceRegistryService },
+          { provide: EmailNotificationService, useValue: mockEmailNotificationService },
+          { provide: GovernanceDeliveryGuard, useValue: mockGovernanceGuard },
         ],
       }).compile();
 

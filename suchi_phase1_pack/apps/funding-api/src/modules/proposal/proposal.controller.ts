@@ -25,7 +25,7 @@ export class ProposalController {
     if (!body?.opportunityId?.trim()) {
       throw new BadRequestException("opportunityId is required");
     }
-    return this.proposalService.generateProposal(body.opportunityId.trim(), body.options);
+    return this.proposalService.generateProposal(body.opportunityId.trim(), body.options, body.approval);
   }
 
   /**

@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import { OpportunityService } from "./opportunity.service";
 import { OpportunityIntakeService } from "./opportunity-intake.service";
+import { OpportunityFitScoreService } from "./opportunity-fit-score.service";
 import { CreateOpportunityDto } from "./opportunity.dto";
 import { UpdateOpportunityDto } from "./opportunity.dto";
 
@@ -22,6 +23,7 @@ export class OpportunityController {
   constructor(
     private readonly opportunityService: OpportunityService,
     private readonly intakeService: OpportunityIntakeService,
+    private readonly fitScoreService: OpportunityFitScoreService,
   ) {}
 
   @Get()
@@ -45,6 +47,34 @@ export class OpportunityController {
       throw new NotFoundException(`Opportunity ${opportunityId} not found`);
     }
     return record;
+  }
+
+  /**
+   * Get fit score, 3–5 reason bullets, and missing info for an opportunity (by DB id or opportunityId).
+   * Query: refresh=true to recompute; persist=true to save back to opportunity.
+   */
+  @Get("by-opportunity-id/:opportunityId/fit-score")
+  async getFitScoreByOpportunityId(
+    @Param("opportunityId") opportunityId: string,
+    @Query("refresh") refresh?: string,
+    @Query("persist") persist?: string,
+  ) {
+    return this.fitScoreService.getFitScore(opportunityId, {
+      refresh: refresh === "true" || refresh === "1",
+      persist: persist === "true" || persist === "1",
+    });
+  }
+
+  @Get(":id/fit-score")
+  async getFitScoreById(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("refresh") refresh?: string,
+    @Query("persist") persist?: string,
+  ) {
+    return this.fitScoreService.getFitScore(id, {
+      refresh: refresh === "true" || refresh === "1",
+      persist: persist === "true" || persist === "1",
+    });
   }
 
   @Get(":id")

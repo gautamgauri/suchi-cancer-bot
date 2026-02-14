@@ -6,6 +6,10 @@ export type PipelineStage =
   | "won"
   | "lost";
 
+export type FundingLane = "DOMESTIC_80G" | "CSR" | "FCRA";
+
+export const FUNDING_LANES: FundingLane[] = ["DOMESTIC_80G", "CSR", "FCRA"];
+
 export interface PipelineEntry {
   id?: string;
   orgName: string;
@@ -24,6 +28,38 @@ export interface PipelineEntry {
   deadline?: string;
   submissionEmail?: string;
   driveFolderUrl?: string;
+  fundingLane?: FundingLane;
+  complianceRiskFlag?: string;
+  bankRouteHint?: string;
+  foreignSourceHint?: boolean;
+  csr1Status?: string;
+  csr1Number?: string;
+  grantAgreementStatus?: string;
+  reportingCadence?: string;
+  ucDueDate?: string;
+  impactReportDueDate?: string;
+}
+
+export interface NextBestActionSuggestion {
+  title: string;
+  reason: string;
+  priority: "high" | "medium" | "low";
+  targetStage?: PipelineStage;
+}
+
+export interface NextBestActionResult {
+  entryId: string;
+  orgName: string;
+  stage: PipelineStage;
+  generatedAt: string;
+  suggestions: NextBestActionSuggestion[];
+}
+
+export interface WriteGuardBlockedResult {
+  blocked: true;
+  reason: string;
+  approvalRequired: true;
+  preview: Record<string, unknown>;
 }
 
 export type ActivityType =

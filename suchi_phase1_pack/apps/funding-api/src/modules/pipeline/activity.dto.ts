@@ -1,4 +1,6 @@
-import { IsString, IsOptional, IsIn } from "class-validator";
+import { IsString, IsOptional, IsIn, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+import { ApprovalContextDto } from "./pipeline-entry.dto";
 
 const ACTIVITY_TYPES = ["email_sent", "call", "meeting", "proposal_submitted", "note"] as const;
 
@@ -26,4 +28,9 @@ export class LogActivityDto {
   @IsOptional()
   @IsString()
   createdBy?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalContextDto)
+  approval?: ApprovalContextDto;
 }

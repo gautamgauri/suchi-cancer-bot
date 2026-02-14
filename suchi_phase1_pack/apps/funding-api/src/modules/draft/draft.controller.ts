@@ -12,7 +12,8 @@ export class DraftController {
       body.context,
       body.userMessage,
       body.chunks,
-      body.conversationContext
+      body.conversationContext,
+      body.approval
     );
   }
 
@@ -22,7 +23,8 @@ export class DraftController {
       body.context,
       body.userMessage,
       body.chunks,
-      body.conversationContext
+      body.conversationContext,
+      body.approval
     );
   }
 
@@ -33,7 +35,8 @@ export class DraftController {
       body.context,
       body.pipelineContext,
       body.donorProfileSnippet,
-      body.chunks
+      body.chunks,
+      body.approval
     );
   }
 }

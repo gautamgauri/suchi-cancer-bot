@@ -72,8 +72,18 @@ export function resolveCitations(
   if (seenTokens.size > 0) {
     const refLines: string[] = ["", "---", "", "## References", ""];
     for (const entry of seenTokens.values()) {
-      const urlPart = entry.url ? ` ${entry.url}` : "";
-      refLines.push(`[${entry.number}] ${entry.title}.${urlPart}`);
+      // Clean up title: strip internal prefixes, underscores, and IDs
+      let displayTitle = entry.title;
+      // Replace underscores with spaces
+      displayTitle = displayTitle.replace(/_/g, " ");
+      // Remove common internal prefixes like "proposal_001", "doc_", "kb_"
+      displayTitle = displayTitle.replace(/^(proposal|doc|kb|evidence|chunk)\s*\d*\s*[-:]\s*/i, "");
+      // Capitalize first letter
+      if (displayTitle.length > 0) {
+        displayTitle = displayTitle.charAt(0).toUpperCase() + displayTitle.slice(1);
+      }
+      const urlPart = entry.url ? ` — ${entry.url}` : "";
+      refLines.push(`[${entry.number}] ${displayTitle}${urlPart}`);
     }
     resolvedText += "\n" + refLines.join("\n");
   }

@@ -18,6 +18,7 @@ export const envSchema = z.object({
   FUNDING_SHEETS_PIPELINE_TAB: z.string().optional().default("Pipeline"),
   FUNDING_SHEETS_ACTIVITIES_TAB: z.string().optional().default("Activities"),
   FUNDING_EXPORT_TOKEN: z.string().optional(),
+  FUNDING_WRITE_APPROVAL_TOKEN: z.string().optional(),
   // Evidence library (Phase 1) — optional; required only when running ingestion
   EVIDENCE_DRIVE_FOLDER_ID: z.string().optional(),
   FUNDING_DRIVE_ARCHIVE_ROOT_ID: z.string().optional(),
@@ -43,4 +44,15 @@ export const envSchema = z.object({
   // Funding Bot: Slack notifications (optional; for proposal generation alerts)
   FUNDING_SLACK_WEBHOOK_URL: z.string().url().optional(),
   FUNDING_SLACK_CHANNEL: z.string().optional().default("#funding-bot"),
+  // Delivery guard contracts (comma-separated allowlists; optional for backward compatibility)
+  FUNDING_ALLOWED_SLACK_CHANNEL_IDS: z.string().optional().default("*"),
+  FUNDING_ALLOWED_EMAIL_RECIPIENTS: z.string().optional().default(""),
+  FUNDING_ALLOWED_EMAIL_DOMAINS: z.string().optional().default("dikshafoundation.org"),
+  FUNDING_BLOCK_EXTERNAL_DELIVERY: z.string().optional().default("true"),
+  FUNDING_STALLED_PROSPECT_DAYS: z.coerce.number().min(1).max(180).optional().default(30),
+  FUNDING_STALLED_NUDGE_ENABLED: z.string().optional().default("false"),
+  // Funder scraper (TFIx / BDC): SerpAPI + HTML scraping
+  FUNDING_SERPAPI_KEY: z.string().optional(),
+  FUNDING_FUNDER_SCRAPER_ENABLED: z.string().optional(), // "true" to enable
+  FUNDING_FUNDER_SCRAPER_MAX_ORGS_PER_RUN: z.coerce.number().min(1).max(5).optional().default(2),
 });

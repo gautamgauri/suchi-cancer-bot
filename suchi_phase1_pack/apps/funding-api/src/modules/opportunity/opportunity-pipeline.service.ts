@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { PipelineService } from "../pipeline/pipeline.service";
 import { OpportunityService, type OpportunityRecord } from "./opportunity.service";
@@ -51,6 +51,13 @@ export class OpportunityPipelineService {
       submissionEmail: funder.submissionEmail,
       driveFolderUrl: opportunityRecord.driveFolderUrl ?? internal.driveFolder?.driveUrl,
     });
+    if ("blocked" in entry) {
+      throw new ConflictException({
+        message: "Pipeline create blocked by approval guard",
+        reason: entry.reason,
+        preview: entry.preview,
+      });
+    }
 
     await this.opportunityService.update(opportunityRecord.id, {
       pipelineEntryId: entry.id,

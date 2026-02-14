@@ -279,9 +279,10 @@ Your response MUST include at least 2 citations or it will be rejected.`;
   /**
    * Generate text without evidence chunks (e.g. template-only email). Does not return MISSING_EVIDENCE.
    */
-  async generatePlain(systemPrompt: string, context: string, userMessage: string): Promise<string> {
+  async generatePlain(systemPrompt: string, context: string, userMessage: string, options?: { maxTokens?: number }): Promise<string> {
     const sanitized = this.sanitizeUserInput(userMessage);
     const userContent = `${context}\n\n${sanitized}`;
+    const maxTokens = options?.maxTokens ?? 1500;
     return this.logLlmCall(this.model, () =>
       this.withRetry(
         async () => {
@@ -296,7 +297,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
                 { role: "user", content: userContent },
               ],
               temperature: 0.3,
-              max_tokens: 1500,
+              max_tokens: maxTokens,
             },
             { signal: controller.signal as AbortSignal }
           );

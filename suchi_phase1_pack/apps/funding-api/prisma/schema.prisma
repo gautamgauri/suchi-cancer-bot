@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -8,30 +9,45 @@ datasource db {
 }
 
 model PipelineEntry {
-  id                 String          @id @default(uuid())
-  orgName            String
-  contactName        String?
-  contactEmail       String?
-  stage              String
-  owner              String?
-  nextAction         String?
-  nextActionDate     DateTime?
-  lastContactDate    DateTime?
-  probability        Int?
-  notes              String?
-  sectorTags         String[]        @default([])
-  geography          String?
-  estimatedGrantSize String?
-  deadline           DateTime?       // RFP submission deadline
+  id                  String          @id @default(uuid())
+  orgName             String
+  contactName         String?
+  contactEmail        String?
+  stage               String
+  owner               String?
+  nextAction          String?
+  nextActionDate      DateTime?
+  lastContactDate     DateTime?
+  probability         Int?
+  notes               String?
+  sectorTags          String[]        @default([])
+  geography           String?
+  estimatedGrantSize  String?
+  deadline            DateTime?       // RFP submission deadline
   submissionEmail    String?         // Funder submission email
-  driveFolderUrl     String?         // Link to opportunity folder
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  version            Int             @default(1)
-  activities         Activity[]
-  draftArtifacts     DraftArtifact[]
-  opportunity        Opportunity?
+  driveFolderUrl      String?         // Link to opportunity folder
+  fundingLane         String?        // DOMESTIC_80G | CSR | FCRA
+  complianceRiskFlag  String?        // auto-derived
+  bankRouteHint       String?        // auto: "Domestic account" | "SBI FCRA account"
+  foreignSourceHint   Boolean        @default(false) // true => must use FCRA lane
+  // CSR-specific (when fundingLane = CSR)
+  csr1Status          String?        // yes | no
+  csr1Number          String?
+  grantAgreementStatus String?
+  reportingCadence    String?        // quarterly | half-yearly
+  ucDueDate           DateTime?      // utilisation certificate due
+  impactReportDueDate DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  version             Int            @default(1)
+  activities          Activity[]
+  draftArtifacts      DraftArtifact[]
+  opportunity         Opportunity?
   projectCapabilities ProjectCapability[]
+
+  @@index([fundingLane])
+  @@index([ucDueDate])
+  @@index([impactReportDueDate])
 }
 
 model Activity {
@@ -45,6 +61,31 @@ model Activity {
   createdBy        String?
   createdAt        DateTime       @default(now())
   pipelineEntry    PipelineEntry? @relation(fields: [pipelineEntryId], references: [id])
+}
+
+model Gift {
+  id                String    @id @default(uuid())
+  donorName         String
+  donorType         String    // individual | org
+  amount            Decimal   @db.Decimal(15, 2)
+  dateReceived      DateTime
+  mode              String    // UPI | NEFT | card | cheque | cash
+  txnRef            String?
+  mappedBankCredit  Boolean   @default(false) // Y/N
+  fundingLane       String    // DOMESTIC_80G | CSR | FCRA
+  purposeRestriction String?  @db.Text
+  fy                String    // e.g. 2024-25 (derived from dateReceived if not set)
+  complianceStatus  String?   // ready_for_10bd | missing_pan | missing_contact | cash_gt_2000_risk (for 10BD gate)
+  pan               String?
+  contactEmail     String?
+  contactMobile    String?
+  createdAt         DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([dateReceived])
+  @@index([fy])
+  @@index([fundingLane])
+  @@index([mappedBankCredit])
 }
 
 model SourceDocument {
@@ -87,6 +128,29 @@ model Approval {
   decidedAt      DateTime     @default(now())
   comment        String?
   draftVersion   DraftVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+// --- Governance write audit trail (BR-GOV-01 queryable) ---
+model GovernanceAuditEntry {
+  id         String   @id @default(uuid())
+  eventId    String   @unique // idempotency
+  eventType  String
+  module     String
+  action     String
+  entityType String
+  entityId   String
+  actor      Json     // ContractActor
+  reason     String?
+  timestamp  DateTime
+  status     String   // accepted | rejected | noop | failed
+  preview    Json?    // WritePreviewContract
+  approval   Json?    // ApprovalConfirmationContract
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([module])
+  @@index([status])
+  @@index([timestamp])
 }
 
 // --- Evidence Library (Phase 1 + 2) ---
@@ -305,6 +369,8 @@ model FrameworkCapability {
   projectCapabilities       ProjectCapability[]
   opportunityCapabilities   OpportunityCapability[]
   documentCapabilities      DocumentCapability[]
+  programActivityCapabilities ProgramActivityCapability[]
+  capabilityIndicators      CapabilityIndicator[]
 }
 
 model FrameworkMI {
@@ -622,4 +688,187 @@ model FunderFact {
   @@index([normalizedFunder])
   @@index([funderType])
   @@index([confidenceScore])
+}
+
+// --- Program Activities Registry ---
+
+model ProgramActivity {
+  id                String    @id @default(uuid())
+  activityId        String    @unique   // e.g. "sports_football", "digital_khan_academy"
+  programArea       String               // sports | education | digital | life_skills | civic
+  activityName      String               // "Football training"
+  description       String    @db.Text
+  centers           String[]  @default([])  // ["KHEL Patna", "KHEL Bihta", "KHEL Sarairanjan"]
+  targetGroup       String?              // "476 students ages 6-18"
+  frequency         String?              // "3x/week"
+  assetsNeeded      String[]  @default([])  // ["footballs", "cones", "bibs", "goalposts"]
+  unitCostINR       Int?                 // per-unit or per-session cost
+  costBreakdown     String?   @db.Text   // "10 footballs x ₹800 = ₹8,000"
+  outcomes          String[]  @default([])  // ["attendance improvement", "teamwork skills"]
+  indicators        String[]  @default([])  // ["attendance rate", "skill rubric score"]
+  evidenceTypes     String[]  @default([])  // ["photos", "attendance logs", "testimonials"]
+  staffInvolved     String[]  @default([])  // ["Fellow Teachers", "Sports Coach"]
+  orgId             String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  instances         ActivityInstance[]
+  capabilities      ProgramActivityCapability[]
+
+  @@index([programArea])
+  @@index([orgId])
+  @@index([isActive])
+}
+
+// --- Activity Instances (fortnightly report data) ---
+
+model ActivityInstance {
+  id                  String    @id @default(uuid())
+  programActivityId   String?   // nullable — unmatched reports can exist
+  reportId            String    @unique // e.g. "FR-BI-2026-02A"
+  center              String    // "SSS KHEL Bihta"
+  program             String    // "KHEL"
+  reportingPeriod     String    // "16-31 Jan 2026"
+  reportDate          DateTime
+  reporter            String?
+
+  // Academic metrics
+  academicsNotes      String?   @db.Text
+  lifiPhase           String?
+  kaActiveStudents    Int?      // Khan Academy active students
+  kaHours             Float?
+  samagraParticipants Int?
+
+  // SEL metrics
+  selSessions         Int?
+  selHours            Float?
+  selTopic            String?
+
+  // STEAM / enrichment
+  steamProjectsCount  Int?
+  steamDescription    String?   @db.Text
+  baalSansadActivity  String?   @db.Text
+
+  // Community engagement
+  openHouseNotes      String?   @db.Text
+  eventsDescription   String?   @db.Text
+  eventParticipants   Int?
+  communityVisits     Int?
+  householdsReached   Int?
+  childrenReached     Int?
+  ptmParentsAttended  Int?
+
+  // Nutrition
+  mealsServed         Int?
+  avgDailyMeals       Int?
+
+  // Sports & alumni
+  sportsActivities    String?   @db.Text
+  alumniUpdates       String?   @db.Text
+
+  // Attendance & enrollment
+  attendancePercent   Float?
+  enrollmentTotal     Int?
+
+  // Operational
+  challenges          String?   @db.Text
+  notes               String?   @db.Text
+
+  orgId               String?
+  gmailMessageId      String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  programActivity     ProgramActivity? @relation(fields: [programActivityId], references: [id])
+
+  @@index([center])
+  @@index([program])
+  @@index([reportDate])
+  @@index([orgId])
+}
+
+// --- ProgramActivity ↔ Capability junction ---
+
+model ProgramActivityCapability {
+  id                String    @id @default(uuid())
+  programActivityId String
+  capabilityId      String
+  strength          Int       @default(1)  // 1-3 rating from APF mapping
+  isPrimary         Boolean   @default(false)
+
+  programActivity   ProgramActivity    @relation(fields: [programActivityId], references: [id], onDelete: Cascade)
+  capability        FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+
+  @@unique([programActivityId, capabilityId])
+}
+
+// --- Capability Indicators (observable signals per capability) ---
+
+model CapabilityIndicator {
+  id                String    @id @default(uuid())
+  capabilityId      String
+  indicatorName     String
+  observableSignals String[]  @default([])
+  assessmentTools   String[]  @default([])
+  monthsActive      String?   // "2-12"
+  createdAt         DateTime  @default(now())
+
+  capability        FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+
+  @@index([capabilityId])
+}
+
+// --- Program Plans (month-wise structured curriculum) ---
+
+model ProgramPlan {
+  id                String    @id @default(uuid())
+  planName          String    // "Empowering Futures Adolescent Girls Plan"
+  programArea       String    // "adolescent_girls" | "khel" | etc.
+  totalMonths       Int       @default(12)
+  totalParticipants String?   // "180 girls across 6 slums"
+  locations         String[]  @default([])
+  orgId             String?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  months            ProgramPlanMonth[]
+
+  @@index([orgId])
+  @@index([programArea])
+}
+
+model ProgramPlanMonth {
+  id                    String    @id @default(uuid())
+  planId                String
+  monthNumber           Int       // 1-12
+  theme                 String    // "Foundation & Mapping"
+  primaryCapabilities   String[]  @default([])
+  secondaryCapabilities String[]  @default([])
+  createdAt             DateTime  @default(now())
+
+  plan                  ProgramPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  weeks                 ProgramPlanWeek[]
+
+  @@unique([planId, monthNumber])
+  @@index([planId])
+}
+
+model ProgramPlanWeek {
+  id                String    @id @default(uuid())
+  monthId           String
+  weekNumber        Int       // 1-4
+  focusArea         String    // "Mapping", "Outreach", etc.
+  mainActivities    String    @db.Text
+  smartActivities   String    @db.Text
+  deliverables      String    @db.Text
+  monitoringNotes   String?   @db.Text
+  teamNotes         String?   @db.Text
+  createdAt         DateTime  @default(now())
+
+  month             ProgramPlanMonth @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  @@unique([monthId, weekNumber])
+  @@index([monthId])
 }

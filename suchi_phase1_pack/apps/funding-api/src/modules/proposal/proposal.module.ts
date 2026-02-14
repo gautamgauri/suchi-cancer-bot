@@ -3,6 +3,8 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { CoreAiModule } from "../core_ai/core-ai.module";
 import { EvidenceIngestModule } from "../evidence_ingest/evidence-ingest.module";
 import { OpportunityModule } from "../opportunity/opportunity.module";
+import { PipelineModule } from "../pipeline/pipeline.module";
+import { ActivityRegistryModule } from "../activity_registry/activity-registry.module";
 import { ProposalController } from "./proposal.controller";
 import { ProposalService } from "./proposal.service";
 import { RfpParserService } from "./services/rfp-parser.service";
@@ -15,7 +17,14 @@ import { SlackClientService } from "./services/slack-client.service";
 import { CitationRepairService } from "./services/citation-repair.service";
 
 @Module({
-  imports: [PrismaModule, CoreAiModule, EvidenceIngestModule, OpportunityModule],
+  imports: [
+    PrismaModule,
+    CoreAiModule,
+    EvidenceIngestModule,
+    OpportunityModule,
+    PipelineModule,
+    ActivityRegistryModule,
+  ],
   controllers: [ProposalController],
   providers: [
     ProposalService,
@@ -28,6 +37,6 @@ import { CitationRepairService } from "./services/citation-repair.service";
     SlackClientService,
     CitationRepairService,
   ],
-  exports: [ProposalService],
+  exports: [ProposalService, SlackClientService],
 })
 export class ProposalModule {}

@@ -168,82 +168,107 @@ export class CitationRepairService {
   }
 
   /**
-   * Repair a section's draft text
+   * Repair a single sentence/line: detect hard claims, soften comparatives.
+   * Mutates stats and changes accumulators in place.
+   */
+  private repairSentence(
+    sentence: string,
+    changes: RepairResult["changes"],
+    stats: RepairResult["stats"],
+  ): string {
+    if (this.isExemptPlanStatement(sentence)) {
+      return sentence;
+    }
+
+    const { isHard, types } = this.detectHardClaim(sentence);
+    if (!isHard) {
+      return sentence;
+    }
+
+    stats.hardClaimsDetected++;
+
+    if (this.hasCitation(sentence) || this.hasPlaceholder(sentence)) {
+      return sentence;
+    }
+
+    stats.unsupportedBefore++;
+
+    let repairedSentence = sentence;
+
+    if (types.includes("comparative")) {
+      const { result, changes: softenChanges } = this.applySoftenRules(sentence);
+      if (softenChanges.length > 0) {
+        repairedSentence = result;
+        stats.softened++;
+        changes.push({
+          type: "soften",
+          original: sentence.substring(0, 100),
+          replacement: result.substring(0, 100),
+          sentence: sentence.substring(0, 60) + "...",
+        });
+      }
+    }
+
+    const { isHard: stillHard } = this.detectHardClaim(repairedSentence);
+    if (stillHard && !this.hasCitation(repairedSentence) && !this.hasPlaceholder(repairedSentence)) {
+      stats.unsupportedAfter++;
+    }
+
+    return repairedSentence;
+  }
+
+  /**
+   * Repair a section's draft text.
+   * Processes paragraph-by-paragraph to preserve markdown structure (headings, tables, bullets).
    */
   repairSection(draftText: string): RepairResult {
     const changes: RepairResult["changes"] = [];
-    let hardClaimsDetected = 0;
-    let unsupportedBefore = 0;
-    let unsupportedAfter = 0;
-    let softened = 0;
-    let placeholdered = 0;
+    const stats: RepairResult["stats"] = {
+      hardClaimsDetected: 0,
+      unsupportedBefore: 0,
+      unsupportedAfter: 0,
+      softened: 0,
+      placeholdered: 0,
+    };
 
-    // Split into sentences (preserve markdown structure)
-    const sentences = draftText.split(/(?<=[.!?])\s+(?=[A-Z\*#])/);
-    const repairedSentences: string[] = [];
+    // Split into paragraphs — preserve blank-line boundaries
+    const paragraphs = draftText.split(/\n\n+/);
+    const repairedParagraphs: string[] = [];
 
-    for (const sentence of sentences) {
-      // Skip exempt plan statements
-      if (this.isExemptPlanStatement(sentence)) {
-        repairedSentences.push(sentence);
+    for (const paragraph of paragraphs) {
+      const trimmed = paragraph.trim();
+      if (trimmed === "") {
+        repairedParagraphs.push(paragraph);
         continue;
       }
 
-      const { isHard, types } = this.detectHardClaim(sentence);
-
-      if (!isHard) {
-        repairedSentences.push(sentence);
-        continue;
+      // Detect markdown structural paragraphs: headings, tables, bullets, blockquotes, hr
+      if (/^(\s*[#|>*\-+]|\s*\d+\.\s|---|\|)/.test(trimmed)) {
+        // Process line-by-line to preserve formatting
+        const lines = paragraph.split("\n");
+        const repairedLines = lines.map(line => {
+          // Skip table rows, headings, horizontal rules, empty lines
+          if (/^\s*[#|]|^\s*---/.test(line) || line.trim() === "") {
+            return line;
+          }
+          return this.repairSentence(line, changes, stats);
+        });
+        repairedParagraphs.push(repairedLines.join("\n"));
+      } else {
+        // Prose paragraph: split into sentences, process each, rejoin with space
+        const sentences = paragraph.split(/(?<=[.!?])\s+(?=[A-Z\*#])/);
+        const repairedSentences = sentences.map(s => this.repairSentence(s, changes, stats));
+        repairedParagraphs.push(repairedSentences.join(" "));
       }
-
-      hardClaimsDetected++;
-
-      // Already supported?
-      if (this.hasCitation(sentence) || this.hasPlaceholder(sentence)) {
-        repairedSentences.push(sentence);
-        continue;
-      }
-
-      unsupportedBefore++;
-
-      // Try to repair based on claim type
-      let repairedSentence = sentence;
-
-      if (types.includes("comparative")) {
-        // Apply softening rules
-        const { result, changes: softenChanges } = this.applySoftenRules(sentence);
-        if (softenChanges.length > 0) {
-          repairedSentence = result;
-          softened++;
-          changes.push({
-            type: "soften",
-            original: sentence.substring(0, 100),
-            replacement: result.substring(0, 100),
-            sentence: sentence.substring(0, 60) + "...",
-          });
-        }
-      }
-
-      // Check if still unsupported after softening
-      const { isHard: stillHard } = this.detectHardClaim(repairedSentence);
-      if (stillHard && !this.hasCitation(repairedSentence) && !this.hasPlaceholder(repairedSentence)) {
-        unsupportedAfter++;
-      }
-
-      repairedSentences.push(repairedSentence);
     }
 
-    const repaired = repairedSentences.join(" ");
+    const repaired = repairedParagraphs.join("\n\n");
 
     this.logger.log({
       message: "Section repair complete",
-      hardClaimsDetected,
-      unsupportedBefore,
-      unsupportedAfter,
-      softened,
-      placeholdered,
-      reductionPct: unsupportedBefore > 0
-        ? Math.round((1 - unsupportedAfter / unsupportedBefore) * 100)
+      ...stats,
+      reductionPct: stats.unsupportedBefore > 0
+        ? Math.round((1 - stats.unsupportedAfter / stats.unsupportedBefore) * 100)
         : 0,
     });
 
@@ -251,13 +276,7 @@ export class CitationRepairService {
       original: draftText,
       repaired,
       changes,
-      stats: {
-        hardClaimsDetected,
-        unsupportedBefore,
-        unsupportedAfter,
-        softened,
-        placeholdered,
-      },
+      stats,
     };
   }
 

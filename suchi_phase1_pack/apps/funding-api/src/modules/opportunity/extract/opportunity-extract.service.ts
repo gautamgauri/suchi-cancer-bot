@@ -7,6 +7,7 @@ import type { OpportunityDocument, OpportunityPayload } from "../opportunity.typ
 import { RfpTextExtractService } from "./rfp-text-extract.service";
 import { RfpConstraintsExtractService, type ExtractedConstraints } from "./rfp-constraints-extract.service";
 import { AnnexureSchemaService, type SheetSchema } from "./annexure-schema.service";
+import { OpportunityIntelligenceService } from "./opportunity-intelligence.service";
 
 const RFP_STAGE = "RFP_received";
 
@@ -44,6 +45,7 @@ export class OpportunityExtractService {
     private readonly rfpText: RfpTextExtractService,
     private readonly rfpConstraints: RfpConstraintsExtractService,
     private readonly annexureSchema: AnnexureSchemaService,
+    private readonly intelligence: OpportunityIntelligenceService,
   ) {
     // Load default owner from env (format: "Name|email@domain.com|Role")
     const ownerEnv = this.configService.get<string>("FUNDING_DEFAULT_OWNER");
@@ -108,15 +110,16 @@ export class OpportunityExtractService {
     }));
 
     let constraints: ExtractedConstraints = {};
+    let rfpText = "";
     const rfpBuffer = attachmentBuffers.find(
       (a) =>
         a.mimeType === "application/pdf" ||
         a.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     );
     if (rfpBuffer) {
-      const text = await this.rfpText.extractText(rfpBuffer.mimeType, rfpBuffer.buffer);
-      if (text) {
-        constraints = await this.rfpConstraints.extract(text, parsed.subject);
+      rfpText = await this.rfpText.extractText(rfpBuffer.mimeType, rfpBuffer.buffer);
+      if (rfpText) {
+        constraints = await this.rfpConstraints.extract(rfpText, parsed.subject);
       }
     }
 
@@ -127,10 +130,18 @@ export class OpportunityExtractService {
       outputArtifact: this.annexureSchema.isSpreadsheet(a.mimeType) ? ("sheet" as const) : ("doc" as const),
     }));
 
-    const opportunityId = this.deriveOpportunityId(parsed.subject, parsed.messageId, constraints);
+    const dedupeKey = this.intelligence.buildDedupeKey({
+      funder: constraints.funderName ?? parsed.from.name ?? parsed.from.email,
+      program: constraints.programName ?? parsed.subject,
+      deadline: constraints.deadline,
+      geography: constraints.geography,
+      sourceSubject: parsed.subject,
+    });
+    const opportunityId = this.intelligence.buildOpportunityId(dedupeKey);
 
-    const payload: OpportunityPayload = {
+    const draftPayload: OpportunityPayload = {
       opportunityId,
+      dedupeKey,
       sourceType: "email",
       source: {
         emailMessageId: parsed.messageId,
@@ -196,6 +207,33 @@ export class OpportunityExtractService {
       },
     };
 
+    const card = this.intelligence.buildCard({
+      payload: draftPayload,
+      constraints,
+      rfpText,
+      sourceLink: archive.driveFolderUrl ?? sourceAttachments[0]?.driveUrl,
+    });
+    const fitAssessment = this.intelligence.buildFitAssessment({
+      payload: draftPayload,
+      constraints,
+      card,
+    });
+    const checklist = this.intelligence.buildSubmissionChecklist(rfpText || parsed.bodyPlain || "");
+
+    const payload: OpportunityPayload = {
+      ...draftPayload,
+      triageCard: card,
+      fitAssessment,
+      extractedRequirements: {
+        ...draftPayload.extractedRequirements,
+        submissionChecklist: checklist,
+      },
+      automationPlan: {
+        ...draftPayload.automationPlan,
+        missingInputs: fitAssessment.missingInfo ?? [],
+      },
+    };
+
     return { schemaVersion: "1.0", opportunity: payload };
   }
 
@@ -212,12 +250,6 @@ export class OpportunityExtractService {
     return map;
   }
 
-  private deriveOpportunityId(subject: string, messageId: string, c: ExtractedConstraints): string {
-    const slug = (c.funderName ?? "RF")
-      .replace(/\s+/g, "")
-      .slice(0, 20);
-    const cycle = (c.grantCycle ?? new Date().getFullYear().toString()).replace(/\s/g, "");
-    const shortId = messageId.slice(-8);
-    return `${slug}-${cycle}-${shortId}`;
-  }
+  // Opportunity IDs are now derived through OpportunityIntelligenceService
+  // to support deterministic cross-source dedupe.
 }

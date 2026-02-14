@@ -7,9 +7,48 @@ import {
   Min,
   Max,
   IsDateString,
+  IsBoolean,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
+import { FUNDING_LANES } from "./pipeline.types";
+import type { FundingLane } from "./pipeline.types";
 
 const STAGES = ["RFP_received", "lead", "qualified", "proposal_sent", "won", "lost"] as const;
+
+export class ApprovalActorDto {
+  @IsString()
+  actorType!: "human" | "agent" | "system";
+
+  @IsString()
+  actorId!: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+}
+
+export class ApprovalContextDto {
+  @IsString()
+  approvalToken!: string;
+
+  @IsOptional()
+  @IsString()
+  interactionId?: string;
+
+  @IsOptional()
+  @IsString()
+  outcome?: "approved" | "rejected" | "expired" | "cancelled";
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalActorDto)
+  actor?: ApprovalActorDto;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
 
 export class CreatePipelineEntryDto {
   @IsString()
@@ -77,6 +116,16 @@ export class CreatePipelineEntryDto {
   @IsOptional()
   @IsString()
   driveFolderUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(FUNDING_LANES)
+  fundingLane?: FundingLane;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalContextDto)
+  approval?: ApprovalContextDto;
 }
 
 export class UpdatePipelineEntryDto {
@@ -148,7 +197,56 @@ export class UpdatePipelineEntryDto {
   @IsString()
   driveFolderUrl?: string;
 
+  @IsOptional()
+  @IsString()
+  @IsIn(FUNDING_LANES)
+  fundingLane?: FundingLane;
+
+  @IsOptional()
+  @IsBoolean()
+  foreignSourceHint?: boolean;
+
+  @IsOptional()
+  @IsString()
+  csr1Status?: string;
+
+  @IsOptional()
+  @IsString()
+  csr1Number?: string;
+
+  @IsOptional()
+  @IsString()
+  grantAgreementStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  reportingCadence?: string;
+
+  @IsOptional()
+  @IsDateString()
+  ucDueDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  impactReportDueDate?: string;
+
   @IsInt()
   @Min(1)
   version!: number;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalContextDto)
+  approval?: ApprovalContextDto;
+}
+
+export class SetLaneDto {
+  @IsString()
+  @IsIn(FUNDING_LANES)
+  lane!: FundingLane;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalContextDto)
+  approval?: ApprovalContextDto;
 }

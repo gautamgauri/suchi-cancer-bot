@@ -17,6 +17,8 @@ export class QueryGeneratorService {
     evidenceTypes: string[];
     orgName?: string;
     funderName?: string;
+    /** Comma-separated funder theme keywords for theme-aware retrieval */
+    funderThemes?: string;
   }): Promise<string[]> {
     const userPrompt = buildQueryGeneratorUserPrompt(params);
     try {

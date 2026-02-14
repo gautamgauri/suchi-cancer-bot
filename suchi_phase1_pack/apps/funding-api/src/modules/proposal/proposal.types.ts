@@ -39,10 +39,23 @@ export interface ComplianceChecklistItem {
   status: string;
 }
 
+export interface ProposalScope {
+  programName: string;
+  centers: string[];
+  totalDirectBeneficiaries: string;
+  totalIndirectBeneficiaries?: string;
+  geographicScope: string;
+  grantPeriod: string;
+  budgetCeiling?: string;
+  keyDeliverables: string[];
+}
+
 export interface ProposalOutline {
   outline: OutlineSection[];
   retrieval_plan: RetrievalPlanItem[];
   compliance_checklist: ComplianceChecklistItem[];
+  /** Canonical scope extracted by planner — injected into every section writer call */
+  proposal_scope?: ProposalScope;
   /** Inferred or confirmed primary capabilities (C1–C10) when framework is used */
   suggested_primary_capabilities?: string[];
   /** Inferred or confirmed secondary capabilities when framework is used */

@@ -63,6 +63,40 @@ export class ConversationContextDto {
   checklist?: string;
 }
 
+export class ApprovalActorDto {
+  @IsString()
+  actorType!: "human" | "agent" | "system";
+
+  @IsString()
+  actorId!: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
+}
+
+export class ApprovalContextDto {
+  @IsString()
+  approvalToken!: string;
+
+  @IsOptional()
+  @IsString()
+  interactionId?: string;
+
+  @IsOptional()
+  @IsString()
+  outcome?: "approved" | "rejected" | "expired" | "cancelled";
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalActorDto)
+  actor?: ApprovalActorDto;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
 export class DraftNeedStatementDto {
   @IsString()
   context!: string;
@@ -79,6 +113,11 @@ export class DraftNeedStatementDto {
   @ValidateNested()
   @Type(() => ConversationContextDto)
   conversationContext?: ConversationContextDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalContextDto)
+  approval?: ApprovalContextDto;
 }
 
 export class DraftEmailDto {
@@ -103,4 +142,9 @@ export class DraftEmailDto {
   @ValidateNested({ each: true })
   @Type(() => ChunkDto)
   chunks?: ChunkDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApprovalContextDto)
+  approval?: ApprovalContextDto;
 }

@@ -2,8 +2,17 @@ import { Injectable, Logger } from "@nestjs/common";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import { EvidenceChunk } from "../core_ai/types";
 import { SourceRegistryService } from "../source_registry/source-registry.service";
-import { ChunkDto, ConversationContextDto, EmailTemplate, PipelineContextDto } from "./dto";
+import { EmailNotificationService } from "../notifications/email-notification.service";
+import {
+  ApprovalContextDto,
+  ChunkDto,
+  ConversationContextDto,
+  EmailTemplate,
+  PipelineContextDto,
+} from "./dto";
 import { logStructured } from "../../common/structured-logger";
+import { ApprovalConfirmationContract, ContractActor } from "../contracts/funding-contracts.types";
+import { GovernanceDeliveryGuard } from "../notifications/governance-delivery.guard";
 
 @Injectable()
 export class DraftService {
@@ -11,8 +20,22 @@ export class DraftService {
 
   constructor(
     private readonly fundingLlm: FundingLlmService,
-    private readonly sourceRegistry: SourceRegistryService
+    private readonly sourceRegistry: SourceRegistryService,
+    private readonly emailNotification: EmailNotificationService,
+    private readonly governanceGuard: GovernanceDeliveryGuard
   ) {}
+
+  private mapApproval(approval?: ApprovalContextDto): ApprovalConfirmationContract | undefined {
+    if (!approval?.approvalToken) return undefined;
+    return {
+      approvalToken: approval.approvalToken,
+      interactionId: approval.interactionId || "api",
+      outcome: approval.outcome || "approved",
+      actor: approval.actor || { actorType: "human", actorId: "api_user" },
+      reason: approval.reason,
+      timestamp: new Date().toISOString(),
+    };
+  }
 
   private mapChunkToEvidenceChunk(chunk: ChunkDto): EvidenceChunk {
     return {
@@ -66,12 +89,13 @@ export class DraftService {
     context: string,
     userMessage: string,
     chunks: ChunkDto[],
-    conversationContext?: ConversationContextDto
-  ): Promise<{ text: string }> {
+    conversationContext?: ConversationContextDto,
+    approval?: ApprovalContextDto
+  ): Promise<{ text: string; delivery?: { sent: boolean; blocked: boolean; reason?: string; preview?: unknown } }> {
     const startTime = Date.now();
     const mappedChunks: EvidenceChunk[] = chunks.map((c) => this.mapChunkToEvidenceChunk(c));
     await this.registerSourcesFromChunks(mappedChunks);
-    const text = await this.fundingLlm.generateWithCitations(
+    const textRaw = await this.fundingLlm.generateWithCitations(
       "draft",
       context,
       userMessage,
@@ -79,6 +103,8 @@ export class DraftService {
       false,
       conversationContext ?? undefined
     );
+    const disciplined = this.governanceGuard.enforceNumericClaimDiscipline(textRaw);
+    const text = disciplined.text;
 
     // Count citations in output
     const citationCount = (text.match(/\[citation:[^\]]+\]/g) || []).length;
@@ -93,7 +119,18 @@ export class DraftService {
       durationMs,
     });
 
-    return { text };
+    // Send email notification for review
+    const title = userMessage.substring(0, 80) + (userMessage.length > 80 ? "..." : "");
+    const actor: ContractActor = { actorType: "agent", actorId: "draft_service_need_statement" };
+    const delivery = await this.emailNotification.sendGeneratedContent(
+      "Need Statement",
+      title,
+      text,
+      this.mapApproval(approval),
+      actor
+    );
+
+    return { text, delivery: { sent: delivery.sent, blocked: delivery.blocked, reason: delivery.reason, preview: delivery.preview } };
   }
 
   async draftEmail(
@@ -101,13 +138,16 @@ export class DraftService {
     context: string,
     pipelineContext?: PipelineContextDto,
     donorProfileSnippet?: string,
-    chunks?: ChunkDto[]
-  ): Promise<{ text: string }> {
+    chunks?: ChunkDto[],
+    approval?: ApprovalContextDto
+  ): Promise<{ text: string; delivery?: { sent: boolean; blocked: boolean; reason?: string; preview?: unknown } }> {
     const userMessage = this.buildEmailUserMessage(template, pipelineContext, donorProfileSnippet);
+    let text: string;
+
     if (chunks && chunks.length > 0) {
       const mappedChunks: EvidenceChunk[] = chunks.map((c) => this.mapChunkToEvidenceChunk(c));
       await this.registerSourcesFromChunks(mappedChunks);
-      const text = await this.fundingLlm.generateWithCitations(
+      text = await this.fundingLlm.generateWithCitations(
         "email",
         context,
         userMessage,
@@ -115,22 +155,45 @@ export class DraftService {
         false,
         undefined
       );
-      return { text };
+    } else {
+      const systemPrompt = this.fundingLlm.getEmailPrompt();
+      text = await this.fundingLlm.generatePlain(systemPrompt, context, userMessage);
     }
-    const systemPrompt = this.fundingLlm.getEmailPrompt();
-    const text = await this.fundingLlm.generatePlain(systemPrompt, context, userMessage);
-    return { text };
+
+    const disciplined = this.governanceGuard.enforceNumericClaimDiscipline(text);
+    text = disciplined.text;
+
+    // Send email notification for review
+    const templateLabel = template.replace(/_/g, " ");
+    const title = `${templateLabel} - ${pipelineContext?.orgName || "Draft"}`;
+    const actor: ContractActor = { actorType: "agent", actorId: "draft_service_email" };
+    const delivery = await this.emailNotification.sendGeneratedContent(
+      "Email Draft",
+      title,
+      text,
+      this.mapApproval(approval),
+      actor
+    );
+
+    return { text, delivery: { sent: delivery.sent, blocked: delivery.blocked, reason: delivery.reason, preview: delivery.preview } };
   }
 
   async draftNeedStatementRefine(
     context: string,
     userMessage: string,
     chunks: ChunkDto[],
-    conversationContext?: ConversationContextDto
+    conversationContext?: ConversationContextDto,
+    approval?: ApprovalContextDto
   ): Promise<{ draft: string; evaluation: { score: number; weaknesses: string[] }; refined: string; warning?: string }> {
     const startTime = Date.now();
 
-    const { text: draft } = await this.draftNeedStatement(context, userMessage, chunks, conversationContext);
+    const { text: draft } = await this.draftNeedStatement(
+      context,
+      userMessage,
+      chunks,
+      conversationContext,
+      approval
+    );
     const draftTime = Date.now() - startTime;
 
     // SAFETY: If the initial draft is an abstention (MISSING_EVIDENCE), do NOT attempt to refine.
@@ -156,7 +219,8 @@ export class DraftService {
       `Score: ${evaluation.score}/5`,
       ...evaluation.weaknesses.map((w) => `- ${w}`),
     ].join("\n");
-    const refined = await this.fundingLlm.refineDraft(draft, evaluationNotes);
+    const refinedRaw = await this.fundingLlm.refineDraft(draft, evaluationNotes);
+    const refined = this.governanceGuard.enforceNumericClaimDiscipline(refinedRaw).text;
     const refineTime = Date.now() - startTime - draftTime - evalTime;
 
     logStructured.log("Draft refinement complete", {

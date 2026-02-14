@@ -22,6 +22,10 @@ export class PlannerService {
     mandatorySections?: Array<{ title: string; description?: string }>;
     /** Funder name for context */
     funderName?: string;
+    /** Funder program themes from RFP */
+    funderThemes?: { primary?: string[]; secondary?: string[] };
+    /** Structured activities context from ProgramActivity registry */
+    activitiesContext?: string;
   }): Promise<ProposalOutline> {
     // === DIAGNOSTIC: Step B — log what planner receives ===
     this.logger.log({
@@ -29,71 +33,139 @@ export class PlannerService {
       mandatorySectionsCount: params.mandatorySections?.length ?? 0,
       mandatorySectionTitles: params.mandatorySections?.map((s) => s.title) ?? [],
       rfpTextLength: params.rfpText?.length ?? 0,
+      funderThemesPrimary: params.funderThemes?.primary ?? [],
+      hasActivitiesContext: !!params.activitiesContext,
     });
 
     const userPrompt = buildPlannerUserPrompt(params);
     try {
       // Planner needs more tokens for large section counts (11 sections + retrieval plan + compliance ≈ 4000 tokens)
-      const raw = await this.llm.generatePlain(PLANNER_SYSTEM_PROMPT, "Generate proposal outline:", userPrompt, { maxTokens: 4000 });
+      const raw = await this.llm.generatePlain(PLANNER_SYSTEM_PROMPT, "Generate proposal outline:", userPrompt, { maxTokens: 8000 });
+      // Log raw output for debugging (first 2000 chars)
+      this.logger.log({
+        diagnostic: "PLANNER_RAW_OUTPUT",
+        length: raw.length,
+        first2000: raw.substring(0, 2000),
+      });
       // Extract JSON: handle ```json blocks, trailing truncation, and whitespace
       let jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```\s*$/i, "").trim();
       // If JSON is truncated (common with long outputs), try to repair by closing open structures
       if (!jsonStr.endsWith("}")) {
-        this.logger.warn(`Planner JSON appears truncated (ends with: "${jsonStr.slice(-20)}"), attempting repair`);
-        // Find the last valid JSON object boundary
-        const lastBrace = jsonStr.lastIndexOf("}");
-        if (lastBrace > 0) {
-          // Count unclosed braces/brackets and close them
-          let braces = 0, brackets = 0;
-          const truncated = jsonStr.substring(0, lastBrace + 1);
-          for (const ch of truncated) {
-            if (ch === "{") braces++;
-            if (ch === "}") braces--;
-            if (ch === "[") brackets++;
-            if (ch === "]") brackets--;
-          }
-          jsonStr = truncated + "]".repeat(Math.max(0, brackets)) + "}".repeat(Math.max(0, braces));
+        this.logger.warn(`Planner JSON appears truncated (ends with: "${jsonStr.slice(-40)}"), attempting repair`);
+        // Strategy: find the last complete JSON value boundary (after a '}', ']', '"', number, true/false/null)
+        // Then close all open structures.
+        // First, strip any trailing incomplete string (truncated mid-value)
+        let repaired = jsonStr;
+        // Remove trailing partial string value (e.g., `"some truncated te`)
+        repaired = repaired.replace(/,\s*"[^"]*$/s, "");
+        // Remove trailing partial key-value pair (e.g., `"key": "some`)
+        repaired = repaired.replace(/,\s*"[^"]*":\s*"[^"]*$/s, "");
+        // Remove trailing partial key (e.g., `"key":`)
+        repaired = repaired.replace(/,\s*"[^"]*":\s*$/s, "");
+        // Find the last '}' or ']' as anchor
+        const lastClose = Math.max(repaired.lastIndexOf("}"), repaired.lastIndexOf("]"));
+        if (lastClose > 0) {
+          repaired = repaired.substring(0, lastClose + 1);
         }
+        // Count unclosed braces/brackets and close them
+        let braces = 0, brackets = 0;
+        let inString = false;
+        let escaped = false;
+        for (const ch of repaired) {
+          if (escaped) { escaped = false; continue; }
+          if (ch === "\\") { escaped = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === "{") braces++;
+          if (ch === "}") braces--;
+          if (ch === "[") brackets++;
+          if (ch === "]") brackets--;
+        }
+        jsonStr = repaired + "]".repeat(Math.max(0, brackets)) + "}".repeat(Math.max(0, braces));
+        this.logger.log(`JSON repair: original ${raw.length} chars → repaired ${jsonStr.length} chars (braces=${braces}, brackets=${brackets})`);
       }
-      const parsed = JSON.parse(jsonStr) as Partial<ProposalOutline>;
+      const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+
+      // Accept "outline", "sections", or "proposal_sections" as the sections array key (LLMs use different names)
+      const rawSections = (
+        Array.isArray(parsed.outline) ? parsed.outline
+        : Array.isArray(parsed.sections) ? parsed.sections
+        : Array.isArray(parsed.proposal_sections) ? parsed.proposal_sections
+        : []
+      ) as Array<Record<string, unknown>>;
+      const rawScope = (parsed.proposal_scope || parsed.scope) as Record<string, unknown> | undefined;
 
       // Validate and normalize
       const outline: ProposalOutline = {
-        outline: Array.isArray(parsed.outline)
-          ? parsed.outline.map((s) => ({
-              section: s.section || "",
+        outline: rawSections.map((s) => ({
+              section: String(s.section || s.section_title || s.title || s.name || ""),
               target_words: typeof s.target_words === "number" ? s.target_words : 0,
-              must_answer: Array.isArray(s.must_answer) ? s.must_answer : [],
-              capability_focus: Array.isArray((s as { capability_focus?: string[] }).capability_focus)
-                ? (s as { capability_focus?: string[] }).capability_focus
+              must_answer: Array.isArray(s.must_answer) ? s.must_answer : Array.isArray(s.content_outline) ? s.content_outline as string[] : Array.isArray(s.section_outline) ? s.section_outline as string[] : [],
+              capability_focus: Array.isArray(s.capability_focus)
+                ? s.capability_focus as string[]
+                : Array.isArray(s.capability_alignment) ? s.capability_alignment as string[]
                 : undefined,
-            }))
-          : [],
+            })),
         retrieval_plan: Array.isArray(parsed.retrieval_plan)
-          ? parsed.retrieval_plan.map((r) => {
-              const item = r as RetrievalPlanItem & { capability_focus?: string[] };
-              return {
-                section: item.section || "",
-                query_intents: Array.isArray(item.query_intents) ? item.query_intents : [],
-                required_evidence_types: Array.isArray(item.required_evidence_types) ? item.required_evidence_types : [],
-                capability_focus: Array.isArray(item.capability_focus) ? item.capability_focus : undefined,
-              };
-            })
+          ? (parsed.retrieval_plan as Array<Record<string, unknown>>).map((r) => ({
+                section: String(r.section || r.section_title || r.title || ""),
+                query_intents: Array.isArray(r.query_intents) ? r.query_intents as string[] : [],
+                required_evidence_types: Array.isArray(r.required_evidence_types) ? r.required_evidence_types as string[] : [],
+                capability_focus: Array.isArray(r.capability_focus) ? r.capability_focus as string[] : undefined,
+              }))
           : [],
         compliance_checklist: Array.isArray(parsed.compliance_checklist)
-          ? parsed.compliance_checklist.map((c) => ({
-              item: c.item || "",
-              source: c.source || "RFP",
-              status: c.status || "pending",
+          ? (parsed.compliance_checklist as Array<Record<string, unknown>>).map((c) => ({
+              item: String(c.item || ""),
+              source: String(c.source || "RFP"),
+              status: String(c.status || "pending"),
             }))
           : [],
+        // Extract proposal_scope from planner output (accept alternate field names)
+        proposal_scope: rawScope ? (() => {
+          const ps = rawScope;
+          const str = (v: unknown) => v ? String(v) : "";
+          const arr = (v: unknown) => Array.isArray(v) ? v.map(String) : [];
+          const durationToGrant = (d: unknown) => {
+            if (typeof d === "number") return `${d} months`;
+            return str(d);
+          };
+          return {
+            programName: str(ps.programName || ps.title || ps.program_name || parsed.proposal_title),
+            centers: arr(ps.centers || ps.sites || ps.locations),
+            totalDirectBeneficiaries: str(ps.totalDirectBeneficiaries || ps.primary_beneficiaries || ps.direct_beneficiaries || ps.total_beneficiaries),
+            totalIndirectBeneficiaries: str(ps.totalIndirectBeneficiaries || ps.indirect_beneficiaries) || undefined,
+            geographicScope: str(ps.geographicScope || ps.geographic_focus || ps.geography || ps.location),
+            grantPeriod: str(ps.grantPeriod || ps.grant_period) || durationToGrant(ps.duration_months || ps.duration),
+            budgetCeiling: str(ps.budgetCeiling || ps.budget_ceiling || ps.budget),
+            keyDeliverables: arr(ps.keyDeliverables || ps.key_deliverables || ps.deliverables),
+          };
+        })() : undefined,
         suggested_primary_capabilities: Array.isArray(parsed.suggested_primary_capabilities)
-          ? parsed.suggested_primary_capabilities
+          ? parsed.suggested_primary_capabilities as string[]
           : undefined,
         suggested_secondary_capabilities: Array.isArray(parsed.suggested_secondary_capabilities)
-          ? parsed.suggested_secondary_capabilities
+          ? parsed.suggested_secondary_capabilities as string[]
           : undefined,
       };
+
+      // Validate scope quality: if essential fields are empty, discard it
+      // (an empty scope is worse than no scope — it causes "0 centers", "0 fellows" etc.)
+      if (outline.proposal_scope) {
+        const s = outline.proposal_scope;
+        const hasEssentials = s.programName && s.centers.length > 0 && s.totalDirectBeneficiaries;
+        if (!hasEssentials) {
+          this.logger.warn({
+            diagnostic: "PLANNER_SCOPE_INCOMPLETE",
+            programName: s.programName || "(empty)",
+            centers: s.centers,
+            beneficiaries: s.totalDirectBeneficiaries || "(empty)",
+            budgetCeiling: s.budgetCeiling || "(empty)",
+            message: "Discarding incomplete proposal_scope — essential fields missing",
+          });
+          outline.proposal_scope = undefined;
+        }
+      }
 
       // Log planner output quality
       this.logger.log({
@@ -102,6 +174,9 @@ export class PlannerService {
         sectionTitles: outline.outline.map((s) => s.section),
         retrievalPlanItems: outline.retrieval_plan.length,
         complianceItems: outline.compliance_checklist.length,
+        hasProposalScope: !!outline.proposal_scope,
+        scopeCenters: outline.proposal_scope?.centers?.length ?? 0,
+        scopeBudgetCeiling: outline.proposal_scope?.budgetCeiling ?? "not set",
       });
 
       return outline;

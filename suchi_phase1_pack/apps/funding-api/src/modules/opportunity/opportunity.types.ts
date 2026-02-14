@@ -69,6 +69,8 @@ export interface OpportunityExtractedRequirements {
   evaluationCriteria?: string[];
   /** Mandatory annexures/attachments required */
   mandatoryAnnexures?: string[];
+  /** Structured submission checklist extracted from RFP text */
+  submissionChecklist?: OpportunitySubmissionChecklist;
 }
 
 export interface OpportunityInternalPerson {
@@ -108,6 +110,50 @@ export interface OpportunityAutomationPlan {
   missingInputs?: OpportunityMissingInput[];
 }
 
+export type FcraRelevance = "required" | "mentioned" | "not_mentioned";
+export type FitBand = "strong_fit" | "moderate_fit" | "weak_fit" | "unknown";
+
+export interface OpportunityCard {
+  funder: string;
+  program?: string;
+  deadline?: string;
+  eligibilitySummary?: string;
+  fcraRelevance: FcraRelevance;
+  geographyFit: FitBand;
+  thematicFit: FitBand;
+  sourceLink?: string;
+  confidence: number;
+}
+
+export interface OpportunityFitAssessment {
+  score: number;
+  reasons: string[];
+  confidence: number;
+  missingInfo?: OpportunityMissingInput[];
+}
+
+export interface OpportunityChecklistItem {
+  key: string;
+  label: string;
+  required: boolean;
+  evidence?: string;
+}
+
+export interface OpportunityWordLimitRequirement {
+  section: string;
+  limitWords: number;
+  evidence?: string;
+}
+
+export interface OpportunitySubmissionChecklist {
+  wordLimits: OpportunityWordLimitRequirement[];
+  attachments: string[];
+  budgetFormat?: string;
+  submissionMode?: string;
+  annexures: string[];
+  items: OpportunityChecklistItem[];
+}
+
 export interface OpportunityAudit {
   createdAt: string;
   createdBy: string;
@@ -117,11 +163,14 @@ export interface OpportunityAudit {
 
 export interface OpportunityPayload {
   opportunityId: string;
+  dedupeKey?: string;
   sourceType?: string;
   source: OpportunitySource;
   funder: OpportunityFunder;
   keyConstraints?: OpportunityKeyConstraints;
   themes?: OpportunityThemes;
+  triageCard?: OpportunityCard;
+  fitAssessment?: OpportunityFitAssessment;
   eligibility?: { notes?: string; mustHaves?: string[]; niceToHaves?: string[]; exclusions?: string[] };
   requiredTemplates?: OpportunityRequiredTemplate[];
   extractedRequirements?: OpportunityExtractedRequirements;

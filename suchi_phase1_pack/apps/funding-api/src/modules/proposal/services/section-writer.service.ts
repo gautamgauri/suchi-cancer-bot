@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { FundingLlmService } from "../../core_ai/funding-llm.service";
 import { EvidenceChunk } from "../../core_ai/types";
+import { ProposalScope } from "../proposal.types";
 import { SECTION_WRITER_SYSTEM_PROMPT, buildSectionWriterUserPrompt, getSectionTypeGuidance } from "../prompts/section-writer.prompt";
 
 @Injectable()
@@ -21,6 +22,8 @@ export class SectionWriterService {
     orgContext?: string;
     /** Funder name + program for context */
     funderContext?: string;
+    /** Canonical scope from planner — locks numbers across sections */
+    proposalScope?: ProposalScope;
   }): Promise<{ draftText: string; gaps: string[] }> {
     if (params.chunks.length === 0) {
       // Attempt template-based draft using section guidance and org context
@@ -50,6 +53,7 @@ CONTENT: ${content}
       funderContext: params.funderContext,
       sectionTypeRequirements: sectionTypeReqs ?? undefined,
       orgContext: params.orgContext,
+      proposalScope: params.proposalScope,
     });
 
     try {

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
 import { envSchema } from "./config/env.validation";
 import { PrismaModule } from "./modules/prisma/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -17,12 +18,19 @@ import { OpportunityModule } from "./modules/opportunity/opportunity.module";
 import { GmailModule } from "./modules/gmail/gmail.module";
 import { ProposalModule } from "./modules/proposal/proposal.module";
 import { FrameworkModule } from "./modules/framework/framework.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { FunderScraperModule } from "./modules/funder_scraper/funder-scraper.module";
+import { GiftModule } from "./modules/gift/gift.module";
+import { ActivityRegistryModule } from "./modules/activity_registry/activity-registry.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: (c) => envSchema.parse(c) }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     SheetsModule,
+    GiftModule,
+    NotificationsModule,
     HealthModule,
     CoreAiModule,
     SourceRegistryModule,
@@ -37,6 +45,8 @@ import { FrameworkModule } from "./modules/framework/framework.module";
     ReportsModule,
     DonorModule,
     AdminModule,
+    FunderScraperModule,
+    ActivityRegistryModule,
   ],
 })
 export class AppModule {}

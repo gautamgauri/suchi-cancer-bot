@@ -104,6 +104,9 @@ export class SheetsClientService {
       "sectorTags",
       "geography",
       "estimatedGrantSize",
+      "fundingLane",
+      "complianceRiskFlag",
+      "bankRouteHint",
     ];
     const pipelineRows = entries.map((e) => [
       e.id ?? "",
@@ -119,6 +122,9 @@ export class SheetsClientService {
       Array.isArray(e.sectorTags) ? e.sectorTags.join(", ") : (e.sectorTags ?? ""),
       e.geography ?? "",
       e.estimatedGrantSize ?? "",
+      e.fundingLane ?? "",
+      e.complianceRiskFlag ?? "",
+      e.bankRouteHint ?? "",
     ]);
     await sheets.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId!,
@@ -150,12 +156,12 @@ export class SheetsClientService {
 
   /**
    * Read pipeline entries from the Pipeline tab. Expects header row then data.
-   * Columns (by index): id, orgName, contactName, stage, assignedTo, nextAction, nextActionDate, lastContactDate, probability, notes, sectorTags, geography, estimatedGrantSize
+   * Columns include: id, orgName, contactName, stage, assignedTo, nextAction, nextActionDate, lastContactDate, probability, notes, sectorTags, geography, estimatedGrantSize, fundingLane, complianceRiskFlag, bankRouteHint
    */
   async getPipelineEntries(): Promise<PipelineEntry[] | null> {
     if (!this.isConfigured()) return null;
     const sheets = await this.getSheets();
-    const range = `${this.pipelineTab}!A:N`;
+    const range = `${this.pipelineTab}!A:Q`;
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId!,
       range,
@@ -175,6 +181,11 @@ export class SheetsClientService {
       const orgName = get("orgname") ?? get("org_name") ?? "";
       if (!orgName) continue;
       const probStr = get("probability");
+      const laneRaw = get("fundinglane") ?? get("funding_lane");
+      const lane: PipelineEntry["fundingLane"] =
+        laneRaw && ["DOMESTIC_80G", "CSR", "FCRA"].includes(laneRaw)
+          ? (laneRaw as PipelineEntry["fundingLane"])
+          : undefined;
       entries.push({
         id: get("id"),
         orgName,
@@ -192,6 +203,9 @@ export class SheetsClientService {
         })(),
         geography: get("geography"),
         estimatedGrantSize: get("estimatedgrantsize") ?? get("estimated_grant_size"),
+        fundingLane: lane,
+        complianceRiskFlag: get("complianceriskflag") ?? get("compliance_risk_flag"),
+        bankRouteHint: get("bankroutehint") ?? get("bank_route_hint"),
       });
     }
     return entries;

@@ -1,7 +1,13 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { logStructured } from "../../common/structured-logger";
 import { PrismaService } from "../prisma/prisma.service";
 import { OpportunityService } from "../opportunity/opportunity.service";
+import { PipelineService } from "../pipeline/pipeline.service";
 import { RetrievalService } from "../evidence_ingest/retrieval.service";
 import { EvidenceChunk } from "../core_ai/types";
 import { RfpParserService } from "./services/rfp-parser.service";
@@ -13,6 +19,8 @@ import { ArtifactExporterService } from "./services/artifact-exporter.service";
 import { SlackClientService } from "./services/slack-client.service";
 import { CitationRepairService } from "./services/citation-repair.service";
 import { EmailNotificationService } from "../notifications/email-notification.service";
+import { GovernanceDeliveryGuard } from "../notifications/governance-delivery.guard";
+import { ApprovalContextDto } from "./proposal.dto";
 import { DIKSHA_ORG_PROFILE, PROGRAM_SNAPSHOT_MD } from "./prompts/org-profile";
 import { resolveCitations } from "./utils/citation-resolver";
 import { getCorpusRoute } from "./utils/corpus-router";
@@ -21,12 +29,15 @@ import {
   ProposalRunStatus,
   ProposalSectionStatus,
   ProposalOutline,
+  ProposalScope,
   ProposalRunModelConfig,
   GenerateProposalOptions,
   RegenerateSectionOptions,
   ProposalGap,
   ProposalRunArtifacts,
 } from "./proposal.types";
+import { ApprovalConfirmationContract } from "../contracts/funding-contracts.types";
+import { ActivityRegistryService } from "../activity_registry/activity-registry.service";
 
 @Injectable()
 export class ProposalService {
@@ -35,6 +46,7 @@ export class ProposalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly opportunityService: OpportunityService,
+    private readonly pipelineService: PipelineService,
     private readonly retrieval: RetrievalService,
     private readonly rfpParser: RfpParserService,
     private readonly planner: PlannerService,
@@ -45,22 +57,64 @@ export class ProposalService {
     private readonly slackClient: SlackClientService,
     private readonly citationRepair: CitationRepairService,
     private readonly emailNotification: EmailNotificationService,
+    private readonly governanceGuard: GovernanceDeliveryGuard,
+    private readonly activityRegistry: ActivityRegistryService,
   ) {}
+
+  private mapApproval(approval?: ApprovalContextDto): ApprovalConfirmationContract | undefined {
+    if (!approval?.approvalToken) return undefined;
+    return {
+      approvalToken: approval.approvalToken,
+      interactionId: approval.interactionId || "api",
+      outcome: approval.outcome || "approved",
+      actor: approval.actor || { actorType: "human", actorId: "api_user" },
+      reason: approval.reason,
+      timestamp: new Date().toISOString(),
+    };
+  }
 
   /**
    * Generate full proposal from opportunity.
    */
-  async generateProposal(opportunityId: string, options?: GenerateProposalOptions) {
+  async generateProposal(
+    opportunityId: string,
+    options?: GenerateProposalOptions,
+    approval?: ApprovalContextDto
+  ) {
     const runStart = Date.now();
+    const mappedApproval = this.mapApproval(approval);
     // 1. Load opportunity
     const opportunity = await this.opportunityService.findByOpportunityId(opportunityId);
     if (!opportunity) {
       throw new NotFoundException(`Opportunity ${opportunityId} not found`);
     }
 
+    // Gate: institutional opportunities must have funding lane set before draft/email
+    if (opportunity.pipelineEntryId) {
+      const pipelineEntry = await this.pipelineService.getEntry(
+        opportunity.pipelineEntryId,
+      );
+      if (!pipelineEntry.fundingLane) {
+        throw new BadRequestException(
+          `Set funding lane for this org before generating proposal. Use /funding set-lane <org> <DOMESTIC_80G|CSR|FCRA>.`,
+        );
+      }
+    }
+
     const oppPayload = opportunity.jsonBlob.opportunity;
     const funderName = oppPayload.funder.name;
     const programName = oppPayload.funder.programName || "";
+
+    // Extract hard constraints from opportunity
+    const grantCeilingINR: number | null = oppPayload.keyConstraints?.maxGrantAmountINR ?? null;
+    const funderThemes: { primary?: string[]; secondary?: string[] } | null = oppPayload.themes ?? null;
+
+    this.logger.log({
+      diagnostic: "OPPORTUNITY_CONSTRAINTS",
+      grantCeilingINR,
+      funderThemesPrimary: funderThemes?.primary ?? [],
+      funderThemesSecondary: funderThemes?.secondary ?? [],
+    });
 
     // 2. Parse RFP if not already extracted
     let rfpText = "";
@@ -73,16 +127,28 @@ export class ProposalService {
     // Structured org profile from canonical source
     const orgProfileSummary = DIKSHA_ORG_PROFILE;
 
-    const userOverrides = options
-      ? [
-          options.focusGeography ? `Focus geography: ${options.focusGeography}` : "",
-          options.targetGroup ? `Target group: ${options.targetGroup}` : "",
-          options.budgetCeiling ? `Budget ceiling: ${options.budgetCeiling}` : "",
-          options.dontMention?.length ? `Don't mention: ${options.dontMention.join(", ")}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n")
-      : "";
+    // Budget ceiling: user-supplied takes priority, then auto-read from opportunity constraints
+    const effectiveBudgetCeiling = options?.budgetCeiling
+      || (grantCeilingINR ? `INR ${grantCeilingINR.toLocaleString("en-IN")}` : "");
+
+    // Build activities context with capability mappings and latest metrics from fortnightly reports
+    const activitiesContext = await this.activityRegistry.buildActivitiesContext("diksha");
+    if (activitiesContext) {
+      this.logger.log({
+        diagnostic: "ACTIVITIES_CONTEXT_BUILT",
+        contextLength: activitiesContext.length,
+        preview: activitiesContext.substring(0, 200),
+      });
+    }
+
+    const userOverrides = [
+      options?.focusGeography ? `Focus geography: ${options.focusGeography}` : "",
+      options?.targetGroup ? `Target group: ${options.targetGroup}` : "",
+      effectiveBudgetCeiling ? `Budget ceiling (HARD CONSTRAINT — do NOT exceed): ${effectiveBudgetCeiling}` : "",
+      options?.dontMention?.length ? `Don't mention: ${options.dontMention.join(", ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     // Extract mandatory sections from opportunity (RfpSectionRequirement uses 'name', map to 'title')
     const rawSections = oppPayload.extractedRequirements?.sections || [];
@@ -155,6 +221,7 @@ export class ProposalService {
         opportunityId,
         stage: "planning",
         message: "Generating proposal outline...",
+        approval: mappedApproval,
       });
 
       const outline = await this.planner.generateOutline({
@@ -164,7 +231,39 @@ export class ProposalService {
         capabilityContext: options?.capabilityContext,
         mandatorySections: mandatorySections.length > 0 ? mandatorySections : undefined,
         funderName,
+        funderThemes: funderThemes ?? undefined,
+        activitiesContext: activitiesContext || undefined,
       });
+
+      // Log proposal scope if planner produced one
+      if (outline.proposal_scope) {
+        this.logger.log({
+          diagnostic: "PLANNER_SCOPE",
+          programName: outline.proposal_scope.programName,
+          centers: outline.proposal_scope.centers,
+          beneficiaries: outline.proposal_scope.totalDirectBeneficiaries,
+          geography: outline.proposal_scope.geographicScope,
+          grantPeriod: outline.proposal_scope.grantPeriod,
+          budgetCeiling: outline.proposal_scope.budgetCeiling,
+        });
+      } else if (effectiveBudgetCeiling) {
+        // Planner didn't produce a valid scope, but we have a budget ceiling constraint.
+        // Inject a minimal scope so section writers at least respect the ceiling.
+        this.logger.warn({
+          diagnostic: "INJECTING_MINIMAL_SCOPE",
+          budgetCeiling: effectiveBudgetCeiling,
+          reason: "Planner did not produce a valid proposal_scope",
+        });
+        outline.proposal_scope = {
+          programName: "",
+          centers: [],
+          totalDirectBeneficiaries: "",
+          geographicScope: "",
+          grantPeriod: "",
+          budgetCeiling: effectiveBudgetCeiling,
+          keyDeliverables: [],
+        };
+      }
 
       // === GATE 2: Validate planner output contains all mandatory titles ===
       const plannedTitles = new Set(outline.outline.map((s) => s.section.toLowerCase().trim()));
@@ -248,6 +347,9 @@ export class ProposalService {
             evidenceTypes: retrievalPlanItem?.required_evidence_types || [],
             orgName: "Diksha Foundation",
             funderName,
+            funderThemes: funderThemes?.primary?.length
+              ? funderThemes.primary.join(", ")
+              : undefined,
           });
 
           await this.prisma.proposalSection.update({
@@ -324,13 +426,17 @@ export class ProposalService {
 
           // Draft section
           const sectionGuidance = `Target words: ${sectionOutline.target_words || 0}. Must answer: ${sectionOutline.must_answer.join(", ") || "N/A"}`;
-          const funderContext = `${funderName}${programName ? " — " + programName : ""}`;
+          const themeSuffix = funderThemes?.primary?.length
+            ? ` | Themes: ${funderThemes.primary.join(", ")}${funderThemes.secondary?.length ? ` + ${funderThemes.secondary.join(", ")}` : ""}`
+            : "";
+          const funderContext = `${funderName}${programName ? " — " + programName : ""}${themeSuffix}`;
           const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
             sectionName,
             sectionGuidance,
             chunks: evidenceChunks,
-            orgContext: orgProfileSummary,
+            orgContext: orgProfileSummary + (activitiesContext ? `\n\nStructured Activities Registry:\n${activitiesContext}` : ""),
             funderContext,
+            proposalScope: outline.proposal_scope,
           });
 
           // Auto-repair: soften unsupported hard claims
@@ -399,33 +505,74 @@ export class ProposalService {
       // Sort results back to original section order
       sectionResults.sort((a, b) => a.index - b.index);
 
+      // Budget arithmetic validation — run BEFORE placeholder gate so ceiling breaches are always caught
+      const budgetWarnings = this.validateBudgetArithmetic(sectionResults, sectionsToDraft.map(s => s.section), grantCeilingINR);
+      if (budgetWarnings.length > 0) {
+        this.logger.warn({ diagnostic: "BUDGET_ARITHMETIC", warnings: budgetWarnings });
+      }
+      const hasCeilingBreach = budgetWarnings.some(w => w.startsWith("CEILING BREACH"));
+
       // Hard gate: detect placeholder leakage ({{MISSING:}}, {{VERIFY:}}, {{INSERT:}})
       const placeholderHits: Array<{ section: string; placeholder: string; field: string }> = [];
       for (const result of sectionResults) {
+        const sectionName = sectionsToDraft[result.index].section;
+
+        // Detect explicit placeholders
         const matches = result.draftText.matchAll(/\{\{(?:MISSING|VERIFY|INSERT):\s*([^}]+)\}\}/gi);
         for (const m of matches) {
           placeholderHits.push({
-            section: sectionsToDraft[result.index].section,
+            section: sectionName,
             placeholder: m[0],
             field: m[1].trim(),
           });
         }
+
+        // Detect empty table cells (blank, "-", "TBD", "N/A" in data rows)
+        const tableRows = result.draftText.match(/^\|.+\|$/gm) || [];
+        for (const row of tableRows) {
+          // Skip header separator rows (|---|---|)
+          if (/^\|[\s\-:]+\|$/.test(row)) continue;
+          const cells = row.split("|").slice(1, -1); // trim outer pipes
+          cells.forEach((cell, cellIdx) => {
+            const trimmed = cell.trim();
+            if (trimmed === "" || trimmed === "-" || /^(TBD|N\/A|tbd|n\/a)$/i.test(trimmed)) {
+              placeholderHits.push({
+                section: sectionName,
+                placeholder: `Empty table cell (col ${cellIdx + 1})`,
+                field: `Empty cell in table row: ${row.substring(0, 80)}`,
+              });
+            }
+          });
+        }
       }
 
-      if (placeholderHits.length > 0) {
-        this.logger.warn({
-          gate: "PLACEHOLDER_HARD_GATE",
-          placeholderCount: placeholderHits.length,
-          sections: [...new Set(placeholderHits.map(h => h.section))],
-          placeholders: placeholderHits.slice(0, 20),
-        });
+      if (placeholderHits.length > 0 || hasCeilingBreach) {
+        if (placeholderHits.length > 0) {
+          this.logger.warn({
+            gate: "PLACEHOLDER_HARD_GATE",
+            placeholderCount: placeholderHits.length,
+            sections: [...new Set(placeholderHits.map(h => h.section))],
+            placeholders: placeholderHits.slice(0, 20),
+          });
+        }
+        if (hasCeilingBreach) {
+          this.logger.warn({ gate: "CEILING_BREACH_HARD_GATE", warnings: budgetWarnings });
+        }
 
-        const missingInputs = placeholderHits.map(h => ({
-          field: h.field,
-          section: h.section,
-          question: `Missing data: ${h.field}`,
-          priority: "high" as const,
-        }));
+        const missingInputs = [
+          ...placeholderHits.map(h => ({
+            field: h.field,
+            section: h.section,
+            question: `Missing data: ${h.field}`,
+            priority: "high" as const,
+          })),
+          ...budgetWarnings.filter(w => w.startsWith("CEILING BREACH")).map(w => ({
+            field: "Detailed Budget",
+            section: "Budget",
+            question: w,
+            priority: "high" as const,
+          })),
+        ];
 
         // Build evidence pack for citation resolution in blocked path
         const blockedEvidencePack: Array<{ chunkId: string; docId: string; text: string; title?: string; url?: string }> = [];
@@ -448,7 +595,9 @@ export class ProposalService {
           placeholderHits,
         );
         const blockedCitationResult = resolveCitations(rawBlockedDraft, blockedEvidencePack);
-        const blockedDraftText = blockedCitationResult.resolvedText;
+        const blockedDraftText = this.governanceGuard.enforceNumericClaimDiscipline(
+          blockedCitationResult.resolvedText,
+        ).text;
 
         await this.prisma.proposalRun.update({
           where: { id: run.id },
@@ -458,6 +607,7 @@ export class ProposalService {
             complianceReport: {
               blockedDraftFormatted: blockedDraftText,
               placeholderHits,
+              budgetWarnings,
               citationReferences: blockedCitationResult.references,
             } as object,
           },
@@ -508,6 +658,7 @@ export class ProposalService {
         opportunityId,
         stage: "qa",
         message: "Running QA review...",
+        approval: mappedApproval,
       });
 
       // Assemble: Program Snapshot preamble + section drafts
@@ -516,20 +667,43 @@ export class ProposalService {
         assembledSections.join("\n\n"),
         allEvidencePack,
       );
-      const fullDraftText = citationResult.resolvedText;
+      const numericCheck = this.governanceGuard.enforceNumericClaimDiscipline(
+        citationResult.resolvedText,
+      );
+      const fullDraftText = numericCheck.text;
+      if (numericCheck.flaggedCount > 0) {
+        this.governanceGuard.logAudit({
+          eventId: `evt_${Date.now()}_proposal_numeric_claims`,
+          eventType: "funding.numeric_claims.marked",
+          module: "proposal",
+          action: "update",
+          entityType: "proposal_run",
+          entityId: run.id,
+          actor: { actorType: "agent", actorId: "proposal_service" },
+          timestamp: new Date().toISOString(),
+          status: "accepted",
+          metadata: {
+            enforcement: "BR-GOV-02",
+            flaggedCount: numericCheck.flaggedCount,
+          },
+        });
+      }
 
       this.logger.log({
         diagnostic: "CITATION_RESOLUTION",
         uniqueCitationsResolved: citationResult.references.length,
       });
 
-      // Build QA requirements with explicit mandatory section list
+      // Build QA requirements with explicit mandatory section list, ceiling, and themes
       const generatedSectionTitles = outline.outline.map((s) => s.section);
       const requirementsJson = JSON.stringify({
         sections: outline.outline,
         mandatorySections: mandatorySections.map((s) => s.title),
         compliance: outline.compliance_checklist,
         evaluationCriteria: oppPayload.extractedRequirements?.evaluationCriteria || [],
+        maxGrantAmountINR: grantCeilingINR ?? undefined,
+        budgetCeiling: effectiveBudgetCeiling || undefined,
+        funderThemes: funderThemes ?? undefined,
       });
 
       // === DIAGNOSTIC: Step D — QA input ===
@@ -614,6 +788,7 @@ export class ProposalService {
             ...qaResult,
             rawDraftText: citationResult.rawDraftText,
             citationReferences: citationResult.references,
+            budgetArithmeticWarnings: budgetWarnings,
           } as object,
           gaps: gaps as object,
           status: "qa",
@@ -622,10 +797,44 @@ export class ProposalService {
 
       // 6. Export artifacts
       if (opportunity.driveFolderId && this.artifactExporter.isConfigured()) {
+        const exportApproval = this.governanceGuard.requireWriteApproval({
+          module: "proposal",
+          action: "create",
+          entityType: "proposal_artifacts",
+          entityId: run.id,
+          actor: { actorType: "agent", actorId: "proposal_service" },
+          reason: "Export proposal artifacts to Drive",
+          before: null,
+          after: {
+            opportunityFolderId: opportunity.driveFolderId,
+            runId: run.id,
+            funderName,
+            programName,
+          },
+          approval: mappedApproval,
+        });
+        await this.opportunityService.appendAuditEvent(opportunity.id, "proposal_export_guard", exportApproval.approved ? "allowed" : "blocked", {
+          preview: exportApproval.preview,
+          decisionReason: exportApproval.reason,
+        });
+
+        if (!exportApproval.approved) {
+          await this.prisma.proposalRun.update({
+            where: { id: run.id },
+            data: {
+              complianceReport: {
+                ...(qaResult as object),
+                exportPreview: exportApproval.preview,
+                exportBlockedReason: exportApproval.reason,
+              } as object,
+            },
+          });
+        } else {
         await this.slackClient.postProgress({
           opportunityId,
           stage: "export",
           message: "Exporting artifacts to Drive...",
+          approval: mappedApproval,
         });
 
         const artifacts = await this.artifactExporter.exportArtifacts({
@@ -649,6 +858,7 @@ export class ProposalService {
           where: { id: run.id },
           data: { artifacts: artifacts as object },
         });
+        }
       }
 
       // 7. Send Slack summary
@@ -656,14 +866,25 @@ export class ProposalService {
         ? (await this.prisma.proposalRun.findUnique({ where: { id: run.id } }))?.artifacts as ProposalRunArtifacts | undefined
         : undefined;
 
-      await this.slackClient.postSummary({
+      const slackSummaryResult = await this.slackClient.postSummary({
         opportunityId,
         funderName,
         status: "complete",
         artifacts: runArtifacts,
         gaps,
         coverageScore: qaResult.coverage_score,
+        approval: mappedApproval,
       });
+      await this.opportunityService.appendAuditEvent(
+        opportunity.id,
+        "proposal_slack_summary",
+        slackSummaryResult.sent ? "allowed" : "blocked",
+        {
+          reason: slackSummaryResult.reason,
+          guardDecision: slackSummaryResult.guardDecision,
+          preview: slackSummaryResult.preview,
+        },
+      );
 
       // 8. Send email notification to review recipients
       const proposalTitle = `${funderName}${programName ? ` - ${programName}` : ""}`;
@@ -676,7 +897,23 @@ export class ProposalService {
         draftText: fullDraftText,
         artifacts: runArtifacts,
       });
-      await this.emailNotification.sendGeneratedContent("Proposal Generated", proposalTitle, emailBody);
+      const emailResult = await this.emailNotification.sendGeneratedContent(
+        "Proposal Generated",
+        proposalTitle,
+        emailBody,
+        mappedApproval,
+        { actorType: "agent", actorId: "proposal_service_email" }
+      );
+      await this.opportunityService.appendAuditEvent(
+        opportunity.id,
+        "proposal_email_delivery",
+        emailResult.sent ? "allowed" : "blocked",
+        {
+          reason: emailResult.reason,
+          guardDecision: emailResult.guardDecision,
+          preview: emailResult.preview,
+        },
+      );
 
       // 9. Update status to complete
       await this.prisma.proposalRun.update({
@@ -801,6 +1038,7 @@ export class ProposalService {
       chunks: evidenceChunks,
       orgContext: DIKSHA_ORG_PROFILE,
       funderContext: regenFunderContext,
+      proposalScope: outline?.proposal_scope,
     });
 
     // Auto-repair: soften unsupported hard claims
@@ -852,6 +1090,72 @@ export class ProposalService {
       throw new NotFoundException(`ProposalRun ${runId} not found`);
     }
     return (run.gaps as unknown as ProposalGap[]) || [];
+  }
+
+  /**
+   * Validate budget arithmetic: check that line item amounts sum to stated total.
+   * Returns warning strings (empty array = no issues detected).
+   */
+  private validateBudgetArithmetic(
+    sectionResults: Array<{ index: number; draftText: string }>,
+    sectionNames: string[],
+    ceilingINR?: number | null,
+  ): string[] {
+    const warnings: string[] = [];
+    const budgetIdx = sectionNames.findIndex(n => n.toLowerCase().includes("budget"));
+    if (budgetIdx === -1) return warnings;
+
+    const budgetResult = sectionResults.find(r => r.index === budgetIdx);
+    if (!budgetResult) return warnings;
+
+    const text = budgetResult.draftText;
+
+    // Extract all INR amounts: "INR 1,152,000" or "INR 45,00,000" or "**INR 4,500,000**"
+    const amountMatches = [...text.matchAll(/INR\s*([\d,]+)/gi)];
+    const amounts = amountMatches.map(m => ({
+      raw: m[0],
+      value: parseInt(m[1].replace(/,/g, ""), 10),
+    })).filter(a => !isNaN(a.value));
+
+    if (amounts.length < 3) return warnings;
+
+    const largest = Math.max(...amounts.map(a => a.value));
+    const lineItems = amounts.filter(a => a.value < largest * 0.5);
+    const lineItemSum = lineItems.reduce((s, a) => s + a.value, 0);
+
+    if (Math.abs(lineItemSum - largest) > largest * 0.05) {
+      warnings.push(
+        `Line items sum to INR ${lineItemSum.toLocaleString("en-IN")} but stated total is INR ${largest.toLocaleString("en-IN")} (diff: INR ${Math.abs(lineItemSum - largest).toLocaleString("en-IN")})`,
+      );
+    }
+
+    // Check for multiple different "total" amounts
+    const totalPattern = /total[^:]*:\s*INR\s*([\d,]+)/gi;
+    const totalMatches = [...text.matchAll(totalPattern)];
+    const totalValues = [...new Set(totalMatches.map(m => parseInt(m[1].replace(/,/g, ""), 10)))];
+    if (totalValues.length > 1) {
+      warnings.push(
+        `Multiple different totals found: ${totalValues.map(v => `INR ${v.toLocaleString("en-IN")}`).join(", ")}`,
+      );
+    }
+
+    // Check for mixed durations (e.g. 24 months in a 12-month grant)
+    const durationMatches = [...text.matchAll(/(\d+)\s*months?/gi)];
+    const durations = [...new Set(durationMatches.map(m => parseInt(m[1], 10)))].filter(d => d >= 6);
+    if (durations.length > 1 && durations.some(d => d > 12) && durations.some(d => d <= 12)) {
+      warnings.push(
+        `Mixed durations in budget: ${durations.sort((a, b) => a - b).join(", ")} months. Verify all lines match grant period.`,
+      );
+    }
+
+    // Check against grant ceiling (hard constraint)
+    if (ceilingINR && ceilingINR > 0 && largest > ceilingINR) {
+      warnings.push(
+        `CEILING BREACH: Proposed budget INR ${largest.toLocaleString("en-IN")} exceeds grant ceiling INR ${ceilingINR.toLocaleString("en-IN")} by INR ${(largest - ceilingINR).toLocaleString("en-IN")}`,
+      );
+    }
+
+    return warnings;
   }
 
   /**

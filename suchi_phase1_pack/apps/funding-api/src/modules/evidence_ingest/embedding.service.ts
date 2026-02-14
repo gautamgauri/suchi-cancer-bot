@@ -92,13 +92,24 @@ export class EmbeddingService {
             const chunk = batch[j];
             const vec = res.data[j]?.embedding;
             if (!vec) continue;
-            await this.prisma.chunkEmbedding.create({
+            const row = await this.prisma.chunkEmbedding.create({
               data: {
                 chunkId: chunk.id,
                 embeddingModel: this.model,
                 vector: JSON.stringify(vec),
               },
             });
+            // Dual-write: also populate native pgvector column
+            try {
+              await this.prisma.$executeRawUnsafe(
+                `UPDATE "ChunkEmbedding" SET "embedding" = $1::vector WHERE "id" = $2`,
+                `[${vec.join(",")}]`,
+                row.id,
+              );
+            } catch (pgvecErr) {
+              // Non-fatal: pgvector column may not exist yet (pre-migration)
+              this.logger.debug(`pgvector dual-write skipped: ${(pgvecErr as Error).message}`);
+            }
             embedded++;
             tokenCountProxy += Math.ceil((chunk.content.length || 0) / 4);
           }
