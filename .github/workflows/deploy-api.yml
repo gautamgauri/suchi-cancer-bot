@@ -51,7 +51,7 @@ jobs:
             --region $REGION \
             --command "npx" \
             --args "prisma,migrate,deploy" \
-            --add-cloudsql-instances $CLOUDSQL_INSTANCE \
+            --set-cloudsql-instances $CLOUDSQL_INSTANCE \
             --set-secrets "DATABASE_URL=database-url:latest" \
             --set-env-vars "NODE_ENV=production" \
             --max-retries 0 \
