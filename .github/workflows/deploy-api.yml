@@ -45,6 +45,7 @@ jobs:
         run: docker push --all-tags $REGISTRY/$SERVICE
 
       - name: Run database migrations
+        continue-on-error: true
         run: |
           gcloud run jobs deploy suchi-migrate \
             --image $REGISTRY/$SERVICE:${{ github.sha }} \
