@@ -23,7 +23,14 @@ MANDATORY SECTIONS: When provided by the RFP, include every one in your outline 
 CAPABILITY ALIGNMENT: When capability context is provided, align sections to Nussbaum C1–C10.
 FUNDER THEMES: The outline MUST address each primary funder theme. Map the organization's strongest programs to those themes.
 BUDGET CEILING: proposal_scope.budgetCeiling MUST match the constraint exactly. All line items must fit within it.
-ACTIVITIES REGISTRY: Use it to ground the outline in specific, costed activities — prefer real program data (frequencies, unit costs, outcomes, indicators) over generic descriptions. Extract hours/week, sessions/week, device ratios, cohort sizes, and staff counts into deliverables.`;
+ACTIVITIES REGISTRY: Use it to ground the outline in specific, costed activities — prefer real program data (frequencies, unit costs, outcomes, indicators) over generic descriptions. Extract hours/week, sessions/week, device ratios, cohort sizes, and staff counts into deliverables.
+FRAMEWORK INTELLIGENCE: When a Framework Context block is provided, use it to:
+- Set capability_focus on each outline section using the funder's priority capabilities
+- Reference proven program models in section guidance (e.g., "describe how Football3 methodology is adapted")
+- Include Theory of Change elements in the Project Design section guidance
+- Use comparable programs to strengthen the Need Statement guidance
+- Align M&E section guidance with MEL pack indicators
+- Populate suggested_primary_capabilities and suggested_secondary_capabilities from the funder analysis`;
 
 export const PLANNER_USER_TEMPLATE = `RFP Text:
 {{RFP_TEXT}}
@@ -33,6 +40,7 @@ Funder: {{FUNDER_NAME}}
 Known org/program context:
 {{ORG_PROFILE_SUMMARY}}
 {{ACTIVITIES_CONTEXT}}
+{{FRAMEWORK_CONTEXT}}
 Constraints:
 {{USER_OVERRIDES}}
 {{CAPABILITY_CONTEXT}}
@@ -91,6 +99,8 @@ export function buildPlannerUserPrompt(params: {
   funderThemes?: { primary?: string[]; secondary?: string[] };
   /** Structured activities context from ProgramActivity registry */
   activitiesContext?: string;
+  /** Pre-computed framework intelligence context (methods, ToC, comparables, MEL) */
+  frameworkContext?: string;
 }): string {
   const capabilityBlock =
     params.capabilityContext &&
@@ -109,6 +119,10 @@ export function buildPlannerUserPrompt(params: {
     params.activitiesContext
       ? `\nSTRUCTURED ACTIVITIES REGISTRY (use these real program activities with their costs, frequencies, and outcomes):\n${params.activitiesContext}`
       : "";
+  const frameworkBlock =
+    params.frameworkContext
+      ? `\n${params.frameworkContext}`
+      : "";
   return PLANNER_USER_TEMPLATE.replace("{{RFP_TEXT}}", params.rfpText)
     .replace("{{FUNDER_NAME}}", params.funderName || "Not specified")
     .replace("{{ORG_PROFILE_SUMMARY}}", params.orgProfileSummary)
@@ -116,5 +130,6 @@ export function buildPlannerUserPrompt(params: {
     .replace("{{CAPABILITY_CONTEXT}}", capabilityBlock)
     .replace("{{MANDATORY_SECTIONS}}", mandatorySectionsBlock)
     .replace("{{FUNDER_THEMES}}", funderThemesBlock)
-    .replace("{{ACTIVITIES_CONTEXT}}", activitiesBlock);
+    .replace("{{ACTIVITIES_CONTEXT}}", activitiesBlock)
+    .replace("{{FRAMEWORK_CONTEXT}}", frameworkBlock);
 }

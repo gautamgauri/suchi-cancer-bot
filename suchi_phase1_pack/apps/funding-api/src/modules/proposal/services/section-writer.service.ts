@@ -24,6 +24,8 @@ export class SectionWriterService {
     funderContext?: string;
     /** Canonical scope from planner — locks numbers across sections */
     proposalScope?: ProposalScope;
+    /** Framework intelligence context for this section type */
+    frameworkContext?: string;
   }): Promise<{ draftText: string; gaps: string[] }> {
     if (params.chunks.length === 0) {
       // Attempt template-based draft using section guidance and org context
@@ -54,6 +56,7 @@ CONTENT: ${content}
       sectionTypeRequirements: sectionTypeReqs ?? undefined,
       orgContext: params.orgContext,
       proposalScope: params.proposalScope,
+      frameworkContext: params.frameworkContext,
     });
 
     try {

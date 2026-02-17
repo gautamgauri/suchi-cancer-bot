@@ -35,9 +35,12 @@ import {
   RegenerateSectionOptions,
   ProposalGap,
   ProposalRunArtifacts,
+  FrameworkIntelligencePack,
 } from "./proposal.types";
 import { ApprovalConfirmationContract } from "../contracts/funding-contracts.types";
 import { ActivityRegistryService } from "../activity_registry/activity-registry.service";
+import { FrameworkIntelligenceService } from "./services/framework-intelligence.service";
+import { ConsistencyCheckerService } from "../framework/services/consistency-checker.service";
 
 @Injectable()
 export class ProposalService {
@@ -59,6 +62,8 @@ export class ProposalService {
     private readonly emailNotification: EmailNotificationService,
     private readonly governanceGuard: GovernanceDeliveryGuard,
     private readonly activityRegistry: ActivityRegistryService,
+    private readonly frameworkIntelligence: FrameworkIntelligenceService,
+    private readonly consistencyChecker: ConsistencyCheckerService,
   ) {}
 
   private mapApproval(approval?: ApprovalContextDto): ApprovalConfirmationContract | undefined {
@@ -219,6 +224,28 @@ export class ProposalService {
     // #endregion
 
     try {
+      // 2.5. Framework intelligence gathering
+      let frameworkPack: FrameworkIntelligencePack | null = null;
+      if (!options?.skipFramework) {
+        await this.slackClient.postProgress({
+          opportunityId,
+          stage: "framework_research",
+          message: "Researching funder priorities and program models...",
+          approval: mappedApproval,
+        });
+        try {
+          frameworkPack = await this.frameworkIntelligence.gatherIntelligence({
+            rfpText: rfpText || JSON.stringify(oppPayload.extractedRequirements || {}),
+            funderThemes: funderThemes ?? undefined,
+            extractedRequirements: oppPayload.extractedRequirements as Record<string, unknown> | undefined,
+            targetGroup: options?.targetGroup || "children and youth from marginalized communities",
+            geography: options?.focusGeography || "Bihar, India",
+          });
+        } catch (fwErr) {
+          this.logger.warn(`Framework intelligence gathering failed (non-fatal): ${fwErr}`);
+        }
+      }
+
       // 3. Generate outline + retrieval plan
       await this.slackClient.postProgress({
         opportunityId,
@@ -231,11 +258,16 @@ export class ProposalService {
         rfpText: rfpText || JSON.stringify(oppPayload.extractedRequirements || {}),
         orgProfileSummary,
         userOverrides,
-        capabilityContext: options?.capabilityContext,
+        capabilityContext: frameworkPack
+          ? { primary: frameworkPack.funderProfile.primaryCapabilities, secondary: frameworkPack.funderProfile.secondaryCapabilities }
+          : options?.capabilityContext,
         mandatorySections: mandatorySections.length > 0 ? mandatorySections : undefined,
         funderName,
         funderThemes: funderThemes ?? undefined,
         activitiesContext: activitiesContext || undefined,
+        frameworkContext: frameworkPack
+          ? this.frameworkIntelligence.formatPlannerContext(frameworkPack)
+          : undefined,
       });
 
       // Log proposal scope if planner produced one
@@ -492,6 +524,11 @@ export class ProposalService {
             orgCtx += `\n\nStructured Activities Registry:\n${activitiesContext}`;
           }
 
+          // Get section-specific framework context
+          const sectionFwCtx = frameworkPack
+            ? this.frameworkIntelligence.getSectionContext(sectionName, frameworkPack)
+            : undefined;
+
           const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
             sectionName,
             sectionGuidance,
@@ -499,10 +536,21 @@ export class ProposalService {
             orgContext: orgCtx,
             funderContext,
             proposalScope: outline.proposal_scope,
+            frameworkContext: sectionFwCtx || undefined,
           });
 
+          // Budget section: parse JSON-first output and render as clean markdown table
+          let processedDraft = rawDraft;
+          if (/budget/i.test(sectionName)) {
+            const budgetRendered = this.renderBudgetFromJson(rawDraft, outline.proposal_scope?.budgetCeiling);
+            if (budgetRendered) {
+              processedDraft = budgetRendered;
+              this.logger.log({ diagnostic: "BUDGET_JSON_RENDERED", section: sectionName });
+            }
+          }
+
           // Auto-repair: soften unsupported hard claims
-          const repairResult = this.citationRepair.repairSection(rawDraft);
+          const repairResult = this.citationRepair.repairSection(processedDraft);
           const draftText = repairResult.repaired;
 
           await this.prisma.proposalSection.update({
@@ -593,14 +641,18 @@ export class ProposalService {
           });
         }
 
-        // Detect empty table cells (blank, "-", "TBD", "N/A" in data rows)
+        // Detect empty table cells (blank, "TBD", "N/A" in data rows)
+        // Skip: header separator rows, summary rows (subtotal/contingency/total)
         const tableRows = result.draftText.match(/^\|.+\|$/gm) || [];
         for (const row of tableRows) {
           if (/^\|[\s\-:]+\|$/.test(row)) continue;
+          // Skip summary rows — they intentionally have empty cells
+          if (/\*?\*?(subtotal|contingency|grand total|total)\*?\*?/i.test(row)) continue;
           const cells = row.split("|").slice(1, -1);
           cells.forEach((cell, cellIdx) => {
             const trimmed = cell.trim();
-            if (trimmed === "" || trimmed === "-" || /^(TBD|N\/A|tbd|n\/a)$/i.test(trimmed)) {
+            // Note: single dash "—" or "-" in summary rows is valid formatting, don't flag it
+            if (trimmed === "" || /^(TBD|N\/A|tbd|n\/a)$/i.test(trimmed)) {
               emptyTableCells.push({
                 section: sectionName,
                 placeholder: `Empty table cell (col ${cellIdx + 1})`,
@@ -794,6 +846,34 @@ export class ProposalService {
         budgetCeiling: effectiveBudgetCeiling || undefined,
         funderThemes: funderThemes ?? undefined,
       });
+
+      // Framework consistency gate (advisory — logs flags, doesn't block)
+      if (frameworkPack?.funderProfile.primaryCapabilities.length) {
+        try {
+          const consistencyResult = await this.consistencyChecker.check({
+            draftText: fullDraftText.substring(0, 15000),
+            claimedCapabilities: frameworkPack.funderProfile.primaryCapabilities,
+            claimedMIModalities: frameworkPack.funderProfile.suggestedMIModalities,
+          });
+          this.logger.log({
+            diagnostic: "CONSISTENCY_CHECK",
+            overallScore: consistencyResult.overallScore,
+            passesQualityGate: consistencyResult.passesQualityGate,
+            flagCount: consistencyResult.flags.length,
+            errorFlags: consistencyResult.flags.filter((f) => f.severity === "error").length,
+          });
+          if (!consistencyResult.passesQualityGate) {
+            for (const flag of consistencyResult.flags.filter((f) => f.severity === "error")) {
+              sectionGaps.push({
+                section: flag.section || "Overall",
+                gaps: [flag.message + (flag.suggestion ? ` Suggestion: ${flag.suggestion}` : "")],
+              });
+            }
+          }
+        } catch (ccErr) {
+          this.logger.warn(`Consistency check failed (non-fatal): ${ccErr}`);
+        }
+      }
 
       // === DIAGNOSTIC: Step D — QA input ===
       this.logger.log({
@@ -1311,6 +1391,136 @@ export class ProposalService {
     }
 
     return items;
+  }
+
+  /**
+   * Parse budget JSON from LLM output and render as clean markdown table.
+   * Returns null if no valid budget JSON found (falls back to raw LLM output).
+   */
+  private renderBudgetFromJson(rawDraft: string, budgetCeiling?: string): string | null {
+    // Extract ```budget-json ... ``` or ```json ... ``` block
+    const jsonMatch = rawDraft.match(/```(?:budget-json|json)\s*\n([\s\S]*?)\n```/);
+    if (!jsonMatch) return null;
+
+    try {
+      const budget = JSON.parse(jsonMatch[1]) as {
+        currency?: string;
+        grantPeriodMonths?: number;
+        lineItems: Array<{
+          category: string;
+          item: string;
+          unitCost: number;
+          unit: string;
+          quantity: number;
+          months: number;
+          amount: number;
+          notes?: string;
+        }>;
+      };
+
+      if (!budget.lineItems || budget.lineItems.length === 0) return null;
+
+      const currency = budget.currency || "INR";
+      const fmt = (n: number) => `${currency} ${n.toLocaleString("en-IN")}`;
+
+      // Compute correct amounts (override LLM math)
+      const items = budget.lineItems
+        .filter(li => !/total/i.test(li.item) && !/contingency/i.test(li.category))
+        .map(li => {
+          const computed = li.unitCost * li.quantity * (li.months || 1);
+          return { ...li, amount: computed };
+        });
+
+      let subtotal = items.reduce((s, li) => s + li.amount, 0);
+
+      // Find contingency line or default to 5%
+      const contingencyLine = budget.lineItems.find(li => /contingency/i.test(li.category) || /contingency/i.test(li.item));
+      const contingencyPct = contingencyLine
+        ? (contingencyLine.amount > 1 ? contingencyLine.amount / subtotal : 0.05)
+        : 0.05;
+
+      // Ceiling enforcement: if budget ceiling is set and items exceed it, scale down proportionally
+      let ceilingNote = "";
+      let scaleFactor = 1.0;
+      if (budgetCeiling) {
+        const ceilingMatch = budgetCeiling.match(/[\d,]+/);
+        if (ceilingMatch) {
+          const ceiling = parseInt(ceilingMatch[0].replace(/,/g, ""), 10);
+          const rawGrandTotal = subtotal + Math.round(subtotal * Math.min(contingencyPct, 0.10));
+          if (ceiling > 0 && rawGrandTotal > ceiling) {
+            // Scale down all line items to fit within ceiling (reserving room for contingency)
+            const targetSubtotal = Math.round(ceiling / (1 + Math.min(contingencyPct, 0.10)));
+            scaleFactor = targetSubtotal / subtotal;
+            this.logger.log({
+              diagnostic: "BUDGET_CEILING_SCALE",
+              rawSubtotal: subtotal,
+              ceiling,
+              scaleFactor: scaleFactor.toFixed(3),
+              targetSubtotal,
+            });
+            for (const li of items) {
+              li.amount = Math.round(li.amount * scaleFactor);
+              li.unitCost = Math.round(li.unitCost * scaleFactor);
+            }
+            subtotal = items.reduce((s, li) => s + li.amount, 0);
+            ceilingNote = `\n\n> **Note:** Line items scaled to fit within budget ceiling of ${fmt(ceiling)}. Original estimates were ${(1/scaleFactor).toFixed(1)}x higher; unit costs adjusted proportionally.\n`;
+          }
+        }
+      }
+
+      const contingencyAmount = Math.round(subtotal * Math.min(contingencyPct, 0.10));
+      const grandTotal = subtotal + contingencyAmount;
+
+      // Group by category for display
+      const categories = [...new Set(items.map(li => li.category))];
+
+      // Build markdown table
+      const lines: string[] = [
+        `## Detailed Budget`,
+        "",
+        `| # | Category | Item | Unit Cost | Qty | Months | Amount (${currency}) | Notes |`,
+        `|---|----------|------|--------:|----:|-------:|----:|-------|`,
+      ];
+
+      let rowNum = 0;
+      for (const cat of categories) {
+        const catItems = items.filter(li => li.category === cat);
+        const catTotal = catItems.reduce((s, li) => s + li.amount, 0);
+        for (const li of catItems) {
+          rowNum++;
+          lines.push(
+            `| ${rowNum} | ${li.category} | ${li.item} | ${fmt(li.unitCost)} | ${li.quantity} | ${li.months} | ${fmt(li.amount)} | ${li.notes || ""} |`
+          );
+        }
+      }
+
+      // Subtotal
+      lines.push(`| | | **Subtotal** | — | — | — | **${fmt(subtotal)}** | — |`);
+      // Contingency
+      lines.push(`| | Contingency | Contingency (${Math.round(contingencyPct * 100)}%) | — | — | — | ${fmt(contingencyAmount)} | — |`);
+      // Grand total
+      lines.push(`| | | **Grand Total** | — | — | — | **${fmt(grandTotal)}** | — |`);
+
+      lines.push("");
+      lines.push(`**Total Proposed Budget: ${fmt(grandTotal)}**`);
+      lines.push(ceilingNote);
+
+      // Append any narrative text that came after the JSON block
+      const afterJson = rawDraft.substring(rawDraft.indexOf("```", jsonMatch.index! + 3) + 3).trim();
+      // Remove everything before the closing ``` of the json block
+      const narrativeText = afterJson.replace(/^```\s*/, "").trim();
+      if (narrativeText && narrativeText.length > 20) {
+        lines.push("");
+        lines.push("### Budget Rationale");
+        lines.push("");
+        lines.push(narrativeText);
+      }
+
+      return lines.join("\n");
+    } catch (e) {
+      this.logger.warn(`Budget JSON parse failed: ${(e as Error).message}`);
+      return null;
+    }
   }
 
   /**

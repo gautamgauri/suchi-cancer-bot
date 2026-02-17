@@ -5,6 +5,7 @@ import { EvidenceIngestModule } from "../evidence_ingest/evidence-ingest.module"
 import { OpportunityModule } from "../opportunity/opportunity.module";
 import { PipelineModule } from "../pipeline/pipeline.module";
 import { ActivityRegistryModule } from "../activity_registry/activity-registry.module";
+import { FrameworkModule } from "../framework/framework.module";
 import { ProposalController } from "./proposal.controller";
 import { ProposalService } from "./proposal.service";
 import { RfpParserService } from "./services/rfp-parser.service";
@@ -15,6 +16,8 @@ import { QaReviewerService } from "./services/qa-reviewer.service";
 import { ArtifactExporterService } from "./services/artifact-exporter.service";
 import { SlackClientService } from "./services/slack-client.service";
 import { CitationRepairService } from "./services/citation-repair.service";
+import { FunderPriorityExtractorService } from "./services/funder-priority-extractor.service";
+import { FrameworkIntelligenceService } from "./services/framework-intelligence.service";
 
 @Module({
   imports: [
@@ -24,6 +27,7 @@ import { CitationRepairService } from "./services/citation-repair.service";
     OpportunityModule,
     PipelineModule,
     ActivityRegistryModule,
+    FrameworkModule,
   ],
   controllers: [ProposalController],
   providers: [
@@ -36,6 +40,8 @@ import { CitationRepairService } from "./services/citation-repair.service";
     ArtifactExporterService,
     SlackClientService,
     CitationRepairService,
+    FunderPriorityExtractorService,
+    FrameworkIntelligenceService,
   ],
   exports: [ProposalService, SlackClientService],
 })

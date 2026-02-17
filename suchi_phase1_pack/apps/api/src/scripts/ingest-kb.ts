@@ -172,7 +172,8 @@ async function generateEmbedding(text: string, apiKey: string, modelName: string
       model: `models/${modelName}`,
       content: {
         parts: [{ text: text }]
-      }
+      },
+      outputDimensionality: 768
     })
   });
 
@@ -318,7 +319,7 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
   let embeddings: (number[] | null)[] = [];
   if (!opts.skipEmbeddings && !opts.dryRun) {
     const apiKey = process.env.EMBEDDING_API_KEY || process.env.GEMINI_API_KEY;
-    const modelName = process.env.EMBEDDING_MODEL || "text-embedding-004";
+    const modelName = process.env.EMBEDDING_MODEL || "gemini-embedding-001";
     
     if (!apiKey) {
       console.warn("Warning: No EMBEDDING_API_KEY or GEMINI_API_KEY found. Skipping embeddings.");

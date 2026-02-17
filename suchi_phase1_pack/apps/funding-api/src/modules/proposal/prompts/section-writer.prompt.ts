@@ -9,7 +9,7 @@ CITATION RULES (CRITICAL):
 - Every numeric claim, impact statement, or statistic MUST include its citation token immediately after.
 - Copy the citation EXACTLY as provided (e.g., [citation:proposal_001:chunk_3]).
 - Do NOT invent or modify citation tokens.
-- If evidence is insufficient, use {{MISSING: description}} placeholders.
+- If evidence is insufficient for a HARD-BLOCK field (see below), use {{MISSING: description}} placeholders.
 
 SCOPE LOCK (CRITICAL — read the CANONICAL SCOPE block carefully):
 - Use EXACTLY the center/site names listed in the scope. Do NOT add, rename, or invent new centers or locations — even if evidence mentions expansion plans or future sites.
@@ -19,18 +19,46 @@ SCOPE LOCK (CRITICAL — read the CANONICAL SCOPE block carefully):
 - If evidence mentions aspirational or planned expansions not in the CANONICAL SCOPE, IGNORE them.
 - If you reference other org programs for broader context, put them in ONE brief "Organizational Context" paragraph labeled as out-of-scope. Do NOT repeat this disclaimer on every mention — state it once.
 
+PLACEHOLDER TIERS (CRITICAL — reduces bloat):
+TIER 1 — {{MISSING: ...}} — Use ONLY for hard-block fields:
+  * Budget line-item amounts or totals that change the budget
+  * Numeric targets that affect eligibility or compliance (e.g., "target pass rate for scholarship threshold")
+  * Regulatory/legal requirements (registration numbers, FCRA details, audit dates)
+  * Funder-mandated fields explicitly listed in the RFP as "required"
+TIER 2 — Write natural prose with "to be confirmed" or a reasonable range:
+  * Operational details: device ratio → "current device ratio is approximately 1:3 (to be confirmed with latest inventory)"
+  * Beneficiary demographics: age bands → "children aged 6–14 (exact age-band breakdown to be confirmed from enrollment records)"
+  * Curriculum specifics: platform → "digital literacy delivered via Khan Academy and internal resources (final platform selection in progress)"
+  * Staff qualifications: → "Fellow Teachers hold at minimum a Bachelor's degree (detailed CVs available on request)"
+  * Community event frequency: → "quarterly community open days (dates to be finalized)"
+  * Assessment tools: → "literacy assessed via ASER-style grade-level tests (specific rubric to be finalized Month 1)"
+  * Selection/vulnerability criteria: → "children from economically disadvantaged households identified through school referrals and community outreach"
+
+USE TIER 2 AGGRESSIVELY. Most operational details should be prose with "(to be confirmed)" rather than {{MISSING}}.
+The goal is: a human reader can understand the section WITHOUT resolving placeholders. Only truly unknown numbers that change compliance should be {{MISSING}}.
+
 TABLE COMPLETENESS:
 - Every cell in a markdown table MUST contain a value. Do NOT leave cells empty, use "-", or write "TBD".
-- If a baseline value is unknown, write "{{MISSING: baseline for [indicator name]}}".
-- If a target value is unknown, write "{{MISSING: target for [indicator name]}}".
+- If a baseline value is unknown, write a reasonable estimate with "(to be confirmed)" — e.g., "~70% (to be confirmed from Month 1 baseline)".
+- ONLY use {{MISSING: ...}} in table cells for budget amounts or compliance-critical targets.
+
+FRAMEWORK KNOWLEDGE (when provided):
+- Method Cards describe proven pedagogical approaches. Reference them by name and explain HOW the org adapts them for Bihar.
+- Pattern Cards describe session designs. Use them to describe weekly activity structure.
+- Comparable Cases prove the approach works elsewhere. Cite them for evidence of effectiveness.
+- Theory of Change provides causal logic. Use it for Project Design, Activities, and Results sections.
+- MEL Indicators provide capability-aligned metrics. Use them for M&E and Monitoring sections.
+- SYNTHESIZE framework knowledge into Diksha Foundation's Bihar context — do not just list it.
+- When a global model is referenced, ALWAYS explain how Diksha customizes it for its specific age group, hub-and-spoke setting, and Bihar geography.
 
 Output format: Markdown with headings.
-Do not invent facts or numbers.`;
+Do not invent facts or numbers — but DO write natural prose with "(to be confirmed)" for operational details.`;
 
 export const SECTION_WRITER_USER_TEMPLATE = `Section: {{SECTION_NAME}}
 Funder: {{FUNDER_CONTEXT}}
 Outline guidance: {{SECTION_GUIDANCE}}
 {{PROPOSAL_SCOPE}}{{SECTION_TYPE_REQUIREMENTS}}
+{{FRAMEWORK_CONTEXT}}
 Organization context:
 {{ORG_CONTEXT}}
 
@@ -47,6 +75,7 @@ export function buildSectionWriterUserPrompt(params: {
   sectionTypeRequirements?: string;
   orgContext?: string;
   proposalScope?: import("../proposal.types").ProposalScope;
+  frameworkContext?: string;
 }): string {
   let scopeBlock = "";
   if (params.proposalScope) {
@@ -94,6 +123,7 @@ export function buildSectionWriterUserPrompt(params: {
     .replace("{{SECTION_GUIDANCE}}", params.sectionGuidance)
     .replace("{{PROPOSAL_SCOPE}}", scopeBlock)
     .replace("{{SECTION_TYPE_REQUIREMENTS}}", params.sectionTypeRequirements ? `\nSection-specific requirements:\n${params.sectionTypeRequirements}` : "")
+    .replace("{{FRAMEWORK_CONTEXT}}", params.frameworkContext ? `\n${params.frameworkContext}` : "")
     .replace("{{ORG_CONTEXT}}", params.orgContext || "Not provided")
     .replace("{{CHUNKS_LIST}}", params.chunksList);
 }
@@ -102,12 +132,13 @@ export function buildSectionWriterUserPrompt(params: {
 
 export const SECTION_TYPE_GUIDANCE: Record<string, string> = {
   beneficiaries: `REQUIRED for this section:
-- Direct beneficiary count (number of children/youth directly served)
-- Indirect beneficiaries (families, community members)
-- Geography (districts, blocks, specific locations)
-- Age bands and gender breakdown (% girls target)
-- Selection criteria (how beneficiaries are identified)
-- Vulnerability criteria (what makes them eligible)
+- Direct beneficiary count (number of children/youth directly served) — use EXACT count from CANONICAL SCOPE
+- Indirect beneficiaries (families, community members) — estimate as ~2x direct if unknown, note "(estimated)"
+- Geography (districts, blocks, specific locations) — use CANONICAL SCOPE geography
+- Age bands: write "children aged 6–14 across primary and upper primary levels (detailed age-band breakdown to be confirmed from enrollment records)" if exact breakdown unavailable
+- Gender mix: write "approximately 45% girls (to be confirmed from enrollment data)" if exact split unavailable
+- Selection criteria: write "children from economically disadvantaged households, identified through school referrals and community outreach, prioritizing first-generation learners" — this is standard for the org
+- Vulnerability criteria: write "families below poverty line, single-parent households, children at risk of school dropout" — standard org criteria
 Do NOT reference child labour or waste picking unless explicitly part of this program.
 Use ONLY the organization's own program data for beneficiary descriptions.
 Reconcile all program components mentioned across the proposal. If a program (e.g., Empowering Futures, Poonji) is not in scope for this grant, state clearly: "Not included in this proposal scope."
@@ -124,48 +155,67 @@ Avoid absolute 100% targets unless justified by evidence. Use "at least 90%" wit
 Each objective must specify ALL of: indicator, assessment tool, baseline definition, target value, timeline.
 Do NOT introduce new centers, locations, or expansion plans not in the CANONICAL SCOPE.
 All beneficiary targets must use the exact count from the CANONICAL SCOPE — do NOT round to a different number (e.g., if scope says 476, do NOT write 500).
-If a specific target value is unknown, use {{MISSING: target for [objective name]}} — do NOT invent numbers.`,
 
-  budget: `REQUIRED for this section:
+DEFAULT TARGETS (use these if Activity Facts provide baselines but no specific targets):
+- Attendance: "achieve ≥85% average monthly attendance (baseline to be established Month 1)"
+- Learning levels: "20% improvement in grade-level reading and numeracy scores (ASER-style assessment, baseline Month 1, endline Month 12)"
+- Digital literacy: "80% of enrolled students demonstrate basic digital skills on practical assessment (rubric to be finalized Month 1)"
+- Sports participation: "≥90% of enrolled students participate in weekly sports sessions"
+- SEL/life skills: "measurable improvement in social-emotional competencies using teacher observation checklist (to be confirmed)"
+- Teacher capacity: "all Fellow Teachers complete 40-hour induction training and monthly professional development sessions"
+These are Tier 2 — write as natural prose, NOT as {{MISSING}}.`,
+
+  budget: `CRITICAL: Output the budget as a JSON code block, NOT as a markdown table. The system will render the table from your JSON.
+
+Output format — produce ONLY a fenced JSON block like this:
+\`\`\`budget-json
+{
+  "currency": "INR",
+  "grantPeriodMonths": 12,
+  "lineItems": [
+    {"category": "Staff", "item": "Fellow Teacher Stipends", "unitCost": 12000, "unit": "per month", "quantity": 8, "months": 12, "amount": 1152000, "notes": "8 Fellow Teachers across 3 centers"},
+    {"category": "Staff", "item": "Center Coordinator Salaries", "unitCost": 20000, "unit": "per month", "quantity": 3, "months": 12, "amount": 720000, "notes": "1 per center"},
+    ...more items...
+  ]
+}
+\`\`\`
+
+RULES:
 - 8-12 line items minimum
-- Staff costs (salaries, stipends for fellows)
-- Program costs (materials, kits, sports equipment, digital devices)
-- Infrastructure (rent, utilities, internet, furniture)
-- Training and capacity building
-- M&E costs (assessments, data collection, reporting)
-- Administrative (audit, travel, communication)
-- Contingency (5-10%)
-- Total must be plausible for the described scope
-If budget ceiling is specified in guidance, all items must sum to within that ceiling.
-Do NOT write "will be finalized later" — provide specific amounts.
-Total must not exceed the grant ceiling specified in the outline guidance.
-Each line item must have a unit cost x quantity breakdown (e.g., "Fellow Teacher stipend: INR 12,000/month x 12 months x 8 fellows = INR 11,52,000").
-Cross-check: staff counts in budget must match the Team/Staffing section.
-DURATION: ALL salary/stipend line items MUST use the same duration matching the grant period from the CANONICAL SCOPE. If the grant is 12 months, every line must be 12 months — do NOT use 24 months for some and 12 for others.
-SINGLE TOTAL: Present exactly ONE "Total Proposed Budget" amount. Do NOT show different totals in different parts of the section.
-BENEFICIARY COUNTS: Kit quantities, device counts, and per-student costs must use the exact beneficiary count from the CANONICAL SCOPE.`,
+- Categories: Staff, Program Materials, Infrastructure, Training, M&E, Administrative, Contingency
+- amount = unitCost × quantity × months (the system will verify this math)
+- ALL months fields must equal the grant period from CANONICAL SCOPE
+- Staff counts must match the Team/Staffing section
+- Kit/device quantities must use the beneficiary count from CANONICAL SCOPE
+- Include a Contingency line (5-10% of subtotal)
+- Do NOT include a "Total" line — the system computes it
+- If budget ceiling is in scope, ensure line items sum to within that ceiling
+- Write a brief narrative paragraph AFTER the JSON block explaining budget rationale
+
+Each item MUST have: category, item, unitCost, unit, quantity, months, amount, notes.
+Do NOT produce a markdown table — ONLY the JSON block + narrative paragraph.`,
 
   monitoring: `REQUIRED for this section:
-- Baseline-midline-endline schedule with dates
-- Data collection tools (assessments, rubrics, attendance registers, observation forms)
-- Who collects data (staff roles, external evaluators)
-- Reporting cadence (monthly, quarterly, annual)
-- Key indicators table (indicator, data source, frequency, target)
-- Data quality assurance mechanism
-- Dashboard or reporting format
-Present the M&E framework as a table with columns: Indicator | Data Source | Frequency | Baseline | Target | Responsible Staff.
-Include explicit baseline-midline-endline dates (e.g., "Baseline: Month 1, Midline: Month 6, Endline: Month 12").
-Each indicator must have a named responsible person or role, not just "project team".
-EVERY table cell MUST have a value. If baseline data is not yet collected, write "To be established Month 1" — do NOT leave cells blank.
-Targets must be specific numbers consistent with the CANONICAL SCOPE beneficiary count.`,
+- Baseline-midline-endline schedule: Baseline Month 1, Midline Month 6, Endline Month 12
+- Data collection tools: daily attendance registers, ASER-style literacy/numeracy assessments, digital literacy practical tests, sports participation logs, SEL observation checklists, fortnightly progress reports
+- Who collects: M&E Officer (overall), Fellow Teachers (daily attendance, classroom assessments), Center Coordinators (fortnightly consolidation), Project Lead (quarterly review)
+- Reporting cadence: daily (attendance), fortnightly (activity reports to internal dashboard), monthly (consolidated progress report), quarterly (narrative + financial report to funder), annual (impact report)
+- Key indicators table with columns: Indicator | Data Source | Frequency | Baseline | Target | Responsible Staff
+- Data quality: monthly data verification by M&E Officer, quarterly spot-checks by Project Lead
+- Dashboard: internal digital dashboard updated fortnightly from center-level data
+
+TABLE CELLS: Fill baselines with "To be established Month 1" and targets with reasonable estimates (e.g., "≥85% monthly attendance", "20% improvement in literacy scores"). Do NOT use {{MISSING}} for baselines or targets — use prose estimates.
+Targets must be consistent with the CANONICAL SCOPE beneficiary count.`,
 
   activities: `REQUIRED for this section:
-- Weekly schedule (hours/week per activity type)
-- Sports: sessions/week, coaching model, equipment, inclusion approach
-- Digital: sessions/week, device ratio, curriculum/platform
-- Academic: subjects covered, methodology, materials
-- Community events: frequency, format
-- Implementation timeline with milestones (Year 1 quarters)`,
+- Weekly schedule (hours/week per activity type) — use Activity Facts frequencies directly
+- Sports: sessions/week from Activity Facts, coaching model by Fellow Teachers, equipment (balls, mats, basic sports kit), inclusive approach for all genders
+- Digital: sessions/week from Activity Facts, device ratio approximately 1:3 (to be confirmed with latest inventory), curriculum via Khan Academy and internal digital literacy modules
+- Academic: supplementary education in literacy and numeracy, methodology aligned to ASER framework, materials include workbooks and teaching-learning materials
+- Community events: quarterly open days and monthly parent-teacher meetings (dates to be finalized)
+- SEL sessions: frequency from Activity Facts, delivered by trained Fellow Teachers using age-appropriate curriculum
+- Implementation timeline with milestones (Year 1 quarters)
+Use Activity Facts to fill in session frequencies. Do NOT use {{MISSING}} for operational details — write prose with "(to be confirmed)" where needed.`,
 
   team: `REQUIRED for this section:
 - Use ONLY Diksha Foundation staff and roles
@@ -191,10 +241,21 @@ PARTNERSHIP CLAIMS: Do NOT claim formal government partnerships, MoUs, or integr
 - 5-8 expected outcomes organized as: short-term (within 6 months) and intermediate (within 12 months)
 - Each outcome MUST reference at least ONE Activity Fact (e.g., sessions/week, hours/week, device ratio, enrollment, attendance %)
 - Use a table with columns: Outcome | Indicator | Activity Link | Timeline | Target
-- Short-term outcomes: attendance improvement, enrollment stabilization, baseline assessments completed, initial sports participation
-- Intermediate outcomes: learning level improvement, digital literacy gains, life skills behavior change, community engagement
-- At least 3 outcomes must cite specific Activity Facts data (e.g., "SEL sessions: 2x/week → expected 15% improvement in emotional regulation scores")
-- Do NOT leave this section empty. If evidence is thin, use Activity Facts + org context to construct plausible outcomes.`,
+
+SHORT-TERM OUTCOMES (Month 1-6) — use these defaults where Activity Facts support them:
+1. Attendance stabilization: "≥85% average monthly attendance across all 3 centers" (baseline = last 4 weeks pre-grant, tracked via daily attendance register)
+2. Enrollment retained: "≥95% of initially enrolled students remain active" (tracked via monthly enrollment roll)
+3. Baseline assessments completed: "100% of students complete literacy, numeracy, and digital literacy baseline assessments by Month 2" (ASER-style tests + digital practical)
+4. Sports participation: "≥90% of enrolled students participate in ≥3 sports sessions/week" (tracked via sports attendance log)
+
+INTERMEDIATE OUTCOMES (Month 7-12):
+5. Learning improvement: "20% average improvement in grade-level literacy and numeracy scores" (midline Month 6 vs endline Month 12, ASER-style)
+6. Digital literacy: "80% of students demonstrate basic digital skills" (practical assessment rubric, endline Month 12)
+7. SEL gains: "measurable improvement in social-emotional competencies" (teacher observation checklist, endline Month 12)
+8. Community engagement: "≥2 community events per center per quarter with ≥50% parent attendance" (event attendance logs)
+
+FILL EVERY TABLE CELL with these defaults. Do NOT use {{MISSING}} — use the targets above with "(to be confirmed from baseline data)".
+Do NOT leave this section empty. If evidence is thin, use Activity Facts + org context to construct plausible outcomes.`,
 
   communication: `REQUIRED for this section:
 - 3 audiences: funder, community, internal team
@@ -216,6 +277,16 @@ Do NOT leave this section empty — every proposal needs a communication plan.`,
 - At least 3 concrete sustainability mechanisms (not just "will seek funding")
 Do NOT leave this section empty. Use org context to describe existing sustainability practices.`,
 
+  projectDesign: `REQUIRED for this section:
+- Theory of Change: present a clear causal chain (inputs -> activities -> outputs -> outcomes -> impact)
+- If framework knowledge provides a ToC, adapt it to Diksha's specific programs and Bihar context
+- Reference proven program models (method cards) by name and explain HOW Diksha adapts them
+- Activity blocks with weekly structure, aligned to capabilities (C1-C10)
+- Describe session patterns if available from framework knowledge
+- Include adaptation narrative: how global/proven models are customized for Diksha's hub-and-spoke model, Bihar geography, and specific age group
+- Link each activity block to specific capabilities and expected outcomes
+Do NOT just list framework knowledge — SYNTHESIZE it into a coherent program design that reads as Diksha's own.`,
+
   experience: `REQUIRED for this section:
 - Years of operation in the project location
 - Specific programs delivered and their outcomes
@@ -233,6 +304,7 @@ export function getSectionTypeGuidance(sectionName: string): string | null {
   if (lower.includes("objective") || lower.includes("goal")) return SECTION_TYPE_GUIDANCE.objectives;
   if (lower.includes("budget") || lower.includes("financial")) return SECTION_TYPE_GUIDANCE.budget;
   if (lower.includes("monitor") || lower.includes("evaluat") || lower.includes("m&e") || lower.includes("m & e")) return SECTION_TYPE_GUIDANCE.monitoring;
+  if (lower.includes("project design") || lower.includes("program design")) return SECTION_TYPE_GUIDANCE.projectDesign;
   if (lower.includes("activit") || lower.includes("implementation") || lower.includes("methodology")) return SECTION_TYPE_GUIDANCE.activities;
   if (lower.includes("team") || lower.includes("staff") || lower.includes("personnel") || lower.includes("core team")) return SECTION_TYPE_GUIDANCE.team;
   if (lower.includes("need") || lower.includes("problem") || lower.includes("rationale") || lower.includes("context") || lower.includes("background")) return SECTION_TYPE_GUIDANCE.need;

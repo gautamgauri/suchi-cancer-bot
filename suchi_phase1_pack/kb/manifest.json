@@ -127,6 +127,65 @@
       "citation": "SCCF Compiled, 2025"
     },
     {
+      "id": "kb_en_bihar_nabh_cancer_centers_v1",
+      "title": "NABH Accredited Cancer Treatment Centers in Bihar",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Research (Deep Research)",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/bihar-nabh-cancer-centers.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "hospitals",
+        "nabh",
+        "bihar",
+        "patna",
+        "india",
+        "cancer-centers",
+        "accreditation"
+      ],
+      "url": null,
+      "citation": "SCCF Deep Research, 2026"
+    },
+    {
+      "id": "kb_en_bihar_cancer_navigation_guide_v1",
+      "title": "Bihar Cancer Care Navigation Guide",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Research (Deep Research)",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/bihar-cancer-navigation-guide.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "monthly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general",
+        "breast"
+      ],
+      "tags": [
+        "navigation",
+        "bihar",
+        "patna",
+        "india",
+        "hospitals",
+        "pmjay",
+        "financial-aid",
+        "emergency",
+        "caregiver"
+      ],
+      "url": null,
+      "citation": "SCCF Deep Research, 2026"
+    },
+    {
       "id": "kb_en_nci_publications_patient_education_coping_with_advance_cancer_mobi_v1",
       "title": "",
       "version": "v1",

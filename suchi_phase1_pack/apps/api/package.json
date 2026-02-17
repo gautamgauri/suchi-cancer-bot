@@ -13,6 +13,7 @@
     "kb:ingest": "ts-node src/scripts/ingest-kb.ts --resume",
     "kb:ingest:fresh": "ts-node src/scripts/ingest-kb.ts --wipeChunks --confirmWipe",
     "kb:ingest:no-embeddings": "ts-node src/scripts/ingest-kb.ts --resume --skipEmbeddings",
+    "kb:backfill-embeddings": "ts-node src/scripts/backfill-embeddings.ts",
     "who:iris:puppeteer": "ts-node src/scripts/download-who-iris-puppeteer.ts",
     "who:iris:playwright": "ts-node src/scripts/download-who-iris-playwright.ts"
   },
