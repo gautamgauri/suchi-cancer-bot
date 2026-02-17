@@ -132,11 +132,11 @@
       "citation": "SCCF Compiled, 2026"
     },
     {
-      "id": "kb_en_india_cancer_treatment_centers_v1",
+      "id": "kb_en_india_cancer_treatment_centers_v2",
       "title": "Cancer Treatment Centers in India - Major Facilities by Region",
-      "version": "v1",
+      "version": "v2",
       "status": "active",
-      "source": "SCCF Compiled (Public Hospital Information)",
+      "source": "SCCF Compiled (Public Hospital Information + NABH Accreditation Data)",
       "sourceType": "05_india_ncg",
       "path": "en/05_india_ncg/india-cancer-treatment-centers.md",
       "license": "public_info",
@@ -158,7 +158,18 @@
         "igims",
         "aiims",
         "tata-memorial",
-        "patient-journey"
+        "patient-journey",
+        "nabh",
+        "accreditation",
+        "paras-hmri",
+        "medanta",
+        "ruban",
+        "buddha-cancer-centre",
+        "homi-bhabha",
+        "muzaffarpur",
+        "bhagalpur",
+        "private-hospital",
+        "government-hospital"
       ],
       "url": null,
       "citation": "SCCF Compiled, 2026"

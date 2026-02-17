@@ -196,8 +196,13 @@ export class QueryExpanderService {
 
     // India-specific navigation terms - mapped to India KB content
     ['hospital near', ['cancer treatment centers', 'hospitals in India', 'government hospital', 'cancer centre']],
-    ['hospital in patna', ['Mahavir Cancer Sansthan', 'IGIMS Patna', 'AIIMS Patna', 'cancer treatment centers Bihar']],
-    ['hospital in bihar', ['Mahavir Cancer Sansthan', 'IGIMS Patna', 'AIIMS Patna', 'cancer treatment centers Bihar']],
+    ['hospital in patna', ['Mahavir Cancer Sansthan', 'IGIMS Patna', 'AIIMS Patna', 'Paras HMRI', 'Jay Prabha Medanta', 'Ruban Memorial', 'Buddha Cancer Centre', 'cancer treatment centers Bihar']],
+    ['hospital in bihar', ['Mahavir Cancer Sansthan', 'IGIMS Patna', 'AIIMS Patna', 'Homi Bhabha Cancer Hospital Muzaffarpur', 'cancer treatment centers Bihar']],
+    ['private hospital patna', ['Paras HMRI', 'Jay Prabha Medanta', 'Ruban Memorial', 'Buddha Cancer Centre', 'NABH accredited hospital Bihar']],
+    ['nabh hospital', ['NABH accredited', 'Paras HMRI', 'Jay Prabha Medanta', 'Ruban Memorial', 'hospital accreditation quality']],
+    ['best hospital cancer bihar', ['Mahavir Cancer Sansthan', 'AIIMS Patna', 'Paras HMRI', 'Jay Prabha Medanta', 'NABH accredited']],
+    ['muzaffarpur hospital', ['Homi Bhabha Cancer Hospital Muzaffarpur', 'Tata Memorial Centre', 'cancer treatment north Bihar']],
+    ['bhagalpur hospital', ['Healing Touch Hospital Bhagalpur', 'cancer treatment eastern Bihar']],
     ['government scheme', ['Ayushman Bharat', 'PM-JAY', 'government health insurance', 'financial assistance']],
     ['government help', ['Ayushman Bharat', 'PM-JAY', 'Rashtriya Arogya Nidhi', 'government scheme']],
     ['ayushman', ['Ayushman Bharat', 'PM-JAY', 'government health insurance', 'Rs 5 lakh coverage']],
