@@ -18,6 +18,7 @@
     "node_modules",
     "dist",
     "scripts",
+    "src/scripts",
     "**/*.spec.ts",
     "**/*.test.ts"
   ]

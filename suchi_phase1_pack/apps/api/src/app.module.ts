@@ -15,6 +15,7 @@ import { AdminModule } from "./modules/admin/admin.module";
 import { HealthModule } from "./modules/health/health.module";
 import { EmbeddingsModule } from "./modules/embeddings/embeddings.module";
 import { YoutubeModule } from "./modules/youtube/youtube.module";
+import { VoiceModule } from "./modules/voice/voice.module";
 
 @Module({
   imports: [
@@ -39,7 +40,8 @@ import { YoutubeModule } from "./modules/youtube/youtube.module";
     AdminModule,
     HealthModule,
     EmbeddingsModule,
-    YoutubeModule
+    YoutubeModule,
+    VoiceModule
   ]
 })
 export class AppModule {}

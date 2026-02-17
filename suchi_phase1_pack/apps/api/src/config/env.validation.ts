@@ -19,7 +19,17 @@ export const envSchema = z.object({
   RATE_LIMIT_TTL_SEC: z.coerce.number().optional(),
   RATE_LIMIT_REQ_PER_TTL: z.coerce.number().optional(),
   NODE_ENV: z.string().optional(),
-  LLM_TIMEOUT_MS: z.coerce.number().optional().default(45000)
+  LLM_TIMEOUT_MS: z.coerce.number().optional().default(45000),
+  // Voice module
+  GCS_BUCKET_TTS: z.string().optional(),
+  GCS_SIGNED_URL_EXPIRY_MIN: z.coerce.number().optional().default(60),
+  STT_LANGUAGE_CODE: z.string().optional().default("hi-IN"),
+  STT_MODEL: z.string().optional().default("latest_short"),
+  STT_CONFIDENCE_THRESHOLD: z.coerce.number().optional().default(0.6),
+  TTS_VOICE_NAME: z.string().optional().default("hi-IN-Neural2-A"),
+  TTS_SPEAKING_RATE: z.coerce.number().optional().default(0.9),
+  VOICE_MAX_AUDIO_SIZE_BYTES: z.coerce.number().optional().default(2097152),
+  VOICE_MAX_AUDIO_DURATION_SEC: z.coerce.number().optional().default(60)
 }).refine(
   (data) => {
     // Validate that the required API key is present based on provider

@@ -28,6 +28,7 @@ import { StructuredExtractorService } from "./structured-extractor.service";
     PrismaModule
   ],
   controllers: [ChatController],
-  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService]
+  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService],
+  exports: [ChatService]
 })
 export class ChatModule {}

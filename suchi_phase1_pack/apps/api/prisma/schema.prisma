@@ -28,10 +28,11 @@ model Session {
   // Eval/test traffic marker
   isEval  Boolean @default(false) // True if session is from automated eval/test
 
-  messages        Message[]
-  feedback        Feedback[]
-  safetyEvents    SafetyEvent[]
-  analyticsEvents AnalyticsEvent[]
+  messages          Message[]
+  feedback          Feedback[]
+  safetyEvents      SafetyEvent[]
+  analyticsEvents   AnalyticsEvent[]
+  voiceInteractions VoiceInteraction[]
 }
 
 model Message {
@@ -139,6 +140,31 @@ model KbChunk {
 
   @@index([docId])
   @@index([content])
+}
+
+model VoiceInteraction {
+  id              String   @id @default(uuid())
+  sessionId       String
+  messageId       String?
+  createdAt       DateTime @default(now())
+  sttProvider     String   @default("google")
+  sttConfidence   Float?
+  transcript      String
+  audioDurationMs Int?
+  audioSizeBytes  Int?
+  inputFormat     String?
+  ttsProvider     String   @default("google")
+  ttsAudioUrl     String?
+  ttsVoiceName    String?
+  sttLatencyMs    Int?
+  ttsLatencyMs    Int?
+  totalLatencyMs  Int?
+  error           String?
+
+  session Session @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([createdAt])
 }
 
 model MessageCitation {

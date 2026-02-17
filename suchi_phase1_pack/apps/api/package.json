@@ -18,6 +18,9 @@
     "who:iris:playwright": "ts-node src/scripts/download-who-iris-playwright.ts"
   },
   "dependencies": {
+    "@google-cloud/speech": "^7.2.1",
+    "@google-cloud/storage": "^7.19.0",
+    "@google-cloud/text-to-speech": "^6.4.0",
     "@google-cloud/vertexai": "^1.10.0",
     "@nestjs/common": "^10.4.0",
     "@nestjs/config": "^3.2.3",
@@ -43,6 +46,7 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
     "@types/geoip-lite": "^1.4.4",
+    "@types/multer": "^2.0.0",
     "@types/node": "^20.14.10",
     "@types/nodemailer": "^7.0.9",
     "pg": "^8.16.3",
