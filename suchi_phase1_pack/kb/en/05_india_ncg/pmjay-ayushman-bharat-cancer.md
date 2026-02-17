@@ -1,8 +1,8 @@
 ---
 title: "Ayushman Bharat (PM-JAY) - Cancer Treatment Coverage Guide"
-version: "v1"
+version: "v2"
 status: "active"
-source: "SCCF Compiled (Public Scheme Information)"
+source: "SCCF Compiled (Public Scheme Information, verified Feb 2026)"
 ---
 
 ## What is Ayushman Bharat - Pradhan Mantri Jan Arogya Yojana (PM-JAY)?
@@ -33,6 +33,8 @@ PM-JAY covers cancer treatment including:
 - Fertility treatments
 
 ## How to Check Eligibility
+
+Eligibility is based on socio-economic criteria determined by the state, targeting poor families (BPL/AAY or state-determined criteria).
 
 ### Online
 1. Visit the PM-JAY website or the mera.pmjay.gov.in portal
@@ -75,9 +77,11 @@ PM-JAY covers cancer treatment including:
 - Many government cancer centers are empanelled (e.g., Mahavir Cancer Sansthan, Tata Memorial Hospital)
 
 ### Step 4: Admission and treatment
-- Show your Ayushman card at the hospital
+- Show your Ayushman card or Aadhaar at the hospital's Ayushman counter
 - The hospital will verify and create a pre-authorization request
-- Treatment is cashless up to the package rate
+- Request pre-authorization for the required treatment (hospital staff will assist)
+- Ensure all hospital bills and forms are documented under PM-JAY to avoid out-of-pocket payment
+- Treatment is cashless up to the package rate — no upfront payment required for covered treatment packages
 - You should not be asked to pay for covered procedures
 
 ### Step 5: If costs exceed Rs. 5 lakh

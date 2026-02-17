@@ -212,6 +212,8 @@ export class QueryExpanderService {
     ['where to go', ['cancer treatment centers', 'hospitals', 'patient journey', 'referral pathway']],
     ['which hospital', ['cancer treatment centers', 'best hospital for cancer', 'government cancer center']],
     ['best hospital', ['cancer treatment centers', 'tertiary cancer center', 'government cancer hospital']],
+    ['breast cancer treatment', ['breast cancer diagnosis pathway', 'breast cancer surgery', 'mammography', 'receptor status', 'chemotherapy']],
+    ['breast cancer hospital', ['cancer treatment centers', 'breast oncology', 'surgical oncology', 'Mahavir Cancer Sansthan']],
   ]);
 
   // ============= CANCER TYPE SYNONYMS =============

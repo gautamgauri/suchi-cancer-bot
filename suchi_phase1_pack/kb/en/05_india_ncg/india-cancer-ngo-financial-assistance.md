@@ -1,8 +1,8 @@
 ---
 title: "Cancer Financial Assistance and NGO Support in India"
-version: "v1"
+version: "v2"
 status: "active"
-source: "SCCF Compiled (Public Information)"
+source: "SCCF Compiled (Public Information, verified Feb 2026)"
 ---
 
 ## Overview
@@ -46,10 +46,10 @@ Several organizations in India provide financial assistance, emotional support, 
 
 ## Bihar-Specific Support
 
-### Hospital Social Work Departments
-- **Mahavir Cancer Sansthan, Patna** has a social work department that helps patients navigate financial assistance
-- **IGIMS Patna** provides assistance through the hospital administration
-- **AIIMS Patna** has patient welfare services
+### Hospital Social Work / Medical Social Welfare Departments
+- **Mahavir Cancer Sansthan, Patna** has a Medical Social Welfare desk that helps patients apply for government schemes (PM-JAY, RAN, PMNRF, CM Relief). Additionally, Mahavir Mandir Trust provides free treatment for pediatric cancer patients and a Rs. 10,000 grant for poor adult patients.
+- **IGIMS Patna** provides assistance through the hospital administration for subsidized/free treatment
+- **AIIMS Patna** has patient welfare services that assist with government scheme applications
 
 ### State Government Support
 - **Bihar Chief Minister's Treatment Scheme:** Financial assistance for serious illnesses

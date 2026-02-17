@@ -313,6 +313,36 @@
       "citation": "SCCF Deep Research, 2026"
     },
     {
+      "id": "kb_en_breast_cancer_diagnosis_pathway_india_v1",
+      "title": "Breast Cancer: Diagnosis and Treatment Pathway in India",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled (WHO guidelines, verified Feb 2026)",
+      "sourceType": "05_india_ncg",
+      "path": "en/05_india_ncg/breast-cancer-diagnosis-pathway-india.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "diagnosis",
+        "treatment-pathway",
+        "india",
+        "caregiver",
+        "patient-journey",
+        "surgery",
+        "chemotherapy",
+        "receptor-status"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled (WHO guidelines), 2026"
+    },
+    {
       "id": "kb_en_nci_publications_patient_education_coping_with_advance_cancer_mobi_v1",
       "title": "",
       "version": "v1",
