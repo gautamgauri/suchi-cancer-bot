@@ -829,12 +829,11 @@ export class ChatService {
 
     // 7. Mode-based routing
     // Template-only intents (no RAG needed)
+    // Note: CARE_NAVIGATION_* moved to RAG-assisted flow to leverage India navigation KB content
     const templateOnlyIntents = [
       "GREETING_ONLY",
       "UNCLEAR_REQUEST",
       "REPORT_REQUEST_NO_TEXT",
-      "CARE_NAVIGATION_PROVIDER_CHOICE",
-      "CARE_NAVIGATION_SECOND_OPINION",
       "REQUEST_OUT_OF_SCOPE",
       "SAFETY_RESTRICTED",
       "ABSTENTION_WITH_RED_FLAGS"
@@ -1267,8 +1266,15 @@ export class ChatService {
       });
     }
 
+    // Navigation intents route through Explain Mode to leverage India navigation KB content
+    const navigationIntents = [
+      "CARE_NAVIGATION_PROVIDER_CHOICE",
+      "CARE_NAVIGATION_SECOND_OPINION",
+    ];
+    const isNavigationIntent = navigationIntents.includes(intentResult.intent);
+
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
-    if (mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) {
+    if ((mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) || isNavigationIntent) {
       // DEBUG: Timing markers for explain mode performance diagnosis
       const explainStarted = Date.now();
       let llmCallCount = 0;
@@ -1877,8 +1883,10 @@ export class ChatService {
     // Fallback: Other intents (REPORT_TEXT_PROVIDED, etc.) - use existing LLM flow
     // 8. Generate response with citations (legacy flow for non-informational intents)
     const systemPrompt =
-      "You are Suchi (Suchitra Cancer Bot), an informational and navigation assistant for cancer. " +
-      "No diagnosis/prescribing/dosage. Use sections: Next steps, Red flags, Questions to ask a doctor.";
+      "You are Suchi (Suchitra Cancer Bot), an informational and navigation assistant for cancer, primarily serving Indian patients and caregivers. " +
+      "No diagnosis/prescribing/dosage. Use sections: Next steps, Red flags, Questions to ask a doctor. " +
+      "For emergencies, reference Indian numbers: 112 (emergency), 108 (ambulance). " +
+      "For financial assistance, mention PM-JAY/Ayushman Bharat (helpline: 14555) and Indian Cancer Society (1800-22-1951) when relevant.";
 
     let responseText = await this.llm.generateWithCitations(
       systemPrompt,

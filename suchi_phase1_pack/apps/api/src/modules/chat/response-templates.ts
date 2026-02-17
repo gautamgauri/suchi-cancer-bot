@@ -280,26 +280,26 @@ What would you like to know?`;
 
   static S2(context: TemplateContext): string {
     // Urgent red flags - highest priority
-    // Locale-aware emergency numbers
-    const locale = context.locale?.toLowerCase() || "";
-    const isIndia = locale.includes("india") || locale.includes("in") || locale === "en-in";
-    
-    const emergencyNumber = isIndia ? "112" : "911"; // 112 for India, 911 for US/others
-    const ambulanceNumber = isIndia ? "108" : "911"; // 108 for India ambulance, 911 for others
-    
-    return `Some of what you described could be urgent. Please seek emergency medical care now or call local emergency services${isIndia ? ` (${emergencyNumber} for emergency, ${ambulanceNumber} for ambulance)` : ` (${emergencyNumber})`}.
+    // India-first emergency numbers (primary audience is Indian)
+    return `Some of what you described could be urgent. Please seek emergency medical care now.
+
+**Call for help immediately:**
+• **112** (national emergency number) or **108** (ambulance service)
+• **102** (medical emergency helpline, available in many states)
+• Or have someone drive you to the nearest emergency department
 
 **Immediate Steps:**
-• Call ${emergencyNumber}${isIndia ? ` or ${ambulanceNumber} for ambulance` : ""} or have someone drive you to the nearest emergency room
 • Don't drive yourself if you're feeling faint, dizzy, or confused
 • If you have severe bleeding, apply gentle pressure if possible (without causing more harm)
 • Bring a list of your current medications if you can
-• If someone is with you, have them call ahead to the ER if possible
+• Bring your Ayushman Bharat / health insurance card if available
+• If someone is with you, have them call ahead to the hospital if possible
 
 **If you can, share with the clinician:**
 • Your age
 • What symptoms are happening right now
 • When they started or got worse
+• Any current cancer treatment or medications
 
 I can help you prepare what to say to the clinician. But please prioritize getting medical attention immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.`;
   }
@@ -334,7 +334,7 @@ I can help you prepare what to say to the clinician. But please prioritize getti
 
   static A5(context: TemplateContext): string {
     // Abstention with red flags
-    return "I want to be careful here: I can't confidently verify enough information to answer this accurately.\n\n**If this is urgent:** seek medical care immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.\n\n**What I can do right now:**\n• Help you prepare questions for your oncologist based on your situation\n• Explain any medical terms in plain language\n• Help you organize symptoms, reports, and timelines for a clearer consultation\n\nIf you share what the question was about (and any relevant details like diagnosis, treatment, and reports), I'll help you frame the next best steps and questions.";
+    return "I want to be careful here: I can't confidently verify enough information to answer this accurately.\n\n**If this is urgent:** Call **112** (emergency) or **108** (ambulance) immediately. Seek medical care if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.\n\n**What I can do right now:**\n• Help you prepare questions for your oncologist based on your situation\n• Explain any medical terms in plain language\n• Help you organize symptoms, reports, and timelines for a clearer consultation\n\nIf you share what the question was about (and any relevant details like diagnosis, treatment, and reports), I'll help you frame the next best steps and questions.";
   }
 
   /**
@@ -354,8 +354,8 @@ I can help you prepare what to say to the clinician. But please prioritize getti
    * N-series: Navigation templates
    */
   static N1(context: TemplateContext): string {
-    // Provider choice
-    return "I can help you find appropriate healthcare resources. To provide the most relevant guidance:\n\n**Please share:**\n• Your city or location\n• Cancer type or suspicion (if known)\n• Type of care needed (diagnosis, treatment, second opinion)\n\n**I can help with:**\n• Checklist for choosing a doctor/hospital\n• Questions to ask when selecting a provider\n• Resources for finding qualified oncology centers\n\nWhat's your location and what type of care are you looking for?";
+    // Provider choice - India-contextualized
+    return "I can help you find appropriate healthcare resources in India. To provide the most relevant guidance:\n\n**Please share:**\n• Your city/district and state\n• Cancer type or suspicion (if known)\n• Type of care needed (diagnosis, treatment, second opinion)\n• Whether you have an Ayushman Bharat (PMJAY) card or other health insurance\n\n**I can help with:**\n• Finding cancer treatment centers near you (government and private)\n• Understanding government schemes like Ayushman Bharat (PMJAY) that cover cancer treatment\n• Preparing a documents checklist for your hospital visit\n• Questions to ask when selecting an oncologist\n• Information about financial assistance options\n\n**Quick resources:**\n• **Ayushman Bharat helpline**: 14555 (toll-free)\n• **Indian Cancer Society**: 1800-22-1951 (toll-free)\n• **Tata Memorial Hospital helpline**: 022-24177000\n\nWhat's your location and what type of care are you looking for?";
   }
 
   static N2(context: TemplateContext): string {

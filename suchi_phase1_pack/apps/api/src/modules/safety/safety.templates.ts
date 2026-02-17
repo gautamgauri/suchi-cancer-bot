@@ -13,9 +13,13 @@ export const TEMPLATES = {
       rulesFired: ["SAFE_SELF_HARM_V1"],
       actions: ["end_conversation"],
       responseText:
-        "I’m really sorry you’re feeling this way. I can’t help with harming yourself, but you deserve immediate support. " +
-        "If you are in immediate danger, contact local emergency services now. If you can, reach out to a trusted person right away. " +
-        "If you tell me your country/city, I can suggest reputable crisis support options."
+        "I'm really sorry you're feeling this way. I can't help with harming yourself, but you deserve immediate support. " +
+        "If you are in immediate danger, call 112 (emergency) or go to your nearest emergency department now.\n\n" +
+        "**Please reach out for support:**\n" +
+        "- **Vandrevala Foundation**: 9999666555 (24/7 mental health support)\n" +
+        "- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)\n" +
+        "- **Indian Cancer Society**: 1800-22-1951 (toll-free cancer helpline)\n\n" +
+        "These services are confidential and staffed by trained professionals. You are not alone."
     };
   },
   emergency(ruleId: string): SafetyResult {
@@ -24,7 +28,8 @@ export const TEMPLATES = {
       rulesFired: [ruleId],
       actions: ["show_emergency_banner", "end_conversation"],
       responseText:
-        "Some of what you described could be urgent. Please seek emergency medical care now or call local emergency services. " +
+        "Some of what you described could be urgent. Please seek emergency medical care now. " +
+        "Call 112 (emergency) or 108 (ambulance) immediately, or have someone drive you to the nearest emergency department. " +
         "If you can share your age and what symptoms are happening right now, I can help you prepare what to say to the clinician."
     };
   },

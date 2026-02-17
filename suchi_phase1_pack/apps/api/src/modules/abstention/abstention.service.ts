@@ -27,7 +27,7 @@ export class AbstentionService {
 
     // 3. Urgent red flags (only when appropriate)
     if (hasUrgency) {
-      message += "\n\nIf this is urgent: seek medical care immediately if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.";
+      message += "\n\nIf this is urgent: call **112** (emergency) or **108** (ambulance) immediately. Seek medical care if you have severe chest pain, trouble breathing, heavy bleeding, confusion, fainting, or rapidly worsening symptoms.";
     }
 
     // 4. Invite context

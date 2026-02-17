@@ -1,75 +1,100 @@
 ---
 title: "Cancer Support Helplines and Resources in India"
-version: "v1"
+version: "v2"
 status: "active"
-source: "SCCF Compiled"
+source: "SCCF Compiled (India Resources)"
 ---
 
-## National helplines
+## Emergency Services
 
-- **Cancer Helpline (Tata Memorial Hospital):** 022-24177000, 022-24146750
-- **National Cancer Institute (AIIMS):** Various regional numbers available
-- **Mental Health Support:** Vandrevala Foundation - 1860-2662-345 or 1800-2333-330
+- **National Emergency Number:** Dial **112** (police, fire, ambulance)
+- **Ambulance Service:** Dial **108** (free ambulance services across India)
+- **Medical Emergency Helpline:** Dial **102** (available in many states for medical emergencies)
+- If these numbers don't work in your area, go directly to the nearest emergency department
 
-## Emergency services
+## National Cancer Helplines
 
-- **Medical Emergency:** Dial 108 (ambulance services across India)
-- **Emergency Services:** Dial 102 for medical emergencies in many states
+- **Indian Cancer Society Helpline:** 1800-22-1951 (toll-free, 24/7)
+  - Cancer information, financial assistance guidance, emotional support
+- **Tata Memorial Hospital Helpline:** 022-24177000, 022-24146750
+  - Appointment booking, treatment information, referral guidance
+- **Cancer Patients Aid Association (CPAA):** 022-24122413
+  - Financial aid for treatment, free diagnostic camps
+- **National Cancer Institute (AIIMS):** Oncology department through AIIMS operator
 
-## Support organizations
+## Ayushman Bharat (PM-JAY) - Government Health Insurance
 
-Several organizations provide cancer support, information, and resources:
+- **PM-JAY Helpline:** 14555 (toll-free)
+  - Check eligibility, find empanelled hospitals, file grievances
+- **Coverage:** Up to Rs. 5 lakh per family per year for hospitalization including cancer treatment
+- **Who is eligible:** Economically vulnerable families identified through SECC 2011 data
+- **How to get the card:** Visit an empanelled hospital Ayushman Mitra desk or Common Service Centre (CSC) with your Aadhaar card
+- **What it covers for cancer:** Surgery, chemotherapy, radiation therapy, diagnostic procedures, hospitalization
+- **Tip:** Check eligibility at mera.pmjay.gov.in or call 14555 before starting treatment
 
-- **Indian Cancer Society:** Information and support services
-- **CanSupport:** Delhi-based support services
-- **Canserve:** Breast cancer support
-- **Cancer Patients Aid Association:** Support and financial aid
+## Mental Health Support
 
-## Government resources
+Cancer takes an emotional toll on patients and caregivers. These helplines provide confidential support:
 
-- **Ayushman Bharat:** Government health insurance scheme
-- **National Health Portal:** Health information and resources
-- **State health departments:** Regional cancer centers and programs
+- **Vandrevala Foundation:** 9999666555 (24/7 mental health support)
+- **iCall (TISS):** 9152987821 (Mon-Sat, 8am-10pm IST) - trained psychosocial counselors
+- **Muktaa Charitable Foundation:** 7887889882 (Mon-Sat, 9:30am-5:30pm IST)
+- **Indian Cancer Society:** 1800-22-1951 (toll-free) - cancer-specific emotional support
 
-## Important notes
+## Support Organizations
+
+### Financial Assistance
+- **Indian Cancer Society:** Information, support services, financial assistance
+- **Cancer Patients Aid Association (CPAA):** Financial aid and free diagnostic camps
+- **Tata Trusts Cancer Care Programme:** Support through Tata Memorial network
+- **Rotary Cancer Trust:** Financial support at select hospitals
+
+### Practical Support
+- **CanSupport (Delhi NCR):** 011-41010539 - Free home-based palliative care
+- **Canserve:** Breast cancer support and awareness
+- **Hospital Social Work Departments:** Available at most government cancer centers - help navigate schemes, financial assistance, and support services
+
+## Government Resources and Schemes
+
+### Central Government
+- **Ayushman Bharat (PM-JAY):** Health insurance up to Rs. 5 lakh/year (call 14555)
+- **Rashtriya Arogya Nidhi (RAN):** Financial assistance for BPL patients at government hospitals
+- **Health Minister's Discretionary Grant (HMDG):** Up to Rs. 1.5 lakh per case
+- **Prime Minister's National Relief Fund (PMNRF):** Financial assistance for medical treatment
+
+### State-Level Schemes
+- Many states have additional health coverage programs
+- Contact your District Magistrate's office or District Health Officer for state-specific schemes
+- Bihar: Chief Minister's Treatment Scheme, State Illness Assistance Fund
+
+### Subsidized Medicines
+- **Jan Aushadhi Kendras:** Government stores offering generic medicines at reduced rates
+- Available in most districts across India
+- Ask your doctor about generic alternatives to reduce medicine costs
+
+## How to Access Support - Step by Step
+
+1. **At diagnosis:** Ask the hospital social worker about financial assistance
+2. **Check PM-JAY eligibility:** Call 14555 or visit Ayushman Mitra desk
+3. **Collect documents:** ID, income certificate, medical records, treatment plan
+4. **Apply to multiple schemes:** Don't wait for one response before applying to others
+5. **For emotional support:** Call any helpline listed above - they are confidential
+6. **For practical help:** The hospital social worker is your best starting point
+
+## Questions to Ask Helplines
+
+- What financial assistance programs am I eligible for?
+- Which empanelled hospitals are near my location?
+- How do I apply for the PM-JAY card?
+- Can you connect me with a support group in my area?
+- What documents do I need for financial assistance?
+- Are there accommodation options near the hospital for outstation patients?
+
+## Important Notes
 
 - Helpline numbers and availability may vary by region
-- Some services may be available in local languages
-- Support groups are available in many cities
-- Financial assistance programs exist for eligible patients
-
-## Getting help
-
-- Call helplines during operating hours for information
-- Visit regional cancer centers for in-person support
-- Contact local hospitals for patient navigation services
-- Reach out to support groups in your area
-
-## Questions to ask helplines
-
-- What services do you provide?
-- What are your operating hours?
-- Do you provide services in [your language]?
-- How can I access financial assistance?
-- Can you connect me with support groups in my area?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Many services are available in Hindi and local languages
+- Government hospital social work departments are free to access
+- Multiple assistance schemes can be used together
+- Keep copies of all applications, bills, and medical records
+- Don't hesitate to ask for help - these services exist for patients like you
