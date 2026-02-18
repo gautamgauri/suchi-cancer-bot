@@ -30,7 +30,8 @@ export class EmbeddingsService {
           model: `models/${this.modelName}`,
           content: {
             parts: [{ text: text }]
-          }
+          },
+          outputDimensionality: 768
         })
       });
 
