@@ -762,10 +762,19 @@ export class RagService {
       }
     }
 
-    // Calculate hybrid scores: 0.55 * vecSim + 0.45 * lexSim
+    // Dynamic hybrid weights based on query length
+    // Short queries (≤6 tokens) are usually definitional ("What is cancer?") where
+    // semantic similarity matters more than keyword overlap. Long queries benefit
+    // more from FTS because they contain discriminating terms.
+    const queryTokens = query.trim().split(/\s+/);
+    const isShortQuery = queryTokens.length <= 6;
+    const wVec = isShortQuery ? 0.80 : 0.55;
+    const wLex = isShortQuery ? 0.20 : 0.45;
+
+    // Calculate hybrid scores with dynamic weights
     const scored = Array.from(chunkMap.values()).map(item => ({
       chunk: item.chunk,
-      finalScore: 0.55 * item.vecSim + 0.45 * item.lexSim,
+      finalScore: wVec * item.vecSim + wLex * item.lexSim,
       vecSim: item.vecSim,
       lexSim: item.lexSim
     }));
@@ -801,7 +810,7 @@ export class RagService {
     const totalMs = Date.now() - searchStarted;
 
     this.logger.debug(
-      `Hybrid search: ${vectorChunks.length} vector + ${ftsChunks.length} FTS = ${chunkMap.size} unique chunks, returning top ${topK}`
+      `Hybrid search: ${vectorChunks.length} vector + ${ftsChunks.length} FTS = ${chunkMap.size} unique, weights vec=${wVec}/lex=${wLex} (${isShortQuery ? 'short' : 'long'} query), top ${topK}`
     );
 
     // Log top-K metadata for debugging with timing breakdown
@@ -815,6 +824,7 @@ export class RagService {
       vectorCount: vectorChunks.length,
       ftsCount: ftsChunks.length,
       mergedCount: chunkMap.size,
+      hybridWeights: { wVec, wLex, queryTokens: queryTokens.length },
       crossEncoderEnabled: this.reranker.isEnabled(),
       top3TrustedCount: top3Trusted,
       topScore: reranked[0]?.similarity || 0,
