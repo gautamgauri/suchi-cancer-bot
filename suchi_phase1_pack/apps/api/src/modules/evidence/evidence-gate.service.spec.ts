@@ -1,4 +1,4 @@
-import { EvidenceGateService } from "./evidence-gate.service";
+import { EvidenceGateService, getGateScore } from "./evidence-gate.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { EvidenceChunk } from "./evidence-gate.service";
 
@@ -183,6 +183,78 @@ describe("EvidenceGateService - weak evidence regression tests", () => {
     expect(clarifyingQuestion).toBeTruthy();
     expect(clarifyingQuestion.length).toBeGreaterThan(0);
     expect(clarifyingQuestion.toLowerCase()).toContain("symptom");
+  });
+});
+
+describe("EvidenceGateService - hybrid score dilution fix", () => {
+  let service: EvidenceGateService;
+  let mockPrisma: jest.Mocked<PrismaService>;
+
+  beforeEach(() => {
+    mockPrisma = {} as any;
+    service = new EvidenceGateService(mockPrisma);
+  });
+
+  test("getGateScore uses max(vecSim, lexSim) when available", () => {
+    const chunk: EvidenceChunk = {
+      chunkId: "c1", docId: "d1", content: "test",
+      document: { title: "T", sourceType: "02_nci_core", source: "NCI", citation: null, isTrustedSource: true },
+      similarity: 0.40, // hybrid score (diluted)
+      vecSim: 0.73,     // raw vector similarity
+      lexSim: 0,         // FTS missed
+    };
+    expect(getGateScore(chunk)).toBe(0.73);
+  });
+
+  test("getGateScore falls back to similarity when vecSim/lexSim absent", () => {
+    const chunk: EvidenceChunk = {
+      chunkId: "c1", docId: "d1", content: "test",
+      document: { title: "T", sourceType: "02_nci_core", source: "NCI", citation: null, isTrustedSource: true },
+      similarity: 0.55,
+    };
+    expect(getGateScore(chunk)).toBe(0.55);
+  });
+
+  test("high vecSim with zero lexSim is recognized as strong match", () => {
+    // Before fix: similarity=0.40 (hybrid) → hasStrongMatches=false
+    // After fix: gateScore=0.73 (vecSim) → hasStrongMatches=true
+    const chunks: EvidenceChunk[] = [
+      {
+        chunkId: "c1", docId: "d1",
+        content: "Cancer is a disease in which some of the body's cells grow uncontrollably",
+        document: { title: "Cancer Basics", sourceType: "02_nci_core", source: "NCI", citation: null, isTrustedSource: true },
+        similarity: 0.40,  // hybrid score (0.55*0.73 + 0.45*0)
+        vecSim: 0.73,      // strong vector match
+        lexSim: 0,          // FTS returned nothing
+      }
+    ];
+    expect(service.hasStrongMatches(chunks)).toBe(true);
+  });
+
+  test("validateEvidence gives high confidence for high vecSim despite low hybrid", async () => {
+    const chunks: EvidenceChunk[] = [
+      {
+        chunkId: "c1", docId: "d1",
+        content: "Cancer is a disease in which some of the body's cells grow uncontrollably",
+        document: { title: "Cancer Basics", sourceType: "02_nci_core", source: "NCI", citation: null, isTrustedSource: true },
+        similarity: 0.40,
+        vecSim: 0.73,
+        lexSim: 0,
+      },
+      {
+        chunkId: "c2", docId: "d2",
+        content: "Cancer begins when genetic changes interfere with this orderly process",
+        document: { title: "Cancer Overview", sourceType: "02_nci_core", source: "NCI", citation: null, isTrustedSource: true },
+        similarity: 0.35,
+        vecSim: 0.65,
+        lexSim: 0,
+      }
+    ];
+
+    const result = await service.validateEvidence(chunks, "general", "What is cancer?");
+    expect(result.shouldAbstain).toBe(false);
+    expect(result.confidence).toBe("high");
+    expect(result.quality).toBe("strong");
   });
 });
 

@@ -17,6 +17,23 @@ export interface EvidenceChunk {
     isTrustedSource: boolean;
   };
   similarity?: number;
+  /** Raw vector cosine similarity (before hybrid blending) */
+  vecSim?: number;
+  /** Raw lexical/FTS similarity (before hybrid blending) */
+  lexSim?: number;
+}
+
+/**
+ * Get the gating score for a chunk: max(vecSim, lexSim).
+ * Avoids the dilution problem where hybrid score = 0.55*vec + 0.45*lex
+ * penalises semantic-only matches when FTS returns nothing (lexSim=0).
+ * Falls back to similarity if raw scores aren't available (keyword-only path).
+ */
+export function getGateScore(chunk: EvidenceChunk): number {
+  if (chunk.vecSim !== undefined || chunk.lexSim !== undefined) {
+    return Math.max(chunk.vecSim || 0, chunk.lexSim || 0);
+  }
+  return chunk.similarity || 0;
 }
 
 export type EvidenceQuality = "strong" | "weak" | "conflicting" | "insufficient";
@@ -52,16 +69,19 @@ export class EvidenceGateService {
 
   /**
    * Check if RAG has strong matches (Rule B1)
-   * Strong = similarity > 0.7 OR top 3 chunks from trusted sources
+   * Strong = gateScore > 0.7 OR top 3 chunks from trusted sources
+   * Uses max(vecSim, lexSim) to avoid hybrid score dilution when FTS misses.
    */
   hasStrongMatches(chunks: EvidenceChunk[]): boolean {
     if (!chunks || chunks.length === 0) {
       return false;
     }
 
-    // Check if top chunk has high similarity (> 0.7)
+    // Check if top chunk has high gateScore (> 0.7)
+    // Uses raw max(vecSim, lexSim) instead of hybrid score to avoid dilution
     const topChunk = chunks[0];
-    if (topChunk.similarity !== undefined && topChunk.similarity > 0.7) {
+    const topGateScore = getGateScore(topChunk);
+    if (topGateScore > 0.7) {
       return true;
     }
 
@@ -197,14 +217,14 @@ export class EvidenceGateService {
       ? { minPassages: 1, minSources: 1 } // Relax for general queries with Tier-1 source
       : thresholds; // Keep strict for treatment/symptoms
 
-    // Calculate confidence based on similarity scores if available
-    const avgSimilarity = chunks
-      .filter(c => c.similarity !== undefined)
-      .map(c => c.similarity!)
-      .reduce((sum, sim) => sum + sim, 0) / chunks.filter(c => c.similarity !== undefined).length;
+    // Calculate confidence using gateScore (max of vecSim, lexSim) to avoid hybrid dilution
+    const gateScores = chunks.map(c => getGateScore(c));
+    const avgGateScore = gateScores.length > 0
+      ? gateScores.reduce((sum, s) => sum + s, 0) / gateScores.length
+      : 0;
 
-    // Rule B3: Very weak matches (low similarity AND insufficient passages/sources)
-    const isVeryWeak = (avgSimilarity < 0.3 || avgSimilarity === undefined) && 
+    // Rule B3: Very weak matches (low gateScore AND insufficient passages/sources)
+    const isVeryWeak = (avgGateScore < 0.3) &&
                        (chunks.length < adjustedThresholds.minPassages || uniqueDocIds.size < adjustedThresholds.minSources);
 
     if (isVeryWeak) {
@@ -242,10 +262,10 @@ export class EvidenceGateService {
       };
     }
 
-    // Determine quality based on passage count, sources, and similarity
+    // Determine quality based on passage count, sources, and gateScore
     const hasEnoughPassages = chunks.length >= thresholds.minPassages;
     const hasEnoughSources = uniqueDocIds.size >= thresholds.minSources;
-    const hasGoodSimilarity = avgSimilarity !== undefined && avgSimilarity > 0.5;
+    const hasGoodSimilarity = avgGateScore > 0.5;
 
     const quality: EvidenceQuality = 
       hasEnoughPassages && hasEnoughSources && hasGoodSimilarity

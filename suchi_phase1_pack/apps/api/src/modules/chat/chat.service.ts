@@ -261,7 +261,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         };
       }
@@ -815,7 +817,9 @@ export class ChatService {
           chunkId: chunk.chunkId,
           sourceType: chunk.document.sourceType,
           isTrustedSource: chunk.document.isTrustedSource,
-          similarity: chunk.similarity
+          similarity: chunk.similarity,
+          vecSim: (chunk as any).vecSim,
+          lexSim: (chunk as any).lexSim
         }))
       };
     }
@@ -898,7 +902,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         })
       };
@@ -969,7 +975,9 @@ export class ChatService {
               chunkId: chunk.chunkId,
               sourceType: chunk.document.sourceType,
               isTrustedSource: chunk.document.isTrustedSource,
-              similarity: chunk.similarity
+              similarity: chunk.similarity,
+              vecSim: (chunk as any).vecSim,
+              lexSim: (chunk as any).lexSim
             }))
           })
         };
@@ -1056,7 +1064,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         };
       }
@@ -1233,7 +1243,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         };
       } catch (error: any) {
@@ -1396,7 +1408,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         };
       } else if (validationResult.shouldAbstain && isInformationalQuery) {
@@ -1459,7 +1473,9 @@ export class ChatService {
                 chunkId: chunk.chunkId,
                 sourceType: chunk.document.sourceType,
                 isTrustedSource: chunk.document.isTrustedSource,
-                similarity: chunk.similarity
+                similarity: chunk.similarity,
+                vecSim: (chunk as any).vecSim,
+                lexSim: (chunk as any).lexSim
               }))
             };
           } else if (revalidationResult.shouldAbstain && isInformationalQuery) {
@@ -1540,7 +1556,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         };
       }
@@ -1657,7 +1675,9 @@ export class ChatService {
                 chunkId: chunk.chunkId,
                 sourceType: chunk.document.sourceType,
                 isTrustedSource: chunk.document.isTrustedSource,
-                similarity: chunk.similarity
+                similarity: chunk.similarity,
+                vecSim: (chunk as any).vecSim,
+                lexSim: (chunk as any).lexSim
               }))
             };
           }
@@ -1740,7 +1760,9 @@ export class ChatService {
           chunkId: chunk.chunkId,
           sourceType: chunk.document.sourceType,
           isTrustedSource: chunk.document.isTrustedSource,
-          similarity: chunk.similarity
+          similarity: chunk.similarity,
+          vecSim: (chunk as any).vecSim,
+          lexSim: (chunk as any).lexSim
         }))
       };
     }
@@ -1845,7 +1867,9 @@ export class ChatService {
           chunkId: chunk.chunkId,
           sourceType: chunk.document.sourceType,
           isTrustedSource: chunk.document.isTrustedSource,
-          similarity: chunk.similarity
+          similarity: chunk.similarity,
+          vecSim: (chunk as any).vecSim,
+          lexSim: (chunk as any).lexSim
         }))
       };
     }
@@ -1950,7 +1974,9 @@ export class ChatService {
             chunkId: chunk.chunkId,
             sourceType: chunk.document.sourceType,
             isTrustedSource: chunk.document.isTrustedSource,
-            similarity: chunk.similarity
+            similarity: chunk.similarity,
+            vecSim: (chunk as any).vecSim,
+            lexSim: (chunk as any).lexSim
           }))
         };
       }
@@ -2013,7 +2039,9 @@ export class ChatService {
         chunkId: chunk.chunkId,
         sourceType: chunk.document.sourceType,
         isTrustedSource: chunk.document.isTrustedSource,
-        similarity: chunk.similarity
+        similarity: chunk.similarity,
+        vecSim: (chunk as any).vecSim,
+        lexSim: (chunk as any).lexSim
       }))
     };
   }
