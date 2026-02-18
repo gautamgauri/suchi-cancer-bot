@@ -16,7 +16,7 @@
 
 export interface EstablishedFact {
   patterns: RegExp[];
-  category: 'causation' | 'risk_factor' | 'screening' | 'prevention';
+  category: 'causation' | 'risk_factor' | 'screening' | 'prevention' | 'definition';
   description: string;
 }
 
@@ -84,6 +84,39 @@ export const ESTABLISHED_FACTS: EstablishedFact[] = [
     ],
     category: 'screening',
     description: 'Standard cancer screening methods',
+  },
+  // Core cancer definitions - fundamental medical knowledge
+  {
+    patterns: [
+      /what is cancer/i,
+      /cancer is (a )?(disease|condition|group of diseases)/i,
+      /cancer\b.*\b(uncontrolled|abnormal)\s+(cell\s+)?(growth|division)/i,
+      /कैंसर क्या है/,
+    ],
+    category: 'definition',
+    description: 'Cancer is a group of diseases involving abnormal cell growth',
+  },
+  // Lung cancer - common definitional query
+  {
+    patterns: [
+      /what is lung cancer/i,
+      /symptoms of lung cancer/i,
+      /lung cancer symptoms/i,
+      /फेफड़.*कैंसर/,
+    ],
+    category: 'definition',
+    description: 'Lung cancer information - well-established medical knowledge',
+  },
+  // Breast cancer - common definitional query
+  {
+    patterns: [
+      /what is breast cancer/i,
+      /symptoms of breast cancer/i,
+      /breast cancer symptoms/i,
+      /स्तन.*कैंसर/,
+    ],
+    category: 'definition',
+    description: 'Breast cancer information - well-established medical knowledge',
   },
 ];
 

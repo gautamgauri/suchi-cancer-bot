@@ -664,7 +664,7 @@ export class RagService {
           d."isTrustedSource"
         FROM "KbChunk" c
         INNER JOIN "KbDocument" d ON c."docId" = d.id,
-        websearch_to_tsquery('english', ${query}) query
+        websearch_to_tsquery('simple', ${query}) query
         WHERE d.status = 'active'
           AND c.content_tsv @@ query
         ORDER BY ts_rank_cd(c.content_tsv, query) DESC

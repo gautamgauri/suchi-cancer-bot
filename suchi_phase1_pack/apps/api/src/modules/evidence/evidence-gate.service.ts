@@ -125,11 +125,15 @@ export class EvidenceGateService {
     if (userText) {
       const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
       const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
-      
-      const isIdentifyGeneral = identifyGeneralPattern.test(userText.toLowerCase()) && 
-                                cancerKeywordPattern.test(userText.toLowerCase()) &&
-                                !ModeDetector.hasPersonalDiagnosisSignal(userText);
-      
+      // Hindi equivalents (कैसे पहचानें = how to identify, लक्षण क्या = what are symptoms, etc.)
+      const hindiIdentifyPattern = /कैसे पहचानें|कैसे पता|लक्षण क्या|संकेत क्या|जांच|क्या है|क्या हैं/;
+      const hindiCancerPattern = /कैंसर|ट्यूमर|लक्षण|संकेत|चेतावनी|गांठ/;
+
+      const isIdentifyGeneral = (
+        (identifyGeneralPattern.test(userText.toLowerCase()) && cancerKeywordPattern.test(userText.toLowerCase())) ||
+        (hindiIdentifyPattern.test(userText) && hindiCancerPattern.test(userText))
+      ) && !ModeDetector.hasPersonalDiagnosisSignal(userText);
+
       if (isIdentifyGeneral) {
         // Allow through with caution - provide informational response even with weak evidence
         // This bypasses abstention for general "how to identify" questions

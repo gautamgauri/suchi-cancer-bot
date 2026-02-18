@@ -433,7 +433,9 @@ export class IntentClassifier {
       /\b(fatigue|tired|weakness|weak)\b/i,
       /\b(lump|swelling|mass|bump)\b/i,
       /\b(bleeding|blood|discharge)\b/i,
-      /\b(fever|temperature|chills)\b/i
+      /\b(fever|temperature|chills)\b/i,
+      // Hindi symptom terms
+      /लक्षण|संकेत|दर्द|सूजन|खून|बुखार|थकान|वजन|खांसी|सांस|उल्टी|गांठ|कमज़ोरी/,
     ];
     return symptomPatterns.some(pattern => pattern.test(text));
   }
@@ -517,7 +519,9 @@ export class IntentClassifier {
       /\b(treatment|therapy|chemo|radiation|surgery)\b/i,
       /\b(diagnosis|diagnose|stage|grade)\b/i,
       /\b(symptom|symptoms|sign|signs)\b/i,
-      /\b(report|scan|test|biopsy|result)\b/i
+      /\b(report|scan|test|biopsy|result)\b/i,
+      // Hindi medical terms
+      /कैंसर|ट्यूमर|उपचार|इलाज|निदान|लक्षण|जांच|बायोप्सी|रिपोर्ट/,
     ];
     return medicalKeywords.some(pattern => pattern.test(text));
   }
@@ -536,6 +540,13 @@ export class IntentClassifier {
       /\b(melanoma|sarcoma|adenocarcinoma|glioma|mesothelioma)\b/i,
       // Common cancer sites (as shorthand for the cancer)
       /\b(breast|lung|colon|colorectal|prostate|ovarian|pancreatic|liver|kidney|thyroid|bladder|brain)\s+(cancer|tumor|tumour)?\b/i,
+      // Hindi cancer terms (कैंसर = cancer, कर्कट = carcinoma, ट्यूमर = tumor, etc.)
+      /कैंसर|कर्कट|ट्यूमर|गांठ|रसौली/,
+      /कीमोथेरेपी|विकिरण|इम्यूनोथेरेपी|सर्जरी/,
+      /बायोप्सी|निदान|उपचार|इलाज|चिकित्सा/,
+      /लक्षण|संकेत|जांच|परीक्षण/,
+      // Hindi cancer sites (स्तन = breast, फेफड़े = lungs, आंत = colon, etc.)
+      /स्तन|फेफड़|फेफड़े|आंत|प्रोस्टेट|गर्भाशय|अग्नाशय|यकृत|गुर्दा|मस्तिष्क/,
     ];
     return cancerKeywords.some(pattern => pattern.test(text));
   }

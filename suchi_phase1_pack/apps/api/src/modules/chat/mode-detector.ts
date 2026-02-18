@@ -73,7 +73,9 @@ export class ModeDetector {
       // Educational intent
       /\b(information about|learn about|understand|know about)\b/i,
       // "How to identify" patterns - general informational questions about symptoms/signs
-      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i
+      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i,
+      // Hindi question patterns (क्या है = what is, कैसे = how, बताइए = tell me, जानकारी = information)
+      /क्या है|क्या हैं|क्या होता|कैसे|किस तरह|बताइए|बताएं|जानकारी/,
     ];
 
     // If we have personal references, it's Navigate Mode
@@ -89,7 +91,8 @@ export class ModeDetector {
 
     // Default: if text is short and unclear, check for medical keywords
     // If it has medical keywords but no personal reference, assume Explain Mode
-    const hasMedicalKeywords = /\b(cancer|tumor|symptom|treatment|diagnosis|lymphoma|breast|lung|colon)\b/i.test(text);
+    const hasMedicalKeywords = /\b(cancer|tumor|symptom|treatment|diagnosis|lymphoma|breast|lung|colon)\b/i.test(text)
+      || /कैंसर|ट्यूमर|लक्षण|उपचार|निदान|स्तन|फेफड़/.test(text);
     if (hasMedicalKeywords && !hasPersonalReference) {
       return "explain";
     }
@@ -141,7 +144,9 @@ export class ModeDetector {
       /\b(what are|what is|what do|how do|tell me about|explain|describe|list)\b/i,
       /\b(common|typical|general|usually|often|typically)\b/i,
       // "How to identify" patterns - general informational questions about symptoms/signs
-      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i
+      /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i,
+      // Hindi question patterns
+      /क्या है|क्या हैं|क्या होता|कैसे|किस तरह|बताइए|बताएं|जानकारी/,
     ];
     return explainPatterns.some(pattern => pattern.test(text));
   }
