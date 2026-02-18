@@ -16,14 +16,15 @@ export class GoogleTtsProvider implements TtsProvider {
     this.speakingRate = this.config.get<number>("TTS_SPEAKING_RATE") || 0.9;
   }
 
-  async synthesize(ssml: string, voiceName?: string): Promise<TtsResult> {
+  async synthesize(ssml: string, voiceName?: string, locale?: string): Promise<TtsResult> {
     const started = Date.now();
-    const voice = voiceName || this.defaultVoice;
+    const voice = voiceName || (locale?.startsWith("en") ? "en-IN-Neural2-A" : this.defaultVoice);
+    const languageCode = voice.slice(0, 5); // Extract "hi-IN" or "en-IN" from voice name
 
     const [response] = await this.client.synthesizeSpeech({
       input: { ssml },
       voice: {
-        languageCode: "hi-IN",
+        languageCode,
         name: voice,
       },
       audioConfig: {

@@ -48,7 +48,8 @@ export class VoiceService {
 
     // 2. STT
     const sttStarted = Date.now();
-    const sttResult = await this.stt.transcribe(wavBuffer, dto.locale || "hi-IN");
+    const locale = dto.locale || "hi-IN";
+    const sttResult = await this.stt.transcribe(wavBuffer, locale);
     const sttMs = Date.now() - sttStarted;
 
     this.logger.log({
@@ -60,7 +61,9 @@ export class VoiceService {
 
     // 3. Low confidence → ask user to retry
     if (sttResult.confidence < this.confidenceThreshold) {
-      const retryText = "माफ़ कीजिए, मैं आपकी बात स्पष्ट रूप से नहीं समझ पाई। कृपया दोबारा बोलें।";
+      const retryText = locale.startsWith("en")
+        ? "Sorry, I couldn't understand you clearly. Please try again."
+        : "माफ़ कीजिए, मैं आपकी बात स्पष्ट रूप से नहीं समझ पाई। कृपया दोबारा बोलें।";
 
       this.persistVoiceInteraction(dto.sessionId, {
         sttProvider: "google",
@@ -91,7 +94,7 @@ export class VoiceService {
     const chatResponse = await this.chatService.handle({
       sessionId: dto.sessionId,
       channel: "voice",
-      locale: dto.locale || "hi",
+      locale: locale.startsWith("en") ? "en" : "hi",
       userText: sttResult.transcript,
     });
     const chatMs = Date.now() - chatStarted;
@@ -105,7 +108,7 @@ export class VoiceService {
     let ttsMs = 0;
 
     try {
-      const ttsResult = await this.tts.synthesize(ssml);
+      const ttsResult = await this.tts.synthesize(ssml, undefined, locale);
       ttsMs = Date.now() - ttsStarted;
 
       // 7. Upload to GCS
@@ -133,7 +136,7 @@ export class VoiceService {
       inputFormat: mimeType.split("/")[1],
       ttsProvider: "google",
       ttsAudioUrl: audioUrl,
-      ttsVoiceName: this.config.get<string>("TTS_VOICE_NAME") || "hi-IN-Neural2-A",
+      ttsVoiceName: locale.startsWith("en") ? "en-IN-Neural2-A" : (this.config.get<string>("TTS_VOICE_NAME") || "hi-IN-Neural2-A"),
       sttLatencyMs: sttMs,
       ttsLatencyMs: ttsMs,
       totalLatencyMs: totalMs,

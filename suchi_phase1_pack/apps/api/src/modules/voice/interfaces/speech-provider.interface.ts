@@ -17,5 +17,5 @@ export interface TtsResult {
 }
 
 export interface TtsProvider {
-  synthesize(ssml: string, voiceName?: string): Promise<TtsResult>;
+  synthesize(ssml: string, voiceName?: string, locale?: string): Promise<TtsResult>;
 }
