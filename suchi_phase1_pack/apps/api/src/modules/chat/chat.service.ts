@@ -25,6 +25,10 @@ import { EmpathyDetector } from "./empathy-detector";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
+// Phase 2 Agentic components
+import { RetrievalToolService } from "../rag/retrieval-tool.service";
+import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
+import { CrossLingualService } from "../rag/cross-lingual.service";
 
 @Injectable()
 export class ChatService {
@@ -47,7 +51,11 @@ export class ChatService {
     private readonly responseValidator: ResponseValidatorService,
     private readonly greetingFlow: GreetingFlowService,
     private readonly empathyDetector: EmpathyDetector,
-    private readonly structuredExtractor: StructuredExtractorService
+    private readonly structuredExtractor: StructuredExtractorService,
+    // Phase 2: Retrieval-as-tool services
+    private readonly retrievalTool: RetrievalToolService,
+    private readonly queryDecomposer: QueryDecomposerService,
+    private readonly crossLingual: CrossLingualService
   ) {}
 
   /**
@@ -762,12 +770,72 @@ export class ChatService {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
       evidenceChunks = earlyEvidenceChunks;
     } else {
-      // Normal RAG retrieval
-      if (mightBeIdentifyQuestion) {
-        const cancerType = detectCancerType(dto.userText, sessionCancerType);
-        evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
+      // ─── Phase 2: Multi-call retrieval for complex queries ──────────
+      // Build session context for the query decomposer
+      const sessionCtx: SessionContext = {
+        cancerType: sessionCancerType,
+        district: null, // TODO: extract from session when available
+        budgetConcern: false, // TODO: detect and persist
+        userContext,
+        emotionalState,
+      };
+
+      // Generate cross-lingual parallel queries for Hindi/mixed input
+      const crossLingualResult = this.crossLingual.generateParallelQueries(dto.userText);
+
+      // Check if this query benefits from multi-call decomposition
+      // Use a preliminary fast-path classification for the decomposer
+      const preliminaryCategory = classifyAgenticIntent(dto.userText).category;
+      const shouldDecompose = this.queryDecomposer.needsDecomposition(dto.userText, preliminaryCategory);
+
+      if (shouldDecompose) {
+        // Multi-call retrieval: decompose → parallel retrieve → merge
+        const decomposition = this.queryDecomposer.decompose(
+          dto.userText,
+          preliminaryCategory,
+          sessionCtx
+        );
+
+        // If we have cross-lingual queries, enhance the first call with them
+        if (crossLingualResult.parallelQueries.length > 1 && decomposition.calls.length > 0) {
+          // Use the translated query for the primary retrieval call
+          decomposition.calls[0].query = crossLingualResult.parallelQueries[1] || decomposition.calls[0].query;
+        }
+
+        const multiResult = await this.retrievalTool.multiRetrieve(decomposition.calls);
+        evidenceChunks = multiResult.mergedChunks;
+
+        this.logger.log({
+          event: "phase2_multi_retrieval",
+          sessionId: dto.sessionId,
+          category: preliminaryCategory,
+          signals: decomposition.detectedSignals,
+          retrievalCalls: multiResult.totalCalls,
+          chunksReturned: multiResult.mergedChunks.length,
+          reasoning: decomposition.reasoning,
+          crossLingual: crossLingualResult.detectedLanguage !== "en",
+          latencyMs: multiResult.totalLatencyMs,
+        });
       } else {
-        evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, queryType);
+        // Single-call retrieval: existing path (with cross-lingual enhancement)
+        const queryToUse = crossLingualResult.parallelQueries.length > 1
+          ? crossLingualResult.parallelQueries[1] // Use translated query
+          : dto.userText;
+
+        if (mightBeIdentifyQuestion) {
+          const cancerType = detectCancerType(dto.userText, sessionCancerType);
+          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, cancerType, undefined, undefined, queryType);
+        } else {
+          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, sessionCancerType, queryType);
+        }
+
+        if (crossLingualResult.detectedLanguage !== "en") {
+          this.logger.debug({
+            event: "cross_lingual_single_retrieval",
+            originalLang: crossLingualResult.detectedLanguage,
+            translatedTerms: crossLingualResult.translatedTerms,
+          });
+        }
       }
     }
     const ragMs = Date.now() - ragStarted;
