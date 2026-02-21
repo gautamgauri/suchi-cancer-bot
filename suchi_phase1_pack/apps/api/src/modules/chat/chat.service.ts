@@ -21,6 +21,10 @@ import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
+// Phase 1 Agentic components
+import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
+import { appendDisclaimer } from "../safety/disclaimer-engine";
 
 @Injectable()
 export class ChatService {
@@ -112,6 +116,69 @@ export class ChatService {
     await this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } });
 
     const started = Date.now();
+
+    // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
+    // This runs BEFORE any LLM or async call. Pure regex, zero cost.
+    const emergencyFastPath = evaluateEmergencyFastPath(dto.userText);
+    if (emergencyFastPath.isEmergency) {
+      const responseText = appendDisclaimer(
+        emergencyFastPath.responseText!,
+        session.locale || dto.locale,
+        true, // isEmergency
+        dto.userText
+      );
+
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: responseText,
+          safetyClassification: emergencyFastPath.severity === "critical" ? "red_flag" : "red_flag",
+          policyRulesFired: emergencyFastPath.matchedPatterns,
+          latencyMs: Date.now() - started,
+        },
+      });
+
+      await this.prisma.safetyEvent.create({
+        data: {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          type: `emergency_fast_path_${emergencyFastPath.severity}`,
+          detail: emergencyFastPath.matchedPatterns.join(","),
+        },
+      });
+
+      this.analytics
+        .emit(
+          "emergency_fast_path_triggered",
+          {
+            severity: emergencyFastPath.severity,
+            patterns: emergencyFastPath.matchedPatterns,
+            latencyMs: Date.now() - started,
+          },
+          dto.sessionId
+        )
+        .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+
+      this.logger.warn({
+        event: "emergency_fast_path_triggered",
+        sessionId: dto.sessionId,
+        severity: emergencyFastPath.severity,
+        patterns: emergencyFastPath.matchedPatterns,
+        latencyMs: Date.now() - started,
+      });
+
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: assistant.text,
+        safety: {
+          classification: "red_flag" as const,
+          actions: ["show_emergency_banner", "end_conversation"],
+        },
+      };
+    }
+
     const safetyResult = this.safety.evaluate(dto.userText);
 
     if (safetyResult.classification !== "normal") {
@@ -119,7 +186,12 @@ export class ChatService {
         data: {
           sessionId: dto.sessionId,
           role: "assistant",
-          text: safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
+          text: appendDisclaimer(
+            safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
+            session.locale || dto.locale,
+            safetyResult.classification === "red_flag",
+            dto.userText
+          ),
           safetyClassification: safetyResult.classification,
           policyRulesFired: safetyResult.rulesFired,
           latencyMs: Date.now() - started
@@ -130,7 +202,7 @@ export class ChatService {
         data: { sessionId: dto.sessionId, messageId: assistant.id, type: safetyResult.classification, detail: safetyResult.rulesFired.join(",") }
       });
 
-      this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err => 
+      this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err =>
         this.logger.warn(`Analytics emit failed: ${err.message}`)
       );
 
@@ -712,6 +784,22 @@ export class ChatService {
       { hasGenerallyAsking },
       { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
     );
+
+    // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
+    const agenticIntent: AgenticIntentResult = classifyAgenticIntent(
+      dto.userText,
+      intentResult.intent,
+      intentResult.confidence
+    );
+    this.logger.log({
+      event: "agentic_intent_classified",
+      sessionId: dto.sessionId,
+      category: agenticIntent.category,
+      detailedIntent: agenticIntent.detailedIntent || intentResult.intent,
+      confidence: agenticIntent.confidence,
+      isRuleBased: agenticIntent.isRuleBased,
+      reasoning: agenticIntent.reasoning,
+    });
 
     // 6. Evidence gate check (with intent and conversation context)
     let gateResult = await this.evidenceGate.validateEvidence(
@@ -2295,6 +2383,9 @@ export class ChatService {
    * This is the single source of truth for message+citation storage.
    * Replaces 22 duplicated message.create + 8 citation storage blocks.
    *
+   * Phase 1: Disclaimer engine is applied here as the final step,
+   * ensuring every response gets a disclaimer regardless of code path.
+   *
    * @param sessionId - Session ID
    * @param text - Response text
    * @param citations - Citations to persist (can be empty)
@@ -2325,6 +2416,11 @@ export class ChatService {
         .join(' ');
       finalText = `${text}\n\n**Sources:** ${citationMarkers}`;
     }
+
+    // Phase 1: Disclaimer Engine — auto-append to every response
+    const isEmergencyResponse = options.safetyClassification === "red_flag" ||
+      options.safetyClassification === "mental_health_crisis";
+    finalText = appendDisclaimer(finalText, undefined, isEmergencyResponse);
 
     // Create the message
     const assistant = await this.prisma.message.create({
