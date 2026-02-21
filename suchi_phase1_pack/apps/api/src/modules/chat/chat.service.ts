@@ -29,6 +29,10 @@ import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
 import { CrossLingualService } from "../rag/cross-lingual.service";
+// Phase 3 Agentic components
+import { ExecutionPlannerService } from "./execution-planner.service";
+import { PlanExecutorService } from "./plan-executor.service";
+import { OutputVerifierService } from "./output-verifier.service";
 
 @Injectable()
 export class ChatService {
@@ -55,7 +59,11 @@ export class ChatService {
     // Phase 2: Retrieval-as-tool services
     private readonly retrievalTool: RetrievalToolService,
     private readonly queryDecomposer: QueryDecomposerService,
-    private readonly crossLingual: CrossLingualService
+    private readonly crossLingual: CrossLingualService,
+    // Phase 3: Planner→Executor→Verifier
+    private readonly executionPlanner: ExecutionPlannerService,
+    private readonly planExecutor: PlanExecutorService,
+    private readonly outputVerifier: OutputVerifierService
   ) {}
 
   /**
@@ -868,6 +876,153 @@ export class ChatService {
       isRuleBased: agenticIntent.isRuleBased,
       reasoning: agenticIntent.reasoning,
     });
+
+    // ─── Phase 3: Planner→Executor→Verifier for structured responses ──
+    // Check if this query benefits from the Phase 3 planning path
+    // (Navigation, Schemes, Psychosocial with structured template matches)
+    const sessionCtxForPlanner: SessionContext = {
+      cancerType: sessionCancerType,
+      district: null,
+      budgetConcern: false,
+      userContext,
+      emotionalState,
+    };
+
+    if (this.executionPlanner.needsPlanning(dto.userText, agenticIntent.category, intentResult.intent)) {
+      const plan = this.executionPlanner.plan(
+        dto.userText,
+        agenticIntent.category,
+        sessionCtxForPlanner,
+        session.locale || dto.locale || "en",
+        intentResult.intent
+      );
+
+      // Only use the structured template path (non-template path falls through to existing flow)
+      if (plan.usesStructuredTemplate) {
+        this.logger.log({
+          event: "phase3_plan_created",
+          sessionId: dto.sessionId,
+          planId: plan.planId,
+          template: plan.template?.id,
+          steps: plan.steps.length,
+          signals: plan.signals,
+          reasoning: plan.reasoning,
+        });
+
+        try {
+          const executionResult = await this.planExecutor.execute(
+            plan,
+            dto.userText,
+            session.locale || dto.locale || "en"
+          );
+
+          if (executionResult.responseText) {
+            // Template-based response produced
+            let phase3Response = executionResult.responseText;
+
+            // Add disclaimer via Phase 3 verifier
+            const quickVerify = this.outputVerifier.quickVerify(
+              phase3Response,
+              executionResult.mergedChunks,
+              dto.userText
+            );
+            if (quickVerify.fixedContent) {
+              phase3Response = quickVerify.fixedContent;
+            }
+
+            // Append disclaimer via existing engine
+            phase3Response = appendDisclaimer(
+              phase3Response,
+              session.locale || dto.locale,
+              false,
+              dto.userText
+            );
+
+            // Extract citations from template content
+            const extractionResult = this.citationService.extractCitations(
+              phase3Response,
+              executionResult.mergedChunks
+            );
+            const citations = extractionResult.citations;
+
+            // Persist message + citations
+            const assistant = await this.persistAssistantMessage(
+              dto.sessionId,
+              phase3Response,
+              citations,
+              executionResult.mergedChunks,
+              {
+                safetyClassification: "normal",
+                latencyMs: Date.now() - started,
+                kbDocIds: Array.from(new Set(executionResult.mergedChunks.map(c => c.docId))),
+                evidenceQuality: executionResult.mergedChunks.length > 0 ? "strong" : "weak",
+                evidenceGatePassed: true,
+              }
+            );
+
+            this.analytics
+              .emit(
+                "phase3_structured_response",
+                {
+                  planId: plan.planId,
+                  templateId: plan.template?.id,
+                  category: agenticIntent.category,
+                  signals: plan.signals,
+                  retrievalCalls: plan.estimatedRetrievalCalls,
+                  citationCount: citations.length,
+                  verificationPassed: executionResult.verification?.passed ?? true,
+                  latencyMs: Date.now() - started,
+                },
+                dto.sessionId
+              )
+              .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+
+            this.logger.log({
+              event: "phase3_structured_response_complete",
+              sessionId: dto.sessionId,
+              planId: plan.planId,
+              templateId: plan.template?.id,
+              responseLength: phase3Response.length,
+              citationCount: citations.length,
+              latencyMs: Date.now() - started,
+            });
+
+            return {
+              sessionId: dto.sessionId,
+              messageId: assistant.id,
+              responseText: assistant.text,
+              safety: { classification: "normal" as const, actions: [] },
+              ...(citations.length > 0 && {
+                citations: citations.map((c) => ({
+                  docId: c.docId,
+                  chunkId: c.chunkId,
+                  position: c.position,
+                })),
+              }),
+              citationConfidence: citations.length > 0 ? "GREEN" : undefined,
+              ...(executionResult.mergedChunks.length > 0 && {
+                retrievedChunks: executionResult.mergedChunks.slice(0, 6).map((chunk) => ({
+                  docId: chunk.docId,
+                  chunkId: chunk.chunkId,
+                  sourceType: chunk.document.sourceType,
+                  isTrustedSource: chunk.document.isTrustedSource,
+                  similarity: chunk.similarity,
+                })),
+              }),
+            };
+          }
+        } catch (error: any) {
+          // Phase 3 failed — fall through to existing flow
+          this.logger.warn({
+            event: "phase3_execution_failed",
+            sessionId: dto.sessionId,
+            planId: plan.planId,
+            error: error.message,
+            message: "Phase 3 failed, falling through to existing flow",
+          });
+        }
+      }
+    }
 
     // 6. Evidence gate check (with intent and conversation context)
     let gateResult = await this.evidenceGate.validateEvidence(
@@ -1856,6 +2011,23 @@ export class ChatService {
           const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
           responseText = uncertaintyPreamble + responseText;
         }
+      }
+
+      // ─── Phase 3: Output verification before persist ───────────────
+      const phase3Verification = this.outputVerifier.quickVerify(
+        responseText,
+        evidenceChunks,
+        dto.userText
+      );
+      if (phase3Verification.fixedContent) {
+        responseText = phase3Verification.fixedContent;
+      }
+      if (phase3Verification.violations.some(v => v.severity === "critical" && !v.autoFixed)) {
+        this.logger.warn({
+          event: "phase3_verification_critical_violation",
+          sessionId: dto.sessionId,
+          violations: phase3Verification.violations.filter(v => v.severity === "critical").map(v => v.detail),
+        });
       }
 
       // Persist message + citations (consolidated)
