@@ -80,8 +80,10 @@ apps/web/test-results/
 .github/
 .claude/
 
-# Eval dependencies (only needed for eval runner, not main app)
-eval/
+# Eval code is NOT excluded: needed by cloudbuild.gated.yaml eval step
+# Only exclude eval results/reports
+eval/results/
+eval/reports/
 
 # Landing page (separate deployment)
 apps/landing/
