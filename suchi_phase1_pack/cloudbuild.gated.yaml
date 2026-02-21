@@ -194,6 +194,7 @@ steps:
         
         # Install eval dependencies
         cd eval
+        mkdir -p reports
         npm ci
         
         # Build eval package
