@@ -452,9 +452,20 @@ export class IntentClassifier {
 
   private isProviderChoiceRequest(text: string): boolean {
     const patterns = [
-      /\b(where|which|find|recommend|suggest)\s+(doctor|physician|oncologist|hospital|clinic|center|facility)\b/i,
-      /\b(best|good|qualified)\s+(doctor|physician|oncologist|hospital|clinic)\b/i,
-      /\b(need|looking for|searching for)\s+(doctor|hospital|clinic|treatment center)\b/i
+      /\b(where|which|find|recommend|suggest)\s+(doctor|physician|oncologist|hospital|clinic|center|centre|facility)\b/i,
+      /\b(best|good|qualified|nearest|nearby)\s+(doctor|physician|oncologist|hospital|clinic|cancer\s+center)\b/i,
+      /\b(need|looking for|searching for)\s+(doctor|hospital|clinic|treatment center|cancer center)\b/i,
+      // India-specific navigation patterns
+      /\b(hospital|doctor|treatment|cancer\s+care)\s+(in|near|at)\s+\w+/i,
+      /\b(patna|bihar|delhi|mumbai|kolkata|chennai|bangalore|hyderabad)\b.*\b(hospital|doctor|treatment|cancer|oncolog)/i,
+      /\b(hospital|doctor|treatment|cancer|oncolog).*\b(patna|bihar|delhi|mumbai|kolkata|chennai|bangalore|hyderabad)\b/i,
+      // Government scheme / financial navigation patterns
+      /\b(government|sarkari|govt)\s+(scheme|hospital|help|assistance|support)\b/i,
+      /\b(ayushman|pmjay|pm-jay|pradhan\s+mantri)\b/i,
+      /\b(financial|money|cost|afford|free|cheap|subsidized)\s+(help|assistance|support|treatment|hospital)\b/i,
+      /\b(how\s+much|cost|expense|price)\s+(does|will|for|of)\s+.*(treatment|chemo|surgery|radiation|cancer)\b/i,
+      /\b(poor|bpl|below\s+poverty)\s+(family|patient)/i,
+      /\b(where\s+(should|can|do)\s+(we|i)\s+go)\b/i
     ];
     return patterns.some(pattern => pattern.test(text));
   }

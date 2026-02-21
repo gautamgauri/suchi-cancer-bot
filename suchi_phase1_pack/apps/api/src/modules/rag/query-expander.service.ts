@@ -193,6 +193,32 @@ export class QueryExpanderService {
     ['questions to ask', ['list of questions', 'questions before visit', 'questions to ask doctor']],
     ['understand doctor', ['remember what doctor said', 'copy of information', 'communication']],
     ['remember what doctor', ['list of questions', 'record the discussion', 'copy of information']],
+
+    // India-specific navigation terms - mapped to India KB content
+    ['hospital near', ['cancer treatment centers', 'hospitals in India', 'government hospital', 'cancer centre']],
+    ['hospital in patna', ['Mahavir Cancer Sansthan', 'IGIMS Patna', 'AIIMS Patna', 'Paras HMRI', 'Jay Prabha Medanta', 'Ruban Memorial', 'Buddha Cancer Centre', 'cancer treatment centers Bihar']],
+    ['hospital in bihar', ['Mahavir Cancer Sansthan', 'IGIMS Patna', 'AIIMS Patna', 'Homi Bhabha Cancer Hospital Muzaffarpur', 'cancer treatment centers Bihar']],
+    ['private hospital patna', ['Paras HMRI', 'Jay Prabha Medanta', 'Ruban Memorial', 'Buddha Cancer Centre', 'NABH accredited hospital Bihar']],
+    ['nabh hospital', ['NABH accredited', 'Paras HMRI', 'Jay Prabha Medanta', 'Ruban Memorial', 'hospital accreditation quality']],
+    ['best hospital cancer bihar', ['Mahavir Cancer Sansthan', 'AIIMS Patna', 'Paras HMRI', 'Jay Prabha Medanta', 'NABH accredited']],
+    ['muzaffarpur hospital', ['Homi Bhabha Cancer Hospital Muzaffarpur', 'Tata Memorial Centre', 'cancer treatment north Bihar']],
+    ['bhagalpur hospital', ['Healing Touch Hospital Bhagalpur', 'cancer treatment eastern Bihar']],
+    ['government scheme', ['Ayushman Bharat', 'PM-JAY', 'government health insurance', 'financial assistance']],
+    ['government help', ['Ayushman Bharat', 'PM-JAY', 'Rashtriya Arogya Nidhi', 'government scheme']],
+    ['ayushman', ['Ayushman Bharat', 'PM-JAY', 'government health insurance', 'Rs 5 lakh coverage']],
+    ['pmjay', ['PM-JAY', 'Ayushman Bharat', 'Pradhan Mantri Jan Arogya Yojana', 'government health insurance']],
+    ['treatment cost', ['cancer treatment costs', 'government hospital costs', 'financial assistance', 'PM-JAY']],
+    ['how much cost', ['cancer treatment costs', 'treatment expenses', 'financial assistance', 'affordable treatment']],
+    ['afford', ['financial assistance', 'government scheme', 'PM-JAY', 'NGO support', 'charitable trust']],
+    ['poor family', ['BPL', 'below poverty line', 'PM-JAY', 'financial assistance', 'government scheme']],
+    ['financial help', ['financial assistance', 'NGO support', 'Indian Cancer Society', 'CPAA', 'government scheme']],
+    ['ngo', ['NGO support', 'Indian Cancer Society', 'Cancer Patients Aid Association', 'CanSupport', 'charitable trust']],
+    ['charity', ['charitable trust', 'NGO', 'Indian Cancer Society', 'financial assistance']],
+    ['where to go', ['cancer treatment centers', 'hospitals', 'patient journey', 'referral pathway']],
+    ['which hospital', ['cancer treatment centers', 'best hospital for cancer', 'government cancer center']],
+    ['best hospital', ['cancer treatment centers', 'tertiary cancer center', 'government cancer hospital']],
+    ['breast cancer treatment', ['breast cancer diagnosis pathway', 'breast cancer surgery', 'mammography', 'receptor status', 'chemotherapy']],
+    ['breast cancer hospital', ['cancer treatment centers', 'breast oncology', 'surgical oncology', 'Mahavir Cancer Sansthan']],
   ]);
 
   // ============= CANCER TYPE SYNONYMS =============
@@ -263,6 +289,8 @@ export class QueryExpanderService {
     'POST_DIAGNOSIS_OR_SUSPECTED',
     'SYMPTOMATIC_PATIENT',
     'CAREGIVER_NAVIGATION',
+    'CARE_NAVIGATION_PROVIDER_CHOICE',
+    'CARE_NAVIGATION_SECOND_OPINION',
   ]);
 
   /**

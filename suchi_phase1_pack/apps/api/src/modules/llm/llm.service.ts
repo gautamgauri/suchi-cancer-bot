@@ -421,6 +421,36 @@ Use SUPPORTIVE, PRACTICAL language - caregivers need actionable guidance.`;
       return sections;
     }
 
+    // CARE_NAVIGATION: India-specific healthcare navigation guidance
+    if (intent === "CARE_NAVIGATION_PROVIDER_CHOICE" || intent === "CARE_NAVIGATION_SECOND_OPINION") {
+      return `
+
+**INDIA HEALTHCARE NAVIGATION CONTEXT:**
+This user is asking about finding healthcare providers, hospitals, government schemes, or financial assistance for cancer care in India. Use the retrieved references to provide India-specific guidance.
+
+SPECIAL INSTRUCTIONS FOR NAVIGATION QUERIES:
+- If references contain hospital names, locations, or services, cite them directly
+- If references mention government schemes (PM-JAY/Ayushman Bharat, RAN, HMDG), include eligibility and how-to-access details
+- If references mention costs, provide ranges with the caveat that costs vary
+- Always include practical next steps (what to do, who to call, what documents to bring)
+- Include relevant helpline numbers from references (PM-JAY: 14555, Indian Cancer Society: 1800-22-1951)
+- If the user mentions a specific location (city/state), prioritize references about that region
+
+REQUIRED SECTIONS FOR NAVIGATION:
+1) **Healthcare Options:** List specific hospitals/centers from references with services offered
+2) **Financial Assistance:** Government schemes, NGO support, and how to access them
+3) **Documents to Carry:** Practical checklist for hospital visits
+4) **Helplines and Next Steps:** Phone numbers and immediate actions the user can take
+
+DO NOT:
+- Make up hospital names or services not in the references
+- Guarantee specific costs or coverage amounts unless cited
+- Recommend one hospital over another (present options and let user decide)
+- Skip financial assistance information - this is critical for Indian families
+
+Use PRACTICAL, ACTIONABLE language. Families need clear guidance on where to go and how to get help.`;
+    }
+
     // SYMPTOMATIC_PATIENT: Needs confirmatory steps and plain language
     if (intent === "SYMPTOMATIC_PATIENT" || intent.includes("PATIENT")) {
       return `
@@ -519,12 +549,21 @@ ${conversationContext?.hasGenerallyAsking
   ? "- Do NOT include any clarifying questions to the user in this section"
   : ""}
 
+INDIA CONTEXT (for navigation/localization):
+- Emergency numbers: 112 (emergency), 108 (ambulance), 102 (medical emergency)
+- Government scheme: Ayushman Bharat (PM-JAY) covers up to Rs. 5 lakh/family/year for cancer treatment
+- PM-JAY helpline: 14555 (toll-free)
+- Indian Cancer Society helpline: 1800-22-1951 (toll-free)
+- When mentioning costs, use Indian Rupees (Rs.) and reference government vs. private hospital differences
+- When mentioning hospitals, prioritize government/public hospitals which offer subsidized treatment
+
 DO NOT:
 - Say "I understand you're experiencing symptoms" unless user said they are
 - Push "prepare for healthcare visit" unless user indicates personal situation
 - Show red-flag warnings unless urgency signals exist
 - Use coaching/triage script language for general questions
-- Add general medical knowledge not in retrieved chunks${empathyGuidelines}`;
+- Add general medical knowledge not in retrieved chunks
+- Reference "911" for emergencies - use 112/108/102 instead${empathyGuidelines}`;
 
     // Get intent-specific sections based on user intent (pass userQuery for sub-intent detection like appointment prep)
     const intentSections = this.getIntentSpecificSections(conversationContext?.intent, conversationContext?.userQuery);
@@ -567,7 +606,12 @@ REQUIREMENTS:
 - Provide a short next-step list (max 3 bullets)
 - Use warm, supportive tone
 - Cite any medical information using [citation:docId:chunkId]
-- Every bullet point with medical information MUST have a citation or be omitted${empathyGuidelines}`;
+- Every bullet point with medical information MUST have a citation or be omitted
+
+INDIA CONTEXT:
+- Emergency numbers: 112 (emergency), 108 (ambulance)
+- For urgent symptoms: direct to nearest emergency department, not "ER" or "911"
+- Reference Indian helplines when relevant (Indian Cancer Society: 1800-22-1951, PM-JAY: 14555)${empathyGuidelines}`;
   }
 
   /**

@@ -51,8 +51,14 @@ export class QueryTypeClassifier {
       return "caregiver";
     }
 
-    // Navigation
-    if (/\b(help|helpline|hospital|doctor|where|find|resource|support group)\b/i.test(lowerQuery)) {
+    // Navigation - expanded to catch India-specific navigation queries
+    if (/\b(help|helpline|hospital|doctor|where|find|resource|support group|scheme|pmjay|ayushman|government|financial|cost|expense|afford|insurance|ngo|assistance|centre|center|clinic)\b/i.test(lowerQuery)) {
+      return "navigation";
+    }
+
+    // Navigation - location-specific queries (city/state names + care context)
+    if (/\b(patna|bihar|delhi|mumbai|kolkata|chennai|bangalore|hyderabad|lucknow|varanasi|jaipur)\b/i.test(lowerQuery) &&
+        /\b(cancer|treatment|hospital|doctor|care|oncolog)/i.test(lowerQuery)) {
       return "navigation";
     }
 

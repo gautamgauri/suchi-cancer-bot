@@ -101,15 +101,15 @@
       "citation": "SCCF KB, 2025"
     },
     {
-      "id": "kb_en_india_helplines_v1",
+      "id": "kb_en_india_helplines_v2",
       "title": "Cancer Support Helplines and Resources in India",
-      "version": "v1",
+      "version": "v2",
       "status": "active",
       "source": "SCCF Navigation Guidance (India Resources)",
       "sourceType": "99_local_navigation",
       "path": "en/99_local_navigation/india-helplines.md",
       "license": "public_info",
-      "lastReviewed": "2025-01-24",
+      "lastReviewed": "2026-02-17",
       "reviewFrequency": "monthly",
       "audienceLevel": "general",
       "language": "en",
@@ -121,10 +121,148 @@
         "support",
         "india",
         "resources",
+        "navigation",
+        "pmjay",
+        "ayushman",
+        "emergency",
+        "financial-assistance",
+        "ngo"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled, 2026"
+    },
+    {
+      "id": "kb_en_india_cancer_treatment_centers_v2",
+      "title": "Cancer Treatment Centers in India - Major Facilities by Region",
+      "version": "v2",
+      "status": "active",
+      "source": "SCCF Compiled (Public Hospital Information + NABH Accreditation Data)",
+      "sourceType": "05_india_ncg",
+      "path": "en/05_india_ncg/india-cancer-treatment-centers.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "hospitals",
+        "treatment-centers",
+        "india",
+        "bihar",
+        "patna",
+        "navigation",
+        "mahavir",
+        "igims",
+        "aiims",
+        "tata-memorial",
+        "patient-journey",
+        "nabh",
+        "accreditation",
+        "paras-hmri",
+        "medanta",
+        "ruban",
+        "buddha-cancer-centre",
+        "homi-bhabha",
+        "muzaffarpur",
+        "bhagalpur",
+        "private-hospital",
+        "government-hospital"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled, 2026"
+    },
+    {
+      "id": "kb_en_pmjay_ayushman_bharat_cancer_v1",
+      "title": "Ayushman Bharat (PM-JAY) - Cancer Treatment Coverage Guide",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled (Public Scheme Information)",
+      "sourceType": "05_india_ncg",
+      "path": "en/05_india_ncg/pmjay-ayushman-bharat-cancer.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "pmjay",
+        "ayushman-bharat",
+        "government-scheme",
+        "financial-assistance",
+        "india",
+        "bihar",
+        "insurance",
+        "navigation",
+        "cost"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled, 2026"
+    },
+    {
+      "id": "kb_en_india_cancer_treatment_costs_v1",
+      "title": "Cancer Treatment Costs in India - General Guidance",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled (General Cost Information)",
+      "sourceType": "05_india_ncg",
+      "path": "en/05_india_ncg/india-cancer-treatment-costs.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "costs",
+        "treatment-costs",
+        "india",
+        "financial",
+        "government-hospital",
+        "private-hospital",
+        "generic-medicines",
         "navigation"
       ],
       "url": null,
-      "citation": "SCCF Compiled, 2025"
+      "citation": "SCCF Compiled, 2026"
+    },
+    {
+      "id": "kb_en_india_cancer_ngo_financial_assistance_v1",
+      "title": "Cancer Financial Assistance and NGO Support in India",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled (Public Information)",
+      "sourceType": "05_india_ncg",
+      "path": "en/05_india_ncg/india-cancer-ngo-financial-assistance.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "ngo",
+        "financial-assistance",
+        "india",
+        "bihar",
+        "support",
+        "charity",
+        "navigation",
+        "cpaa",
+        "indian-cancer-society",
+        "cansupport"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled, 2026"
     },
     {
       "id": "kb_en_bihar_nabh_cancer_centers_v1",
@@ -184,6 +322,36 @@
       ],
       "url": null,
       "citation": "SCCF Deep Research, 2026"
+    },
+    {
+      "id": "kb_en_breast_cancer_diagnosis_pathway_india_v1",
+      "title": "Breast Cancer: Diagnosis and Treatment Pathway in India",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled (WHO guidelines, verified Feb 2026)",
+      "sourceType": "05_india_ncg",
+      "path": "en/05_india_ncg/breast-cancer-diagnosis-pathway-india.md",
+      "license": "public_info",
+      "lastReviewed": "2026-02-17",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "general",
+      "language": "en",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "diagnosis",
+        "treatment-pathway",
+        "india",
+        "caregiver",
+        "patient-journey",
+        "surgery",
+        "chemotherapy",
+        "receptor-status"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled (WHO guidelines), 2026"
     },
     {
       "id": "kb_en_nci_publications_patient_education_coping_with_advance_cancer_mobi_v1",

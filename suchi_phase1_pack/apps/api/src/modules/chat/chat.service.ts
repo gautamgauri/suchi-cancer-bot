@@ -21,6 +21,18 @@ import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
+// Phase 1 Agentic components
+import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
+import { appendDisclaimer } from "../safety/disclaimer-engine";
+// Phase 2 Agentic components
+import { RetrievalToolService } from "../rag/retrieval-tool.service";
+import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
+import { CrossLingualService } from "../rag/cross-lingual.service";
+// Phase 3 Agentic components
+import { ExecutionPlannerService } from "./execution-planner.service";
+import { PlanExecutorService } from "./plan-executor.service";
+import { OutputVerifierService } from "./output-verifier.service";
 
 @Injectable()
 export class ChatService {
@@ -43,7 +55,15 @@ export class ChatService {
     private readonly responseValidator: ResponseValidatorService,
     private readonly greetingFlow: GreetingFlowService,
     private readonly empathyDetector: EmpathyDetector,
-    private readonly structuredExtractor: StructuredExtractorService
+    private readonly structuredExtractor: StructuredExtractorService,
+    // Phase 2: Retrieval-as-tool services
+    private readonly retrievalTool: RetrievalToolService,
+    private readonly queryDecomposer: QueryDecomposerService,
+    private readonly crossLingual: CrossLingualService,
+    // Phase 3: Planner→Executor→Verifier
+    private readonly executionPlanner: ExecutionPlannerService,
+    private readonly planExecutor: PlanExecutorService,
+    private readonly outputVerifier: OutputVerifierService
   ) {}
 
   /**
@@ -112,6 +132,69 @@ export class ChatService {
     await this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } });
 
     const started = Date.now();
+
+    // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
+    // This runs BEFORE any LLM or async call. Pure regex, zero cost.
+    const emergencyFastPath = evaluateEmergencyFastPath(dto.userText);
+    if (emergencyFastPath.isEmergency) {
+      const responseText = appendDisclaimer(
+        emergencyFastPath.responseText!,
+        session.locale || dto.locale,
+        true, // isEmergency
+        dto.userText
+      );
+
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: responseText,
+          safetyClassification: emergencyFastPath.severity === "critical" ? "red_flag" : "red_flag",
+          policyRulesFired: emergencyFastPath.matchedPatterns,
+          latencyMs: Date.now() - started,
+        },
+      });
+
+      await this.prisma.safetyEvent.create({
+        data: {
+          sessionId: dto.sessionId,
+          messageId: assistant.id,
+          type: `emergency_fast_path_${emergencyFastPath.severity}`,
+          detail: emergencyFastPath.matchedPatterns.join(","),
+        },
+      });
+
+      this.analytics
+        .emit(
+          "emergency_fast_path_triggered",
+          {
+            severity: emergencyFastPath.severity,
+            patterns: emergencyFastPath.matchedPatterns,
+            latencyMs: Date.now() - started,
+          },
+          dto.sessionId
+        )
+        .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+
+      this.logger.warn({
+        event: "emergency_fast_path_triggered",
+        sessionId: dto.sessionId,
+        severity: emergencyFastPath.severity,
+        patterns: emergencyFastPath.matchedPatterns,
+        latencyMs: Date.now() - started,
+      });
+
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: assistant.text,
+        safety: {
+          classification: "red_flag" as const,
+          actions: ["show_emergency_banner", "end_conversation"],
+        },
+      };
+    }
+
     const safetyResult = this.safety.evaluate(dto.userText);
 
     if (safetyResult.classification !== "normal") {
@@ -119,7 +202,12 @@ export class ChatService {
         data: {
           sessionId: dto.sessionId,
           role: "assistant",
-          text: safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
+          text: appendDisclaimer(
+            safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
+            session.locale || dto.locale,
+            safetyResult.classification === "red_flag",
+            dto.userText
+          ),
           safetyClassification: safetyResult.classification,
           policyRulesFired: safetyResult.rulesFired,
           latencyMs: Date.now() - started
@@ -130,7 +218,7 @@ export class ChatService {
         data: { sessionId: dto.sessionId, messageId: assistant.id, type: safetyResult.classification, detail: safetyResult.rulesFired.join(",") }
       });
 
-      this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err => 
+      this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err =>
         this.logger.warn(`Analytics emit failed: ${err.message}`)
       );
 
@@ -690,12 +778,72 @@ export class ChatService {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
       evidenceChunks = earlyEvidenceChunks;
     } else {
-      // Normal RAG retrieval
-      if (mightBeIdentifyQuestion) {
-        const cancerType = detectCancerType(dto.userText, sessionCancerType);
-        evidenceChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
+      // ─── Phase 2: Multi-call retrieval for complex queries ──────────
+      // Build session context for the query decomposer
+      const sessionCtx: SessionContext = {
+        cancerType: sessionCancerType,
+        district: null, // TODO: extract from session when available
+        budgetConcern: false, // TODO: detect and persist
+        userContext,
+        emotionalState,
+      };
+
+      // Generate cross-lingual parallel queries for Hindi/mixed input
+      const crossLingualResult = this.crossLingual.generateParallelQueries(dto.userText);
+
+      // Check if this query benefits from multi-call decomposition
+      // Use a preliminary fast-path classification for the decomposer
+      const preliminaryCategory = classifyAgenticIntent(dto.userText).category;
+      const shouldDecompose = this.queryDecomposer.needsDecomposition(dto.userText, preliminaryCategory);
+
+      if (shouldDecompose) {
+        // Multi-call retrieval: decompose → parallel retrieve → merge
+        const decomposition = this.queryDecomposer.decompose(
+          dto.userText,
+          preliminaryCategory,
+          sessionCtx
+        );
+
+        // If we have cross-lingual queries, enhance the first call with them
+        if (crossLingualResult.parallelQueries.length > 1 && decomposition.calls.length > 0) {
+          // Use the translated query for the primary retrieval call
+          decomposition.calls[0].query = crossLingualResult.parallelQueries[1] || decomposition.calls[0].query;
+        }
+
+        const multiResult = await this.retrievalTool.multiRetrieve(decomposition.calls);
+        evidenceChunks = multiResult.mergedChunks;
+
+        this.logger.log({
+          event: "phase2_multi_retrieval",
+          sessionId: dto.sessionId,
+          category: preliminaryCategory,
+          signals: decomposition.detectedSignals,
+          retrievalCalls: multiResult.totalCalls,
+          chunksReturned: multiResult.mergedChunks.length,
+          reasoning: decomposition.reasoning,
+          crossLingual: crossLingualResult.detectedLanguage !== "en",
+          latencyMs: multiResult.totalLatencyMs,
+        });
       } else {
-        evidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, queryType);
+        // Single-call retrieval: existing path (with cross-lingual enhancement)
+        const queryToUse = crossLingualResult.parallelQueries.length > 1
+          ? crossLingualResult.parallelQueries[1] // Use translated query
+          : dto.userText;
+
+        if (mightBeIdentifyQuestion) {
+          const cancerType = detectCancerType(dto.userText, sessionCancerType);
+          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, cancerType, undefined, undefined, queryType);
+        } else {
+          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, sessionCancerType, queryType);
+        }
+
+        if (crossLingualResult.detectedLanguage !== "en") {
+          this.logger.debug({
+            event: "cross_lingual_single_retrieval",
+            originalLang: crossLingualResult.detectedLanguage,
+            translatedTerms: crossLingualResult.translatedTerms,
+          });
+        }
       }
     }
     const ragMs = Date.now() - ragStarted;
@@ -712,6 +860,169 @@ export class ChatService {
       { hasGenerallyAsking },
       { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
     );
+
+    // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
+    const agenticIntent: AgenticIntentResult = classifyAgenticIntent(
+      dto.userText,
+      intentResult.intent,
+      intentResult.confidence
+    );
+    this.logger.log({
+      event: "agentic_intent_classified",
+      sessionId: dto.sessionId,
+      category: agenticIntent.category,
+      detailedIntent: agenticIntent.detailedIntent || intentResult.intent,
+      confidence: agenticIntent.confidence,
+      isRuleBased: agenticIntent.isRuleBased,
+      reasoning: agenticIntent.reasoning,
+    });
+
+    // ─── Phase 3: Planner→Executor→Verifier for structured responses ──
+    // Check if this query benefits from the Phase 3 planning path
+    // (Navigation, Schemes, Psychosocial with structured template matches)
+    const sessionCtxForPlanner: SessionContext = {
+      cancerType: sessionCancerType,
+      district: null,
+      budgetConcern: false,
+      userContext,
+      emotionalState,
+    };
+
+    if (this.executionPlanner.needsPlanning(dto.userText, agenticIntent.category, intentResult.intent)) {
+      const plan = this.executionPlanner.plan(
+        dto.userText,
+        agenticIntent.category,
+        sessionCtxForPlanner,
+        session.locale || dto.locale || "en",
+        intentResult.intent
+      );
+
+      // Only use the structured template path (non-template path falls through to existing flow)
+      if (plan.usesStructuredTemplate) {
+        this.logger.log({
+          event: "phase3_plan_created",
+          sessionId: dto.sessionId,
+          planId: plan.planId,
+          template: plan.template?.id,
+          steps: plan.steps.length,
+          signals: plan.signals,
+          reasoning: plan.reasoning,
+        });
+
+        try {
+          const executionResult = await this.planExecutor.execute(
+            plan,
+            dto.userText,
+            session.locale || dto.locale || "en"
+          );
+
+          if (executionResult.responseText) {
+            // Template-based response produced
+            let phase3Response = executionResult.responseText;
+
+            // Add disclaimer via Phase 3 verifier
+            const quickVerify = this.outputVerifier.quickVerify(
+              phase3Response,
+              executionResult.mergedChunks,
+              dto.userText
+            );
+            if (quickVerify.fixedContent) {
+              phase3Response = quickVerify.fixedContent;
+            }
+
+            // Append disclaimer via existing engine
+            phase3Response = appendDisclaimer(
+              phase3Response,
+              session.locale || dto.locale,
+              false,
+              dto.userText
+            );
+
+            // Extract citations from template content
+            const extractionResult = this.citationService.extractCitations(
+              phase3Response,
+              executionResult.mergedChunks
+            );
+            const citations = extractionResult.citations;
+
+            // Persist message + citations
+            const assistant = await this.persistAssistantMessage(
+              dto.sessionId,
+              phase3Response,
+              citations,
+              executionResult.mergedChunks,
+              {
+                safetyClassification: "normal",
+                latencyMs: Date.now() - started,
+                kbDocIds: Array.from(new Set(executionResult.mergedChunks.map(c => c.docId))),
+                evidenceQuality: executionResult.mergedChunks.length > 0 ? "strong" : "weak",
+                evidenceGatePassed: true,
+              }
+            );
+
+            this.analytics
+              .emit(
+                "phase3_structured_response",
+                {
+                  planId: plan.planId,
+                  templateId: plan.template?.id,
+                  category: agenticIntent.category,
+                  signals: plan.signals,
+                  retrievalCalls: plan.estimatedRetrievalCalls,
+                  citationCount: citations.length,
+                  verificationPassed: executionResult.verification?.passed ?? true,
+                  latencyMs: Date.now() - started,
+                },
+                dto.sessionId
+              )
+              .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+
+            this.logger.log({
+              event: "phase3_structured_response_complete",
+              sessionId: dto.sessionId,
+              planId: plan.planId,
+              templateId: plan.template?.id,
+              responseLength: phase3Response.length,
+              citationCount: citations.length,
+              latencyMs: Date.now() - started,
+            });
+
+            return {
+              sessionId: dto.sessionId,
+              messageId: assistant.id,
+              responseText: assistant.text,
+              safety: { classification: "normal" as const, actions: [] },
+              ...(citations.length > 0 && {
+                citations: citations.map((c) => ({
+                  docId: c.docId,
+                  chunkId: c.chunkId,
+                  position: c.position,
+                })),
+              }),
+              citationConfidence: citations.length > 0 ? "GREEN" : undefined,
+              ...(executionResult.mergedChunks.length > 0 && {
+                retrievedChunks: executionResult.mergedChunks.slice(0, 6).map((chunk) => ({
+                  docId: chunk.docId,
+                  chunkId: chunk.chunkId,
+                  sourceType: chunk.document.sourceType,
+                  isTrustedSource: chunk.document.isTrustedSource,
+                  similarity: chunk.similarity,
+                })),
+              }),
+            };
+          }
+        } catch (error: any) {
+          // Phase 3 failed — fall through to existing flow
+          this.logger.warn({
+            event: "phase3_execution_failed",
+            sessionId: dto.sessionId,
+            planId: plan.planId,
+            error: error.message,
+            message: "Phase 3 failed, falling through to existing flow",
+          });
+        }
+      }
+    }
 
     // 6. Evidence gate check (with intent and conversation context)
     let gateResult = await this.evidenceGate.validateEvidence(
@@ -829,12 +1140,11 @@ export class ChatService {
 
     // 7. Mode-based routing
     // Template-only intents (no RAG needed)
+    // Note: CARE_NAVIGATION_* moved to RAG-assisted flow to leverage India navigation KB content
     const templateOnlyIntents = [
       "GREETING_ONLY",
       "UNCLEAR_REQUEST",
       "REPORT_REQUEST_NO_TEXT",
-      "CARE_NAVIGATION_PROVIDER_CHOICE",
-      "CARE_NAVIGATION_SECOND_OPINION",
       "REQUEST_OUT_OF_SCOPE",
       "SAFETY_RESTRICTED",
       "ABSTENTION_WITH_RED_FLAGS"
@@ -1267,8 +1577,15 @@ export class ChatService {
       });
     }
 
+    // Navigation intents route through Explain Mode to leverage India navigation KB content
+    const navigationIntents = [
+      "CARE_NAVIGATION_PROVIDER_CHOICE",
+      "CARE_NAVIGATION_SECOND_OPINION",
+    ];
+    const isNavigationIntent = navigationIntents.includes(intentResult.intent);
+
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
-    if (mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) {
+    if ((mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) || isNavigationIntent) {
       // DEBUG: Timing markers for explain mode performance diagnosis
       const explainStarted = Date.now();
       let llmCallCount = 0;
@@ -1696,6 +2013,23 @@ export class ChatService {
         }
       }
 
+      // ─── Phase 3: Output verification before persist ───────────────
+      const phase3Verification = this.outputVerifier.quickVerify(
+        responseText,
+        evidenceChunks,
+        dto.userText
+      );
+      if (phase3Verification.fixedContent) {
+        responseText = phase3Verification.fixedContent;
+      }
+      if (phase3Verification.violations.some(v => v.severity === "critical" && !v.autoFixed)) {
+        this.logger.warn({
+          event: "phase3_verification_critical_violation",
+          sessionId: dto.sessionId,
+          violations: phase3Verification.violations.filter(v => v.severity === "critical").map(v => v.detail),
+        });
+      }
+
       // Persist message + citations (consolidated)
       const assistant = await this.persistAssistantMessage(
         dto.sessionId,
@@ -1877,8 +2211,10 @@ export class ChatService {
     // Fallback: Other intents (REPORT_TEXT_PROVIDED, etc.) - use existing LLM flow
     // 8. Generate response with citations (legacy flow for non-informational intents)
     const systemPrompt =
-      "You are Suchi (Suchitra Cancer Bot), an informational and navigation assistant for cancer. " +
-      "No diagnosis/prescribing/dosage. Use sections: Next steps, Red flags, Questions to ask a doctor.";
+      "You are Suchi (Suchitra Cancer Bot), an informational and navigation assistant for cancer, primarily serving Indian patients and caregivers. " +
+      "No diagnosis/prescribing/dosage. Use sections: Next steps, Red flags, Questions to ask a doctor. " +
+      "For emergencies, reference Indian numbers: 112 (emergency), 108 (ambulance). " +
+      "For financial assistance, mention PM-JAY/Ayushman Bharat (helpline: 14555) and Indian Cancer Society (1800-22-1951) when relevant.";
 
     let responseText = await this.llm.generateWithCitations(
       systemPrompt,
@@ -2287,6 +2623,9 @@ export class ChatService {
    * This is the single source of truth for message+citation storage.
    * Replaces 22 duplicated message.create + 8 citation storage blocks.
    *
+   * Phase 1: Disclaimer engine is applied here as the final step,
+   * ensuring every response gets a disclaimer regardless of code path.
+   *
    * @param sessionId - Session ID
    * @param text - Response text
    * @param citations - Citations to persist (can be empty)
@@ -2317,6 +2656,11 @@ export class ChatService {
         .join(' ');
       finalText = `${text}\n\n**Sources:** ${citationMarkers}`;
     }
+
+    // Phase 1: Disclaimer Engine — auto-append to every response
+    const isEmergencyResponse = options.safetyClassification === "red_flag" ||
+      options.safetyClassification === "mental_health_crisis";
+    finalText = appendDisclaimer(finalText, undefined, isEmergencyResponse);
 
     // Create the message
     const assistant = await this.prisma.message.create({

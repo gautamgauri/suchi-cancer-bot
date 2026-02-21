@@ -1,0 +1,114 @@
+name: Deploy to Cloud Run
+
+# SETUP REQUIRED — add these secrets in GitHub repo Settings → Secrets → Actions:
+#   GCP_SA_KEY     - JSON key for a service account with Cloud Build + Cloud Run roles
+#   GCP_PROJECT_ID - gen-lang-client-0202543132
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'suchi_phase1_pack/apps/api/**'
+      - 'suchi_phase1_pack/apps/web/**'
+      - '.github/workflows/deploy.yml'
+
+  workflow_dispatch:
+    inputs:
+      deploy_mode:
+        description: 'Deployment mode'
+        required: true
+        default: 'gated'
+        type: choice
+        options:
+          - gated    # Build → deploy candidate at 0% → eval → shift traffic if passed
+          - direct   # Build → deploy immediately (skip eval gate)
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Determine deploy config
+        id: config
+        run: |
+          MODE="${{ github.event.inputs.deploy_mode || 'gated' }}"
+          if [ "$MODE" = "direct" ]; then
+            echo "config_file=suchi_phase1_pack/cloudbuild.yaml" >> $GITHUB_OUTPUT
+            echo "mode=direct" >> $GITHUB_OUTPUT
+          else
+            echo "config_file=suchi_phase1_pack/cloudbuild.gated.yaml" >> $GITHUB_OUTPUT
+            echo "mode=gated" >> $GITHUB_OUTPUT
+          fi
+          echo "Deploy mode: $MODE"
+
+      - name: Submit Cloud Build
+        id: build
+        run: |
+          echo "## Deploy (${{ steps.config.outputs.mode }} mode)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Config | \`${{ steps.config.outputs.config_file }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${GITHUB_SHA::8}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          gcloud builds submit . \
+            --config=${{ steps.config.outputs.config_file }} \
+            --timeout=1800s \
+            2>&1 | tee /tmp/build-output.txt
+
+          BUILD_EXIT=$?
+          if [ $BUILD_EXIT -eq 0 ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "### Result: Deployed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "### Result: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -30 /tmp/build-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Verify API health
+        if: steps.build.outputs.status == 'success'
+        run: |
+          API_URL="https://suchi-api-lxiveognla-uc.a.run.app/v1"
+          echo "Verifying API at: $API_URL/health"
+
+          for i in $(seq 1 12); do
+            if curl -fsS "$API_URL/health" > /dev/null 2>&1; then
+              echo "API is healthy"
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Health: Passed" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+            echo "Attempt $i/12: waiting..."
+            sleep 10
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Health: WARNING — API not responding after 2 min (may be cold start)" >> $GITHUB_STEP_SUMMARY
