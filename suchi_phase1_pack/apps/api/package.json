@@ -6,6 +6,8 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
+    "test": "jest",
+    "test:voice": "jest --testPathPatterns=modules/voice",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -46,12 +48,15 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",
     "@types/geoip-lite": "^1.4.4",
+    "@types/jest": "^30.0.0",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.14.10",
     "@types/nodemailer": "^7.0.9",
+    "jest": "^30.2.0",
     "pg": "^8.16.3",
     "playwright": "^1.58.0",
     "prisma": "^5.20.0",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   }
