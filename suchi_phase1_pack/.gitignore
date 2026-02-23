@@ -100,8 +100,8 @@ eval/run-*.ps1
 # Root ad-hoc PowerShell scripts
 test-*.ps1
 
-
-
+# Archived docs (moved from root)
+docs/archive/
 
 
 
