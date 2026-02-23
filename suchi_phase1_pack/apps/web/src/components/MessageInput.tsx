@@ -55,6 +55,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [text, setText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [showUnsupportedTooltip, setShowUnsupportedTooltip] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -130,7 +131,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     setIsRecording(false);
   };
 
-  const toggleRecording = () => {
+  const handleMicClick = () => {
+    if (!speechSupported) {
+      // Show tooltip briefly for unsupported browsers
+      setShowUnsupportedTooltip(true);
+      setTimeout(() => setShowUnsupportedTooltip(false), 3000);
+      return;
+    }
     if (isRecording) {
       stopRecording();
     } else {
@@ -158,21 +165,53 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       <div id="input-help" style={{ display: "none" }}>
         Type your message and press Enter to send, or Shift+Enter for a new line
       </div>
-      {speechSupported && (
+      <div style={styles.micContainer}>
         <button
-          onClick={toggleRecording}
+          onClick={handleMicClick}
           disabled={disabled}
           style={{
             ...styles.micButton,
             ...(isRecording ? styles.micButtonRecording : {}),
+            ...(!speechSupported ? styles.micButtonUnsupported : {}),
             ...(disabled ? styles.buttonDisabled : {})
           }}
-          aria-label={isRecording ? "Stop recording" : "Start voice input"}
-          title={isRecording ? "Stop recording" : "Voice input"}
+          aria-label={
+            !speechSupported
+              ? "Voice input not supported in this browser"
+              : isRecording
+              ? "Stop recording"
+              : "Start voice input"
+          }
+          title={
+            !speechSupported
+              ? "Voice input — use Chrome or Edge for best support"
+              : isRecording
+              ? "Stop recording"
+              : "Voice input"
+          }
         >
-          {isRecording ? "🔴" : "🎤"}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={isRecording ? "#dc2626" : "currentColor"}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
         </button>
-      )}
+        {showUnsupportedTooltip && (
+          <div style={styles.tooltip}>
+            Voice input works best in Chrome or Edge
+          </div>
+        )}
+      </div>
       <button
         onClick={handleSend}
         disabled={disabled || !text.trim()}
@@ -204,7 +243,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     padding: "20px",
     backgroundColor: "var(--color-surface)",
-    borderTop: "1px solid var(--color-border)"
+    borderTop: "1px solid var(--color-border)",
+    alignItems: "flex-end"
   },
   input: {
     flex: 1,
@@ -246,31 +286,48 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "not-allowed",
     opacity: 0.5
   },
+  micContainer: {
+    position: "relative" as const,
+    display: "flex",
+    alignItems: "flex-end"
+  },
   micButton: {
-    padding: "12px 16px",
+    padding: "12px 14px",
     fontSize: "18px",
     backgroundColor: "var(--color-surface-alt)",
-    border: "1px solid var(--color-border)",
+    border: "2px solid var(--color-primary)",
     borderRadius: "var(--radius-md)",
     cursor: "pointer",
     transition: "var(--transition-base)",
-    alignSelf: "flex-end",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    color: "var(--color-primary)"
   },
   micButtonRecording: {
-    backgroundColor: "var(--color-error-bg)",
-    borderColor: "var(--color-error)",
+    backgroundColor: "#fef2f2",
+    borderColor: "#dc2626",
+    color: "#dc2626",
     animation: "pulse 1s infinite"
+  },
+  micButtonUnsupported: {
+    borderColor: "var(--color-border)",
+    color: "var(--color-text-muted)",
+    opacity: 0.6,
+    cursor: "pointer"
+  },
+  tooltip: {
+    position: "absolute" as const,
+    bottom: "100%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    marginBottom: "8px",
+    padding: "6px 12px",
+    backgroundColor: "var(--color-text)",
+    color: "var(--color-surface)",
+    fontSize: "12px",
+    borderRadius: "6px",
+    whiteSpace: "nowrap" as const,
+    zIndex: 10
   }
 };
-
-
-
-
-
-
-
-
-

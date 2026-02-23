@@ -250,9 +250,7 @@ export class ChatService {
         locale: session.locale || dto.locale 
       } as any);
       
-      // Add disclaimer at the start (required for eval)
-      const disclaimer = "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
-      urgentResponse = disclaimer + urgentResponse;
+      // Disclaimer is appended by appendDisclaimer() — no need to prepend a second one
       
       // If we have RAG content, generate a response with citations and prepend urgent guidance
       if (earlyEvidenceChunks.length > 0) {
@@ -1332,11 +1330,7 @@ export class ChatService {
           dto.userText
         );
 
-        // Handle YELLOW confidence (weak evidence but still answer)
-        if (citationValidation.confidenceLevel === "YELLOW") {
-          const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
-          responseText = uncertaintyPreamble + responseText;
-        }
+        // YELLOW confidence: proceed without extra preamble — appendDisclaimer() handles the disclaimer
         
         // Persist message + citations (consolidated)
         const assistant = await this.persistAssistantMessage(
@@ -1488,8 +1482,7 @@ export class ChatService {
           { hasGenerallyAsking }
         );
 
-        // Add disclaimer at the start
-        responseText = "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n" + responseText;
+        // Disclaimer is appended by appendDisclaimer() later — no need to prepend a second one
 
         // Extract and validate citations
         const extractionResult2 = this.citationService.extractCitations(responseText, evidenceChunks);
@@ -2001,17 +1994,7 @@ export class ChatService {
         }
       }
 
-      // Handle YELLOW confidence
-      if (citationValidation.confidenceLevel === "YELLOW") {
-        // For identify questions with 0 citations, use stronger disclaimer
-        if (isIdentifyWithGeneralIntent && citations.length === 0) {
-          const strongDisclaimer = "**Important Note:** This information is provided for general educational purposes. I was unable to verify all sources with citations. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
-          responseText = strongDisclaimer + responseText;
-        } else {
-          const uncertaintyPreamble = "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. Please verify with your healthcare provider.\n\n";
-          responseText = uncertaintyPreamble + responseText;
-        }
-      }
+      // YELLOW confidence: proceed without extra preamble — appendDisclaimer() handles the disclaimer
 
       // ─── Phase 3: Output verification before persist ───────────────
       const phase3Verification = this.outputVerifier.quickVerify(
@@ -2318,16 +2301,9 @@ export class ChatService {
       }
     }
 
-    // Handle YELLOW (low confidence) - add cautious preamble
+    // Handle YELLOW (low confidence) — log but don't prepend extra disclaimer
     if (citationValidation.confidenceLevel === "YELLOW") {
       this.logger.log(`Citation validation YELLOW: ${citations.length} citations, density ${citationValidation.citationDensity.toFixed(2)}`);
-
-      // Prepend uncertainty disclaimer
-      const uncertaintyPreamble =
-        "**Note:** I have limited source material on this specific aspect, so this answer may not be comprehensive. " +
-        "Please verify with your healthcare provider.\n\n";
-
-      responseText = uncertaintyPreamble + responseText;
     }
 
     // GREEN or YELLOW with citations - proceed with response
