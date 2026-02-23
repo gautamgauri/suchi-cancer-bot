@@ -1,11 +1,17 @@
 import { Injectable } from "@nestjs/common";
 
+const VOICE_DISCLAIMER =
+  " Please consult your doctor for personal medical advice.";
+
 @Injectable()
 export class VoiceResponseCondenser {
   private readonly MAX_SENTENCES = 6;
 
   condense(responseText: string): { plainText: string; ssml: string } {
     let text = responseText;
+
+    // Strip the disclaimer-engine block (--- + italic disclaimer)
+    text = text.replace(/\n+---\n\*[^*]+\*\s*$/s, "");
 
     // Strip citation markers
     text = text.replace(/\[citation:[^\]]+\]/g, "");
@@ -35,7 +41,10 @@ export class VoiceResponseCondenser {
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     const truncated = sentences.slice(0, this.MAX_SENTENCES).join(" ").trim();
 
-    return { plainText: truncated, ssml: this.toSsml(truncated) };
+    // Append short voice-friendly disclaimer
+    const withDisclaimer = truncated + VOICE_DISCLAIMER;
+
+    return { plainText: withDisclaimer, ssml: this.toSsml(withDisclaimer) };
   }
 
   private toSsml(text: string): string {
