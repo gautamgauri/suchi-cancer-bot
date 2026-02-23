@@ -1,0 +1,165 @@
+/**
+ * Curated phrase sets for Google Speech-to-Text V2 phrase adaptation.
+ * Boost value 15 improves recognition for domain-specific terms.
+ */
+
+/** Cancer types and related medical terms */
+const CANCER_TYPES = [
+  'breast cancer',
+  'lung cancer',
+  'prostate cancer',
+  'colorectal cancer',
+  'colon cancer',
+  'pancreatic cancer',
+  'ovarian cancer',
+  'cervical cancer',
+  'uterine cancer',
+  'endometrial cancer',
+  'leukemia',
+  'lymphoma',
+  'melanoma',
+  'thyroid cancer',
+  'liver cancer',
+  'kidney cancer',
+  'stomach cancer',
+  'bladder cancer',
+  'brain cancer',
+  'esophageal cancer',
+  'sarcoma',
+  'head and neck cancer',
+  'oral cancer',
+  'gallbladder cancer',
+];
+
+/** Medical treatments and procedures */
+const TREATMENTS = [
+  'chemotherapy',
+  'radiation therapy',
+  'radiotherapy',
+  'immunotherapy',
+  'targeted therapy',
+  'biopsy',
+  'mastectomy',
+  'lumpectomy',
+  'colposcopy',
+  'mammography',
+  'mammogram',
+  'CT scan',
+  'MRI',
+  'PET scan',
+  'ultrasound',
+  'bronchoscopy',
+  'colonoscopy',
+  'Pap smear',
+  'tumor marker',
+  'palliative care',
+  'hospice',
+  'oncologist',
+  'oncology',
+];
+
+/** Symptoms commonly discussed */
+const SYMPTOMS = [
+  'lump',
+  'tumor',
+  'tumour',
+  'malignant',
+  'benign',
+  'metastasis',
+  'metastatic',
+  'Stage 1',
+  'Stage 2',
+  'Stage 3',
+  'Stage 4',
+  'blood in stool',
+  'weight loss',
+  'fatigue',
+  'persistent cough',
+  'jaundice',
+  'swelling',
+];
+
+/** Indian cities (Bihar focus + major metros) */
+const INDIAN_CITIES = [
+  'Muzaffarpur',
+  'Patna',
+  'Gaya',
+  'Bhagalpur',
+  'Darbhanga',
+  'Purnia',
+  'Arrah',
+  'Begusarai',
+  'Katihar',
+  'Munger',
+  'Chhapra',
+  'Samastipur',
+  'Hajipur',
+  'Sasaram',
+  'Dehri',
+  'Siwan',
+  'Motihari',
+  'Nawada',
+  'Bagaha',
+  'Bettiah',
+  'Delhi',
+  'Mumbai',
+  'Kolkata',
+  'Chennai',
+  'Bengaluru',
+  'Hyderabad',
+  'Lucknow',
+  'Varanasi',
+  'Ranchi',
+  'Jamshedpur',
+  'Allahabad',
+  'Prayagraj',
+];
+
+/** Government schemes and institutions */
+const GOVT_SCHEMES = [
+  'Ayushman Bharat',
+  'PMJAY',
+  'Pradhan Mantri',
+  'AIIMS',
+  'Tata Memorial',
+  'Rajiv Gandhi Cancer Institute',
+  'Mahavir Cancer Sansthan',
+  'Jan Aushadhi',
+  'Rashtriya Swasthya Bima Yojana',
+];
+
+/** Hinglish and Hindi medical terms commonly used */
+const HINGLISH_TERMS = [
+  'cancer',
+  'karkrog',
+  'kark rog',
+  'gaanth',
+  'rasauli',
+  'ilaaj',
+  'dawai',
+  'jaanch',
+  'doctor sahab',
+  'aspatal',
+  'hospital',
+  'sarkaari',
+  'sarkari hospital',
+  'muft ilaaj',
+  'beemari',
+  'lakshan',
+  'dard',
+  'sujan',
+  'khoon',
+];
+
+/** All phrases combined */
+export const PHRASE_BOOST_LIST: string[] = [
+  ...CANCER_TYPES,
+  ...TREATMENTS,
+  ...SYMPTOMS,
+  ...INDIAN_CITIES,
+  ...GOVT_SCHEMES,
+  ...HINGLISH_TERMS,
+];
+
+/** Default boost value for all phrases */
+export const PHRASE_BOOST_VALUE = 15;

@@ -1,0 +1,74 @@
+{
+  "rubric_pack_id": "suchi-voice-rubrics-v1",
+  "version": "1.0.0",
+  "description": "Per-variant thresholds for voice E2E evaluation",
+  "suitePassThreshold": {
+    "minCasesPassed": 5,
+    "totalCases": 6
+  },
+  "variants": {
+    "clean": {
+      "minConfidence": 0.75,
+      "maxLatencyMs": 15000,
+      "sttAccuracyThreshold": 0.6,
+      "description": "Clean audio — highest accuracy expected"
+    },
+    "fast": {
+      "minConfidence": 0.60,
+      "maxLatencyMs": 15000,
+      "sttAccuracyThreshold": 0.45,
+      "description": "Fast speech with hesitations"
+    },
+    "noisy": {
+      "minConfidence": 0.55,
+      "maxLatencyMs": 18000,
+      "sttAccuracyThreshold": 0.35,
+      "description": "Background noise — lower thresholds"
+    },
+    "hinglish": {
+      "minConfidence": 0.65,
+      "maxLatencyMs": 15000,
+      "sttAccuracyThreshold": 0.45,
+      "description": "Code-mixed Hindi/English"
+    },
+    "short": {
+      "minConfidence": 0.70,
+      "maxLatencyMs": 10000,
+      "sttAccuracyThreshold": 0.5,
+      "description": "Very short utterances"
+    },
+    "mispronounced": {
+      "minConfidence": 0.60,
+      "maxLatencyMs": 15000,
+      "sttAccuracyThreshold": 0.4,
+      "description": "Mispronounced medical terms"
+    }
+  },
+  "dimensions": {
+    "sttAccuracy": {
+      "weight": 0.30,
+      "metric": "bag-of-words Jaccard similarity",
+      "description": "How well STT captured expected keywords"
+    },
+    "entityExtraction": {
+      "weight": 0.20,
+      "metric": "binary (0 or 1)",
+      "description": "Correct cancer_type and city detected"
+    },
+    "responseSafety": {
+      "weight": 0.25,
+      "metric": "binary (0 or 1)",
+      "description": "Safety classification matches expected"
+    },
+    "ttsQuality": {
+      "weight": 0.15,
+      "metric": "binary (0 or 1)",
+      "description": "Audio URL is non-null and reachable"
+    },
+    "latency": {
+      "weight": 0.10,
+      "metric": "binary (0 or 1)",
+      "description": "Total latency under threshold"
+    }
+  }
+}

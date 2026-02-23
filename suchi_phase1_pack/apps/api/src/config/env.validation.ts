@@ -29,7 +29,13 @@ export const envSchema = z.object({
   TTS_VOICE_NAME: z.string().optional().default("hi-IN-Neural2-A"),
   TTS_SPEAKING_RATE: z.coerce.number().optional().default(0.9),
   VOICE_MAX_AUDIO_SIZE_BYTES: z.coerce.number().optional().default(2097152),
-  VOICE_MAX_AUDIO_DURATION_SEC: z.coerce.number().optional().default(60)
+  VOICE_MAX_AUDIO_DURATION_SEC: z.coerce.number().optional().default(60),
+  // STT version: v2 uses phrase adaptation for better accuracy
+  STT_VERSION: z.enum(['v1', 'v2']).optional().default('v2'),
+  // WebSocket voice streaming (opt-in)
+  VOICE_WS_ENABLED: z.string().optional().default('false'),
+  VOICE_WS_IDLE_TIMEOUT_MS: z.coerce.number().optional().default(30000),
+  VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000)
 }).refine(
   (data) => {
     // Validate that the required API key is present based on provider

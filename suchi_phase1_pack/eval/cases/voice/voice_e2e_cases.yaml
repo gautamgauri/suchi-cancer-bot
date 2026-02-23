@@ -1,0 +1,101 @@
+cases:
+  - id: VOICE-CLEAN-01
+    variant: clean
+    description: "Clean Hindi speech, standard pace — baseline quality check"
+    expectedTranscript: "Mujhe breast cancer ke baare mein jaankari chahiye. Main Muzaffarpur se hoon."
+    locale: hi-IN
+    synthetic:
+      speakingRate: 1.0
+    expectations:
+      minConfidence: 0.75
+      expectedCancerType: breast
+      expectedCity: Muzaffarpur
+      expectedSafety: normal
+      transcriptKeywords:
+        - breast
+        - cancer
+        - Muzaffarpur
+      maxLatencyMs: 15000
+
+  - id: VOICE-FAST-01
+    variant: fast
+    description: "Fast speech with hesitation — tests STT robustness"
+    expectedTranscript: "Hmm... mujhe lung cancer ke symptoms ke baare mein bataaiye, main Patna mein rehta hoon."
+    locale: hi-IN
+    synthetic:
+      speakingRate: 1.4
+    expectations:
+      minConfidence: 0.60
+      expectedCancerType: lung
+      expectedCity: Patna
+      expectedSafety: normal
+      transcriptKeywords:
+        - lung
+        - cancer
+        - symptoms
+      maxLatencyMs: 15000
+
+  - id: VOICE-NOISY-01
+    variant: noisy
+    description: "Background noise — tests phrase adaptation value"
+    expectedTranscript: "Cervical cancer ka ilaaj kaise hota hai? Kya Ayushman Bharat se cover hoga?"
+    locale: hi-IN
+    synthetic:
+      speakingRate: 1.0
+      addNoise: true
+      noiseLevel: 0.05
+    expectations:
+      minConfidence: 0.55
+      expectedCancerType: cervical
+      expectedSafety: normal
+      transcriptKeywords:
+        - cervical
+        - cancer
+      maxLatencyMs: 18000
+
+  - id: VOICE-HINGLISH-01
+    variant: hinglish
+    description: "Code-mixed Hindi/English — common real-world pattern"
+    expectedTranscript: "My mother ko stomach mein problem hai, doctor ne bola cancer ho sakta hai. Hum Varanasi se hain."
+    locale: hi-IN
+    synthetic:
+      speakingRate: 1.0
+    expectations:
+      minConfidence: 0.65
+      expectedCancerType: stomach
+      expectedCity: Varanasi
+      expectedSafety: normal
+      transcriptKeywords:
+        - stomach
+        - cancer
+      maxLatencyMs: 15000
+
+  - id: VOICE-SHORT-01
+    variant: short
+    description: "Very short utterance (under 3 seconds) — edge case"
+    expectedTranscript: "Cancer kya hai?"
+    locale: hi-IN
+    synthetic:
+      speakingRate: 1.0
+    expectations:
+      minConfidence: 0.70
+      expectedSafety: normal
+      transcriptKeywords:
+        - cancer
+      maxLatencyMs: 10000
+
+  - id: VOICE-MISPRONOUNCED-01
+    variant: mispronounced
+    description: "Medical terms mispronounced — tests phrase boost accuracy"
+    expectedTranscript: "Mera chemotherapy ka treatment chal raha hai, mammography karwani hai. Main Delhi se hoon."
+    locale: hi-IN
+    synthetic:
+      speakingRate: 0.9
+    expectations:
+      minConfidence: 0.60
+      expectedCity: Delhi
+      expectedSafety: normal
+      transcriptKeywords:
+        - chemotherapy
+        - treatment
+      maxLatencyMs: 15000

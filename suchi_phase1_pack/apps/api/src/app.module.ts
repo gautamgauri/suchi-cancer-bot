@@ -16,6 +16,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { EmbeddingsModule } from "./modules/embeddings/embeddings.module";
 import { YoutubeModule } from "./modules/youtube/youtube.module";
 import { VoiceModule } from "./modules/voice/voice.module";
+import { VoiceWsModule } from "./modules/voice-ws/voice-ws.module";
 
 @Module({
   imports: [
@@ -41,7 +42,8 @@ import { VoiceModule } from "./modules/voice/voice.module";
     HealthModule,
     EmbeddingsModule,
     YoutubeModule,
-    VoiceModule
+    VoiceModule,
+    ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
   ]
 })
 export class AppModule {}

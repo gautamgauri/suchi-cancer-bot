@@ -16,7 +16,8 @@
     "eval:run": "npm run build && node dist/cli.js run",
     "eval:report": "npm run build && node dist/cli.js report",
     "eval:generalinfo": "ts-node cli.ts run --cases cases/generalinfo/general_info_100.yaml --output reports/generalinfo-report.json --summary",
-    "eval:tier1": "ts-node cli.ts run --cases cases/tier1/retrieval_quality.yaml --output reports/tier1-report.json --summary"
+    "eval:tier1": "ts-node cli.ts run --cases cases/tier1/retrieval_quality.yaml --output reports/tier1-report.json --summary",
+    "eval:voice": "ts-node cli.ts voice-e2e --synthetic --transport http --summary"
   },
   "keywords": [
     "evaluation",
@@ -28,20 +29,25 @@
   "dependencies": {
     "axios": "^1.6.0",
     "commander": "^11.1.0",
+    "form-data": "^4.0.0",
     "js-yaml": "^4.1.0",
-    "openai": "^4.77.0"
+    "openai": "^4.77.0",
+    "socket.io-client": "^4.7.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.10",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },
   "optionalDependencies": {
     "@google-cloud/secret-manager": "^5.0.0",
+    "@google-cloud/text-to-speech": "^6.4.0",
     "@google-cloud/vertexai": "^1.0.0"
   }
 }
