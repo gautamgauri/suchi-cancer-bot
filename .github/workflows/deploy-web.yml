@@ -1,0 +1,74 @@
+name: Deploy Web to Cloud Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'suchi_phase1_pack/apps/web/**'
+      - '.github/workflows/deploy-web.yml'
+
+env:
+  PROJECT_ID: gen-lang-client-0202543132
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev/gen-lang-client-0202543132/suchi-images
+  SERVICE: suchi-web
+  API_URL: https://suchi-api-lxiveognla-uc.a.run.app/v1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build image
+        run: |
+          docker build \
+            -t $REGISTRY/$SERVICE:${{ github.sha }} \
+            -t $REGISTRY/$SERVICE:latest \
+            --build-arg VITE_API_URL=$API_URL \
+            -f suchi_phase1_pack/apps/web/Dockerfile \
+            suchi_phase1_pack/apps/web
+
+      - name: Push image
+        run: docker push --all-tags $REGISTRY/$SERVICE
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE \
+            --image $REGISTRY/$SERVICE:${{ github.sha }} \
+            --region $REGION \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 256Mi \
+            --cpu 1 \
+            --port 8080 \
+            --min-instances 0 \
+            --max-instances 5 \
+            --set-env-vars "VITE_API_URL=$API_URL"
+
+      - name: Verify deployment
+        run: |
+          URL=$(gcloud run services describe $SERVICE --region $REGION --format 'value(status.url)')
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Deployment verified: $URL"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
