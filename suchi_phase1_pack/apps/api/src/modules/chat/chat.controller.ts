@@ -3,12 +3,37 @@ import { Throttle } from "@nestjs/throttler";
 import { ChatDto } from "./dto";
 import { ChatService } from "./chat.service";
 
+/** Pattern to match [citation:docId:chunkId] markers */
+const CITATION_MARKER_PATTERN = /\[citation:[^\]]+\]/g;
+/** Pattern to match numbered references like [1], [2] left over from LLM output */
+const NUMBERED_REF_PATTERN = /\s*\[\d{1,3}\]/g;
+/** Pattern to match the raw "**Sources:** [citation:...]" section appended by citation repair */
+const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]\s*)+/g;
+
 @Controller("chat")
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
   private readonly REQUEST_TIMEOUT_MS = 180000; // 180 seconds (3 minutes) to match eval framework timeout and allow for complex LLM responses with deterministic extractor
 
   constructor(private readonly chat: ChatService) {}
+
+  /**
+   * Clean response text for user display.
+   * Strips raw citation markers, numbered refs, and raw sources sections
+   * so the user sees clean, readable text. The structured citations data
+   * is still returned separately in the response for the frontend to render.
+   */
+  private cleanResponseForDisplay(text: string): string {
+    return text
+      .replace(RAW_SOURCES_SECTION_PATTERN, "")
+      .replace(CITATION_MARKER_PATTERN, "")
+      .replace(NUMBERED_REF_PATTERN, "")
+      // Clean up any leftover double-spaces from removed markers
+      .replace(/  +/g, " ")
+      // Clean up any leftover empty bold markers like "** **"
+      .replace(/\*\*\s*\*\*/g, "")
+      .trim();
+  }
 
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60 } })
@@ -21,10 +46,18 @@ export class ChatController {
 
     try {
       // Race between the actual request and timeout
-      return await Promise.race([
+      const result = await Promise.race([
         this.chat.handle(dto),
         timeoutPromise
       ]) as any;
+
+      // Clean the response text for display (strip citation markers, numbered refs)
+      // The raw text is preserved in the database for evaluation purposes
+      if (result && result.responseText) {
+        result.responseText = this.cleanResponseForDisplay(result.responseText);
+      }
+
+      return result;
     } catch (error: any) {
       this.logger.error(`Chat error: ${error.message}`, error.stack);
       
