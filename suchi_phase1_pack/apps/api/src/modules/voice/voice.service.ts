@@ -230,9 +230,18 @@ export class VoiceService {
       );
     }
 
+    // Strip citation markers from responseText (same cleanup as chat controller)
+    const cleanResponseText = chatResponse.responseText
+      .replace(/\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]\s*)+/g, '')
+      .replace(/\[citation:[^\]]+\]/g, '')
+      .replace(/\s*\[\d{1,3}\]/g, '')
+      .replace(/  +/g, ' ')
+      .replace(/\*\*\s*\*\*/g, '')
+      .trim();
+
     return {
       messageId: chatResponse.messageId,
-      responseText: chatResponse.responseText,
+      responseText: cleanResponseText,
       voiceText,
       audioUrl,
       safety: chatResponse.safety ?? { classification: 'normal', actions: [] },
