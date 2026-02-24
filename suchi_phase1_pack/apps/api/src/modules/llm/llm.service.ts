@@ -663,6 +663,7 @@ RESPONSE INSTRUCTIONS:
 - Keep the TOTAL response under 200 words
 - Do NOT add disclaimers, caveats, or "is there anything else" closers
 - Do NOT repeat information across sections
+- Do NOT copy document titles (e.g., "Cervical Cancer Treatment - NCI") or reference metadata into your response — synthesize the information into your own words
 
 CITATION FORMAT:
 - Cite medical facts: [citation:docId:chunkId]

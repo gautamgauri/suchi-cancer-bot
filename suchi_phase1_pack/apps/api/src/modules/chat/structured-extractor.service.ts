@@ -473,7 +473,7 @@ export class StructuredExtractorService {
 
     if (sections.length > 0) {
       sections.unshift("=== PRE-EXTRACTED CHECKLIST ===\n");
-      sections.push("You must cover every checklist item above. If you cannot find support for an item in the references, say so explicitly and do not invent it.");
+      sections.push("Use these checklist items as topics to address in your response. Do NOT copy document titles, reference names, or metadata into your answer — synthesize the information into natural, conversational language. If the references do not contain enough detail for an item, omit it rather than filling with reference titles.");
       sections.push("=== END CHECKLIST ===\n");
     }
 
