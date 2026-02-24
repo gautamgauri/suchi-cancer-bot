@@ -93,20 +93,33 @@ export class VoiceReportGenerator {
       `Latency:            ${(report.summary.averageScores.latency * 100).toFixed(1)}%`,
     );
 
-    if (report.failures.length > 0) {
-      lines.push('');
-      lines.push('FAILURES');
-      lines.push('-'.repeat(60));
-      for (const f of report.failures) {
-        lines.push(
-          `  ${f.testCaseId} [${f.transport}] (${f.variant})`,
-        );
-        lines.push(
-          `    STT=${f.scores.sttAccuracy.toFixed(2)} Entity=${f.scores.entityExtraction} Safety=${f.scores.responseSafety} TTS=${f.scores.ttsQuality} Latency=${f.scores.latency}`,
-        );
-        if (f.errors) {
-          lines.push(`    Errors: ${f.errors.join(', ')}`);
-        }
+    // Show all results with transcripts
+    lines.push('');
+    lines.push('RESULTS');
+    lines.push('-'.repeat(60));
+    for (const r of report.results) {
+      const status = r.passed ? 'PASS' : 'FAIL';
+      lines.push(
+        `  ${r.testCaseId} [${r.transport}] (${r.variant}) — ${status}`,
+      );
+      if (r.details?.transcript) {
+        const t = r.details.transcript.length > 80
+          ? r.details.transcript.slice(0, 80) + '...'
+          : r.details.transcript;
+        lines.push(`    Transcript: "${t}"`);
+        lines.push(`    Confidence: ${(r.details.confidence * 100).toFixed(1)}%`);
+      }
+      if (r.details?.responseText) {
+        const resp = r.details.responseText.length > 120
+          ? r.details.responseText.slice(0, 120) + '...'
+          : r.details.responseText;
+        lines.push(`    Response: "${resp}"`);
+      }
+      lines.push(
+        `    STT=${r.scores.sttAccuracy.toFixed(2)} Entity=${r.scores.entityExtraction} Safety=${r.scores.responseSafety} TTS=${r.scores.ttsQuality} Latency=${r.scores.latency}`,
+      );
+      if (r.errors) {
+        lines.push(`    Errors: ${r.errors.join(', ')}`);
       }
     }
 

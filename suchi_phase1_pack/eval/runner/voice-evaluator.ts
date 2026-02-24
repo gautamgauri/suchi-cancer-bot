@@ -159,11 +159,16 @@ export class VoiceEvaluator {
       };
     }
 
-    // Score 5 dimensions
-    const sttAccuracy = this.scoreSttAccuracy(
+    // Score 5 dimensions — take best of English/Hindi keyword scores
+    const sttEn = this.scoreSttAccuracy(
       transportResult.transcript,
       testCase.expectations.transcriptKeywords,
     );
+    const sttHi = this.scoreSttAccuracy(
+      transportResult.transcript,
+      testCase.expectations.transcriptKeywordsHi || [],
+    );
+    const sttAccuracy = Math.max(sttEn, sttHi);
 
     const entityExtraction = this.scoreEntityExtraction(
       transportResult.responseText,
@@ -241,7 +246,7 @@ export class VoiceEvaluator {
     const transcriptWords = new Set(
       transcript
         .toLowerCase()
-        .replace(/[^\w\s]/g, '')
+        .replace(/[^\p{L}\p{N}\s]/gu, '')
         .split(/\s+/)
         .filter((w) => w.length > 1),
     );
@@ -263,8 +268,31 @@ export class VoiceEvaluator {
     return matches / expectedLower.length;
   }
 
+  /** Hindi aliases for cancer types (English key → all known forms) */
+  private static readonly CANCER_TYPE_ALIASES: Record<string, string[]> = {
+    breast: ['breast', 'ब्रेस्ट', 'स्तन'],
+    lung: ['lung', 'लंग', 'फेफड़'],
+    cervical: ['cervical', 'सर्वाइकल', 'गर्भाशय'],
+    stomach: ['stomach', 'स्टमक', 'पेट'],
+    oral: ['oral', 'ओरल', 'मुंह'],
+    blood: ['blood', 'ब्लड', 'खून'],
+    liver: ['liver', 'लिवर', 'यकृत'],
+  };
+
+  /** Hindi aliases for city names */
+  private static readonly CITY_ALIASES: Record<string, string[]> = {
+    muzaffarpur: ['muzaffarpur', 'मुजफ्फरपुर'],
+    patna: ['patna', 'पटना'],
+    varanasi: ['varanasi', 'वाराणसी'],
+    delhi: ['delhi', 'दिल्ली'],
+    mumbai: ['mumbai', 'मुंबई'],
+    kolkata: ['kolkata', 'कोलकाता'],
+    lucknow: ['lucknow', 'लखनऊ'],
+  };
+
   /**
    * Score entity extraction: cancer type and city detection.
+   * Uses bilingual aliases so Hindi transcripts match English expectations.
    */
   private scoreEntityExtraction(
     responseText: string,
@@ -273,12 +301,14 @@ export class VoiceEvaluator {
   ): number {
     let checks = 0;
     let passed = 0;
+    const combined = `${transcript} ${responseText}`.toLowerCase();
 
     // Check cancer type if expected
     if (expectations.expectedCancerType) {
       checks++;
-      const combined = `${transcript} ${responseText}`.toLowerCase();
-      if (combined.includes(expectations.expectedCancerType.toLowerCase())) {
+      const key = expectations.expectedCancerType.toLowerCase();
+      const aliases = VoiceEvaluator.CANCER_TYPE_ALIASES[key] || [key];
+      if (aliases.some((a) => combined.includes(a.toLowerCase()))) {
         passed++;
       }
     }
@@ -286,8 +316,9 @@ export class VoiceEvaluator {
     // Check city if expected
     if (expectations.expectedCity) {
       checks++;
-      const combined = `${transcript} ${responseText}`.toLowerCase();
-      if (combined.includes(expectations.expectedCity.toLowerCase())) {
+      const key = expectations.expectedCity.toLowerCase();
+      const aliases = VoiceEvaluator.CITY_ALIASES[key] || [key];
+      if (aliases.some((a) => combined.includes(a.toLowerCase()))) {
         passed++;
       }
     }

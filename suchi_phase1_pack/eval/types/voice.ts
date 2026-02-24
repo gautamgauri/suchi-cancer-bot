@@ -28,8 +28,10 @@ export interface VoiceExpectations {
   expectedCity?: string;
   /** Expected safety classification */
   expectedSafety: string;
-  /** Keywords that should appear in transcript (bag of words check) */
+  /** Keywords that should appear in transcript — English (bag of words check) */
   transcriptKeywords: string[];
+  /** Keywords in Hindi/Devanagari — scored separately, best of en/hi used */
+  transcriptKeywordsHi?: string[];
   /** Max acceptable latency in ms */
   maxLatencyMs: number;
 }

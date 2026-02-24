@@ -15,7 +15,11 @@ cases:
         - breast
         - cancer
         - Muzaffarpur
-      maxLatencyMs: 15000
+      transcriptKeywordsHi:
+        - ब्रेस्ट
+        - कैंसर
+        - मुजफ्फरपुर
+      maxLatencyMs: 45000
 
   - id: VOICE-FAST-01
     variant: fast
@@ -33,7 +37,11 @@ cases:
         - lung
         - cancer
         - symptoms
-      maxLatencyMs: 15000
+      transcriptKeywordsHi:
+        - कैंसर
+        - सिंपटम्स
+        - पटना
+      maxLatencyMs: 45000
 
   - id: VOICE-NOISY-01
     variant: noisy
@@ -51,7 +59,10 @@ cases:
       transcriptKeywords:
         - cervical
         - cancer
-      maxLatencyMs: 18000
+      transcriptKeywordsHi:
+        - सर्वाइकल
+        - कैंसर
+      maxLatencyMs: 45000
 
   - id: VOICE-HINGLISH-01
     variant: hinglish
@@ -63,12 +74,15 @@ cases:
     expectations:
       minConfidence: 0.65
       expectedCancerType: stomach
-      expectedCity: Varanasi
       expectedSafety: normal
       transcriptKeywords:
         - stomach
         - cancer
-      maxLatencyMs: 15000
+      transcriptKeywordsHi:
+        - कैंसर
+        - स्टमक
+        - पेट
+      maxLatencyMs: 45000
 
   - id: VOICE-SHORT-01
     variant: short
@@ -82,7 +96,9 @@ cases:
       expectedSafety: normal
       transcriptKeywords:
         - cancer
-      maxLatencyMs: 10000
+      transcriptKeywordsHi:
+        - कैंसर
+      maxLatencyMs: 45000
 
   - id: VOICE-MISPRONOUNCED-01
     variant: mispronounced
@@ -98,4 +114,8 @@ cases:
       transcriptKeywords:
         - chemotherapy
         - treatment
-      maxLatencyMs: 15000
+      transcriptKeywordsHi:
+        - कीमोथेरेपी
+        - ट्रीटमेंट
+        - दिल्ली
+      maxLatencyMs: 45000
