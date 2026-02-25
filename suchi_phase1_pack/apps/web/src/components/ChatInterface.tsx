@@ -23,7 +23,14 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStartOver }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      text: "Hi! I'm Suchi — your cancer navigation assistant. I can help you understand cancer information, find resources, and prepare for doctor visits. How can I help you today?",
+      timestamp: new Date(),
+    },
+  ]);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Answering...");
   const [safetyBanner, setSafetyBanner] = useState<{
@@ -284,7 +291,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
         />
       )}
 
-      {messages.length === 0 && (
+      {messages.length <= 1 && (
         <SuggestedPrompts prompts={SUGGESTED_PROMPTS} onSelect={handlePromptSelect} />
       )}
 
