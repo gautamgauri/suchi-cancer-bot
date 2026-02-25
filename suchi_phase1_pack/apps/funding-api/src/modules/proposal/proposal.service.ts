@@ -1598,16 +1598,18 @@ export class ProposalService {
       );
     }
 
-    // Activities by area
-    const activitiesByArea = facts.activitiesByArea as Record<string, Array<{
-      name: string; frequency: string; centers: string[]; unitCost: number | null; targetGroup: string;
-    }>> | undefined;
-    if (activitiesByArea) {
-      for (const [area, activities] of Object.entries(activitiesByArea)) {
-        const actList = activities
+    // Activities by program area
+    const programAreas = facts.programAreas as Array<{
+      area: string; activities: Array<{
+        name: string; frequency: string; centers: string[]; unitCostINR: number | null; targetGroup: string;
+      }>;
+    }> | undefined;
+    if (programAreas?.length) {
+      for (const pa of programAreas) {
+        const actList = pa.activities
           .map(a => `${a.name} (${a.frequency}${a.centers.length ? `, at ${a.centers.join(" and ")}` : ""})`)
           .join("; ");
-        lines.push(`${area}: ${actList}.`);
+        lines.push(`${pa.area}: ${actList}.`);
       }
     }
 
@@ -1615,11 +1617,11 @@ export class ProposalService {
     const metrics = facts.latestMetrics as Record<string, unknown> | undefined;
     if (metrics) {
       const metricParts: string[] = [];
-      if (metrics.totalEnrollment) metricParts.push(`enrollment of ${metrics.totalEnrollment} students`);
-      if (metrics.avgAttendance) metricParts.push(`average attendance of ${metrics.avgAttendance}%`);
-      if (metrics.totalMeals) metricParts.push(`${metrics.totalMeals} meals served per fortnight`);
-      if (metrics.totalKaStudents) metricParts.push(`${metrics.totalKaStudents} active Khan Academy students`);
-      if (metrics.totalSelSessions) metricParts.push(`${metrics.totalSelSessions} SEL sessions delivered`);
+      if (metrics.enrollment) metricParts.push(`enrollment of ${metrics.enrollment} students`);
+      if (metrics.avgAttendancePercent) metricParts.push(`average attendance of ${metrics.avgAttendancePercent}%`);
+      if (metrics.totalMealsPerFortnight) metricParts.push(`${metrics.totalMealsPerFortnight} meals served per fortnight`);
+      if (metrics.kaActiveStudents) metricParts.push(`${metrics.kaActiveStudents} active Khan Academy students`);
+      if (metrics.selSessionsRecent) metricParts.push(`${metrics.selSessionsRecent} SEL sessions delivered`);
       if (metricParts.length > 0) {
         lines.push(`Latest metrics: ${metricParts.join(", ")}.`);
       }

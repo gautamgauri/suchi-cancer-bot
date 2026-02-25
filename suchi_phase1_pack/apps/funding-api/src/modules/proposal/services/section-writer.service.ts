@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { FundingLlmService } from "../../core_ai/funding-llm.service";
 import { EvidenceChunk } from "../../core_ai/types";
 import { ProposalScope } from "../proposal.types";
-import { SECTION_WRITER_SYSTEM_PROMPT, buildSectionWriterUserPrompt, getSectionTypeGuidance } from "../prompts/section-writer.prompt";
+import { SECTION_WRITER_SYSTEM_PROMPT, SECTION_WRITER_NO_EVIDENCE_SYSTEM_PROMPT, buildSectionWriterUserPrompt, getSectionTypeGuidance } from "../prompts/section-writer.prompt";
 
 @Injectable()
 export class SectionWriterService {
@@ -105,8 +105,8 @@ CONTENT: ${content}
 
   /**
    * Draft a section using org context when no evidence chunks are available.
-   * Uses the full section writer system prompt (with voice/tone rules) and
-   * section-type guidance to produce a quality draft even without evidence.
+   * Uses a dedicated no-evidence system prompt (voice/tone rules without
+   * citation mandate) and section-type guidance.
    */
   private async draftFromTemplate(
     sectionName: string,
@@ -135,7 +135,7 @@ Write a professional, funder-facing draft for this proposal section. No evidence
     try {
       const llmStart = Date.now();
       const draftText = await this.llm.generatePlain(
-        SECTION_WRITER_SYSTEM_PROMPT,
+        SECTION_WRITER_NO_EVIDENCE_SYSTEM_PROMPT,
         "Draft the section:",
         templatePrompt,
       );
