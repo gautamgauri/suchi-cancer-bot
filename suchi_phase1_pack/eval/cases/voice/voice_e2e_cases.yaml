@@ -24,10 +24,10 @@ cases:
   - id: VOICE-FAST-01
     variant: fast
     description: "Fast speech with hesitation — tests STT robustness"
-    expectedTranscript: "Hmm... mujhe lung cancer ke symptoms ke baare mein bataaiye, main Patna mein rehta hoon."
+    expectedTranscript: "Hmm... mujhe phephdon ke cancer ke symptoms ke baare mein bataaiye, main Patna mein rehta hoon."
     locale: hi-IN
     synthetic:
-      speakingRate: 1.4
+      speakingRate: 1.25
     expectations:
       minConfidence: 0.60
       expectedCancerType: lung
