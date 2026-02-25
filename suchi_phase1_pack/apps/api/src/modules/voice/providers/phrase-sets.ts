@@ -128,6 +128,55 @@ const GOVT_SCHEMES = [
   'Rashtriya Swasthya Bima Yojana',
 ];
 
+/** Standalone organ/body part names — helps when "X cancer" compound doesn't match */
+const ORGAN_NAMES = [
+  'lung',
+  'breast',
+  'cervix',
+  'cervical',
+  'stomach',
+  'colon',
+  'liver',
+  'kidney',
+  'bladder',
+  'prostate',
+  'ovary',
+  'ovarian',
+  'uterus',
+  'uterine',
+  'pancreas',
+  'thyroid',
+  'brain',
+  'esophagus',
+  'oral',
+  'mouth',
+  'gallbladder',
+];
+
+/** Hindi/Devanagari transliterations of medical terms — anchors for code-switched speech */
+const HINDI_MEDICAL_TERMS = [
+  'लंग कैंसर',
+  'ब्रेस्ट कैंसर',
+  'सर्वाइकल कैंसर',
+  'स्टमक कैंसर',
+  'कैंसर',
+  'कीमोथेरेपी',
+  'रेडिएशन',
+  'बायोप्सी',
+  'मैमोग्राफी',
+  'ट्रीटमेंट',
+  'सिंपटम्स',
+  'ऑन्कोलॉजिस्ट',
+  'लंग',
+  'ब्रेस्ट',
+  'सर्वाइकल',
+  'स्टमक',
+  'पेट',
+  'फेफड़ा',
+  'स्तन',
+  'गर्भाशय',
+];
+
 /** Hinglish and Hindi medical terms commonly used */
 const HINGLISH_TERMS = [
   'cancer',
@@ -149,6 +198,11 @@ const HINGLISH_TERMS = [
   'dard',
   'sujan',
   'khoon',
+  'symptoms',
+  'treatment',
+  'report',
+  'test',
+  'scan',
 ];
 
 /** All phrases combined */
@@ -156,6 +210,8 @@ export const PHRASE_BOOST_LIST: string[] = [
   ...CANCER_TYPES,
   ...TREATMENTS,
   ...SYMPTOMS,
+  ...ORGAN_NAMES,
+  ...HINDI_MEDICAL_TERMS,
   ...INDIAN_CITIES,
   ...GOVT_SCHEMES,
   ...HINGLISH_TERMS,
