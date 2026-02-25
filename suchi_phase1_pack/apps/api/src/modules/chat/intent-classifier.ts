@@ -436,6 +436,8 @@ export class IntentClassifier {
       /\b(fever|temperature|chills)\b/i,
       // Hindi symptom terms
       /लक्षण|संकेत|दर्द|सूजन|खून|बुखार|थकान|वजन|खांसी|सांस|उल्टी|गांठ|कमज़ोरी/,
+      // Hinglish symptom terms (प्रॉब्लम=problem, तकलीफ=trouble, बीमारी=illness)
+      /प्रॉब्लम|तकलीफ|बीमारी|परेशानी|सिंपटम्स/,
     ];
     return symptomPatterns.some(pattern => pattern.test(text));
   }
@@ -533,6 +535,8 @@ export class IntentClassifier {
       /\b(report|scan|test|biopsy|result)\b/i,
       // Hindi medical terms
       /कैंसर|ट्यूमर|उपचार|इलाज|निदान|लक्षण|जांच|बायोप्सी|रिपोर्ट/,
+      // Hinglish medical terms (ट्रीटमेंट=treatment, मैमोग्राफी=mammography, कीमोथेरेपी=chemo, डॉक्टर=doctor)
+      /ट्रीटमेंट|मैमोग्राफी|कीमोथेरेपी|रेडिएशन|सर्जरी|डॉक्टर|हॉस्पिटल|स्कैन|टेस्ट/,
     ];
     return medicalKeywords.some(pattern => pattern.test(text));
   }
@@ -558,6 +562,10 @@ export class IntentClassifier {
       /लक्षण|संकेत|जांच|परीक्षण/,
       // Hindi cancer sites (स्तन = breast, फेफड़े = lungs, आंत = colon, etc.)
       /स्तन|फेफड़|फेफड़े|आंत|प्रोस्टेट|गर्भाशय|अग्नाशय|यकृत|गुर्दा|मस्तिष्क/,
+      // Hinglish body parts and medical terms (स्टमक=stomach, ब्रेस्ट=breast, लंग=lung)
+      /स्टमक|ब्रेस्ट|लंग|सर्वाइकल|ओरल|लिवर|किडनी|ब्लड|ब्रेन/,
+      // Hinglish treatment terms (ट्रीटमेंट=treatment, मैमोग्राफी=mammography, रिपोर्ट=report)
+      /ट्रीटमेंट|मैमोग्राफी|कीमोथेरेपी|रेडिएशन|ऑन्कोलॉजिस्ट|डॉक्टर/,
     ];
     return cancerKeywords.some(pattern => pattern.test(text));
   }

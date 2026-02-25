@@ -58,7 +58,13 @@ export class ModeDetector {
       // Direct personal statements
       /\b(I'm experiencing|I am experiencing|I have been experiencing)\b/i,
       // Personal questions about self
-      /\b(should I|do I have|am I|is my|my doctor|my treatment|my symptoms)\b/i
+      /\b(should I|do I have|am I|is my|my doctor|my treatment|my symptoms)\b/i,
+      // Hindi/Hinglish personal pronouns (मेरा=my, मुझे=me, मैं=I, हमारा=our, माय=my)
+      /मेरा|मेरी|मुझे|मैं|हमारा|हमारी|हमें|माय/,
+      // Hindi/Hinglish family references (मदर=mother, फादर=father, पत्नी=wife, बच्चा=child)
+      /मदर|फादर|माँ|मम्मी|पापा|पिता|पत्नी|बच्चा|बेटा|बेटी|भाई|बहन/,
+      // Hindi personal symptom framing (चल रहा है=is ongoing, हो रहा=is happening, हो गया=has happened)
+      /चल रहा|हो रहा|हो गया|करवानी|करवाना|लगता है|बोला/,
     ];
 
     // Check for Navigate Mode patterns
@@ -108,7 +114,10 @@ export class ModeDetector {
     const navigatePatterns = [
       /\b(I|my|me|myself)\b/i,
       /\b(I am|I'm|I have|I've been|I feel|I notice)\b/i,
-      /\b(my|my own)\s+(symptom|symptoms|report|scan|test|diagnosis|treatment)\b/i
+      /\b(my|my own)\s+(symptom|symptoms|report|scan|test|diagnosis|treatment)\b/i,
+      // Hindi/Hinglish personal pronouns
+      /मेरा|मेरी|मुझे|मैं|हमारा|हमें|माय/,
+      /मदर|फादर|माँ|मम्मी|पापा|पत्नी|बच्चा|बेटा|बेटी/,
     ];
     return navigatePatterns.some(pattern => pattern.test(text));
   }
@@ -131,7 +140,11 @@ export class ModeDetector {
       // Someone-specific references
       /\b(my mother|my father|my wife|my husband|my child|my friend|he has|she has)\b/i,
       // Symptom framing
-      /\b(i have|i got|i feel|experiencing|suffering from)\b/i
+      /\b(i have|i got|i feel|experiencing|suffering from)\b/i,
+      // Hindi personal pronouns and framing
+      /मेरा|मेरी|मुझे|मैं|हमारा|हमें|माय/,
+      // Hindi family references
+      /मदर|फादर|माँ|मम्मी|पापा|पत्नी|बच्चा|बेटा|बेटी/,
     ];
     return personalSignals.some(pattern => pattern.test(text));
   }
