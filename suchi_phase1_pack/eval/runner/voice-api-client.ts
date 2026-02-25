@@ -14,7 +14,7 @@ export class VoiceApiClient {
 
   constructor(
     baseUrl: string,
-    timeoutMs = 30000,
+    timeoutMs = 120000,
     authBearer?: string,
     retries = 2,
   ) {

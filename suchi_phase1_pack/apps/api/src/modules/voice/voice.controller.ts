@@ -27,7 +27,7 @@ const ALLOWED_MIME_TYPES = [
 @Controller("voice")
 export class VoiceController {
   private readonly logger = new Logger(VoiceController.name);
-  private readonly REQUEST_TIMEOUT_MS = 45_000;
+  private readonly REQUEST_TIMEOUT_MS = 120_000;
 
   constructor(private readonly voice: VoiceService) {}
 

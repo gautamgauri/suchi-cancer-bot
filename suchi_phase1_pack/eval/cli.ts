@@ -257,7 +257,7 @@ program
         outputPath,
         rubricsPath,
         authBearer: config.authBearer,
-        timeoutMs: config.timeoutMs || 30000,
+        timeoutMs: config.timeoutMs || 120000,
       };
 
       console.log(`\n📋 Voice E2E Config:`);
