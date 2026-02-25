@@ -38,7 +38,7 @@ export class SectionWriterService {
       .map((chunk, idx) => {
         const citation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
         const title = chunk.document?.title || chunk.docId;
-        const content = chunk.content.substring(0, 800) + (chunk.content.length > 800 ? "..." : "");
+        const content = chunk.content.substring(0, 2000) + (chunk.content.length > 2000 ? "..." : "");
         return `---
 CHUNK ${idx + 1}: ${title}
 CITATION TOKEN: ${citation}
@@ -104,31 +104,38 @@ CONTENT: ${content}
   }
 
   /**
-   * Draft a section using LLM general knowledge when no evidence chunks are available.
-   * Produces a skeleton draft with clear placeholders where org-specific data is needed.
+   * Draft a section using org context when no evidence chunks are available.
+   * Uses the full section writer system prompt (with voice/tone rules) and
+   * section-type guidance to produce a quality draft even without evidence.
    */
   private async draftFromTemplate(
     sectionName: string,
     sectionGuidance: string,
     orgContext?: string,
   ): Promise<{ draftText: string; gaps: string[] }> {
-    this.logger.log(`No evidence for "${sectionName}" — attempting template-based draft`);
+    this.logger.log(`No evidence for "${sectionName}" — attempting template-based draft with org context`);
     const orgInfo = orgContext || "Diksha Foundation / SCCF, programs: KHEL, Life Skills, Fellowship, India (Bihar, Delhi)";
+
+    // Use section-type guidance for structure, same as evidence-based path
+    const sectionTypeReqs = getSectionTypeGuidance(sectionName);
     const templatePrompt = `Section: ${sectionName}
 Guidance: ${sectionGuidance}
-Organization context: ${orgInfo}
+${sectionTypeReqs ? `\nSection-specific requirements:\n${sectionTypeReqs}` : ""}
 
-Write a professional draft for this proposal section. Since no specific evidence documents are available:
-- Use the organization context and section guidance to write relevant content
-- Mark any specific statistics, numbers, or claims that need verification with {{VERIFY: description}}
-- Mark places where org-specific data should be inserted with {{INSERT: description}}
-- Keep the tone professional, funder-facing, India context
-- Do NOT invent specific numbers or statistics`;
+Organization context:
+${orgInfo}
+
+Write a professional, funder-facing draft for this proposal section. No evidence documents are available, so:
+- Use the organization context thoroughly — it contains real data (center names, beneficiary counts, staff, board, partners, compliance details)
+- Write in first person plural ("We", "Our team")
+- Write flowing narrative prose, not bullet lists
+- Mark only TRULY unknown data with {{VERIFY: description}} — do NOT use placeholders for data available in the org context
+- Use Indian English conventions and INR formatting (₹15,00,000 not ₹1,500,000)`;
 
     try {
       const llmStart = Date.now();
       const draftText = await this.llm.generatePlain(
-        "You are a proposal writer. Draft the section using available context. Use {{VERIFY: ...}} and {{INSERT: ...}} placeholders where specific data is needed.",
+        SECTION_WRITER_SYSTEM_PROMPT,
         "Draft the section:",
         templatePrompt,
       );

@@ -183,11 +183,11 @@ export class ProposalService {
       );
     }
 
-    // Create ProposalRun record
+    // Create ProposalRun record — models are configurable via env vars for quality tuning
     const modelConfig: ProposalRunModelConfig = {
-      planner: "deepseek-chat",
-      writer: "deepseek-chat",
-      reviewer: "deepseek-chat",
+      planner: process.env.PROPOSAL_PLANNER_MODEL || "deepseek-chat",
+      writer: process.env.PROPOSAL_WRITER_MODEL || "deepseek-chat",
+      reviewer: process.env.PROPOSAL_REVIEWER_MODEL || "deepseek-chat",
       retriever: "hybrid",
     };
 
@@ -515,10 +515,10 @@ export class ProposalService {
             ? ` | Themes: ${funderThemes.primary.join(", ")}${funderThemes.secondary?.length ? ` + ${funderThemes.secondary.join(", ")}` : ""}`
             : "";
           const funderContext = `${funderName}${programName ? " — " + programName : ""}${themeSuffix}`;
-          // Build org context with activity facts as a compact, structured block
+          // Build org context with activity facts as narrative prose (not raw JSON)
           let orgCtx = orgProfileSummary;
           if (activityFacts) {
-            orgCtx += `\n\nACTIVITY FACTS (you MUST use these wherever relevant — if you do not use them, explain why):\n${JSON.stringify(activityFacts, null, 2)}`;
+            orgCtx += `\n\n${this.formatActivityFactsAsNarrative(activityFacts)}`;
           }
           if (activitiesContext) {
             orgCtx += `\n\nStructured Activities Registry:\n${activitiesContext}`;
@@ -1573,6 +1573,62 @@ export class ProposalService {
 
       lines.push(result.draftText);
       lines.push("");
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Convert activity facts from raw JSON into narrative prose that the LLM can
+   * naturally weave into proposal sections. Avoids the bot dumping raw JSON.
+   */
+  private formatActivityFactsAsNarrative(facts: Record<string, unknown>): string {
+    const lines: string[] = [
+      "ACTIVITY FACTS (weave these into your narrative — do NOT dump as raw data):",
+    ];
+
+    // Centers
+    const centers = facts.centers as string[] | undefined;
+    const totalBeneficiaries = facts.totalDirectBeneficiaries as number | undefined;
+    if (centers?.length) {
+      const centerList = centers.join(", ");
+      lines.push(
+        `Diksha Foundation currently operates ${centers.length} KHEL centers: ${centerList}.` +
+        (totalBeneficiaries ? ` Total direct reach is approximately ${totalBeneficiaries} students.` : ""),
+      );
+    }
+
+    // Activities by area
+    const activitiesByArea = facts.activitiesByArea as Record<string, Array<{
+      name: string; frequency: string; centers: string[]; unitCost: number | null; targetGroup: string;
+    }>> | undefined;
+    if (activitiesByArea) {
+      for (const [area, activities] of Object.entries(activitiesByArea)) {
+        const actList = activities
+          .map(a => `${a.name} (${a.frequency}${a.centers.length ? `, at ${a.centers.join(" and ")}` : ""})`)
+          .join("; ");
+        lines.push(`${area}: ${actList}.`);
+      }
+    }
+
+    // Latest metrics
+    const metrics = facts.latestMetrics as Record<string, unknown> | undefined;
+    if (metrics) {
+      const metricParts: string[] = [];
+      if (metrics.totalEnrollment) metricParts.push(`enrollment of ${metrics.totalEnrollment} students`);
+      if (metrics.avgAttendance) metricParts.push(`average attendance of ${metrics.avgAttendance}%`);
+      if (metrics.totalMeals) metricParts.push(`${metrics.totalMeals} meals served per fortnight`);
+      if (metrics.totalKaStudents) metricParts.push(`${metrics.totalKaStudents} active Khan Academy students`);
+      if (metrics.totalSelSessions) metricParts.push(`${metrics.totalSelSessions} SEL sessions delivered`);
+      if (metricParts.length > 0) {
+        lines.push(`Latest metrics: ${metricParts.join(", ")}.`);
+      }
+    }
+
+    // Staffing
+    const staffing = facts.staffing as string[] | undefined;
+    if (staffing?.length) {
+      lines.push(`Key staff roles: ${staffing.join(", ")}.`);
     }
 
     return lines.join("\n");
