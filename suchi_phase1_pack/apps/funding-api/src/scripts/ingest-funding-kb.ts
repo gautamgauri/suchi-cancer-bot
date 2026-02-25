@@ -63,20 +63,27 @@ type Checkpoint = {
 
 const prisma = new PrismaClient();
 
-// Initialize OpenAI client for embeddings
-let openai: OpenAI | null = null;
+// Initialize embedding provider (Google Gemini by default, falls back to OpenAI)
+import { createEmbeddingProvider, EmbeddingProvider } from "../modules/evidence_ingest/embedding-provider";
 
-function getOpenAIClient(): OpenAI | null {
-  if (openai) return openai;
+let embeddingProvider: EmbeddingProvider | null = null;
 
-  const apiKey = process.env.FUNDING_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+function getEmbeddingProvider(): EmbeddingProvider | null {
+  if (embeddingProvider) return embeddingProvider;
+
+  const apiKey = process.env.FUNDING_EMBEDDINGS_API_KEY || process.env.FUNDING_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn("Warning: No FUNDING_OPENAI_API_KEY or OPENAI_API_KEY found. Skipping embeddings.");
+    console.warn("Warning: No embedding API key found. Skipping embeddings.");
     return null;
   }
 
-  openai = new OpenAI({ apiKey });
-  return openai;
+  embeddingProvider = createEmbeddingProvider({
+    provider: process.env.FUNDING_EMBEDDING_PROVIDER,
+    apiKey,
+    baseUrl: process.env.FUNDING_EMBEDDINGS_BASE_URL,
+    model: process.env.EVIDENCE_EMBEDDING_MODEL,
+  });
+  return embeddingProvider;
 }
 
 // Retry database operations on connection failures
@@ -241,19 +248,15 @@ function parseDate(dateStr?: string): Date | null {
 }
 
 /**
- * Generate embedding using OpenAI API
+ * Generate embedding using configured provider (Google Gemini or OpenAI)
  */
 async function generateEmbedding(text: string): Promise<number[] | null> {
-  const client = getOpenAIClient();
-  if (!client) return null;
+  const provider = getEmbeddingProvider();
+  if (!provider) return null;
 
   try {
-    const response = await client.embeddings.create({
-      model: "text-embedding-3-small",
-      input: text,
-    });
-
-    return response.data[0].embedding;
+    const result = await provider.embed(text);
+    return result.embedding;
   } catch (error) {
     console.error(`  Error generating embedding: ${(error as Error).message}`);
     return null;
