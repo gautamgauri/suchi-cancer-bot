@@ -19,7 +19,6 @@ import path from "path";
 import matter from "gray-matter";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
-import OpenAI from "openai";
 import { inferCorpus } from "../modules/evidence_ingest/corpus.constants";
 
 // Types
@@ -415,18 +414,19 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
     // Store embedding if generated
     if (embedding) {
       const embeddingStr = JSON.stringify(embedding);
+      const embeddingModelName = getEmbeddingProvider()?.modelName ?? "unknown";
       await withRetry(() =>
         prisma.chunkEmbedding.upsert({
           where: { chunkId: chunk.id },
           update: {
             vector: embeddingStr,
-            embeddingModel: "text-embedding-3-small",
+            embeddingModel: embeddingModelName,
             updatedAt: now,
           },
           create: {
             chunkId: chunk.id,
             vector: embeddingStr,
-            embeddingModel: "text-embedding-3-small",
+            embeddingModel: embeddingModelName,
           },
         })
       );

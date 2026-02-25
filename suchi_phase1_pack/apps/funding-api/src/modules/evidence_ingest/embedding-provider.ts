@@ -26,7 +26,7 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
 
   constructor(apiKey: string, model?: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = model || "text-embedding-004";
+    this.model = model || "gemini-embedding-001";
     this.logger.log(`Google embedding provider configured (model=${this.model}, dimensions=${this.dimensions})`);
   }
 
@@ -36,7 +36,9 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
 
   async embed(input: string): Promise<EmbeddingResult> {
     const embeddingModel = this.genAI.getGenerativeModel({ model: this.model });
-    const result = await embeddingModel.embedContent(input.slice(0, 10000));
+    const result = await embeddingModel.embedContent({
+      content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
+    });
     return { embedding: result.embedding.values };
   }
 

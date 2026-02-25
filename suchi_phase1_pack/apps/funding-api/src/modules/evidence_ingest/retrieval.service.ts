@@ -3,7 +3,6 @@ import * as path from "path";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
-import OpenAI from "openai";
 import { logStructured } from "../../common/structured-logger";
 import { createEmbeddingProvider, EmbeddingProvider } from "./embedding-provider";
 
@@ -99,9 +98,7 @@ interface PgvectorRow {
 @Injectable()
 export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
-  private readonly openai: OpenAI | null = null;
   private readonly embeddingProvider: EmbeddingProvider | null = null;
-  private readonly embeddingModel: string;
   private readonly queryCache = new QueryEmbeddingCache(100, 5 * 60 * 1000); // 100 entries, 5 min TTL
   private readonly usePgvector: boolean;
 
@@ -126,14 +123,6 @@ export class RetrievalService {
       baseUrl: embeddingsBaseUrl || undefined,
       model: model || undefined,
     });
-
-    // Keep legacy OpenAI client for backward compat with legacy retrieval path
-    const baseURL = embeddingsBaseUrl || undefined;
-    if (apiKey && (!embeddingProviderName || embeddingProviderName === "openai")) {
-      this.openai = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
-    }
-
-    this.embeddingModel = model ?? "text-embedding-3-small";
 
     // Feature flag: USE_PGVECTOR (default true after migration)
     const pgvecFlag = this.configService.get<string>("USE_PGVECTOR");
@@ -176,8 +165,8 @@ export class RetrievalService {
     const allowedTiers = POLICY_TIERS[mode];
     const minScore = options.minScore ?? 0;
 
-    if (!this.embeddingProvider && !this.openai) {
-      this.logger.warn("pgvector: no embeddings client, falling back to legacy");
+    if (!this.embeddingProvider) {
+      this.logger.warn("pgvector: no embeddings provider, falling back to legacy");
       return this.retrieveLegacy(query, options);
     }
 
@@ -190,16 +179,8 @@ export class RetrievalService {
     if (!qVec) {
       const embedStart = Date.now();
       try {
-        if (this.embeddingProvider) {
-          const result = await this.embeddingProvider.embed(query.slice(0, 8000));
-          qVec = result.embedding;
-        } else if (this.openai) {
-          const queryEmbedding = await this.openai.embeddings.create({
-            model: this.embeddingModel,
-            input: query.slice(0, 8000),
-          });
-          qVec = queryEmbedding.data[0]?.embedding ?? null;
-        }
+        const result = await this.embeddingProvider.embed(query.slice(0, 8000));
+        qVec = result.embedding;
       } catch (err) {
         this.logger.error(`Embedding query failed: ${(err as Error).message}`);
         qVec = null;
@@ -377,7 +358,7 @@ export class RetrievalService {
 
     if (withEffectiveTier.length === 0) return [];
 
-    if (!this.embeddingProvider && !this.openai) {
+    if (!this.embeddingProvider) {
       return this.keywordFallback(
         query,
         withEffectiveTier.map((c) => ({
@@ -396,16 +377,8 @@ export class RetrievalService {
 
     if (!qVec) {
       try {
-        if (this.embeddingProvider) {
-          const result = await this.embeddingProvider.embed(query.slice(0, 8000));
-          qVec = result.embedding;
-        } else if (this.openai) {
-          const queryEmbedding = await this.openai.embeddings.create({
-            model: this.embeddingModel,
-            input: query.slice(0, 8000),
-          });
-          qVec = queryEmbedding.data[0]?.embedding ?? null;
-        }
+        const result = await this.embeddingProvider.embed(query.slice(0, 8000));
+        qVec = result.embedding;
       } catch (err) {
         this.logger.error(`Legacy embedding query failed: ${(err as Error).message}`);
         qVec = null;

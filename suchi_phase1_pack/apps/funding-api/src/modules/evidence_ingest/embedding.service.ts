@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
-import OpenAI from "openai";
 import { createEmbeddingProvider, EmbeddingProvider } from "./embedding-provider";
 
 const BATCH_SIZE = 100;
@@ -11,9 +10,7 @@ const RETRY_DELAY_MS = 2000;
 @Injectable()
 export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
-  private readonly client: OpenAI | null = null;
   private readonly embeddingProvider: EmbeddingProvider | null = null;
-  private readonly model: string;
   private readonly rateLimitPerMin: number;
 
   constructor(
@@ -45,7 +42,6 @@ export class EmbeddingService {
       this.logger.warn("Embeddings provider not configured - FUNDING_EMBEDDINGS_API_KEY or FUNDING_OPENAI_API_KEY required");
     }
 
-    this.model = model ?? "text-embedding-3-small";
     this.rateLimitPerMin = this.configService.get<number>("EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN") ?? 60;
   }
 
