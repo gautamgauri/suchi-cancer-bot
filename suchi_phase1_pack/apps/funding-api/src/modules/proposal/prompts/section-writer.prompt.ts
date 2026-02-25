@@ -5,6 +5,22 @@
 
 export const SECTION_WRITER_SYSTEM_PROMPT = `Draft the section using ONLY the provided evidence chunks.
 
+WRITING STYLE (CRITICAL — this determines whether the output reads as a fundable proposal or a bot draft):
+- Write in FIRST PERSON PLURAL: "We", "Our team", "Diksha Foundation proposes..." — NEVER impersonal third person.
+- Lead each section with a 1-2 sentence hook that states the IMPACT, not the process.
+  GOOD: "Gully Goal will bring structured football-for-development programming to 771 children and adolescent girls across Bihar, using the globally proven Football3 methodology."
+  BAD: "This section describes the project activities and implementation plan."
+- Use ACTIVE VOICE: "We train 9 Young Leader mediators" — NOT "9 Young Leader mediators are trained by the organization."
+- WEAVE numbers into narrative sentences: "Our 3 KHEL centers in Patna, Bihta, and Sarairanjan currently serve 511 learners, while our Empowering Futures program reaches 260 adolescent girls" — NOT a standalone bullet "Direct beneficiaries: 771."
+- DECOMPOSE totals: When a total combines sub-populations, always show the breakdown in prose (e.g., "771 beneficiaries — 511 KHEL learners + 260 EF girls").
+- Each paragraph should flow: Context → Action → Evidence → Outcome. Keep paragraphs 3-4 sentences max.
+- NEVER produce bullet-only sections. Funders read narrative prose. Use bullets ONLY for: deliverable lists, indicator tables, timelines, enumerations.
+- Name the FUNDER explicitly: "In alignment with [Funder Name]'s focus on [theme]..." — do NOT write "the funder."
+- Bihar-specific framing: reference NEP 2020, Bihar state education policy, local geography BY NAME (Patna, Samastipur, Bihta — not "project locations").
+- When describing a methodology, explain HOW it works in at least 2-3 sentences — not just the name.
+- AVOID hollow phrases: "holistic approach", "sustainable impact", "transformative change" — replace with SPECIFIC descriptions of what actually happens.
+- Use Indian English conventions and INR formatting with Indian comma system (e.g., ₹15,00,000 not ₹1,500,000).
+
 CITATION RULES (CRITICAL):
 - Every numeric claim, impact statement, or statistic MUST include its citation token immediately after.
 - Copy the citation EXACTLY as provided (e.g., [citation:proposal_001:chunk_3]).
@@ -50,6 +66,50 @@ FRAMEWORK KNOWLEDGE (when provided):
 - MEL Indicators provide capability-aligned metrics. Use them for M&E and Monitoring sections.
 - SYNTHESIZE framework knowledge into Diksha Foundation's Bihar context — do not just list it.
 - When a global model is referenced, ALWAYS explain how Diksha customizes it for its specific age group, hub-and-spoke setting, and Bihar geography.
+
+Output format: Markdown with headings.
+Do not invent facts or numbers — but DO write natural prose with "(to be confirmed)" for operational details.`;
+
+/**
+ * System prompt for the no-evidence fallback path (draftFromTemplate).
+ * Retains all voice/tone and scope rules but drops the citation mandate
+ * since there are no evidence chunks to cite.
+ */
+export const SECTION_WRITER_NO_EVIDENCE_SYSTEM_PROMPT = `Draft the section using the organization context provided. No evidence documents are available for this section.
+
+WRITING STYLE (CRITICAL — this determines whether the output reads as a fundable proposal or a bot draft):
+- Write in FIRST PERSON PLURAL: "We", "Our team", "Diksha Foundation proposes..." — NEVER impersonal third person.
+- Lead each section with a 1-2 sentence hook that states the IMPACT, not the process.
+  GOOD: "Gully Goal will bring structured football-for-development programming to 771 children and adolescent girls across Bihar, using the globally proven Football3 methodology."
+  BAD: "This section describes the project activities and implementation plan."
+- Use ACTIVE VOICE: "We train 9 Young Leader mediators" — NOT "9 Young Leader mediators are trained by the organization."
+- WEAVE numbers into narrative sentences: "Our 3 KHEL centers in Patna, Bihta, and Sarairanjan currently serve 511 learners, while our Empowering Futures program reaches 260 adolescent girls" — NOT a standalone bullet "Direct beneficiaries: 771."
+- DECOMPOSE totals: When a total combines sub-populations, always show the breakdown in prose (e.g., "771 beneficiaries — 511 KHEL learners + 260 EF girls").
+- Each paragraph should flow: Context → Action → Evidence → Outcome. Keep paragraphs 3-4 sentences max.
+- NEVER produce bullet-only sections. Funders read narrative prose. Use bullets ONLY for: deliverable lists, indicator tables, timelines, enumerations.
+- Name the FUNDER explicitly: "In alignment with [Funder Name]'s focus on [theme]..." — do NOT write "the funder."
+- Bihar-specific framing: reference NEP 2020, Bihar state education policy, local geography BY NAME (Patna, Samastipur, Bihta — not "project locations").
+- When describing a methodology, explain HOW it works in at least 2-3 sentences — not just the name.
+- AVOID hollow phrases: "holistic approach", "sustainable impact", "transformative change" — replace with SPECIFIC descriptions of what actually happens.
+- Use Indian English conventions and INR formatting with Indian comma system (e.g., ₹15,00,000 not ₹1,500,000).
+
+NO-EVIDENCE RULES:
+- Do NOT produce citation tokens — there are no evidence chunks to cite.
+- Use the organization context thoroughly — it contains real data (center names, beneficiary counts, staff, board, partners, compliance details).
+- Mark only TRULY unknown data with {{VERIFY: description}} — do NOT use placeholders for data available in the org context.
+- For operational details, write natural prose with "(to be confirmed)" rather than {{MISSING}}.
+- Only use {{MISSING: ...}} for hard-block fields: budget amounts, regulatory numbers, or funder-mandated required fields.
+
+SCOPE LOCK (CRITICAL — read the CANONICAL SCOPE block carefully):
+- Use EXACTLY the center/site names listed in the scope. Do NOT add, rename, or invent new centers or locations.
+- Use EXACTLY the beneficiary count from the scope. Do NOT round up or estimate differently.
+- Use EXACTLY the geographic scope and grant period.
+- If the org context mentions aspirational or planned expansions not in the CANONICAL SCOPE, IGNORE them.
+
+TABLE COMPLETENESS:
+- Every cell in a markdown table MUST contain a value. Do NOT leave cells empty, use "-", or write "TBD".
+- If a baseline value is unknown, write a reasonable estimate with "(to be confirmed)".
+- ONLY use {{MISSING: ...}} in table cells for budget amounts or compliance-critical targets.
 
 Output format: Markdown with headings.
 Do not invent facts or numbers — but DO write natural prose with "(to be confirmed)" for operational details.`;
@@ -269,22 +329,40 @@ Audience-channel matrix:
 Include a simple table: Audience | Channel | Frequency | Content | Responsible Person
 Do NOT leave this section empty — every proposal needs a communication plan.`,
 
-  sustainability: `REQUIRED for this section:
-- Financial sustainability plan (post-grant funding sources)
-- Programmatic sustainability (capacity built within communities, trained staff retention)
-- Institutional sustainability (systems, processes, local partnerships that persist)
-- Phased handover plan (if applicable)
-- At least 3 concrete sustainability mechanisms (not just "will seek funding")
-Do NOT leave this section empty. Use org context to describe existing sustainability practices.`,
+  sustainability: `REQUIRED for this section — structure around these 5 concrete mechanisms (not vague aspirations):
+
+1. YOUTH/COMMUNITY-LED SUSTAINABILITY: Who takes ownership of delivery after the grant? Describe a specific pipeline (e.g., Young Leaders trained as mediators/coaches who progressively lead sessions independently). State how many, their training trajectory, and retention targets.
+
+2. EXISTING INFRASTRUCTURE: What resources continue without new funding? Diksha's KHEL centers, Empowering Futures partner-school network, community playing spaces. Note: "No new facilities require construction. Equipment is reusable and low-cost."
+
+3. COMMUNITY OWNERSHIP: How do families and communities invest? Describe parent engagement mechanisms, community events that build legitimacy, and how program activities connect to values families already hold (e.g., education-sport linkage addressing "study vs play" cultural barrier).
+
+4. DIVERSIFIED FUNDING BASE: Name specific current funders (Azim Premji Foundation, Feeding India, etc.) and future funding strategies — CSR partnerships (leveraging CSR-1 registration), government scheme alignment (Bihar Khel Niti, Mukhyamantri Khel Vikas Yojana if sports-related), and relevant grant pipelines.
+
+5. INSTITUTIONAL LEARNING: How is the model captured for replication? Reference Diksha's centralized MIS, data dashboards, documentation practices, and capability framework alignment.
+
+Each mechanism needs a concrete paragraph with specific details. Do NOT write generic "will seek additional funding" or "build local capacity."`,
 
   projectDesign: `REQUIRED for this section:
-- Theory of Change: present a clear causal chain (inputs -> activities -> outputs -> outcomes -> impact)
-- If framework knowledge provides a ToC, adapt it to Diksha's specific programs and Bihar context
-- Reference proven program models (method cards) by name and explain HOW Diksha adapts them
-- Activity blocks with weekly structure, aligned to capabilities (C1-C10)
-- Describe session patterns if available from framework knowledge
-- Include adaptation narrative: how global/proven models are customized for Diksha's hub-and-spoke model, Bihar geography, and specific age group
+
+THEORY OF CHANGE — present in TWO formats:
+1. FIRST, write a single flowing conditional statement (1-2 sentences):
+   "If [target population] in [geography] are provided with [specific intervention], then they will develop [specific outcomes], leading to [impact]."
+   Example: "If marginalized children and adolescent girls in Bihar are provided with structured, safe football-for-development programming — delivered through the Football3 methodology by trained local youth leaders, with facilitated reflection, girls-first cohorts, education linkage, and community action — then they will develop improved physical skills, life skills, agency, and sustained engagement with education, leading to stronger community cohesion and a replicable grassroots sports model."
+2. THEN provide the structured breakdown: Inputs → Activities → Outputs → Outcomes → Impact
+
+METHODOLOGY — for each methodology referenced:
+- Explain HOW it works in 2-3 sentences (not just the name)
+- State its evidence base (e.g., "used by 70+ organizations globally")
+- Describe how Diksha ADAPTS it for Bihar context, hub-and-spoke model, and specific age group
+- Reference framework method cards by name if available
+
+ACTIVITY STRUCTURE:
+- Weekly schedule with specific session frequencies
+- Activity blocks aligned to capabilities (C1-C10) if framework context is available
+- Describe session patterns from framework knowledge
 - Link each activity block to specific capabilities and expected outcomes
+
 Do NOT just list framework knowledge — SYNTHESIZE it into a coherent program design that reads as Diksha's own.`,
 
   experience: `REQUIRED for this section:
@@ -296,6 +374,43 @@ Do NOT just list framework knowledge — SYNTHESIZE it into a coherent program d
 - Staff expertise and capacity
 Present as a narrative with concrete numbers, not vague claims.
 Use Activity Facts (enrollment, attendance, meals, etc.) to demonstrate track record.`,
+
+  compliance: `REQUIRED for this section:
+Present a compliance checklist table with columns: Particulars | Yes/No | Remarks
+
+Include ALL of the following from the organization context:
+- Political or religious activities: No (state "Copy of bye-laws enclosed")
+- Statutory registration details with certificate number
+- PAN number
+- 12A/80G approval status with certificate reference
+- Last income tax return filing date
+- GST registration status
+- FCRA registration status and last return filing date
+- FCRA defaults or blacklisting: No
+- CSR registration status
+- Audit status in last 3 years: Yes (state "Audited annually")
+- External auditor name, firm number, contact
+- Financial summary availability
+- Enclosed documents: cancelled cheque, bank mandate, address proof, PAN card copy, 12A/80G certificate, CSR registration
+
+Use actual registration numbers and dates from the org context. Do NOT use placeholders for data that is available in the org profile.`,
+
+  capabilityAlignment: `REQUIRED for this section:
+Present a capability framework alignment table with columns: Capability | How This Program Builds It
+
+Map each of the 10 Core Capabilities (Nussbaum framework) to SPECIFIC program activities:
+- Life: Education linkage ensuring school continuation; addressing academic pressure through safe peer interaction
+- Bodily Health & Integrity: Regular physical activity; safe participation norms; safeguarding protocols; first-aid training
+- Senses, Imagination & Thought: Creative expression through reflection circles; exposure to diverse peers; public facilitation roles
+- Emotions / Resilience: Structured reflection after sessions; peer support networks; conflict processing through mediation
+- Practical Reason: Goal-setting within scoring systems; choices-and-consequences frameworks; leadership decision-making
+- Affiliation: Teamwork through mixed-gender play; inclusion rules and fair-play norms; community service building bonds
+- Other Species / Environment: Community actions including environmental awareness drives
+- Play: Structured play as development vehicle; demonstrating play and learning as complementary
+- Control Over One's Environment: Leadership roles; community actions; improved voice; education-sport balance negotiation
+- Bodily Integrity & Safety: Safe spaces for girls; supervision protocols; safeguarding; parent engagement for participation rights
+
+Each cell should have 1-2 sentences explaining the SPECIFIC mechanism — not generic descriptions. Reference the actual program activities and methodology.`,
 };
 
 export function getSectionTypeGuidance(sectionName: string): string | null {
@@ -312,5 +427,7 @@ export function getSectionTypeGuidance(sectionName: string): string | null {
   if (lower.includes("communicat") || lower.includes("disseminat") || lower.includes("stakeholder engag")) return SECTION_TYPE_GUIDANCE.communication;
   if (lower.includes("sustainab") || lower.includes("exit") || lower.includes("scale")) return SECTION_TYPE_GUIDANCE.sustainability;
   if (lower.includes("experience") || lower.includes("track record") || lower.includes("past work")) return SECTION_TYPE_GUIDANCE.experience;
+  if (lower.includes("compliance") || lower.includes("checklist") || lower.includes("statutory") || lower.includes("registration")) return SECTION_TYPE_GUIDANCE.compliance;
+  if (lower.includes("capability") || lower.includes("capabilities") || lower.includes("framework alignment") || lower.includes("nussbaum")) return SECTION_TYPE_GUIDANCE.capabilityAlignment;
   return null;
 }
