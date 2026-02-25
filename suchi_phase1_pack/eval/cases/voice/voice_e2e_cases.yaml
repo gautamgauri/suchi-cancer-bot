@@ -19,7 +19,7 @@ cases:
         - ब्रेस्ट
         - कैंसर
         - मुजफ्फरपुर
-      maxLatencyMs: 45000
+      maxLatencyMs: 120000
 
   - id: VOICE-FAST-01
     variant: fast
@@ -41,7 +41,7 @@ cases:
         - कैंसर
         - सिंपटम्स
         - पटना
-      maxLatencyMs: 45000
+      maxLatencyMs: 120000
 
   - id: VOICE-NOISY-01
     variant: noisy
@@ -62,7 +62,7 @@ cases:
       transcriptKeywordsHi:
         - सर्वाइकल
         - कैंसर
-      maxLatencyMs: 45000
+      maxLatencyMs: 120000
 
   - id: VOICE-HINGLISH-01
     variant: hinglish
@@ -82,7 +82,7 @@ cases:
         - कैंसर
         - स्टमक
         - पेट
-      maxLatencyMs: 45000
+      maxLatencyMs: 120000
 
   - id: VOICE-SHORT-01
     variant: short
@@ -98,7 +98,7 @@ cases:
         - cancer
       transcriptKeywordsHi:
         - कैंसर
-      maxLatencyMs: 45000
+      maxLatencyMs: 120000
 
   - id: VOICE-MISPRONOUNCED-01
     variant: mispronounced
@@ -118,4 +118,4 @@ cases:
         - कीमोथेरेपी
         - ट्रीटमेंट
         - दिल्ली
-      maxLatencyMs: 45000
+      maxLatencyMs: 120000

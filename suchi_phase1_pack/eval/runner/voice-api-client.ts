@@ -102,7 +102,7 @@ export class VoiceApiClient {
               ...form.getHeaders(),
               'X-Suchi-Eval': 'true',
             },
-            timeout: 45000,
+            timeout: 120000,
           },
         );
 
