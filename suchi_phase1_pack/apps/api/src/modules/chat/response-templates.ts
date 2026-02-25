@@ -53,10 +53,8 @@ export class ResponseTemplates {
       response += "\n\n**Note:** These symptoms can overlap with other conditions and are not specific to any one diagnosis.";
     }
 
-    // Optional follow-up question (only if appropriate)
-    if (!ragContent.includes("Are you asking") && !ragContent.includes("generally or")) {
-      response += "\n\nAre you asking generally or about your symptoms?";
-    }
+    // Note: Follow-up questions are now handled by the LLM via the "Safe + Useful" contract
+    // (at most ONE clarifying question), not auto-appended by the template
 
     return response;
   }

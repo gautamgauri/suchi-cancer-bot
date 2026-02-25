@@ -216,10 +216,11 @@ export class EvidenceGateService {
       return config?.priority === 'high';
     });
 
-    const isGeneralInfo = ['general', 'prevention', 'caregiver', 'navigation'].includes(queryType);
-    const adjustedThresholds = (isGeneralInfo && hasTier1) 
-      ? { minPassages: 1, minSources: 1 } // Relax for general queries with Tier-1 source
-      : thresholds; // Keep strict for treatment/symptoms
+    // Relax thresholds when we have trusted (Tier-1) sources — "Safe + Useful" policy:
+    // better to give educational answer + next steps than to abstain
+    const adjustedThresholds = hasTier1
+      ? { minPassages: 1, minSources: 1 } // Relax for any query with Tier-1 source
+      : thresholds; // Keep strict only for non-trusted sources
 
     // Calculate confidence using gateScore (max of vecSim, lexSim) to avoid hybrid dilution
     const gateScores = chunks.map(c => getGateScore(c));
@@ -228,10 +229,13 @@ export class EvidenceGateService {
       : 0;
 
     // Rule B3: Very weak matches (low gateScore AND insufficient passages/sources)
+    // "Safe + Useful" policy: if we have trusted sources, allow through with low confidence
+    // rather than abstaining — the LLM prompt enforces educational content + next steps
     const isVeryWeak = (avgGateScore < 0.3) &&
                        (chunks.length < adjustedThresholds.minPassages || uniqueDocIds.size < adjustedThresholds.minSources);
 
-    if (isVeryWeak) {
+    if (isVeryWeak && !hasTier1) {
+      // Only hard-block if sources are not trusted
       return {
         status: 'insufficient',
         approvedChunks: [],
@@ -242,6 +246,10 @@ export class EvidenceGateService {
         reason: chunks.length < thresholds.minPassages ? "insufficient_passages" : "insufficient_sources",
         message: `Found ${chunks.length} passage(s) from ${uniqueDocIds.size} source(s), but confidence is too low to answer accurately`
       };
+    } else if (isVeryWeak && hasTier1) {
+      // Trusted sources but weak match — allow through with low confidence
+      // LLM prompt enforces "Safe + Useful" response contract
+      this.logger.warn(`Weak evidence from trusted sources — allowing through for educational response`);
     }
 
     // Check for recency requirements

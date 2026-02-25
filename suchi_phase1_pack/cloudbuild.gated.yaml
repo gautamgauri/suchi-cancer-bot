@@ -175,7 +175,7 @@ steps:
   - name: 'node:20'
     id: 'eval-tier1'
     entrypoint: 'sh'
-    timeout: '1800s'  # 30 minutes timeout for eval (allows for LLM calls and retries)
+    timeout: '1200s'  # 20 minutes timeout for eval (must be <= build timeout)
     secretEnv: ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY']
     args:
       - '-c'

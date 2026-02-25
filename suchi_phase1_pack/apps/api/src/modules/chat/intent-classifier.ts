@@ -318,12 +318,18 @@ export class IntentClassifier {
     }
 
     // Missing context (user asked specific medical question but lacks details)
-    // Only abstain if we truly have no evidence AND it's not a general question
+    // "Safe + Useful" policy: prefer educational answer over abstention when we have medical keywords
     if (gateResult.shouldAbstain && this.hasMedicalQuestionKeywords(lowerText) && evidenceChunks.length === 0) {
-      // If it's a general question in Explain Mode, don't abstain - ask clarifying question instead
       if (mode === "explain") {
         return {
           intent: "INFORMATIONAL_GENERAL", // Route to RAG with clarifying question
+          confidence: "low"
+        };
+      }
+      // Navigate mode with medical keywords: route to PERSONAL_SYMPTOMS for educational answer + next steps
+      if (mode === "navigate" && (this.hasCancerRelatedKeywords(lowerText) || this.hasSymptomKeywords(lowerText))) {
+        return {
+          intent: "PERSONAL_SYMPTOMS",
           confidence: "low"
         };
       }
@@ -335,10 +341,16 @@ export class IntentClassifier {
 
     // Technical failure - only if truly no evidence and not a general question
     if (gateResult.shouldAbstain && evidenceChunks.length === 0 && !this.isUnclearRequest(lowerText)) {
-      // If it's a general question, try to answer with what we have
       if (mode === "explain" && this.hasCancerRelatedKeywords(lowerText)) {
         return {
           intent: "INFORMATIONAL_GENERAL",
+          confidence: "low"
+        };
+      }
+      // Navigate mode: prefer educational answer over technical failure
+      if (mode === "navigate" && (this.hasCancerRelatedKeywords(lowerText) || this.hasSymptomKeywords(lowerText))) {
+        return {
+          intent: "PERSONAL_SYMPTOMS",
           confidence: "low"
         };
       }
@@ -372,11 +384,18 @@ export class IntentClassifier {
     }
 
     // Insufficient evidence (default abstention)
-    // For Explain Mode with cancer-related keywords, route to INFORMATIONAL_GENERAL instead
+    // "Safe + Useful" policy: prefer educational answer over abstention
     if (gateResult.shouldAbstain) {
       if (mode === "explain" && this.hasCancerRelatedKeywords(lowerText)) {
         return {
           intent: "INFORMATIONAL_GENERAL", // Route to RAG even with weak evidence
+          confidence: "low"
+        };
+      }
+      // Navigate mode: route to PERSONAL_SYMPTOMS for educational answer + next steps
+      if (mode === "navigate" && (this.hasCancerRelatedKeywords(lowerText) || this.hasMedicalQuestionKeywords(lowerText))) {
+        return {
+          intent: "PERSONAL_SYMPTOMS",
           confidence: "low"
         };
       }
