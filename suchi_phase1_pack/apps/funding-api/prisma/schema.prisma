@@ -243,7 +243,7 @@ model ChunkEmbedding {
   chunkId        String       @unique
   embeddingModel String
   vector         String       @db.Text // JSON array of numbers (legacy); kept for backward compat
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   chunk          DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
@@ -450,7 +450,7 @@ model MethodCardChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   chunk          MethodCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -514,7 +514,7 @@ model PatternCardChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   chunk          PatternCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -572,7 +572,7 @@ model ComparableCaseChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   chunk          ComparableCaseChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 

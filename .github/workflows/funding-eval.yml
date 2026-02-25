@@ -20,12 +20,14 @@ jobs:
 
     env:
       PORT: "3001"
-      # Split provider: Deepseek for LLM (cheap), OpenAI for embeddings (quality)
+      # LLM: Deepseek for cheap generation
       FUNDING_OPENAI_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       FUNDING_OPENAI_BASE_URL: "https://api.deepseek.com/v1"
       FUNDING_LLM_MODEL: "deepseek-chat"
-      # Embeddings use OpenAI (Deepseek doesn't have good embedding API)
-      FUNDING_EMBEDDINGS_API_KEY: ${{ secrets.FUNDING_OPENAI_API_KEY }}
+      # Embeddings: Google Gemini (same provider as production)
+      FUNDING_EMBEDDING_PROVIDER: "google"
+      FUNDING_EMBEDDINGS_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      EVIDENCE_EMBEDDING_MODEL: "text-embedding-004"
       # Database
       DATABASE_URL: postgresql://${{ secrets.CLOUDSQL_DB_USER }}:${{ secrets.CLOUDSQL_DB_PASSWORD }}@127.0.0.1:5432/funding_ci
       FUNDING_DATABASE_URL: postgresql://${{ secrets.CLOUDSQL_DB_USER }}:${{ secrets.CLOUDSQL_DB_PASSWORD }}@127.0.0.1:5432/funding_ci

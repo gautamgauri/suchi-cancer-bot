@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import OpenAI from "openai";
+import { createEmbeddingProvider, EmbeddingProvider } from "./embedding-provider";
 
 const BATCH_SIZE = 100;
 const MAX_RETRIES = 3;
@@ -11,6 +12,7 @@ const RETRY_DELAY_MS = 2000;
 export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
   private readonly client: OpenAI | null = null;
+  private readonly embeddingProvider: EmbeddingProvider | null = null;
   private readonly model: string;
   private readonly rateLimitPerMin: number;
 
@@ -23,24 +25,32 @@ export class EmbeddingService {
     const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
     const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
     const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
+    const embeddingProviderName = this.configService.get<string>("FUNDING_EMBEDDING_PROVIDER");
 
     // Use embeddings-specific key if available, otherwise fall back to LLM key
     const apiKey = embeddingsApiKey || llmApiKey;
-    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
-    const baseURL = embeddingsBaseUrl || undefined;
+    const model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL");
 
-    if (apiKey) {
-      this.client = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
-      this.logger.log(`Embeddings client configured (using ${embeddingsApiKey ? 'dedicated' : 'shared LLM'} API key)`);
+    // Create unified embedding provider (supports Google Gemini and OpenAI)
+    this.embeddingProvider = createEmbeddingProvider({
+      provider: embeddingProviderName,
+      apiKey: apiKey || undefined,
+      baseUrl: embeddingsBaseUrl || undefined,
+      model: model || undefined,
+    });
+
+    if (this.embeddingProvider) {
+      this.logger.log(`Embeddings provider configured: ${embeddingProviderName || "google"} (model=${this.embeddingProvider.modelName})`);
     } else {
-      this.logger.warn("Embeddings client not configured - FUNDING_EMBEDDINGS_API_KEY or FUNDING_OPENAI_API_KEY required");
+      this.logger.warn("Embeddings provider not configured - FUNDING_EMBEDDINGS_API_KEY or FUNDING_OPENAI_API_KEY required");
     }
-    this.model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+
+    this.model = model ?? "text-embedding-3-small";
     this.rateLimitPerMin = this.configService.get<number>("EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN") ?? 60;
   }
 
   isConfigured(): boolean {
-    return !!this.client;
+    return !!this.embeddingProvider;
   }
 
   /**
@@ -53,7 +63,7 @@ export class EmbeddingService {
     durationMs: number;
     tokenCountProxy: number;
   }> {
-    if (!this.client) throw new Error("Embedding API not configured (set FUNDING_EMBEDDINGS_API_KEY for OpenAI embeddings)");
+    if (!this.embeddingProvider) throw new Error("Embedding provider not configured (set FUNDING_EMBEDDINGS_API_KEY and FUNDING_EMBEDDING_PROVIDER)");
 
     const docIds = await this.prisma.evidenceDocument.findMany({
       where: { qualityTier: { in: ["A", "B"] } },
@@ -76,6 +86,7 @@ export class EmbeddingService {
     let failed = 0;
     let tokenCountProxy = 0;
     const delayBetweenBatches = (60 * 1000) / this.rateLimitPerMin;
+    const embeddingModelName = this.embeddingProvider.modelName;
 
     for (let i = 0; i < chunksFromCanonical.length; i += BATCH_SIZE) {
       const batch = chunksFromCanonical.slice(i, i + BATCH_SIZE);
@@ -84,18 +95,15 @@ export class EmbeddingService {
       let lastErr: Error | null = null;
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-          const res = await this.client.embeddings.create({
-            model: this.model,
-            input: texts,
-          });
+          const results = await this.embeddingProvider.embedBatch(texts);
           for (let j = 0; j < batch.length; j++) {
             const chunk = batch[j];
-            const vec = res.data[j]?.embedding;
+            const vec = results[j]?.embedding;
             if (!vec) continue;
             const row = await this.prisma.chunkEmbedding.create({
               data: {
                 chunkId: chunk.id,
-                embeddingModel: this.model,
+                embeddingModel: embeddingModelName,
                 vector: JSON.stringify(vec),
               },
             });

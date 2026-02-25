@@ -5,6 +5,7 @@ import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import OpenAI from "openai";
 import { logStructured } from "../../common/structured-logger";
+import { createEmbeddingProvider, EmbeddingProvider } from "./embedding-provider";
 
 export type RetrievalPolicyMode = "proposal_drafting" | "org_background" | "internal_research";
 
@@ -99,6 +100,7 @@ interface PgvectorRow {
 export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
   private readonly openai: OpenAI | null = null;
+  private readonly embeddingProvider: EmbeddingProvider | null = null;
   private readonly embeddingModel: string;
   private readonly queryCache = new QueryEmbeddingCache(100, 5 * 60 * 1000); // 100 entries, 5 min TTL
   private readonly usePgvector: boolean;
@@ -111,23 +113,32 @@ export class RetrievalService {
     const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
     const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
     const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
+    const embeddingProviderName = this.configService.get<string>("FUNDING_EMBEDDING_PROVIDER");
 
     // Use embeddings-specific key if available, otherwise fall back to LLM key
     const apiKey = embeddingsApiKey || llmApiKey;
-    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
-    const baseURL = embeddingsBaseUrl || undefined;
+    const model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL");
 
-    if (apiKey) {
+    // Create unified embedding provider (supports Google Gemini and OpenAI)
+    this.embeddingProvider = createEmbeddingProvider({
+      provider: embeddingProviderName,
+      apiKey: apiKey || undefined,
+      baseUrl: embeddingsBaseUrl || undefined,
+      model: model || undefined,
+    });
+
+    // Keep legacy OpenAI client for backward compat with legacy retrieval path
+    const baseURL = embeddingsBaseUrl || undefined;
+    if (apiKey && (!embeddingProviderName || embeddingProviderName === "openai")) {
       this.openai = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
-      this.logger.log(`Retrieval embeddings client configured (using ${embeddingsApiKey ? 'dedicated' : 'shared LLM'} API key)`);
     }
-    this.embeddingModel =
-      this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+
+    this.embeddingModel = model ?? "text-embedding-3-small";
 
     // Feature flag: USE_PGVECTOR (default true after migration)
     const pgvecFlag = this.configService.get<string>("USE_PGVECTOR");
     this.usePgvector = pgvecFlag !== "false" && pgvecFlag !== "0";
-    this.logger.log(`Retrieval mode: ${this.usePgvector ? "pgvector (SQL)" : "legacy (JS cosine)"}`);
+    this.logger.log(`Retrieval mode: ${this.usePgvector ? "pgvector (SQL)" : "legacy (JS cosine)"}, provider: ${embeddingProviderName || "openai"}`);
   }
 
   /**
@@ -165,7 +176,7 @@ export class RetrievalService {
     const allowedTiers = POLICY_TIERS[mode];
     const minScore = options.minScore ?? 0;
 
-    if (!this.openai) {
+    if (!this.embeddingProvider && !this.openai) {
       this.logger.warn("pgvector: no embeddings client, falling back to legacy");
       return this.retrieveLegacy(query, options);
     }
@@ -178,12 +189,22 @@ export class RetrievalService {
 
     if (!qVec) {
       const embedStart = Date.now();
-      const queryEmbedding = await this.openai.embeddings.create({
-        model: this.embeddingModel,
-        input: query.slice(0, 8000),
-      });
+      try {
+        if (this.embeddingProvider) {
+          const result = await this.embeddingProvider.embed(query.slice(0, 8000));
+          qVec = result.embedding;
+        } else if (this.openai) {
+          const queryEmbedding = await this.openai.embeddings.create({
+            model: this.embeddingModel,
+            input: query.slice(0, 8000),
+          });
+          qVec = queryEmbedding.data[0]?.embedding ?? null;
+        }
+      } catch (err) {
+        this.logger.error(`Embedding query failed: ${(err as Error).message}`);
+        qVec = null;
+      }
       embedMs = Date.now() - embedStart;
-      qVec = queryEmbedding.data[0]?.embedding ?? null;
       if (qVec) {
         this.queryCache.set(normalizedQuery, qVec);
       }
@@ -356,7 +377,7 @@ export class RetrievalService {
 
     if (withEffectiveTier.length === 0) return [];
 
-    if (!this.openai) {
+    if (!this.embeddingProvider && !this.openai) {
       return this.keywordFallback(
         query,
         withEffectiveTier.map((c) => ({
@@ -374,11 +395,21 @@ export class RetrievalService {
     let qVec = this.queryCache.get(normalizedQuery);
 
     if (!qVec) {
-      const queryEmbedding = await this.openai.embeddings.create({
-        model: this.embeddingModel,
-        input: query.slice(0, 8000),
-      });
-      qVec = queryEmbedding.data[0]?.embedding ?? null;
+      try {
+        if (this.embeddingProvider) {
+          const result = await this.embeddingProvider.embed(query.slice(0, 8000));
+          qVec = result.embedding;
+        } else if (this.openai) {
+          const queryEmbedding = await this.openai.embeddings.create({
+            model: this.embeddingModel,
+            input: query.slice(0, 8000),
+          });
+          qVec = queryEmbedding.data[0]?.embedding ?? null;
+        }
+      } catch (err) {
+        this.logger.error(`Legacy embedding query failed: ${(err as Error).message}`);
+        qVec = null;
+      }
       if (qVec) {
         this.queryCache.set(normalizedQuery, qVec);
         this.logger.debug(`Query embedding cached (cache size: ${this.queryCache.size})`);
