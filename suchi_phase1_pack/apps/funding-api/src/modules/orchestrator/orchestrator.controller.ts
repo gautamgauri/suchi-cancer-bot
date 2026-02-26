@@ -9,7 +9,7 @@ import {
 import { OrchestratorService } from "./orchestrator.service";
 import { OrchestratorRunDto, OrchestratorAssessDto } from "./orchestrator.dto";
 
-@Controller("v1/orchestrator")
+@Controller("orchestrator")
 export class OrchestratorController {
   constructor(private readonly orchestrator: OrchestratorService) {}
 
