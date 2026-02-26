@@ -87,6 +87,8 @@ export class BrowserPrefillService {
     doc: ApplicationDocument,
   ): Promise<PrefillResult> {
     // Dynamic import since Playwright may not be installed
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // @ts-ignore
     const { chromium } = await import("playwright");
 
     const fillLog: PrefillFieldLog[] = [];
@@ -178,7 +180,8 @@ export class BrowserPrefillService {
    * Try to fill a single form field using various selector strategies.
    */
   private async fillField(
-    page: import("playwright").Page,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    page: any,
     answer: DraftedAnswer,
   ): Promise<boolean> {
     const questionText = answer.questionText.toLowerCase();
