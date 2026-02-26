@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1.0",
+  "identity": {
+    "full_name": "Gautam Gauri",
+    "location": "Patna, Bihar, India",
+    "email_primary": "",
+    "phone": "+91 9204056412",
+    "linkedin_url": "",
+    "website_urls": []
+  },
+  "roles": [
+    {
+      "title": "Co-founder & Executive Director",
+      "org": "Diksha Foundation",
+      "summary_1line": "Leads holistic education and youth empowerment programs in Bihar; builds AI-enabled systems to strengthen operations and fundraising.",
+      "start_year": 2010
+    },
+    {
+      "title": "Co-founder",
+      "org": "Suchitra Cancer Care Foundation",
+      "summary_1line": "Building patient-facing cancer navigation and education tools, including AI assistants and content initiatives.",
+      "start_year": 2024
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Cambridge",
+      "program": "Masters in Education (MPhil)",
+      "years": "2015–2016"
+    }
+  ],
+  "core_interests": [
+    "AI for social impact",
+    "Education systems strengthening",
+    "Operational automation for nonprofits",
+    "WhatsApp-based learning and navigation tools",
+    "Bihar/Jharkhand/UP/Sikkim context",
+    "Sport-for-development (Football3 methodology)",
+    "Capabilities Approach to education"
+  ],
+  "signature_projects": [
+    {
+      "name": "Funding Bot",
+      "type": "Grant/fundraising automation",
+      "what_it_does": "Tracks opportunities, drafts structured proposals, manages approvals and archiving via Slack-first workflow",
+      "stack": ["Google Workspace", "Slack", "TypeScript/NestJS", "LLMs", "PostgreSQL"]
+    },
+    {
+      "name": "Rusty",
+      "type": "WhatsApp learning assistant",
+      "target": "Bihar Board learners (Classes 5–10)",
+      "pilot_size": 70
+    },
+    {
+      "name": "KHEL (Knowledge Hub for Education and Learning)",
+      "type": "Holistic education program",
+      "what_it_does": "Hub & Spoke model with 3 KHEL centers + 10 government school spokes serving ~511 students",
+      "stack": ["Khan Academy", "SEL (Dalai Lama Trust)", "Football3", "Bal Sansad"]
+    },
+    {
+      "name": "Empowering Futures",
+      "type": "Adolescent girls program",
+      "what_it_does": "Reaches ~260 adolescent girls across 6 urban settlements in Patna",
+      "stack": ["Life skills", "Digital literacy", "SEL", "Sports"]
+    }
+  ],
+  "frameworks": [
+    "Capabilities Approach (Sen/Nussbaum)",
+    "Multiple Intelligences (Howard Gardner)",
+    "football3 methodology (sport-for-development)",
+    "SEE Learning (Social, Emotional, and Ethical Learning — Dalai Lama Trust)",
+    "NEP 2020 alignment"
+  ],
+  "metrics_and_credibility": {
+    "org_age_years": 15,
+    "total_historical_reach": "2,000+ students graduated since 2010",
+    "current_annual_budget_inr": "104.56 lakhs (FY 2024-25)",
+    "centers": 3,
+    "direct_beneficiaries": "~476 students",
+    "empowering_futures_reach": "~260 adolescent girls",
+    "certifications": ["12A", "80G", "FCRA", "CSR-1"],
+    "registration": "Society Registration S/RS/SW/0019/2010"
+  },
+  "leadership_team": [
+    {
+      "name": "Gautam Gauri",
+      "role": "Executive Director & Co-founder",
+      "qualifications": "MPhil Education, University of Cambridge"
+    },
+    {
+      "name": "Shivam Mishra",
+      "role": "Education & Community Development Specialist",
+      "qualifications": ""
+    },
+    {
+      "name": "Nisha Kumari",
+      "role": "Operations",
+      "qualifications": ""
+    }
+  ],
+  "board_of_directors": [
+    { "name": "Saurabh Kumar", "role": "Treasurer", "qualifications": "Co-founder and COO at Sparklehood; Angel investor" },
+    { "name": "", "role": "Chairperson", "qualifications": "" },
+    { "name": "", "role": "Secretary", "qualifications": "" },
+    { "name": "", "role": "Member", "qualifications": "" },
+    { "name": "", "role": "Member", "qualifications": "" },
+    { "name": "", "role": "Member", "qualifications": "" },
+    { "name": "", "role": "Member", "qualifications": "" }
+  ],
+  "funding_partners": {
+    "current": ["Azim Premji Foundation", "Feeding India", "BP Singh & Shakuntla Devi"],
+    "past": ["JP Morgan Chase", "PRAVAH", "Asha for Education"]
+  },
+  "snippets": {
+    "why_me_120w": "",
+    "why_this_program_150w": "",
+    "my_work_200w": "",
+    "ai_story_200w": "",
+    "bio_50w": "",
+    "bio_100w": "",
+    "bio_200w": ""
+  },
+  "references": [
+    { "name": "", "title": "", "org": "", "email": "" }
+  ]
+}

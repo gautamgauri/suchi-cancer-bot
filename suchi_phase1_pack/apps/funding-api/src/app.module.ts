@@ -23,6 +23,7 @@ import { FunderScraperModule } from "./modules/funder_scraper/funder-scraper.mod
 import { GiftModule } from "./modules/gift/gift.module";
 import { ActivityRegistryModule } from "./modules/activity_registry/activity-registry.module";
 import { OrchestratorModule } from "./modules/orchestrator/orchestrator.module";
+import { ApplicationModule } from "./modules/application/application.module";
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { OrchestratorModule } from "./modules/orchestrator/orchestrator.module";
     FunderScraperModule,
     ActivityRegistryModule,
     OrchestratorModule,
+    ApplicationModule,
   ],
 })
 export class AppModule {}
