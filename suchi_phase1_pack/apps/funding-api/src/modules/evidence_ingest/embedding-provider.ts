@@ -5,7 +5,6 @@
  */
 import { Logger } from "@nestjs/common";
 import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export interface EmbeddingResult {
   embedding: number[];
@@ -19,17 +18,18 @@ export interface EmbeddingProvider {
 }
 
 export class GoogleEmbeddingProvider implements EmbeddingProvider {
-  private readonly genAI: GoogleGenerativeAI;
+  private readonly apiKey: string;
   private readonly model: string;
   readonly dimensions = 768;
   private readonly logger = new Logger(GoogleEmbeddingProvider.name);
 
   constructor(apiKey: string, model?: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    // text-embedding-004 is always 768-dim.
-    // gemini-embedding-001 supports 256/768/3072 — defaults to 3072 if unspecified.
-    // We always request 768 via outputDimensionality to match the DB schema.
-    this.model = model || "text-embedding-004";
+    this.apiKey = apiKey;
+    // gemini-embedding-001 supports 256/768/3072-dim output (default=3072).
+    // We always pass outputDimensionality=768 to match the vector(768) DB column.
+    // Note: text-embedding-004 is v1-only; the @google/generative-ai SDK uses v1beta,
+    // so we call the REST API directly to control the full request body.
+    this.model = model || "gemini-embedding-001";
     this.logger.log(`Google embedding provider configured (model=${this.model}, dimensions=${this.dimensions})`);
   }
 
@@ -38,26 +38,43 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(input: string): Promise<EmbeddingResult> {
-    const embeddingModel = this.genAI.getGenerativeModel({ model: this.model });
-    const result = await embeddingModel.embedContent({
-      // outputDimensionality is not in SDK types but accepted by the API.
-      // Ensures 768-dim output for models that support variable dimensions (e.g. gemini-embedding-001).
-      ...({ outputDimensionality: 768 } as object),
-      content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
-    } as Parameters<typeof embeddingModel.embedContent>[0]);
-    return { embedding: result.embedding.values };
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:embedContent?key=${this.apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: `models/${this.model}`,
+        content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
+        outputDimensionality: 768,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gemini embed failed (${res.status}): ${err}`);
+    }
+    const json = await res.json() as { embedding: { values: number[] } };
+    return { embedding: json.embedding.values };
   }
 
   async embedBatch(inputs: string[]): Promise<EmbeddingResult[]> {
-    const embeddingModel = this.genAI.getGenerativeModel({ model: this.model });
-    const result = await embeddingModel.batchEmbedContents({
-      requests: inputs.map((input) => ({
-        // outputDimensionality ensures 768-dim even for gemini-embedding-001
-        ...({ outputDimensionality: 768 } as object),
-        content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
-      } as Parameters<typeof embeddingModel.batchEmbedContents>[0]["requests"][number])),
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:batchEmbedContents?key=${this.apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: inputs.map((input) => ({
+          model: `models/${this.model}`,
+          content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
+          outputDimensionality: 768,
+        })),
+      }),
     });
-    return result.embeddings.map((e) => ({ embedding: e.values }));
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gemini batchEmbed failed (${res.status}): ${err}`);
+    }
+    const json = await res.json() as { embeddings: Array<{ values: number[] }> };
+    return json.embeddings.map((e) => ({ embedding: e.values }));
   }
 }
 

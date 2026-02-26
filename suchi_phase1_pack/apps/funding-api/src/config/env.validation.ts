@@ -30,7 +30,7 @@ export const envSchema = z.object({
   FUNDING_EMBEDDING_PROVIDER: z.enum(["google", "openai"]).optional().default("google"), // "google" = Gemini, "openai" = OpenAI
   FUNDING_EMBEDDINGS_API_KEY: z.string().optional(), // Falls back to FUNDING_OPENAI_API_KEY if not set
   FUNDING_EMBEDDINGS_BASE_URL: z.string().url().optional(), // Falls back to OpenAI default if not set (only for openai provider)
-  EVIDENCE_EMBEDDING_MODEL: z.string().optional().default("text-embedding-004"), // Google: text-embedding-004 (768-dim fixed), OpenAI: text-embedding-3-small
+  EVIDENCE_EMBEDDING_MODEL: z.string().optional().default("gemini-embedding-001"), // Google: gemini-embedding-001 (768-dim via outputDimensionality), OpenAI: text-embedding-3-small
   EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN: z.coerce.number().min(1).max(1000).optional().default(60),
   // Funding Bot: Gmail intake (optional; required when running email ingestion)
   FUNDING_GMAIL_USER: z.string().email().optional(),
