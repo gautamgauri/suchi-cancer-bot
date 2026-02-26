@@ -26,7 +26,10 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
 
   constructor(apiKey: string, model?: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = model || "gemini-embedding-001";
+    // text-embedding-004 is always 768-dim.
+    // gemini-embedding-001 supports 256/768/3072 — defaults to 3072 if unspecified.
+    // We always request 768 via outputDimensionality to match the DB schema.
+    this.model = model || "text-embedding-004";
     this.logger.log(`Google embedding provider configured (model=${this.model}, dimensions=${this.dimensions})`);
   }
 
@@ -37,8 +40,11 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
   async embed(input: string): Promise<EmbeddingResult> {
     const embeddingModel = this.genAI.getGenerativeModel({ model: this.model });
     const result = await embeddingModel.embedContent({
+      // outputDimensionality is not in SDK types but accepted by the API.
+      // Ensures 768-dim output for models that support variable dimensions (e.g. gemini-embedding-001).
+      ...({ outputDimensionality: 768 } as object),
       content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
-    });
+    } as Parameters<typeof embeddingModel.embedContent>[0]);
     return { embedding: result.embedding.values };
   }
 
@@ -46,8 +52,10 @@ export class GoogleEmbeddingProvider implements EmbeddingProvider {
     const embeddingModel = this.genAI.getGenerativeModel({ model: this.model });
     const result = await embeddingModel.batchEmbedContents({
       requests: inputs.map((input) => ({
+        // outputDimensionality ensures 768-dim even for gemini-embedding-001
+        ...({ outputDimensionality: 768 } as object),
         content: { role: "user", parts: [{ text: input.slice(0, 10000) }] },
-      })),
+      } as Parameters<typeof embeddingModel.batchEmbedContents>[0]["requests"][number])),
     });
     return result.embeddings.map((e) => ({ embedding: e.values }));
   }
