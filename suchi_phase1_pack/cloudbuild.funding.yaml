@@ -156,7 +156,7 @@ substitutions:
   _FUNDING_GOOGLE_SA_SECRET: 'funding-google-sa-key'
   _EVIDENCE_DRIVE_FOLDER_ID: '0B66dYZSUOOxbeEFLQ19uVnJsdGs'
   _CLOUDSQL_CONNECTION_NAME: 'gen-lang-client-0202543132:us-central1:diksha-db'
-  _FUNDING_GMAIL_USER: 'gautam@dikshafoundation.org'
+  _FUNDING_GMAIL_USER: 'gautamgauri@dikshafoundation.org'
 
 options:
   machineType: 'E2_HIGHCPU_8'
