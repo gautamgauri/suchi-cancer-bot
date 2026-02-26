@@ -3,8 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import { google } from "googleapis";
 import {
   GoogleGenerativeAI,
-  DynamicRetrievalMode,
   type GroundingChunk,
+  type Tool,
 } from "@google/generative-ai";
 
 /**
@@ -251,18 +251,12 @@ export class GoogleSearchService {
 
     try {
       const genAI = new GoogleGenerativeAI(this.geminiApiKey!);
+      // Gemini 2.0+ uses "google_search" tool (not "googleSearchRetrieval").
+      // The @google/generative-ai v0.24.1 SDK types don't include this field,
+      // so we cast to bypass TypeScript while sending the correct wire format.
       const model = genAI.getGenerativeModel({
         model: this.geminiModel,
-        tools: [
-          {
-            googleSearchRetrieval: {
-              dynamicRetrievalConfig: {
-                mode: DynamicRetrievalMode.MODE_DYNAMIC,
-                dynamicThreshold: 0.3,
-              },
-            },
-          },
-        ],
+        tools: [{ googleSearch: {} } as unknown as Tool],
       });
 
       const result = await model.generateContent(prompt);
