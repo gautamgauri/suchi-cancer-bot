@@ -61,17 +61,13 @@ export class EmbeddingService {
   }> {
     if (!this.embeddingProvider) throw new Error("Embedding provider not configured (set FUNDING_EMBEDDINGS_API_KEY and FUNDING_EMBEDDING_PROVIDER)");
 
-    const docIds = await this.prisma.evidenceDocument.findMany({
-      where: { qualityTier: { in: ["A", "B"] } },
-      select: { id: true, canonicalDocId: true },
-    });
-    const canonicalSet = new Set(
-      docIds.filter((d) => d.canonicalDocId === null || d.canonicalDocId === d.id).map((d) => d.id),
-    );
+    // Embed all Tier A/B chunks. The canonicalDocId filter was removed because
+    // the KB ingest script sets canonicalDocId to the manifest string ID (not a DB UUID),
+    // which caused all docs to be incorrectly classified as non-canonical and skipped.
     const chunksFromCanonical = (await this.prisma.documentChunk.findMany({
       where: {
         chunkEmbedding: null,
-        documentId: { in: [...canonicalSet] },
+        document: { qualityTier: { in: ["A", "B"] } },
       },
       orderBy: { createdAt: "asc" },
       take: 500,
