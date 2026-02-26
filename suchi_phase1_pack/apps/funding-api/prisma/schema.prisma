@@ -840,6 +840,7 @@ model PersonalApplication {
   updatedAt        DateTime @updatedAt
 
   auditEvents      ApplicationAuditEvent[]
+  pastAnswers      PastApplicationAnswer[]
 
   @@index([status])
   @@index([deadline])
@@ -875,19 +876,21 @@ model ApplicationSnippet {
 }
 
 model PastApplicationAnswer {
-  id              String   @id @default(uuid())
-  applicationId   String?  // link to PersonalApplication if applicable
-  questionPattern String   @db.Text  // normalized question (e.g. "why are you interested in this program")
-  answerText      String   @db.Text
+  id              String               @id @default(uuid())
+  applicationId   String?              // link to PersonalApplication if applicable
+  questionPattern String               @db.Text  // normalized question (e.g. "why are you interested in this program")
+  answerText      String               @db.Text
   wordCount       Int?
-  programName     String?  // which program this was for
-  programType     String?  // fellowship | accelerator | conference
-  wasApproved     Boolean  @default(false)
-  wasSubmitted    Boolean  @default(false)
-  tags            String[] @default([])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  programName     String?              // which program this was for
+  programType     String?              // fellowship | accelerator | conference
+  wasApproved     Boolean              @default(false)
+  wasSubmitted    Boolean              @default(false)
+  tags            String[]             @default([])
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  application     PersonalApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
 
+  @@index([applicationId])
   @@index([questionPattern])
   @@index([programType])
   @@index([tags])

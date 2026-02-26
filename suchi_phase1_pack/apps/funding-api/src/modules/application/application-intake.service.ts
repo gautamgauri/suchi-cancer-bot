@@ -1,4 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import * as cheerio from "cheerio";
@@ -7,6 +12,7 @@ import {
   ApplicationStatus,
   ApplicationTriage,
   OppAddRequest,
+  pushTimelineEvent,
 } from "./application.types";
 import {
   TRIAGE_SYSTEM_PROMPT,
@@ -65,7 +71,7 @@ export class ApplicationIntakeService {
     };
 
     // Store in DB
-    await this.prisma.personalApplication.create({
+    const created = await this.prisma.personalApplication.create({
       data: {
         applicationId,
         sourceUrl: url,
@@ -83,10 +89,7 @@ export class ApplicationIntakeService {
     // Log audit event
     await this.prisma.applicationAuditEvent.create({
       data: {
-        applicationId: (await this.prisma.personalApplication.findUnique({
-          where: { applicationId },
-          select: { id: true },
-        }))!.id,
+        applicationId: created.id,
         action: "intake",
         status: "success",
         actor: owner ?? "gautam",
@@ -105,7 +108,7 @@ export class ApplicationIntakeService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const pageContent = await this.fetchPageContent(app.sourceUrl);
     const context = buildTriageContext(pageContent, app.sourceUrl);
@@ -136,7 +139,7 @@ export class ApplicationIntakeService {
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     jsonBlob.triage = triage;
     jsonBlob.status = "triaged";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob, {
       timestamp: new Date().toISOString(),
       action: "triage",
       actor: "system",
@@ -167,9 +170,63 @@ export class ApplicationIntakeService {
   }
 
   /**
+   * Validate that a URL is safe to fetch (SSRF protection).
+   * Only allows https:// and rejects private/reserved IP ranges and localhost.
+   */
+  private validateUrl(url: string): void {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new BadRequestException(`Invalid URL: ${url}`);
+    }
+
+    if (parsed.protocol !== "https:") {
+      throw new BadRequestException(
+        `Only https:// URLs are allowed, got: ${parsed.protocol}`,
+      );
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Block localhost and loopback
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "[::1]" ||
+      hostname === "0.0.0.0"
+    ) {
+      throw new BadRequestException("URLs pointing to localhost are not allowed");
+    }
+
+    // Block cloud metadata endpoints
+    if (hostname === "169.254.169.254" || hostname === "metadata.google.internal") {
+      throw new BadRequestException("URLs pointing to cloud metadata endpoints are not allowed");
+    }
+
+    // Block private/reserved IP ranges (10.x, 172.16-31.x, 192.168.x)
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const [, a, b] = ipv4Match.map(Number);
+      if (
+        a === 10 ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        a === 127 ||
+        (a === 169 && b === 254)
+      ) {
+        throw new BadRequestException("URLs pointing to private/reserved IP ranges are not allowed");
+      }
+    }
+  }
+
+  /**
    * Fetch and extract text content from a URL using cheerio.
    */
   async fetchPageContent(url: string): Promise<string> {
+    this.validateUrl(url);
+
     try {
       const response = await fetch(url, {
         headers: {

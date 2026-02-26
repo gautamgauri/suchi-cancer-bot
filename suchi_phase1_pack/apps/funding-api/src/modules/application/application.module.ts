@@ -8,6 +8,7 @@ import { AnswerGeneratorService } from "./answer-generator.service";
 import { ApplicationReviewService } from "./application-review.service";
 import { BrowserPrefillService } from "./browser-prefill.service";
 import { ApplicationSlackService } from "./application-slack.service";
+import { SlackSignatureGuard } from "./slack-signature.guard";
 
 @Module({
   imports: [PrismaModule, CoreAiModule],
@@ -19,6 +20,7 @@ import { ApplicationSlackService } from "./application-slack.service";
     ApplicationReviewService,
     BrowserPrefillService,
     ApplicationSlackService,
+    SlackSignatureGuard,
   ],
   exports: [
     ApplicationIntakeService,

@@ -1,10 +1,16 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   ApplicationDocument,
   DraftedAnswer,
   PrefillFieldLog,
   PrefillResult,
+  pushTimelineEvent,
 } from "./application.types";
 
 /**
@@ -49,10 +55,10 @@ export class BrowserPrefillService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     if (app.status !== "approved") {
-      throw new Error(
+      throw new BadRequestException(
         `Application ${applicationId} must be approved before prefill. Current status: ${app.status}`,
       );
     }
@@ -62,7 +68,7 @@ export class BrowserPrefillService {
     const answers = doc.answers;
 
     if (!answers || answers.length === 0) {
-      throw new Error(`No answers available for prefill in ${applicationId}`);
+      throw new BadRequestException(`No answers available for prefill in ${applicationId}`);
     }
 
     if (!this.playwrightAvailable) {
@@ -156,19 +162,15 @@ export class BrowserPrefillService {
       };
 
       // Update application record
-      const jsonBlob = app as unknown as Record<string, unknown>;
-      // We need to re-fetch since app is minimal here
       await this.updateApplicationWithPrefillResult(applicationId, result);
 
-      // Keep browser open for manual review — do NOT close automatically
       this.logger.log(
-        `Prefill complete for ${applicationId}: ${fieldsFilled} filled, ${fieldsSkipped} skipped. Browser left open for review.`,
+        `Prefill complete for ${applicationId}: ${fieldsFilled} filled, ${fieldsSkipped} skipped.`,
       );
 
       return result;
-    } catch (error) {
+    } finally {
       await browser.close();
-      throw error;
     }
   }
 
@@ -309,7 +311,7 @@ export class BrowserPrefillService {
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     jsonBlob.prefillResult = result;
     jsonBlob.status = "prefilled";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob, {
       timestamp: new Date().toISOString(),
       action: "prefill",
       actor: "system",

@@ -6,6 +6,8 @@ import {
   Param,
   Query,
   HttpCode,
+  HttpStatus,
+  UseGuards,
 } from "@nestjs/common";
 import { ApplicationIntakeService } from "./application-intake.service";
 import { QuestionExtractorService } from "./question-extractor.service";
@@ -13,14 +15,23 @@ import { AnswerGeneratorService } from "./answer-generator.service";
 import { ApplicationReviewService } from "./application-review.service";
 import { BrowserPrefillService } from "./browser-prefill.service";
 import { ApplicationSlackService } from "./application-slack.service";
+import { SlackSignatureGuard } from "./slack-signature.guard";
+import {
+  IngestApplicationDto,
+  ReviseAnswerDto,
+  ApproveApplicationDto,
+  SubmitApplicationDto,
+  SlackCommandDto,
+  ListApplicationsQueryDto,
+} from "./application.dto";
 
 /**
  * REST API for the Opportunity Application Assistant.
  *
- * All endpoints prefixed with /v1/applications.
+ * All endpoints prefixed with /v1/applications (via global prefix).
  * Parallel Slack interface is handled by ApplicationSlackService.
  */
-@Controller("v1/applications")
+@Controller("applications")
 export class ApplicationController {
   constructor(
     private readonly intake: ApplicationIntakeService,
@@ -31,16 +42,69 @@ export class ApplicationController {
     private readonly slack: ApplicationSlackService,
   ) {}
 
+  // ─── Static routes first (before parameterized :id routes) ──────────
+
+  /**
+   * GET /v1/applications
+   * List all applications with optional status filter.
+   */
+  @Get()
+  async list(@Query() query: ListApplicationsQueryDto) {
+    return this.review.list(query.status);
+  }
+
+  /**
+   * GET /v1/applications/profile
+   * Get the current applicant profile.
+   */
+  @Get("profile")
+  getProfile() {
+    return this.answerGenerator.getProfile();
+  }
+
   /**
    * POST /v1/applications/ingest
    * Ingest a new opportunity from a URL.
    */
   @Post("ingest")
-  @HttpCode(201)
-  async ingest(
-    @Body() body: { url: string; notes?: string; owner?: string },
-  ) {
+  @HttpCode(HttpStatus.CREATED)
+  async ingest(@Body() body: IngestApplicationDto) {
     return this.intake.ingest(body);
+  }
+
+  /**
+   * POST /v1/applications/slack
+   * Handle incoming Slack commands.
+   * Protected by Slack signature verification.
+   */
+  @Post("slack")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(SlackSignatureGuard)
+  async handleSlackCommand(@Body() body: SlackCommandDto) {
+    const text = body.text?.trim() ?? "";
+    const parts = text.split(/\s+/);
+    const command = parts[0] ?? "help";
+    const args = parts.slice(1);
+    const actor = body.user_name ?? "gautam";
+
+    const response = await this.slack.handleCommand(command, args, actor);
+
+    // Slack expects a JSON response with response_type
+    return {
+      response_type: "in_channel",
+      text: response,
+    };
+  }
+
+  // ─── Parameterized :id routes ───────────────────────────────────────
+
+  /**
+   * GET /v1/applications/:id/status
+   * Get full status of an application.
+   */
+  @Get(":id/status")
+  async getStatus(@Param("id") applicationId: string) {
+    return this.review.getStatus(applicationId);
   }
 
   /**
@@ -77,7 +141,7 @@ export class ApplicationController {
   @Post(":id/revise")
   async revise(
     @Param("id") applicationId: string,
-    @Body() body: { questionId?: string; instructions: string },
+    @Body() body: ReviseAnswerDto,
   ) {
     return this.answerGenerator.reviseAnswer({
       applicationId,
@@ -92,7 +156,7 @@ export class ApplicationController {
   @Post(":id/approve")
   async approve(
     @Param("id") applicationId: string,
-    @Body() body: { actor?: string },
+    @Body() body: ApproveApplicationDto,
   ) {
     return this.review.approve(applicationId, body.actor);
   }
@@ -113,62 +177,9 @@ export class ApplicationController {
   @Post(":id/submit")
   async submit(
     @Param("id") applicationId: string,
-    @Body() body: { actor?: string },
+    @Body() body: SubmitApplicationDto,
   ) {
     await this.review.markSubmitted(applicationId, body.actor);
     return { applicationId, status: "submitted" };
-  }
-
-  /**
-   * GET /v1/applications/:id/status
-   * Get full status of an application.
-   */
-  @Get(":id/status")
-  async getStatus(@Param("id") applicationId: string) {
-    return this.review.getStatus(applicationId);
-  }
-
-  /**
-   * GET /v1/applications
-   * List all applications with optional status filter.
-   */
-  @Get()
-  async list(@Query("status") status?: string) {
-    return this.review.list(status);
-  }
-
-  /**
-   * GET /v1/applications/profile
-   * Get the current applicant profile.
-   */
-  @Get("profile")
-  getProfile() {
-    return this.answerGenerator.getProfile();
-  }
-
-  /**
-   * POST /v1/applications/slack
-   * Handle incoming Slack commands.
-   * Expected body: { command: string, text: string, user_name: string }
-   */
-  @Post("slack")
-  @HttpCode(200)
-  async handleSlackCommand(
-    @Body()
-    body: { command?: string; text?: string; user_name?: string },
-  ) {
-    const text = body.text?.trim() ?? "";
-    const parts = text.split(/\s+/);
-    const command = parts[0] ?? "help";
-    const args = parts.slice(1);
-    const actor = body.user_name ?? "gautam";
-
-    const response = await this.slack.handleCommand(command, args, actor);
-
-    // Slack expects a JSON response with response_type
-    return {
-      response_type: "in_channel",
-      text: response,
-    };
   }
 }

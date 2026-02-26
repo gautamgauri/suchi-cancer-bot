@@ -1,8 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import { ApplicationIntakeService } from "./application-intake.service";
-import { ApplicationQuestion } from "./application.types";
+import { ApplicationQuestion, pushTimelineEvent } from "./application.types";
 import {
   QUESTION_EXTRACT_SYSTEM_PROMPT,
   buildQuestionExtractContext,
@@ -25,7 +25,7 @@ export class QuestionExtractorService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     this.logger.log(`Extracting questions for ${applicationId}`);
 
@@ -57,7 +57,7 @@ export class QuestionExtractorService {
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     jsonBlob.questions = questions;
     jsonBlob.status = "questions_extracted";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob, {
       timestamp: new Date().toISOString(),
       action: "extract_questions",
       actor: "system",

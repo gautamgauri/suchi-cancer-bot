@@ -1,10 +1,16 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnswerGeneratorService } from "./answer-generator.service";
 import {
   ApplicationDocument,
   DraftedAnswer,
   OppStatusResponse,
+  pushTimelineEvent,
 } from "./application.types";
 
 @Injectable()
@@ -27,12 +33,12 @@ export class ApplicationReviewService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     const answers = jsonBlob.answers as DraftedAnswer[];
     if (!answers || answers.length === 0) {
-      throw new Error(
+      throw new BadRequestException(
         `No answers to approve for ${applicationId}. Run draft first.`,
       );
     }
@@ -47,7 +53,7 @@ export class ApplicationReviewService {
 
     // Update status
     jsonBlob.status = "approved";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob,{
       timestamp: new Date().toISOString(),
       action: "approve",
       actor,
@@ -95,11 +101,11 @@ export class ApplicationReviewService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     jsonBlob.status = "submitted";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob,{
       timestamp: new Date().toISOString(),
       action: "submit",
       actor,
@@ -134,11 +140,11 @@ export class ApplicationReviewService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     jsonBlob.status = "archived";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob,{
       timestamp: new Date().toISOString(),
       action: "archive",
       actor: "system",
@@ -161,7 +167,7 @@ export class ApplicationReviewService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     const doc = jsonBlob as unknown as ApplicationDocument;

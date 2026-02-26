@@ -1,4 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import {
@@ -6,6 +11,7 @@ import {
   ApplicationQuestion,
   DraftedAnswer,
   OppReviseRequest,
+  pushTimelineEvent,
 } from "./application.types";
 import {
   ANSWER_GENERATOR_SYSTEM_PROMPT,
@@ -149,12 +155,12 @@ export class AnswerGeneratorService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     const questions = jsonBlob.questions as ApplicationQuestion[];
     if (!questions || questions.length === 0) {
-      throw new Error(
+      throw new BadRequestException(
         `No questions extracted yet for ${applicationId}. Run extract first.`,
       );
     }
@@ -235,7 +241,7 @@ export class AnswerGeneratorService {
     // Update the application record
     jsonBlob.answers = answers;
     jsonBlob.status = "review";
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob, {
       timestamp: new Date().toISOString(),
       action: "draft_answers",
       actor: "system",
@@ -278,12 +284,12 @@ export class AnswerGeneratorService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId: req.applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${req.applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${req.applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     const currentAnswers = jsonBlob.answers as DraftedAnswer[];
     if (!currentAnswers || currentAnswers.length === 0) {
-      throw new Error(`No answers to revise for ${req.applicationId}`);
+      throw new BadRequestException(`No answers to revise for ${req.applicationId}`);
     }
 
     const toRevise = req.questionId
@@ -323,7 +329,7 @@ export class AnswerGeneratorService {
     });
 
     jsonBlob.answers = updatedAnswers;
-    (jsonBlob.timeline as Array<Record<string, unknown>>).push({
+    pushTimelineEvent(jsonBlob, {
       timestamp: new Date().toISOString(),
       action: "revise_answers",
       actor: "gautam",
@@ -348,7 +354,7 @@ export class AnswerGeneratorService {
     const app = await this.prisma.personalApplication.findUnique({
       where: { applicationId },
     });
-    if (!app) throw new Error(`Application not found: ${applicationId}`);
+    if (!app) throw new NotFoundException(`Application not found: ${applicationId}`);
 
     const jsonBlob = app.jsonBlob as Record<string, unknown>;
     const answers = jsonBlob.answers as DraftedAnswer[];
