@@ -68,14 +68,14 @@ export class EmbeddingService {
     const canonicalSet = new Set(
       docIds.filter((d) => d.canonicalDocId === null || d.canonicalDocId === d.id).map((d) => d.id),
     );
-    const chunksFromCanonical = await this.prisma.documentChunk.findMany({
+    const chunksFromCanonical = (await this.prisma.documentChunk.findMany({
       where: {
         chunkEmbedding: null,
         documentId: { in: [...canonicalSet] },
       },
       orderBy: { createdAt: "asc" },
       take: 500,
-    });
+    })).filter((c) => c.content?.trim().length > 0);
 
     const start = Date.now();
     let embedded = 0;
