@@ -22,6 +22,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { FunderScraperModule } from "./modules/funder_scraper/funder-scraper.module";
 import { GiftModule } from "./modules/gift/gift.module";
 import { ActivityRegistryModule } from "./modules/activity_registry/activity-registry.module";
+import { OrchestratorModule } from "./modules/orchestrator/orchestrator.module";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { ActivityRegistryModule } from "./modules/activity_registry/activity-reg
     AdminModule,
     FunderScraperModule,
     ActivityRegistryModule,
+    OrchestratorModule,
   ],
 })
 export class AppModule {}

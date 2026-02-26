@@ -41,6 +41,7 @@ import { ApprovalConfirmationContract } from "../contracts/funding-contracts.typ
 import { ActivityRegistryService } from "../activity_registry/activity-registry.service";
 import { FrameworkIntelligenceService } from "./services/framework-intelligence.service";
 import { ConsistencyCheckerService } from "../framework/services/consistency-checker.service";
+import type { OrchestratorContext } from "../orchestrator/orchestrator.types";
 
 @Injectable()
 export class ProposalService {
@@ -84,7 +85,8 @@ export class ProposalService {
   async generateProposal(
     opportunityId: string,
     options?: GenerateProposalOptions,
-    approval?: ApprovalContextDto
+    approval?: ApprovalContextDto,
+    orchestratorContext?: OrchestratorContext,
   ) {
     const runStart = Date.now();
     const mappedApproval = this.mapApproval(approval);
@@ -154,6 +156,7 @@ export class ProposalService {
       options?.targetGroup ? `Target group: ${options.targetGroup}` : "",
       effectiveBudgetCeiling ? `Budget ceiling (HARD CONSTRAINT — do NOT exceed): ${effectiveBudgetCeiling}` : "",
       options?.dontMention?.length ? `Don't mention: ${options.dontMention.join(", ")}` : "",
+      ...this.formatOrchestratorOverrides(orchestratorContext),
     ]
       .filter(Boolean)
       .join("\n");
@@ -1696,5 +1699,68 @@ export class ProposalService {
     lines.push("Please review and provide feedback.");
 
     return lines.join("\n");
+  }
+
+  /**
+   * Format orchestrator pre-drafting intelligence as context strings for the planner/writer.
+   */
+  private formatOrchestratorOverrides(ctx?: OrchestratorContext): string[] {
+    if (!ctx) return [];
+    const parts: string[] = [];
+
+    if (ctx.fitScore) {
+      parts.push(
+        `[ORCHESTRATOR FIT ASSESSMENT] Score: ${ctx.fitScore.totalScore}/100 (${ctx.fitScore.decision})` +
+          (ctx.fitScore.caveats.length > 0
+            ? `\nCaveats: ${ctx.fitScore.caveats.join("; ")}`
+            : "") +
+          `\n${ctx.fitScore.dimensionSummary}`,
+      );
+    }
+
+    if (ctx.gmailMemoryBlocks && ctx.gmailMemoryBlocks.length > 0) {
+      const blockText = ctx.gmailMemoryBlocks
+        .map((b) => `- [${b.topic}] ${b.content.slice(0, 300)}`)
+        .join("\n");
+      parts.push(
+        `[ORCHESTRATOR REUSABLE BLOCKS from past proposals/emails]\n${blockText}`,
+      );
+    }
+
+    if (ctx.budgetEnvelope) {
+      const lineText = ctx.budgetEnvelope.lineItems
+        .map(
+          (li) =>
+            `  ${li.category} | ${li.item} | ₹${li.unitCostINR} × ${li.quantity} × ${li.months}mo = ₹${li.amount.toLocaleString("en-IN")}`,
+        )
+        .join("\n");
+      parts.push(
+        `[ORCHESTRATOR BUDGET ENVELOPE — use these line items as the basis for the budget section]\n` +
+          `Target ceiling: ₹${ctx.budgetEnvelope.targetCeilingINR.toLocaleString("en-IN")}\n` +
+          `Grand total: ₹${ctx.budgetEnvelope.grandTotal.toLocaleString("en-IN")}\n` +
+          lineText,
+      );
+    }
+
+    if (ctx.webEvidence) {
+      const sections: string[] = [];
+      if (ctx.webEvidence.funderIntel) {
+        sections.push(`Funder Intelligence:\n${ctx.webEvidence.funderIntel.slice(0, 800)}`);
+      }
+      if (ctx.webEvidence.comparablePrograms) {
+        sections.push(`Comparable Programs:\n${ctx.webEvidence.comparablePrograms.slice(0, 800)}`);
+      }
+      if (ctx.webEvidence.themeEvidence) {
+        sections.push(`Theme Evidence:\n${ctx.webEvidence.themeEvidence.slice(0, 800)}`);
+      }
+      if (sections.length > 0) {
+        parts.push(
+          `[ORCHESTRATOR WEB EVIDENCE — use this research to strengthen proposal claims]\n` +
+            sections.join("\n\n"),
+        );
+      }
+    }
+
+    return parts;
   }
 }

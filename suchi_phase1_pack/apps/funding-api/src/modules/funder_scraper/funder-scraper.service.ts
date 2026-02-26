@@ -1,31 +1,21 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
+import { GoogleSearchService } from "../google_search/google-search.service";
 import { FunderFactDto, FunderOrgRecord, SerpApiResultUrl } from "./funder-scraper.types";
 import * as cheerio from "cheerio";
-
-interface SerpApiResponse {
-  organic_results?: Array<{
-    link?: string;
-    title?: string;
-  }>;
-}
 
 @Injectable()
 export class FunderScraperService {
   private readonly logger = new Logger(FunderScraperService.name);
-  private readonly serpApiKey: string | undefined;
   private readonly enabled: boolean;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly searchService: GoogleSearchService,
   ) {
-    this.serpApiKey = this.configService.get<string>("FUNDING_SERPAPI_KEY");
     this.enabled = this.configService.get<string>("FUNDING_FUNDER_SCRAPER_ENABLED") === "true";
-    if (!this.serpApiKey) {
-      this.logger.warn("FUNDING_SERPAPI_KEY not set; funder scraper discovery will be disabled.");
-    }
   }
 
   isEnabled(): boolean {
@@ -105,8 +95,6 @@ export class FunderScraperService {
   }
 
   private async discoverCandidateUrls(org: FunderOrgRecord): Promise<SerpApiResultUrl[]> {
-    if (!this.serpApiKey) return [];
-
     const domain = this.extractDomain(org.orgWebsite);
     const queries = [
       `"${org.orgName}" donors`,
@@ -120,27 +108,13 @@ export class FunderScraperService {
 
     for (const query of queries) {
       try {
-        const url = new URL("https://serpapi.com/search");
-        url.searchParams.set("engine", "google");
-        url.searchParams.set("q", query);
-        url.searchParams.set("api_key", this.serpApiKey);
-        url.searchParams.set("num", "10");
-
-        const res = await fetch(url.toString());
-        if (!res.ok) {
-          this.logger.warn(`SerpAPI request failed for query "${query}": ${res.status}`);
-          continue;
-        }
-        const json = (await res.json()) as SerpApiResponse;
-        const organic = json.organic_results ?? [];
-        for (const item of organic) {
-          const link = item.link;
-          if (!link) continue;
-          const linkDomain = this.extractDomain(link);
+        // Use unified search (CSE → SerpAPI fallback, both free-tier capped)
+        const searchResults = await this.searchService.search(query, 10);
+        for (const item of searchResults) {
+          const linkDomain = this.extractDomain(item.url);
           const source: "org_site" | "external" =
             domain && linkDomain && linkDomain.endsWith(domain) ? "org_site" : "external";
-          const title = item.title ?? "";
-          const lower = (link + " " + title).toLowerCase();
+          const lower = (item.url + " " + item.title).toLowerCase();
           if (
             !lower.includes("donor") &&
             !lower.includes("supporter") &&
@@ -151,10 +125,10 @@ export class FunderScraperService {
           ) {
             continue;
           }
-          results.push({ url: link, title: title, source, query });
+          results.push({ url: item.url, title: item.title, source, query });
         }
       } catch (e) {
-        this.logger.warn(`SerpAPI error for query "${query}": ${(e as Error).message}`);
+        this.logger.warn(`Search error for query "${query}": ${(e as Error).message}`);
       }
     }
 

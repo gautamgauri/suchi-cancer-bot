@@ -1,0 +1,277 @@
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import type {
+  OrchestratorRunState,
+  OrchestratorContext,
+  EnhancedFitScoreResult,
+  GmailMemoryResult,
+  BudgetEnvelope,
+} from "./orchestrator.types";
+import { EnhancedFitScoringService } from "./services/enhanced-fit-scoring.service";
+import { GmailMemoryService } from "./services/gmail-memory.service";
+import { BudgetEnvelopeService } from "./services/budget-envelope.service";
+import { WebEvidenceService, type WebEvidenceResult } from "./services/web-evidence.service";
+import { OpportunityService } from "../opportunity/opportunity.service";
+import { ProposalService } from "../proposal/proposal.service";
+import type { OpportunityPayload } from "../opportunity/opportunity.types";
+
+/**
+ * Orchestrator conductor — runs the "Gautam-style" gated pipeline:
+ *
+ *   Stage A: Enhanced Fit Scoring (6 dimensions, 0-100)
+ *   Stage B: Gmail Memory Search (reusable proposal blocks)
+ *   Stage C: Budget Envelope (template-based line items)
+ *   Gate:    Decision → go / maybe / no
+ *   Stage D: Web Evidence Search (Gemini grounding + CSE)
+ *   Stage E: Proposal Generation (existing pipeline, enriched with context)
+ *
+ * Future stages (Slice 2):
+ *   Stage F: MI/Capabilities Alignment
+ *   Stage G: Traceability Metadata
+ *   Stage H: Final Assembly
+ */
+@Injectable()
+export class OrchestratorService {
+  private readonly logger = new Logger(OrchestratorService.name);
+
+  constructor(
+    private readonly fitScoring: EnhancedFitScoringService,
+    private readonly gmailMemory: GmailMemoryService,
+    private readonly budgetEnvelope: BudgetEnvelopeService,
+    private readonly webEvidence: WebEvidenceService,
+    private readonly opportunityService: OpportunityService,
+    private readonly proposalService: ProposalService,
+  ) {}
+
+  /**
+   * Run the full orchestrator pipeline for an opportunity.
+   *
+   * @param opportunityId - the opportunity to process
+   * @param options - override flags
+   * @returns run state with all stage results
+   */
+  async run(
+    opportunityId: string,
+    options?: {
+      skipGmail?: boolean;
+      skipBudget?: boolean;
+      skipWebEvidence?: boolean;
+      forceGenerate?: boolean; // proceed even if fit = "no"
+      proposalOptions?: {
+        focusGeography?: string;
+        targetGroup?: string;
+        budgetCeiling?: string;
+        dontMention?: string[];
+        sectionOnly?: string;
+        skipFramework?: boolean;
+      };
+    },
+  ): Promise<OrchestratorRunState> {
+    const runState: OrchestratorRunState = {
+      opportunityId,
+      stage: "fit_scoring",
+      startedAt: new Date().toISOString(),
+    };
+
+    try {
+      // Load opportunity
+      const opportunity = await this.opportunityService.findByOpportunityId(opportunityId);
+      if (!opportunity) {
+        throw new NotFoundException(`Opportunity ${opportunityId} not found`);
+      }
+      const payload: OpportunityPayload = opportunity.jsonBlob.opportunity;
+
+      // --- Stage A: Enhanced Fit Scoring ---
+      this.logger.log(`[${opportunityId}] Stage A: Fit Scoring`);
+      runState.stage = "fit_scoring";
+      const fitScore = await this.fitScoring.score(payload);
+      runState.fitScore = fitScore;
+
+      // Gate check
+      if (fitScore.decision === "no" && !options?.forceGenerate) {
+        this.logger.warn(
+          `[${opportunityId}] Fit score ${fitScore.totalScore}/100 → PARKED`,
+        );
+        runState.stage = "parked";
+        runState.completedAt = new Date().toISOString();
+        return runState;
+      }
+
+      // --- Stage B: Gmail Memory ---
+      let gmailMemory: GmailMemoryResult = {
+        blocksFound: 0,
+        blocks: [],
+        searchQueries: [],
+        searched: false,
+      };
+
+      if (!options?.skipGmail) {
+        this.logger.log(`[${opportunityId}] Stage B: Gmail Memory Search`);
+        runState.stage = "gmail_memory";
+        gmailMemory = await this.gmailMemory.search(payload);
+        runState.gmailMemory = gmailMemory;
+      }
+
+      // --- Stage C: Budget Envelope ---
+      let budgetEnvelope: BudgetEnvelope | undefined;
+
+      if (!options?.skipBudget) {
+        this.logger.log(`[${opportunityId}] Stage C: Budget Envelope`);
+        runState.stage = "budget_envelope";
+        budgetEnvelope = await this.budgetEnvelope.generate(payload);
+        runState.budgetEnvelope = budgetEnvelope;
+      }
+
+      // --- Stage D: Web Evidence Search ---
+      let webEvidenceResult: WebEvidenceResult | undefined;
+
+      if (!options?.skipWebEvidence) {
+        this.logger.log(`[${opportunityId}] Stage D: Web Evidence Search`);
+        runState.stage = "web_evidence";
+        webEvidenceResult = await this.webEvidence.gather(payload);
+        runState.webEvidence = {
+          funderIntel: webEvidenceResult.funderIntel.summary.slice(0, 500),
+          comparablePrograms: webEvidenceResult.comparablePrograms.summary.slice(0, 500),
+          themeEvidence: webEvidenceResult.themeEvidence.summary.slice(0, 500),
+          sources: [
+            ...webEvidenceResult.funderIntel.sources,
+            ...webEvidenceResult.comparablePrograms.sources,
+            ...webEvidenceResult.themeEvidence.sources,
+          ].slice(0, 15),
+          queriesUsed: webEvidenceResult.queriesUsed,
+        };
+      }
+
+      // --- Build OrchestratorContext for proposal pipeline ---
+      const orchestratorContext = this.buildContext(fitScore, gmailMemory, budgetEnvelope, webEvidenceResult);
+
+      // --- Stage E: Proposal Generation ---
+      this.logger.log(`[${opportunityId}] Stage E: Proposal Generation (decision: ${fitScore.decision})`);
+      runState.stage = "proposal_generation";
+
+      // Use budget envelope ceiling as budget constraint if available
+      const effectiveBudgetCeiling = options?.proposalOptions?.budgetCeiling
+        ?? (budgetEnvelope
+          ? `INR ${budgetEnvelope.targetCeilingINR.toLocaleString("en-IN")}`
+          : undefined);
+
+      const proposalRun = await this.proposalService.generateProposal(
+        opportunityId,
+        {
+          ...options?.proposalOptions,
+          budgetCeiling: effectiveBudgetCeiling,
+        },
+        undefined, // approval context
+        orchestratorContext,
+      );
+
+      runState.proposalRunId = proposalRun.id;
+      runState.stage = "complete";
+      runState.completedAt = new Date().toISOString();
+
+      this.logger.log(
+        `[${opportunityId}] Orchestrator complete: fit=${fitScore.totalScore}/100 (${fitScore.decision}), ` +
+          `gmail=${gmailMemory.blocksFound} blocks, ` +
+          `budget=₹${budgetEnvelope ? (budgetEnvelope.grandTotal / 100000).toFixed(1) + "L" : "n/a"}, ` +
+          `webEvidence=${webEvidenceResult?.queriesUsed ?? 0} queries, ` +
+          `proposal=${proposalRun.id}`,
+      );
+
+      return runState;
+    } catch (err) {
+      runState.stage = "failed";
+      runState.error = (err as Error).message;
+      runState.completedAt = new Date().toISOString();
+      this.logger.error(
+        `[${opportunityId}] Orchestrator failed at stage ${runState.stage}: ${(err as Error).message}`,
+      );
+      return runState;
+    }
+  }
+
+  /**
+   * Run only the pre-drafting intelligence stages (fit + gmail + budget)
+   * without triggering proposal generation. Useful for quick assessment.
+   */
+  async assess(opportunityId: string): Promise<{
+    fitScore: EnhancedFitScoreResult;
+    gmailMemory: GmailMemoryResult;
+    budgetEnvelope: BudgetEnvelope;
+    webEvidence: WebEvidenceResult;
+  }> {
+    const opportunity = await this.opportunityService.findByOpportunityId(opportunityId);
+    if (!opportunity) {
+      throw new NotFoundException(`Opportunity ${opportunityId} not found`);
+    }
+    const payload: OpportunityPayload = opportunity.jsonBlob.opportunity;
+
+    const [fitScore, gmailMemory, budgetEnvelope, webEvidence] = await Promise.all([
+      this.fitScoring.score(payload),
+      this.gmailMemory.search(payload),
+      this.budgetEnvelope.generate(payload),
+      this.webEvidence.gather(payload),
+    ]);
+
+    return { fitScore, gmailMemory, budgetEnvelope, webEvidence };
+  }
+
+  private buildContext(
+    fitScore: EnhancedFitScoreResult,
+    gmailMemory: GmailMemoryResult,
+    budgetEnvelope?: BudgetEnvelope,
+    webEvidence?: WebEvidenceResult,
+  ): OrchestratorContext {
+    const context: OrchestratorContext = {};
+
+    // Fit score summary
+    context.fitScore = {
+      totalScore: fitScore.totalScore,
+      decision: fitScore.decision,
+      caveats: fitScore.caveats,
+      dimensionSummary: Object.values(fitScore.dimensions)
+        .map((d) => `${d.name}: ${d.score}/${d.maxScore} — ${d.rationale}`)
+        .join("\n"),
+    };
+
+    // Gmail memory blocks (top 5 for context window size)
+    if (gmailMemory.blocksFound > 0) {
+      context.gmailMemoryBlocks = gmailMemory.blocks.slice(0, 5).map((b) => ({
+        topic: b.topic,
+        content: b.content,
+        source: b.source,
+      }));
+    }
+
+    // Budget envelope
+    if (budgetEnvelope) {
+      context.budgetEnvelope = {
+        lineItems: budgetEnvelope.lineItems.map((li) => ({
+          category: li.category,
+          item: li.item,
+          unitCostINR: li.unitCostINR,
+          quantity: li.quantity,
+          months: li.months,
+          amount: li.amount,
+          notes: li.notes,
+        })),
+        targetCeilingINR: budgetEnvelope.targetCeilingINR,
+        grandTotal: budgetEnvelope.grandTotal,
+      };
+    }
+
+    // Web evidence
+    if (webEvidence) {
+      context.webEvidence = {
+        funderIntel: webEvidence.funderIntel.summary,
+        comparablePrograms: webEvidence.comparablePrograms.summary,
+        themeEvidence: webEvidence.themeEvidence.summary,
+        sources: [
+          ...webEvidence.funderIntel.sources,
+          ...webEvidence.comparablePrograms.sources,
+          ...webEvidence.themeEvidence.sources,
+        ].slice(0, 15),
+      };
+    }
+
+    return context;
+  }
+}

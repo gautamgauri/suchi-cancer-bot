@@ -56,4 +56,10 @@ export const envSchema = z.object({
   FUNDING_SERPAPI_KEY: z.string().optional(),
   FUNDING_FUNDER_SCRAPER_ENABLED: z.string().optional(), // "true" to enable
   FUNDING_FUNDER_SCRAPER_MAX_ORGS_PER_RUN: z.coerce.number().min(1).max(5).optional().default(2),
+  // Google Custom Search Engine (CSE) — primary web search backend (100 free queries/day)
+  FUNDING_CSE_API_KEY: z.string().optional(),
+  FUNDING_CSE_ENGINE_ID: z.string().optional(),
+  // Gemini grounding — model-synthesized web research (1,500 free queries/day)
+  FUNDING_GEMINI_API_KEY: z.string().optional(), // Falls back to FUNDING_EMBEDDINGS_API_KEY
+  FUNDING_GEMINI_GROUNDING_MODEL: z.string().optional().default("gemini-2.0-flash"),
 });
