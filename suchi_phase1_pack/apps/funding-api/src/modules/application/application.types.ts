@@ -216,3 +216,19 @@ export interface ApplicationDocument {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── JSON Blob Helpers ────────────────────────────────────────────────────
+
+/**
+ * Safely push a timeline event to a jsonBlob, initializing the array if missing.
+ * Prevents crashes from malformed or externally-created blobs.
+ */
+export function pushTimelineEvent(
+  jsonBlob: Record<string, unknown>,
+  event: Record<string, unknown>,
+): void {
+  if (!Array.isArray(jsonBlob.timeline)) {
+    jsonBlob.timeline = [];
+  }
+  (jsonBlob.timeline as Array<Record<string, unknown>>).push(event);
+}
