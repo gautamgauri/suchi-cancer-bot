@@ -68,6 +68,8 @@ export interface BudgetEnvelope {
   perChildCostPerYearINR: number;
   /** Programme intensity classification that drove the per-child cost. */
   programIntensity: "daily" | "frequent" | "weekly" | "periodic";
+  /** Number of direct beneficiaries used to compute the anchor. */
+  beneficiaryCount: number;
   lineItems: BudgetLineItem[];
   subtotal: number;
   contingencyPercent: number;
@@ -141,6 +143,7 @@ export interface OrchestratorContext {
       category: string;
       item: string;
       unitCostINR: number;
+      unit: string;
       quantity: number;
       months: number;
       amount: number;
@@ -148,6 +151,12 @@ export interface OrchestratorContext {
     }>;
     targetCeilingINR: number;
     grandTotal: number;
+    subtotal: number;
+    contingencyAmount: number;
+    grantPeriodMonths: number;
+    perChildCostPerYearINR: number;
+    programIntensity: "daily" | "frequent" | "weekly" | "periodic";
+    beneficiaryCount: number;
   };
   webEvidence?: {
     funderIntel: string;

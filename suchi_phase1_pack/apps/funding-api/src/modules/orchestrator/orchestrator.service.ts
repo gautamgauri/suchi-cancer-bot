@@ -265,6 +265,7 @@ export class OrchestratorService {
           category: li.category,
           item: li.item,
           unitCostINR: li.unitCostINR,
+          unit: li.unit,
           quantity: li.quantity,
           months: li.months,
           amount: li.amount,
@@ -272,6 +273,12 @@ export class OrchestratorService {
         })),
         targetCeilingINR: budgetEnvelope.targetCeilingINR,
         grandTotal: budgetEnvelope.grandTotal,
+        subtotal: budgetEnvelope.subtotal,
+        contingencyAmount: budgetEnvelope.contingencyAmount,
+        grantPeriodMonths: budgetEnvelope.grantPeriodMonths,
+        perChildCostPerYearINR: budgetEnvelope.perChildCostPerYearINR,
+        programIntensity: budgetEnvelope.programIntensity,
+        beneficiaryCount: budgetEnvelope.beneficiaryCount,
       };
     }
 

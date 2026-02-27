@@ -532,23 +532,33 @@ export class ProposalService {
             ? this.frameworkIntelligence.getSectionContext(sectionName, frameworkPack)
             : undefined;
 
-          const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
-            sectionName,
-            sectionGuidance,
-            chunks: evidenceChunks,
-            orgContext: orgCtx,
-            funderContext,
-            proposalScope: outline.proposal_scope,
-            frameworkContext: sectionFwCtx || undefined,
-          });
+          // Budget section: render envelope directly — skip LLM to prevent hallucinated line items
+          let processedDraft: string;
+          let gaps: string[];
+          if (/budget/i.test(sectionName) && orchestratorContext?.budgetEnvelope) {
+            processedDraft = this.renderBudgetFromEnvelope(orchestratorContext.budgetEnvelope);
+            gaps = [];
+            this.logger.log({ diagnostic: "BUDGET_ENVELOPE_DIRECT_RENDER", section: sectionName, grandTotal: orchestratorContext.budgetEnvelope.grandTotal });
+          } else {
+            const result = await this.sectionWriter.draftSection({
+              sectionName,
+              sectionGuidance,
+              chunks: evidenceChunks,
+              orgContext: orgCtx,
+              funderContext,
+              proposalScope: outline.proposal_scope,
+              frameworkContext: sectionFwCtx || undefined,
+            });
+            gaps = result.gaps;
 
-          // Budget section: parse JSON-first output and render as clean markdown table
-          let processedDraft = rawDraft;
-          if (/budget/i.test(sectionName)) {
-            const budgetRendered = this.renderBudgetFromJson(rawDraft, outline.proposal_scope?.budgetCeiling);
-            if (budgetRendered) {
-              processedDraft = budgetRendered;
-              this.logger.log({ diagnostic: "BUDGET_JSON_RENDERED", section: sectionName });
+            // Budget section fallback: parse JSON-first output if LLM was called
+            processedDraft = result.draftText;
+            if (/budget/i.test(sectionName)) {
+              const budgetRendered = this.renderBudgetFromJson(result.draftText, outline.proposal_scope?.budgetCeiling);
+              if (budgetRendered) {
+                processedDraft = budgetRendered;
+                this.logger.log({ diagnostic: "BUDGET_JSON_RENDERED", section: sectionName });
+              }
             }
           }
 
@@ -1394,6 +1404,52 @@ export class ProposalService {
     }
 
     return items;
+  }
+
+  /**
+   * Render the orchestrator budget envelope directly as a markdown budget section.
+   * Called instead of the LLM when an envelope is available — prevents hallucination.
+   */
+  private renderBudgetFromEnvelope(envelope: NonNullable<import("../orchestrator/orchestrator.types").OrchestratorContext["budgetEnvelope"]>): string {
+    const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+    const intensityLabel: Record<string, string> = {
+      daily: "daily (Mon–Sat)",
+      frequent: "4-5 days/week",
+      weekly: "2-3 days/week",
+      periodic: "monthly/periodic",
+    };
+    const lines: string[] = [];
+
+    lines.push(`## Detailed Budget`);
+    lines.push(``);
+
+    // Cost basis rationale
+    const years = (envelope.grantPeriodMonths / 12).toFixed(1).replace(".0", "");
+    lines.push(
+      `> **Budget basis:** ${fmt(envelope.perChildCostPerYearINR)}/child/year ` +
+      `(${intensityLabel[envelope.programIntensity] ?? envelope.programIntensity} programme) × ` +
+      `${envelope.beneficiaryCount} direct beneficiaries × ${years} year${Number(years) !== 1 ? "s" : ""}`,
+    );
+    lines.push(``);
+
+    lines.push(`| # | Category | Item | Unit Cost | Unit | Qty | Months | Amount |`);
+    lines.push(`|---|----------|------|----------:|------|----:|-------:|-------:|`);
+
+    envelope.lineItems.forEach((li, i) => {
+      lines.push(
+        `| ${i + 1} | ${li.category} | ${li.item} | ${fmt(li.unitCostINR)} | ${li.unit} | ${li.quantity} | ${li.months} | **${fmt(li.amount)}** |`,
+      );
+    });
+
+    lines.push(`| | | **Sub-total** | | | | | **${fmt(envelope.subtotal)}** |`);
+    lines.push(`| | | Contingency (5%) | | | | | ${fmt(envelope.contingencyAmount)} |`);
+    lines.push(`| | | **Grand Total** | | | | | **${fmt(envelope.grandTotal)}** |`);
+    lines.push(``);
+    lines.push(
+      `**Total Proposed Budget: ${fmt(envelope.grandTotal)}** for ${envelope.grantPeriodMonths} months`,
+    );
+
+    return lines.join("\n");
   }
 
   /**

@@ -127,6 +127,7 @@ export class BudgetEnvelopeService {
       grantPeriodMonths: durationMonths,
       perChildCostPerYearINR: template.costPerChildPerYearINR,
       programIntensity: template.programIntensity,
+      beneficiaryCount,
       lineItems,
       subtotal: finalSubtotal,
       contingencyPercent,
