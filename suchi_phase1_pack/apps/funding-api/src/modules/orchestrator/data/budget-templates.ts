@@ -89,10 +89,25 @@ export const BUDGET_CATEGORY_DISTRIBUTION: Record<string, { min: number; max: nu
 /**
  * Standard line item templates by program type.
  * The budget service selects the matching template based on opportunity themes.
+ *
+ * BUDGET ANCHOR PRINCIPLE
+ * -----------------------
+ * Total budget = costPerChildPerYearINR × beneficiaryCount × (durationMonths / 12)
+ * Line items are generated bottom-up then proportionally scaled to hit this anchor.
+ *
+ * Intensity tiers (Bihar NGO validated, FY 2024-25):
+ *   daily    — Mon–Sat full-day engagement (e.g. KHEL):       ₹20,000/child/yr
+ *   frequent — 4-5x/week structured programme:               ₹15,000/child/yr
+ *   weekly   — 2-3x/week (e.g. Empowering Futures girls):    ₹10,000/child/yr
+ *   periodic — monthly camps / once-a-week light touch:       ₹5,000/child/yr
  */
 export interface BudgetTemplate {
   programType: string;
   matchThemes: string[];
+  /** How often beneficiaries engage with the programme — drives cost per child. */
+  programIntensity: "daily" | "frequent" | "weekly" | "periodic";
+  /** Primary cost anchor: total budget = this × beneficiaryCount × years. */
+  costPerChildPerYearINR: number;
   standardLineItems: Array<{
     category: string;
     item: string;
@@ -107,6 +122,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
   {
     programType: "football-for-development",
     matchThemes: ["sports", "football", "physical activity", "grassroots sports", "play"],
+    programIntensity: "weekly",
+    costPerChildPerYearINR: 10000, // 2-3 sessions/week, outdoor venue
     standardLineItems: [
       { category: "Staff", item: "Sports Facilitator & Coordinator", benchmarkKey: "Sports Coach / Facilitator salary", defaultQuantity: 1, scaleFactor: "fixed", months: 12 },
       { category: "Staff", item: "Young Leader stipends", benchmarkKey: "Young Leader stipend", defaultQuantity: 3, scaleFactor: "per_centre", months: 12 },
@@ -123,9 +140,12 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
     /**
      * education-holistic — matches KHEL (Knowledge Hub for Education and Learning).
      * Covers all 5 KHEL components: academic FLN, digital literacy, sports, SEL, civic engagement.
-     * Validated against real KHEL centre operating cost of ~₹30L/centre/year.
+     * Daily full-programme engagement → ₹20,000/child/year.
+     * 476 children × ₹20k = ₹95.2L/year → ~₹31.7L/centre/year ✓
      */
     programType: "education-holistic",
+    programIntensity: "daily",
+    costPerChildPerYearINR: 20000, // Mon-Sat full programme (KHEL validated)
     matchThemes: [
       "education", "learning", "literacy", "numeracy", "academic", "digital literacy",
       "girls", "sel", "life skills", "fln", "out-of-school", "government schools",
@@ -169,6 +189,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
   },
   {
     programType: "girls-empowerment",
+    programIntensity: "weekly",
+    costPerChildPerYearINR: 10000, // 2-3x/week sessions (Empowering Futures-style)
     matchThemes: ["girls", "empowerment", "gender", "adolescent", "women", "leadership", "life skills"],
     standardLineItems: [
       { category: "Staff", item: "Program Facilitators", benchmarkKey: "Fellow Teacher stipend", defaultQuantity: 2, scaleFactor: "fixed", months: 12 },

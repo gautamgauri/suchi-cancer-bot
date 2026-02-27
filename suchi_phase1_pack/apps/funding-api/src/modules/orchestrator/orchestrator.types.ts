@@ -63,6 +63,11 @@ export interface BudgetLineItem {
 export interface BudgetEnvelope {
   targetCeilingINR: number;
   grantPeriodMonths: number;
+  /** Primary budget anchor: cost per direct beneficiary per year (INR).
+   * Derived from programme intensity — e.g. daily=20000, 2-3x/week=10000. */
+  perChildCostPerYearINR: number;
+  /** Programme intensity classification that drove the per-child cost. */
+  programIntensity: "daily" | "frequent" | "weekly" | "periodic";
   lineItems: BudgetLineItem[];
   subtotal: number;
   contingencyPercent: number;

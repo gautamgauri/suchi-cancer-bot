@@ -12,14 +12,15 @@ import type { OpportunityPayload } from "../../opportunity/opportunity.types";
 /**
  * Pre-drafting budget envelope generator.
  *
- * Builds a realistic line-item budget from:
- *   1. Opportunity constraints (ceiling, duration, geography)
- *   2. Matched budget template (by theme)
- *   3. Unit cost benchmarks (Bihar FY 2024-25)
- *   4. Activity registry data (actual centre count, staff)
+ * BUDGET ANCHOR PRINCIPLE
+ * -----------------------
+ * Total budget is anchored to: costPerChildPerYearINR × beneficiaryCount × (durationMonths/12)
+ * This matches how Diksha actually prices its programmes:
+ *   - Daily full engagement (KHEL):    ₹20,000/child/year  (~₹30L/centre)
+ *   - 2-3x/week (Empowering Futures):  ₹10,000/child/year
  *
- * The envelope is injected into the section writer for the budget section,
- * ensuring internally consistent numbers across the full proposal.
+ * Line items are built bottom-up from benchmarks, then proportionally scaled
+ * to hit the per-child anchor. The funder ceiling is applied last.
  */
 @Injectable()
 export class BudgetEnvelopeService {
@@ -31,8 +32,9 @@ export class BudgetEnvelopeService {
 
   async generate(payload: OpportunityPayload): Promise<BudgetEnvelope> {
     const ceiling = payload.keyConstraints?.maxGrantAmountINR ?? 3500000; // default 35L
-    const floor = payload.keyConstraints?.minGrantAmountINR; // optional minimum — set when real programme cost is known
+    const explicitMin = payload.keyConstraints?.minGrantAmountINR; // optional override
     const durationMonths = payload.keyConstraints?.projectDurationMonthsMax ?? 12;
+    const durationYears = durationMonths / 12;
 
     // 1. Select best-matching template
     const template = this.selectTemplate(payload);
@@ -42,25 +44,53 @@ export class BudgetEnvelopeService {
     const centreCount = Array.isArray(facts?.centers) ? (facts.centers as string[]).length : 3;
     const beneficiaryCount = (facts?.totalDirectBeneficiaries as number) ?? 500;
 
-    // 3. Build line items from template
-    const lineItems = this.buildLineItems(template, centreCount, beneficiaryCount, durationMonths);
+    // 3. Compute the per-child anchor — this is the primary budget target
+    const perChildAnchor = Math.round(
+      template.costPerChildPerYearINR * beneficiaryCount * durationYears,
+    );
+    // Explicit minimum from opportunity can raise the anchor (e.g. if known programme cost > per-child estimate)
+    const anchorTarget = explicitMin ? Math.max(perChildAnchor, explicitMin) : perChildAnchor;
 
-    // 4. Apply ceiling constraint
-    const subtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
-    const contingencyPercent = 0.05;
-    const contingencyAmount = Math.round(subtotal * contingencyPercent);
-    let grandTotal = subtotal + contingencyAmount;
+    this.logger.log(
+      `Budget anchor: ${template.programIntensity} programme | ₹${(template.costPerChildPerYearINR / 1000).toFixed(0)}k/child/yr × ${beneficiaryCount} children × ${durationYears.toFixed(1)} yr = ₹${(anchorTarget / 100000).toFixed(1)}L`,
+    );
+
+    // 4. Build line items bottom-up from template benchmarks
+    const lineItems = this.buildLineItems(template, centreCount, beneficiaryCount, durationMonths);
 
     const warnings: string[] = [];
     const unitCostFlags: string[] = [];
+    const contingencyPercent = 0.05;
 
-    // Flag if total exceeds ceiling
+    // 5. Scale line items proportionally to hit the per-child anchor
+    //    We want: scaled_subtotal + 5% contingency ≈ anchorTarget
+    //    So: scaled_subtotal ≈ anchorTarget / 1.05
+    const rawSubtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
+    if (rawSubtotal > 0) {
+      const targetSubtotal = anchorTarget / (1 + contingencyPercent);
+      const scaleFactor = targetSubtotal / rawSubtotal;
+      if (Math.abs(scaleFactor - 1) > 0.05) {
+        // Only scale if adjustment is more than 5%
+        for (const li of lineItems) {
+          li.amount = Math.round(li.amount * scaleFactor);
+        }
+        const direction = scaleFactor > 1 ? "up" : "down";
+        warnings.push(
+          `Line items scaled ${direction} by ${((scaleFactor - 1) * 100).toFixed(0)}% to match ` +
+            `₹${(template.costPerChildPerYearINR / 1000).toFixed(0)}k/child/yr × ${beneficiaryCount} children anchor (₹${(anchorTarget / 100000).toFixed(1)}L)`,
+        );
+      }
+    }
+
+    // 6. Apply funder ceiling (scale down if over)
+    const subtotalAfterAnchor = lineItems.reduce((sum, li) => sum + li.amount, 0);
+    let grandTotal = subtotalAfterAnchor + Math.round(subtotalAfterAnchor * contingencyPercent);
+
     if (grandTotal > ceiling) {
       warnings.push(
-        `Budget (₹${(grandTotal / 100000).toFixed(1)}L) exceeds ceiling (₹${(ceiling / 100000).toFixed(1)}L) — scaling down`,
+        `Budget (₹${(grandTotal / 100000).toFixed(1)}L) exceeds funder ceiling (₹${(ceiling / 100000).toFixed(1)}L) — scaling down`,
       );
-      // Scale down proportionally
-      const scaleFactor = ceiling / grandTotal * 0.95; // leave 5% buffer
+      const scaleFactor = (ceiling / grandTotal) * 0.95;
       for (const li of lineItems) {
         li.amount = Math.round(li.amount * scaleFactor);
       }
@@ -68,24 +98,12 @@ export class BudgetEnvelopeService {
       grandTotal = newSubtotal + Math.round(newSubtotal * contingencyPercent);
     }
 
-    // Scale up if bottom-up total is below known minimum (e.g. real programme cost per centre)
-    if (floor && grandTotal < floor) {
-      warnings.push(
-        `Budget (₹${(grandTotal / 100000).toFixed(1)}L) is below minimum (₹${(floor / 100000).toFixed(1)}L) — scaling up to match known programme cost`,
-      );
-      const scaleFactor = (floor / grandTotal) * 1.02; // 2% overshoot buffer
-      for (const li of lineItems) {
-        li.amount = Math.round(li.amount * scaleFactor);
-      }
-      const newSubtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
-      grandTotal = newSubtotal + Math.round(newSubtotal * contingencyPercent);
-    }
-
-    // 5. Validate category distribution
-    const categoryDistWarnings = this.validateCategoryDistribution(lineItems, subtotal);
+    // 7. Validate category distribution
+    const finalSubtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
+    const categoryDistWarnings = this.validateCategoryDistribution(lineItems, finalSubtotal);
     warnings.push(...categoryDistWarnings);
 
-    // 6. Flag unit cost outliers
+    // 8. Flag unit cost outliers (pre-scaling benchmarks — informational only)
     for (const li of lineItems) {
       const benchmark = UNIT_COST_BENCHMARKS[li.notes];
       if (benchmark && li.unitCostINR > benchmark.max * 1.2) {
@@ -96,7 +114,6 @@ export class BudgetEnvelopeService {
       }
     }
 
-    const finalSubtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
     const finalContingency = Math.round(finalSubtotal * contingencyPercent);
 
     this.logger.log(
@@ -108,6 +125,8 @@ export class BudgetEnvelopeService {
     return {
       targetCeilingINR: ceiling,
       grantPeriodMonths: durationMonths,
+      perChildCostPerYearINR: template.costPerChildPerYearINR,
+      programIntensity: template.programIntensity,
       lineItems,
       subtotal: finalSubtotal,
       contingencyPercent,
@@ -162,7 +181,6 @@ export class BudgetEnvelopeService {
       const unitCost = benchmark.typical;
       let quantity = stdItem.defaultQuantity;
 
-      // Scale by org size
       switch (stdItem.scaleFactor) {
         case "per_centre":
           quantity = stdItem.defaultQuantity * centreCount;
@@ -171,7 +189,7 @@ export class BudgetEnvelopeService {
           quantity = stdItem.defaultQuantity * beneficiaryCount;
           break;
         case "per_leader":
-          quantity = stdItem.defaultQuantity * Math.ceil(centreCount * 3); // ~3 leaders per centre
+          quantity = stdItem.defaultQuantity * Math.ceil(centreCount * 3);
           break;
         case "fixed":
           quantity = stdItem.defaultQuantity;
@@ -180,7 +198,6 @@ export class BudgetEnvelopeService {
 
       // Adjust months to match grant period
       const months = stdItem.months === 12 ? durationMonths : stdItem.months;
-
       const amount = Math.round(unitCost * quantity * months);
 
       items.push({
@@ -210,7 +227,6 @@ export class BudgetEnvelopeService {
       categoryTotals[cat] = (categoryTotals[cat] ?? 0) + li.amount;
     }
 
-    // Map line item categories to distribution categories
     const categoryMapping: Record<string, string> = {
       staff: "staff",
       materials: "programMaterials",
