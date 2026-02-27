@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { EnhancedFitScoreResult, FitScoreDimension } from "../orchestrator.types";
 import { DIKSHA_STRATEGIC_PLAN } from "../data/strategic-plan";
+import { ORG_CAPACITY } from "../data/org-capacity";
 import { ActivityRegistryService } from "../../activity_registry/activity-registry.service";
 import { RetrievalService } from "../../evidence_ingest/retrieval.service";
 import type { OpportunityPayload } from "../../opportunity/opportunity.types";
@@ -258,25 +259,43 @@ export class EnhancedFitScoringService {
 
   private scoreBudgetFit(payload: OpportunityPayload): FitScoreDimension {
     const maxAmount = payload.keyConstraints?.maxGrantAmountINR;
+    const durationYears = (payload.keyConstraints?.projectDurationMonthsMax ?? 12) / 12;
+    const orgCeilingPerYear = ORG_CAPACITY.maxAskINRPerYear; // ₹1Cr/year
 
     if (maxAmount == null) {
       return { name: "Budget Fit", score: 7, maxScore: 15, rationale: "No budget ceiling specified — neutral" };
     }
 
-    // Sweet spot: Rs 30-50 lakh per year
-    if (maxAmount >= 3000000 && maxAmount <= 5000000) {
-      return { name: "Budget Fit", score: 15, maxScore: 15, rationale: `₹${(maxAmount / 100000).toFixed(0)}L — ideal range (30-50L)` };
-    }
-    if (maxAmount >= 1000000 && maxAmount < 3000000) {
-      return { name: "Budget Fit", score: 12, maxScore: 15, rationale: `₹${(maxAmount / 100000).toFixed(0)}L — workable (10-30L)` };
-    }
-    if (maxAmount > 5000000 && maxAmount <= 10000000) {
-      return { name: "Budget Fit", score: 10, maxScore: 15, rationale: `₹${(maxAmount / 100000).toFixed(0)}L — above ideal but feasible (50L-1Cr)` };
-    }
-    if (maxAmount > 10000000) {
-      return { name: "Budget Fit", score: 5, maxScore: 15, rationale: `₹${(maxAmount / 100000).toFixed(0)}L — large grant, may strain org capacity` };
+    const annualAskINR = maxAmount / durationYears;
+
+    if (annualAskINR <= orgCeilingPerYear) {
+      // Within org capacity — score by sweet spot (30-50L/yr)
+      if (annualAskINR >= 3_000_000 && annualAskINR <= 5_000_000) {
+        return { name: "Budget Fit", score: 15, maxScore: 15, rationale: `₹${(annualAskINR / 100000).toFixed(0)}L/yr — ideal range (30-50L/yr)` };
+      }
+      if (annualAskINR >= 1_000_000) {
+        return { name: "Budget Fit", score: 12, maxScore: 15, rationale: `₹${(annualAskINR / 100000).toFixed(0)}L/yr — workable (10-30L/yr)` };
+      }
+      if (annualAskINR >= 500_000) {
+        return { name: "Budget Fit", score: 10, maxScore: 15, rationale: `₹${(annualAskINR / 100000).toFixed(0)}L/yr — above ideal but feasible (50L-1Cr/yr)` };
+      }
+      return { name: "Budget Fit", score: 3, maxScore: 15, rationale: `₹${(annualAskINR / 100000).toFixed(1)}L/yr — below minimum viable (< 5L/yr)` };
     }
 
-    return { name: "Budget Fit", score: 3, maxScore: 15, rationale: `₹${(maxAmount / 100000).toFixed(1)}L — below minimum viable (< 10L)` };
+    // Exceeds org ceiling
+    if (annualAskINR > orgCeilingPerYear * 3) {
+      return {
+        name: "Budget Fit",
+        score: 0,
+        maxScore: 15,
+        rationale: `₹${(annualAskINR / 100000).toFixed(0)}L/yr — exceeds org capacity 3× (₹${(orgCeilingPerYear / 100000).toFixed(0)}L/yr ceiling)`,
+      };
+    }
+    return {
+      name: "Budget Fit",
+      score: 3,
+      maxScore: 15,
+      rationale: `₹${(annualAskINR / 100000).toFixed(0)}L/yr — above org ask ceiling ₹${(orgCeilingPerYear / 100000).toFixed(0)}L/yr`,
+    };
   }
 }

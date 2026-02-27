@@ -62,6 +62,10 @@ export interface OpportunityKeyConstraints {
   deadlineConfidence?: "verified" | "estimated" | "unknown";
   deadlineNote?: string;
   geography?: string[];
+  /** Minimum grant the funder will award (INR). If set and exceeds org capacity → size_mismatch gate. */
+  funderMinGrantINR?: number;
+  /** Minimum grant the funder will award (USD). Converted at ORG_CAPACITY.planningFxUSDtoINR. */
+  funderMinGrantUSD?: number;
   /** Force a specific budget template instead of theme-based auto-selection. */
   overrideBudgetTemplate?: BudgetTemplateId;
   /** Override project category classification (drives section framing). */

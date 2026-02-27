@@ -6,6 +6,7 @@ import {
   BUDGET_CATEGORY_DISTRIBUTION,
   type BudgetTemplate,
 } from "../data/budget-templates";
+import { ORG_CAPACITY } from "../data/org-capacity";
 import { ActivityRegistryService } from "../../activity_registry/activity-registry.service";
 import type { OpportunityPayload, ProjectCategory } from "../../opportunity/opportunity.types";
 
@@ -33,11 +34,18 @@ export class BudgetEnvelopeService {
   async generate(payload: OpportunityPayload): Promise<BudgetEnvelope> {
     // Hard funder cap — never exceed this
     const ceiling = payload.keyConstraints?.maxGrantAmountINR ?? 3500000; // default 35L
-    // Strategic working ceiling — what we actually target (can be well below funder cap)
-    const workingCeiling = payload.keyConstraints?.recommendedAskINR ?? ceiling;
     const explicitMin = payload.keyConstraints?.minGrantAmountINR; // optional floor override
     const durationMonths = payload.keyConstraints?.projectDurationMonthsMax ?? 12;
     const durationYears = durationMonths / 12;
+
+    // Org capacity ceiling — never target more per year than our proven absorption capacity
+    const orgCapacityCeilingINR = ORG_CAPACITY.maxAskINRPerYear * durationYears;
+    // Strategic working ceiling — what we actually target (can be well below funder cap)
+    // Clamped to org capacity so we never build a ₹9Cr+ budget even if funder allows it.
+    const workingCeiling = Math.min(
+      payload.keyConstraints?.recommendedAskINR ?? ceiling,
+      orgCapacityCeilingINR,
+    );
 
     // 1. Select best-matching template (typed override takes priority)
     const template = this.selectTemplate(payload);
@@ -82,6 +90,14 @@ export class BudgetEnvelopeService {
     const warnings: string[] = [];
     const unitCostFlags: string[] = [];
     const contingencyPercent = 0.05;
+
+    // Warn if org capacity ceiling clamped below recommendedAsk or funder cap
+    if (orgCapacityCeilingINR < (payload.keyConstraints?.recommendedAskINR ?? ceiling)) {
+      warnings.push(
+        `Envelope clamped to org ask ceiling ₹${(orgCapacityCeilingINR / 100000).toFixed(0)}L ` +
+          `(₹${(ORG_CAPACITY.maxAskINRPerYear / 100000).toFixed(0)}L/yr × ${durationYears.toFixed(1)} yr)`,
+      );
+    }
 
     // 5. Scale line items proportionally to hit the per-child anchor
     //    We want: scaled_subtotal + 5% contingency ≈ anchorTarget

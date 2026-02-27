@@ -96,6 +96,7 @@ export interface DeadlineCheckSummary {
 // --- Orchestrator State ---
 
 export type OrchestratorStage =
+  | "size_mismatch"
   | "deadline_check"
   | "fit_scoring"
   | "gmail_memory"
@@ -105,6 +106,17 @@ export type OrchestratorStage =
   | "complete"
   | "parked"
   | "failed";
+
+export interface SizeMismatchResult {
+  /** What the funder requires as a minimum grant (INR, total over project period). */
+  funderMinINR: number;
+  /** What Diksha can absorb (maxAskINRPerYear × durationYears). */
+  orgCapacityINR: number;
+  /** funderMinINR / orgCapacityINR — e.g. 6.1 for Google.org at 18 months. */
+  ratio: number;
+  /** Decision choices surfaced to the user. */
+  options: string[];
+}
 
 export interface WebEvidenceSummary {
   funderIntel: string;
@@ -117,6 +129,7 @@ export interface WebEvidenceSummary {
 export interface OrchestratorRunState {
   opportunityId: string;
   stage: OrchestratorStage;
+  sizeMismatch?: SizeMismatchResult;
   deadlineCheck?: DeadlineCheckSummary;
   fitScore?: EnhancedFitScoreResult;
   gmailMemory?: GmailMemoryResult;

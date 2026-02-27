@@ -6,6 +6,7 @@ import type {
   GmailMemoryResult,
   BudgetEnvelope,
 } from "./orchestrator.types";
+import { ORG_CAPACITY } from "./data/org-capacity";
 import { EnhancedFitScoringService } from "./services/enhanced-fit-scoring.service";
 import { GmailMemoryService } from "./services/gmail-memory.service";
 import { BudgetEnvelopeService } from "./services/budget-envelope.service";
@@ -81,6 +82,36 @@ export class OrchestratorService {
         throw new NotFoundException(`Opportunity ${opportunityId} not found`);
       }
       const payload: OpportunityPayload = opportunity.jsonBlob.opportunity;
+
+      // --- Pre-flight: Size Mismatch Gate ---
+      const durationMonths = payload.keyConstraints?.projectDurationMonthsMax ?? 12;
+      const durationYears = durationMonths / 12;
+      const orgCapacityINR = ORG_CAPACITY.maxAskINRPerYear * durationYears;
+
+      const funderMinINR =
+        payload.keyConstraints?.funderMinGrantINR ??
+        (payload.keyConstraints?.funderMinGrantUSD
+          ? Math.round(payload.keyConstraints.funderMinGrantUSD * ORG_CAPACITY.planningFxUSDtoINR)
+          : undefined);
+
+      if (funderMinINR !== undefined && funderMinINR > orgCapacityINR) {
+        this.logger.warn(
+          `[${opportunityId}] Size mismatch: funderMin ₹${(funderMinINR / 100000).toFixed(0)}L > orgCapacity ₹${(orgCapacityINR / 100000).toFixed(0)}L (ratio ${(funderMinINR / orgCapacityINR).toFixed(1)}×)`,
+        );
+        runState.stage = "size_mismatch";
+        runState.sizeMismatch = {
+          funderMinINR,
+          orgCapacityINR,
+          ratio: funderMinINR / orgCapacityINR,
+          options: [
+            `Option A: Do not pursue — funder minimum ₹${(funderMinINR / 100000).toFixed(0)}L exceeds Diksha ask ceiling ₹${(orgCapacityINR / 100000).toFixed(0)}L (${durationYears.toFixed(1)} yr)`,
+            `Option B: Apply as consortium/implementation partner — Diksha budget share capped at ₹${(orgCapacityINR / 100000).toFixed(0)}L; lead applicant carries remainder`,
+            `Option C: Scope expansion — add implementation partners, more geographies, or more programme features to justify the grant minimum`,
+          ],
+        };
+        runState.completedAt = new Date().toISOString();
+        return runState;
+      }
 
       // --- Stage 0: Deadline Verification ---
       this.logger.log(`[${opportunityId}] Stage 0: Deadline Check`);
