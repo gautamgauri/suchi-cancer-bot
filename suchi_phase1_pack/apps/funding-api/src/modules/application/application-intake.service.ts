@@ -82,7 +82,7 @@ export class ApplicationIntakeService {
         deadline: metadata.deadline ? new Date(metadata.deadline) : null,
         status: "intake",
         owner: owner ?? "gautam",
-        jsonBlob: doc as Prisma.InputJsonValue,
+        jsonBlob: doc as unknown as Prisma.InputJsonValue,
         notes: notes ?? null,
       },
     });
@@ -163,7 +163,7 @@ export class ApplicationIntakeService {
         action: "triage",
         status: "success",
         actor: "system",
-        details: triage as Prisma.InputJsonValue,
+        details: triage as unknown as Prisma.InputJsonValue,
       },
     });
 

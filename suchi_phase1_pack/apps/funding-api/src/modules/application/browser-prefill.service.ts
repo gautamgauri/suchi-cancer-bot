@@ -337,7 +337,7 @@ export class BrowserPrefillService {
         action: "prefill",
         status: "success",
         actor: "system",
-        details: result as Prisma.InputJsonValue,
+        details: result as unknown as Prisma.InputJsonValue,
       },
     });
   }
