@@ -1425,10 +1425,15 @@ export class ProposalService {
 
     // Cost basis rationale
     const years = (envelope.grantPeriodMonths / 12).toFixed(1).replace(".0", "");
+    const basisLabel = envelope.projectCategory === "tech-product"
+      ? `AI tool build + pilot deployment for ${envelope.beneficiaryCount} students`
+      : `${intensityLabel[envelope.programIntensity] ?? envelope.programIntensity} programme`;
     lines.push(
-      `> **Budget basis:** ${fmt(envelope.perChildCostPerYearINR)}/child/year ` +
-      `(${intensityLabel[envelope.programIntensity] ?? envelope.programIntensity} programme) × ` +
-      `${envelope.beneficiaryCount} direct beneficiaries × ${years} year${Number(years) !== 1 ? "s" : ""}`,
+      envelope.projectCategory === "tech-product"
+        ? `> **Budget basis:** ${basisLabel} (${envelope.grantPeriodMonths} months)`
+        : `> **Budget basis:** ${fmt(envelope.perChildCostPerYearINR)}/child/year ` +
+          `(${basisLabel}) × ` +
+          `${envelope.beneficiaryCount} direct beneficiaries × ${years} year${Number(years) !== 1 ? "s" : ""}`,
     );
     lines.push(``);
 
@@ -1763,6 +1768,20 @@ export class ProposalService {
   private formatOrchestratorOverrides(ctx?: OrchestratorContext): string[] {
     if (!ctx) return [];
     const parts: string[] = [];
+
+    // Project type framing — must come first so section writer sees it before all other context
+    if (ctx.projectCategory === "tech-product") {
+      parts.push(
+        `[PROJECT TYPE: Technology product build — NOT a field programme]\n` +
+        `Implementation plan must describe SOFTWARE BUILD PHASES:\n` +
+        `  Phase 0 (Month 1): Discovery + setup — requirements, tech stack, safeguarding protocol, content map\n` +
+        `  Phase 1A (Months 2–3): MVP Build — study mode, quiz mode, teacher shortcut, access control\n` +
+        `  Phase 1B (Months 3–4): Internal pilot — 1 centre, ~120 learners, safeguarding active, data collection\n` +
+        `  Phase 1C (Months 5–6): Iterate + full rollout — fixes, expand to all centres\n` +
+        `  Months 7–8: Handoff — documentation, training, sustainability\n` +
+        `Do NOT describe: daily centre timetable, sports sessions, SEL group activities, morning assembly.`,
+      );
+    }
 
     if (ctx.fitScore) {
       parts.push(

@@ -7,7 +7,7 @@ import {
   type BudgetTemplate,
 } from "../data/budget-templates";
 import { ActivityRegistryService } from "../../activity_registry/activity-registry.service";
-import type { OpportunityPayload } from "../../opportunity/opportunity.types";
+import type { OpportunityPayload, ProjectCategory } from "../../opportunity/opportunity.types";
 
 /**
  * Pre-drafting budget envelope generator.
@@ -31,28 +31,49 @@ export class BudgetEnvelopeService {
   ) {}
 
   async generate(payload: OpportunityPayload): Promise<BudgetEnvelope> {
+    // Hard funder cap — never exceed this
     const ceiling = payload.keyConstraints?.maxGrantAmountINR ?? 3500000; // default 35L
-    const explicitMin = payload.keyConstraints?.minGrantAmountINR; // optional override
+    // Strategic working ceiling — what we actually target (can be well below funder cap)
+    const workingCeiling = payload.keyConstraints?.recommendedAskINR ?? ceiling;
+    const explicitMin = payload.keyConstraints?.minGrantAmountINR; // optional floor override
     const durationMonths = payload.keyConstraints?.projectDurationMonthsMax ?? 12;
     const durationYears = durationMonths / 12;
 
-    // 1. Select best-matching template
+    // 1. Select best-matching template (typed override takes priority)
     const template = this.selectTemplate(payload);
+    const projectCategory = this.deriveProjectCategory(template, payload);
 
     // 2. Get org facts for scaling
     const facts = await this.activityRegistry.buildActivityFacts("diksha");
     const centreCount = Array.isArray(facts?.centers) ? (facts.centers as string[]).length : 3;
     const beneficiaryCount = (facts?.totalDirectBeneficiaries as number) ?? 500;
 
-    // 3. Compute the per-child anchor — this is the primary budget target
-    const perChildAnchor = Math.round(
-      template.costPerChildPerYearINR * beneficiaryCount * durationYears,
-    );
-    // Explicit minimum from opportunity can raise the anchor (e.g. if known programme cost > per-child estimate)
-    const anchorTarget = explicitMin ? Math.max(perChildAnchor, explicitMin) : perChildAnchor;
+    // 3. Compute budget anchor
+    //    - Tech products: anchor = max(baseFixed, variable×users) × years (cost floor)
+    //                     then scale UP to workingCeiling (strategic ask)
+    //    - Field programmes: anchor = costPerChild × beneficiaries × years
+    const rawAnchor = template.baseFixedCostINR
+      ? Math.max(
+          template.baseFixedCostINR * durationYears,
+          (template.variableCostPerBeneficiaryINR ?? 0) * beneficiaryCount * durationYears,
+        )
+      : template.costPerChildPerYearINR * beneficiaryCount * durationYears;
+
+    // For tech products: target the strategic ask (workingCeiling) since build costs are
+    // essentially fixed and we want a credible pilot budget, not a minimal one.
+    // For field programmes: target the per-child cost anchor (raised by explicitMin if set).
+    const anchorTarget = template.baseFixedCostINR
+      ? workingCeiling
+      : explicitMin
+        ? Math.max(rawAnchor, explicitMin)
+        : rawAnchor;
 
     this.logger.log(
-      `Budget anchor: ${template.programIntensity} programme | ₹${(template.costPerChildPerYearINR / 1000).toFixed(0)}k/child/yr × ${beneficiaryCount} children × ${durationYears.toFixed(1)} yr = ₹${(anchorTarget / 100000).toFixed(1)}L`,
+      template.baseFixedCostINR
+        ? `Budget anchor (tech-product): base ₹${(template.baseFixedCostINR / 100000).toFixed(1)}L fixed + ` +
+            `₹${template.variableCostPerBeneficiaryINR}/student × ${beneficiaryCount} = ` +
+            `₹${(rawAnchor / 100000).toFixed(1)}L floor → targeting workingCeiling ₹${(workingCeiling / 100000).toFixed(1)}L`
+        : `Budget anchor: ${template.programIntensity} programme | ₹${(template.costPerChildPerYearINR / 1000).toFixed(0)}k/child/yr × ${beneficiaryCount} children × ${durationYears.toFixed(1)} yr = ₹${(anchorTarget / 100000).toFixed(1)}L`,
     );
 
     // 4. Build line items bottom-up from template benchmarks
@@ -123,11 +144,14 @@ export class BudgetEnvelopeService {
     );
 
     return {
-      targetCeilingINR: ceiling,
+      // targetCeilingINR = strategic working ceiling (recommendedAskINR if set, else funder max)
+      // This is what the proposal generator uses as its budget constraint.
+      targetCeilingINR: workingCeiling,
       grantPeriodMonths: durationMonths,
       perChildCostPerYearINR: template.costPerChildPerYearINR,
       programIntensity: template.programIntensity,
       beneficiaryCount,
+      projectCategory,
       lineItems,
       subtotal: finalSubtotal,
       contingencyPercent,
@@ -139,6 +163,20 @@ export class BudgetEnvelopeService {
   }
 
   private selectTemplate(payload: OpportunityPayload): BudgetTemplate {
+    // Typed override takes priority — if declared in types but missing from templates, throw (code error)
+    const override = payload.keyConstraints?.overrideBudgetTemplate;
+    if (override) {
+      const found = BUDGET_TEMPLATES.find((t) => t.programType === override);
+      if (found) {
+        this.logger.log(`Selected budget template: ${found.programType} (explicit override)`);
+        return found;
+      }
+      throw new Error(
+        `Budget template "${override}" is declared in types but missing from BUDGET_TEMPLATES`,
+      );
+    }
+
+    // Theme-based auto-selection
     const oppThemes = [
       ...(payload.themes?.primary ?? []),
       ...(payload.themes?.secondary ?? []),
@@ -162,6 +200,14 @@ export class BudgetEnvelopeService {
 
     this.logger.log(`Selected budget template: ${bestTemplate.programType} (score: ${bestScore})`);
     return bestTemplate;
+  }
+
+  private deriveProjectCategory(template: BudgetTemplate, payload: OpportunityPayload): ProjectCategory {
+    // Explicit override in opportunity wins
+    if (payload.keyConstraints?.projectCategory) return payload.keyConstraints.projectCategory;
+    // Derive from template type
+    if (template.programType === "ai-tech-product") return "tech-product";
+    return "field-programme";
   }
 
   private buildLineItems(

@@ -63,6 +63,17 @@ export const UNIT_COST_BENCHMARKS: Record<string, UnitCostBenchmark> = {
   "M&E tools and data systems (per year)": { min: 50000, max: 120000, typical: 80000, unit: "per year" },
   "Assessment materials (per centre per year)": { min: 8000, max: 20000, typical: 12000, unit: "per year" },
 
+  // Technology (AI/software product builds)
+  "Technology vendor / engineering team": { min: 300000, max: 2000000, typical: 600000, unit: "per year" },
+  "AI platform subscription (Glific + Gemini)": { min: 50000, max: 300000, typical: 120000, unit: "per year" },
+  "Cloud infrastructure (Google Cloud)": { min: 30000, max: 200000, typical: 80000, unit: "per year" },
+  "Curriculum and content development": { min: 150000, max: 800000, typical: 350000, unit: "one-time" },
+  "Field coordinator (pilot deployment)": { min: 180000, max: 360000, typical: 240000, unit: "per year" },
+  "Device and connectivity support": { min: 200, max: 1000, typical: 500, unit: "per beneficiary" },
+  "Post-launch maintenance and support": { min: 50000, max: 300000, typical: 120000, unit: "per year" },
+  "Data privacy and safeguarding setup": { min: 30000, max: 150000, typical: 60000, unit: "one-time" },
+  "Pilot training and adoption (per centre)": { min: 15000, max: 60000, typical: 30000, unit: "per centre" },
+
   // Overhead / Facilities
   "Rent / facility maintenance (per centre per month)": {
     min: 8000,
@@ -106,8 +117,13 @@ export interface BudgetTemplate {
   matchThemes: string[];
   /** How often beneficiaries engage with the programme — drives cost per child. */
   programIntensity: "daily" | "frequent" | "weekly" | "periodic";
-  /** Primary cost anchor: total budget = this × beneficiaryCount × years. */
+  /** Primary cost anchor for field programmes: total budget = this × beneficiaryCount × years.
+   * For tech-product templates, use baseFixedCostINR + variableCostPerBeneficiaryINR instead. */
   costPerChildPerYearINR: number;
+  /** Fixed engineering/build cost that doesn't scale with beneficiary count (tech products). */
+  baseFixedCostINR?: number;
+  /** Per-beneficiary platform/ops cost that scales with user count (tech products). */
+  variableCostPerBeneficiaryINR?: number;
   standardLineItems: Array<{
     category: string;
     item: string;
@@ -201,6 +217,34 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
       { category: "Events", item: "Leadership camps and community events", benchmarkKey: "Community event / awareness drive", defaultQuantity: 4, scaleFactor: "fixed", months: 1 },
       { category: "M&E", item: "Agency rubric and assessment tools", benchmarkKey: "Assessment materials (per centre per year)", defaultQuantity: 1, scaleFactor: "fixed", months: 1 },
       { category: "Overhead", item: "Program management and coordination", benchmarkKey: "Program Manager salary", defaultQuantity: 1, scaleFactor: "fixed", months: 12 },
+    ],
+  },
+  {
+    /**
+     * ai-tech-product — matches grants for building digital/AI tools.
+     * Fixed cost dominant (engineering, content) + per-student variable (platform ops).
+     * Anchor: max(baseFixed, variable×users) × durationYears.
+     * Use overrideBudgetTemplate: "ai-tech-product" for explicit selection.
+     */
+    programType: "ai-tech-product",
+    programIntensity: "periodic",
+    baseFixedCostINR: 1000000,           // ₹10L minimum build cost — doesn't scale with users
+    variableCostPerBeneficiaryINR: 500,  // per-student platform ops
+    costPerChildPerYearINR: 5000,        // fallback anchor if above fields absent
+    matchThemes: ["ai tool", "technology platform", "digital product", "software", "bot", "whatsapp", "app"],
+    standardLineItems: [
+      { category: "Technology", item: "Technology vendor / engineering team",         benchmarkKey: "Technology vendor / engineering team",         defaultQuantity: 1, scaleFactor: "fixed",           months: 12 },
+      { category: "Technology", item: "AI platform subscription (Glific + Gemini)",   benchmarkKey: "AI platform subscription (Glific + Gemini)",   defaultQuantity: 1, scaleFactor: "fixed",           months: 12 },
+      { category: "Technology", item: "Cloud infrastructure (Google Cloud)",           benchmarkKey: "Cloud infrastructure (Google Cloud)",           defaultQuantity: 1, scaleFactor: "fixed",           months: 12 },
+      { category: "Content",    item: "Curriculum and content development",            benchmarkKey: "Curriculum and content development",            defaultQuantity: 1, scaleFactor: "fixed",           months: 1  },
+      { category: "Programme",  item: "Field coordinator (pilot deployment)",          benchmarkKey: "Field coordinator (pilot deployment)",          defaultQuantity: 1, scaleFactor: "fixed",           months: 12 },
+      { category: "Programme",  item: "Device and connectivity support (per student)", benchmarkKey: "Device and connectivity support",               defaultQuantity: 1, scaleFactor: "per_beneficiary", months: 1  },
+      { category: "Training",   item: "Pilot training and adoption",                   benchmarkKey: "Pilot training and adoption (per centre)",      defaultQuantity: 1, scaleFactor: "per_centre",      months: 1  },
+      { category: "Safety",     item: "Data privacy and safeguarding setup",           benchmarkKey: "Data privacy and safeguarding setup",           defaultQuantity: 1, scaleFactor: "fixed",           months: 1  },
+      { category: "Technology", item: "Post-launch maintenance and support",           benchmarkKey: "Post-launch maintenance and support",           defaultQuantity: 1, scaleFactor: "fixed",           months: 6  },
+      { category: "M&E",        item: "Assessment and M&E systems (ASER-aligned)",    benchmarkKey: "M&E tools and data systems (per year)",         defaultQuantity: 1, scaleFactor: "fixed",           months: 1  },
+      { category: "Staff",      item: "Program Lead / Project Manager",                benchmarkKey: "Program Manager salary",                        defaultQuantity: 1, scaleFactor: "fixed",           months: 12 },
+      { category: "Overhead",   item: "Utilities and internet connectivity",           benchmarkKey: "Communication / internet (per centre per month)", defaultQuantity: 1, scaleFactor: "fixed",         months: 12 },
     ],
   },
 ];

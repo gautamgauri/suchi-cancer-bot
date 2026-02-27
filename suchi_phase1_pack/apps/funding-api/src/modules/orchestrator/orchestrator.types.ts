@@ -5,6 +5,8 @@
  * Gmail memory, budget envelope) before delegating to ProposalService.
  */
 
+import type { ProjectCategory } from "../opportunity/opportunity.types";
+
 // --- Fit Scoring ---
 
 export interface FitScoreDimension {
@@ -70,6 +72,8 @@ export interface BudgetEnvelope {
   programIntensity: "daily" | "frequent" | "weekly" | "periodic";
   /** Number of direct beneficiaries used to compute the anchor. */
   beneficiaryCount: number;
+  /** Project category — drives framing for implementation plan and other sections. */
+  projectCategory: ProjectCategory;
   lineItems: BudgetLineItem[];
   subtotal: number;
   contingencyPercent: number;
@@ -127,6 +131,8 @@ export interface OrchestratorRunState {
 // --- Context injected into existing proposal pipeline ---
 
 export interface OrchestratorContext {
+  /** Project category — drives section framing (tech-product vs field-programme). */
+  projectCategory?: ProjectCategory;
   fitScore?: {
     totalScore: number;
     decision: string;
@@ -157,6 +163,7 @@ export interface OrchestratorContext {
     perChildCostPerYearINR: number;
     programIntensity: "daily" | "frequent" | "weekly" | "periodic";
     beneficiaryCount: number;
+    projectCategory?: ProjectCategory;
   };
   webEvidence?: {
     funderIntel: string;

@@ -3,6 +3,14 @@
  * Used for validation and API responses; full payload stored in Opportunity.jsonBlob.
  */
 
+export type BudgetTemplateId =
+  | "education-holistic"
+  | "football-for-development"
+  | "girls-empowerment"
+  | "ai-tech-product";
+
+export type ProjectCategory = "field-programme" | "tech-product" | "hybrid";
+
 export interface OpportunitySourceAttachment {
   fileName: string;
   mimeType: string;
@@ -34,6 +42,11 @@ export interface OpportunityFunder {
 
 export interface OpportunityKeyConstraints {
   maxGrantAmountINR?: number;
+  /** Diksha's strategic ask — used as working budget ceiling by the engine.
+   * Set well below maxGrantAmountINR when a conservative pilot ask is appropriate
+   * (e.g. ₹1.5Cr for Google.org AI pilot even though funder ceiling is ₹27Cr).
+   */
+  recommendedAskINR?: number;
   /** Minimum total grant amount the proposal should request.
    * Budget envelope will scale up if bottom-up calculation falls below this floor.
    * Use this when you know the real program cost (e.g. 30L/centre × 3 centres = 90L).
@@ -49,6 +62,10 @@ export interface OpportunityKeyConstraints {
   deadlineConfidence?: "verified" | "estimated" | "unknown";
   deadlineNote?: string;
   geography?: string[];
+  /** Force a specific budget template instead of theme-based auto-selection. */
+  overrideBudgetTemplate?: BudgetTemplateId;
+  /** Override project category classification (drives section framing). */
+  projectCategory?: ProjectCategory;
 }
 
 export interface OpportunityThemes {

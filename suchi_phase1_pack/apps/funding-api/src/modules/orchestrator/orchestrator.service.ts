@@ -260,6 +260,7 @@ export class OrchestratorService {
 
     // Budget envelope
     if (budgetEnvelope) {
+      context.projectCategory = budgetEnvelope.projectCategory;
       context.budgetEnvelope = {
         lineItems: budgetEnvelope.lineItems.map((li) => ({
           category: li.category,
@@ -279,6 +280,7 @@ export class OrchestratorService {
         perChildCostPerYearINR: budgetEnvelope.perChildCostPerYearINR,
         programIntensity: budgetEnvelope.programIntensity,
         beneficiaryCount: budgetEnvelope.beneficiaryCount,
+        projectCategory: budgetEnvelope.projectCategory,
       };
     }
 
