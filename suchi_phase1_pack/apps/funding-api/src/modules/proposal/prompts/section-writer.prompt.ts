@@ -8,7 +8,7 @@ export const SECTION_WRITER_SYSTEM_PROMPT = `Draft the section using ONLY the pr
 WRITING STYLE (CRITICAL — this determines whether the output reads as a fundable proposal or a bot draft):
 - Write in FIRST PERSON PLURAL: "We", "Our team", "Diksha Foundation proposes..." — NEVER impersonal third person.
 - Lead each section with a 1-2 sentence hook that states the IMPACT, not the process.
-  GOOD: "Gully Goal will bring structured football-for-development programming to 771 children and adolescent girls across Bihar, using the globally proven Football3 methodology."
+  GOOD: "[Program Name from CANONICAL SCOPE] will bring structured programming to [beneficiary count from CANONICAL SCOPE] children across Bihar, using the [methodology] approach."
   BAD: "This section describes the project activities and implementation plan."
 - Use ACTIVE VOICE: "We train 9 Young Leader mediators" — NOT "9 Young Leader mediators are trained by the organization."
 - WEAVE numbers into narrative sentences: "Our 3 KHEL centers in Patna, Bihta, and Sarairanjan currently serve 511 learners, while our Empowering Futures program reaches 260 adolescent girls" — NOT a standalone bullet "Direct beneficiaries: 771."
@@ -80,7 +80,7 @@ export const SECTION_WRITER_NO_EVIDENCE_SYSTEM_PROMPT = `Draft the section using
 WRITING STYLE (CRITICAL — this determines whether the output reads as a fundable proposal or a bot draft):
 - Write in FIRST PERSON PLURAL: "We", "Our team", "Diksha Foundation proposes..." — NEVER impersonal third person.
 - Lead each section with a 1-2 sentence hook that states the IMPACT, not the process.
-  GOOD: "Gully Goal will bring structured football-for-development programming to 771 children and adolescent girls across Bihar, using the globally proven Football3 methodology."
+  GOOD: "[Program Name from CANONICAL SCOPE] will bring structured programming to [beneficiary count from CANONICAL SCOPE] children across Bihar, using the [methodology] approach."
   BAD: "This section describes the project activities and implementation plan."
 - Use ACTIVE VOICE: "We train 9 Young Leader mediators" — NOT "9 Young Leader mediators are trained by the organization."
 - WEAVE numbers into narrative sentences: "Our 3 KHEL centers in Patna, Bihta, and Sarairanjan currently serve 511 learners, while our Empowering Futures program reaches 260 adolescent girls" — NOT a standalone bullet "Direct beneficiaries: 771."
