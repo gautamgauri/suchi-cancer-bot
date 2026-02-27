@@ -12,6 +12,7 @@ import { EnhancedFitScoringService } from "./services/enhanced-fit-scoring.servi
 import { GmailMemoryService } from "./services/gmail-memory.service";
 import { BudgetEnvelopeService } from "./services/budget-envelope.service";
 import { WebEvidenceService } from "./services/web-evidence.service";
+import { DeadlineCheckService } from "./services/deadline-check.service";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { WebEvidenceService } from "./services/web-evidence.service";
     GmailMemoryService,
     BudgetEnvelopeService,
     WebEvidenceService,
+    DeadlineCheckService,
   ],
   exports: [OrchestratorService],
 })

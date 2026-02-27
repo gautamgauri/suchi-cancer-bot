@@ -36,6 +36,13 @@ export interface OpportunityKeyConstraints {
   maxGrantAmountINR?: number;
   projectDurationMonthsMax?: number;
   deadline?: string;
+  /** Confidence level for the stored deadline value.
+   * "verified"  — explicit date from RFP or confirmed source URL
+   * "estimated" — inferred from vague language or manually entered
+   * "unknown"   — manually loaded or no source; must be web-verified before submitting
+   */
+  deadlineConfidence?: "verified" | "estimated" | "unknown";
+  deadlineNote?: string;
   geography?: string[];
 }
 

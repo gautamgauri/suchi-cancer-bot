@@ -10,6 +10,7 @@ import { EnhancedFitScoringService } from "./services/enhanced-fit-scoring.servi
 import { GmailMemoryService } from "./services/gmail-memory.service";
 import { BudgetEnvelopeService } from "./services/budget-envelope.service";
 import { WebEvidenceService, type WebEvidenceResult } from "./services/web-evidence.service";
+import { DeadlineCheckService } from "./services/deadline-check.service";
 import { OpportunityService } from "../opportunity/opportunity.service";
 import { ProposalService } from "../proposal/proposal.service";
 import type { OpportunityPayload } from "../opportunity/opportunity.types";
@@ -38,6 +39,7 @@ export class OrchestratorService {
     private readonly gmailMemory: GmailMemoryService,
     private readonly budgetEnvelope: BudgetEnvelopeService,
     private readonly webEvidence: WebEvidenceService,
+    private readonly deadlineCheck: DeadlineCheckService,
     private readonly opportunityService: OpportunityService,
     private readonly proposalService: ProposalService,
   ) {}
@@ -68,7 +70,7 @@ export class OrchestratorService {
   ): Promise<OrchestratorRunState> {
     const runState: OrchestratorRunState = {
       opportunityId,
-      stage: "fit_scoring",
+      stage: "deadline_check",
       startedAt: new Date().toISOString(),
     };
 
@@ -79,6 +81,21 @@ export class OrchestratorService {
         throw new NotFoundException(`Opportunity ${opportunityId} not found`);
       }
       const payload: OpportunityPayload = opportunity.jsonBlob.opportunity;
+
+      // --- Stage 0: Deadline Verification ---
+      this.logger.log(`[${opportunityId}] Stage 0: Deadline Check`);
+      const deadlineResult = await this.deadlineCheck.check(payload);
+      runState.deadlineCheck = {
+        storedDeadline: deadlineResult.storedDeadline,
+        storedConfidence: deadlineResult.storedConfidence,
+        webFoundDeadline: deadlineResult.webFoundDeadline,
+        match: deadlineResult.match,
+        warning: deadlineResult.warning,
+      };
+
+      if (deadlineResult.warning) {
+        this.logger.warn(`[${opportunityId}] ${deadlineResult.warning}`);
+      }
 
       // --- Stage A: Enhanced Fit Scoring ---
       this.logger.log(`[${opportunityId}] Stage A: Fit Scoring`);

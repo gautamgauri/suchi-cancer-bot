@@ -72,9 +72,20 @@ export interface BudgetEnvelope {
   unitCostFlags: string[];
 }
 
+// --- Deadline Check ---
+
+export interface DeadlineCheckSummary {
+  storedDeadline: string | null;
+  storedConfidence: "verified" | "estimated" | "unknown";
+  webFoundDeadline: string | null;
+  match: "confirmed" | "mismatch" | "unverifiable" | "skipped";
+  warning: string | null;
+}
+
 // --- Orchestrator State ---
 
 export type OrchestratorStage =
+  | "deadline_check"
   | "fit_scoring"
   | "gmail_memory"
   | "budget_envelope"
@@ -95,6 +106,7 @@ export interface WebEvidenceSummary {
 export interface OrchestratorRunState {
   opportunityId: string;
   stage: OrchestratorStage;
+  deadlineCheck?: DeadlineCheckSummary;
   fitScore?: EnhancedFitScoreResult;
   gmailMemory?: GmailMemoryResult;
   budgetEnvelope?: BudgetEnvelope;
