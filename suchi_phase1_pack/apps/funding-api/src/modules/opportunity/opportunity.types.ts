@@ -34,6 +34,11 @@ export interface OpportunityFunder {
 
 export interface OpportunityKeyConstraints {
   maxGrantAmountINR?: number;
+  /** Minimum total grant amount the proposal should request.
+   * Budget envelope will scale up if bottom-up calculation falls below this floor.
+   * Use this when you know the real program cost (e.g. 30L/centre × 3 centres = 90L).
+   */
+  minGrantAmountINR?: number;
   projectDurationMonthsMax?: number;
   deadline?: string;
   /** Confidence level for the stored deadline value.

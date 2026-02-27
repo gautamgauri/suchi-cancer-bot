@@ -31,6 +31,7 @@ export class BudgetEnvelopeService {
 
   async generate(payload: OpportunityPayload): Promise<BudgetEnvelope> {
     const ceiling = payload.keyConstraints?.maxGrantAmountINR ?? 3500000; // default 35L
+    const floor = payload.keyConstraints?.minGrantAmountINR; // optional minimum — set when real programme cost is known
     const durationMonths = payload.keyConstraints?.projectDurationMonthsMax ?? 12;
 
     // 1. Select best-matching template
@@ -60,6 +61,19 @@ export class BudgetEnvelopeService {
       );
       // Scale down proportionally
       const scaleFactor = ceiling / grandTotal * 0.95; // leave 5% buffer
+      for (const li of lineItems) {
+        li.amount = Math.round(li.amount * scaleFactor);
+      }
+      const newSubtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
+      grandTotal = newSubtotal + Math.round(newSubtotal * contingencyPercent);
+    }
+
+    // Scale up if bottom-up total is below known minimum (e.g. real programme cost per centre)
+    if (floor && grandTotal < floor) {
+      warnings.push(
+        `Budget (₹${(grandTotal / 100000).toFixed(1)}L) is below minimum (₹${(floor / 100000).toFixed(1)}L) — scaling up to match known programme cost`,
+      );
+      const scaleFactor = (floor / grandTotal) * 1.02; // 2% overshoot buffer
       for (const li of lineItems) {
         li.amount = Math.round(li.amount * scaleFactor);
       }
