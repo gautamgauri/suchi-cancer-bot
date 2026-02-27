@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnswerGeneratorService } from "./answer-generator.service";
 import {
@@ -65,7 +66,7 @@ export class ApplicationReviewService {
       where: { applicationId },
       data: {
         status: "approved",
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
@@ -78,7 +79,7 @@ export class ApplicationReviewService {
         details: {
           answersApproved: answers.length,
           needsHuman: needsHuman.length,
-        } as unknown as Record<string, unknown>,
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -117,7 +118,7 @@ export class ApplicationReviewService {
       where: { applicationId },
       data: {
         status: "submitted",
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
@@ -155,7 +156,7 @@ export class ApplicationReviewService {
       where: { applicationId },
       data: {
         status: "archived",
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
   }

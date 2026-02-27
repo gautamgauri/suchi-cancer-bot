@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   ApplicationDocument,
@@ -326,7 +327,7 @@ export class BrowserPrefillService {
       where: { applicationId },
       data: {
         status: "prefilled",
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
@@ -336,7 +337,7 @@ export class BrowserPrefillService {
         action: "prefill",
         status: "success",
         actor: "system",
-        details: result as unknown as Record<string, unknown>,
+        details: result as Prisma.InputJsonValue,
       },
     });
   }

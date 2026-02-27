@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import { ApplicationIntakeService } from "./application-intake.service";
+import { Prisma } from "@prisma/client";
 import { ApplicationQuestion, pushTimelineEvent } from "./application.types";
 import {
   QUESTION_EXTRACT_SYSTEM_PROMPT,
@@ -69,7 +70,7 @@ export class QuestionExtractorService {
       where: { applicationId },
       data: {
         status: "questions_extracted",
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
@@ -79,7 +80,7 @@ export class QuestionExtractorService {
         action: "extract_questions",
         status: "success",
         actor: "system",
-        details: { questionCount: questions.length } as unknown as Record<string, unknown>,
+        details: { questionCount: questions.length } as Prisma.InputJsonValue,
       },
     });
 

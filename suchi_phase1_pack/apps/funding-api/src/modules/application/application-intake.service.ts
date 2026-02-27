@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import * as cheerio from "cheerio";
@@ -81,7 +82,7 @@ export class ApplicationIntakeService {
         deadline: metadata.deadline ? new Date(metadata.deadline) : null,
         status: "intake",
         owner: owner ?? "gautam",
-        jsonBlob: doc as unknown as Record<string, unknown>,
+        jsonBlob: doc as Prisma.InputJsonValue,
         notes: notes ?? null,
       },
     });
@@ -93,7 +94,7 @@ export class ApplicationIntakeService {
         action: "intake",
         status: "success",
         actor: owner ?? "gautam",
-        details: { url, notes } as unknown as Record<string, unknown>,
+        details: { url, notes } as Prisma.InputJsonValue,
       },
     });
 
@@ -152,7 +153,7 @@ export class ApplicationIntakeService {
       data: {
         status: "triaged",
         deadline: triage.deadline ? new Date(triage.deadline) : app.deadline,
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
@@ -162,7 +163,7 @@ export class ApplicationIntakeService {
         action: "triage",
         status: "success",
         actor: "system",
-        details: triage as unknown as Record<string, unknown>,
+        details: triage as Prisma.InputJsonValue,
       },
     });
 

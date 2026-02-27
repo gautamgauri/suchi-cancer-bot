@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import {
@@ -253,7 +254,7 @@ export class AnswerGeneratorService {
       where: { applicationId },
       data: {
         status: "review",
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
@@ -267,7 +268,7 @@ export class AnswerGeneratorService {
           answerCount: answers.length,
           needsHuman: answers.filter((a) => a.confidence === "needs_human")
             .length,
-        } as unknown as Record<string, unknown>,
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -340,7 +341,7 @@ export class AnswerGeneratorService {
     await this.prisma.personalApplication.update({
       where: { applicationId: req.applicationId },
       data: {
-        jsonBlob: jsonBlob as unknown as Record<string, unknown>,
+        jsonBlob: jsonBlob as Prisma.InputJsonValue,
       },
     });
 
