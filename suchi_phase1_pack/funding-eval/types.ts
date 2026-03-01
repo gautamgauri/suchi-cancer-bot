@@ -155,6 +155,7 @@ export type FundingCaseType =
   | "proposal_generate"
   | "framework_retrieve"
   | "evidence_retrieve"
+  | "evidence_recall"
   | "approvals"
   | "safety";
 
@@ -237,6 +238,17 @@ export interface FundingCaseResult {
     /** Ratio of unsupported hard claims (0.0 = all supported, 1.0 = none supported) */
     unsupportedHardClaimRate: number;
   };
+  /** Sprint 3 C4: Per-section LLM judge results */
+  llmJudgeResults?: Array<{
+    checkId: string;
+    passed: boolean;
+    skipped?: boolean;
+    score?: number;
+    count?: number;
+    evidence?: string;
+    error?: string;
+    consensus?: string;
+  }>;
 }
 
 export interface FundingEvalReport {
@@ -271,5 +283,13 @@ export interface FundingEvalReport {
     totalUnsupportedHardClaims: number;
     /** Citation integrity pass rate */
     integrityRate: number;
+  };
+  /** Sprint 3 C4: LLM judge summary across all evaluated sections */
+  llmJudgeSummary?: {
+    evaluatedSections: number;
+    passedSections: number;
+    avgScore: number;
+    costUsd: number;
+    checkBreakdown: Record<string, { passed: number; failed: number; skipped: number }>;
   };
 }

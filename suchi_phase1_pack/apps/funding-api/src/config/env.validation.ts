@@ -1,5 +1,55 @@
 import { z } from "zod";
 
+/**
+ * Pre-flight environment validation.
+ * Call BEFORE NestFactory.create() to fail fast with actionable error messages.
+ * Returns validated config or throws with human-readable diagnostics.
+ */
+export function validateEnvOrDie(): z.infer<typeof envSchema> {
+  const result = envSchema.safeParse(process.env);
+  if (result.success) {
+    // Semantic cross-field checks
+    const warnings: string[] = [];
+    const env = result.data;
+
+    if (env.FUNDING_EMBEDDING_PROVIDER === "google") {
+      const hasKey = env.FUNDING_GEMINI_API_KEY || env.FUNDING_EMBEDDINGS_API_KEY;
+      if (!hasKey) {
+        warnings.push(
+          "FUNDING_EMBEDDING_PROVIDER=google but neither FUNDING_GEMINI_API_KEY nor FUNDING_EMBEDDINGS_API_KEY is set. Embedding pipeline will fail.",
+        );
+      }
+    }
+
+    if (warnings.length > 0) {
+      console.warn(`\n⚠ ENV WARNINGS (${warnings.length}):\n${warnings.map((w, i) => `  ${i + 1}. ${w}`).join("\n")}\n`);
+    }
+
+    return env;
+  }
+
+  // Format Zod errors into actionable messages
+  const lines = result.error.issues.map((issue) => {
+    const path = issue.path.join(".");
+    return `  ✗ ${path}: ${issue.message}`;
+  });
+  const msg = [
+    "",
+    "╔══════════════════════════════════════════════════╗",
+    "║  FUNDING API — ENV VALIDATION FAILED             ║",
+    "╚══════════════════════════════════════════════════╝",
+    "",
+    `${lines.length} issue(s):`,
+    ...lines,
+    "",
+    "Fix the above in .env or Cloud Run env vars, then restart.",
+    "",
+  ].join("\n");
+
+  console.error(msg);
+  process.exit(1);
+}
+
 export const envSchema = z.object({
   PORT: z.coerce.number().optional(),
   NODE_ENV: z.string().optional(),

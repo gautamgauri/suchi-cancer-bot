@@ -1,0 +1,142 @@
+{
+  "version": "1.0.0",
+  "description": "Gold retrieval scenarios for recall@5 assertions. Each scenario defines a query and expected content that MUST appear in the top-5 results.",
+  "recall_target": 0.80,
+  "scenarios": [
+    {
+      "id": "GR-01",
+      "category": "org_identity",
+      "query": "Diksha Foundation registration and legal status",
+      "expected_keywords": ["S/RS/SW/0019/2010", "12A", "80G", "FCRA", "CSR-1"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve org profile or registration documents"
+    },
+    {
+      "id": "GR-02",
+      "category": "program_data",
+      "query": "KHEL center locations and student enrollment numbers",
+      "expected_keywords": ["Patna", "Bihta", "Sarairanjan", "KHEL"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 2,
+      "notes": "Must retrieve center-level data with enrollment figures"
+    },
+    {
+      "id": "GR-03",
+      "category": "methodology",
+      "query": "Football for development methodology and three halves approach",
+      "expected_keywords": ["Football3", "football", "three halves"],
+      "expected_corpus": null,
+      "min_chunks": 1,
+      "notes": "Should retrieve football methodology or Gully Goal content"
+    },
+    {
+      "id": "GR-04",
+      "category": "budget",
+      "query": "Annual operating budget and cost per center",
+      "expected_keywords": ["budget", "lakh", "operating"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve financial data — annual expenditure ~104.56 lakhs"
+    },
+    {
+      "id": "GR-05",
+      "category": "team",
+      "query": "Board of directors and leadership team qualifications",
+      "expected_keywords": ["Gautam Gauri", "board", "director"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve board/leadership data"
+    },
+    {
+      "id": "GR-06",
+      "category": "monitoring",
+      "query": "M&E framework baseline midline endline assessment tools",
+      "expected_keywords": ["baseline", "assessment", "ASER"],
+      "expected_corpus": null,
+      "min_chunks": 1,
+      "notes": "Should retrieve monitoring docs or assessment methodology"
+    },
+    {
+      "id": "GR-07",
+      "category": "theory_of_change",
+      "query": "Theory of change inputs activities outputs outcomes impact",
+      "expected_keywords": ["theory of change", "outcome", "impact"],
+      "expected_corpus": null,
+      "min_chunks": 2,
+      "notes": "Must retrieve ToC-related content from proposals or frameworks"
+    },
+    {
+      "id": "GR-08",
+      "category": "sustainability",
+      "query": "Sustainability plan and exit strategy for KHEL centers",
+      "expected_keywords": ["sustainab", "community", "funding"],
+      "expected_corpus": null,
+      "min_chunks": 1,
+      "notes": "Should retrieve sustainability-related proposal sections or org docs"
+    },
+    {
+      "id": "GR-09",
+      "category": "compliance",
+      "query": "FCRA registration audit details PAN number",
+      "expected_keywords": ["FCRA", "PAN", "audit"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve compliance/registration documents"
+    },
+    {
+      "id": "GR-10",
+      "category": "partnerships",
+      "query": "Current and past funding partners Azim Premji Foundation",
+      "expected_keywords": ["Azim Premji", "partner"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Should retrieve partnership or funder-related documents"
+    },
+    {
+      "id": "GR-11",
+      "category": "program_data",
+      "query": "Empowering Futures adolescent girls life skills Patna",
+      "expected_keywords": ["Empowering Futures", "girls"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve EF program data"
+    },
+    {
+      "id": "GR-12",
+      "category": "curriculum",
+      "query": "SEE Learning social emotional curriculum Dalai Lama Trust",
+      "expected_keywords": ["SEE Learning", "social emotional"],
+      "expected_corpus": null,
+      "min_chunks": 1,
+      "notes": "Should retrieve SEL curriculum documents"
+    },
+    {
+      "id": "GR-13",
+      "category": "digital_literacy",
+      "query": "Khan Academy digital literacy computer lab sessions per week",
+      "expected_keywords": ["Khan Academy", "digital"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve digital literacy program data"
+    },
+    {
+      "id": "GR-14",
+      "category": "staff",
+      "query": "Fellow Teacher selection training stipend program",
+      "expected_keywords": ["Fellow", "teacher", "training"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve fellowship program documents"
+    },
+    {
+      "id": "GR-15",
+      "category": "outcomes",
+      "query": "Learning outcomes attendance rates Khan Academy progress metrics",
+      "expected_keywords": ["attendance", "learning", "outcome"],
+      "expected_corpus": "diksha_internal",
+      "min_chunks": 1,
+      "notes": "Must retrieve outcome/metric data from reports"
+    }
+  ]
+}

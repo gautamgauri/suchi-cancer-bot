@@ -1,0 +1,658 @@
+{
+  "rubric_pack_id": "funding-rubrics-v1",
+  "version": "1.0.0",
+  "description": "Per-section-type evaluation rubrics for funding bot proposal quality. Each rubric defines deterministic checks + LLM judge checks with weighted scoring.",
+  "global": {
+    "language": "en",
+    "voice_rules": {
+      "required_voice": "first_person_plural",
+      "patterns_good": ["(?i)\\b(we|our|our team|diksha foundation)\\b"],
+      "patterns_bad": ["(?i)\\bthe (organization|applicant|proposing body)\\b"]
+    },
+    "hollow_phrase_patterns": [
+      "(?i)\\bholistic approach\\b",
+      "(?i)\\bsustainable impact\\b",
+      "(?i)\\btransformative change\\b",
+      "(?i)\\bempower(ing)? communities\\b",
+      "(?i)\\bleverage synergies\\b",
+      "(?i)\\bcapacity building\\b(?!.*\\b(hour|session|module|training)\\b)",
+      "(?i)\\bstakeholder engagement\\b(?!.*\\b(quarterly|monthly|weekly|parent|school)\\b)"
+    ],
+    "indian_format_rules": {
+      "currency_pattern": "₹[\\d,]+|INR [\\d,]+",
+      "lakh_crore_preferred": true
+    },
+    "scope_consistency": {
+      "description": "All sections must use identical numbers for centers, beneficiaries, geography, grant period"
+    }
+  },
+  "rubrics": {
+    "budget": {
+      "rubric_id": "funding.budget.v1",
+      "section_type": "budget",
+      "pass_threshold": 0.90,
+      "weights": {
+        "json_format_valid": 0.15,
+        "arithmetic_correct": 0.20,
+        "line_item_count": 0.10,
+        "ceiling_compliance": 0.15,
+        "category_coverage": 0.10,
+        "staff_count_match": 0.10,
+        "indian_format": 0.05,
+        "narrative_present": 0.05,
+        "no_fabricated_numbers": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "json_format_valid",
+          "description": "Budget section contains a valid budget-json code block",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["```budget-json"]
+          }
+        },
+        {
+          "id": "line_item_count",
+          "description": "Budget has at least 8 line items",
+          "required": true,
+          "type": "min_count",
+          "params": {
+            "pattern": "\"item\"\\s*:",
+            "min": 8
+          }
+        },
+        {
+          "id": "ceiling_compliance",
+          "description": "Budget total does not exceed the grant ceiling from CANONICAL SCOPE",
+          "required": true,
+          "type": "budget_ceiling_check",
+          "params": {}
+        },
+        {
+          "id": "category_coverage",
+          "description": "Budget covers at least 4 of: Staff, Program Materials, Infrastructure, Training, M&E, Administrative, Contingency",
+          "required": false,
+          "type": "regex_presence_count",
+          "params": {
+            "patterns": [
+              "(?i)\"category\"\\s*:\\s*\"Staff\"",
+              "(?i)\"category\"\\s*:\\s*\"Program",
+              "(?i)\"category\"\\s*:\\s*\"Training\"",
+              "(?i)\"category\"\\s*:\\s*\"M&E\"",
+              "(?i)\"category\"\\s*:\\s*\"Admin",
+              "(?i)\"category\"\\s*:\\s*\"Contingency\""
+            ],
+            "min_present": 4
+          }
+        },
+        {
+          "id": "indian_format",
+          "description": "Uses Indian number formatting (lakhs/crores or ₹ symbol)",
+          "required": false,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["₹", "(?i)\\blakh", "(?i)\\bcrore", "INR"]
+          }
+        }
+      ],
+      "llm_judge": {
+        "model": "deepseek",
+        "prompt_contract": {
+          "format": "json_only",
+          "require_evidence_quotes": true,
+          "max_quote_words_per_field": 30
+        },
+        "checks": [
+          {
+            "id": "arithmetic_correct",
+            "description": "Each line item amount = unitCost × quantity × months. Verify at least 3 random line items.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "staff_count_match",
+            "description": "Staff counts in budget match the Team/Staffing section of the proposal.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "narrative_present",
+            "description": "Budget includes a brief narrative paragraph explaining rationale after the JSON block.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "no_fabricated_numbers",
+            "description": "No budget amounts appear fabricated (round multiples of 100000 with no unit cost basis).",
+            "required": true,
+            "type": "llm_scored_boolean"
+          }
+        ]
+      }
+    },
+
+    "objectives": {
+      "rubric_id": "funding.objectives.v1",
+      "section_type": "objectives",
+      "pass_threshold": 0.85,
+      "weights": {
+        "smart_objectives": 0.20,
+        "measurable_indicators": 0.15,
+        "scope_consistent_beneficiaries": 0.15,
+        "citation_density": 0.15,
+        "no_hollow_phrases": 0.10,
+        "first_person_voice": 0.10,
+        "funder_named": 0.05,
+        "bihar_specific": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "citation_density",
+          "description": "At least 2 citations present in objectives section",
+          "required": true,
+          "type": "citation_presence",
+          "params": {
+            "min_count": 2
+          }
+        },
+        {
+          "id": "no_hollow_phrases",
+          "description": "No hollow phrases (holistic approach, sustainable impact, etc.)",
+          "required": false,
+          "type": "regex_absence",
+          "params": {
+            "patterns_any": [
+              "(?i)\\bholistic approach\\b",
+              "(?i)\\bsustainable impact\\b",
+              "(?i)\\btransformative change\\b"
+            ]
+          }
+        },
+        {
+          "id": "first_person_voice",
+          "description": "Uses first-person plural (We, Our) — not third-person impersonal",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\b(we will|our (team|program|center)|we propose|we aim)\\b"]
+          }
+        },
+        {
+          "id": "scope_consistent_beneficiaries",
+          "description": "Beneficiary count matches CANONICAL SCOPE (not rounded to different number)",
+          "required": true,
+          "type": "scope_number_consistency",
+          "params": {}
+        }
+      ],
+      "llm_judge": {
+        "model": "deepseek",
+        "prompt_contract": {
+          "format": "json_only",
+          "require_evidence_quotes": true,
+          "max_quote_words_per_field": 30
+        },
+        "checks": [
+          {
+            "id": "smart_objectives",
+            "description": "Contains 5-7 SMART objectives (Specific, Measurable, Achievable, Relevant, Time-bound).",
+            "required": true,
+            "type": "llm_scored_boolean_with_count",
+            "params": {
+              "min_count": 5
+            }
+          },
+          {
+            "id": "measurable_indicators",
+            "description": "Each objective has a measurable indicator with numeric target.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "funder_named",
+            "description": "The funder is named explicitly (not 'the funder' or 'the donor').",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "bihar_specific",
+            "description": "References Bihar-specific context (NEP 2020, Bihar geography by name, local policy).",
+            "required": false,
+            "type": "llm_scored_boolean"
+          }
+        ]
+      }
+    },
+
+    "sustainability": {
+      "rubric_id": "funding.sustainability.v1",
+      "section_type": "sustainability",
+      "pass_threshold": 0.80,
+      "weights": {
+        "five_mechanisms": 0.30,
+        "narrative_prose": 0.15,
+        "no_hollow_phrases": 0.15,
+        "first_person_voice": 0.10,
+        "specific_funders_named": 0.10,
+        "youth_led_mechanism": 0.10,
+        "community_ownership": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "narrative_prose",
+          "description": "Section is narrative prose, not bullet-only",
+          "required": true,
+          "type": "prose_ratio",
+          "params": {
+            "min_prose_ratio": 0.50
+          }
+        },
+        {
+          "id": "no_hollow_phrases",
+          "description": "No hollow phrases without specifics",
+          "required": false,
+          "type": "regex_absence",
+          "params": {
+            "patterns_any": [
+              "(?i)\\bwill seek additional funding\\b",
+              "(?i)\\bbuild local capacity\\b(?!.*\\b(training|hour|session)\\b)",
+              "(?i)\\bsustainable impact\\b"
+            ]
+          }
+        },
+        {
+          "id": "first_person_voice",
+          "description": "Uses first-person plural voice",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\b(we|our team|our (center|program|approach))\\b"]
+          }
+        }
+      ],
+      "llm_judge": {
+        "model": "deepseek",
+        "prompt_contract": {
+          "format": "json_only",
+          "require_evidence_quotes": true,
+          "max_quote_words_per_field": 30
+        },
+        "checks": [
+          {
+            "id": "five_mechanisms",
+            "description": "Covers all 5 sustainability mechanisms: Youth/Community-Led, Existing Infrastructure, Community Ownership, Diversified Funding, Institutional Learning.",
+            "required": true,
+            "type": "llm_scored_boolean_with_count",
+            "params": {
+              "min_count": 4
+            }
+          },
+          {
+            "id": "specific_funders_named",
+            "description": "Names specific current or target funders (not just 'additional funders').",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "youth_led_mechanism",
+            "description": "Describes a specific youth/community leadership pipeline with training trajectory.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "community_ownership",
+            "description": "Describes specific community engagement mechanisms (parent meetings, community events, etc.).",
+            "required": false,
+            "type": "llm_scored_boolean"
+          }
+        ]
+      }
+    },
+
+    "monitoring": {
+      "rubric_id": "funding.monitoring.v1",
+      "section_type": "monitoring",
+      "pass_threshold": 0.85,
+      "weights": {
+        "baseline_midline_endline": 0.15,
+        "data_collection_tools": 0.15,
+        "reporting_cadence": 0.10,
+        "indicators_table": 0.20,
+        "table_completeness": 0.15,
+        "responsible_staff": 0.10,
+        "first_person_voice": 0.05,
+        "no_empty_cells": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "baseline_midline_endline",
+          "description": "Mentions baseline, midline, and endline schedule",
+          "required": true,
+          "type": "regex_presence_all",
+          "params": {
+            "patterns_all": [
+              "(?i)\\bbaseline\\b",
+              "(?i)\\b(midline|mid-line)\\b",
+              "(?i)\\b(endline|end-line)\\b"
+            ]
+          }
+        },
+        {
+          "id": "indicators_table",
+          "description": "Contains a markdown table with indicator columns",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["\\|.*[Ii]ndicator.*\\|"]
+          }
+        },
+        {
+          "id": "reporting_cadence",
+          "description": "Specifies reporting frequency (daily, fortnightly, monthly, quarterly)",
+          "required": true,
+          "type": "regex_presence_count",
+          "params": {
+            "patterns": [
+              "(?i)\\b(daily|weekly|fortnightly|monthly|quarterly|annual)\\b"
+            ],
+            "min_present": 1
+          }
+        },
+        {
+          "id": "first_person_voice",
+          "description": "Uses first-person plural voice",
+          "required": false,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\b(we will|our (team|M&E|officer))\\b"]
+          }
+        }
+      ],
+      "llm_judge": {
+        "model": "deepseek",
+        "prompt_contract": {
+          "format": "json_only",
+          "require_evidence_quotes": true,
+          "max_quote_words_per_field": 30
+        },
+        "checks": [
+          {
+            "id": "data_collection_tools",
+            "description": "Names at least 3 specific data collection tools (attendance registers, ASER tests, Khan Academy tracking, etc.).",
+            "required": true,
+            "type": "llm_scored_boolean_with_count",
+            "params": {
+              "min_count": 3
+            }
+          },
+          {
+            "id": "responsible_staff",
+            "description": "Assigns responsible staff for data collection (M&E Officer, Fellow Teachers, Center Coordinators).",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "table_completeness",
+            "description": "Indicator table has no empty cells — baselines filled with estimates, targets filled with reasonable values.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "no_empty_cells",
+            "description": "No table cells are empty, 'TBD', or 'N/A' in data rows.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          }
+        ]
+      }
+    },
+
+    "projectDesign": {
+      "rubric_id": "funding.project_design.v1",
+      "section_type": "projectDesign",
+      "pass_threshold": 0.85,
+      "weights": {
+        "toc_narrative": 0.15,
+        "toc_structured": 0.10,
+        "methodology_depth": 0.20,
+        "activity_structure": 0.15,
+        "citation_density": 0.10,
+        "first_person_voice": 0.10,
+        "no_hollow_phrases": 0.10,
+        "bihar_specific": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "toc_narrative",
+          "description": "Contains a Theory of Change as a flowing conditional statement (If...then...leading to...)",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\bif\\b.*\\bthen\\b.*\\bleading to\\b", "(?i)\\bif\\b.*\\bprovided with\\b.*\\bthen\\b"]
+          }
+        },
+        {
+          "id": "toc_structured",
+          "description": "Contains structured ToC breakdown (Inputs, Activities, Outputs, Outcomes, Impact)",
+          "required": false,
+          "type": "regex_presence_count",
+          "params": {
+            "patterns": [
+              "(?i)\\binputs?\\b",
+              "(?i)\\bactivities\\b",
+              "(?i)\\boutputs?\\b",
+              "(?i)\\boutcomes?\\b",
+              "(?i)\\bimpact\\b"
+            ],
+            "min_present": 4
+          }
+        },
+        {
+          "id": "citation_density",
+          "description": "At least 2 citations in project design section",
+          "required": false,
+          "type": "citation_presence",
+          "params": {
+            "min_count": 2
+          }
+        },
+        {
+          "id": "first_person_voice",
+          "description": "Uses first-person plural voice",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\b(we (deliver|adapt|implement|train)|our (approach|model|program))\\b"]
+          }
+        }
+      ],
+      "llm_judge": {
+        "model": "deepseek",
+        "prompt_contract": {
+          "format": "json_only",
+          "require_evidence_quotes": true,
+          "max_quote_words_per_field": 30
+        },
+        "checks": [
+          {
+            "id": "methodology_depth",
+            "description": "Each referenced methodology is explained in 2-3 sentences (HOW it works), not just named.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "activity_structure",
+            "description": "Describes weekly schedule with specific session frequencies for each activity type.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "no_hollow_phrases",
+            "description": "No hollow phrases without specific replacement descriptions.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "bihar_specific",
+            "description": "References Bihar geography, NEP 2020, or state policy by name.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          }
+        ]
+      }
+    },
+
+    "compliance": {
+      "rubric_id": "funding.compliance.v1",
+      "section_type": "compliance",
+      "pass_threshold": 0.85,
+      "weights": {
+        "checklist_table": 0.25,
+        "registration_numbers": 0.20,
+        "fcra_status": 0.15,
+        "audit_details": 0.15,
+        "no_placeholders": 0.15,
+        "csr_status": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "checklist_table",
+          "description": "Contains a compliance checklist table with Yes/No column",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["\\|.*(?:Yes|No).*\\|"]
+          }
+        },
+        {
+          "id": "registration_numbers",
+          "description": "Includes actual registration number (S/RS/SW/0019/2010)",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["S/RS/SW/0019/2010"]
+          }
+        },
+        {
+          "id": "fcra_status",
+          "description": "Mentions FCRA registration status",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\bFCRA\\b"]
+          }
+        },
+        {
+          "id": "audit_details",
+          "description": "Mentions external auditor details",
+          "required": false,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\b(audit|auditor|Jha BK)\\b"]
+          }
+        },
+        {
+          "id": "no_placeholders",
+          "description": "No {{MISSING}} placeholders for data available in org profile",
+          "required": true,
+          "type": "regex_absence",
+          "params": {
+            "patterns_any": ["\\{\\{MISSING:.*registration", "\\{\\{MISSING:.*PAN", "\\{\\{MISSING:.*FCRA"]
+          }
+        },
+        {
+          "id": "csr_status",
+          "description": "Mentions CSR-1 registration",
+          "required": false,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\bCSR-?1\\b", "(?i)\\bCSR registration\\b"]
+          }
+        }
+      ]
+    },
+
+    "need": {
+      "rubric_id": "funding.need.v1",
+      "section_type": "need",
+      "pass_threshold": 0.80,
+      "weights": {
+        "bihar_data": 0.20,
+        "gap_analysis": 0.15,
+        "citation_density": 0.15,
+        "first_person_voice": 0.10,
+        "no_hollow_phrases": 0.10,
+        "policy_reference": 0.10,
+        "intervention_link": 0.10,
+        "no_false_partnerships": 0.10
+      },
+      "deterministic_checks": [
+        {
+          "id": "citation_density",
+          "description": "At least 3 citations in need statement",
+          "required": true,
+          "type": "citation_presence",
+          "params": {
+            "min_count": 3
+          }
+        },
+        {
+          "id": "first_person_voice",
+          "description": "Uses first-person plural voice",
+          "required": true,
+          "type": "regex_presence_any",
+          "params": {
+            "patterns_any": ["(?i)\\b(we (have|observed|serve)|our (work|experience|centers))\\b"]
+          }
+        },
+        {
+          "id": "no_false_partnerships",
+          "description": "Does not claim formal government partnerships or MoUs without evidence",
+          "required": true,
+          "type": "regex_absence",
+          "params": {
+            "patterns_any": [
+              "(?i)\\b(formal|official) (partnership|MoU) with.*(government|state|district)",
+              "(?i)\\bintegrated into (the )?government system\\b"
+            ]
+          }
+        }
+      ],
+      "llm_judge": {
+        "model": "deepseek",
+        "prompt_contract": {
+          "format": "json_only",
+          "require_evidence_quotes": true,
+          "max_quote_words_per_field": 30
+        },
+        "checks": [
+          {
+            "id": "bihar_data",
+            "description": "Uses Bihar-specific education statistics (enrollment, dropout, learning levels) with source attribution.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "gap_analysis",
+            "description": "Presents a clear gap analysis: what exists vs what's needed.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "policy_reference",
+            "description": "References NEP 2020, SDGs, or Bihar state education policy.",
+            "required": false,
+            "type": "llm_scored_boolean"
+          },
+          {
+            "id": "intervention_link",
+            "description": "Links the identified need to the proposed intervention.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          }
+        ]
+      }
+    }
+  }
+}
