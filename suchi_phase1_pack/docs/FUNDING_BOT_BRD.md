@@ -1,6 +1,6 @@
 # Funding Bot — Business Requirements Document (BRD)
 
-**Version:** 2.0
+**Version:** 2.1
 **Last updated:** 2026-03-01
 **Owner:** Gautam Gauri, Diksha Foundation
 **Status:** Living document — updated as features ship
@@ -32,6 +32,12 @@
 21. [Known Gaps & Improvement Plan](#21-known-gaps--improvement-plan)
 22. [Non-Goals](#22-non-goals)
 23. [Glossary](#23-glossary)
+24. [RAG Enhancement Roadmap — Suchi Cancer Bot Learnings](#24-rag-enhancement-roadmap--suchi-cancer-bot-learnings)
+
+**Annexures**
+
+- [Annexure A — Reusable Code & Patterns from Suchi Cancer Bot](#annexure-a--reusable-code--patterns-from-suchi-cancer-bot)
+- [Annexure B — Eval Framework Cross-Pollination](#annexure-b--eval-framework-cross-pollination)
 
 ---
 
@@ -968,4 +974,224 @@ Based on the gap analysis comparing manual "Gully Goal" proposal to bot output (
 
 ---
 
-*End of document — Funding Bot BRD v2.0*
+## 24. RAG Enhancement Roadmap — Suchi Cancer Bot Learnings
+
+The Suchi Cancer Bot has a battle-tested, 8-stage RAG pipeline built for high-stakes medical Q&A. The Funding Bot currently uses single-stage vector retrieval with corpus routing. Transplanting key patterns from the Cancer Bot can materially improve proposal quality — particularly evidence depth, citation coverage, and retrieval relevance.
+
+### 24.1 Side-by-Side Architecture Comparison
+
+| Dimension | Cancer Bot (Current) | Funding Bot (Current) | Gap Severity |
+|-----------|---------------------|----------------------|-------------|
+| **Search type** | Hybrid (vector + PostgreSQL FTS), dynamic weights by query length | Vector-only (pgvector cosine) + keyword fallback | **Critical** |
+| **Reranking** | Cross-encoder (Voyage/Cohere/Jina) with intent-based gating | None | **Critical** |
+| **Query expansion** | 6 synonym categories + medical abbreviation expansion (zero LLM cost) | LLM-generated queries only | **High** |
+| **Multi-query fusion** | 3 parallel query variants + RRF scoring (chunks found by multiple queries get boosted) | Queries generated independently, no fusion | **High** |
+| **Retrieval confidence** | Evidence gate (HIGH/MEDIUM/LOW) → hard routing: answer / hedge / abstain | Basic confidence scoring → soft prompt hint, no hard gate | Moderate |
+| **Trusted source boost** | Multiplicative post-retrieval boost (1.5x / 1.25x / 1.1x) by source priority | Quality-tier filtering (A/B/C) but no post-retrieval boosting | Moderate |
+| **Query decomposition** | Rule-based multi-intent detection → parallel sub-queries | Each section gets separate query batch (via LLM) | Moderate |
+| **Result diversification** | Round-robin by document source (max N per doc) | None | Low |
+| **Retrieval retry** | Auto-expansion and retry when initial results thin | None | Low |
+
+### 24.2 Priority Enhancements
+
+#### P0 — Critical Impact (Week 1)
+
+**P0-A: Hybrid Search (Vector + Full-Text Search)**
+
+Add PostgreSQL `websearch_to_tsquery` with `ts_rank_cd` as a parallel search path alongside the existing pgvector cosine search. Combine via weighted sum in a single SQL query using CTEs. Dynamic weighting: short queries 80/20 vector/lexical, long queries 55/45.
+
+- **Why**: Funder names ("UNICEF", "Azim Premji Foundation"), program names ("KHEL", "SPARK"), and specific metrics ("85% attendance") are proper nouns/numbers that vectors handle poorly but lexical search finds precisely.
+- **Requirement**: Add GIN index on `DocumentChunk.content` via Prisma migration.
+- **Effort**: ~2 days. **Cost**: $0 (PostgreSQL built-in).
+
+**P0-B: Cross-Encoder Reranking with Section-Type Gating**
+
+Port the Cancer Bot's `RerankerService` (Voyage AI, $0.05/1M tokens) with section-type gating instead of intent-based gating.
+
+- **Always rerank**: `budget`, `objectives`, `monitoring`, `results`, `need` (high-evidence sections where precision is critical)
+- **Skip rerank**: `team`, `sustainability`, `cover_letter` (narrative-heavy, less evidence-dependent)
+- **Conditional rerank**: When score ambiguity detected (gap3 ≤ 0.04 or gap6 ≤ 0.07)
+- **Cost**: ~$0.002 per proposal (10 sections × 20 chunks × ~400 tokens). Negligible.
+- **Effort**: ~1 day.
+
+#### P1 — High Impact (Week 2)
+
+**P1-A: Multi-Query Retrieval with RRF Fusion**
+
+The Funding Bot already generates 5-10 queries per section via `QueryGeneratorService`. Add Reciprocal Rank Fusion (RRF) scoring: chunks found by multiple queries get a 15% boost per additional query match. This leverages existing infrastructure with zero additional LLM cost.
+
+- **Effort**: ~1 day.
+
+**P1-B: Domain-Specific Query Expansion**
+
+Create a `FundingQueryExpanderService` with static synonym maps for fundraising, Indian development sector, and Diksha-specific terminology. Zero LLM cost.
+
+Example maps: `"outcomes"` → `["impact indicators", "M&E results", "ToC outputs"]`; `"KHEL"` → `["sports program", "physical education"]`; `"CSR"` → `["corporate social responsibility", "Section 135"]`.
+
+- **Effort**: ~0.5 days.
+
+**P1-C: Strengthened Retrieval Confidence Gating**
+
+Per-section-type confidence requirements: `budget` and `monitoring` → require HIGH confidence (insert `[Insert: data needed]` placeholders rather than hallucinate on LOW); `objectives` → MEDIUM; `team` → LOW acceptable. Add auto-retry with expanded queries before accepting LOW.
+
+- **Effort**: ~0.5 days.
+
+#### P2 — Moderate Impact (Week 3)
+
+| Enhancement | Description | Effort |
+|-------------|-------------|--------|
+| **Trusted source boosting** | Multiply scores by quality tier: A=1.30x, B=1.10x, C=1.00x, X=0.90x | 0.5d |
+| **Result diversification** | Cap at N chunks per source document to prevent mono-source sections | 0.25d |
+| **Query decomposition** | Decompose multi-evidence sections into sub-queries with different corpus preferences | 1d |
+| **Retrieval-with-retry** | Auto-expand and retry when initial retrieval < minChunks | 0.5d |
+
+### 24.3 Domain Adaptation Mappings
+
+The Cancer Bot's intent-based architecture maps naturally to the Funding Bot's section-type architecture:
+
+| Cancer Bot Concept | Funding Bot Equivalent |
+|-------------------|----------------------|
+| User intent (RED_FLAG / SYMPTOMATIC / INFORMATIONAL) | Section type (budget / objectives / team) |
+| Source trust priority (NCI=high, PMC=medium) | Quality tier (A=vetted, B=supporting, C=background) |
+| Medical synonym expansion | Fundraising/development-sector synonym expansion |
+| Cross-cancer topic detection | Cross-section evidence sharing (budget ↔ sustainability) |
+| Evidence gate → answer / hedge / abstain | Evidence gate → write with citations / mark limited / insert placeholders |
+| Emotional state routing | Not applicable |
+| Hindi↔English cross-lingual | Not applicable (proposals are English-only) |
+
+### 24.4 Expected Impact
+
+| Metric | Current (Est.) | After P0 | After P1 | After P2 |
+|--------|---------------|----------|----------|----------|
+| Avg top-5 similarity score | 0.45 | 0.55 (+22%) | 0.62 (+38%) | 0.65 (+44%) |
+| % sections with ≥3 relevant chunks | 60% | 75% | 85% | 90% |
+| Citation coverage (hard claims with citations) | 65% | 72% | 82% | 88% |
+| Proper noun recall (program/funder names) | 40% | 70% | 80% | 85% |
+| Evidence diversity (unique docs per section) | 1.8 | 2.2 | 2.8 | 3.2 |
+
+**Total incremental cost**: ~$0.002 per proposal. **Total added latency**: ~1-3 seconds per proposal.
+
+---
+
+## Annexure A — Reusable Code & Patterns from Suchi Cancer Bot
+
+This annexure maps specific Cancer Bot source files and code logic that can be directly reused, adapted, or ported to the Funding Bot. Both bots share the same stack (NestJS + Prisma + PostgreSQL + pgvector), making transplantation straightforward.
+
+### A.1 Direct Port — Copy and Adapt
+
+These files can be copied from the Cancer Bot and adapted with minimal changes (domain-specific constants swapped, same architecture preserved).
+
+| # | Cancer Bot Source File | Target Funding Bot File (New) | What It Does | Adaptation Required |
+|---|----------------------|------------------------------|-------------|-------------------|
+| 1 | `apps/api/src/modules/rag/reranker.service.ts` (~486 lines) | `apps/funding-api/src/modules/evidence_ingest/reranker.service.ts` | Cross-encoder reranking via Voyage/Cohere/Jina with intelligent gating (skip when scores are unambiguous) | Replace intent-based gating with section-type gating (`ALWAYS_RERANK_SECTIONS`, `SKIP_RERANK_SECTIONS`). Same provider config, same scoring math. |
+| 2 | `apps/api/src/modules/rag/query-expander.service.ts` (~435 lines) | `apps/funding-api/src/modules/evidence_ingest/query-expander.service.ts` | Rule-based query expansion using static synonym maps. Zero LLM cost. | Replace medical synonym maps with fundraising/development-sector maps: outcomes, beneficiaries, budget, M&E, Indian development abbreviations, Diksha program names. Same expansion algorithm. |
+| 3 | `apps/api/src/modules/rag/query-decomposer.service.ts` (~412 lines) | `apps/funding-api/src/modules/proposal/services/query-decomposer.service.ts` | Rule-based signal detection to decompose multi-faceted queries into targeted sub-queries | Replace medical signal patterns (symptoms, treatments) with proposal signal patterns (statistics, policy context, org experience). Map sub-queries to corpus preferences. |
+| 4 | Hybrid search SQL in `apps/api/src/modules/rag/rag.service.ts` (lines 706-841) | Modify existing `apps/funding-api/src/modules/evidence_ingest/retrieval.service.ts` | Parallel vector + FTS search with dynamic weighting and CTE-based combination | Add `fts_matches` CTE alongside existing `top_vectors` CTE. Same SQL pattern, same dynamic weighting logic. Existing raw SQL (`$queryRawUnsafe`) makes this surgical. |
+| 5 | RRF fusion logic in `apps/api/src/modules/rag/rag.service.ts` (lines 116-184) | `apps/funding-api/src/modules/proposal/utils/rrf-fusion.ts` (New) | Reciprocal Rank Fusion scoring: merge multi-query results, boost chunks found by multiple queries | Direct port — same algorithm, same constants (`k=60`, `boost=0.15` per additional query match). |
+| 6 | Trust-based reranking in `apps/api/src/modules/rag/rag.service.ts` (lines 350-400) | Modify existing `apps/funding-api/src/modules/evidence_ingest/retrieval.service.ts` | Multiplicative score boost by source priority after retrieval | Map Cancer Bot's source trust tiers (NCI=1.5x, PMC=1.25x) to Funding Bot quality tiers (A=1.3x, B=1.1x, C=1.0x, X=0.9x). Same multiplicative math. |
+
+### A.2 Pattern Reuse — Same Architecture, Different Domain
+
+These Cancer Bot architectural patterns should be adopted, but implemented fresh for the funding domain (the code structure and gating logic are directly transferable, but the content is entirely different).
+
+| # | Cancer Bot Pattern | Cancer Bot Location | Funding Bot Application | Key Difference |
+|---|-------------------|-------------------|------------------------|---------------|
+| 7 | **Evidence Gate with hard routing** | `apps/api/src/modules/evidence/evidence-gate.service.ts` (~300 lines) | Strengthen existing `retrieval-confidence.ts` to hard-gate: LOW → placeholder insertion, not LLM hallucination | Cancer Bot routes to answer/hedge/abstain for medical safety. Funding Bot routes to write/mark-limited/insert-placeholders for proposal quality. Same gate architecture, different consequences. |
+| 8 | **Intent-gated reranking thresholds** | `reranker.service.ts` gating logic (gap3, gap6, h1 thresholds) | Section-type-gated reranking thresholds | Cancer Bot: RED_FLAG_URGENT → always rerank. Funding Bot: `budget`, `monitoring` → always rerank. Same threshold math (gap3 ≤ 0.04, gap6 ≤ 0.07, h1 < 0.62). |
+| 9 | **Cross-topic evidence sharing** | `apps/api/src/modules/rag/cross-cancer-topics.ts` | Cross-section evidence sharing: tag chunks relevant to multiple sections, avoid redundant retrieval | Cancer Bot: smoking → lung + bladder + esophageal. Funding Bot: attendance data → budget + monitoring + objectives sections. Same tagging mechanism. |
+| 10 | **Retrieval-with-expansion retry** | `rag.service.ts` `retrieveWithExpansion()` | Add retry when initial retrieval returns < minChunks or low avg scores | Same retry-with-expanded-terms pattern. Funding Bot uses fundraising expansion terms instead of diagnostic/screening terms. |
+| 11 | **Result diversification** | `rag.service.ts` round-robin by document source | Cap chunks per source document to prevent mono-source sections | Same `maxPerDoc` filter. Cancer Bot caps by source name; Funding Bot caps by `documentId`. |
+
+### A.3 Eval Framework Reuse
+
+| # | Cancer Bot Eval Component | Funding Bot Adaptation |
+|---|--------------------------|----------------------|
+| 12 | **Deterministic checker** (`eval/runner/deterministic-checker.ts`) — Regex-based checks for required sections, citation format, prohibited language | Port the checker framework. Replace medical checks (disclaimer patterns, diagnosis language) with funding checks (placeholder compliance, fabrication detection, hard claim coverage). |
+| 13 | **Hybrid retrieval test scenarios** (`eval/hybrid_retrieval_scenarios.json`) — 12 scenarios validating vector + FTS blend with expected sources and terms | Create equivalent `funding_retrieval_scenarios.json` with proposal-relevant scenarios: org name recall, budget line items, program names, funder name matching, metric precision. |
+| 14 | **Rubric-based scoring** (`eval/rubrics/rubrics.v1.json`) — Per-intent rubrics with weighted deterministic + LLM judge checks, pass thresholds | Create per-section-type rubrics for funding: budget sections need citation density ≥ 0.4; objectives need evidence grounding; sustainability needs 5-mechanism coverage. |
+| 15 | **LLM judge with fallback** (`eval/runner/llm-judge.ts`) — OpenAI / Deepseek / Vertex AI with cost tracking and consensus voting | Port the provider-agnostic judge framework. Currently funding-eval is deterministic-only; adding LLM judge for semantic quality (voice/tone, Bihar realism, funder-specific framing) would close a gap. |
+| 16 | **CI email notifications** (Cancer Bot `eval-tier1.yml` sends failure emails with top-5 failed cases) | Add email notification to funding-eval CI workflow for regression alerts. Same SMTP pattern. |
+
+### A.4 Shared Package Opportunities
+
+Both bots share the NestJS + Prisma + pgvector stack. Extracting shared packages avoids duplicate maintenance:
+
+| Package | Contents | Used By |
+|---------|----------|---------|
+| `@suchi/reranker` | Cross-encoder reranking service (Voyage/Cohere/Jina providers, gating logic) | Cancer Bot, Funding Bot |
+| `@suchi/hybrid-search` | Hybrid search SQL builder (vector + FTS CTE generation, dynamic weighting) | Cancer Bot, Funding Bot |
+| `@suchi/rrf-fusion` | Reciprocal Rank Fusion utility (multi-query merge, boost calculation) | Cancer Bot, Funding Bot |
+| `@suchi/eval-runner` | Eval runner framework (case loading, deterministic checker, LLM judge, report generation) | Cancer Bot eval, Funding Bot eval |
+
+### A.5 Code NOT Transferable
+
+| Cancer Bot Code | Reason Not Applicable to Funding Bot |
+|----------------|-------------------------------------|
+| `cross-lingual.service.ts` (Hindi↔English parallel queries) | Funding proposals are English-only |
+| Emergency fast-path (regex-based crisis detection) | No crisis/emergency routing in proposal generation |
+| Self-harm / emotional state detection | Not applicable to document generation |
+| `synonym-service.ts` (NCIt medical synonyms) | Medical terminology not relevant; replaced by fundraising synonyms |
+| SafeFallbackResponse with helpline numbers | Proposals don't need helpline fallbacks |
+| Disclaimer engine (medical disclaimers) | Not applicable; replaced by citation policy enforcement |
+| Voice rubrics / STT accuracy scoring | Funding Bot is text-only |
+
+---
+
+## Annexure B — Eval Framework Cross-Pollination
+
+### B.1 Current State Comparison
+
+| Dimension | Cancer Bot Eval | Funding Bot Eval |
+|-----------|----------------|-----------------|
+| **Test cases** | 100+ (20 cancers × 5 intents + retrieval quality + regression) | 42+ (12 domain areas) |
+| **Evaluation method** | Deterministic + LLM judge (Deepseek/Vertex AI) | Deterministic only (citation counting, CRUD validation) |
+| **Rubric scoring** | Per-intent rubrics with 7-10 weighted checks, 85% pass threshold | Binary pass/fail on citation count, CRUD success, placeholder compliance |
+| **Retrieval quality testing** | 12 hybrid retrieval scenarios with expected sources, term presence, chunk count | Evidence retrieve + eval endpoint test (2-3 cases) |
+| **CI integration** | Nightly + PR-triggered (non-blocking), email alerts on failure | Push-triggered (CRUD-only) + manual dispatch (full suite), blocking on regression |
+| **Cost tracking** | LLM judge cost tracked (Deepseek pricing) | Not tracked |
+| **Report depth** | Per-case scores, evidence quotes, avg score, trusted source rate | Aggregate metrics (citation rate, CRUD rate, latency), per-case pass/fail |
+
+### B.2 Recommended Enhancements for Funding Bot Eval
+
+**Priority 1 — Retrieval Quality Test Suite**
+
+Add a `funding_retrieval_scenarios.json` (modeled on Cancer Bot's `hybrid_retrieval_scenarios.json`) with 15-20 scenarios:
+
+| Scenario Category | Example Query | Expected Behavior |
+|-------------------|--------------|-------------------|
+| Org name recall | "What programs does Diksha Foundation run?" | Top-3 includes diksha_internal chunks |
+| Funder name precision | "Azim Premji Foundation requirements" | Exact match on funder name in retrieved chunks |
+| Budget line items | "Equipment costs for KHEL centers" | Budget-tagged chunks ranked above narrative |
+| Program metric recall | "Attendance rates across centers" | Chunks with specific numbers (82%, 147 students) |
+| Framework retrieval | "Nussbaum capabilities for education" | theory_frameworks corpus chunks |
+| Cross-section evidence | "Sustainability of football program" | Chunks from both diksha_internal and external_evidence |
+
+**Priority 2 — Per-Section-Type Rubrics**
+
+Create `funding-rubrics.v1.json` with section-type-specific checks:
+
+| Section Type | Deterministic Checks | Pass Threshold |
+|-------------|---------------------|---------------|
+| `budget` | Citation density ≥ 0.3, no fabricated numbers, Indian format (lakhs/crores) | 90% |
+| `objectives` | Evidence grounding (≥2 citations), capability alignment present | 85% |
+| `need` | Statistics cited, Bihar context present, NEP/policy reference | 85% |
+| `monitoring` | MEL indicators present, data collection method specified | 80% |
+| `sustainability` | ≥3 of 5 mechanisms named, concrete (not aspirational) | 80% |
+| `methodology` | ≥2 paragraphs on "how", not just activity names | 75% |
+
+**Priority 3 — LLM Judge for Voice/Tone**
+
+Port the Cancer Bot's `llm-judge.ts` framework (provider-agnostic, cost-tracked) and add proposal-specific semantic checks:
+
+| Check | What It Evaluates |
+|-------|------------------|
+| `first_person_voice` | Uses "We"/"Our" — not "The organization" |
+| `funder_named` | Funder referenced by name — not "the funder" |
+| `bihar_realistic` | References local geography, policies, constraints by name |
+| `narrative_not_bullets` | Flowing prose paragraphs, not bullet-only sections |
+| `numbers_woven` | Numbers decomposed and woven into sentences, not standalone |
+| `no_hollow_phrases` | Avoids "holistic approach", "sustainable impact", etc. |
+
+---
+
+*End of document — Funding Bot BRD v2.1*
