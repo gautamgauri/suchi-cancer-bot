@@ -10,6 +10,7 @@ import { OpportunityService } from "../opportunity/opportunity.service";
 import { PipelineService } from "../pipeline/pipeline.service";
 import { RetrievalService } from "../evidence_ingest/retrieval.service";
 import { RerankerService } from "../evidence_ingest/reranker.service";
+import { QueryExpanderService } from "../evidence_ingest/query-expander.service";
 import { EvidenceChunk } from "../core_ai/types";
 import { RfpParserService } from "./services/rfp-parser.service";
 import { PlannerService } from "./services/planner.service";
@@ -25,7 +26,7 @@ import { ApprovalContextDto } from "./proposal.dto";
 import { DIKSHA_ORG_PROFILE, PROGRAM_SNAPSHOT_MD } from "./prompts/org-profile";
 import { resolveCitations } from "./utils/citation-resolver";
 import { getCorpusRoute } from "./utils/corpus-router";
-import { computeRetrievalConfidence } from "./utils/retrieval-confidence";
+import { computeRetrievalConfidence, isEvidenceCriticalSection } from "./utils/retrieval-confidence";
 import {
   ProposalRunStatus,
   ProposalSectionStatus,
@@ -54,6 +55,7 @@ export class ProposalService {
     private readonly pipelineService: PipelineService,
     private readonly retrieval: RetrievalService,
     private readonly reranker: RerankerService,
+    private readonly queryExpander: QueryExpanderService,
     private readonly rfpParser: RfpParserService,
     private readonly planner: PlannerService,
     private readonly queryGenerator: QueryGeneratorService,
@@ -447,26 +449,48 @@ export class ProposalService {
             data: { retrievalQueries: queries as object, status: "retrieved" },
           });
 
-          // Retrieve chunks (combine results from all queries, limit to 8-12 per section)
+          // Retrieve chunks with RRF (Reciprocal Rank Fusion) across multiple queries
           const corpusRoute = getCorpusRoute(sectionName);
           const allChunks = new Map<string, EvidenceChunk & { score?: number }>();
-          for (const query of queries.slice(0, 5)) {
+          // Track per-chunk RRF data: ranks from each query, hit count
+          const rrfData = new Map<string, { ranks: number[]; hitCount: number; maxScore: number }>();
+          const RRF_K = 60; // Standard RRF constant
+          const MULTI_QUERY_BOOST = 0.15; // Bonus per additional query that finds the same chunk
+
+          // Expand queries with domain synonyms (zero LLM cost)
+          const expandedQueries = this.queryExpander.expandQueries(queries.slice(0, 5), sectionName);
+          const querySlice = expandedQueries.slice(0, 8); // Allow up to 8 queries after expansion
+          for (const query of querySlice) {
             const chunks = await this.retrieval.retrieve(query, {
               mode: "proposal_drafting",
-              limit: corpusRoute.limit ?? 3,
-              minScore: 0.3,
+              limit: corpusRoute.limit ?? 5,
+              minScore: 0.25,
               orgId: "diksha",
               corpus: corpusRoute.corpus,
               docTypes: corpusRoute.docTypes,
             });
-            chunks.forEach((chunk) => {
-              const existing = allChunks.get(chunk.id);
-              if (!existing || (chunk.score ?? 0) > (existing.score ?? 0)) {
+            chunks.forEach((chunk, rank) => {
+              // Trusted source tier boosting: Tier A → 1.20x, "context" (B/C) → 1.0x
+              const tierBoost = chunk.claimType === "hard" ? 1.20 : 1.0;
+              const boostedScore = (chunk.score ?? 0) * tierBoost;
+
+              // Update RRF tracking
+              const existing = rrfData.get(chunk.id);
+              if (existing) {
+                existing.ranks.push(rank);
+                existing.hitCount++;
+                existing.maxScore = Math.max(existing.maxScore, boostedScore);
+              } else {
+                rrfData.set(chunk.id, { ranks: [rank], hitCount: 1, maxScore: boostedScore });
+              }
+              // Store chunk data (keep highest-scoring version)
+              const existingChunk = allChunks.get(chunk.id);
+              if (!existingChunk || boostedScore > (existingChunk.score ?? 0)) {
                 allChunks.set(chunk.id, {
                   chunkId: chunk.id,
                   docId: chunk.source,
                   content: chunk.text,
-                  score: chunk.score,
+                  score: boostedScore,
                   document: {
                     title: chunk.title || "",
                     url: chunk.urlOrPath,
@@ -476,9 +500,33 @@ export class ProposalService {
             });
           }
 
-          let evidenceChunks = Array.from(allChunks.values())
+          // Compute RRF scores: sum of 1/(K+rank) across queries, with multi-query boost
+          for (const [chunkId, data] of rrfData) {
+            const rrfScore = data.ranks.reduce((sum, r) => sum + 1 / (RRF_K + r), 0);
+            const multiBoost = 1 + MULTI_QUERY_BOOST * Math.max(0, data.hitCount - 1);
+            const fusedScore = rrfScore * multiBoost;
+            // Normalize: blend RRF with max similarity score (RRF handles ordering, similarity handles quality)
+            const chunk = allChunks.get(chunkId);
+            if (chunk) {
+              chunk.score = 0.6 * data.maxScore + 0.4 * (fusedScore / (1 / RRF_K)); // normalize RRF to ~0-1 range
+            }
+          }
+
+          const multiHitChunks = [...rrfData.values()].filter(d => d.hitCount > 1).length;
+
+          // Result diversification: max 4 chunks per document to ensure source breadth
+          const MAX_CHUNKS_PER_DOC = 4;
+          const docChunkCounts = new Map<string, number>();
+          const diversified = Array.from(allChunks.values())
             .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-            .slice(0, 20); // Overselect for reranking
+            .filter((c) => {
+              const count = docChunkCounts.get(c.docId) ?? 0;
+              if (count >= MAX_CHUNKS_PER_DOC) return false;
+              docChunkCounts.set(c.docId, count + 1);
+              return true;
+            });
+
+          let evidenceChunks = diversified.slice(0, 20); // Overselect for reranking
 
           // Cross-encoder reranking (section-type gated)
           const rerankResult = await this.reranker.rerank(
@@ -505,27 +553,64 @@ export class ProposalService {
           }
           evidenceChunks = evidenceChunks.slice(0, 12);
 
-          // Retrieval confidence gate
-          const confidence = computeRetrievalConfidence(
+          // Retrieval confidence gate (section-specific thresholds)
+          let confidence = computeRetrievalConfidence(
             evidenceChunks.map((c) => ({ score: c.score, docId: c.docId })),
+            sectionName,
           );
           this.logger.log(
             `[${sectionName}] Retrieval confidence: ${confidence.level} (avg=${confidence.avgScore.toFixed(3)}, chunks=${confidence.chunkCount}, docs=${confidence.uniqueDocCount}, corpus=${corpusRoute.corpus.join(",") || "all"})`,
           );
-          if (confidence.level === "low") {
-            this.logger.warn(`[${sectionName}] LOW retrieval confidence: ${confidence.reason}`);
+
+          // Retry with expanded queries when confidence is LOW
+          if (confidence.level === "low" && evidenceChunks.length < 5) {
+            this.logger.warn(`[${sectionName}] LOW confidence — retrying with expanded queries`);
+            const retryQueries = this.queryExpander.generateRetryQueries(sectionName, queries);
+            for (const rq of retryQueries) {
+              const retryChunks = await this.retrieval.retrieve(rq, {
+                mode: "proposal_drafting",
+                limit: 5,
+                minScore: 0.20, // Lower threshold for retry
+                orgId: "diksha",
+                // No corpus filter on retry — search all corpora
+              });
+              retryChunks.forEach((chunk) => {
+                if (!allChunks.has(chunk.id)) {
+                  allChunks.set(chunk.id, {
+                    chunkId: chunk.id,
+                    docId: chunk.source,
+                    content: chunk.text,
+                    score: chunk.score,
+                    document: { title: chunk.title || "", url: chunk.urlOrPath },
+                  });
+                }
+              });
+            }
+            // Re-sort and re-evaluate confidence
+            evidenceChunks = Array.from(allChunks.values())
+              .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+              .slice(0, 12);
+            confidence = computeRetrievalConfidence(
+              evidenceChunks.map((c) => ({ score: c.score, docId: c.docId })),
+              sectionName,
+            );
+            this.logger.log(
+              `[${sectionName}] Post-retry confidence: ${confidence.level} (avg=${confidence.avgScore.toFixed(3)}, chunks=${confidence.chunkCount})`,
+            );
           }
 
-          // Enhanced retrieval diagnostics
+          // Enhanced retrieval diagnostics with RRF stats
           const scores = evidenceChunks.map((c) => c.score ?? 0);
           this.logger.log({
             section: sectionName,
-            queriesUsed: queries.slice(0, 5).length,
+            queriesUsed: querySlice.length,
             chunksRetrieved: allChunks.size,
             chunksPassedToWriter: evidenceChunks.length,
+            rrfMultiHitChunks: multiHitChunks,
             scoreMin: scores.length ? Math.min(...scores).toFixed(3) : "N/A",
             scoreMax: scores.length ? Math.max(...scores).toFixed(3) : "N/A",
             scoreAvg: scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(3) : "N/A",
+            uniqueDocs: [...new Set(evidenceChunks.map((c) => c.docId))].length,
             docTitles: [...new Set(evidenceChunks.map((c) => c.document.title))].slice(0, 5),
           });
 
@@ -559,6 +644,22 @@ export class ProposalService {
             ? this.frameworkIntelligence.getSectionContext(sectionName, frameworkPack)
             : undefined;
 
+          // Get section-specific web evidence (routed by section type)
+          const sectionWebEvidence = this.getWebEvidenceForSection(sectionName, orchestratorContext);
+
+          // Build enhanced org context with web evidence for this specific section
+          let enrichedOrgCtx = orgCtx;
+          if (sectionWebEvidence) {
+            enrichedOrgCtx += `\n\n${sectionWebEvidence}`;
+          }
+          // Add confidence-aware guidance when retrieval is weak
+          if (confidence.level === "low") {
+            enrichedOrgCtx += `\n\n[RETRIEVAL NOTICE: Evidence retrieval confidence is LOW for this section. ` +
+              `Rely more heavily on the organization context and web research above. ` +
+              `Use "(to be confirmed)" for specific claims that need evidence verification. ` +
+              `Do NOT hallucinate statistics or data — use only what is available in the org context.]`;
+          }
+
           // Budget section: render envelope directly — skip LLM to prevent hallucinated line items
           let processedDraft: string;
           let gaps: string[];
@@ -571,7 +672,7 @@ export class ProposalService {
               sectionName,
               sectionGuidance,
               chunks: evidenceChunks,
-              orgContext: orgCtx,
+              orgContext: enrichedOrgCtx,
               funderContext,
               proposalScope: outline.proposal_scope,
               frameworkContext: sectionFwCtx || undefined,
@@ -1844,25 +1945,68 @@ export class ProposalService {
       );
     }
 
-    if (ctx.webEvidence) {
-      const sections: string[] = [];
-      if (ctx.webEvidence.funderIntel) {
-        sections.push(`Funder Intelligence:\n${ctx.webEvidence.funderIntel.slice(0, 800)}`);
-      }
-      if (ctx.webEvidence.comparablePrograms) {
-        sections.push(`Comparable Programs:\n${ctx.webEvidence.comparablePrograms.slice(0, 800)}`);
-      }
-      if (ctx.webEvidence.themeEvidence) {
-        sections.push(`Theme Evidence:\n${ctx.webEvidence.themeEvidence.slice(0, 800)}`);
-      }
-      if (sections.length > 0) {
-        parts.push(
-          `[ORCHESTRATOR WEB EVIDENCE — use this research to strengthen proposal claims]\n` +
-            sections.join("\n\n"),
-        );
-      }
+    // Web evidence is now routed per-section via getWebEvidenceForSection()
+    // Only include funder intel in global overrides (relevant to all sections)
+    if (ctx.webEvidence?.funderIntel) {
+      parts.push(
+        `[FUNDER INTELLIGENCE — tailor proposal language to this funder's priorities]\n` +
+          ctx.webEvidence.funderIntel.slice(0, 1200),
+      );
     }
 
     return parts;
+  }
+
+  /**
+   * Route web evidence to sections that benefit most from each type.
+   * Returns a formatted string to inject into the section writer's context.
+   *
+   * Routing logic:
+   *   - Need/Background/Rationale → themeEvidence (statistics, research, government data)
+   *   - Project Design/Activities/Methodology → comparablePrograms + themeEvidence
+   *   - Results/Outcomes/Impact → themeEvidence (outcome benchmarks)
+   *   - Objectives → themeEvidence (target benchmarks from similar programs)
+   *   - Experience/Track Record → comparablePrograms (benchmarking)
+   *   - Sustainability → comparablePrograms (models that sustained)
+   *   - All sections → funderIntel (alignment framing) — already in global overrides
+   */
+  private getWebEvidenceForSection(
+    sectionName: string,
+    ctx?: OrchestratorContext,
+  ): string | undefined {
+    if (!ctx?.webEvidence) return undefined;
+    const we = ctx.webEvidence;
+    const lower = sectionName.toLowerCase();
+    const parts: string[] = [];
+    const TOKEN_BUDGET = 1500; // chars per evidence type
+
+    // Need/Background: focus on theme evidence (statistics, policy context)
+    if (lower.includes("need") || lower.includes("problem") || lower.includes("rationale") || lower.includes("context") || lower.includes("background")) {
+      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Evidence & Statistics]\n${we.themeEvidence.slice(0, TOKEN_BUDGET)}`);
+      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Comparable Programs]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET / 2)}`);
+    }
+    // Project Design/Activities/Methodology: comparable programs + theme evidence
+    else if (lower.includes("design") || lower.includes("activit") || lower.includes("method") || lower.includes("implementation")) {
+      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Comparable Programs (use for methodology benchmarking)]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET)}`);
+      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Best Practices]\n${we.themeEvidence.slice(0, TOKEN_BUDGET / 2)}`);
+    }
+    // Results/Outcomes/Impact: theme evidence for outcome benchmarks
+    else if (lower.includes("result") || lower.includes("outcome") || lower.includes("impact") || lower.includes("expected")) {
+      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Outcome Benchmarks]\n${we.themeEvidence.slice(0, TOKEN_BUDGET)}`);
+    }
+    // Objectives: theme evidence for target benchmarks
+    else if (lower.includes("objective") || lower.includes("goal")) {
+      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Target Benchmarks from Similar Programs]\n${we.themeEvidence.slice(0, TOKEN_BUDGET)}`);
+    }
+    // Experience/Track Record: comparable programs for benchmarking
+    else if (lower.includes("experience") || lower.includes("track record")) {
+      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Comparable Organizations]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET)}`);
+    }
+    // Sustainability: comparable programs (models that sustained)
+    else if (lower.includes("sustainab") || lower.includes("exit") || lower.includes("scale")) {
+      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Sustainability Models]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET)}`);
+    }
+
+    return parts.length > 0 ? parts.join("\n\n") : undefined;
   }
 }
