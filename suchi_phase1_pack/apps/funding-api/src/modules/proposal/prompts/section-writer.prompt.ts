@@ -18,7 +18,14 @@ WRITING STYLE (CRITICAL — this determines whether the output reads as a fundab
 - Name the FUNDER explicitly: "In alignment with [Funder Name]'s focus on [theme]..." — do NOT write "the funder."
 - Bihar-specific framing: reference NEP 2020, Bihar state education policy, local geography BY NAME (Patna, Samastipur, Bihta — not "project locations").
 - When describing a methodology, explain HOW it works in at least 2-3 sentences — not just the name.
-- AVOID hollow phrases: "holistic approach", "sustainable impact", "transformative change" — replace with SPECIFIC descriptions of what actually happens.
+- AVOID hollow phrases and replace with SPECIFIC descriptions:
+  * "holistic approach" → describe the actual components (e.g., "combines sports, academics, digital literacy, and SEL in weekly 15-hour programming")
+  * "sustainable impact" → name the specific sustainability mechanism (e.g., "Young Leaders trained as session facilitators ensure continuity after grant period")
+  * "transformative change" → state the measurable change (e.g., "20% improvement in grade-level literacy scores over 12 months")
+  * "empower communities" → describe what communities can actually do differently (e.g., "parents negotiate with schools for extracurricular time slots")
+  * "capacity building" → name the specific skill and method (e.g., "40-hour induction covering sports pedagogy, safeguarding, and data collection")
+  * "stakeholder engagement" → name the stakeholders and the engagement method (e.g., "quarterly parent meetings and monthly school coordinator check-ins")
+  * "leverage synergies" → describe the specific resource-sharing (e.g., "KHEL centers share equipment and trained coaches across 3 locations")
 - Use Indian English conventions and INR formatting with Indian comma system (e.g., ₹15,00,000 not ₹1,500,000).
 
 CITATION RULES (CRITICAL):
@@ -90,7 +97,14 @@ WRITING STYLE (CRITICAL — this determines whether the output reads as a fundab
 - Name the FUNDER explicitly: "In alignment with [Funder Name]'s focus on [theme]..." — do NOT write "the funder."
 - Bihar-specific framing: reference NEP 2020, Bihar state education policy, local geography BY NAME (Patna, Samastipur, Bihta — not "project locations").
 - When describing a methodology, explain HOW it works in at least 2-3 sentences — not just the name.
-- AVOID hollow phrases: "holistic approach", "sustainable impact", "transformative change" — replace with SPECIFIC descriptions of what actually happens.
+- AVOID hollow phrases and replace with SPECIFIC descriptions:
+  * "holistic approach" → describe the actual components (e.g., "combines sports, academics, digital literacy, and SEL in weekly 15-hour programming")
+  * "sustainable impact" → name the specific sustainability mechanism (e.g., "Young Leaders trained as session facilitators ensure continuity after grant period")
+  * "transformative change" → state the measurable change (e.g., "20% improvement in grade-level literacy scores over 12 months")
+  * "empower communities" → describe what communities can actually do differently (e.g., "parents negotiate with schools for extracurricular time slots")
+  * "capacity building" → name the specific skill and method (e.g., "40-hour induction covering sports pedagogy, safeguarding, and data collection")
+  * "stakeholder engagement" → name the stakeholders and the engagement method (e.g., "quarterly parent meetings and monthly school coordinator check-ins")
+  * "leverage synergies" → describe the specific resource-sharing (e.g., "KHEL centers share equipment and trained coaches across 3 locations")
 - Use Indian English conventions and INR formatting with Indian comma system (e.g., ₹15,00,000 not ₹1,500,000).
 
 NO-EVIDENCE RULES:

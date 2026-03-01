@@ -9,6 +9,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { OpportunityService } from "../opportunity/opportunity.service";
 import { PipelineService } from "../pipeline/pipeline.service";
 import { RetrievalService } from "../evidence_ingest/retrieval.service";
+import { RerankerService } from "../evidence_ingest/reranker.service";
 import { EvidenceChunk } from "../core_ai/types";
 import { RfpParserService } from "./services/rfp-parser.service";
 import { PlannerService } from "./services/planner.service";
@@ -52,6 +53,7 @@ export class ProposalService {
     private readonly opportunityService: OpportunityService,
     private readonly pipelineService: PipelineService,
     private readonly retrieval: RetrievalService,
+    private readonly reranker: RerankerService,
     private readonly rfpParser: RfpParserService,
     private readonly planner: PlannerService,
     private readonly queryGenerator: QueryGeneratorService,
@@ -474,9 +476,34 @@ export class ProposalService {
             });
           }
 
-          const evidenceChunks = Array.from(allChunks.values())
+          let evidenceChunks = Array.from(allChunks.values())
             .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-            .slice(0, 12);
+            .slice(0, 20); // Overselect for reranking
+
+          // Cross-encoder reranking (section-type gated)
+          const rerankResult = await this.reranker.rerank(
+            queries[0] || sectionName,
+            evidenceChunks.map((c) => ({
+              id: c.chunkId,
+              source: c.docId,
+              text: c.content,
+              title: c.document?.title,
+              score: c.score,
+            })),
+            sectionName,
+          );
+          if (rerankResult.reranked) {
+            evidenceChunks = rerankResult.chunks.map((rc) => {
+              const original = allChunks.get(rc.id);
+              return original
+                ? { ...original, score: rc.score }
+                : { chunkId: rc.id, docId: rc.source, content: rc.text, score: rc.score, document: { title: rc.title || "" } };
+            });
+            this.logger.log(
+              `[${sectionName}] Reranked by ${rerankResult.provider} (${rerankResult.latencyMs}ms): ${rerankResult.reason}`,
+            );
+          }
+          evidenceChunks = evidenceChunks.slice(0, 12);
 
           // Retrieval confidence gate
           const confidence = computeRetrievalConfidence(

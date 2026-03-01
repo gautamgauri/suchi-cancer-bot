@@ -9,6 +9,7 @@ import { EvidenceReportsService } from "./evidence-reports.service";
 import { ExtractService } from "./extract.service";
 import { InventoryService } from "./inventory.service";
 import { PipelineService } from "./pipeline.service";
+import { RerankerService } from "./reranker.service";
 import { RetrievalService } from "./retrieval.service";
 import { ReviewQueueService } from "./review-queue.service";
 
@@ -25,6 +26,7 @@ import { ReviewQueueService } from "./review-queue.service";
     ReviewQueueService,
     ChunkingService,
     EmbeddingService,
+    RerankerService,
     RetrievalService,
   ],
   exports: [
@@ -37,6 +39,7 @@ import { ReviewQueueService } from "./review-queue.service";
     ReviewQueueService,
     ChunkingService,
     EmbeddingService,
+    RerankerService,
     RetrievalService,
   ],
 })

@@ -95,6 +95,23 @@ interface PgvectorRow {
   score: number;
 }
 
+/** Raw row returned by hybrid (vector + FTS) SQL query */
+interface HybridRow extends PgvectorRow {
+  vecScore: number;
+  ftsScore: number;
+}
+
+/**
+ * Dynamic hybrid weights: adjust vector vs lexical weighting based on query length.
+ * Short queries (proper nouns, metrics) lean on vector; longer queries benefit from lexical precision.
+ */
+function getHybridWeights(query: string): { wVec: number; wLex: number } {
+  const tokenCount = query.split(/\s+/).length;
+  if (tokenCount <= 4) return { wVec: 0.80, wLex: 0.20 };
+  if (tokenCount <= 8) return { wVec: 0.65, wLex: 0.35 };
+  return { wVec: 0.55, wLex: 0.45 };
+}
+
 @Injectable()
 export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
@@ -152,7 +169,9 @@ export class RetrievalService {
   }
 
   /**
-   * pgvector path: single SQL query pushes similarity search + all filters to PostgreSQL.
+   * pgvector path: hybrid SQL query combines vector similarity + full-text search.
+   * FTS enables exact-match recall for proper nouns, program names, and metrics
+   * that vector embeddings handle poorly.
    * Expected latency: <100ms per query (vs 20-80s legacy).
    */
   private async retrievePgvector(
@@ -212,7 +231,13 @@ export class RetrievalService {
     const hasCorpusFilter = !!(options.corpus?.length);
     const hasDocTypeFilter = !!(options.docTypes?.length);
 
-    const rows = await this.prisma.$queryRawUnsafe<PgvectorRow[]>(
+    // Dynamic hybrid weights based on query length
+    const { wVec, wLex } = getHybridWeights(query);
+
+    // Prepare FTS query text: clean for websearch_to_tsquery
+    const ftsQueryText = query.slice(0, 2000).replace(/[^\w\s'"()-]/g, " ").trim();
+
+    const rows = await this.prisma.$queryRawUnsafe<HybridRow[]>(
       `
       WITH top_vectors AS (
         SELECT ce."chunkId",
@@ -221,6 +246,23 @@ export class RetrievalService {
         WHERE ce."embedding" IS NOT NULL
         ORDER BY ce."embedding" <=> $1::vector
         LIMIT $2::int
+      ),
+      fts_matches AS (
+        SELECT dc."id" AS "chunkId",
+               ts_rank_cd(to_tsvector('simple', dc."content"), websearch_to_tsquery('simple', $16::text)) AS score
+        FROM "DocumentChunk" dc
+        WHERE to_tsvector('simple', dc."content") @@ websearch_to_tsquery('simple', $16::text)
+          AND $16::text <> ''
+        ORDER BY score DESC
+        LIMIT $2::int
+      ),
+      combined AS (
+        SELECT COALESCE(tv."chunkId", fm."chunkId") AS "chunkId",
+               COALESCE(tv.score, 0) AS "vecScore",
+               COALESCE(fm.score, 0) AS "ftsScore",
+               $17::float * COALESCE(tv.score, 0) + $18::float * COALESCE(fm.score, 0) AS score
+        FROM top_vectors tv
+        FULL OUTER JOIN fts_matches fm ON tv."chunkId" = fm."chunkId"
       )
       SELECT
         dc."id"        AS "chunkId",
@@ -230,9 +272,11 @@ export class RetrievalService {
         ed."name"      AS "docName",
         ed."driveUrl",
         COALESCE(rq."tierOverride", ed."qualityTier", 'X') AS "effectiveTier",
-        tv.score
-      FROM top_vectors tv
-      JOIN "DocumentChunk" dc ON dc."id" = tv."chunkId"
+        comb.score,
+        comb."vecScore",
+        comb."ftsScore"
+      FROM combined comb
+      JOIN "DocumentChunk" dc ON dc."id" = comb."chunkId"
       JOIN "EvidenceDocument" ed ON ed."id" = dc."documentId"
       LEFT JOIN "ReviewQueueEntry" rq ON rq."documentId" = ed."id"
       WHERE COALESCE(rq."tierOverride", ed."qualityTier", 'X') = ANY($3::text[])
@@ -250,8 +294,8 @@ export class RetrievalService {
         )
         AND ($10::boolean IS FALSE OR ed."corpus" = ANY($11::text[]))
         AND ($12::boolean IS FALSE OR ed."docType" = ANY($13::text[]))
-        AND tv.score >= $14::float
-      ORDER BY tv.score DESC
+        AND comb.score >= $14::float
+      ORDER BY comb.score DESC
       LIMIT $15::int
       `,
       embeddingStr,                         // $1
@@ -269,9 +313,15 @@ export class RetrievalService {
       options.docTypes ?? [],               // $13
       minScore,                             // $14
       limit,                                // $15
+      ftsQueryText,                         // $16 (FTS query)
+      wVec,                                 // $17 (vector weight)
+      wLex,                                 // $18 (lexical weight)
     );
 
     const dbMs = Date.now() - dbStart;
+
+    // Count FTS-only hits for diagnostics
+    const ftsOnlyHits = rows.filter((r) => Number(r.vecScore) === 0 && Number(r.ftsScore) > 0).length;
 
     const results: RetrievalChunkDto[] = rows.map((r) => ({
       id: r.chunkId,
@@ -286,7 +336,7 @@ export class RetrievalService {
 
     const totalMs = Date.now() - startTime;
     const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + (r.score ?? 0), 0) / results.length : 0;
-    logStructured.log("RAG retrieval complete (pgvector)", {
+    logStructured.log("RAG retrieval complete (hybrid pgvector+FTS)", {
       context: RetrievalService.name,
       queryLength: query.length,
       mode,
@@ -295,6 +345,8 @@ export class RetrievalService {
       docTypes: options.docTypes ?? [],
       chunksRetrieved: results.length,
       avgSimilarityScore: Math.round(avgScore * 100) / 100,
+      hybridWeights: { wVec, wLex },
+      ftsOnlyHits,
       embed_ms: embedMs,
       db_ms: dbMs,
       total_ms: totalMs,
