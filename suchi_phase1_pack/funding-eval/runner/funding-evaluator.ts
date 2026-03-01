@@ -561,6 +561,20 @@ export class FundingEvaluator {
           };
         }
         return { ...resultBase, latencyMs: Date.now() - start, error: `Unknown evidence_retrieve action: ${action}` };
+      } else if (tc.type === "evidence_recall") {
+        const out = await client.evidenceRecallEval(body as { mode?: string; limit?: number } | undefined);
+        response = out;
+        const recall = out as { recallRate?: number; passedCount?: number; totalCount?: number };
+        const minRecall = (tc.expectations as Record<string, unknown>)?.min_recall_rate as number | undefined ?? 0.50;
+        const passed = recall.recallRate != null && recall.recallRate >= minRecall;
+        return {
+          ...resultBase,
+          passed,
+          latencyMs: Date.now() - start,
+          responseStatus: 200,
+          responsePreview: `recall=${recall.recallRate} (${recall.passedCount}/${recall.totalCount}), target≥${minRecall}`,
+          response: out,
+        };
       } else if (tc.type === "approvals") {
         if (action === "create_artifact") {
           const pipelineEntryId = (body?.pipelineEntryId ?? params?.pipelineEntryId) as string;

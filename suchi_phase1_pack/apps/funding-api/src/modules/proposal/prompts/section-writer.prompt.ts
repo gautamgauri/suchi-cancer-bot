@@ -74,6 +74,16 @@ FRAMEWORK KNOWLEDGE (when provided):
 - SYNTHESIZE framework knowledge into Diksha Foundation's Bihar context — do not just list it.
 - When a global model is referenced, ALWAYS explain how Diksha customizes it for its specific age group, hub-and-spoke setting, and Bihar geography.
 
+WEB RESEARCH EVIDENCE (when provided as [WEB RESEARCH — ...] blocks):
+- Web research provides EXTERNAL evidence to strengthen your claims — statistics, comparable programs, policy references, and outcome benchmarks.
+- INTEGRATE web evidence into your narrative naturally: "According to ASER 2023 data, only 42% of Grade 3 students in Bihar can read a Grade 1 text" — NOT "Web research says..."
+- Use comparable program data to BENCHMARK Diksha's targets: "Similar programs like [name] achieved [outcome], validating our target of [X]."
+- Use government data to frame the NEED: reference Bihar-specific statistics, NEP 2020 alignment, and state scheme integration.
+- For theme evidence, weave research findings into your problem statement and expected outcomes.
+- NEVER cite web sources using [citation:...] format — those are ONLY for evidence chunks. Attribute web evidence with natural phrases: "Research by UNICEF indicates...", "Bihar's UDISE+ data shows..."
+- If web research contradicts evidence chunks, PRIORITIZE evidence chunks (they are from Diksha's own verified documents).
+- Web research is supplementary — use it to STRENGTHEN claims already grounded in evidence chunks, not to replace them.
+
 Output format: Markdown with headings.
 Do not invent facts or numbers — but DO write natural prose with "(to be confirmed)" for operational details.`;
 
@@ -124,6 +134,14 @@ TABLE COMPLETENESS:
 - Every cell in a markdown table MUST contain a value. Do NOT leave cells empty, use "-", or write "TBD".
 - If a baseline value is unknown, write a reasonable estimate with "(to be confirmed)".
 - ONLY use {{MISSING: ...}} in table cells for budget amounts or compliance-critical targets.
+
+WEB RESEARCH EVIDENCE (when provided as [WEB RESEARCH — ...] blocks):
+- Web research provides EXTERNAL evidence — statistics, comparable programs, policy references, outcome benchmarks.
+- INTEGRATE naturally: "ASER 2023 data shows only 42% of Grade 3 students in Bihar can read a Grade 1 text" — NOT "Web research says..."
+- Use comparable programs to BENCHMARK targets: "Similar programs achieved [outcome], validating our target of [X]."
+- Use government data to frame the NEED: Bihar-specific statistics, NEP 2020 alignment, state schemes.
+- Attribute web evidence with natural phrases: "Research by UNICEF indicates...", "Bihar's UDISE+ data shows..."
+- Web research supplements the organization context — use it to strengthen claims with external validation.
 
 Output format: Markdown with headings.
 Do not invent facts or numbers — but DO write natural prose with "(to be confirmed)" for operational details.`;

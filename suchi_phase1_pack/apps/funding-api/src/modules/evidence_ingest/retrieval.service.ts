@@ -619,6 +619,152 @@ export class RetrievalService {
       summary,
     };
   }
+
+  /**
+   * Sprint 3 C2: Run recall evaluation against gold retrieval scenarios.
+   * Each scenario has a query + expected keywords that MUST appear in top-K results.
+   * Returns per-scenario pass/fail + aggregate recall@K rate.
+   */
+  async runRecallEval(options: {
+    mode?: RetrievalPolicyMode;
+    limit?: number;
+  } = {}): Promise<{
+    scenarioResults: Array<{
+      id: string;
+      category: string;
+      query: string;
+      passed: boolean;
+      keywordsFound: string[];
+      keywordsMissed: string[];
+      chunkCount: number;
+      avgScore: number;
+      latencyMs: number;
+    }>;
+    recallRate: number;
+    avgLatencyMs: number;
+    passedCount: number;
+    totalCount: number;
+    summary: string;
+  }> {
+    const mode = options.mode ?? "proposal_drafting";
+    const limit = options.limit ?? 5;
+
+    // Load gold scenarios
+    interface GoldScenario {
+      id: string;
+      category: string;
+      query: string;
+      expected_keywords: string[];
+      expected_corpus: string | null;
+      min_chunks: number;
+      notes?: string;
+    }
+    interface GoldScenariosFile {
+      scenarios: GoldScenario[];
+      recall_target: number;
+    }
+
+    let scenarios: GoldScenario[];
+    let recallTarget: number;
+    const scenarioPath = fs.existsSync(path.join(__dirname, "gold-retrieval-scenarios.json"))
+      ? path.join(__dirname, "gold-retrieval-scenarios.json")
+      : path.join(process.cwd(), "src", "modules", "evidence_ingest", "gold-retrieval-scenarios.json");
+
+    if (fs.existsSync(scenarioPath)) {
+      const parsed = JSON.parse(fs.readFileSync(scenarioPath, "utf-8")) as GoldScenariosFile;
+      scenarios = parsed.scenarios;
+      recallTarget = parsed.recall_target ?? 0.80;
+    } else {
+      this.logger.warn("gold-retrieval-scenarios.json not found — using empty scenario set");
+      return {
+        scenarioResults: [],
+        recallRate: 0,
+        avgLatencyMs: 0,
+        passedCount: 0,
+        totalCount: 0,
+        summary: "No gold scenarios found",
+      };
+    }
+
+    const scenarioResults: Array<{
+      id: string;
+      category: string;
+      query: string;
+      passed: boolean;
+      keywordsFound: string[];
+      keywordsMissed: string[];
+      chunkCount: number;
+      avgScore: number;
+      latencyMs: number;
+    }> = [];
+
+    for (const scenario of scenarios) {
+      const start = Date.now();
+      const chunks = await this.retrieve(scenario.query, {
+        mode,
+        limit,
+        orgId: "diksha",
+        corpus: scenario.expected_corpus ? [scenario.expected_corpus] : undefined,
+      });
+      const latencyMs = Date.now() - start;
+
+      // Combine all chunk text for keyword matching
+      const combinedText = chunks.map((c) => `${c.title ?? ""} ${c.text}`).join(" ").toLowerCase();
+      const scores = chunks.map((c) => c.score ?? 0);
+      const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+
+      const keywordsFound: string[] = [];
+      const keywordsMissed: string[] = [];
+      for (const kw of scenario.expected_keywords) {
+        if (combinedText.includes(kw.toLowerCase())) {
+          keywordsFound.push(kw);
+        } else {
+          keywordsMissed.push(kw);
+        }
+      }
+
+      // Pass if: enough chunks AND at least half the keywords found
+      const minKeywordHit = Math.ceil(scenario.expected_keywords.length / 2);
+      const passed = chunks.length >= scenario.min_chunks && keywordsFound.length >= minKeywordHit;
+
+      scenarioResults.push({
+        id: scenario.id,
+        category: scenario.category,
+        query: scenario.query,
+        passed,
+        keywordsFound,
+        keywordsMissed,
+        chunkCount: chunks.length,
+        avgScore: Math.round(avgScore * 1000) / 1000,
+        latencyMs,
+      });
+    }
+
+    const passedCount = scenarioResults.filter((r) => r.passed).length;
+    const totalCount = scenarioResults.length;
+    const recallRate = totalCount > 0 ? passedCount / totalCount : 0;
+    const avgLatencyMs = scenarioResults.length > 0
+      ? Math.round(scenarioResults.reduce((sum, r) => sum + r.latencyMs, 0) / scenarioResults.length)
+      : 0;
+
+    const meetsTarget = recallRate >= recallTarget;
+    const summary = [
+      `Recall eval: ${passedCount}/${totalCount} scenarios passed (${Math.round(recallRate * 100)}%)`,
+      `Target: ${Math.round(recallTarget * 100)}% — ${meetsTarget ? "PASS" : "FAIL"}`,
+      `Avg latency: ${avgLatencyMs}ms`,
+      `Failed scenarios: ${scenarioResults.filter((r) => !r.passed).map((r) => r.id).join(", ") || "none"}`,
+    ].join("; ");
+    this.logger.log(summary);
+
+    return {
+      scenarioResults,
+      recallRate: Math.round(recallRate * 100) / 100,
+      avgLatencyMs,
+      passedCount,
+      totalCount,
+      summary,
+    };
+  }
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

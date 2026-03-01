@@ -6,8 +6,12 @@ import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/all-exceptions.filter";
 import { requestIdMiddleware } from "./common/request-id.middleware";
 import { logStructured } from "./common/structured-logger";
+import { validateEnvOrDie } from "./config/env.validation";
 
 async function bootstrap() {
+  // Pre-flight: validate env vars before heavy NestJS bootstrap
+  validateEnvOrDie();
+
   const app = await NestFactory.create(AppModule, { cors: true });
   app.use(helmet());
   app.use(requestIdMiddleware);

@@ -233,6 +233,11 @@ export class FundingApiClient {
     return data;
   }
 
+  async evidenceRecallEval(body?: { mode?: string; limit?: number }): Promise<unknown> {
+    const { data } = await this.client.post(this.v1("/evidence-ingest/eval/recall"), body ?? {});
+    return data;
+  }
+
   // --- Approvals ---
   async approvalsCreateArtifact(pipelineEntryId: string, type: string): Promise<{ id: string; pipelineEntryId: string; type: string }> {
     const { data } = await this.client.post<{ id: string; pipelineEntryId: string; type: string }>(this.v1("/approvals/artifacts"), { pipelineEntryId, type });
