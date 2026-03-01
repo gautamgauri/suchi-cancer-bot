@@ -1,6 +1,7 @@
 /**
  * Structured organization profile for Diksha Foundation.
  * Extracted from kb_funding/docs/misc/diksha-organisation-profile-2026-27.md
+ * and enriched from past proposal submissions.
  * Used in planner + section-writer prompts to ground the LLM in real org data.
  */
 

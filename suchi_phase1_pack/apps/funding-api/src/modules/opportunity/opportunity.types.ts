@@ -37,6 +37,16 @@ export interface OpportunityKeyConstraints {
   projectDurationMonthsMax?: number;
   deadline?: string;
   geography?: string[];
+  /** Minimum grant the funder will award (INR). If set and exceeds org capacity → size_mismatch gate. */
+  funderMinGrantINR?: number;
+  /** Minimum grant the funder will award (USD). Converted at ORG_CAPACITY.planningFxUSDtoINR. */
+  funderMinGrantUSD?: number;
+  /** Target beneficiary group (e.g. "children and youth from marginalized communities"). Used in web evidence queries. */
+  targetGroup?: string;
+  /** Force a specific budget template instead of theme-based auto-selection. */
+  overrideBudgetTemplate?: BudgetTemplateId;
+  /** Override project category classification (drives section framing). */
+  projectCategory?: ProjectCategory;
 }
 
 export interface OpportunityThemes {
