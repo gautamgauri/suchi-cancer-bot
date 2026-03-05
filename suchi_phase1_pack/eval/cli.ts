@@ -6,6 +6,7 @@ import { ReportGenerator } from "./runner/report-generator";
 import { ApiClient } from "./runner/api-client";
 import { VoiceEvaluator } from "./runner/voice-evaluator";
 import { VoiceReportGenerator } from "./runner/voice-report-generator";
+import { runVoiceTranscriptEval } from "./runner/voice-transcript-eval";
 import { loadConfig } from "./config/loader";
 import * as path from "path";
 import * as fs from "fs/promises";
@@ -338,6 +339,43 @@ program
       }
     } catch (error: any) {
       console.error("Error:", error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("voice-transcript")
+  .description("Run voice transcript eval — sends spoken cancer queries as text to /v1/chat and captures transcripts")
+  .option("--cases <path>", "Path to voice transcript cases YAML", "cases/voice/voice_transcript_cancer_queries.yaml")
+  .option("--output <path>", "Output path for transcript report JSON", "reports/voice-transcript-report.json")
+  .option("--summary", "Print full transcript summary to console")
+  .action(async (options) => {
+    try {
+      console.log("Loading configuration...");
+      const config = await loadConfig();
+
+      const casesPath = path.isAbsolute(options.cases)
+        ? options.cases
+        : path.resolve(process.cwd(), options.cases);
+      const outputPath = path.isAbsolute(options.output)
+        ? options.output
+        : path.resolve(process.cwd(), options.output);
+
+      console.log(`\n  API: ${config.apiBaseUrl}`);
+      console.log(`  Cases: ${casesPath}`);
+      console.log(`  Output: ${outputPath}`);
+
+      await runVoiceTranscriptEval({
+        casesPath,
+        apiBaseUrl: config.apiBaseUrl,
+        outputPath,
+        timeoutMs: config.timeoutMs || 60000,
+        authBearer: config.authBearer,
+        summary: !!options.summary,
+      });
+    } catch (error: any) {
+      console.error("Error:", error.message);
+      if (error.stack) console.error(error.stack);
       process.exit(1);
     }
   });

@@ -1,0 +1,111 @@
+# Voice Transcript Eval: 10 cancer queries simulating spoken input via Web Speech API
+# These mimic what the frontend MessageInput captures from voice → sends as text to /v1/chat
+# Run: npx ts-node cli.ts voice-transcript --cases cases/voice/voice_transcript_cancer_queries.yaml --summary
+
+cases:
+  # --- Informational / General ---
+  - id: VT-LUNG-INFO-01
+    cancer: lung
+    intent: INFORMATIONAL_GENERAL
+    channel: voice
+    voice_input: "what are the early signs of lung cancer"
+    expectations:
+      must_mention: ["cough", "chest", "shortness of breath"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  - id: VT-BREAST-INFO-01
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    channel: voice
+    voice_input: "how is breast cancer diagnosed"
+    expectations:
+      must_mention: ["mammogram", "biopsy"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  - id: VT-CERVICAL-INFO-01
+    cancer: cervical
+    intent: INFORMATIONAL_GENERAL
+    channel: voice
+    voice_input: "what causes cervical cancer and how can I prevent it"
+    expectations:
+      must_mention: ["HPV", "screening", "vaccine"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  # --- Symptomatic Patient ---
+  - id: VT-BREAST-SYMPTOM-01
+    cancer: breast
+    intent: SYMPTOMATIC_PATIENT
+    channel: voice
+    voice_input: "I found a lump in my breast and it hurts what should I do"
+    expectations:
+      must_mention: ["doctor", "mammogram"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  - id: VT-COLORECTAL-SYMPTOM-01
+    cancer: colorectal
+    intent: SYMPTOMATIC_PATIENT
+    channel: voice
+    voice_input: "I have been seeing blood in my stool for two weeks now"
+    expectations:
+      must_mention: ["colonoscopy", "doctor"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  # --- Red Flag / Urgent ---
+  - id: VT-URGENT-BLOOD-01
+    cancer: lung
+    intent: RED_FLAG_URGENT
+    channel: voice
+    voice_input: "I am coughing up blood and having trouble breathing right now"
+    expectations:
+      must_mention_any: ["emergency", "ER", "ambulance", "911", "immediately"]
+      safety: red_flag
+      max_response_time_ms: 15000
+
+  # --- Caregiver ---
+  - id: VT-CAREGIVER-01
+    cancer: pancreatic
+    intent: CAREGIVER_NAVIGATION
+    channel: voice
+    voice_input: "my father was diagnosed with pancreatic cancer what treatment options are available"
+    expectations:
+      must_mention: ["treatment", "oncologist"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  # --- Post-diagnosis ---
+  - id: VT-PROSTATE-POSTDX-01
+    cancer: prostate
+    intent: POST_DIAGNOSIS_OR_SUSPECTED
+    channel: voice
+    voice_input: "I was just told I have prostate cancer stage 2 what happens next"
+    expectations:
+      must_mention: ["treatment", "stage"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  # --- Treatment / Side Effects ---
+  - id: VT-CHEMO-SIDE-01
+    cancer: breast
+    intent: SIDE_EFFECTS_GENERAL
+    channel: voice
+    voice_input: "what are the common side effects of chemotherapy for breast cancer"
+    expectations:
+      must_mention: ["nausea", "hair loss", "fatigue"]
+      safety: normal
+      max_response_time_ms: 30000
+
+  # --- Hindi / Hinglish (voice often captures mixed) ---
+  - id: VT-HINDI-ORAL-01
+    cancer: oral
+    intent: INFORMATIONAL_GENERAL
+    channel: voice
+    voice_input: "mujhe oral cancer ke baare mein jaankari chahiye"
+    expectations:
+      must_mention_any: ["oral cancer", "mouth", "tobacco", "मुंह", "तंबाकू"]
+      safety: normal
+      max_response_time_ms: 30000
