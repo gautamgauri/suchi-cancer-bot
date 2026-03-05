@@ -94,25 +94,24 @@ program
 
       const filteredCases = Evaluator.filterTestCases(testCases, filters);
 
-      // ✅ NEW: Warm-up API to prevent cold start on first test case
-      console.log("\n🔥 Warming up API...");
-      try {
-        const warmupClient = new ApiClient(config.apiBaseUrl, 30000, config.authBearer); // 30s timeout
-        const warmupSession = await warmupClient.createSession("web");
-        await warmupClient.sendMessage(
-          warmupSession,
-          "What is cancer?", // Simple query
-          "web"
-        );
-        console.log("✅ API warmed up\n");
-      } catch (error: any) {
-        console.warn("⚠️ Warm-up failed (continuing anyway):", error.message);
+      // Warm-up API to prevent cold start on first test case
+      console.log("\n🔥 Warming up Cloud Run API...");
+      const warmupClient = new ApiClient(config.apiBaseUrl, config.timeoutMs, config.authBearer, config.retries);
+      const warmupOk = await warmupClient.warmUp(3);
+      if (warmupOk) {
+        console.log("✅ API warmed up and responsive\n");
+      } else {
+        console.warn("⚠️ Warm-up: API reachable but LLM may be timing out (Cloud Run cold start or LLM provider issue)");
+        console.warn("   Continuing with eval — individual cases will retry on 504s\n");
       }
 
       // Create evaluator and report generator
       const evaluator = new Evaluator(config, rubricPack);
       const reportGenerator = new ReportGenerator();
       const outputPath = path.resolve(process.cwd(), options.output);
+
+      // Ensure output directory exists
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
       // Apply batching if batch-size is specified
       let results;
