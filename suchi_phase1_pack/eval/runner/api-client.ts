@@ -91,6 +91,7 @@ export class ApiClient {
     channel: "web" | "app" | "whatsapp" = "web"
   ): Promise<ChatResponse> {
     let lastError: Error | null = null;
+    let allTimeouts = true;
 
     for (let attempt = 0; attempt <= this.retries; attempt++) {
       try {
@@ -99,26 +100,40 @@ export class ApiClient {
           channel,
           userText,
         });
-        
+
         if (attempt > 0) {
           console.log(`  ✅ Retry ${attempt} succeeded`);
         }
-        
+
         return response.data;
       } catch (error: any) {
         lastError = error;
-        
+
+        const isTimeout =
+          error.code === 'ECONNABORTED' ||
+          error.response?.status === 504;
+
+        if (!isTimeout) {
+          allTimeouts = false;
+        }
+
         // Check if retryable (transient errors)
         const isRetryable =
-          error.code === 'ECONNABORTED' || // Timeout
+          isTimeout ||
           error.code === 'ECONNRESET' ||   // Connection reset
           error.response?.status === 429 || // Rate limit
           error.response?.status === 500 || // Internal server error (cold start)
           error.response?.status === 502 || // Bad gateway
-          error.response?.status === 503 || // Service unavailable
-          error.response?.status === 504;   // Gateway timeout
+          error.response?.status === 503;   // Service unavailable
 
         if (!isRetryable || attempt === this.retries) {
+          if (allTimeouts) {
+            const err = new Error(
+              `All ${attempt + 1} attempts timed out (504). API unreachable or overloaded.`
+            );
+            (err as any).timedOut = true;
+            throw err;
+          }
           throw new Error(`Failed to send message: ${error.message}`);
         }
 

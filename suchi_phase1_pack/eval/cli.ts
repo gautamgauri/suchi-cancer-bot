@@ -97,7 +97,7 @@ program
       // ✅ NEW: Warm-up API to prevent cold start on first test case
       console.log("\n🔥 Warming up API...");
       try {
-        const warmupClient = new ApiClient(config.apiBaseUrl, 30000, config.authBearer); // 30s timeout
+        const warmupClient = new ApiClient(config.apiBaseUrl, 30000, config.authBearer, 0); // 30s timeout, no retries
         const warmupSession = await warmupClient.createSession("web");
         await warmupClient.sendMessage(
           warmupSession,
