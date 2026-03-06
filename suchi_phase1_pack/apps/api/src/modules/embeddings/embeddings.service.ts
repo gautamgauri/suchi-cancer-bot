@@ -6,6 +6,7 @@ export class EmbeddingsService {
   private readonly logger = new Logger(EmbeddingsService.name);
   private readonly apiKey: string;
   private readonly modelName: string;
+  private readonly EMBEDDING_TIMEOUT_MS = 8000; // 8s timeout — embedding calls should take <1s normally
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>("EMBEDDING_API_KEY") || this.configService.get<string>("GEMINI_API_KEY") || "";
@@ -19,6 +20,9 @@ export class EmbeddingsService {
    * Generate embedding for a single text using Google's embedding REST API
    */
   async generateEmbedding(text: string): Promise<number[]> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.EMBEDDING_TIMEOUT_MS);
+
     try {
       // Use Google AI REST API for embeddings (text-embedding-004)
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:embedContent?key=${this.apiKey}`, {
@@ -32,8 +36,11 @@ export class EmbeddingsService {
             parts: [{ text: text }]
           },
           outputDimensionality: 768
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -41,13 +48,18 @@ export class EmbeddingsService {
       }
 
       const data = await response.json();
-      
+
       if (!data.embedding?.values || data.embedding.values.length === 0) {
         throw new Error("Empty embedding returned from API");
       }
 
       return data.embedding.values;
     } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        this.logger.error(`Embedding API timed out after ${this.EMBEDDING_TIMEOUT_MS}ms`);
+        throw new Error(`Embedding timeout after ${this.EMBEDDING_TIMEOUT_MS}ms`);
+      }
       this.logger.error(`Error generating embedding: ${error.message}`, error.stack);
       throw error;
     }

@@ -2128,6 +2128,10 @@ export class ChatService {
         }
       }
 
+      // Inject essential cancer-type terms for navigate mode too
+      const navCancerType = detectCancerType(dto.userText, sessionCancerType);
+      responseText = this.injectEssentialTermsIfMissing(responseText, navCancerType, queryType || 'symptoms');
+
       // Apply response formatting rules
       // For navigate mode, determine if this is a multi-step interaction
       const recentAssistantMessages = await this.prisma.message.findMany({
