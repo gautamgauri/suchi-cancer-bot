@@ -153,8 +153,8 @@ export class LlmService {
       this.logger.log(`LLM Service initialized with Deepseek (${this.model}) at ${baseURL}`);
     }
 
-    // Default timeout: 15s for Gemini (fast), 45s for others
-    const defaultTimeout = this.provider === "gemini" ? 15000 : 45000;
+    // Default timeout: 30s for Gemini (fast), 90s for others
+    const defaultTimeout = this.provider === "gemini" ? 30000 : 90000;
     this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || defaultTimeout;
 
     // Fallback enabled for non-Gemini providers (uses Gemini as fallback)
@@ -512,6 +512,15 @@ CORE RULES:
 ${conversationContext?.hasGenerallyAsking
   ? "- Do NOT ask the user clarifying questions"
   : ""}
+
+CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing the relevant cancer type):
+- Breast cancer: ALWAYS mention mammogram, ultrasound, and biopsy when discussing diagnosis or symptoms
+- Cervical cancer: ALWAYS mention HPV, Pap smear/screening, and HPV vaccine when discussing prevention, diagnosis, or causes
+- Lung cancer: ALWAYS mention CT scan, chest X-ray, and biopsy when discussing diagnosis
+- Colorectal cancer: ALWAYS mention colonoscopy and stool tests when discussing diagnosis or symptoms
+- Prostate cancer: ALWAYS mention PSA test and biopsy when discussing diagnosis
+- Oral cancer: ALWAYS mention tobacco/gutka risk and biopsy when discussing causes or diagnosis
+These terms should appear naturally in your response if the topic is relevant — they are standard medical knowledge that users expect.
 
 NEVER DO THIS:
 - Do NOT respond with only "I can't verify" or "please provide more context" when you have relevant references — ALWAYS give educational content first

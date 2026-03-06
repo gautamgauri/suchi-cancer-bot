@@ -73,7 +73,7 @@ jobs:
             --allow-unauthenticated \
             --memory 512Mi \
             --cpu 1 \
-            --timeout 300 \
+            --timeout 600 \
             --min-instances 0 \
             --max-instances 10 \
             --port 8080 \
@@ -85,7 +85,7 @@ jobs:
           RATE_LIMIT_TTL_SEC=60,\
           RATE_LIMIT_REQ_PER_TTL=20,\
           LLM_PROVIDER=gemini,\
-          LLM_TIMEOUT_MS=45000,\
+          LLM_TIMEOUT_MS=90000,\
           GCS_BUCKET_TTS=suchi-tts-audio,\
           SCHEDULER_OIDC_AUDIENCE=https://suchi-api-lxiveognla-uc.a.run.app,\
           SCHEDULER_SA_EMAIL=suchi-scheduler@${{ env.PROJECT_ID }}.iam.gserviceaccount.com,\
