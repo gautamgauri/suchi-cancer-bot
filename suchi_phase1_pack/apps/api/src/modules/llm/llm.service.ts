@@ -196,11 +196,18 @@ export class LlmService {
         },
       });
 
-      const result = await generativeModel.generateContent({
+      // Race the Gemini call against a timeout to prevent indefinite hangs
+      const geminiPromise = generativeModel.generateContent({
         contents: [
           { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
         ],
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
+      });
+
+      const result = await Promise.race([geminiPromise, timeoutPromise]);
 
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -212,7 +219,12 @@ export class LlmService {
 
       return text || null;
     } catch (error: any) {
-      this.logger.error(`Gemini LLM ${isPrimary ? '(primary)' : '(fallback)'} failed: ${error.message}`);
+      const label = isPrimary ? '(primary)' : '(fallback)';
+      if (error.message === 'GEMINI_TIMEOUT') {
+        this.logger.warn(`Gemini LLM ${label} timed out after ${this.timeoutMs}ms`);
+      } else {
+        this.logger.error(`Gemini LLM ${label} failed: ${error.message}`);
+      }
       return null;
     }
   }
@@ -697,7 +709,23 @@ CITATION FORMAT:
         if (result) {
           return result;
         }
-        this.logger.error(`Gemini primary call failed - returning abstention response`);
+
+        // First failure: retry with reduced context (top 3 chunks) if not already retrying
+        if (!isTimeoutRetry && chunks.length > 3) {
+          this.logger.warn(`Gemini primary call failed — retrying with reduced context (3 chunks)`);
+          const reducedChunks = chunks.slice(0, 3);
+          return this.generateWithCitations(
+            systemPrompt,
+            context,
+            userMessage,
+            reducedChunks,
+            isIdentifyQuestion,
+            conversationContext,
+            true // Mark as retry
+          );
+        }
+
+        this.logger.error(`Gemini primary call failed after retry — returning abstention response`);
         return this.getAbstentionResponse();
       }
 
@@ -1003,14 +1031,15 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
    */
   private getAbstentionResponse(): string {
     return [
-      "I'm sorry, I couldn't process your request in time. This may be due to high demand or a complex query.",
+      "I'm sorry, I couldn't retrieve a fully referenced answer for your question right now.",
       "",
-      "**What you can do:**",
-      "- Try asking your question again in a moment",
-      "- If your question is complex, try breaking it into smaller parts",
-      "- For urgent health concerns, please contact your healthcare provider directly",
+      "**Here are some steps you can take:**",
+      "- **Ask again** — try rephrasing or asking about one specific topic (e.g., \"What are early signs of lung cancer?\")",
+      "- **Indian Cancer Society Helpline**: Call **1800-22-1951** (toll-free) for guidance from trained counsellors",
+      "- **Ayushman Bharat (PM-JAY)**: Call **14555** for information on free cancer treatment under government schemes",
+      "- **National Cancer Grid**: Visit https://tmc.gov.in for treatment centre information",
       "",
-      "I apologize for the inconvenience."
+      "**If you have urgent symptoms** (severe pain, bleeding, difficulty breathing), call **112** or **108** for emergency help immediately."
     ].join("\n");
   }
 }

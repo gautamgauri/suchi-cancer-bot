@@ -97,11 +97,29 @@ const HI_EN_DICTIONARY: Array<[RegExp, string]> = [
 // ─── Hinglish → English dictionary ───────────────────────────────
 
 const HINGLISH_EN_DICTIONARY: Array<[RegExp, string]> = [
+  // Common Hinglish sentence patterns
+  [/\bmujhe\b/gi, "I need"],
+  [/\bjaankari\b/gi, "information"],
+  [/\bjankari\b/gi, "information"],
+  [/\bke\s*baare\s*mein\b/gi, "about"],
+  [/\bke\s*bare\s*me\b/gi, "about"],
+  [/\bbatao\b/gi, "tell me"],
+  [/\bbataiye\b/gi, "tell me"],
+  [/\bbataye\b/gi, "tell me"],
+  [/\bkya\s*hai\b/gi, "what is"],
+  [/\bkya\s*hota\s*hai\b/gi, "what is"],
+
+  // Cancer types in Hinglish
+  [/\bmunh?\s*(ka|ke|ki)?\s*cancer\b/gi, "oral cancer"],
+  [/\bpet\s*(ka|ke|ki)?\s*cancer\b/gi, "stomach cancer"],
+  [/\bkhoon\s*(ka|ke|ki)?\s*cancer\b/gi, "blood cancer"],
+  [/\bphephde?\s*(ka|ke|ki)?\s*cancer\b/gi, "lung cancer"],
+
+  // Medical terms
   [/\bilaaj\b/gi, "treatment"],
   [/\bdawai?\b/gi, "medicine"],
   [/\bhospital\s*(ka|ki|ke)\s*(time|samay|timing)\b/gi, "hospital timing"],
   [/\bkaise\s*(pata|jaane)\b/gi, "how to know"],
-  [/\bkya\s*hota\s*hai\b/gi, "what is"],
   [/\bkaise\s*hota\b/gi, "how does it happen"],
   [/\bkaun\s*sa\b/gi, "which"],
   [/\baage\s*kya\b/gi, "what next"],
@@ -115,6 +133,11 @@ const HINGLISH_EN_DICTIONARY: Array<[RegExp, string]> = [
   [/\bkaagaz(aat)?\b/gi, "documents"],
   [/\bkharcha\b/gi, "cost"],
   [/\bsarkari\b/gi, "government"],
+  [/\blakshan\b/gi, "symptoms"],
+  [/\bjach\b/gi, "test"],
+  [/\bjanch\b/gi, "test"],
+  [/\bsurjari\b/gi, "surgery"],
+  [/\bchahiye\b/gi, "needed"],
 ];
 
 // ─── Service ─────────────────────────────────────────────────────
@@ -198,6 +221,7 @@ export class CrossLingualService {
 
   /**
    * Detect the primary language of a query.
+   * Also detects Romanized Hindi (Hinglish) by checking for common Hindi words in Latin script.
    */
   private detectLanguage(text: string): "en" | "hi" | "mixed" {
     const devanagariCount = (text.match(/[\u0900-\u097F]/g) || []).length;
@@ -209,7 +233,13 @@ export class CrossLingualService {
     const devanagariRatio = devanagariCount / total;
 
     if (devanagariRatio > 0.6) return "hi";
-    if (devanagariRatio < 0.1) return "en";
-    return "mixed";
+    if (devanagariRatio > 0.1) return "mixed";
+
+    // Check for Romanized Hindi (Hinglish) — all Latin script but Hindi words
+    const hinglishMarkers = /\b(mujhe|jaankari|jankari|baare\s*mein|bare\s*me|batao|bataiye|chahiye|kaise|kya\s*hai|ilaaj|dawai|gaanth|bukhar|saans|lakshan|janch|aage\s*kya|paise|sarkari|kharcha)\b/gi;
+    const matches = text.match(hinglishMarkers) || [];
+    if (matches.length >= 1) return "mixed";
+
+    return "en";
   }
 }
