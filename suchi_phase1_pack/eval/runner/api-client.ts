@@ -59,26 +59,6 @@ export class ApiClient {
   }
 
   /**
-   * Check if a 504 response contains the Cloud Run LLM timeout pattern.
-   * These responses have a valid JSON body with error: "timeout" and a fallback responseText.
-   * We can extract a partial result from them if all retries fail.
-   */
-  private extractTimeoutResponse(error: any): ChatResponse | null {
-    if (error.response?.status === 504 && error.response?.data) {
-      const data = error.response.data;
-      if (data.error === "timeout" && data.sessionId) {
-        return {
-          sessionId: data.sessionId,
-          messageId: data.messageId || "",
-          responseText: data.responseText || "I'm experiencing high load. Please try again in a moment.",
-          safety: data.safety || { classification: "normal" as const, actions: [] },
-        };
-      }
-    }
-    return null;
-  }
-
-  /**
    * Create a new session with retry logic for transient failures
    * @param channel Channel type (web, app, whatsapp)
    * @param cancerType Optional cancer type for session context (improves retrieval)
@@ -126,9 +106,9 @@ export class ApiClient {
 
   /**
    * Send a chat message with retry logic.
-   * Handles Cloud Run 504 timeout responses by retrying with exponential backoff.
-   * If all retries fail with 504, returns the timeout response as a fallback
-   * so the eval can record it rather than completely failing.
+   * Retries transient Cloud Run / LLM failures with exponential backoff.
+   * If every attempt times out, surface that as an explicit timeout failure
+   * so eval reporting distinguishes infra latency from model quality.
    */
   async sendMessage(
     sessionId: string,
@@ -136,7 +116,7 @@ export class ApiClient {
     channel: "web" | "app" | "whatsapp" = "web"
   ): Promise<ChatResponse> {
     let lastError: Error | null = null;
-    let lastTimeoutResponse: ChatResponse | null = null;
+    let allTimeouts = true;
 
     for (let attempt = 0; attempt <= this.retries; attempt++) {
       try {
@@ -154,18 +134,30 @@ export class ApiClient {
       } catch (error: any) {
         lastError = error;
 
-        // Check if this is a 504 timeout with a valid response body
-        const timeoutResp = this.extractTimeoutResponse(error);
-        if (timeoutResp) {
-          lastTimeoutResponse = timeoutResp;
+        const isTimeout =
+          error.code === 'ECONNABORTED' ||
+          error.response?.status === 504;
+
+        if (!isTimeout) {
+          allTimeouts = false;
         }
 
-        if (!this.isRetryableError(error) || attempt === this.retries) {
-          // If all retries exhausted and we have a timeout response, return it
-          // so the eval can at least record the session/attempt
-          if (lastTimeoutResponse && attempt === this.retries) {
-            console.log(`  ⚠️ All ${this.retries + 1} attempts returned 504 timeout. Using timeout response.`);
-            return lastTimeoutResponse;
+        // Check if retryable (transient errors)
+        const isRetryable =
+          isTimeout ||
+          error.code === 'ECONNRESET' ||   // Connection reset
+          error.response?.status === 429 || // Rate limit
+          error.response?.status === 500 || // Internal server error (cold start)
+          error.response?.status === 502 || // Bad gateway
+          error.response?.status === 503;   // Service unavailable
+
+        if (!isRetryable || attempt === this.retries) {
+          if (allTimeouts) {
+            const err = new Error(
+              `All ${attempt + 1} attempts timed out (504). API unreachable or overloaded.`
+            );
+            (err as any).timedOut = true;
+            throw err;
           }
           throw new Error(`Failed to send message: ${error.message}`);
         }
@@ -178,10 +170,6 @@ export class ApiClient {
       }
     }
 
-    // Should not reach here, but just in case
-    if (lastTimeoutResponse) {
-      return lastTimeoutResponse;
-    }
     throw new Error(`Failed to send message after ${this.retries} retries: ${lastError?.message}`);
   }
 
