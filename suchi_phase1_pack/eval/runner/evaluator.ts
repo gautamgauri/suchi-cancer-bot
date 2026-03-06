@@ -102,8 +102,8 @@ export class Evaluator {
     const startTime = Date.now();
     let sessionId: string | null = null;
 
-    // ✅ NEW: Wrap in timeout promise (3 minutes per case)
-    const PER_CASE_TIMEOUT = 180000; // 3 minutes
+    // Wrap in timeout promise (5 minutes per case to allow for Cloud Run cold starts and LLM retries)
+    const PER_CASE_TIMEOUT = 300000; // 5 minutes
 
     try {
       const result = await Promise.race([
@@ -382,9 +382,9 @@ export class Evaluator {
         
         results.push(result);
         
-        // Small delay between tests to avoid rate limiting
+        // Delay between tests to avoid rate limiting on Cloud Run
         if (testCases.indexOf(testCase) < testCases.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 3000));
         }
       }
     }

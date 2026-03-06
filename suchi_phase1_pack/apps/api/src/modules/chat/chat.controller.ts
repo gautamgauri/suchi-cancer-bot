@@ -13,7 +13,7 @@ const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]
 @Controller("chat")
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
-  private readonly REQUEST_TIMEOUT_MS = 180000; // 180 seconds (3 minutes) to match eval framework timeout and allow for complex LLM responses with deterministic extractor
+  private readonly REQUEST_TIMEOUT_MS = 300000; // 300 seconds (5 minutes) to allow for LLM retries + fallback chain on complex queries
 
   constructor(private readonly chat: ChatService) {}
 
@@ -69,7 +69,12 @@ export class ChatController {
         this.logger.warn(`Request timeout after ${this.REQUEST_TIMEOUT_MS}ms for session ${dto.sessionId}`);
         throw new GatewayTimeoutException({
           sessionId: dto.sessionId,
-          responseText: "I'm experiencing high load. Please try again in a moment.",
+          responseText: "I'm sorry — my response is taking longer than expected. " +
+            "In the meantime, here are some general steps you can take:\n\n" +
+            "1. **Talk to a doctor**: If you have symptoms or concerns about cancer, the most important step is seeing a healthcare professional.\n" +
+            "2. **Indian Cancer Society Helpline**: Call 1800-22-1951 (toll-free) for guidance.\n" +
+            "3. **Emergency**: If you're experiencing severe symptoms (coughing blood, sudden severe pain, difficulty breathing), call 112 or 108 for an ambulance.\n\n" +
+            "Please try asking your question again — I should be able to give you a more detailed, referenced answer.",
           safety: { classification: "normal" as const, actions: [] },
           error: "timeout"
         });

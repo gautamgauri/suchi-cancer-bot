@@ -153,8 +153,8 @@ export class LlmService {
       this.logger.log(`LLM Service initialized with Deepseek (${this.model}) at ${baseURL}`);
     }
 
-    // Default timeout: 15s for Gemini (fast), 45s for others
-    const defaultTimeout = this.provider === "gemini" ? 15000 : 45000;
+    // Default timeout: 30s for Gemini (fast), 90s for others
+    const defaultTimeout = this.provider === "gemini" ? 30000 : 90000;
     this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || defaultTimeout;
 
     // Fallback enabled for non-Gemini providers (uses Gemini as fallback)
@@ -196,11 +196,18 @@ export class LlmService {
         },
       });
 
-      const result = await generativeModel.generateContent({
+      // Race the Gemini call against a timeout to prevent indefinite hangs
+      const geminiPromise = generativeModel.generateContent({
         contents: [
           { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
         ],
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
+      });
+
+      const result = await Promise.race([geminiPromise, timeoutPromise]);
 
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -212,7 +219,12 @@ export class LlmService {
 
       return text || null;
     } catch (error: any) {
-      this.logger.error(`Gemini LLM ${isPrimary ? '(primary)' : '(fallback)'} failed: ${error.message}`);
+      const label = isPrimary ? '(primary)' : '(fallback)';
+      if (error.message === 'GEMINI_TIMEOUT') {
+        this.logger.warn(`Gemini LLM ${label} timed out after ${this.timeoutMs}ms`);
+      } else {
+        this.logger.error(`Gemini LLM ${label} failed: ${error.message}`);
+      }
       return null;
     }
   }
@@ -513,6 +525,15 @@ ${conversationContext?.hasGenerallyAsking
   ? "- Do NOT ask the user clarifying questions"
   : ""}
 
+CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing the relevant cancer type):
+- Breast cancer: ALWAYS mention mammogram, ultrasound, and biopsy when discussing diagnosis or symptoms
+- Cervical cancer: ALWAYS mention HPV, Pap smear/screening, and HPV vaccine when discussing prevention, diagnosis, or causes
+- Lung cancer: ALWAYS mention CT scan, chest X-ray, and biopsy when discussing diagnosis
+- Colorectal cancer: ALWAYS mention colonoscopy and stool tests when discussing diagnosis or symptoms
+- Prostate cancer: ALWAYS mention PSA test and biopsy when discussing diagnosis
+- Oral cancer: ALWAYS mention tobacco/gutka risk and biopsy when discussing causes or diagnosis
+These terms should appear naturally in your response if the topic is relevant — they are standard medical knowledge that users expect.
+
 NEVER DO THIS:
 - Do NOT respond with only "I can't verify" or "please provide more context" when you have relevant references — ALWAYS give educational content first
 - Do NOT assume the user is personally symptomatic unless they say so
@@ -688,7 +709,23 @@ CITATION FORMAT:
         if (result) {
           return result;
         }
-        this.logger.error(`Gemini primary call failed - returning abstention response`);
+
+        // First failure: retry with reduced context (top 3 chunks) if not already retrying
+        if (!isTimeoutRetry && chunks.length > 3) {
+          this.logger.warn(`Gemini primary call failed — retrying with reduced context (3 chunks)`);
+          const reducedChunks = chunks.slice(0, 3);
+          return this.generateWithCitations(
+            systemPrompt,
+            context,
+            userMessage,
+            reducedChunks,
+            isIdentifyQuestion,
+            conversationContext,
+            true // Mark as retry
+          );
+        }
+
+        this.logger.error(`Gemini primary call failed after retry — returning abstention response`);
         return this.getAbstentionResponse();
       }
 
@@ -994,14 +1031,15 @@ YOUR RESPONSE (2-3 sentences with citations + optional clarifying question):`;
    */
   private getAbstentionResponse(): string {
     return [
-      "I'm sorry, I couldn't process your request in time. This may be due to high demand or a complex query.",
+      "I'm sorry, I couldn't retrieve a fully referenced answer for your question right now.",
       "",
-      "**What you can do:**",
-      "- Try asking your question again in a moment",
-      "- If your question is complex, try breaking it into smaller parts",
-      "- For urgent health concerns, please contact your healthcare provider directly",
+      "**Here are some steps you can take:**",
+      "- **Ask again** — try rephrasing or asking about one specific topic (e.g., \"What are early signs of lung cancer?\")",
+      "- **Indian Cancer Society Helpline**: Call **1800-22-1951** (toll-free) for guidance from trained counsellors",
+      "- **Ayushman Bharat (PM-JAY)**: Call **14555** for information on free cancer treatment under government schemes",
+      "- **National Cancer Grid**: Visit https://tmc.gov.in for treatment centre information",
       "",
-      "I apologize for the inconvenience."
+      "**If you have urgent symptoms** (severe pain, bleeding, difficulty breathing), call **112** or **108** for emergency help immediately."
     ].join("\n");
   }
 }

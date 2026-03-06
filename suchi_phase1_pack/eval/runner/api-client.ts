@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import { ChatResponse } from "../types";
 
 export class ApiClient {
@@ -6,7 +7,7 @@ export class ApiClient {
   private baseUrl: string;
   private retries: number;
 
-  constructor(baseUrl: string, timeoutMs: number = 120000, authorizationHeader?: string, retries: number = 2) {
+  constructor(baseUrl: string, timeoutMs: number = 240000, authorizationHeader?: string, retries: number = 4) {
     this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
     this.retries = retries;
 
@@ -20,11 +21,41 @@ export class ApiClient {
       headers["Authorization"] = `Bearer ${authorizationHeader}`;
     }
 
-    this.client = axios.create({
+    // Use HTTPS proxy if configured (required in environments where DNS
+    // resolution only works through a proxy, e.g. Cloud Code containers)
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy;
+    const axiosConfig: any = {
       baseURL: this.baseUrl,
       headers,
       timeout: timeoutMs,
-    });
+    };
+
+    if (proxyUrl) {
+      axiosConfig.httpsAgent = new HttpsProxyAgent(proxyUrl);
+      // Disable axios's built-in proxy handling since we use the agent
+      axiosConfig.proxy = false;
+    }
+
+    this.client = axios.create(axiosConfig);
+  }
+
+  /**
+   * Check if an error is retryable (transient Cloud Run / LLM issues)
+   */
+  private isRetryableError(error: any): boolean {
+    // Network-level errors
+    if (error.code === 'ECONNABORTED' || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+      return true;
+    }
+
+    const status = error.response?.status;
+
+    // Standard retryable HTTP statuses
+    if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -59,22 +90,13 @@ export class ApiClient {
       } catch (error: any) {
         lastError = error;
 
-        // Check if retryable (transient errors)
-        const isRetryable =
-          error.code === 'ECONNABORTED' || // Timeout
-          error.code === 'ECONNRESET' ||   // Connection reset
-          error.response?.status === 500 || // Internal server error (cold start)
-          error.response?.status === 502 || // Bad gateway
-          error.response?.status === 503 || // Service unavailable
-          error.response?.status === 504;   // Gateway timeout
-
-        if (!isRetryable || attempt === this.retries) {
+        if (!this.isRetryableError(error) || attempt === this.retries) {
           throw new Error(`Failed to create session: ${error.message}`);
         }
 
-        // Exponential backoff: 1s, 2s, 4s
-        const backoffMs = Math.pow(2, attempt) * 1000;
-        console.log(`  ⚠️ Session creation attempt ${attempt + 1} failed (${error.message}), retrying in ${backoffMs}ms...`);
+        // Exponential backoff: 2s, 4s, 8s, 16s
+        const backoffMs = Math.pow(2, attempt + 1) * 1000;
+        console.log(`  ⚠️ Session creation attempt ${attempt + 1} failed (${error.response?.status || error.code || error.message}), retrying in ${backoffMs / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
     }
@@ -83,7 +105,10 @@ export class ApiClient {
   }
 
   /**
-   * Send a chat message with retry logic
+   * Send a chat message with retry logic.
+   * Retries transient Cloud Run / LLM failures with exponential backoff.
+   * If every attempt times out, surface that as an explicit timeout failure
+   * so eval reporting distinguishes infra latency from model quality.
    */
   async sendMessage(
     sessionId: string,
@@ -137,9 +162,10 @@ export class ApiClient {
           throw new Error(`Failed to send message: ${error.message}`);
         }
 
-        // Exponential backoff: 2s, 4s, 8s
-        const backoffMs = Math.pow(2, attempt + 1) * 1000;
-        console.log(`  ⚠️ Attempt ${attempt + 1} failed (${error.message}), retrying in ${backoffMs}ms...`);
+        // Exponential backoff: 4s, 8s, 16s, 32s (longer delays for Cloud Run)
+        const backoffMs = Math.pow(2, attempt + 2) * 1000;
+        const reason = error.response?.status === 504 ? "504 LLM timeout" : (error.response?.status || error.code || error.message);
+        console.log(`  ⚠️ Attempt ${attempt + 1} failed (${reason}), retrying in ${backoffMs / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
     }
@@ -155,8 +181,8 @@ export class ApiClient {
     sessionId: string,
     userMessages: string[],
     channel: "web" | "app" | "whatsapp" = "web"
-  ): Promise<{ 
-    finalResponse: ChatResponse; 
+  ): Promise<{
+    finalResponse: ChatResponse;
     allResponses: ChatResponse[];
     timingMs: { perMessageMs: number[]; totalMs: number };
   }> {
@@ -170,10 +196,10 @@ export class ApiClient {
       const messageMs = Date.now() - messageStart;
       perMessageMs.push(messageMs);
       allResponses.push(response);
-      
-      // Small delay between messages to avoid rate limiting
+
+      // Delay between messages to avoid rate limiting on Cloud Run
       if (userMessages.indexOf(userMessage) < userMessages.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
@@ -183,6 +209,31 @@ export class ApiClient {
       allResponses,
       timingMs: { perMessageMs, totalMs },
     };
+  }
+
+  /**
+   * Warm up the Cloud Run service by sending a simple request.
+   * Retries multiple times with backoff since cold starts can take a while.
+   * Returns true if the API is responsive, false otherwise.
+   */
+  async warmUp(maxAttempts: number = 3): Promise<boolean> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const sessionId = await this.createSession("web");
+        const response = await this.sendMessage(sessionId, "hello", "web");
+        // Check if we got a real response (not a timeout placeholder)
+        if (response.responseText && !response.responseText.includes("high load")) {
+          return true;
+        }
+        console.log(`  ⚠️ Warm-up attempt ${attempt + 1}: API responded but LLM timed out, retrying...`);
+      } catch (error: any) {
+        console.log(`  ⚠️ Warm-up attempt ${attempt + 1} failed: ${error.message}`);
+      }
+      // Wait before retry
+      const backoffMs = Math.pow(2, attempt + 1) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
+    return false;
   }
 
   /**
@@ -225,4 +276,3 @@ export class ApiClient {
     return count;
   }
 }
-
