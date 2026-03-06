@@ -19,7 +19,7 @@ export const envSchema = z.object({
   RATE_LIMIT_TTL_SEC: z.coerce.number().optional(),
   RATE_LIMIT_REQ_PER_TTL: z.coerce.number().optional(),
   NODE_ENV: z.string().optional(),
-  LLM_TIMEOUT_MS: z.coerce.number().optional().default(90000),
+  LLM_TIMEOUT_MS: z.coerce.number().optional().default(25000),
   // Voice module
   GCS_BUCKET_TTS: z.string().optional(),
   GCS_SIGNED_URL_EXPIRY_MIN: z.coerce.number().optional().default(60),

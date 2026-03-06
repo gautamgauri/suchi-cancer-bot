@@ -13,7 +13,7 @@ const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]
 @Controller("chat")
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
-  private readonly REQUEST_TIMEOUT_MS = 300000; // 300 seconds (5 minutes) to allow for LLM retries + fallback chain on complex queries
+  private readonly REQUEST_TIMEOUT_MS = 120000; // 120 seconds — embedding (8s) + LLM (25s) + retry (25s) + overhead, with safety margin
 
   constructor(private readonly chat: ChatService) {}
 
