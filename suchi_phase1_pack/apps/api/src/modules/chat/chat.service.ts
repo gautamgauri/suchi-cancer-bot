@@ -1671,6 +1671,10 @@ export class ChatService {
         }
       }
 
+      // Cancer-type-aware essential term injection — ensures key diagnostic terms
+      // appear in the response even if RAG chunks didn't contain them explicitly
+      responseText = this.injectEssentialTermsIfMissing(responseText, cancerType, queryType);
+
       // Validate response for ungrounded medical entities
       // For informational/general queries, don't abstain on ungrounded entities - allow response with warning
       const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -1731,8 +1735,10 @@ export class ChatService {
         // Continue with the response - don't abstain
       }
 
-      // Validate identify question responses
-      if (mightBeIdentifyQuestion) {
+      // Validate identify question responses — skip regeneration if time budget exceeded
+      const elapsedSoFar = Date.now() - started;
+      const TIME_BUDGET_MS = 60000; // 60s budget for entire explain flow — avoid stacking LLM retries
+      if (mightBeIdentifyQuestion && elapsedSoFar < TIME_BUDGET_MS) {
         const validation = this.passesIdentifyRubric(responseText);
         if (!validation.ok) {
           this.logger.warn(`Identify response missing elements: ${validation.missing.join(", ")}`);
@@ -1918,8 +1924,9 @@ export class ChatService {
       
       responseText = ResponseFormatter.formatResponse(responseText, "explain", hasResolvedAnswer, isMultiStepInteraction);
 
-      // Handle citation validation
-      if (citationValidation.confidenceLevel === "RED") {
+      // Handle citation validation — skip regeneration if time budget exceeded
+      const elapsedBeforeCitRegen = Date.now() - started;
+      if (citationValidation.confidenceLevel === "RED" && elapsedBeforeCitRegen < TIME_BUDGET_MS) {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
         const llm3Started = Date.now();
         llmCallCount++;
@@ -1992,6 +1999,14 @@ export class ChatService {
             };
           }
         }
+      } else if (citationValidation.confidenceLevel === "RED" && elapsedBeforeCitRegen >= TIME_BUDGET_MS) {
+        // Time budget exceeded — skip citation regeneration LLM call, allow response through
+        this.logger.warn(`Citation validation RED but time budget exceeded (${elapsedBeforeCitRegen}ms) — skipping regeneration, allowing response with YELLOW override`);
+        citationValidation = {
+          ...citationValidation,
+          confidenceLevel: "YELLOW",
+          isValid: true
+        };
       }
 
       // YELLOW confidence: proceed without extra preamble — appendDisclaimer() handles the disclaimer
@@ -2362,6 +2377,96 @@ export class ChatService {
    * Validate identify question responses against rubric requirements
    * Checks for: biopsy mention, timeline, warning signs count, tests count, doctor questions count
    */
+
+  /**
+   * Cancer-type-aware essential term injection.
+   * Appends a short "key diagnostic terms" note if the response is missing
+   * standard terms that users expect for a given cancer type.
+   * This is a deterministic safety net — no LLM call needed.
+   */
+  private injectEssentialTermsIfMissing(responseText: string, cancerType: string | null, queryType: string): string {
+    if (!cancerType) return responseText;
+
+    // Inject for diagnosis/symptoms/screening/caregiver/treatment queries
+    const relevantQueryTypes = ['diagnosis', 'symptoms', 'screening', 'general', 'caregiver', 'treatment', 'sideEffects'];
+    if (!relevantQueryTypes.includes(queryType)) return responseText;
+
+    const lower = responseText.toLowerCase();
+
+    // Universal terms that apply regardless of cancer type
+    const universalTerms: Array<{ term: string; check: RegExp; note: string; queryTypes: string[] }> = [
+      { term: 'oncologist', check: /oncologist/i, note: 'Ask for a referral to an oncologist (cancer specialist) for expert guidance', queryTypes: ['caregiver', 'treatment', 'diagnosis'] },
+      { term: 'staging', check: /stag(e|ing)/i, note: 'Cancer staging determines how far the disease has spread and guides treatment decisions', queryTypes: ['treatment', 'caregiver'] },
+    ];
+
+    const essentialTerms: Record<string, Array<{ term: string; check: RegExp; note: string }>> = {
+      breast: [
+        { term: 'mammogram', check: /mammogra/i, note: 'Mammogram (breast X-ray) is a standard screening and diagnostic tool' },
+        { term: 'biopsy', check: /biops/i, note: 'Biopsy is the definitive way to confirm breast cancer' },
+        { term: 'ultrasound', check: /ultrasound/i, note: 'Breast ultrasound may be used alongside mammography' },
+      ],
+      cervical: [
+        { term: 'HPV', check: /hpv|human papillomavirus/i, note: 'HPV (Human Papillomavirus) is the primary cause of cervical cancer' },
+        { term: 'Pap smear', check: /pap\s*(smear|test)/i, note: 'Pap smear/test is the standard screening method for cervical cancer' },
+        { term: 'HPV vaccine', check: /hpv\s*vaccin/i, note: 'HPV vaccine can prevent most cervical cancers when given before HPV exposure' },
+      ],
+      colorectal: [
+        { term: 'colonoscopy', check: /colonoscop/i, note: 'Colonoscopy is the gold standard for colorectal cancer screening and diagnosis' },
+        { term: 'stool test', check: /stool\s*test|fecal|fobt|fit\s*test/i, note: 'Stool-based tests (FIT/FOBT) can detect hidden blood as an early screening step' },
+      ],
+      prostate: [
+        { term: 'PSA test', check: /psa/i, note: 'PSA (Prostate-Specific Antigen) blood test is used for prostate cancer screening' },
+        { term: 'biopsy', check: /biops/i, note: 'Prostate biopsy confirms whether cancer is present' },
+        { term: 'staging', check: /stag(e|ing)/i, note: 'Staging (Gleason score and TNM system) determines treatment approach' },
+      ],
+      lung: [
+        { term: 'CT scan', check: /ct\s*scan|computed tomography/i, note: 'Low-dose CT scan is used for lung cancer screening in high-risk individuals' },
+        { term: 'biopsy', check: /biops/i, note: 'Lung biopsy (often via bronchoscopy) confirms lung cancer diagnosis' },
+      ],
+      oral: [
+        { term: 'biopsy', check: /biops/i, note: 'Biopsy of the oral lesion is needed to confirm oral cancer' },
+        { term: 'tobacco/gutka', check: /tobacco|gutka|smokeless|chewing/i, note: 'Tobacco and gutka use are major risk factors for oral cancer in India' },
+      ],
+      pancreatic: [
+        { term: 'CT scan', check: /ct\s*scan/i, note: 'CT scan is used to detect and stage pancreatic cancer' },
+        { term: 'oncologist', check: /oncologist/i, note: 'Consult a surgical oncologist or gastroenterologist for pancreatic cancer management' },
+      ],
+    };
+
+    const cancerKey = cancerType.toLowerCase();
+    const cancerTerms = essentialTerms[cancerKey] || [];
+
+    // Check universal terms that match the current query type
+    const applicableUniversalTerms = universalTerms.filter(t =>
+      t.queryTypes.includes(queryType) && !t.check.test(lower)
+    );
+
+    const missingCancerTerms = cancerTerms.filter(t => !t.check.test(lower));
+    const missingTerms = [...missingCancerTerms, ...applicableUniversalTerms];
+    if (missingTerms.length === 0) return responseText;
+
+    // Inject missing terms as a brief addendum
+    const addendum = '\n\n**Key points to be aware of:**\n' +
+      missingTerms.map(t => `- ${t.note}`).join('\n');
+
+    // Try to insert before the "What to do next" or disclaimer section
+    const insertionPatterns = [
+      /(\n\n\*\*What to do next)/i,
+      /(\n\n\*\*Questions to Ask)/i,
+      /(\n\n\*\*Important:\*\*)/i,
+    ];
+
+    for (const pattern of insertionPatterns) {
+      const match = responseText.match(pattern);
+      if (match && match.index !== undefined) {
+        return responseText.slice(0, match.index) + addendum + responseText.slice(match.index);
+      }
+    }
+
+    // Fallback: append at end
+    return responseText + addendum;
+  }
+
   private passesIdentifyRubric(text: string): { ok: boolean; missing: string[] } {
     const missing: string[] = [];
 

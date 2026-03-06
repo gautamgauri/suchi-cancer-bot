@@ -203,6 +203,25 @@ export class CrossLingualService {
       }
     }
 
+    // Extract medical topic noun phrases from the (partially translated) query
+    // for clean retrieval — e.g., "oral cancer", "breast cancer symptoms"
+    const topicPatterns = [
+      /\b(oral|breast|lung|cervical|prostate|colorectal|stomach|liver|kidney|brain|blood|skin|pancreatic|ovarian|bladder)\s+cancer\b/gi,
+      /\b(cancer)\s+(symptoms|treatment|diagnosis|screening|prevention|causes|stages?|signs)\b/gi,
+      /\b(symptoms|treatment|diagnosis|screening)\s+of\s+(cancer|[a-z]+\s+cancer)\b/gi,
+    ];
+    for (const pattern of topicPatterns) {
+      const matches = translated.match(pattern) || query.match(pattern);
+      if (matches) {
+        for (const match of matches) {
+          const topicQuery = match.trim();
+          if (topicQuery.length > 3 && !parallelQueries.includes(topicQuery)) {
+            parallelQueries.push(topicQuery);
+          }
+        }
+      }
+    }
+
     this.logger.debug({
       event: "cross_lingual_translation",
       original: query.substring(0, 50),
