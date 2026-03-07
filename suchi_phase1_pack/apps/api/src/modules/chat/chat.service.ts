@@ -236,7 +236,11 @@ export class ChatService {
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Quick RAG retrieval for urgent cases to support citations
       // Reuse sessionCancerType from session fetched at start
-      earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, earlyQueryType);
+      try {
+        earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, earlyQueryType);
+      } catch (earlyRagError: any) {
+        this.logger.warn(`Early RAG retrieval failed: ${earlyRagError.message} — continuing without citations`);
+      }
     }
     
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
@@ -771,11 +775,11 @@ export class ChatService {
 
     // TIMING: Track RAG retrieval time
     const ragStarted = Date.now();
-    let evidenceChunks;
+    let evidenceChunks: any[] = [];
     if (earlyEvidenceChunks.length > 0) {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
       evidenceChunks = earlyEvidenceChunks;
-    } else {
+    } else { try {
       // ─── Phase 2: Multi-call retrieval for complex queries ──────────
       // Build session context for the query decomposer
       const sessionCtx: SessionContext = {
@@ -843,7 +847,10 @@ export class ChatService {
           });
         }
       }
-    }
+    } catch (ragError: any) {
+      this.logger.error(`RAG retrieval failed: ${ragError.message} — continuing with empty evidence`);
+      evidenceChunks = [];
+    } }
     const ragMs = Date.now() - ragStarted;
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
@@ -1583,8 +1590,9 @@ export class ChatService {
       const explainStarted = Date.now();
       let llmCallCount = 0;
 
-      // Detect cancer type for cancer-type-specific responses (check session first)
-      const cancerType = mightBeIdentifyQuestion ? detectCancerType(dto.userText, sessionCancerType) : sessionCancerType || null;
+      // Detect cancer type for cancer-type-specific responses
+      // Always detect from query text — not just for identify questions — so essential term injection works
+      const cancerType = detectCancerType(dto.userText, sessionCancerType);
 
       // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
       const extractionStarted = Date.now();
@@ -2104,26 +2112,31 @@ export class ChatService {
       // Use navigateModeFrame for structure
       let responseText = ResponseTemplates.navigateModeFrame(dto.userText);
       
-      // If we have RAG chunks, add context
+      // If we have RAG chunks, add context — wrapped in try-catch for resilience
       if (evidenceChunks.length > 0) {
-        // Generate brief context from RAG
-        const ragContext = await this.llm.generateWithCitations(
-          "navigate",
-          "",
-          `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
-          evidenceChunks.slice(0, 2),
-          false,
-          { emotionalState }
-        );
-        responseText = ragContext + "\n\n" + responseText;
-        
-        // Validate response for ungrounded medical entities
-        const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
-        if (validationResult.shouldAbstain) {
-          this.logger.warn(
-            `Navigate mode response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
+        try {
+          // Generate brief context from RAG
+          const ragContext = await this.llm.generateWithCitations(
+            "navigate",
+            "",
+            `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
+            evidenceChunks.slice(0, 2),
+            false,
+            { emotionalState }
           );
-          // Remove ungrounded context and use template only
+          responseText = ragContext + "\n\n" + responseText;
+
+          // Validate response for ungrounded medical entities
+          const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
+          if (validationResult.shouldAbstain) {
+            this.logger.warn(
+              `Navigate mode response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
+            );
+            // Remove ungrounded context and use template only
+            responseText = ResponseTemplates.navigateModeFrame(dto.userText);
+          }
+        } catch (navLlmError: any) {
+          this.logger.error(`Navigate mode LLM call failed: ${navLlmError.message} — using template-only response`);
           responseText = ResponseTemplates.navigateModeFrame(dto.userText);
         }
       }
