@@ -73,27 +73,9 @@ export class GreetingFlowService {
     // Rule-based extraction first
     const ruleBasedResult = this.extractContextWithRules(userText);
 
-    // If confidence is high enough, return rule-based result
-    if (ruleBasedResult.confidence >= 0.7) {
-      return ruleBasedResult;
-    }
-
-    // LLM fallback for ambiguous cases
-    if (this.llmService) {
-      try {
-        const llmResult = await this.extractContextWithLLM(userText);
-        // Combine results, preferring LLM if it has higher confidence
-        return {
-          context: llmResult.context || ruleBasedResult.context,
-          cancerType: llmResult.cancerType || ruleBasedResult.cancerType,
-          confidence: Math.max(ruleBasedResult.confidence, llmResult.confidence || 0.5),
-        };
-      } catch (error) {
-        this.logger.warn(`LLM context extraction failed: ${error.message}`);
-        return ruleBasedResult;
-      }
-    }
-
+    // Always use rule-based result — LLM fallback adds 2-15s latency for marginal
+    // accuracy improvement on context extraction, which is not worth the cost.
+    // Cancer type is also detected separately by detectCancerType() in the main flow.
     return ruleBasedResult;
   }
 
