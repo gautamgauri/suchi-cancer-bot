@@ -9,12 +9,6 @@ export interface ExtractedConstraints {
   maxGrantAmountINR?: number;
   projectDurationMonthsMax?: number;
   deadline?: string;
-  /** How confident the extraction is about the deadline value.
-   * "verified"  — an explicit ISO date was stated in the RFP text
-   * "estimated" — deadline was inferred from vague language ("typically Oct", "annually")
-   * "unknown"   — no deadline mention found; value may be null or a guess
-   */
-  deadlineConfidence?: "verified" | "estimated" | "unknown";
   geography?: string[];
   themes?: { primary?: string[]; secondary?: string[] };
   summary?: string;
@@ -34,7 +28,6 @@ Output JSON with these keys (use null for missing):
 - maxGrantAmountINR (number, in INR)
 - projectDurationMonthsMax (number)
 - deadline (string, ISO 8601 with timezone if possible, e.g. "2026-02-15T23:59:00+05:30")
-- deadlineConfidence (string: "verified" if an explicit date appears in the document; "estimated" if inferred from vague language like "typically October" or "annually"; "unknown" if no deadline found)
 - geography (array of strings)
 - themes (object with optional "primary" and "secondary" string arrays)
 - summary (string, 2-3 sentence RFP summary)
@@ -71,9 +64,6 @@ export class RfpConstraintsExtractService {
         projectDurationMonthsMax:
           typeof parsed.projectDurationMonthsMax === "number" ? parsed.projectDurationMonthsMax : undefined,
         deadline: typeof parsed.deadline === "string" ? parsed.deadline : undefined,
-        deadlineConfidence: ["verified", "estimated", "unknown"].includes(parsed.deadlineConfidence as string)
-          ? (parsed.deadlineConfidence as "verified" | "estimated" | "unknown")
-          : "unknown",
         geography: Array.isArray(parsed.geography) ? (parsed.geography as string[]) : undefined,
         themes: parsed.themes && typeof parsed.themes === "object" ? (parsed.themes as ExtractedConstraints["themes"]) : undefined,
         summary: typeof parsed.summary === "string" ? parsed.summary : undefined,

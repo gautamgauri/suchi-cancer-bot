@@ -1,44 +1,44 @@
 /**
  * Structured organization profile for Diksha Foundation.
  * Extracted from kb_funding/docs/misc/diksha-organisation-profile-2026-27.md
- * and enriched from the Gully Goal proposal (Reliance Foundation ESA, 2026).
  * Used in planner + section-writer prompts to ground the LLM in real org data.
  */
 
 export const DIKSHA_ORG_PROFILE = `
-Diksha Foundation is a registered society (Reg. S/RS/SW/0019/2010) established in 2010 in Bihar, India, with 12A, 80G, FCRA, and CSR-1 certifications. Our mission is to provide holistic education and life skills to marginalized children and youth — creating inclusive learning spaces that combine academic support, digital literacy, sports, social-emotional learning (SEE Learning), and civic engagement. Since inception, we have graduated over 2,000 students through our KHEL Centers and currently serve approximately 771 beneficiaries across two core programs.
+Organization: Diksha Foundation
+Legal entity: Registered Society (Registration No. S/RS/SW/0019/2010) with 12A (ABECS8375CE20217), 80G (ABECS8375CF20223), FCRA (231661629) and CSR-1 (CSR0001271203) registrations in place.
+Founded: 2010, Bihar, India
+Website: www.dikshafoundation.org
 
-Our flagship program, KHEL (Knowledge Hub for Education and Learning), operates through a Hub & Spoke model across 3 centers: KHEL Patna (Rukanpura) serving 147 students with supplementary education, ICT lab, Khan Academy, SEE Learning, and Saturday football; KHEL Bihta (Sita Ram Ashram) serving 150 students with after-school programming, volleyball, badminton, and links to 4 community schools; and KHEL Sarairanjan serving 179 students (est. August 2024) with baseline-midline assessments, Bal Sansad (Children's Parliament), and 3 partner government schools. Each center (hub) links to nearby government schools (spokes) via our Fellow Teachers. Total KHEL direct reach is approximately 511 students across 3 centers and ~10 government schools.
+Who we are:
+Diksha Foundation is a Bihar-born non-profit that has been working since 2010 to provide holistic education and social development opportunities to children, adolescents and women from socially and economically marginalised communities. Our mission is to create inclusive and vibrant learning spaces where education goes beyond basic literacy to include social-emotional growth, civic engagement and 21st‑century skills. We work primarily in urban and peri‑urban settlements in and around Patna, Bihta and Samastipur in Bihar.
 
-Our Empowering Futures program is a 3-year initiative reaching approximately 260 adolescent girls across 6 urban settlements in Patna, delivering life skills, peer leadership, and agency-building. The Poonji Project provides grants to financially marginalized women for micro-entrepreneurship. Our Teaching Fellowship program trains and mentors Fellow Teachers who deliver sessions across both KHEL centers and government schools.
+Programme architecture – KHEL hub & spoke:
+Our core programme is KHEL (Knowledge Hub for Education and Learning), which operates as a hub‑and‑spoke model. KHEL centres function as community learning hubs that provide supplementary education, digital literacy, sports and SEE Learning, while Fellow Teachers connect these hubs to nearby government and community schools (spokes).
+- KHEL Patna (Rukanpura): Supplementary education hub for around 147 learners from low‑income communities, with an ICT lab (Khan Academy), SEE Learning sessions, Saturday football at Gandhi Maidan, weekend clubs and STEAM labs.
+- KHEL Bihta (Sita Ram Ashram): Around 150 learners, strong focus on sports (volleyball, badminton), after‑school support, cultural programmes, an Ayurvedic clinic for the community, and volunteer engagement in four community schools.
+- KHEL Sarairanjan (Samastipur): Established in 2024, currently serving around 179 learners with baseline–midline assessments, Bal Sansad (Children’s Parliament), community events and fellow‑led sessions in three nearby government schools.
+Across these hubs and their linked schools, Diksha reaches several hundred children and adolescents each year through a predictable timetable of academic, co‑curricular and life‑skills activities.
 
-Curriculum spans: academic support (Hindi, English, Math), digital literacy (computer labs, Khan Academy, DCA diploma), 21st-century skills (STEAM club, creative arts, theater), social-emotional learning (SEE Learning — Dalai Lama Trust curriculum), sports (football, volleyball, badminton, indoor games), and civic engagement (Bal Sansad, debate, quiz). Assessment uses baseline-midline-endline design, Khan Academy tracking, and pen-and-paper tests 3x/year.
+Other flagship programmes:
+- Teaching Fellowship: Fellow Teachers are trained and mentored by Diksha to deliver sessions both in KHEL centres and in nearby government/community schools, strengthening classroom practice and building a local educator pipeline.
+- Poonji Project: Grants and peer‑learning support for financially marginalised women in Patna to start or stabilise micro‑enterprises, often linked to self‑help groups and informal sector workers’ collectives.
+- Empowering Futures (Adolescent Girls Programme): A three‑year, capability‑based programme for adolescent girls across six underserved urban locations in Patna, building agency, life skills, peer leadership and collective voice.
 
-Leadership:
-- Gautam Gauri — Executive Director & Co-founder; MPhil Education (Cambridge University); 15+ years nonprofit leadership
-- Shivam Mishra — Education & Community Development Specialist; field operations lead across centers
-- Nisha Kumari — Communications Coordinator
+What we do inside the classroom:
+Across centres, Diksha blends academic support (Hindi, English, Mathematics) with digital literacy (computer labs, DCA‑style courses, Khan Academy), 21st‑century skills (STEAM club, creative arts and theatre) and structured Social‑Emotional and Ethical (SEE) Learning. Sports (football, volleyball, badminton and indoor games) and civic platforms such as Bal Sansad are used to build confidence, teamwork and leadership, not just recreation.
 
-Board of Directors:
-- Gautam Gauri (President) — Co-founder & Executive Director; MPhil Education (Cambridge); 15 years education sector
-- Saurabh Kumar (Treasurer) — Co-founder and COO at Sparklehood; angel investor with startup ecosystem expertise
-- Mohita Katriar (Secretary) — Education professional; Master's in Education (TISS); academic leadership
-- Harish Nandan Sahay — 25+ years national experience; corporate-to-social sector transition; Amity Foundation
-- Arti Nair — Master's in Philosophy (Cambridge); children's literature, curriculum development, teacher training
-- Vikas Gupta — Entrepreneur and investor in retail-tech; strategic advisor on business transformation
-- Dr. Nandini Jha — MD Radiologist; advanced imaging and musculoskeletal diagnostics
+Assessment and evidence culture:
+Learning is tracked through a combination of baseline–midline–endline assessments (often with external partners), pen‑and‑paper tests three times a year and digital tracking through platforms such as Khan Academy. ActivityInstance records in our internal registry capture fortnightly enrolment, attendance, meals served, SEL sessions and other operational metrics, which are then used to inform planning and to ground funder‑facing proposals in real data.
 
-Annual Operating Expenditure: ₹104.56 lakhs (FY 2024-25)
+Communities and geography:
+We work with economically disadvantaged children and youth, sanitation workers’ families, women from slum communities and adolescent girls from informal settlements. Our current footprint is anchored in Patna, Bihta and Samastipur (Bihar, India), with centres typically operating from 10:00 AM to 6:00 PM, Tuesday to Sunday, providing a safe after‑school environment.
 
-Current Funding Partners: Azim Premji Foundation, Feeding India, Ruban Hospital, eGain Communications, BP Singh & Shakuntla Devi Foundation, Every.org, Benevity Causes, GIVE India, North South Foundation (MOU for learning outcome tracking), Swatantra Talim (STEAM curriculum), SEE Learning India, DaanVeda, IndiaDonates, ArtKaar Collective, SAATHIYA
+People and governance:
+Diksha’s work is guided by a governing board and a lean professional leadership team with experience in education, social work, finance and community development. Day‑to‑day delivery is led by dedicated educators, youth fellows and programme staff who are present on‑site for extended hours, supported by volunteers and partner organisations for specialist inputs.
 
-Past Partners: JP Morgan Chase (Code for Good collaboration), PRAVAH, Commutiny, Asha for Education, US Consulate General (Kolkata)
-
-Compliance: Society Reg. S/RS/SW/0019/2010; PAN: AABTD9924D; 12A and 80G approved; FCRA registered (latest return filed December 2025); CSR-1 registered; audited annually by Jha BK & Associates (Firm No. 043115N); not registered under GST; no FCRA defaults or blacklisting.
-
-Geography: Patna, Bihta (Patna district), Samastipur — all in Bihar, India
-Target communities: Economically disadvantaged children (ages 6-18), youth facing barriers to education, adolescent girls from urban slum communities, women from marginalized backgrounds
-Staff: Center Coordinators (1 per center), Fellow Teachers, Computer Instructors, community volunteers; operations 10 AM–6 PM Tue–Sun
+Partnerships and track record:
+Over more than a decade, Diksha has built partnerships with institutional donors (including CSR partners, international scholarship programmes and foundations) and individual philanthropists. Graduates from Diksha’s programmes have gone on to higher education (including universities such as Amity, Azim Premji and Shiv Nadar, as documented in scholarship reports) and to livelihoods where they remain connected to their communities as peer leaders. The organisation’s history of consistent centre operations, regular assessments and long‑term engagement with families is a core part of its credibility with funders and government schools.
 `.trim();
 
 /**

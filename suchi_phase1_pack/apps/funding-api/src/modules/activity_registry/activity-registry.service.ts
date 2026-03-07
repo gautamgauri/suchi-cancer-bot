@@ -243,10 +243,6 @@ export class ActivityRegistryService {
       }
     }
 
-    // Build target groups from activities
-    const allTargetGroups = activities.map(a => a.targetGroup).filter(Boolean);
-    const uniqueTargetGroups = [...new Set(allTargetGroups)];
-
     return {
       centers: [...allCenters],
       totalDirectBeneficiaries: totalBeneficiaries || null,
@@ -256,8 +252,6 @@ export class ActivityRegistryService {
           name: a.name,
           frequency: a.frequency,
           unitCostINR: a.unitCost,
-          centers: a.centers,
-          targetGroup: a.targetGroup,
         })),
       })),
       latestMetrics: {
@@ -268,25 +262,6 @@ export class ActivityRegistryService {
         kaActiveStudents: totalKaStudents || null,
       },
       staffing: activities.flatMap(a => a.staffInvolved || []).filter((v, i, arr) => arr.indexOf(v) === i),
-      // Computable defaults for Expected Results and Objectives sections
-      suggestedTargets: {
-        attendanceTarget: attendanceCount > 0
-          ? `≥${Math.min(Math.round(avgAttendance / attendanceCount) + 10, 95)}% average monthly attendance (current baseline: ~${Math.round(avgAttendance / attendanceCount)}%)`
-          : "≥85% average monthly attendance (baseline to be established Month 1)",
-        enrollmentRetention: totalEnrollment > 0
-          ? `retain ≥${Math.round(totalEnrollment * 0.95)} of ${totalEnrollment} enrolled students (≥95% retention)`
-          : "≥95% of enrolled students retained throughout grant period",
-        learningImprovement: "20% average improvement in grade-level literacy and numeracy scores (ASER-style assessment, baseline Month 1, endline Month 12)",
-        digitalLiteracy: totalKaStudents > 0
-          ? `${totalKaStudents} students demonstrate basic digital skills on practical assessment (currently ${totalKaStudents} active on Khan Academy)`
-          : "80% of enrolled students demonstrate basic digital skills on practical assessment by Month 12",
-        sportsParticipation: "≥90% of enrolled students participate in ≥3 sports coaching sessions per week",
-        selImprovement: totalSelSessions > 0
-          ? `measurable improvement in SEL competencies (${totalSelSessions} SEL sessions conducted in recent reporting period)`
-          : "measurable improvement in social-emotional competencies via teacher observation checklist",
-        communityEngagement: "≥2 community events per center per quarter with ≥50% parent attendance",
-      },
-      targetGroups: uniqueTargetGroups,
     };
   }
 }

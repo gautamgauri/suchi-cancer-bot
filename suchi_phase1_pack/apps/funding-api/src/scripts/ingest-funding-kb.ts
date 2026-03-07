@@ -19,7 +19,9 @@ import path from "path";
 import matter from "gray-matter";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
+import OpenAI from "openai";
 import { inferCorpus } from "../modules/evidence_ingest/corpus.constants";
+import { debugLog } from "../modules/evidence_ingest/debug-log";
 
 // Types
 type ManifestDoc = {
@@ -62,27 +64,20 @@ type Checkpoint = {
 
 const prisma = new PrismaClient();
 
-// Initialize embedding provider (Google Gemini by default, falls back to OpenAI)
-import { createEmbeddingProvider, EmbeddingProvider } from "../modules/evidence_ingest/embedding-provider";
+// Initialize OpenAI client for embeddings
+let openai: OpenAI | null = null;
 
-let embeddingProvider: EmbeddingProvider | null = null;
+function getOpenAIClient(): OpenAI | null {
+  if (openai) return openai;
 
-function getEmbeddingProvider(): EmbeddingProvider | null {
-  if (embeddingProvider) return embeddingProvider;
-
-  const apiKey = process.env.FUNDING_EMBEDDINGS_API_KEY || process.env.FUNDING_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.FUNDING_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn("Warning: No embedding API key found. Skipping embeddings.");
+    console.warn("Warning: No FUNDING_OPENAI_API_KEY or OPENAI_API_KEY found. Skipping embeddings.");
     return null;
   }
 
-  embeddingProvider = createEmbeddingProvider({
-    provider: process.env.FUNDING_EMBEDDING_PROVIDER,
-    apiKey,
-    baseUrl: process.env.FUNDING_EMBEDDINGS_BASE_URL,
-    model: process.env.EVIDENCE_EMBEDDING_MODEL,
-  });
-  return embeddingProvider;
+  openai = new OpenAI({ apiKey });
+  return openai;
 }
 
 // Retry database operations on connection failures
@@ -247,16 +242,31 @@ function parseDate(dateStr?: string): Date | null {
 }
 
 /**
- * Generate embedding using configured provider (Google Gemini or OpenAI)
+ * Generate embedding using OpenAI API
  */
 async function generateEmbedding(text: string): Promise<number[] | null> {
-  const provider = getEmbeddingProvider();
-  if (!provider) return null;
+  const client = getOpenAIClient();
+  if (!client) return null;
 
   try {
-    const result = await provider.embed(text);
-    return result.embedding;
+    // #region agent log
+    debugLog({ location: "ingest-funding-kb.ts:generateEmbeddingBefore", message: "script before embeddings.create", data: { textLen: text?.length }, hypothesisId: "H2" });
+    // #endregion
+    const response = await client.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+    });
+    // #region agent log
+    const dataLen = response?.data?.length ?? -1;
+    const firstLen = response?.data?.[0]?.embedding?.length ?? -1;
+    debugLog({ location: "ingest-funding-kb.ts:generateEmbeddingAfter", message: "script after embeddings.create", data: { dataLen, firstLen }, hypothesisId: "H3" });
+    // #endregion
+    const embedding = response?.data?.[0]?.embedding ?? null;
+    return Array.isArray(embedding) ? embedding : null;
   } catch (error) {
+    // #region agent log
+    debugLog({ location: "ingest-funding-kb.ts:generateEmbeddingCatch", message: "script embedding error", data: { errMsg: (error as Error).message }, hypothesisId: "H2_H3" });
+    // #endregion
     console.error(`  Error generating embedding: ${(error as Error).message}`);
     return null;
   }
@@ -414,19 +424,18 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
     // Store embedding if generated
     if (embedding) {
       const embeddingStr = JSON.stringify(embedding);
-      const embeddingModelName = getEmbeddingProvider()?.modelName ?? "unknown";
       await withRetry(() =>
         prisma.chunkEmbedding.upsert({
           where: { chunkId: chunk.id },
           update: {
             vector: embeddingStr,
-            embeddingModel: embeddingModelName,
+            embeddingModel: "text-embedding-3-small",
             updatedAt: now,
           },
           create: {
             chunkId: chunk.id,
             vector: embeddingStr,
-            embeddingModel: embeddingModelName,
+            embeddingModel: "text-embedding-3-small",
           },
         })
       );
@@ -435,6 +444,14 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
 }
 
 async function main() {
+  try {
+    fs.appendFileSync(
+      path.join(require("os").tmpdir(), "debug-302c0b.log"),
+      JSON.stringify({ sessionId: "302c0b", message: "ingest-funding-kb main() started", timestamp: Date.now() }) + "\n",
+    );
+  } catch {
+    // ignore
+  }
   const opts = parseArgs();
   const manifestPath = path.join(opts.kbRoot, "manifest.json");
   mustExist(manifestPath);

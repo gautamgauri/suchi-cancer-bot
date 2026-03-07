@@ -1,55 +1,5 @@
 import { z } from "zod";
 
-/**
- * Pre-flight environment validation.
- * Call BEFORE NestFactory.create() to fail fast with actionable error messages.
- * Returns validated config or throws with human-readable diagnostics.
- */
-export function validateEnvOrDie(): z.infer<typeof envSchema> {
-  const result = envSchema.safeParse(process.env);
-  if (result.success) {
-    // Semantic cross-field checks
-    const warnings: string[] = [];
-    const env = result.data;
-
-    if (env.FUNDING_EMBEDDING_PROVIDER === "google") {
-      const hasKey = env.FUNDING_GEMINI_API_KEY || env.FUNDING_EMBEDDINGS_API_KEY;
-      if (!hasKey) {
-        warnings.push(
-          "FUNDING_EMBEDDING_PROVIDER=google but neither FUNDING_GEMINI_API_KEY nor FUNDING_EMBEDDINGS_API_KEY is set. Embedding pipeline will fail.",
-        );
-      }
-    }
-
-    if (warnings.length > 0) {
-      console.warn(`\n⚠ ENV WARNINGS (${warnings.length}):\n${warnings.map((w, i) => `  ${i + 1}. ${w}`).join("\n")}\n`);
-    }
-
-    return env;
-  }
-
-  // Format Zod errors into actionable messages
-  const lines = result.error.issues.map((issue) => {
-    const path = issue.path.join(".");
-    return `  ✗ ${path}: ${issue.message}`;
-  });
-  const msg = [
-    "",
-    "╔══════════════════════════════════════════════════╗",
-    "║  FUNDING API — ENV VALIDATION FAILED             ║",
-    "╚══════════════════════════════════════════════════╝",
-    "",
-    `${lines.length} issue(s):`,
-    ...lines,
-    "",
-    "Fix the above in .env or Cloud Run env vars, then restart.",
-    "",
-  ].join("\n");
-
-  console.error(msg);
-  process.exit(1);
-}
-
 export const envSchema = z.object({
   PORT: z.coerce.number().optional(),
   NODE_ENV: z.string().optional(),
@@ -76,11 +26,10 @@ export const envSchema = z.object({
   EVIDENCE_MIME_ALLOWLIST: z.string().optional(),
   EVIDENCE_STORAGE_DIR: z.string().optional(), // local temp dir for raw files; if unset uses os.tmpdir()/evidence
   // Phase 2: embeddings (optional; required for embedding pipeline)
-  // Split provider: embeddings can use different API than LLM (e.g., Google Gemini for embeddings, Deepseek for generation)
-  FUNDING_EMBEDDING_PROVIDER: z.enum(["google", "openai"]).optional().default("google"), // "google" = Gemini, "openai" = OpenAI
+  // Split provider: embeddings can use different API than LLM (e.g., OpenAI for embeddings, Deepseek for generation)
   FUNDING_EMBEDDINGS_API_KEY: z.string().optional(), // Falls back to FUNDING_OPENAI_API_KEY if not set
-  FUNDING_EMBEDDINGS_BASE_URL: z.string().url().optional(), // Falls back to OpenAI default if not set (only for openai provider)
-  EVIDENCE_EMBEDDING_MODEL: z.string().optional().default("gemini-embedding-001"), // Google: gemini-embedding-001 (768-dim via outputDimensionality), OpenAI: text-embedding-3-small
+  FUNDING_EMBEDDINGS_BASE_URL: z.string().url().optional(), // Falls back to OpenAI default if not set
+  EVIDENCE_EMBEDDING_MODEL: z.string().optional().default("text-embedding-3-small"),
   EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN: z.coerce.number().min(1).max(1000).optional().default(60),
   // Funding Bot: Gmail intake (optional; required when running email ingestion)
   FUNDING_GMAIL_USER: z.string().email().optional(),
@@ -106,10 +55,4 @@ export const envSchema = z.object({
   FUNDING_SERPAPI_KEY: z.string().optional(),
   FUNDING_FUNDER_SCRAPER_ENABLED: z.string().optional(), // "true" to enable
   FUNDING_FUNDER_SCRAPER_MAX_ORGS_PER_RUN: z.coerce.number().min(1).max(5).optional().default(2),
-  // Google Custom Search Engine (CSE) — primary web search backend (100 free queries/day)
-  FUNDING_CSE_API_KEY: z.string().optional(),
-  FUNDING_CSE_ENGINE_ID: z.string().optional(),
-  // Gemini grounding — model-synthesized web research (1,500 free queries/day)
-  FUNDING_GEMINI_API_KEY: z.string().optional(), // Falls back to FUNDING_EMBEDDINGS_API_KEY
-  FUNDING_GEMINI_GROUNDING_MODEL: z.string().optional().default("gemini-2.0-flash"),
 });

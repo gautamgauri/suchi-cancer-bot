@@ -125,12 +125,4 @@ export class EvidenceIngestController {
   ) {
     return this.retrievalService.runEval({ mode, limit, queries });
   }
-
-  @Post("eval/recall")
-  async runRecallEval(
-    @Body("mode") mode?: RetrievalPolicyMode,
-    @Body("limit") limit?: number,
-  ) {
-    return this.retrievalService.runRecallEval({ mode, limit });
-  }
 }

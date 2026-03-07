@@ -1,10 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 import { Injectable, Logger } from "@nestjs/common";
+import { debugLog } from "./debug-log";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
+import OpenAI from "openai";
 import { logStructured } from "../../common/structured-logger";
-import { createEmbeddingProvider, EmbeddingProvider } from "./embedding-provider";
 
 export type RetrievalPolicyMode = "proposal_drafting" | "org_background" | "internal_research";
 
@@ -95,27 +96,11 @@ interface PgvectorRow {
   score: number;
 }
 
-/** Raw row returned by hybrid (vector + FTS) SQL query */
-interface HybridRow extends PgvectorRow {
-  vecScore: number;
-  ftsScore: number;
-}
-
-/**
- * Dynamic hybrid weights: adjust vector vs lexical weighting based on query length.
- * Short queries (proper nouns, metrics) lean on vector; longer queries benefit from lexical precision.
- */
-function getHybridWeights(query: string): { wVec: number; wLex: number } {
-  const tokenCount = query.split(/\s+/).length;
-  if (tokenCount <= 4) return { wVec: 0.80, wLex: 0.20 };
-  if (tokenCount <= 8) return { wVec: 0.65, wLex: 0.35 };
-  return { wVec: 0.55, wLex: 0.45 };
-}
-
 @Injectable()
 export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
-  private readonly embeddingProvider: EmbeddingProvider | null = null;
+  private readonly openai: OpenAI | null = null;
+  private readonly embeddingModel: string;
   private readonly queryCache = new QueryEmbeddingCache(100, 5 * 60 * 1000); // 100 entries, 5 min TTL
   private readonly usePgvector: boolean;
 
@@ -127,24 +112,23 @@ export class RetrievalService {
     const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
     const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
     const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
-    const embeddingProviderName = this.configService.get<string>("FUNDING_EMBEDDING_PROVIDER");
 
     // Use embeddings-specific key if available, otherwise fall back to LLM key
     const apiKey = embeddingsApiKey || llmApiKey;
-    const model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL");
+    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
+    const baseURL = embeddingsBaseUrl || undefined;
 
-    // Create unified embedding provider (supports Google Gemini and OpenAI)
-    this.embeddingProvider = createEmbeddingProvider({
-      provider: embeddingProviderName,
-      apiKey: apiKey || undefined,
-      baseUrl: embeddingsBaseUrl || undefined,
-      model: model || undefined,
-    });
+    if (apiKey) {
+      this.openai = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
+      this.logger.log(`Retrieval embeddings client configured (using ${embeddingsApiKey ? 'dedicated' : 'shared LLM'} API key)`);
+    }
+    this.embeddingModel =
+      this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
 
     // Feature flag: USE_PGVECTOR (default true after migration)
     const pgvecFlag = this.configService.get<string>("USE_PGVECTOR");
     this.usePgvector = pgvecFlag !== "false" && pgvecFlag !== "0";
-    this.logger.log(`Retrieval mode: ${this.usePgvector ? "pgvector (SQL)" : "legacy (JS cosine)"}, provider: ${embeddingProviderName || "openai"}`);
+    this.logger.log(`Retrieval mode: ${this.usePgvector ? "pgvector (SQL)" : "legacy (JS cosine)"}`);
   }
 
   /**
@@ -156,6 +140,9 @@ export class RetrievalService {
     options: RetrievalOptions = {},
   ): Promise<RetrievalChunkDto[]> {
     const mode = options.mode ?? "proposal_drafting";
+    // #region agent log
+    debugLog({ location: "retrieval.service.ts:retrieve", message: "retrieve entry", data: { mode, hasOrgId: !!options.orgId, usePgvector: this.usePgvector, hasOpenai: !!this.openai }, hypothesisId: "H5" });
+    // #endregion
 
     // Hard guardrail: org isolation is mandatory for sensitive modes
     if (mode === "proposal_drafting" && !options.orgId) {
@@ -169,9 +156,7 @@ export class RetrievalService {
   }
 
   /**
-   * pgvector path: hybrid SQL query combines vector similarity + full-text search.
-   * FTS enables exact-match recall for proper nouns, program names, and metrics
-   * that vector embeddings handle poorly.
+   * pgvector path: single SQL query pushes similarity search + all filters to PostgreSQL.
    * Expected latency: <100ms per query (vs 20-80s legacy).
    */
   private async retrievePgvector(
@@ -184,8 +169,8 @@ export class RetrievalService {
     const allowedTiers = POLICY_TIERS[mode];
     const minScore = options.minScore ?? 0;
 
-    if (!this.embeddingProvider) {
-      this.logger.warn("pgvector: no embeddings provider, falling back to legacy");
+    if (!this.openai) {
+      this.logger.warn("pgvector: no embeddings client, falling back to legacy");
       return this.retrieveLegacy(query, options);
     }
 
@@ -197,14 +182,26 @@ export class RetrievalService {
 
     if (!qVec) {
       const embedStart = Date.now();
+      // #region agent log
+      debugLog({ location: "retrieval.service.ts:pgvectorBeforeCreate", message: "pgvector before embeddings.create", data: {}, hypothesisId: "H2" });
+      // #endregion
+      let queryEmbedding;
       try {
-        const result = await this.embeddingProvider.embed(query.slice(0, 8000));
-        qVec = result.embedding;
-      } catch (err) {
-        this.logger.error(`Embedding query failed: ${(err as Error).message}`);
-        qVec = null;
+        queryEmbedding = await this.openai.embeddings.create({
+          model: this.embeddingModel,
+          input: query.slice(0, 8000),
+        });
+      } catch (embErr) {
+        // #region agent log
+        debugLog({ location: "retrieval.service.ts:pgvectorEmbedCatch", message: "pgvector embeddings.create error", data: { errMsg: (embErr as Error).message }, hypothesisId: "H2" });
+        // #endregion
+        throw embErr;
       }
       embedMs = Date.now() - embedStart;
+      qVec = queryEmbedding.data[0]?.embedding ?? null;
+      // #region agent log
+      debugLog({ location: "retrieval.service.ts:pgvectorAfterCreate", message: "pgvector after embeddings.create", data: { qVecLen: qVec?.length ?? 0, dataLen: queryEmbedding?.data?.length }, hypothesisId: "H3" });
+      // #endregion
       if (qVec) {
         this.queryCache.set(normalizedQuery, qVec);
       }
@@ -230,14 +227,12 @@ export class RetrievalService {
     const dbStart = Date.now();
     const hasCorpusFilter = !!(options.corpus?.length);
     const hasDocTypeFilter = !!(options.docTypes?.length);
-
-    // Dynamic hybrid weights based on query length
-    const { wVec, wLex } = getHybridWeights(query);
-
-    // Prepare FTS query text: clean for websearch_to_tsquery
-    const ftsQueryText = query.slice(0, 2000).replace(/[^\w\s'"()-]/g, " ").trim();
-
-    const rows = await this.prisma.$queryRawUnsafe<HybridRow[]>(
+    // #region agent log
+    debugLog({ location: "retrieval.service.ts:beforePgvectorQuery", message: "before pgvector raw query", data: {}, hypothesisId: "H5" });
+    // #endregion
+    let rows: PgvectorRow[];
+    try {
+      rows = await this.prisma.$queryRawUnsafe<PgvectorRow[]>(
       `
       WITH top_vectors AS (
         SELECT ce."chunkId",
@@ -246,23 +241,6 @@ export class RetrievalService {
         WHERE ce."embedding" IS NOT NULL
         ORDER BY ce."embedding" <=> $1::vector
         LIMIT $2::int
-      ),
-      fts_matches AS (
-        SELECT dc."id" AS "chunkId",
-               ts_rank_cd(to_tsvector('simple', dc."content"), websearch_to_tsquery('simple', $16::text)) AS score
-        FROM "DocumentChunk" dc
-        WHERE to_tsvector('simple', dc."content") @@ websearch_to_tsquery('simple', $16::text)
-          AND $16::text <> ''
-        ORDER BY score DESC
-        LIMIT $2::int
-      ),
-      combined AS (
-        SELECT COALESCE(tv."chunkId", fm."chunkId") AS "chunkId",
-               COALESCE(tv.score, 0) AS "vecScore",
-               COALESCE(fm.score, 0) AS "ftsScore",
-               $17::float * COALESCE(tv.score, 0) + $18::float * COALESCE(fm.score, 0) AS score
-        FROM top_vectors tv
-        FULL OUTER JOIN fts_matches fm ON tv."chunkId" = fm."chunkId"
       )
       SELECT
         dc."id"        AS "chunkId",
@@ -272,11 +250,9 @@ export class RetrievalService {
         ed."name"      AS "docName",
         ed."driveUrl",
         COALESCE(rq."tierOverride", ed."qualityTier", 'X') AS "effectiveTier",
-        comb.score,
-        comb."vecScore",
-        comb."ftsScore"
-      FROM combined comb
-      JOIN "DocumentChunk" dc ON dc."id" = comb."chunkId"
+        tv.score
+      FROM top_vectors tv
+      JOIN "DocumentChunk" dc ON dc."id" = tv."chunkId"
       JOIN "EvidenceDocument" ed ON ed."id" = dc."documentId"
       LEFT JOIN "ReviewQueueEntry" rq ON rq."documentId" = ed."id"
       WHERE COALESCE(rq."tierOverride", ed."qualityTier", 'X') = ANY($3::text[])
@@ -294,8 +270,8 @@ export class RetrievalService {
         )
         AND ($10::boolean IS FALSE OR ed."corpus" = ANY($11::text[]))
         AND ($12::boolean IS FALSE OR ed."docType" = ANY($13::text[]))
-        AND comb.score >= $14::float
-      ORDER BY comb.score DESC
+        AND tv.score >= $14::float
+      ORDER BY tv.score DESC
       LIMIT $15::int
       `,
       embeddingStr,                         // $1
@@ -313,15 +289,15 @@ export class RetrievalService {
       options.docTypes ?? [],               // $13
       minScore,                             // $14
       limit,                                // $15
-      ftsQueryText,                         // $16 (FTS query)
-      wVec,                                 // $17 (vector weight)
-      wLex,                                 // $18 (lexical weight)
     );
+    } catch (pgErr) {
+      // #region agent log
+      debugLog({ location: "retrieval.service.ts:pgvectorQueryCatch", message: "pgvector query error", data: { errMsg: (pgErr as Error).message }, hypothesisId: "H5" });
+      // #endregion
+      throw pgErr;
+    }
 
     const dbMs = Date.now() - dbStart;
-
-    // Count FTS-only hits for diagnostics
-    const ftsOnlyHits = rows.filter((r) => Number(r.vecScore) === 0 && Number(r.ftsScore) > 0).length;
 
     const results: RetrievalChunkDto[] = rows.map((r) => ({
       id: r.chunkId,
@@ -336,7 +312,7 @@ export class RetrievalService {
 
     const totalMs = Date.now() - startTime;
     const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + (r.score ?? 0), 0) / results.length : 0;
-    logStructured.log("RAG retrieval complete (hybrid pgvector+FTS)", {
+    logStructured.log("RAG retrieval complete (pgvector)", {
       context: RetrievalService.name,
       queryLength: query.length,
       mode,
@@ -345,8 +321,6 @@ export class RetrievalService {
       docTypes: options.docTypes ?? [],
       chunksRetrieved: results.length,
       avgSimilarityScore: Math.round(avgScore * 100) / 100,
-      hybridWeights: { wVec, wLex },
-      ftsOnlyHits,
       embed_ms: embedMs,
       db_ms: dbMs,
       total_ms: totalMs,
@@ -410,7 +384,7 @@ export class RetrievalService {
 
     if (withEffectiveTier.length === 0) return [];
 
-    if (!this.embeddingProvider) {
+    if (!this.openai) {
       return this.keywordFallback(
         query,
         withEffectiveTier.map((c) => ({
@@ -428,13 +402,11 @@ export class RetrievalService {
     let qVec = this.queryCache.get(normalizedQuery);
 
     if (!qVec) {
-      try {
-        const result = await this.embeddingProvider.embed(query.slice(0, 8000));
-        qVec = result.embedding;
-      } catch (err) {
-        this.logger.error(`Legacy embedding query failed: ${(err as Error).message}`);
-        qVec = null;
-      }
+      const queryEmbedding = await this.openai.embeddings.create({
+        model: this.embeddingModel,
+        input: query.slice(0, 8000),
+      });
+      qVec = queryEmbedding.data[0]?.embedding ?? null;
       if (qVec) {
         this.queryCache.set(normalizedQuery, qVec);
         this.logger.debug(`Query embedding cached (cache size: ${this.queryCache.size})`);
@@ -616,152 +588,6 @@ export class RetrievalService {
       p50Ms,
       p95Ms,
       tierCompliance,
-      summary,
-    };
-  }
-
-  /**
-   * Sprint 3 C2: Run recall evaluation against gold retrieval scenarios.
-   * Each scenario has a query + expected keywords that MUST appear in top-K results.
-   * Returns per-scenario pass/fail + aggregate recall@K rate.
-   */
-  async runRecallEval(options: {
-    mode?: RetrievalPolicyMode;
-    limit?: number;
-  } = {}): Promise<{
-    scenarioResults: Array<{
-      id: string;
-      category: string;
-      query: string;
-      passed: boolean;
-      keywordsFound: string[];
-      keywordsMissed: string[];
-      chunkCount: number;
-      avgScore: number;
-      latencyMs: number;
-    }>;
-    recallRate: number;
-    avgLatencyMs: number;
-    passedCount: number;
-    totalCount: number;
-    summary: string;
-  }> {
-    const mode = options.mode ?? "proposal_drafting";
-    const limit = options.limit ?? 5;
-
-    // Load gold scenarios
-    interface GoldScenario {
-      id: string;
-      category: string;
-      query: string;
-      expected_keywords: string[];
-      expected_corpus: string | null;
-      min_chunks: number;
-      notes?: string;
-    }
-    interface GoldScenariosFile {
-      scenarios: GoldScenario[];
-      recall_target: number;
-    }
-
-    let scenarios: GoldScenario[];
-    let recallTarget: number;
-    const scenarioPath = fs.existsSync(path.join(__dirname, "gold-retrieval-scenarios.json"))
-      ? path.join(__dirname, "gold-retrieval-scenarios.json")
-      : path.join(process.cwd(), "src", "modules", "evidence_ingest", "gold-retrieval-scenarios.json");
-
-    if (fs.existsSync(scenarioPath)) {
-      const parsed = JSON.parse(fs.readFileSync(scenarioPath, "utf-8")) as GoldScenariosFile;
-      scenarios = parsed.scenarios;
-      recallTarget = parsed.recall_target ?? 0.80;
-    } else {
-      this.logger.warn("gold-retrieval-scenarios.json not found — using empty scenario set");
-      return {
-        scenarioResults: [],
-        recallRate: 0,
-        avgLatencyMs: 0,
-        passedCount: 0,
-        totalCount: 0,
-        summary: "No gold scenarios found",
-      };
-    }
-
-    const scenarioResults: Array<{
-      id: string;
-      category: string;
-      query: string;
-      passed: boolean;
-      keywordsFound: string[];
-      keywordsMissed: string[];
-      chunkCount: number;
-      avgScore: number;
-      latencyMs: number;
-    }> = [];
-
-    for (const scenario of scenarios) {
-      const start = Date.now();
-      const chunks = await this.retrieve(scenario.query, {
-        mode,
-        limit,
-        orgId: "diksha",
-        corpus: scenario.expected_corpus ? [scenario.expected_corpus] : undefined,
-      });
-      const latencyMs = Date.now() - start;
-
-      // Combine all chunk text for keyword matching
-      const combinedText = chunks.map((c) => `${c.title ?? ""} ${c.text}`).join(" ").toLowerCase();
-      const scores = chunks.map((c) => c.score ?? 0);
-      const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-
-      const keywordsFound: string[] = [];
-      const keywordsMissed: string[] = [];
-      for (const kw of scenario.expected_keywords) {
-        if (combinedText.includes(kw.toLowerCase())) {
-          keywordsFound.push(kw);
-        } else {
-          keywordsMissed.push(kw);
-        }
-      }
-
-      // Pass if: enough chunks AND at least half the keywords found
-      const minKeywordHit = Math.ceil(scenario.expected_keywords.length / 2);
-      const passed = chunks.length >= scenario.min_chunks && keywordsFound.length >= minKeywordHit;
-
-      scenarioResults.push({
-        id: scenario.id,
-        category: scenario.category,
-        query: scenario.query,
-        passed,
-        keywordsFound,
-        keywordsMissed,
-        chunkCount: chunks.length,
-        avgScore: Math.round(avgScore * 1000) / 1000,
-        latencyMs,
-      });
-    }
-
-    const passedCount = scenarioResults.filter((r) => r.passed).length;
-    const totalCount = scenarioResults.length;
-    const recallRate = totalCount > 0 ? passedCount / totalCount : 0;
-    const avgLatencyMs = scenarioResults.length > 0
-      ? Math.round(scenarioResults.reduce((sum, r) => sum + r.latencyMs, 0) / scenarioResults.length)
-      : 0;
-
-    const meetsTarget = recallRate >= recallTarget;
-    const summary = [
-      `Recall eval: ${passedCount}/${totalCount} scenarios passed (${Math.round(recallRate * 100)}%)`,
-      `Target: ${Math.round(recallTarget * 100)}% — ${meetsTarget ? "PASS" : "FAIL"}`,
-      `Avg latency: ${avgLatencyMs}ms`,
-      `Failed scenarios: ${scenarioResults.filter((r) => !r.passed).map((r) => r.id).join(", ") || "none"}`,
-    ].join("; ");
-    this.logger.log(summary);
-
-    return {
-      scenarioResults,
-      recallRate: Math.round(recallRate * 100) / 100,
-      avgLatencyMs,
-      passedCount,
-      totalCount,
       summary,
     };
   }

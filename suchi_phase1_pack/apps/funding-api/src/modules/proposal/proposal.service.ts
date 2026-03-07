@@ -9,8 +9,6 @@ import { PrismaService } from "../prisma/prisma.service";
 import { OpportunityService } from "../opportunity/opportunity.service";
 import { PipelineService } from "../pipeline/pipeline.service";
 import { RetrievalService } from "../evidence_ingest/retrieval.service";
-import { RerankerService } from "../evidence_ingest/reranker.service";
-import { QueryExpanderService } from "../evidence_ingest/query-expander.service";
 import { EvidenceChunk } from "../core_ai/types";
 import { RfpParserService } from "./services/rfp-parser.service";
 import { PlannerService } from "./services/planner.service";
@@ -26,7 +24,7 @@ import { ApprovalContextDto } from "./proposal.dto";
 import { DIKSHA_ORG_PROFILE, PROGRAM_SNAPSHOT_MD } from "./prompts/org-profile";
 import { resolveCitations } from "./utils/citation-resolver";
 import { getCorpusRoute } from "./utils/corpus-router";
-import { computeRetrievalConfidence, isEvidenceCriticalSection } from "./utils/retrieval-confidence";
+import { computeRetrievalConfidence } from "./utils/retrieval-confidence";
 import {
   ProposalRunStatus,
   ProposalSectionStatus,
@@ -37,13 +35,9 @@ import {
   RegenerateSectionOptions,
   ProposalGap,
   ProposalRunArtifacts,
-  FrameworkIntelligencePack,
 } from "./proposal.types";
 import { ApprovalConfirmationContract } from "../contracts/funding-contracts.types";
 import { ActivityRegistryService } from "../activity_registry/activity-registry.service";
-import { FrameworkIntelligenceService } from "./services/framework-intelligence.service";
-import { ConsistencyCheckerService } from "../framework/services/consistency-checker.service";
-import type { OrchestratorContext } from "../orchestrator/orchestrator.types";
 
 @Injectable()
 export class ProposalService {
@@ -54,8 +48,6 @@ export class ProposalService {
     private readonly opportunityService: OpportunityService,
     private readonly pipelineService: PipelineService,
     private readonly retrieval: RetrievalService,
-    private readonly reranker: RerankerService,
-    private readonly queryExpander: QueryExpanderService,
     private readonly rfpParser: RfpParserService,
     private readonly planner: PlannerService,
     private readonly queryGenerator: QueryGeneratorService,
@@ -67,8 +59,6 @@ export class ProposalService {
     private readonly emailNotification: EmailNotificationService,
     private readonly governanceGuard: GovernanceDeliveryGuard,
     private readonly activityRegistry: ActivityRegistryService,
-    private readonly frameworkIntelligence: FrameworkIntelligenceService,
-    private readonly consistencyChecker: ConsistencyCheckerService,
   ) {}
 
   private mapApproval(approval?: ApprovalContextDto): ApprovalConfirmationContract | undefined {
@@ -89,8 +79,7 @@ export class ProposalService {
   async generateProposal(
     opportunityId: string,
     options?: GenerateProposalOptions,
-    approval?: ApprovalContextDto,
-    orchestratorContext?: OrchestratorContext,
+    approval?: ApprovalContextDto
   ) {
     const runStart = Date.now();
     const mappedApproval = this.mapApproval(approval);
@@ -160,7 +149,6 @@ export class ProposalService {
       options?.targetGroup ? `Target group: ${options.targetGroup}` : "",
       effectiveBudgetCeiling ? `Budget ceiling (HARD CONSTRAINT — do NOT exceed): ${effectiveBudgetCeiling}` : "",
       options?.dontMention?.length ? `Don't mention: ${options.dontMention.join(", ")}` : "",
-      ...this.formatOrchestratorOverrides(orchestratorContext),
     ]
       .filter(Boolean)
       .join("\n");
@@ -190,7 +178,7 @@ export class ProposalService {
       );
     }
 
-    // Create ProposalRun record — models are configurable via env vars for quality tuning
+    // Create ProposalRun record
     const modelConfig: ProposalRunModelConfig = {
       planner: process.env.PROPOSAL_PLANNER_MODEL || "deepseek-chat",
       writer: process.env.PROPOSAL_WRITER_MODEL || "deepseek-chat",
@@ -231,28 +219,6 @@ export class ProposalService {
     // #endregion
 
     try {
-      // 2.5. Framework intelligence gathering
-      let frameworkPack: FrameworkIntelligencePack | null = null;
-      if (!options?.skipFramework) {
-        await this.slackClient.postProgress({
-          opportunityId,
-          stage: "framework_research",
-          message: "Researching funder priorities and program models...",
-          approval: mappedApproval,
-        });
-        try {
-          frameworkPack = await this.frameworkIntelligence.gatherIntelligence({
-            rfpText: rfpText || JSON.stringify(oppPayload.extractedRequirements || {}),
-            funderThemes: funderThemes ?? undefined,
-            extractedRequirements: oppPayload.extractedRequirements as Record<string, unknown> | undefined,
-            targetGroup: options?.targetGroup || "children and youth from marginalized communities",
-            geography: options?.focusGeography || "Bihar, India",
-          });
-        } catch (fwErr) {
-          this.logger.warn(`Framework intelligence gathering failed (non-fatal): ${fwErr}`);
-        }
-      }
-
       // 3. Generate outline + retrieval plan
       await this.slackClient.postProgress({
         opportunityId,
@@ -265,16 +231,11 @@ export class ProposalService {
         rfpText: rfpText || JSON.stringify(oppPayload.extractedRequirements || {}),
         orgProfileSummary,
         userOverrides,
-        capabilityContext: frameworkPack
-          ? { primary: frameworkPack.funderProfile.primaryCapabilities, secondary: frameworkPack.funderProfile.secondaryCapabilities }
-          : options?.capabilityContext,
+        capabilityContext: options?.capabilityContext,
         mandatorySections: mandatorySections.length > 0 ? mandatorySections : undefined,
         funderName,
         funderThemes: funderThemes ?? undefined,
         activitiesContext: activitiesContext || undefined,
-        frameworkContext: frameworkPack
-          ? this.frameworkIntelligence.formatPlannerContext(frameworkPack)
-          : undefined,
       });
 
       // Log proposal scope if planner produced one
@@ -449,48 +410,26 @@ export class ProposalService {
             data: { retrievalQueries: queries as object, status: "retrieved" },
           });
 
-          // Retrieve chunks with RRF (Reciprocal Rank Fusion) across multiple queries
+          // Retrieve chunks (combine results from all queries, limit to 8-12 per section)
           const corpusRoute = getCorpusRoute(sectionName);
           const allChunks = new Map<string, EvidenceChunk & { score?: number }>();
-          // Track per-chunk RRF data: ranks from each query, hit count
-          const rrfData = new Map<string, { ranks: number[]; hitCount: number; maxScore: number }>();
-          const RRF_K = 60; // Standard RRF constant
-          const MULTI_QUERY_BOOST = 0.15; // Bonus per additional query that finds the same chunk
-
-          // Expand queries with domain synonyms (zero LLM cost)
-          const expandedQueries = this.queryExpander.expandQueries(queries.slice(0, 5), sectionName);
-          const querySlice = expandedQueries.slice(0, 8); // Allow up to 8 queries after expansion
-          for (const query of querySlice) {
+          for (const query of queries.slice(0, 5)) {
             const chunks = await this.retrieval.retrieve(query, {
               mode: "proposal_drafting",
-              limit: corpusRoute.limit ?? 5,
-              minScore: 0.25,
+              limit: corpusRoute.limit ?? 3,
+              minScore: 0.3,
               orgId: "diksha",
               corpus: corpusRoute.corpus,
               docTypes: corpusRoute.docTypes,
             });
-            chunks.forEach((chunk, rank) => {
-              // Trusted source tier boosting: Tier A → 1.20x, "context" (B/C) → 1.0x
-              const tierBoost = chunk.claimType === "hard" ? 1.20 : 1.0;
-              const boostedScore = (chunk.score ?? 0) * tierBoost;
-
-              // Update RRF tracking
-              const existing = rrfData.get(chunk.id);
-              if (existing) {
-                existing.ranks.push(rank);
-                existing.hitCount++;
-                existing.maxScore = Math.max(existing.maxScore, boostedScore);
-              } else {
-                rrfData.set(chunk.id, { ranks: [rank], hitCount: 1, maxScore: boostedScore });
-              }
-              // Store chunk data (keep highest-scoring version)
-              const existingChunk = allChunks.get(chunk.id);
-              if (!existingChunk || boostedScore > (existingChunk.score ?? 0)) {
+            chunks.forEach((chunk) => {
+              const existing = allChunks.get(chunk.id);
+              if (!existing || (chunk.score ?? 0) > (existing.score ?? 0)) {
                 allChunks.set(chunk.id, {
                   chunkId: chunk.id,
                   docId: chunk.source,
                   content: chunk.text,
-                  score: boostedScore,
+                  score: chunk.score,
                   document: {
                     title: chunk.title || "",
                     url: chunk.urlOrPath,
@@ -500,117 +439,31 @@ export class ProposalService {
             });
           }
 
-          // Compute RRF scores: sum of 1/(K+rank) across queries, with multi-query boost
-          for (const [chunkId, data] of rrfData) {
-            const rrfScore = data.ranks.reduce((sum, r) => sum + 1 / (RRF_K + r), 0);
-            const multiBoost = 1 + MULTI_QUERY_BOOST * Math.max(0, data.hitCount - 1);
-            const fusedScore = rrfScore * multiBoost;
-            // Normalize: blend RRF with max similarity score (RRF handles ordering, similarity handles quality)
-            const chunk = allChunks.get(chunkId);
-            if (chunk) {
-              chunk.score = 0.6 * data.maxScore + 0.4 * (fusedScore / (1 / RRF_K)); // normalize RRF to ~0-1 range
-            }
-          }
-
-          const multiHitChunks = [...rrfData.values()].filter(d => d.hitCount > 1).length;
-
-          // Result diversification: max 4 chunks per document to ensure source breadth
-          const MAX_CHUNKS_PER_DOC = 4;
-          const docChunkCounts = new Map<string, number>();
-          const diversified = Array.from(allChunks.values())
+          const evidenceChunks = Array.from(allChunks.values())
             .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-            .filter((c) => {
-              const count = docChunkCounts.get(c.docId) ?? 0;
-              if (count >= MAX_CHUNKS_PER_DOC) return false;
-              docChunkCounts.set(c.docId, count + 1);
-              return true;
-            });
+            .slice(0, 12);
 
-          let evidenceChunks = diversified.slice(0, 20); // Overselect for reranking
-
-          // Cross-encoder reranking (section-type gated)
-          const rerankResult = await this.reranker.rerank(
-            queries[0] || sectionName,
-            evidenceChunks.map((c) => ({
-              id: c.chunkId,
-              source: c.docId,
-              text: c.content,
-              title: c.document?.title,
-              score: c.score,
-            })),
-            sectionName,
-          );
-          if (rerankResult.reranked) {
-            evidenceChunks = rerankResult.chunks.map((rc) => {
-              const original = allChunks.get(rc.id);
-              return original
-                ? { ...original, score: rc.score }
-                : { chunkId: rc.id, docId: rc.source, content: rc.text, score: rc.score, document: { title: rc.title || "" } };
-            });
-            this.logger.log(
-              `[${sectionName}] Reranked by ${rerankResult.provider} (${rerankResult.latencyMs}ms): ${rerankResult.reason}`,
-            );
-          }
-          evidenceChunks = evidenceChunks.slice(0, 12);
-
-          // Retrieval confidence gate (section-specific thresholds)
-          let confidence = computeRetrievalConfidence(
+          // Retrieval confidence gate
+          const confidence = computeRetrievalConfidence(
             evidenceChunks.map((c) => ({ score: c.score, docId: c.docId })),
-            sectionName,
           );
           this.logger.log(
             `[${sectionName}] Retrieval confidence: ${confidence.level} (avg=${confidence.avgScore.toFixed(3)}, chunks=${confidence.chunkCount}, docs=${confidence.uniqueDocCount}, corpus=${corpusRoute.corpus.join(",") || "all"})`,
           );
-
-          // Retry with expanded queries when confidence is LOW
-          if (confidence.level === "low" && evidenceChunks.length < 5) {
-            this.logger.warn(`[${sectionName}] LOW confidence — retrying with expanded queries`);
-            const retryQueries = this.queryExpander.generateRetryQueries(sectionName, queries);
-            for (const rq of retryQueries) {
-              const retryChunks = await this.retrieval.retrieve(rq, {
-                mode: "proposal_drafting",
-                limit: 5,
-                minScore: 0.20, // Lower threshold for retry
-                orgId: "diksha",
-                // No corpus filter on retry — search all corpora
-              });
-              retryChunks.forEach((chunk) => {
-                if (!allChunks.has(chunk.id)) {
-                  allChunks.set(chunk.id, {
-                    chunkId: chunk.id,
-                    docId: chunk.source,
-                    content: chunk.text,
-                    score: chunk.score,
-                    document: { title: chunk.title || "", url: chunk.urlOrPath },
-                  });
-                }
-              });
-            }
-            // Re-sort and re-evaluate confidence
-            evidenceChunks = Array.from(allChunks.values())
-              .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-              .slice(0, 12);
-            confidence = computeRetrievalConfidence(
-              evidenceChunks.map((c) => ({ score: c.score, docId: c.docId })),
-              sectionName,
-            );
-            this.logger.log(
-              `[${sectionName}] Post-retry confidence: ${confidence.level} (avg=${confidence.avgScore.toFixed(3)}, chunks=${confidence.chunkCount})`,
-            );
+          if (confidence.level === "low") {
+            this.logger.warn(`[${sectionName}] LOW retrieval confidence: ${confidence.reason}`);
           }
 
-          // Enhanced retrieval diagnostics with RRF stats
+          // Enhanced retrieval diagnostics
           const scores = evidenceChunks.map((c) => c.score ?? 0);
           this.logger.log({
             section: sectionName,
-            queriesUsed: querySlice.length,
+            queriesUsed: queries.slice(0, 5).length,
             chunksRetrieved: allChunks.size,
             chunksPassedToWriter: evidenceChunks.length,
-            rrfMultiHitChunks: multiHitChunks,
             scoreMin: scores.length ? Math.min(...scores).toFixed(3) : "N/A",
             scoreMax: scores.length ? Math.max(...scores).toFixed(3) : "N/A",
             scoreAvg: scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(3) : "N/A",
-            uniqueDocs: [...new Set(evidenceChunks.map((c) => c.docId))].length,
             docTitles: [...new Set(evidenceChunks.map((c) => c.document.title))].slice(0, 5),
           });
 
@@ -630,68 +483,27 @@ export class ProposalService {
             ? ` | Themes: ${funderThemes.primary.join(", ")}${funderThemes.secondary?.length ? ` + ${funderThemes.secondary.join(", ")}` : ""}`
             : "";
           const funderContext = `${funderName}${programName ? " — " + programName : ""}${themeSuffix}`;
-          // Build org context with activity facts as narrative prose (not raw JSON)
+          // Build org context, enriching structured org profile with narrative activity facts
           let orgCtx = orgProfileSummary;
           if (activityFacts) {
-            orgCtx += `\n\n${this.formatActivityFactsAsNarrative(activityFacts)}`;
+            const factsNarrative = this.formatActivityFactsAsNarrative(activityFacts);
+            orgCtx += `\n\nACTIVITY FACTS (you MUST use these wherever relevant — if you do not use them, explain why):\n${factsNarrative}`;
           }
           if (activitiesContext) {
             orgCtx += `\n\nStructured Activities Registry:\n${activitiesContext}`;
           }
 
-          // Get section-specific framework context
-          const sectionFwCtx = frameworkPack
-            ? this.frameworkIntelligence.getSectionContext(sectionName, frameworkPack)
-            : undefined;
-
-          // Get section-specific web evidence (routed by section type)
-          const sectionWebEvidence = this.getWebEvidenceForSection(sectionName, orchestratorContext);
-
-          // Build enhanced org context with web evidence for this specific section
-          let enrichedOrgCtx = orgCtx;
-          if (sectionWebEvidence) {
-            enrichedOrgCtx += `\n\n${sectionWebEvidence}`;
-          }
-          // Add confidence-aware guidance when retrieval is weak
-          if (confidence.level === "low") {
-            enrichedOrgCtx += `\n\n[RETRIEVAL NOTICE: Evidence retrieval confidence is LOW for this section. ` +
-              `Rely more heavily on the organization context and web research above. ` +
-              `Use "(to be confirmed)" for specific claims that need evidence verification. ` +
-              `Do NOT hallucinate statistics or data — use only what is available in the org context.]`;
-          }
-
-          // Budget section: render envelope directly — skip LLM to prevent hallucinated line items
-          let processedDraft: string;
-          let gaps: string[];
-          if (/budget/i.test(sectionName) && orchestratorContext?.budgetEnvelope) {
-            processedDraft = this.renderBudgetFromEnvelope(orchestratorContext.budgetEnvelope);
-            gaps = [];
-            this.logger.log({ diagnostic: "BUDGET_ENVELOPE_DIRECT_RENDER", section: sectionName, grandTotal: orchestratorContext.budgetEnvelope.grandTotal });
-          } else {
-            const result = await this.sectionWriter.draftSection({
-              sectionName,
-              sectionGuidance,
-              chunks: evidenceChunks,
-              orgContext: enrichedOrgCtx,
-              funderContext,
-              proposalScope: outline.proposal_scope,
-              frameworkContext: sectionFwCtx || undefined,
-            });
-            gaps = result.gaps;
-
-            // Budget section fallback: parse JSON-first output if LLM was called
-            processedDraft = result.draftText;
-            if (/budget/i.test(sectionName)) {
-              const budgetRendered = this.renderBudgetFromJson(result.draftText, outline.proposal_scope?.budgetCeiling);
-              if (budgetRendered) {
-                processedDraft = budgetRendered;
-                this.logger.log({ diagnostic: "BUDGET_JSON_RENDERED", section: sectionName });
-              }
-            }
-          }
+          const { draftText: rawDraft, gaps } = await this.sectionWriter.draftSection({
+            sectionName,
+            sectionGuidance,
+            chunks: evidenceChunks,
+            orgContext: orgCtx,
+            funderContext,
+            proposalScope: outline.proposal_scope,
+          });
 
           // Auto-repair: soften unsupported hard claims
-          const repairResult = this.citationRepair.repairSection(processedDraft);
+          const repairResult = this.citationRepair.repairSection(rawDraft);
           const draftText = repairResult.repaired;
 
           await this.prisma.proposalSection.update({
@@ -782,18 +594,14 @@ export class ProposalService {
           });
         }
 
-        // Detect empty table cells (blank, "TBD", "N/A" in data rows)
-        // Skip: header separator rows, summary rows (subtotal/contingency/total)
+        // Detect empty table cells (blank, "-", "TBD", "N/A" in data rows)
         const tableRows = result.draftText.match(/^\|.+\|$/gm) || [];
         for (const row of tableRows) {
           if (/^\|[\s\-:]+\|$/.test(row)) continue;
-          // Skip summary rows — they intentionally have empty cells
-          if (/\*?\*?(subtotal|contingency|grand total|total)\*?\*?/i.test(row)) continue;
           const cells = row.split("|").slice(1, -1);
           cells.forEach((cell, cellIdx) => {
             const trimmed = cell.trim();
-            // Note: single dash "—" or "-" in summary rows is valid formatting, don't flag it
-            if (trimmed === "" || /^(TBD|N\/A|tbd|n\/a)$/i.test(trimmed)) {
+            if (trimmed === "" || trimmed === "-" || /^(TBD|N\/A|tbd|n\/a)$/i.test(trimmed)) {
               emptyTableCells.push({
                 section: sectionName,
                 placeholder: `Empty table cell (col ${cellIdx + 1})`,
@@ -987,34 +795,6 @@ export class ProposalService {
         budgetCeiling: effectiveBudgetCeiling || undefined,
         funderThemes: funderThemes ?? undefined,
       });
-
-      // Framework consistency gate (advisory — logs flags, doesn't block)
-      if (frameworkPack?.funderProfile.primaryCapabilities.length) {
-        try {
-          const consistencyResult = await this.consistencyChecker.check({
-            draftText: fullDraftText.substring(0, 15000),
-            claimedCapabilities: frameworkPack.funderProfile.primaryCapabilities,
-            claimedMIModalities: frameworkPack.funderProfile.suggestedMIModalities,
-          });
-          this.logger.log({
-            diagnostic: "CONSISTENCY_CHECK",
-            overallScore: consistencyResult.overallScore,
-            passesQualityGate: consistencyResult.passesQualityGate,
-            flagCount: consistencyResult.flags.length,
-            errorFlags: consistencyResult.flags.filter((f) => f.severity === "error").length,
-          });
-          if (!consistencyResult.passesQualityGate) {
-            for (const flag of consistencyResult.flags.filter((f) => f.severity === "error")) {
-              sectionGaps.push({
-                section: flag.section || "Overall",
-                gaps: [flag.message + (flag.suggestion ? ` Suggestion: ${flag.suggestion}` : "")],
-              });
-            }
-          }
-        } catch (ccErr) {
-          this.logger.warn(`Consistency check failed (non-fatal): ${ccErr}`);
-        }
-      }
 
       // === DIAGNOSTIC: Step D — QA input ===
       this.logger.log({
@@ -1535,183 +1315,84 @@ export class ProposalService {
   }
 
   /**
-   * Render the orchestrator budget envelope directly as a markdown budget section.
-   * Called instead of the LLM when an envelope is available — prevents hallucination.
+   * Convert structured activity facts JSON into a short, readable narrative
+   * that section writers can quote directly instead of raw JSON.
    */
-  private renderBudgetFromEnvelope(envelope: NonNullable<import("../orchestrator/orchestrator.types").OrchestratorContext["budgetEnvelope"]>): string {
-    const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
-    const intensityLabel: Record<string, string> = {
-      daily: "daily (Mon–Sat)",
-      frequent: "4-5 days/week",
-      weekly: "2-3 days/week",
-      periodic: "monthly/periodic",
-    };
-    const lines: string[] = [];
-
-    lines.push(`## Detailed Budget`);
-    lines.push(``);
-
-    // Cost basis rationale
-    const years = (envelope.grantPeriodMonths / 12).toFixed(1).replace(".0", "");
-    const basisLabel = envelope.projectCategory === "tech-product"
-      ? `AI tool build + pilot deployment for ${envelope.beneficiaryCount} students`
-      : `${intensityLabel[envelope.programIntensity] ?? envelope.programIntensity} programme`;
-    lines.push(
-      envelope.projectCategory === "tech-product"
-        ? `> **Budget basis:** ${basisLabel} (${envelope.grantPeriodMonths} months)`
-        : `> **Budget basis:** ${fmt(envelope.perChildCostPerYearINR)}/child/year ` +
-          `(${basisLabel}) × ` +
-          `${envelope.beneficiaryCount} direct beneficiaries × ${years} year${Number(years) !== 1 ? "s" : ""}`,
-    );
-    lines.push(``);
-
-    lines.push(`| # | Category | Item | Unit Cost | Unit | Qty | Months | Amount |`);
-    lines.push(`|---|----------|------|----------:|------|----:|-------:|-------:|`);
-
-    envelope.lineItems.forEach((li, i) => {
-      lines.push(
-        `| ${i + 1} | ${li.category} | ${li.item} | ${fmt(li.unitCostINR)} | ${li.unit} | ${li.quantity} | ${li.months} | **${fmt(li.amount)}** |`,
-      );
-    });
-
-    lines.push(`| | | **Sub-total** | | | | | **${fmt(envelope.subtotal)}** |`);
-    lines.push(`| | | Contingency (5%) | | | | | ${fmt(envelope.contingencyAmount)} |`);
-    lines.push(`| | | **Grand Total** | | | | | **${fmt(envelope.grandTotal)}** |`);
-    lines.push(``);
-    lines.push(
-      `**Total Proposed Budget: ${fmt(envelope.grandTotal)}** for ${envelope.grantPeriodMonths} months`,
-    );
-
-    return lines.join("\n");
-  }
-
-  /**
-   * Parse budget JSON from LLM output and render as clean markdown table.
-   * Returns null if no valid budget JSON found (falls back to raw LLM output).
-   */
-  private renderBudgetFromJson(rawDraft: string, budgetCeiling?: string): string | null {
-    // Extract ```budget-json ... ``` or ```json ... ``` block
-    const jsonMatch = rawDraft.match(/```(?:budget-json|json)\s*\n([\s\S]*?)\n```/);
-    if (!jsonMatch) return null;
+  private formatActivityFactsAsNarrative(activityFacts: Record<string, unknown>): string {
+    if (!activityFacts) return "";
 
     try {
-      const budget = JSON.parse(jsonMatch[1]) as {
-        currency?: string;
-        grantPeriodMonths?: number;
-        lineItems: Array<{
-          category: string;
-          item: string;
-          unitCost: number;
-          unit: string;
-          quantity: number;
-          months: number;
-          amount: number;
-          notes?: string;
-        }>;
-      };
+      const facts = activityFacts as any;
+      const centers: string[] = Array.isArray(facts.centers) ? facts.centers : [];
+      const latest = facts.latestMetrics || {};
+      const programAreas: Array<{ area: string; activities: Array<{ name: string; frequency: string; unitCostINR?: number | null }> }> =
+        Array.isArray(facts.programAreas) ? facts.programAreas : [];
+      const staffing: string[] = Array.isArray(facts.staffing) ? facts.staffing : [];
+      const totalDirect: number | null = typeof facts.totalDirectBeneficiaries === "number"
+        ? facts.totalDirectBeneficiaries
+        : null;
 
-      if (!budget.lineItems || budget.lineItems.length === 0) return null;
+      const paragraphs: string[] = [];
 
-      const currency = budget.currency || "INR";
-      const fmt = (n: number) => `${currency} ${n.toLocaleString("en-IN")}`;
-
-      // Compute correct amounts (override LLM math)
-      const items = budget.lineItems
-        .filter(li => !/total/i.test(li.item) && !/contingency/i.test(li.category))
-        .map(li => {
-          const computed = li.unitCost * li.quantity * (li.months || 1);
-          return { ...li, amount: computed };
-        });
-
-      let subtotal = items.reduce((s, li) => s + li.amount, 0);
-
-      // Find contingency line or default to 5%
-      const contingencyLine = budget.lineItems.find(li => /contingency/i.test(li.category) || /contingency/i.test(li.item));
-      const contingencyPct = contingencyLine
-        ? (contingencyLine.amount > 1 ? contingencyLine.amount / subtotal : 0.05)
-        : 0.05;
-
-      // Ceiling enforcement: if budget ceiling is set and items exceed it, scale down proportionally
-      let ceilingNote = "";
-      let scaleFactor = 1.0;
-      if (budgetCeiling) {
-        const ceilingMatch = budgetCeiling.match(/[\d,]+/);
-        if (ceilingMatch) {
-          const ceiling = parseInt(ceilingMatch[0].replace(/,/g, ""), 10);
-          const rawGrandTotal = subtotal + Math.round(subtotal * Math.min(contingencyPct, 0.10));
-          if (ceiling > 0 && rawGrandTotal > ceiling) {
-            // Scale down all line items to fit within ceiling (reserving room for contingency)
-            const targetSubtotal = Math.round(ceiling / (1 + Math.min(contingencyPct, 0.10)));
-            scaleFactor = targetSubtotal / subtotal;
-            this.logger.log({
-              diagnostic: "BUDGET_CEILING_SCALE",
-              rawSubtotal: subtotal,
-              ceiling,
-              scaleFactor: scaleFactor.toFixed(3),
-              targetSubtotal,
-            });
-            for (const li of items) {
-              li.amount = Math.round(li.amount * scaleFactor);
-              li.unitCost = Math.round(li.unitCost * scaleFactor);
-            }
-            subtotal = items.reduce((s, li) => s + li.amount, 0);
-            ceilingNote = `\n\n> **Note:** Line items scaled to fit within budget ceiling of ${fmt(ceiling)}. Original estimates were ${(1/scaleFactor).toFixed(1)}x higher; unit costs adjusted proportionally.\n`;
-          }
-        }
+      if (centers.length || totalDirect) {
+        const centerList = centers.join(", ");
+        const centerSentence = centers.length
+          ? `Across our KHEL hub-and-spoke network (${centerList}), we are consistently running structured group activities grounded in fortnightly reports.`
+          : "";
+        const benefSentence = totalDirect
+          ? `At present, we are directly serving approximately ${totalDirect.toLocaleString("en-IN")} children and young people through these centres and their linked government schools.`
+          : "";
+        const sentences = [centerSentence, benefSentence].filter(Boolean).join(" ");
+        if (sentences) paragraphs.push(sentences);
       }
 
-      const contingencyAmount = Math.round(subtotal * Math.min(contingencyPct, 0.10));
-      const grandTotal = subtotal + contingencyAmount;
+      if (latest && (latest.enrollment || latest.avgAttendancePercent || latest.totalMealsPerFortnight || latest.selSessionsRecent || latest.kaActiveStudents)) {
+        const metricsParts: string[] = [];
+        if (latest.enrollment) {
+          metricsParts.push(`peak enrolment around ${Number(latest.enrollment).toLocaleString("en-IN")} learners`);
+        }
+        if (latest.avgAttendancePercent) {
+          metricsParts.push(`average attendance of about ${latest.avgAttendancePercent}% across recent fortnights`);
+        }
+        if (latest.totalMealsPerFortnight) {
+          metricsParts.push(`roughly ${latest.totalMealsPerFortnight.toLocaleString("en-IN")} meals served per fortnight where meal data is tracked`);
+        }
+        if (latest.selSessionsRecent) {
+          metricsParts.push(`${latest.selSessionsRecent} recent Social-Emotional Learning sessions delivered`);
+        }
+        if (latest.kaActiveStudents) {
+          metricsParts.push(`${latest.kaActiveStudents} active Khan Academy learners at the latest count`);
+        }
 
-      // Group by category for display
-      const categories = [...new Set(items.map(li => li.category))];
-
-      // Build markdown table
-      const lines: string[] = [
-        `## Detailed Budget`,
-        "",
-        `| # | Category | Item | Unit Cost | Qty | Months | Amount (${currency}) | Notes |`,
-        `|---|----------|------|--------:|----:|-------:|----:|-------|`,
-      ];
-
-      let rowNum = 0;
-      for (const cat of categories) {
-        const catItems = items.filter(li => li.category === cat);
-        const catTotal = catItems.reduce((s, li) => s + li.amount, 0);
-        for (const li of catItems) {
-          rowNum++;
-          lines.push(
-            `| ${rowNum} | ${li.category} | ${li.item} | ${fmt(li.unitCost)} | ${li.quantity} | ${li.months} | ${fmt(li.amount)} | ${li.notes || ""} |`
+        if (metricsParts.length) {
+          paragraphs.push(
+            `Recent activity registry data shows ${metricsParts.join(", ")}. These figures come from fortnightly reports rather than one-off events.`,
           );
         }
       }
 
-      // Subtotal
-      lines.push(`| | | **Subtotal** | — | — | — | **${fmt(subtotal)}** | — |`);
-      // Contingency
-      lines.push(`| | Contingency | Contingency (${Math.round(contingencyPct * 100)}%) | — | — | — | ${fmt(contingencyAmount)} | — |`);
-      // Grand total
-      lines.push(`| | | **Grand Total** | — | — | — | **${fmt(grandTotal)}** | — |`);
-
-      lines.push("");
-      lines.push(`**Total Proposed Budget: ${fmt(grandTotal)}**`);
-      lines.push(ceilingNote);
-
-      // Append any narrative text that came after the JSON block
-      const afterJson = rawDraft.substring(rawDraft.indexOf("```", jsonMatch.index! + 3) + 3).trim();
-      // Remove everything before the closing ``` of the json block
-      const narrativeText = afterJson.replace(/^```\s*/, "").trim();
-      if (narrativeText && narrativeText.length > 20) {
-        lines.push("");
-        lines.push("### Budget Rationale");
-        lines.push("");
-        lines.push(narrativeText);
+      if (programAreas.length) {
+        const areaSummaries = programAreas.slice(0, 4).map((pa) => {
+          const names = pa.activities.slice(0, 3).map((a) => a.name).join("; ");
+          return names
+            ? `${pa.area}: ${names}${pa.activities.length > 3 ? " (+ more activities)" : ""}`
+            : pa.area;
+        });
+        paragraphs.push(
+          `Our activities span key programme areas such as ${areaSummaries.join(" | ")}, each with clearly defined frequencies and, where relevant, per-activity costs in INR.`,
+        );
       }
 
-      return lines.join("\n");
+      if (staffing.length) {
+        paragraphs.push(
+          `Across these activities we repeatedly see the same core roles involved — for example ${staffing.join(", ")} — which anchors the staffing model used in the proposal sections.`,
+        );
+      }
+
+      return paragraphs.join("\n\n");
     } catch (e) {
-      this.logger.warn(`Budget JSON parse failed: ${(e as Error).message}`);
-      return null;
+      this.logger.error("Failed to format activity facts narrative", (e as Error).message);
+      return JSON.stringify(activityFacts, null, 2);
     }
   }
 
@@ -1765,64 +1446,6 @@ export class ProposalService {
 
       lines.push(result.draftText);
       lines.push("");
-    }
-
-    return lines.join("\n");
-  }
-
-  /**
-   * Convert activity facts from raw JSON into narrative prose that the LLM can
-   * naturally weave into proposal sections. Avoids the bot dumping raw JSON.
-   */
-  private formatActivityFactsAsNarrative(facts: Record<string, unknown>): string {
-    const lines: string[] = [
-      "ACTIVITY FACTS (weave these into your narrative — do NOT dump as raw data):",
-    ];
-
-    // Centers
-    const centers = facts.centers as string[] | undefined;
-    const totalBeneficiaries = facts.totalDirectBeneficiaries as number | undefined;
-    if (centers?.length) {
-      const centerList = centers.join(", ");
-      lines.push(
-        `Diksha Foundation currently operates ${centers.length} KHEL centers: ${centerList}.` +
-        (totalBeneficiaries ? ` Total direct reach is approximately ${totalBeneficiaries} students.` : ""),
-      );
-    }
-
-    // Activities by program area
-    const programAreas = facts.programAreas as Array<{
-      area: string; activities: Array<{
-        name: string; frequency: string; centers: string[]; unitCostINR: number | null; targetGroup: string;
-      }>;
-    }> | undefined;
-    if (programAreas?.length) {
-      for (const pa of programAreas) {
-        const actList = pa.activities
-          .map(a => `${a.name} (${a.frequency}${a.centers.length ? `, at ${a.centers.join(" and ")}` : ""})`)
-          .join("; ");
-        lines.push(`${pa.area}: ${actList}.`);
-      }
-    }
-
-    // Latest metrics
-    const metrics = facts.latestMetrics as Record<string, unknown> | undefined;
-    if (metrics) {
-      const metricParts: string[] = [];
-      if (metrics.enrollment) metricParts.push(`enrollment of ${metrics.enrollment} students`);
-      if (metrics.avgAttendancePercent) metricParts.push(`average attendance of ${metrics.avgAttendancePercent}%`);
-      if (metrics.totalMealsPerFortnight) metricParts.push(`${metrics.totalMealsPerFortnight} meals served per fortnight`);
-      if (metrics.kaActiveStudents) metricParts.push(`${metrics.kaActiveStudents} active Khan Academy students`);
-      if (metrics.selSessionsRecent) metricParts.push(`${metrics.selSessionsRecent} SEL sessions delivered`);
-      if (metricParts.length > 0) {
-        lines.push(`Latest metrics: ${metricParts.join(", ")}.`);
-      }
-    }
-
-    // Staffing
-    const staffing = facts.staffing as string[] | undefined;
-    if (staffing?.length) {
-      lines.push(`Key staff roles: ${staffing.join(", ")}.`);
     }
 
     return lines.join("\n");
@@ -1888,125 +1511,5 @@ export class ProposalService {
     lines.push("Please review and provide feedback.");
 
     return lines.join("\n");
-  }
-
-  /**
-   * Format orchestrator pre-drafting intelligence as context strings for the planner/writer.
-   */
-  private formatOrchestratorOverrides(ctx?: OrchestratorContext): string[] {
-    if (!ctx) return [];
-    const parts: string[] = [];
-
-    // Project type framing — must come first so section writer sees it before all other context
-    if (ctx.projectCategory === "tech-product") {
-      parts.push(
-        `[PROJECT TYPE: Technology product build — NOT a field programme]\n` +
-        `Implementation plan must describe SOFTWARE BUILD PHASES:\n` +
-        `  Phase 0 (Month 1): Discovery + setup — requirements, tech stack, safeguarding protocol, content map\n` +
-        `  Phase 1A (Months 2–3): MVP Build — study mode, quiz mode, teacher shortcut, access control\n` +
-        `  Phase 1B (Months 3–4): Internal pilot — 1 centre, ~120 learners, safeguarding active, data collection\n` +
-        `  Phase 1C (Months 5–6): Iterate + full rollout — fixes, expand to all centres\n` +
-        `  Months 7–8: Handoff — documentation, training, sustainability\n` +
-        `Do NOT describe: daily centre timetable, sports sessions, SEL group activities, morning assembly.`,
-      );
-    }
-
-    if (ctx.fitScore) {
-      parts.push(
-        `[ORCHESTRATOR FIT ASSESSMENT] Score: ${ctx.fitScore.totalScore}/100 (${ctx.fitScore.decision})` +
-          (ctx.fitScore.caveats.length > 0
-            ? `\nCaveats: ${ctx.fitScore.caveats.join("; ")}`
-            : "") +
-          `\n${ctx.fitScore.dimensionSummary}`,
-      );
-    }
-
-    if (ctx.gmailMemoryBlocks && ctx.gmailMemoryBlocks.length > 0) {
-      const blockText = ctx.gmailMemoryBlocks
-        .map((b) => `- [${b.topic}] ${b.content.slice(0, 300)}`)
-        .join("\n");
-      parts.push(
-        `[ORCHESTRATOR REUSABLE BLOCKS from past proposals/emails]\n${blockText}`,
-      );
-    }
-
-    if (ctx.budgetEnvelope) {
-      const lineText = ctx.budgetEnvelope.lineItems
-        .map(
-          (li) =>
-            `  ${li.category} | ${li.item} | ₹${li.unitCostINR} × ${li.quantity} × ${li.months}mo = ₹${li.amount.toLocaleString("en-IN")}`,
-        )
-        .join("\n");
-      parts.push(
-        `[ORCHESTRATOR BUDGET ENVELOPE — use these line items as the basis for the budget section]\n` +
-          `Target ceiling: ₹${ctx.budgetEnvelope.targetCeilingINR.toLocaleString("en-IN")}\n` +
-          `Grand total: ₹${ctx.budgetEnvelope.grandTotal.toLocaleString("en-IN")}\n` +
-          lineText,
-      );
-    }
-
-    // Web evidence is now routed per-section via getWebEvidenceForSection()
-    // Only include funder intel in global overrides (relevant to all sections)
-    if (ctx.webEvidence?.funderIntel) {
-      parts.push(
-        `[FUNDER INTELLIGENCE — tailor proposal language to this funder's priorities]\n` +
-          ctx.webEvidence.funderIntel.slice(0, 1200),
-      );
-    }
-
-    return parts;
-  }
-
-  /**
-   * Route web evidence to sections that benefit most from each type.
-   * Returns a formatted string to inject into the section writer's context.
-   *
-   * Routing logic:
-   *   - Need/Background/Rationale → themeEvidence (statistics, research, government data)
-   *   - Project Design/Activities/Methodology → comparablePrograms + themeEvidence
-   *   - Results/Outcomes/Impact → themeEvidence (outcome benchmarks)
-   *   - Objectives → themeEvidence (target benchmarks from similar programs)
-   *   - Experience/Track Record → comparablePrograms (benchmarking)
-   *   - Sustainability → comparablePrograms (models that sustained)
-   *   - All sections → funderIntel (alignment framing) — already in global overrides
-   */
-  private getWebEvidenceForSection(
-    sectionName: string,
-    ctx?: OrchestratorContext,
-  ): string | undefined {
-    if (!ctx?.webEvidence) return undefined;
-    const we = ctx.webEvidence;
-    const lower = sectionName.toLowerCase();
-    const parts: string[] = [];
-    const TOKEN_BUDGET = 1500; // chars per evidence type
-
-    // Need/Background: focus on theme evidence (statistics, policy context)
-    if (lower.includes("need") || lower.includes("problem") || lower.includes("rationale") || lower.includes("context") || lower.includes("background")) {
-      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Evidence & Statistics]\n${we.themeEvidence.slice(0, TOKEN_BUDGET)}`);
-      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Comparable Programs]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET / 2)}`);
-    }
-    // Project Design/Activities/Methodology: comparable programs + theme evidence
-    else if (lower.includes("design") || lower.includes("activit") || lower.includes("method") || lower.includes("implementation")) {
-      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Comparable Programs (use for methodology benchmarking)]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET)}`);
-      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Best Practices]\n${we.themeEvidence.slice(0, TOKEN_BUDGET / 2)}`);
-    }
-    // Results/Outcomes/Impact: theme evidence for outcome benchmarks
-    else if (lower.includes("result") || lower.includes("outcome") || lower.includes("impact") || lower.includes("expected")) {
-      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Outcome Benchmarks]\n${we.themeEvidence.slice(0, TOKEN_BUDGET)}`);
-    }
-    // Objectives: theme evidence for target benchmarks
-    else if (lower.includes("objective") || lower.includes("goal")) {
-      if (we.themeEvidence) parts.push(`[WEB RESEARCH — Target Benchmarks from Similar Programs]\n${we.themeEvidence.slice(0, TOKEN_BUDGET)}`);
-    }
-    // Experience/Track Record: comparable programs for benchmarking
-    else if (lower.includes("experience") || lower.includes("track record")) {
-      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Comparable Organizations]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET)}`);
-    }
-    // Sustainability: comparable programs (models that sustained)
-    else if (lower.includes("sustainab") || lower.includes("exit") || lower.includes("scale")) {
-      if (we.comparablePrograms) parts.push(`[WEB RESEARCH — Sustainability Models]\n${we.comparablePrograms.slice(0, TOKEN_BUDGET)}`);
-    }
-
-    return parts.length > 0 ? parts.join("\n\n") : undefined;
   }
 }

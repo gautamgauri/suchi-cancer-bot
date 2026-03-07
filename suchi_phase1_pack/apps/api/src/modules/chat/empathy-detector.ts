@@ -108,28 +108,7 @@ export class EmpathyDetector {
     // Rule-based detection first
     const ruleBasedResult = this.detectWithRules(textLower);
 
-    // If confidence is high enough, return rule-based result
-    if (ruleBasedResult.confidence >= 0.6) {
-      return ruleBasedResult;
-    }
-
-    // LLM fallback for ambiguous cases
-    if (this.llmService) {
-      try {
-        const llmResult = await this.detectWithLLM(userText);
-        // Combine rule-based and LLM results
-        return {
-          tone: llmResult.tone || ruleBasedResult.tone,
-          confidence: Math.max(ruleBasedResult.confidence, llmResult.confidence || 0.5),
-          keywords: [...ruleBasedResult.keywords, ...(llmResult.keywords || [])],
-        };
-      } catch (error) {
-        // If LLM fails, return rule-based result
-        return ruleBasedResult;
-      }
-    }
-
-    // No LLM available, return rule-based result
+    // Rule-based only — no LLM fallback to avoid hidden latency before main flow
     return ruleBasedResult;
   }
 

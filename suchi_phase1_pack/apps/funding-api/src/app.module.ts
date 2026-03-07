@@ -22,8 +22,6 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { FunderScraperModule } from "./modules/funder_scraper/funder-scraper.module";
 import { GiftModule } from "./modules/gift/gift.module";
 import { ActivityRegistryModule } from "./modules/activity_registry/activity-registry.module";
-import { OrchestratorModule } from "./modules/orchestrator/orchestrator.module";
-import { ApplicationModule } from "./modules/application/application.module";
 
 @Module({
   imports: [
@@ -49,8 +47,6 @@ import { ApplicationModule } from "./modules/application/application.module";
     AdminModule,
     FunderScraperModule,
     ActivityRegistryModule,
-    OrchestratorModule,
-    ApplicationModule,
   ],
 })
 export class AppModule {}

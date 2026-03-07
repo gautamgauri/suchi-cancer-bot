@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { FundingLlmService } from "../../core_ai/funding-llm.service";
 import { EvidenceChunk } from "../../core_ai/types";
 import { ProposalScope } from "../proposal.types";
-import { SECTION_WRITER_SYSTEM_PROMPT, SECTION_WRITER_NO_EVIDENCE_SYSTEM_PROMPT, buildSectionWriterUserPrompt, getSectionTypeGuidance } from "../prompts/section-writer.prompt";
+import { SECTION_WRITER_SYSTEM_PROMPT, buildSectionWriterUserPrompt, getSectionTypeGuidance } from "../prompts/section-writer.prompt";
 
 @Injectable()
 export class SectionWriterService {
@@ -24,8 +24,6 @@ export class SectionWriterService {
     funderContext?: string;
     /** Canonical scope from planner — locks numbers across sections */
     proposalScope?: ProposalScope;
-    /** Framework intelligence context for this section type */
-    frameworkContext?: string;
   }): Promise<{ draftText: string; gaps: string[] }> {
     if (params.chunks.length === 0) {
       // Attempt template-based draft using section guidance and org context
@@ -33,7 +31,8 @@ export class SectionWriterService {
     }
 
     // Evidence available — proceed with citation-grounded drafting
-    // Format chunks with citation tokens prominently displayed for LLM to copy
+    // Format chunks with citation tokens prominently displayed for LLM to copy;
+    // keep each chunk reasonably large so methodology and context are visible.
     const chunksList = params.chunks
       .map((chunk, idx) => {
         const citation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
@@ -56,7 +55,6 @@ CONTENT: ${content}
       sectionTypeRequirements: sectionTypeReqs ?? undefined,
       orgContext: params.orgContext,
       proposalScope: params.proposalScope,
-      frameworkContext: params.frameworkContext,
     });
 
     try {
@@ -104,40 +102,52 @@ CONTENT: ${content}
   }
 
   /**
-   * Draft a section using org context when no evidence chunks are available.
-   * Uses a dedicated no-evidence system prompt (voice/tone rules without
-   * citation mandate) and section-type guidance.
+   * Draft a section when no evidence chunks are available.
+   * Uses the same system prompt and section-type guidance as evidence-grounded drafting,
+   * but produces a skeleton with clear placeholders where org-specific data is needed.
    */
   private async draftFromTemplate(
     sectionName: string,
     sectionGuidance: string,
     orgContext?: string,
   ): Promise<{ draftText: string; gaps: string[] }> {
-    this.logger.log(`No evidence for "${sectionName}" — attempting template-based draft with org context`);
+    this.logger.log(`No evidence for "${sectionName}" — attempting template-based draft`);
     const orgInfo = orgContext || "Diksha Foundation / SCCF, programs: KHEL, Life Skills, Fellowship, India (Bihar, Delhi)";
 
-    // Use section-type guidance for structure, same as evidence-based path
     const sectionTypeReqs = getSectionTypeGuidance(sectionName);
-    const templatePrompt = `Section: ${sectionName}
-Guidance: ${sectionGuidance}
-${sectionTypeReqs ? `\nSection-specific requirements:\n${sectionTypeReqs}` : ""}
 
-Organization context:
-${orgInfo}
+    const zeroEvidenceChunks = `NO EVIDENCE DOCUMENTS WERE RETRIEVED FOR THIS SECTION.
 
-Write a professional, funder-facing draft for this proposal section. No evidence documents are available, so:
-- Use the organization context thoroughly — it contains real data (center names, beneficiary counts, staff, board, partners, compliance details)
-- Write in first person plural ("We", "Our team")
-- Write flowing narrative prose, not bullet lists
-- Mark only TRULY unknown data with {{VERIFY: description}} — do NOT use placeholders for data available in the org context
-- Use Indian English conventions and INR formatting (₹15,00,000 not ₹1,500,000)`;
+You must still draft a professional skeleton for this section using the organisation context and section guidance.
+When you need specific statistics, registration numbers, or hard claims that are not present in the context, use placeholders instead of guessing:
+- {{VERIFY: description of statistic or claim to be checked against source documents}}
+- {{INSERT: description of org-specific detail that a human should fill later}}
+- {{MISSING: description of a required but currently unknown value}}`;
+
+    const userPrompt = buildSectionWriterUserPrompt({
+      sectionName,
+      sectionGuidance,
+      chunksList: zeroEvidenceChunks,
+      funderContext: "Not specified",
+      sectionTypeRequirements: sectionTypeReqs ?? undefined,
+      orgContext: orgInfo,
+      proposalScope: undefined,
+    });
 
     try {
+      const noEvidenceSystemPrompt = [
+        "You are a proposal writer drafting sections for Indian education and community-development funders.",
+        "Write in first-person plural (\"we\"), active voice, narrative paragraphs, and Indian English.",
+        "Use the organisation context and section guidance to write relevant, professional content.",
+        "Do NOT invent precise numbers, registration IDs, dates, or partner names that are not present in the context.",
+        "Whenever specific data is missing, use {{VERIFY: ...}}, {{INSERT: ...}}, or {{MISSING: ...}} placeholders instead of guessing.",
+      ].join(" ");
+
       const llmStart = Date.now();
       const draftText = await this.llm.generatePlain(
-        SECTION_WRITER_NO_EVIDENCE_SYSTEM_PROMPT,
+        noEvidenceSystemPrompt,
         "Draft the section:",
-        templatePrompt,
+        userPrompt,
       );
       const llmMs = Date.now() - llmStart;
       this.logger.log({ section: sectionName, template: true, llm_ms: llmMs, draftLength: draftText.length });

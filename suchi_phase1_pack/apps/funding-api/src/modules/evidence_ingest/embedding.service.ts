@@ -1,7 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
-import { createEmbeddingProvider, EmbeddingProvider } from "./embedding-provider";
+import OpenAI from "openai";
+import { debugLog } from "./debug-log";
 
 const BATCH_SIZE = 100;
 const MAX_RETRIES = 3;
@@ -10,7 +11,8 @@ const RETRY_DELAY_MS = 2000;
 @Injectable()
 export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
-  private readonly embeddingProvider: EmbeddingProvider | null = null;
+  private readonly client: OpenAI | null = null;
+  private readonly model: string;
   private readonly rateLimitPerMin: number;
 
   constructor(
@@ -22,31 +24,27 @@ export class EmbeddingService {
     const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
     const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
     const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
-    const embeddingProviderName = this.configService.get<string>("FUNDING_EMBEDDING_PROVIDER");
 
     // Use embeddings-specific key if available, otherwise fall back to LLM key
     const apiKey = embeddingsApiKey || llmApiKey;
-    const model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL");
+    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
+    const baseURL = embeddingsBaseUrl || undefined;
 
-    // Create unified embedding provider (supports Google Gemini and OpenAI)
-    this.embeddingProvider = createEmbeddingProvider({
-      provider: embeddingProviderName,
-      apiKey: apiKey || undefined,
-      baseUrl: embeddingsBaseUrl || undefined,
-      model: model || undefined,
-    });
-
-    if (this.embeddingProvider) {
-      this.logger.log(`Embeddings provider configured: ${embeddingProviderName || "google"} (model=${this.embeddingProvider.modelName})`);
+    if (apiKey) {
+      this.client = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
+      this.logger.log(`Embeddings client configured (using ${embeddingsApiKey ? 'dedicated' : 'shared LLM'} API key)`);
     } else {
-      this.logger.warn("Embeddings provider not configured - FUNDING_EMBEDDINGS_API_KEY or FUNDING_OPENAI_API_KEY required");
+      this.logger.warn("Embeddings client not configured - FUNDING_EMBEDDINGS_API_KEY or FUNDING_OPENAI_API_KEY required");
     }
-
+    this.model = this.configService.get<string>("EVIDENCE_EMBEDDING_MODEL") ?? "text-embedding-3-small";
     this.rateLimitPerMin = this.configService.get<number>("EVIDENCE_EMBEDDING_RATE_LIMIT_PER_MIN") ?? 60;
+    // #region agent log
+    debugLog({ location: "embedding.service.ts:constructor", message: "EmbeddingService init", data: { hasClient: !!apiKey, model: this.model }, hypothesisId: "H1" });
+    // #endregion
   }
 
   isConfigured(): boolean {
-    return !!this.embeddingProvider;
+    return !!this.client;
   }
 
   /**
@@ -59,26 +57,37 @@ export class EmbeddingService {
     durationMs: number;
     tokenCountProxy: number;
   }> {
-    if (!this.embeddingProvider) throw new Error("Embedding provider not configured (set FUNDING_EMBEDDINGS_API_KEY and FUNDING_EMBEDDING_PROVIDER)");
+    // #region agent log
+    debugLog({ location: "embedding.service.ts:embedPendingChunks:entry", message: "embedPendingChunks called", data: { hasClient: !!this.client }, hypothesisId: "H1" });
+    // #endregion
+    if (!this.client) {
+      // #region agent log
+      debugLog({ location: "embedding.service.ts:embedPendingChunks", message: "client is null", data: {}, hypothesisId: "H1" });
+      // #endregion
+      throw new Error("Embedding API not configured (set FUNDING_EMBEDDINGS_API_KEY for OpenAI embeddings)");
+    }
 
-    // Embed all Tier A/B chunks. The canonicalDocId filter was removed because
-    // the KB ingest script sets canonicalDocId to the manifest string ID (not a DB UUID),
-    // which caused all docs to be incorrectly classified as non-canonical and skipped.
-    const chunksFromCanonical = (await this.prisma.documentChunk.findMany({
+    const docIds = await this.prisma.evidenceDocument.findMany({
+      where: { qualityTier: { in: ["A", "B"] } },
+      select: { id: true, canonicalDocId: true },
+    });
+    const canonicalSet = new Set(
+      docIds.filter((d) => d.canonicalDocId === null || d.canonicalDocId === d.id).map((d) => d.id),
+    );
+    const chunksFromCanonical = await this.prisma.documentChunk.findMany({
       where: {
         chunkEmbedding: null,
-        document: { qualityTier: { in: ["A", "B"] } },
+        documentId: { in: [...canonicalSet] },
       },
       orderBy: { createdAt: "asc" },
       take: 500,
-    })).filter((c) => c.content?.trim().length > 0);
+    });
 
     const start = Date.now();
     let embedded = 0;
     let failed = 0;
     let tokenCountProxy = 0;
     const delayBetweenBatches = (60 * 1000) / this.rateLimitPerMin;
-    const embeddingModelName = this.embeddingProvider.modelName;
 
     for (let i = 0; i < chunksFromCanonical.length; i += BATCH_SIZE) {
       const batch = chunksFromCanonical.slice(i, i + BATCH_SIZE);
@@ -87,15 +96,35 @@ export class EmbeddingService {
       let lastErr: Error | null = null;
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-          const results = await this.embeddingProvider.embedBatch(texts);
+          // #region agent log
+          debugLog({ location: "embedding.service.ts:beforeCreate", message: "before embeddings.create", data: { batchLength: batch.length, attempt }, hypothesisId: "H2" });
+          // #endregion
+          const res = await this.client.embeddings.create({
+            model: this.model,
+            input: texts,
+          });
+          // #region agent log
+          debugLog({ location: "embedding.service.ts:afterCreate", message: "after embeddings.create", data: { dataLen: res?.data?.length, firstEmbedLen: res?.data?.[0]?.embedding?.length }, hypothesisId: "H3" });
+          // #endregion
+          const data = res?.data;
+          if (!Array.isArray(data) || data.length === 0) {
+            lastErr = new Error(`Embeddings API returned no data (length: ${data?.length ?? 0})`);
+            if (attempt < MAX_RETRIES - 1) {
+              await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
+            }
+            continue;
+          }
           for (let j = 0; j < batch.length; j++) {
             const chunk = batch[j];
-            const vec = results[j]?.embedding;
-            if (!vec) continue;
+            const vec = data[j]?.embedding;
+            if (!vec || !Array.isArray(vec)) continue;
+            // #region agent log
+            debugLog({ location: "embedding.service.ts:beforePrismaCreate", message: "before chunkEmbedding.create", data: { chunkId: chunk.id }, hypothesisId: "H4" });
+            // #endregion
             const row = await this.prisma.chunkEmbedding.create({
               data: {
                 chunkId: chunk.id,
-                embeddingModel: embeddingModelName,
+                embeddingModel: this.model,
                 vector: JSON.stringify(vec),
               },
             });
@@ -117,6 +146,9 @@ export class EmbeddingService {
           break;
         } catch (e) {
           lastErr = e as Error;
+          // #region agent log
+          debugLog({ location: "embedding.service.ts:catch", message: "embedding batch error", data: { errMsg: lastErr.message, attempt }, hypothesisId: "H2_H4" });
+          // #endregion
           if (attempt < MAX_RETRIES - 1) {
             await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
           }

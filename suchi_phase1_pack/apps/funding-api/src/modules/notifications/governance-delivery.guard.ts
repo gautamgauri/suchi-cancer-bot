@@ -156,12 +156,13 @@ export class GovernanceDeliveryGuard {
       this.configService.get<string>("FUNDING_EXPORT_TOKEN") ||
       "";
     const approval = params.approval;
-    // When no approval token is configured, the approval system is not enabled — auto-approve all writes.
-    const tokenMatch = !expectedToken || (!!approval?.approvalToken && approval.approvalToken === expectedToken);
-    const approved = !expectedToken || (approval?.outcome === "approved" && tokenMatch);
+    const tokenMatch = !!expectedToken && approval?.approvalToken === expectedToken;
+    const approved = approval?.outcome === "approved" && tokenMatch;
     const reason = approved
       ? "approved"
-      : "missing or invalid write approval";
+      : !expectedToken
+        ? "write approval token not configured"
+        : "missing or invalid write approval";
 
     const audit: AuditLogContract = {
       eventId: `evt_${randomUUID()}`,

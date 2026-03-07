@@ -15,7 +15,7 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
-import { StructuredExtractorService } from "./structured-extractor.service";
+import { StructuredExtractorService, StructuredInfo } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
@@ -40,6 +40,11 @@ export class ChatService {
   // In-memory session cache with 60s TTL
   private readonly sessionCache = new Map<string, { data: any; expires: number }>();
   private readonly CACHE_TTL_MS = 60000; // 60 seconds
+  /** Request budget so explain/fallback/urgent flows cannot stack multiple full-length LLM calls (controller is 55s) */
+  private readonly REQUEST_BUDGET_MS = 45000;
+  private readonly MIN_BUDGET_FOR_LLM_MS = 15000;
+  /** Urgent/symptomatic path: hard deadline for LLM so we fall back to template quickly instead of 504 */
+  private readonly URGENT_PATH_LLM_DEADLINE_MS = 15000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -132,6 +137,7 @@ export class ChatService {
     await this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } });
 
     const started = Date.now();
+    const requestDeadlineMs = started + this.REQUEST_BUDGET_MS;
 
     // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
     // This runs BEFORE any LLM or async call. Pure regex, zero cost.
@@ -256,17 +262,36 @@ export class ChatService {
       
       // Disclaimer is appended by appendDisclaimer() — no need to prepend a second one
       
-      // If we have RAG content, generate a response with citations and prepend urgent guidance
-      if (earlyEvidenceChunks.length > 0) {
+      // If we have RAG content and request budget allows, generate a response with citations and prepend urgent guidance
+      // Use a short hard deadline so we fall back to template instead of 504 on slow LLM
+      let urgentRagResponse: string | null = null;
+      if (earlyEvidenceChunks.length > 0 && Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
+        let urgentTimeoutId: ReturnType<typeof setTimeout>;
+        const urgentTimeoutPromise = new Promise<string>((_, reject) => {
+          urgentTimeoutId = setTimeout(() => reject(new Error("URGENT_LLM_TIMEOUT")), this.URGENT_PATH_LLM_DEADLINE_MS);
+        });
+        try {
+          urgentRagResponse = await Promise.race([
+            this.llm.generateWithCitations(
+              "explain",
+              "",
+              dto.userText,
+              earlyEvidenceChunks,
+              false,
+              { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" }
+            ),
+            urgentTimeoutPromise,
+          ]);
+        } catch (err: any) {
+          this.logger.warn(`Urgent path LLM timeout or error (${err?.message ?? "unknown"}), using template only`);
+        } finally {
+          clearTimeout(urgentTimeoutId!);
+        }
+      }
+
+      if (urgentRagResponse) {
+        const ragResponse = urgentRagResponse;
         const queryType = QueryTypeClassifier.classify(dto.userText);
-        const ragResponse = await this.llm.generateWithCitations(
-          "explain",
-          "",
-          dto.userText,
-          earlyEvidenceChunks,
-          false,
-          { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" }
-        );
 
         // Extract citations from RAG response
         const extractionResult = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
@@ -1743,12 +1768,10 @@ export class ChatService {
         // Continue with the response - don't abstain
       }
 
-      // Validate identify question responses — skip regeneration if time budget exceeded
-      const elapsedSoFar = Date.now() - started;
-      const TIME_BUDGET_MS = 60000; // 60s budget for entire explain flow — avoid stacking LLM retries
-      if (mightBeIdentifyQuestion && elapsedSoFar < TIME_BUDGET_MS) {
+      // Validate identify question responses (skip regeneration if request budget exhausted)
+      if (mightBeIdentifyQuestion) {
         const validation = this.passesIdentifyRubric(responseText);
-        if (!validation.ok) {
+        if (!validation.ok && Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
           this.logger.warn(`Identify response missing elements: ${validation.missing.join(", ")}`);
           // Regenerate with stricter prompt (cancerType already detected above)
           const llm2Started = Date.now();
@@ -1764,6 +1787,7 @@ export class ChatService {
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
+          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -1932,16 +1956,17 @@ export class ChatService {
       
       responseText = ResponseFormatter.formatResponse(responseText, "explain", hasResolvedAnswer, isMultiStepInteraction);
 
-      // Handle citation validation — skip regeneration if time budget exceeded
-      const elapsedBeforeCitRegen = Date.now() - started;
-      if (citationValidation.confidenceLevel === "RED" && elapsedBeforeCitRegen < TIME_BUDGET_MS) {
+      // Handle citation validation (skip regeneration if request budget exhausted)
+      if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
-        const llm3Started = Date.now();
-        llmCallCount++;
-        responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent });
+        if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
+          const llm3Started = Date.now();
+          llmCallCount++;
+          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent });
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
+        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
         const retryOrphanCount = retryExtractionResult.orphanCount;
@@ -1962,6 +1987,7 @@ export class ChatService {
           retryOrphanCount,
           dto.userText
         );
+        }
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
         if (citationValidation.confidenceLevel === "RED") {
@@ -2255,18 +2281,19 @@ export class ChatService {
 
     let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
 
-    // Handle RED (no citations) - retry once, then abstain
+    // Handle RED (no citations) - retry once if budget allows, then abstain
     if (citationValidation.confidenceLevel === "RED") {
       this.logger.warn(`Citation validation RED (no citations): ${citationValidation.errors?.join(", ")}`);
-      // Retry once
-      responseText = await this.llm.generateWithCitations(
-        systemPrompt,
-        "",
-        dto.userText,
-        evidenceChunks,
-        false,
-        { emotionalState, cancerType: sessionCancerType }
-      );
+      // Retry once only if request budget allows
+      if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
+        responseText = await this.llm.generateWithCitations(
+          systemPrompt,
+          "",
+          dto.userText,
+          evidenceChunks,
+          false,
+          { emotionalState, cancerType: sessionCancerType }
+        );
       const patientRetryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
       citations = patientRetryExtractionResult.citations;
       patientOrphanCount = patientRetryExtractionResult.orphanCount;
@@ -2280,9 +2307,10 @@ export class ChatService {
       }
 
       citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
+      }
 
       if (citationValidation.confidenceLevel === "RED") {
-        // Still RED after retry - abstain
+        // Still RED after retry (or skipped retry due to budget) - abstain
         const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType, dto.userText);
         const { modifiedText, citations: abstentionCitations } = this.attachDeterministicCitationsIfNeeded(
           abstentionMsg,
@@ -2533,6 +2561,30 @@ export class ChatService {
     if (doctorQsCount < 5) missing.push(`>=5 doctor questions (found ${doctorQsCount})`);
 
     return { ok: missing.length === 0, missing };
+  }
+
+  /**
+   * Reapply essential-term / completeness fallback after any regeneration that replaces responseText.
+   * Call after identify regeneration and citation regeneration so injected terms are not lost.
+   */
+  private applyEssentialTermFallback(responseText: string, extraction: StructuredInfo, queryType: string): string {
+    const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
+    if (completenessResult.meetsPolicy) return responseText;
+    const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+    if (!fallbackContent) return responseText;
+    const insertionPatterns = [
+      /(\n\n\*\*Questions to Ask Your Doctor:\*\*)/i,
+      /(\n\n\*\*Important:\*\*|\n\nThis information is)/i,
+      /(\n\nAre you asking generally)/i,
+      /(\n\n\*\*Note:\*\*)/i,
+    ];
+    for (const pattern of insertionPatterns) {
+      const match = responseText.match(pattern);
+      if (match && match.index !== undefined) {
+        return responseText.slice(0, match.index) + fallbackContent + responseText.slice(match.index);
+      }
+    }
+    return responseText + fallbackContent;
   }
 
   /**

@@ -3,14 +3,6 @@
  * Used for validation and API responses; full payload stored in Opportunity.jsonBlob.
  */
 
-export type BudgetTemplateId =
-  | "education-holistic"
-  | "football-for-development"
-  | "girls-empowerment"
-  | "ai-tech-product";
-
-export type ProjectCategory = "field-programme" | "tech-product" | "hybrid";
-
 export interface OpportunitySourceAttachment {
   fileName: string;
   mimeType: string;
@@ -42,34 +34,9 @@ export interface OpportunityFunder {
 
 export interface OpportunityKeyConstraints {
   maxGrantAmountINR?: number;
-  /** Diksha's strategic ask — used as working budget ceiling by the engine.
-   * Set well below maxGrantAmountINR when a conservative pilot ask is appropriate
-   * (e.g. ₹1.5Cr for Google.org AI pilot even though funder ceiling is ₹27Cr).
-   */
-  recommendedAskINR?: number;
-  /** Minimum total grant amount the proposal should request.
-   * Budget envelope will scale up if bottom-up calculation falls below this floor.
-   * Use this when you know the real program cost (e.g. 30L/centre × 3 centres = 90L).
-   */
-  minGrantAmountINR?: number;
   projectDurationMonthsMax?: number;
   deadline?: string;
-  /** Confidence level for the stored deadline value.
-   * "verified"  — explicit date from RFP or confirmed source URL
-   * "estimated" — inferred from vague language or manually entered
-   * "unknown"   — manually loaded or no source; must be web-verified before submitting
-   */
-  deadlineConfidence?: "verified" | "estimated" | "unknown";
-  deadlineNote?: string;
   geography?: string[];
-  /** Minimum grant the funder will award (INR). If set and exceeds org capacity → size_mismatch gate. */
-  funderMinGrantINR?: number;
-  /** Minimum grant the funder will award (USD). Converted at ORG_CAPACITY.planningFxUSDtoINR. */
-  funderMinGrantUSD?: number;
-  /** Force a specific budget template instead of theme-based auto-selection. */
-  overrideBudgetTemplate?: BudgetTemplateId;
-  /** Override project category classification (drives section framing). */
-  projectCategory?: ProjectCategory;
 }
 
 export interface OpportunityThemes {
