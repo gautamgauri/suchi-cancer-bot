@@ -1,0 +1,370 @@
+{
+  "rubric_pack_id": "proposal-rubrics-v1",
+  "version": "1.0.0",
+  "description": "Cross-section rubrics for 4-category proposal quality evaluation. Core 7 dimensions apply to all categories; category add-ons provide category-specific checks.",
+  "core_dimensions": [
+    {
+      "dimension": "completeness",
+      "weight": 0.20,
+      "description": "Proposal has sufficient sections with substantive content and covers RFP requirements",
+      "checks": [
+        {
+          "id": "min_section_count",
+          "type": "deterministic",
+          "description": "At least 6 substantive sections present",
+          "params": { "min_sections": 6 }
+        },
+        {
+          "id": "no_error_sections",
+          "type": "deterministic",
+          "description": "No sections starting with 'Error:' or containing API error text"
+        },
+        {
+          "id": "rfp_coverage",
+          "type": "llm_scored_boolean",
+          "description": "Proposal addresses the key requirements from the opportunity/RFP (budget, timeline, eligibility, deliverables)"
+        }
+      ]
+    },
+    {
+      "dimension": "internal_coherence",
+      "weight": 0.15,
+      "description": "Numbers, names, and facts are consistent across sections",
+      "checks": [
+        {
+          "id": "beneficiary_count_consistent",
+          "type": "deterministic",
+          "description": "Beneficiary count appears in 3+ sections and is the same value",
+          "params": { "field": "beneficiary_count", "min_sections": 3 }
+        },
+        {
+          "id": "budget_total_matches_summary",
+          "type": "llm_scored_boolean",
+          "description": "Budget total in the budget section matches the amount mentioned in executive summary and other narrative sections"
+        }
+      ]
+    },
+    {
+      "dimension": "specificity",
+      "weight": 0.15,
+      "description": "Proposal uses concrete names, numbers, and locations rather than vague language",
+      "checks": [
+        {
+          "id": "named_locations",
+          "type": "llm_scored_boolean",
+          "description": "At least 3 named locations (cities, districts, states, or specific venues) are mentioned across the proposal"
+        },
+        {
+          "id": "specific_numbers",
+          "type": "llm_scored_boolean",
+          "description": "Beneficiary counts, budget amounts, and timelines use specific numbers, not vague terms like 'many', 'several', 'various'"
+        },
+        {
+          "id": "low_hollow_phrases",
+          "type": "deterministic",
+          "description": "2 or fewer hollow phrases ('holistic approach', 'sustainable impact', 'transformative change', 'paradigm shift', 'cutting-edge') without concrete details",
+          "params": {
+            "patterns": [
+              "holistic approach",
+              "sustainable impact",
+              "transformative change",
+              "paradigm shift",
+              "cutting-edge",
+              "world-class",
+              "best-in-class",
+              "synergistic",
+              "leverage our"
+            ],
+            "max_count": 2
+          }
+        }
+      ]
+    },
+    {
+      "dimension": "impact_logic",
+      "weight": 0.15,
+      "description": "Clear theory of change with measurable outcomes linked to activities",
+      "checks": [
+        {
+          "id": "toc_present",
+          "type": "llm_scored_boolean",
+          "description": "A Theory of Change (ToC) or logical framework is present, either as narrative or structured (inputs → activities → outputs → outcomes → impact)"
+        },
+        {
+          "id": "measurable_outcomes",
+          "type": "llm_scored_boolean",
+          "description": "At least 3 measurable outcomes with indicators (e.g., '80% of participants will...', 'reduce X by Y%')"
+        },
+        {
+          "id": "activities_outputs_chain",
+          "type": "llm_scored_boolean",
+          "description": "Activities described in the proposal logically lead to the stated outputs and outcomes"
+        }
+      ]
+    },
+    {
+      "dimension": "feasibility",
+      "weight": 0.15,
+      "description": "Team capacity, timeline, and budget are realistic and aligned",
+      "checks": [
+        {
+          "id": "team_capacity",
+          "type": "llm_scored_boolean",
+          "description": "Team or staffing section mentions specific roles, qualifications, or existing capacity to deliver the project"
+        },
+        {
+          "id": "timeline_realistic",
+          "type": "llm_scored_boolean",
+          "description": "Timeline/schedule is present and activities are reasonably distributed across the grant period"
+        },
+        {
+          "id": "budget_matches_scope",
+          "type": "llm_scored_boolean",
+          "description": "Budget amount is proportional to the scope of activities and number of beneficiaries described"
+        }
+      ]
+    },
+    {
+      "dimension": "tone_professionalism",
+      "weight": 0.10,
+      "description": "Professional voice, funder-aware, no boasting",
+      "checks": [
+        {
+          "id": "first_person_voice",
+          "type": "deterministic",
+          "description": "80%+ of sections use first-person voice ('We', 'Our') rather than third-person ('The organization')",
+          "params": { "min_ratio": 0.80 }
+        },
+        {
+          "id": "funder_named",
+          "type": "llm_scored_boolean",
+          "description": "The funder is named explicitly in the proposal, not referred to generically as 'the funder' or 'the donor'"
+        },
+        {
+          "id": "no_boasting",
+          "type": "llm_scored_boolean",
+          "description": "No unsupported superlatives or boastful claims ('we are the best', 'the largest', 'the first') without evidence"
+        }
+      ]
+    },
+    {
+      "dimension": "compliance_risk",
+      "weight": 0.10,
+      "description": "Registration details present, no false claims about partnerships",
+      "checks": [
+        {
+          "id": "registration_present",
+          "type": "llm_scored_boolean",
+          "description": "Organization registration number, FCRA status, or legal entity details are mentioned somewhere in the proposal"
+        },
+        {
+          "id": "no_false_partnerships",
+          "type": "llm_scored_boolean",
+          "description": "No claims of partnerships, endorsements, or affiliations that appear fabricated or unsupported by evidence"
+        }
+      ]
+    }
+  ],
+  "category_addons": {
+    "tech_accelerator": {
+      "description": "IBM-style product/tech grant — Suchi Cancer Bot",
+      "pass_threshold": 0.60,
+      "checks": [
+        {
+          "id": "product_readiness",
+          "type": "llm_scored_boolean",
+          "description": "Proposal clearly describes the current state of the product (MVP, beta, production) with specific metrics (users, sessions, uptime)"
+        },
+        {
+          "id": "deployment_plan",
+          "type": "llm_scored_boolean",
+          "description": "A deployment or scaling plan is present with infrastructure details (cloud provider, expected load, rollout phases)"
+        },
+        {
+          "id": "ai_safety",
+          "type": "llm_scored_boolean",
+          "description": "AI safety, bias mitigation, or responsible AI considerations are addressed (guardrails, human-in-the-loop, data privacy)"
+        },
+        {
+          "id": "user_testing_plan",
+          "type": "llm_scored_boolean",
+          "description": "User testing or validation methodology is described (pilot users, feedback loops, iteration cycles)"
+        },
+        {
+          "id": "technical_architecture",
+          "type": "llm_scored_boolean",
+          "description": "Technical architecture or system design is referenced (stack, integrations, data flow)"
+        }
+      ]
+    },
+    "fellowship": {
+      "description": "Digital Minds-style leadership fellowship — Gautam Gauri",
+      "pass_threshold": 0.60,
+      "checks": [
+        {
+          "id": "narrative_arc",
+          "type": "llm_scored_boolean",
+          "description": "Personal narrative has a clear arc: origin story, turning point, current mission, future vision"
+        },
+        {
+          "id": "authenticity",
+          "type": "llm_scored_boolean",
+          "description": "Writing feels authentic and personal, not generic or AI-generated. Contains specific anecdotes or experiences"
+        },
+        {
+          "id": "leadership_trajectory",
+          "type": "llm_scored_boolean",
+          "description": "Leadership growth is demonstrated through specific milestones, decisions, or challenges overcome"
+        },
+        {
+          "id": "research_plan",
+          "type": "llm_scored_boolean",
+          "description": "A learning or research agenda is articulated — what the fellow intends to explore, study, or develop during the fellowship"
+        },
+        {
+          "id": "track_record_synthesis",
+          "type": "llm_scored_boolean",
+          "description": "Track record is synthesized with specific outcomes (numbers served, programs launched, awards) rather than generic claims"
+        },
+        {
+          "id": "word_limit_compliance",
+          "type": "deterministic",
+          "description": "Sections with word limits stay within +50% of target (e.g. 300-word section ≤ 450 words)",
+          "params": {
+            "word_limits": {
+              "engagement": 300,
+              "career": 200,
+              "motivation": 300,
+              "leadership": 400,
+              "contribution": 200,
+              "research": 400
+            }
+          }
+        },
+        {
+          "id": "no_org_voice_leakage",
+          "type": "deterministic",
+          "description": "No sections start with org name or use 'We' as sentence subject — this is a personal fellowship application",
+          "params": {
+            "org_names": ["Diksha Foundation", "Diksha", "SCCF", "Suchitra Cancer Care Foundation"]
+          }
+        },
+        {
+          "id": "personal_anecdote_present",
+          "type": "llm_scored_boolean",
+          "description": "At least 2 sections contain specific personal anecdotes — named events, people, dates, or moments that only the applicant would know"
+        },
+        {
+          "id": "cross_section_deduplication",
+          "type": "deterministic",
+          "description": "No two sections share more than 30% of their 3-gram tokens",
+          "params": { "max_overlap": 0.30 }
+        },
+        {
+          "id": "not_too_proposal_like",
+          "type": "llm_scored_boolean",
+          "description": "Writing reads like a personal fellowship essay, not an organizational grant proposal. No budget justifications, Theory of Change frameworks, or deliverable tables."
+        },
+        {
+          "id": "no_budget_language",
+          "type": "deterministic",
+          "description": "No budget, INR, Rs, lakhs, fund allocation, or financial planning language in any section"
+        },
+        {
+          "id": "no_raw_tags",
+          "type": "deterministic",
+          "description": "No unclosed {{MISSING:}} tags, empty [citation:] tokens, or template placeholders left in output"
+        }
+      ],
+      "core_overrides": {
+        "tone_professionalism": {
+          "remove": ["first_person_voice"],
+          "add": [
+            {
+              "id": "first_person_voice_singular",
+              "type": "deterministic",
+              "description": "80%+ of sections use singular first-person voice ('I', 'my', 'me') rather than org/plural voice",
+              "params": { "min_ratio": 0.80 }
+            }
+          ]
+        },
+        "feasibility": {
+          "remove": ["budget_matches_scope", "team_capacity", "timeline_realistic"]
+        },
+        "compliance_risk": {
+          "remove": ["registration_present"]
+        }
+      }
+    },
+    "donor_chapter": {
+      "description": "Asha for Education-style community grant — Diksha KHEL",
+      "pass_threshold": 0.60,
+      "checks": [
+        {
+          "id": "cost_per_beneficiary",
+          "type": "llm_scored_boolean",
+          "description": "Cost per beneficiary is calculated and stated explicitly (e.g., Rs X per child per year)"
+        },
+        {
+          "id": "staffing_ratios",
+          "type": "llm_scored_boolean",
+          "description": "Staff-to-beneficiary ratios are mentioned (e.g., 1 coach per 30 children)"
+        },
+        {
+          "id": "implementation_detail",
+          "type": "llm_scored_boolean",
+          "description": "Implementation section describes daily/weekly activities with enough detail for a volunteer reviewer to understand"
+        },
+        {
+          "id": "evidence_of_track_record",
+          "type": "llm_scored_boolean",
+          "description": "Past performance data with specific numbers (children served, completion rates, years of operation)"
+        },
+        {
+          "id": "donor_trust",
+          "type": "llm_scored_boolean",
+          "description": "Financial transparency elements present (audit status, fund utilization reports, previous grant outcomes)"
+        }
+      ]
+    },
+    "partnership_pitch": {
+      "description": "Naandi 'Sports for Life' alliance — Diksha (non-RFP, concept note + pitch email + pilot design)",
+      "pass_threshold": 0.60,
+      "checks": [
+        {
+          "id": "alliance_logic",
+          "type": "llm_scored_boolean",
+          "description": "The rationale for partnering is clearly articulated — why these two organizations together, not separately"
+        },
+        {
+          "id": "mutual_value",
+          "type": "llm_scored_boolean",
+          "description": "Value proposition is mutual — both parties gain something specific (reach, expertise, credibility, infrastructure)"
+        },
+        {
+          "id": "operating_model",
+          "type": "llm_scored_boolean",
+          "description": "An operating model or governance structure for the partnership is outlined (roles, decision-making, resource sharing)"
+        },
+        {
+          "id": "next_step_quality",
+          "type": "llm_scored_boolean",
+          "description": "Clear next steps are proposed with specific asks (meeting, pilot date, MOU timeline)"
+        },
+        {
+          "id": "credible_tone",
+          "type": "llm_scored_boolean",
+          "description": "Tone is peer-to-peer, not supplicant — positions Diksha as an equal partner bringing unique capabilities"
+        }
+      ]
+    }
+  },
+  "llm_judge_config": {
+    "model": "deepseek",
+    "prompt_contract": {
+      "format": "json_only",
+      "require_evidence_quotes": true,
+      "max_quote_words_per_field": 30
+    }
+  }
+}
