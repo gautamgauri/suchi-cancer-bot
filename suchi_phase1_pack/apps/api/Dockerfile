@@ -25,19 +25,14 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Install dependencies for Prisma, yt-dlp, and Puppeteer
-RUN apk add --no-cache \
-    openssl \
-    python3 \
-    py3-pip \
-    ffmpeg \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont && \
-    pip3 install --break-system-packages yt-dlp
+# Retry apk/pip to tolerate transient mirror or PyPI issues (e.g. Cloud Build env)
+RUN (for i in 1 2 3; do \
+      apk add --no-cache \
+        openssl python3 py3-pip ffmpeg chromium nss \
+        freetype freetype-dev harfbuzz ca-certificates ttf-freefont && exit 0; \
+      echo "apk attempt $i failed, retrying in 15s"; sleep 15; \
+    done; exit 1) && \
+  pip3 install --break-system-packages --retries 5 yt-dlp
 
 # Tell Puppeteer to use installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
