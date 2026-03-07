@@ -2033,14 +2033,6 @@ export class ChatService {
             };
           }
         }
-      } else if (citationValidation.confidenceLevel === "RED" && elapsedBeforeCitRegen >= TIME_BUDGET_MS) {
-        // Time budget exceeded — skip citation regeneration LLM call, allow response through
-        this.logger.warn(`Citation validation RED but time budget exceeded (${elapsedBeforeCitRegen}ms) — skipping regeneration, allowing response with YELLOW override`);
-        citationValidation = {
-          ...citationValidation,
-          confidenceLevel: "YELLOW",
-          isValid: true
-        };
       }
 
       // YELLOW confidence: proceed without extra preamble — appendDisclaimer() handles the disclaimer
