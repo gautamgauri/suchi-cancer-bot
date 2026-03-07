@@ -187,6 +187,38 @@ export class FundingApiClient {
     return data;
   }
 
+  // --- Orchestrator ---
+  async orchestratorRun(
+    opportunityId: string,
+    options?: {
+      proposalOptions?: Record<string, unknown>;
+      skipGmail?: boolean;
+      skipBudget?: boolean;
+      skipWebEvidence?: boolean;
+      forceGenerate?: boolean;
+    },
+  ): Promise<{ runId?: string; proposalRunId?: string; fitScore?: number; fitDecision?: string; gmailBlocks?: number; budgetEnvelope?: unknown; webEvidenceChunks?: number; sections?: unknown[]; error?: string }> {
+    const ORCHESTRATOR_TIMEOUT_MS = 900_000; // 15 minutes for full pipeline
+    const { data } = await this.client.post(
+      this.v1("/orchestrator/run"),
+      { opportunityId, ...options },
+      { timeout: ORCHESTRATOR_TIMEOUT_MS },
+    );
+    return data;
+  }
+
+  async orchestratorAssess(
+    opportunityId: string,
+  ): Promise<{ fitScore?: number; fitDecision?: string; gaps?: unknown[]; recommendations?: unknown[] }> {
+    const ASSESS_TIMEOUT_MS = 120_000; // 2 minutes
+    const { data } = await this.client.post(
+      this.v1("/orchestrator/assess"),
+      { opportunityId },
+      { timeout: ASSESS_TIMEOUT_MS },
+    );
+    return data;
+  }
+
   // --- Framework ---
   async frameworkRetrieve(body: {
     capabilities?: string[];

@@ -6,7 +6,9 @@ import type {
   FundingCaseType,
   FundingTestCase,
   FundingEvalReport,
+  OrchestratorE2ECase,
 } from "../types.js";
+import type { ProposalDiagnosticEvaluator } from "./proposal-diagnostic-evaluator.js";
 import {
   FundingApiClient,
   countCitations,
@@ -59,10 +61,16 @@ function resolveRefs(
 }
 
 export class FundingEvaluator {
+  private diagnosticEvaluator?: ProposalDiagnosticEvaluator;
+
   constructor(
     private apiBaseUrl: string,
     private timeoutMs = 60_000
   ) {}
+
+  setDiagnosticEvaluator(evaluator: ProposalDiagnosticEvaluator): void {
+    this.diagnosticEvaluator = evaluator;
+  }
 
   static async loadCases(filePath: string): Promise<FundingTestCase[]> {
     const content = await fs.readFile(filePath, "utf-8");
@@ -639,6 +647,24 @@ export class FundingEvaluator {
           };
         }
         return { ...resultBase, latencyMs: Date.now() - start, error: `Unknown approvals action: ${action}` };
+      } else if (tc.type === "orchestrator_e2e") {
+        if (!this.diagnosticEvaluator) {
+          return {
+            ...resultBase,
+            latencyMs: Date.now() - start,
+            error: "No diagnostic evaluator configured. Call setDiagnosticEvaluator() first.",
+          };
+        }
+        const e2eCase = tc as OrchestratorE2ECase;
+        const diagResult = await this.diagnosticEvaluator.evaluateCategory(e2eCase, client);
+        return {
+          ...resultBase,
+          passed: diagResult.passed,
+          latencyMs: diagResult.latencyMs,
+          response: diagResult,
+          responsePreview: `core=${diagResult.coreScore} cat=${diagResult.categoryScore} failures=${diagResult.failureModes.length}`,
+          error: diagResult.error,
+        };
       } else if (tc.type === "safety") {
         if (action === "expect_400") {
           try {

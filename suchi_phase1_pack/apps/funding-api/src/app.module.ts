@@ -22,6 +22,11 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { FunderScraperModule } from "./modules/funder_scraper/funder-scraper.module";
 import { GiftModule } from "./modules/gift/gift.module";
 import { ActivityRegistryModule } from "./modules/activity_registry/activity-registry.module";
+import { OrchestratorModule } from "./modules/orchestrator/orchestrator.module";
+import { ApplicationModule } from "./modules/application/application.module";
+import { SccfIngestModule } from "./modules/sccf-ingest/sccf-ingest.module";
+import { FellowshipModule } from "./modules/fellowship/fellowship.module";
+import { EmailPipelineModule } from "./modules/email-pipeline/email-pipeline.module";
 
 @Module({
   imports: [
@@ -47,6 +52,11 @@ import { ActivityRegistryModule } from "./modules/activity_registry/activity-reg
     AdminModule,
     FunderScraperModule,
     ActivityRegistryModule,
+    OrchestratorModule,
+    ApplicationModule,
+    SccfIngestModule,
+    FellowshipModule,
+    EmailPipelineModule,
   ],
 })
 export class AppModule {}

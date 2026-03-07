@@ -14,7 +14,8 @@ import { WebEvidenceService, type WebEvidenceResult } from "./services/web-evide
 import { DeadlineCheckService } from "./services/deadline-check.service";
 import { OpportunityService } from "../opportunity/opportunity.service";
 import { ProposalService } from "../proposal/proposal.service";
-import type { OpportunityPayload } from "../opportunity/opportunity.types";
+import { FellowshipService } from "../fellowship/fellowship.service";
+import type { OpportunityPayload, DocTypeCategory } from "../opportunity/opportunity.types";
 
 /**
  * Orchestrator conductor — runs the "Gautam-style" gated pipeline:
@@ -43,6 +44,7 @@ export class OrchestratorService {
     private readonly deadlineCheck: DeadlineCheckService,
     private readonly opportunityService: OpportunityService,
     private readonly proposalService: ProposalService,
+    private readonly fellowshipService: FellowshipService,
   ) {}
 
   /**
@@ -190,7 +192,7 @@ export class OrchestratorService {
       }
 
       // --- Build OrchestratorContext for proposal pipeline ---
-      const orchestratorContext = this.buildContext(fitScore, gmailMemory, budgetEnvelope, webEvidenceResult);
+      const orchestratorContext = this.buildContext(fitScore, gmailMemory, budgetEnvelope, webEvidenceResult, payload.docTypeCategory);
 
       // --- Stage E: Proposal Generation ---
       this.logger.log(`[${opportunityId}] Stage E: Proposal Generation (decision: ${fitScore.decision})`);
@@ -202,17 +204,24 @@ export class OrchestratorService {
           ? `INR ${budgetEnvelope.targetCeilingINR.toLocaleString("en-IN")}`
           : undefined);
 
-      const proposalRun = await this.proposalService.generateProposal(
-        opportunityId,
-        {
-          ...options?.proposalOptions,
-          budgetCeiling: effectiveBudgetCeiling,
-        },
-        undefined, // approval context
-        orchestratorContext,
-      );
-
-      runState.proposalRunId = proposalRun.id;
+      // Route: fellowship pipeline for fellowship category, standard pipeline otherwise
+      if (payload.docTypeCategory === "fellowship") {
+        const fellowshipRun = await this.fellowshipService.generateFellowship(
+          opportunityId,
+        );
+        runState.proposalRunId = fellowshipRun.id;
+      } else {
+        const proposalRun = await this.proposalService.generateProposal(
+          opportunityId,
+          {
+            ...options?.proposalOptions,
+            budgetCeiling: effectiveBudgetCeiling,
+          },
+          undefined, // approval context
+          orchestratorContext,
+        );
+        runState.proposalRunId = proposalRun.id;
+      }
       runState.stage = "complete";
       runState.completedAt = new Date().toISOString();
 
@@ -221,7 +230,7 @@ export class OrchestratorService {
           `gmail=${gmailMemory.blocksFound} blocks, ` +
           `budget=₹${budgetEnvelope ? (budgetEnvelope.grandTotal / 100000).toFixed(1) + "L" : "n/a"}, ` +
           `webEvidence=${webEvidenceResult?.queriesUsed ?? 0} queries, ` +
-          `proposal=${proposalRun.id}`,
+          `proposal=${runState.proposalRunId}`,
       );
 
       return runState;
@@ -267,8 +276,14 @@ export class OrchestratorService {
     gmailMemory: GmailMemoryResult,
     budgetEnvelope?: BudgetEnvelope,
     webEvidence?: WebEvidenceResult,
+    docTypeCategory?: DocTypeCategory,
   ): OrchestratorContext {
     const context: OrchestratorContext = {};
+
+    // Document type category (fellowship, tech_accelerator, etc.)
+    if (docTypeCategory) {
+      context.docTypeCategory = docTypeCategory;
+    }
 
     // Fit score summary
     context.fitScore = {

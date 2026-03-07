@@ -85,8 +85,12 @@ export class EvidenceIngestController {
   }
 
   @Post("chunk")
-  async runChunking(): Promise<{ documentsProcessed: number; chunksCreated: number }> {
-    return this.chunkingService.chunkEligibleDocuments();
+  async runChunking(@Body() body?: { limit?: number; unchunkedOnly?: boolean; afterId?: string }) {
+    return this.chunkingService.chunkEligibleDocuments({
+      limit: body?.limit,
+      unchunkedOnly: body?.unchunkedOnly,
+      afterId: body?.afterId,
+    });
   }
 
   @Post("embed")

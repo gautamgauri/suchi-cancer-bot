@@ -1,0 +1,94 @@
+[
+  {
+    "section": "About You",
+    "fields": [
+      { "label": "First Name", "type": "text", "required": true },
+      { "label": "Last Name", "type": "text", "required": true },
+      { "label": "Email", "type": "text", "required": true },
+      { "label": "Profile Link", "type": "text", "required": false, "description": "LinkedIn preferred." },
+      { "label": "Other Links", "type": "text", "required": false, "description": "e.g. GitHub, personal website, blog, etc." },
+      { "label": "CV Attachment", "type": "file", "required": true },
+      { "label": "Highest Level of Education", "type": "text", "required": true },
+      { "label": "Level of Professional Experience", "type": "text", "required": true },
+      { "label": "Where do you currently reside?", "type": "text", "required": true, "description": "Please specify the city/area and country." },
+      { "label": "Institution", "type": "text", "required": true, "description": "This will be your current or most recent employer, or university if you're studying." },
+      { "label": "Position", "type": "text", "required": true, "description": "Your title at your current institution." },
+      {
+        "label": "Fields of Expertise",
+        "type": "multi_select",
+        "required": true,
+        "description": "Select up to 4, including past or present studies or work.",
+        "options": [
+          "AI or machine learning",
+          "AI Safety",
+          "Computer science",
+          "Mathematics",
+          "Philosophy",
+          "Psychological sciences (psychology, cognitive science, neuroscience, etc.)",
+          "Social sciences (anthropology, sociology, history, etc.)",
+          "Natural sciences (biology, chemistry, physics, etc.)",
+          "Health sciences (medicine, public health, etc)",
+          "Animal advocacy",
+          "Business",
+          "Law",
+          "Politics (governance, policy, international relations, etc)",
+          "Other (please indicate)"
+        ]
+      },
+      {
+        "label": "Are you available to come to Cambridge for the full programme?",
+        "type": "text",
+        "required": true,
+        "description": "The full programme consists of the Fellowship from the 3rd to the 7th of August and the Strategy Workshop with experts on the 8th and 9th."
+      }
+    ]
+  },
+  {
+    "section": "Short Answer Questions",
+    "preamble": "The fellowship is designed for individuals who are well-positioned to make meaningful contributions to the digital minds field and who would benefit from intensive training and community building. Prior experience with digital minds is not required — we welcome applications from candidates new to the topic who can demonstrate curiosity and independent thinking. However, we expect all applicants to engage with the digital minds literature before applying, and we will prioritise those who credibly demonstrate this engagement and a genuine motivation to explore the field.",
+    "fields": [
+      {
+        "label": "Please describe your engagement with the digital minds field.",
+        "type": "textarea",
+        "required": true,
+        "wordLimit": 300,
+        "description": "This might include what you have read, your personal views and predictions about digital minds, and any original thinking or proposals you have developed. If applicable, please share any relevant outputs or activities, such as links to academic papers, blog posts, or details of conferences you have attended."
+      },
+      {
+        "label": "What are your current career plans, and how do you hope this fellowship will accelerate your journey to contribute to the field of digital minds?",
+        "type": "textarea",
+        "required": true,
+        "wordLimit": 200,
+        "description": "Please describe your current career direction, even if it is tentative or evolving. What paths are you considering, and what uncertainties or trade-offs are you navigating?"
+      }
+    ]
+  },
+  {
+    "section": "Focus Areas",
+    "preamble": "Please rate your interest in each of the following areas in relation to digital minds on a scale of 1 to 5, where 1 is not interested, and 5 is very interested.",
+    "fields": [
+      { "label": "Philosophical", "type": "rating_1_5", "required": true },
+      { "label": "Policy", "type": "rating_1_5", "required": true },
+      { "label": "Societal Impacts", "type": "rating_1_5", "required": true },
+      { "label": "Technical", "type": "rating_1_5", "required": true }
+    ]
+  },
+  {
+    "section": "Final Questions",
+    "fields": [
+      { "label": "Where did you hear about this fellowship?", "type": "text", "required": true },
+      {
+        "label": "Would you like to take part in the Introduction to Digital Minds online course this Spring?",
+        "type": "text",
+        "required": true,
+        "description": "The course starts at the end of April and is 8-weeks long. There are no fees for this course, and it consists of 2 hours of reading and a 1.5-hour group discussion each week."
+      },
+      {
+        "label": "Anything else you would like to mention?",
+        "type": "textarea",
+        "required": false,
+        "description": "For example, this might include questions, comments, or feedback about the programme content or format."
+      }
+    ]
+  }
+]

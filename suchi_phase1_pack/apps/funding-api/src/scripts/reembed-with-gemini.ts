@@ -90,10 +90,14 @@ async function main() {
       console.log(`    ${row.embeddingModel}: ${row.count} records`);
     }
 
-    if (totalEmbeddings === 0) {
-      console.log("\nNo ChunkEmbedding records found — nothing to re-embed.");
-      console.log("Run the KB ingest script first: npm run kb:ingest-funding");
+    if (totalEmbeddings === 0 && totalChunks === 0) {
+      console.log("\nNo DocumentChunk records found — run the KB ingest script first: npm run kb:ingest-funding");
       return;
+    }
+
+    if (totalEmbeddings === 0 && totalChunks > 0) {
+      console.log(`\n${totalChunks} chunks exist but have no embeddings at all.`);
+      console.log("Proceeding to embed all Tier A/B chunks with Gemini...");
     }
 
     if (nullCount === 0 && totalEmbeddings > 0) {
@@ -105,7 +109,11 @@ async function main() {
     }
 
     if (isDryRun) {
-      console.log(`\nDRY RUN: Would delete ${totalEmbeddings} ChunkEmbedding records and re-embed.`);
+      if (totalEmbeddings > 0) {
+        console.log(`\nDRY RUN: Would delete ${totalEmbeddings} stale ChunkEmbedding records and re-embed with Gemini.`);
+      } else {
+        console.log(`\nDRY RUN: Would embed ${totalChunks} existing chunks with Gemini (gemini-embedding-001).`);
+      }
       console.log("Remove --dry-run flag to apply changes.");
       return;
     }

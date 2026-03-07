@@ -157,7 +157,134 @@ export type FundingCaseType =
   | "evidence_retrieve"
   | "evidence_recall"
   | "approvals"
-  | "safety";
+  | "safety"
+  | "orchestrator_e2e";
+
+// ── Proposal suite types ────────────────────────────────────────────────────
+
+export type ProposalCategory =
+  | "tech_accelerator"
+  | "fellowship"
+  | "donor_chapter"
+  | "partnership_pitch";
+
+/** Test case for orchestrator E2E evaluation */
+export interface OrchestratorE2ECase extends FundingTestCase {
+  type: "orchestrator_e2e";
+  proposalCategory: ProposalCategory;
+  orchestratorOptions?: {
+    focusGeography?: string;
+    targetGroup?: string;
+    budgetCeiling?: string;
+    dontMention?: string[];
+    sectionOnly?: string;
+  };
+  /** Category-specific rubric add-on checks to evaluate */
+  categoryRubricAddOns?: string[];
+  /** Expected output types (for partnership_pitch: concept_note, pitch_email, pilot_design) */
+  expectedOutputs?: string[];
+  /** Path to a reference proposal for comparison (relative to funding-eval/) */
+  referenceProposalPath?: string;
+  /** Category-specific thresholds */
+  categoryExpectations?: {
+    min_fit_score?: number;
+    cross_section_threshold?: number;
+    category_threshold?: number;
+    min_sections?: number;
+    min_evidence_chunks?: number;
+    min_gmail_blocks?: number;
+  };
+}
+
+/** Failure mode identified during diagnostic evaluation */
+export interface FailureMode {
+  id: string;
+  severity: "critical" | "major" | "minor";
+  stage: string;
+  symptom: string;
+  rootCause: string;
+  affectedSections: string[];
+}
+
+/** Prioritized improvement action derived from failure modes */
+export interface ImprovementAction {
+  priority: number;
+  action: string;
+  expectedImpact: string;
+  effortEstimate: "low" | "medium" | "high";
+  relatedFailureModes: string[];
+}
+
+/** Per-category diagnostic result from the proposal diagnostic evaluator */
+export interface ProposalDiagnosticResult {
+  category: ProposalCategory;
+  opportunityId: string;
+  proposalRunId?: string;
+  latencyMs: number;
+  passed: boolean;
+
+  /** Orchestrator stage results */
+  orchestratorStages: {
+    fitScore?: number;
+    fitDecision?: string;
+    gmailBlocks?: number;
+    budgetEnvelope?: { total?: number; currency?: string; months?: number };
+    webEvidenceChunks?: number;
+    proposalSections?: number;
+  };
+
+  /** Core 7-dimension scorecard */
+  coreScorecard: Array<{
+    dimension: string;
+    weight: number;
+    passed: boolean;
+    score: number;
+    details: string[];
+  }>;
+  coreScore: number;
+
+  /** Category-specific scorecard */
+  categoryScorecard: Array<{
+    checkId: string;
+    passed: boolean;
+    evidence?: string;
+  }>;
+  categoryScore: number;
+
+  /** Per-section rubric results (reuse existing evaluator) */
+  sectionResults?: Array<{
+    sectionType: string;
+    passed: boolean;
+    score: number;
+    failReasons: string[];
+  }>;
+
+  /** Failure modes diagnosed */
+  failureModes: FailureMode[];
+
+  /** Improvement plan */
+  improvementPlan: ImprovementAction[];
+
+  /** Raw error if orchestrator pipeline failed */
+  error?: string;
+}
+
+/** Top-level report for the full proposal suite */
+export interface ProposalSuiteReport {
+  runAt: string;
+  apiBaseUrl: string;
+  totalCategories: number;
+  passedCategories: number;
+  failedCategories: number;
+  categoryResults: ProposalDiagnosticResult[];
+  crossCuttingSummary: {
+    avgCoreScore: number;
+    avgCategoryScore: number;
+    commonFailureModes: Array<{ id: string; count: number }>;
+    totalImprovementActions: number;
+  };
+  latencyMs: { total: number; perCategory: Record<string, number> };
+}
 
 export interface FundingTestCase {
   id: string;

@@ -1,0 +1,130 @@
+# Category 1: Tech Accelerator — IBM Impact Accelerator → Suchi Cancer Bot (SCCF)
+# Tests: orchestrator pipeline for a technology/product grant
+# Real opportunity: IBM Impact Accelerator (formerly Sustainability Accelerator)
+# 2026 cohort: Education & Workforce Development — tests fit scoring against partial theme mismatch
+# Pro bono technology (watsonx AI, Cloud, Consulting) — not cash grant
+# Deadline: March 25, 2026 | Duration: 2 years | Contact: impact.accelerator@ibm.com
+# Run: npx tsx cli.ts proposal-suite --api-url http://localhost:3001 --category tech_accelerator --verbose
+
+cases:
+  # Step 1: Create the opportunity
+  - id: CAT1-SETUP
+    type: opportunity_intake
+    action: create
+    body:
+      opportunityId: "eval-cat1-ibm-impact-2026-v2"
+      jsonBlob:
+        schemaVersion: "1.0"
+        opportunity:
+          opportunityId: "eval-cat1-ibm-impact-2026-v2"
+          sourceType: "manual"
+          source:
+            from:
+              name: "IBM Impact Accelerator"
+              email: "impact.accelerator@ibm.com"
+            to:
+              - "gautamgauri@dikshafoundation.org"
+            subject: "IBM Impact Accelerator 2026 — Apply by March 25"
+            threadId: "eval-cat1-thread"
+            receivedAt: "2026-03-01T00:00:00+05:30"
+            attachments: []
+            emailMessageId: "eval-cat1-manual"
+          funder:
+            name: "IBM Impact Accelerator"
+            funderType: "Corporate CSR"
+            programName: "IBM Impact Accelerator 2026 — Education & Workforce Development"
+          themes:
+            primary:
+              - "AI for health"
+              - "cancer screening and navigation"
+              - "technology for underserved populations"
+            secondary:
+              - "community health workers"
+              - "AI safety and ethics"
+              - "India"
+              - "scale via technology"
+          internal:
+            org: "Suchitra Cancer Care Foundation (SCCF)"
+            owner:
+              name: "Gautam Gauri"
+              role: "Founder"
+              email: "gautamgauri@dikshafoundation.org"
+            priority: "high"
+          docTypeCategory: "tech_accelerator"
+          keyConstraints:
+            deadline: "2026-03-25T23:59:00+05:30"
+            geography:
+              - "India"
+            projectDurationMonthsMax: 24
+          extractedRequirements:
+            summary: >
+              IBM Impact Accelerator provides pro bono access to IBM technology
+              (watsonx AI platform, IBM Cloud, IBM Consulting expertise) for 2 years
+              to help nonprofits and social enterprises scale their impact using AI
+              and hybrid cloud. Not a cash grant — in-kind technology and consulting
+              support valued at ~$1M per cohort participant. 2026 cohort focuses on
+              Education & Workforce Development, but prior cohorts have included
+              health and environment. Application requires a working technology
+              solution, clear path to scale, and focus on underserved populations.
+              Selected organizations receive dedicated IBM team, technology credits,
+              design thinking workshops, and connections to IBM's ecosystem.
+            sections:
+              - name: "Organization Overview"
+                question: "Describe your organization, its mission, and when it was founded."
+              - name: "Problem Statement"
+                question: "What specific problem are you solving? Who is affected and how large is the need?"
+              - name: "Technology Solution"
+                question: "Describe your current technology solution — what does it do, what stage is it at (prototype, pilot, scaled), and what technologies does it use?"
+              - name: "Technical Architecture"
+                question: "Provide a technical architecture overview. How could IBM technologies (watsonx, Cloud, data/AI tools) enhance or scale your solution?"
+              - name: "Impact & Scale Plan"
+                question: "What is your current reach? How many people does your solution serve today, and how would IBM technology help you reach 10x more?"
+              - name: "AI Safety & Ethics"
+                question: "How do you ensure AI safety, fairness, and transparency in your solution? What safeguards exist for vulnerable users?"
+              - name: "User Testing & Feedback"
+                question: "Describe your user testing process. How do you incorporate feedback from end users (patients, health workers, community members)?"
+              - name: "Implementation Timeline"
+                question: "Provide a 24-month implementation roadmap showing key milestones, tech development phases, and scaling targets."
+              - name: "Team & Capacity"
+                question: "Describe your team's technical capacity to work with IBM technologies. Do you have developers, data scientists, or technical advisors?"
+              - name: "Sustainability"
+                question: "How will the solution sustain itself after the 2-year IBM engagement ends? What is the long-term funding/revenue model?"
+            evaluationCriteria:
+              - "Working technology solution (not just an idea — must have a functional prototype or deployed product)"
+              - "Clear path to scale using IBM technology (watsonx AI, Cloud, Consulting)"
+              - "Focus on underserved populations with measurable impact"
+              - "AI safety and responsible AI practices"
+              - "Technical team capacity to absorb IBM technology support"
+              - "Sustainability plan beyond the 2-year engagement"
+
+  # Step 2: Run the full orchestrator pipeline
+  - id: CAT1-RUN
+    type: orchestrator_e2e
+    action: run
+    proposalCategory: tech_accelerator
+    body:
+      opportunityId: "eval-cat1-ibm-impact-2026-v2"
+    orchestratorOptions:
+      focusGeography: "India (pan-India, starting Bihar and Maharashtra)"
+      targetGroup: "cancer patients, caregivers, and community health workers in underserved areas"
+    categoryExpectations:
+      min_fit_score: 25
+      cross_section_threshold: 0.35
+      category_threshold: 0.30
+      min_sections: 5
+    expectations:
+      expect_keys: ["proposalRunId"]
+
+  # Step 3: Retrieve the full proposal run
+  - id: CAT1-GET-RUN
+    type: proposal_generate
+    action: get_run
+    params:
+      runId: "$ref:CAT1-RUN.proposalRunId"
+
+  # Step 4: Check gaps
+  - id: CAT1-GAPS
+    type: proposal_generate
+    action: get_gaps
+    params:
+      runId: "$ref:CAT1-RUN.proposalRunId"

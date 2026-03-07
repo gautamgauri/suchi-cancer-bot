@@ -141,7 +141,7 @@ export class FundingLlmService {
     }
   }
 
-  private sanitizeUserInput(input: string): string {
+  private sanitizeUserInput(input: string, maxChars = 2000): string {
     if (!input) return "";
     return input
       .replace(/```/g, "\\`\\`\\`")
@@ -150,7 +150,7 @@ export class FundingLlmService {
       .replace(/<\|.*?\|>/g, "")
       .replace(/<\/?system>/gi, "[system]")
       .replace(/<\/?instructions?>/gi, "[instructions]")
-      .substring(0, 2000);
+      .substring(0, maxChars);
   }
 
   getEmailPrompt(): string {
@@ -279,8 +279,10 @@ Your response MUST include at least 2 citations or it will be rejected.`;
   /**
    * Generate text without evidence chunks (e.g. template-only email). Does not return MISSING_EVIDENCE.
    */
-  async generatePlain(systemPrompt: string, context: string, userMessage: string, options?: { maxTokens?: number }): Promise<string> {
-    const sanitized = this.sanitizeUserInput(userMessage);
+  async generatePlain(systemPrompt: string, context: string, userMessage: string, options?: { maxTokens?: number; maxInputChars?: number }): Promise<string> {
+    // Section drafting sends large prompts (evidence chunks + guidance + org context).
+    // Default 2000 chars truncates critical instructions. Allow callers to override.
+    const sanitized = this.sanitizeUserInput(userMessage, options?.maxInputChars ?? 30000);
     const userContent = `${context}\n\n${sanitized}`;
     const maxTokens = options?.maxTokens ?? 1500;
     return this.logLlmCall(this.model, () =>

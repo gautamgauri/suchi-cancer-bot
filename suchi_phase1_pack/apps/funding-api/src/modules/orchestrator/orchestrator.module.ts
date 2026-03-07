@@ -6,6 +6,7 @@ import { CoreAiModule } from "../core_ai/core-ai.module";
 import { GoogleSearchModule } from "../google_search/google-search.module";
 import { OpportunityModule } from "../opportunity/opportunity.module";
 import { ProposalModule } from "../proposal/proposal.module";
+import { FellowshipModule } from "../fellowship/fellowship.module";
 import { OrchestratorController } from "./orchestrator.controller";
 import { OrchestratorService } from "./orchestrator.service";
 import { EnhancedFitScoringService } from "./services/enhanced-fit-scoring.service";
@@ -23,6 +24,7 @@ import { DeadlineCheckService } from "./services/deadline-check.service";
     GoogleSearchModule,
     OpportunityModule,
     ProposalModule,
+    FellowshipModule,
   ],
   controllers: [OrchestratorController],
   providers: [

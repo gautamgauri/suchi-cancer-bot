@@ -64,6 +64,12 @@ const DOMAIN_SYNONYMS: Record<string, string[]> = {
   // --- Geography ---
   "Bihar": ["Patna", "Samastipur", "Bihta"],
   "Patna": ["Rukanpura", "Bihar capital"],
+
+  // --- Fellowship / personal narrative ---
+  "fellowship": ["scholarship", "residency", "accelerator", "cohort"],
+  "Cambridge": ["University of Cambridge", "MPhil Education", "Capabilities Approach"],
+  "narrative": ["personal story", "journey", "motivation", "founding story"],
+  "leadership": ["founder", "executive director", "co-founder", "growth trajectory"],
 };
 
 /**
@@ -80,6 +86,8 @@ const SECTION_EXPANSION_PRIORITY: Record<string, string[]> = {
   team: ["training", "Fellow Teacher", "KHEL"],
   sustainability: ["sustainability", "scale", "CSR", "stakeholder"],
   experience: ["KHEL", "Empowering Futures", "outcomes", "Bihar"],
+  engagement: ["Cambridge", "fellowship", "narrative"],
+  career: ["leadership", "fellowship", "Cambridge"],
 };
 
 @Injectable()

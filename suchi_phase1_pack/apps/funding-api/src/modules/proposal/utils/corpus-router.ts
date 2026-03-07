@@ -46,16 +46,52 @@ const SECTION_ROUTES: Record<string, CorpusRoute> = {
   sustainability: {
     corpus: [CORPUS.DIKSHA_INTERNAL, CORPUS.DONOR_FUNDER],
   },
+  // Fellowship/personal sections
+  engagement: {
+    corpus: [CORPUS.PERSONAL, CORPUS.DIKSHA_INTERNAL],
+  },
+  career: {
+    corpus: [CORPUS.PERSONAL, CORPUS.DIKSHA_INTERNAL],
+  },
+  expertise: {
+    corpus: [CORPUS.PERSONAL, CORPUS.THEORY_FRAMEWORKS],
+  },
+  focus: {
+    corpus: [CORPUS.PERSONAL, CORPUS.THEORY_FRAMEWORKS],
+  },
 };
 
 /**
  * Returns the corpus route for a given section name.
  * Falls back to searching all corpora if no match.
+ * When orgId is "sccf", swaps DIKSHA_INTERNAL for SCCF_INTERNAL.
  */
-export function getCorpusRoute(sectionName: string): CorpusRoute {
+export function getCorpusRoute(sectionName: string, orgId?: string, docTypeCategory?: string): CorpusRoute {
   const key = sectionName.toLowerCase().replace(/[^a-z]/g, "");
-  for (const [routeKey, route] of Object.entries(SECTION_ROUTES)) {
-    if (key.includes(routeKey)) return route;
+  let route: CorpusRoute = { corpus: [] };
+  for (const [routeKey, r] of Object.entries(SECTION_ROUTES)) {
+    if (key.includes(routeKey)) { route = r; break; }
   }
-  return { corpus: [] };
+
+  // Fellowship/tech_accelerator: ensure personal corpus is always included
+  const isFellowshipTrack = docTypeCategory === "fellowship" || docTypeCategory === "tech_accelerator";
+  if (isFellowshipTrack) {
+    if (route.corpus.length === 0) {
+      // No route matched — default to personal + diksha_internal
+      route = { corpus: [CORPUS.PERSONAL, CORPUS.DIKSHA_INTERNAL] };
+    } else if (!route.corpus.includes(CORPUS.PERSONAL)) {
+      // Route matched but missing personal — prepend it
+      route = { ...route, corpus: [CORPUS.PERSONAL, ...route.corpus] };
+    }
+  }
+
+  if (orgId === "sccf" && route.corpus.length > 0) {
+    return {
+      ...route,
+      corpus: route.corpus.map((c) =>
+        c === CORPUS.DIKSHA_INTERNAL ? CORPUS.SCCF_INTERNAL : c,
+      ),
+    };
+  }
+  return route;
 }

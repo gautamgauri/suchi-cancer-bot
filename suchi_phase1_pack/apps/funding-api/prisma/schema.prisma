@@ -243,7 +243,7 @@ model ChunkEmbedding {
   chunkId        String       @unique
   embeddingModel String
   vector         String       @db.Text // JSON array of numbers (legacy); kept for backward compat
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   chunk          DocumentChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
@@ -450,7 +450,7 @@ model MethodCardChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   chunk          MethodCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -514,7 +514,7 @@ model PatternCardChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   chunk          PatternCardChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -572,7 +572,7 @@ model ComparableCaseChunkEmbedding {
   chunkId        String   @unique
   embeddingModel String
   vector         String   @db.Text
-  embedding      Unsupported("vector(1536)")?  // pgvector native column
+  embedding      Unsupported("vector(768)")?  // pgvector native column
   chunk          ComparableCaseChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
 }
 
@@ -817,6 +817,114 @@ model CapabilityIndicator {
   capability        FrameworkCapability @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
 
   @@index([capabilityId])
+}
+
+// --- Opportunity Application Assistant (fellowships, accelerators, conferences) ---
+
+model PersonalApplication {
+  id               String   @id @default(uuid())
+  applicationId    String   @unique  // e.g. APP-2026-fellowship-001
+  sourceUrl        String             // original application page URL
+  programName      String
+  organizerName    String?
+  opportunityType  String   @default("fellowship") // fellowship | accelerator | conference | award | grant | other
+  deadline         DateTime?
+  status           String   @default("intake") // intake | triaged | questions_extracted | drafting | review | approved | prefilling | prefilled | submitted | archived
+  owner            String   @default("gautam")
+  reviewer         String?
+  jsonBlob         Json     // full ApplicationDocument JSON
+  driveFolderId    String?
+  driveFolderUrl   String?
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  auditEvents      ApplicationAuditEvent[]
+  pastAnswers      PastApplicationAnswer[]
+
+  @@index([status])
+  @@index([deadline])
+  @@index([createdAt])
+}
+
+model ApplicationAuditEvent {
+  id              String             @id @default(uuid())
+  applicationId   String
+  action          String             // intake | triage | extract_questions | draft_answers | review | approve | prefill | submit | archive
+  status          String             // success | failed | skipped
+  actor           String             @default("system")
+  details         Json?
+  createdAt       DateTime           @default(now())
+  application     PersonalApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+model ApplicationSnippet {
+  id              String   @id @default(uuid())
+  snippetKey      String   @unique  // e.g. "bio_50w", "why_me_120w", "custom_ai_ethics"
+  content         String   @db.Text
+  wordCount       Int?
+  tags            String[] @default([])  // e.g. ["bio", "education", "ai"]
+  lastUsedAt      DateTime?
+  usageCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([snippetKey])
+  @@index([tags])
+}
+
+model PastApplicationAnswer {
+  id              String               @id @default(uuid())
+  applicationId   String?              // link to PersonalApplication if applicable
+  questionPattern String               @db.Text  // normalized question (e.g. "why are you interested in this program")
+  answerText      String               @db.Text
+  wordCount       Int?
+  programName     String?              // which program this was for
+  programType     String?              // fellowship | accelerator | conference
+  wasApproved     Boolean              @default(false)
+  wasSubmitted    Boolean              @default(false)
+  tags            String[]             @default([])
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  application     PersonalApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@index([questionPattern])
+  @@index([programType])
+  @@index([tags])
+}
+
+// --- SCCF Document Index (Phase 1: inventory of SCCF Drive + Gmail docs) ---
+
+model SccfDocument {
+  id            String   @id @default(uuid())
+  sourceType    String   // "drive" | "gmail_attachment"
+  externalId    String   @unique  // driveFileId  OR  "{messageId}::{attachmentId}"
+  name          String
+  mimeType      String
+  sizeBytes     Int?
+  driveUrl      String?
+  emailSubject  String?  // Gmail attachments only
+  emailFrom     String?
+  emailDate     DateTime?
+  modifiedTime  DateTime?
+
+  // Phase 2 fields (null until categorization runs)
+  category      String?   // "clinical_protocol" | "patient_education" | "report" | etc.
+  topicTags     String[]  @default([])
+  categoryNote  String?
+
+  // Phase 3 fields (null until selective ingestion runs)
+  ingestStatus  String    @default("pending")  // pending | ingested | skipped
+  kbDocId       String?   // links to KB doc after ingestion
+
+  indexedAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([sourceType])
+  @@index([ingestStatus])
 }
 
 // --- Program Plans (month-wise structured curriculum) ---

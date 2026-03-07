@@ -20,6 +20,10 @@ RUN npx prisma generate
 COPY . .
 RUN npm run build
 
+# Copy non-TS data files that tsc doesn't include (e.g. applicant-profile.json)
+RUN find src -name '*.json' -path '*/data/*' -exec sh -c \
+  'for f; do d="dist/${f#src/}"; mkdir -p "$(dirname "$d")"; cp "$f" "$d"; done' _ {} +
+
 # Prune dev dependencies for smaller image
 RUN npm prune --omit=dev
 
@@ -40,4 +44,4 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 
 EXPOSE 8080
-CMD ["node", "dist/main.js"]
+CMD ["node", "--max-old-space-size=1536", "dist/main.js"]

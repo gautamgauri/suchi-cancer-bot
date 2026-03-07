@@ -258,7 +258,10 @@
           "id": "cross_section_deduplication",
           "type": "deterministic",
           "description": "No two sections share more than 30% of their 3-gram tokens",
-          "params": { "max_overlap": 0.30 }
+          "params": {
+            "max_overlap": 0.30,
+            "exclude_patterns": ["interest rating", "fields of expertise", "availability", "online course", "additional comment"]
+          }
         },
         {
           "id": "not_too_proposal_like",
@@ -287,6 +290,12 @@
               "params": { "min_ratio": 0.80 }
             }
           ]
+        },
+        "internal_coherence": {
+          "remove": ["beneficiary_count_consistent", "budget_total_matches_summary"]
+        },
+        "specificity": {
+          "remove": ["named_locations"]
         },
         "feasibility": {
           "remove": ["budget_matches_scope", "team_capacity", "timeline_realistic"]

@@ -19,6 +19,8 @@ export class QueryGeneratorService {
     funderName?: string;
     /** Comma-separated funder theme keywords for theme-aware retrieval */
     funderThemes?: string;
+    /** When fellowship/tech_accelerator, uses personal query template */
+    docTypeCategory?: string;
   }): Promise<string[]> {
     const userPrompt = buildQueryGeneratorUserPrompt(params);
     try {

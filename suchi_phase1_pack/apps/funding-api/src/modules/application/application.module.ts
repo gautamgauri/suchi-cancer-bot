@@ -7,6 +7,7 @@ import { QuestionExtractorService } from "./question-extractor.service";
 import { AnswerGeneratorService } from "./answer-generator.service";
 import { ApplicationReviewService } from "./application-review.service";
 import { BrowserPrefillService } from "./browser-prefill.service";
+import { PlaywrightScraperService } from "./playwright-scraper.service";
 import { ApplicationSlackService } from "./application-slack.service";
 import { SlackSignatureGuard } from "./slack-signature.guard";
 
@@ -19,6 +20,7 @@ import { SlackSignatureGuard } from "./slack-signature.guard";
     AnswerGeneratorService,
     ApplicationReviewService,
     BrowserPrefillService,
+    PlaywrightScraperService,
     ApplicationSlackService,
     SlackSignatureGuard,
   ],

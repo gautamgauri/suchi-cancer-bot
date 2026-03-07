@@ -186,11 +186,14 @@ export class PlannerService {
       }
       return {
         outline: [
-          { section: "Executive Summary", target_words: 250, must_answer: [] },
-          { section: "Need Statement", target_words: 400, must_answer: [] },
+          { section: "Executive Summary", target_words: 300, must_answer: [] },
+          { section: "Need Statement", target_words: 500, must_answer: [] },
           { section: "Project Design", target_words: 600, must_answer: [] },
-          { section: "Implementation Plan", target_words: 500, must_answer: [] },
+          { section: "Main Activities and Implementation Plan", target_words: 700, must_answer: [] },
+          { section: "Team and Organisational Experience", target_words: 400, must_answer: [] },
+          { section: "Expected Results and Impact", target_words: 500, must_answer: [] },
           { section: "M&E Framework", target_words: 400, must_answer: [] },
+          { section: "Sustainability and Exit Strategy", target_words: 350, must_answer: [] },
           { section: "Budget Narrative", target_words: 300, must_answer: [] },
         ],
         retrieval_plan: [],

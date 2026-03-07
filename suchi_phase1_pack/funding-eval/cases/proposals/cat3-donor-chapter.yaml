@@ -1,0 +1,147 @@
+# Category 3: Donor/Chapter — Asha for Education Silicon Valley chapter grant → Diksha KHEL
+# Tests: orchestrator pipeline for a community donor grant with reference comparison
+# Real opportunity: Asha for Education — "Form A: Project Proposal Submission Form"
+# Rolling applications via proposals.ashanet.org | Average grant: Rs 15-18L ($18K-$22K)
+# FCRA required (US 501(c)(3) sending funds to India)
+# Mandatory site visit by Asha volunteer before final approval
+# Relevant appendices: Appendix 1 (non-formal ed) + Appendix 6 (government schools)
+# Run: npx tsx cli.ts proposal-suite --api-url http://localhost:3001 --category donor_chapter --verbose
+
+cases:
+  # Step 1: Create the opportunity (correct jsonBlob schema)
+  - id: CAT3-SETUP
+    type: opportunity_intake
+    action: create
+    body:
+      opportunityId: "eval-cat3-asha-edu-2026-v5"
+      jsonBlob:
+        schemaVersion: "1.0"
+        opportunity:
+          opportunityId: "eval-cat3-asha-edu-2026-v5"
+          sourceType: "manual"
+          source:
+            from:
+              name: "Asha for Education — Silicon Valley Chapter"
+              email: "sv@ashanet.org"
+            to:
+              - "gautamgauri@dikshafoundation.org"
+            subject: "Asha for Education — Form A Project Proposal Submission"
+            threadId: "eval-cat3-thread"
+            receivedAt: "2026-02-26T00:00:00+05:30"
+            attachments: []
+            emailMessageId: "eval-cat3-manual"
+          funder:
+            name: "Asha for Education"
+            funderType: "Foundation"
+            programName: "Asha Silicon Valley Chapter Grant 2026"
+          themes:
+            primary:
+              - "education of underprivileged children"
+              - "physical education and sports"
+            secondary:
+              - "social-emotional learning"
+              - "after-school programs"
+              - "government school enrichment"
+              - "Bihar"
+              - "rural/semi-rural India"
+          internal:
+            org: "Diksha Foundation"
+            owner:
+              name: "Gautam Gauri"
+              role: "Executive Director"
+              email: "gautamgauri@dikshafoundation.org"
+            priority: "high"
+          docTypeCategory: "donor_chapter"
+          keyConstraints:
+            deadline: "2026-12-31T23:59:00+05:30"
+            geography:
+              - "India"
+              - "Bihar"
+            projectDurationMonthsMax: 12
+          extractedRequirements:
+            summary: >
+              Asha for Education is a US-based 501(c)(3) that funds secular Indian
+              NGOs working on education of underprivileged children. Uses standardized
+              "Form A: Project Proposal Submission Form" with 10 generic sections
+              plus type-specific appendices. Rolling applications via proposals.ashanet.org.
+              Average grant Rs 15-18 lakhs ($18K-$22K/year). Evaluation by chapter
+              volunteers: preliminary vetting → steward assignment → committee review
+              → mandatory site visit → full chapter vote (2/3 majority). Strong
+              preference for small NGOs, local participation, rural/underserved areas,
+              cost-effective programs. Six-monthly reporting required. FCRA registration
+              mandatory for receiving foreign contributions. Relevant appendices for
+              Diksha: Appendix 1 (non-formal education) and Appendix 6 (government schools).
+            sections:
+              - name: "Organization Information"
+                question: "Name, establishment date, registration details (12A, 80G, FCRA), contact person, alternate contact, names and background of directors/trustees."
+              - name: "Problem Statement"
+                question: "Briefly highlight the problem that you are trying to address."
+              - name: "Approach / Program Description"
+                question: "Briefly highlight the approach your organization is taking towards solving the problem outlined above. What are the main activities that the project wants to do?"
+              - name: "Effectiveness & Theory of Change"
+                question: "Briefly explain why your organization believes that the approach highlighted above would be effective in solving the problem. Provide references to pilot projects or published research that can back up this claim. Provide the Theory of Change on how the intervention would lead to a successful outcome."
+              - name: "Capacity for Success"
+                question: "Explain how your organization and project personnel are positioned to carry on the proposed activities with a high standard of excellence. Cite any recent project that might demonstrate capacity to implement the effort successfully."
+              - name: "Expected Outcomes & Metrics"
+                question: "What are the expected outcomes of the project? Describe the metrics to gauge the outcomes specified above in measurable and quantifiable terms."
+              - name: "Funding & Budget"
+                question: "What amount is being requested from Asha, and for what specific purpose? Total project amount from all sources? List other funding sources with amounts and status. Provide a brief budget per unit (per center/school/group) per intervention type."
+              - name: "Sustainability"
+                question: "How do you plan to sustain the project over the long term? Convince Asha that the project can sustain itself beyond the funding cycle."
+              - name: "Other Projects & References"
+                question: "What other projects is your organization involved in (completed or ongoing)? Provide letters of reference along with contact information from two people in the community who can describe the impact of the program(s)."
+              - name: "Reporting Plan"
+                question: "Contact information for the person responsible for six-monthly reports to Asha."
+              - name: "Appendix 6: Government School Specifics"
+                question: "Are there other schools in the area? How is your program different? Why do children attend your program? Number of school-going vs dropout children. Staff and salary details."
+            evaluationCriteria:
+              - "Educational impact on underprivileged children aged 5-14"
+              - "Cost effectiveness — low cost per child per year, low overhead"
+              - "Organizational credibility — track record, registration, references"
+              - "Local community participation (beyond being beneficiaries)"
+              - "Sustainability plan beyond Asha funding cycle"
+              - "Clear, measurable outcomes and metrics"
+              - "Secular and non-discriminatory values"
+              - "Theory of Change with evidence from pilot projects"
+              - "Rural/underserved area preference"
+            requiredDocuments:
+              - "Last year's audit report"
+              - "Latest annual report (if available)"
+              - "Detailed budget"
+              - "Up to 10 A4 pages of supporting materials"
+              - "Two letters of reference from community members"
+              - "Registration documents (12A, 80G, FCRA)"
+
+  # Step 2: Run the full orchestrator pipeline
+  - id: CAT3-RUN
+    type: orchestrator_e2e
+    action: run
+    proposalCategory: donor_chapter
+    body:
+      opportunityId: "eval-cat3-asha-edu-2026-v5"
+    orchestratorOptions:
+      focusGeography: "Bihar (Patna, Bihta, Sarairanjan)"
+      targetGroup: "children aged 6-14 in government schools"
+      budgetCeiling: "Rs 15,00,000"
+    referenceProposalPath: "proposals/ASHA-EDU-2026/proposal.md"
+    categoryExpectations:
+      min_fit_score: 30
+      cross_section_threshold: 0.40
+      category_threshold: 0.30
+      min_sections: 5
+    expectations:
+      expect_keys: ["proposalRunId"]
+
+  # Step 3: Retrieve the full proposal run
+  - id: CAT3-GET-RUN
+    type: proposal_generate
+    action: get_run
+    params:
+      runId: "$ref:CAT3-RUN.proposalRunId"
+
+  # Step 4: Check gaps
+  - id: CAT3-GAPS
+    type: proposal_generate
+    action: get_gaps
+    params:
+      runId: "$ref:CAT3-RUN.proposalRunId"

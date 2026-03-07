@@ -14,6 +14,8 @@ export interface SendEmailOptions {
   body: string;
   /** If true, body is treated as HTML. Default: false (plain text) */
   isHtml?: boolean;
+  /** Extra recipients to CC alongside the default review recipients */
+  additionalRecipients?: string[];
   approval?: ApprovalConfirmationContract;
   actor?: ContractActor;
   entityId?: string;
@@ -122,8 +124,14 @@ export class EmailNotificationService {
       actorId: "email_notification_service",
       displayName: "Email Notification Service",
     };
+    const effectiveRecipients = [...this.reviewRecipients];
+    if (options.additionalRecipients) {
+      for (const r of options.additionalRecipients) {
+        if (r && !effectiveRecipients.includes(r)) effectiveRecipients.push(r);
+      }
+    }
     const requestedPayload = {
-      recipients: this.reviewRecipients,
+      recipients: effectiveRecipients,
       subject: options.subject,
       isHtml: !!options.isHtml,
       body: options.body,
@@ -134,7 +142,7 @@ export class EmailNotificationService {
       reason: options.reason ?? "Send generated content to internal recipients",
       timestamp: new Date().toISOString(),
       email: {
-        recipients: this.reviewRecipients,
+        recipients: effectiveRecipients,
       },
     });
     this.governanceGuard.logAudit({
@@ -184,7 +192,7 @@ export class EmailNotificationService {
     try {
       const mailOptions: nodemailer.SendMailOptions = {
         from: this.fromAddress,
-        to: this.reviewRecipients.join(", "),
+        to: effectiveRecipients.join(", "),
         subject: options.subject,
       };
 

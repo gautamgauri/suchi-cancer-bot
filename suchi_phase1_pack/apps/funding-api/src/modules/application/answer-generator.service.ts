@@ -53,7 +53,7 @@ export class AnswerGeneratorService {
   /**
    * Format the applicant profile as a string for the LLM context.
    */
-  private formatProfileForLLM(): string {
+  formatProfileForLLM(): string {
     const p = this.getProfile();
     const parts: string[] = [];
 
@@ -109,7 +109,7 @@ export class AnswerGeneratorService {
   /**
    * Fetch relevant past answers from the DB to include as context.
    */
-  private async fetchPastAnswers(
+  async fetchPastAnswers(
     questions: ApplicationQuestion[],
     programType?: string,
   ): Promise<string> {
@@ -136,7 +136,7 @@ export class AnswerGeneratorService {
   /**
    * Fetch DB-stored snippets to supplement the file-based profile snippets.
    */
-  private async fetchDbSnippets(): Promise<string> {
+  async fetchDbSnippets(): Promise<string> {
     const snippets = await this.prisma.applicationSnippet.findMany({
       orderBy: { usageCount: "desc" },
       take: 20,

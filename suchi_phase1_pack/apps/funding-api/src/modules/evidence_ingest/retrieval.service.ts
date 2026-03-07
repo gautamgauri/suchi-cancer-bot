@@ -63,6 +63,8 @@ export interface RetrievalChunkDto {
   section?: string;
   urlOrPath?: string;
   claimType?: "hard" | "context";
+  /** Original quality tier from document (A/B/C/X) — used for tier-aware boosting */
+  qualityTier?: string;
   /** Similarity score from retrieval (0-1, higher is more relevant) */
   score?: number;
 }
@@ -307,6 +309,7 @@ export class RetrievalService {
       section: r.sectionTitle ?? undefined,
       urlOrPath: r.driveUrl ?? undefined,
       claimType: r.effectiveTier === "A" ? "hard" as const : "context" as const,
+      qualityTier: r.effectiveTier,
       score: typeof r.score === "number" ? r.score : Number(r.score),
     }));
 
@@ -523,6 +526,7 @@ export class RetrievalService {
       section: c.sectionTitle ?? undefined,
       urlOrPath: c.document.driveUrl ?? undefined,
       claimType: tier === "A" ? "hard" : "context",
+      qualityTier: tier,
       score,
     };
   }

@@ -7,6 +7,8 @@
 
 export const CORPUS = {
   DIKSHA_INTERNAL: "diksha_internal",
+  SCCF_INTERNAL: "sccf_internal",
+  PERSONAL: "personal",
   THEORY_FRAMEWORKS: "theory_frameworks",
   DONOR_FUNDER: "donor_funder",
   EXTERNAL_EVIDENCE: "external_evidence",
@@ -25,6 +27,17 @@ export function inferCorpus(
 ): CorpusValue {
   const lName = name.toLowerCase();
   const lFolder = sourceFolder.toLowerCase();
+
+  // Rule 0: personal/applicant docs
+  if (
+    lFolder.includes("personal") ||
+    lFolder.includes("applicant") ||
+    lName.includes("applicant profile") ||
+    lName.includes("founder profile") ||
+    docType === "personal"
+  ) {
+    return CORPUS.PERSONAL;
+  }
 
   // Rule 1: donor/funder docs
   if (

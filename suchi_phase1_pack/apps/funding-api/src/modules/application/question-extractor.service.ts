@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { FundingLlmService } from "../core_ai/funding-llm.service";
 import { ApplicationIntakeService } from "./application-intake.service";
+import { PlaywrightScraperService, ScrapedFormField } from "./playwright-scraper.service";
 import { Prisma } from "@prisma/client";
 import { ApplicationQuestion, pushTimelineEvent } from "./application.types";
 import {
@@ -17,6 +18,7 @@ export class QuestionExtractorService {
     private readonly prisma: PrismaService,
     private readonly llm: FundingLlmService,
     private readonly intake: ApplicationIntakeService,
+    private readonly scraperService: PlaywrightScraperService,
   ) {}
 
   /**
@@ -52,6 +54,37 @@ export class QuestionExtractorService {
         `Failed to parse questions JSON for ${applicationId}, attempting line-by-line extraction`,
       );
       questions = this.fallbackExtract(raw);
+    }
+
+    // If LLM extraction yielded few meaningful questions, try Playwright fallback
+    const meaningfulCount = questions.filter(
+      (q) =>
+        q.fieldType !== "unknown" &&
+        q.questionText.length > 5 &&
+        !q.questionText.startsWith("["),
+    ).length;
+
+    if (meaningfulCount < 2 && this.scraperService.isAvailable()) {
+      this.logger.log(
+        `Only ${meaningfulCount} meaningful questions from LLM — trying Playwright fallback`,
+      );
+      try {
+        const scraped = await this.scraperService.scrapeFormFields(app.sourceUrl);
+        if (scraped.length > 0) {
+          const scrapedQuestions = this.convertScrapedToQuestions(scraped, questions.length);
+          const merged = this.mergeQuestions(questions, scrapedQuestions);
+          this.logger.log(
+            `Playwright added ${merged.length - questions.length} new questions (total: ${merged.length})`,
+          );
+          questions = merged;
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Playwright fallback failed for ${applicationId}: ${(err as Error)?.message}`,
+        );
+      }
+    } else if (meaningfulCount >= 2) {
+      this.logger.debug("LLM extraction sufficient — skipping Playwright");
     }
 
     // Update the application record
@@ -159,5 +192,69 @@ export class QuestionExtractorService {
     }
 
     return questions;
+  }
+
+  /**
+   * Convert scraped form fields to ApplicationQuestion format.
+   */
+  private convertScrapedToQuestions(
+    scraped: ScrapedFormField[],
+    startIndex: number,
+  ): ApplicationQuestion[] {
+    return scraped
+      .filter((f) => f.label.length > 2)
+      .map((f, i) => ({
+        id: `q_pw_${startIndex + i + 1}`,
+        questionText: f.label,
+        fieldType: this.normalizeFieldType(f.type),
+        required: f.required,
+        options: f.options.length > 0 ? f.options : undefined,
+        sectionLabel: f.description || undefined,
+      }));
+  }
+
+  /**
+   * Merge LLM-extracted questions with Playwright-scraped questions.
+   * Scraped fields that don't fuzzy-match existing questions get appended.
+   */
+  private mergeQuestions(
+    existing: ApplicationQuestion[],
+    scraped: ApplicationQuestion[],
+  ): ApplicationQuestion[] {
+    const merged = [...existing];
+    const existingTexts = existing.map((q) => q.questionText.toLowerCase());
+
+    for (const sq of scraped) {
+      const sqLower = sq.questionText.toLowerCase();
+      const isDuplicate = existingTexts.some(
+        (et) => this.fuzzyMatch(et, sqLower),
+      );
+      if (!isDuplicate) {
+        merged.push(sq);
+      }
+    }
+
+    return merged;
+  }
+
+  /**
+   * Simple fuzzy match — checks if significant words overlap between two strings.
+   */
+  private fuzzyMatch(a: string, b: string): boolean {
+    const stopWords = new Set([
+      "the", "a", "an", "is", "are", "was", "were", "be", "been",
+      "being", "have", "has", "had", "do", "does", "did", "will",
+      "would", "could", "should", "may", "might", "shall", "can",
+      "of", "in", "to", "for", "with", "on", "at", "from", "by",
+      "your", "you", "this", "that", "what", "which", "how",
+    ]);
+
+    const wordsA = a.split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
+    const wordsB = b.split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
+
+    if (wordsA.length === 0 || wordsB.length === 0) return false;
+
+    const matchCount = wordsA.filter((w) => wordsB.some((wb) => wb.includes(w) || w.includes(wb))).length;
+    return matchCount / Math.min(wordsA.length, wordsB.length) >= 0.5;
   }
 }

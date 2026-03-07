@@ -398,6 +398,7 @@ export class ProposalDiagnosticEvaluator {
         result = checkCrossSectionDeduplication(
           sections,
           (check.params?.max_overlap as number) ?? 0.30,
+          (check.params?.exclude_patterns as string[]) ?? undefined,
         );
         break;
       case "no_budget_language":

@@ -350,10 +350,18 @@ export function checkNoOrgVoiceLeakage(
 export function checkCrossSectionDeduplication(
   sections: ProposalSection[],
   maxOverlap: number = 0.30,
+  excludePatterns?: string[],
 ): CrossSectionCheckResult {
-  const substantive = sections.filter(
+  let substantive = sections.filter(
     (s) => (s.draftText?.trim().length ?? 0) >= 50,
   );
+
+  if (excludePatterns && excludePatterns.length > 0) {
+    substantive = substantive.filter((s) => {
+      const lower = s.name.toLowerCase();
+      return !excludePatterns.some((p) => lower.includes(p.toLowerCase()));
+    });
+  }
 
   if (substantive.length < 2) {
     return {

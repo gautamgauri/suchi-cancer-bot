@@ -5,7 +5,7 @@
  * Gmail memory, budget envelope) before delegating to ProposalService.
  */
 
-import type { ProjectCategory } from "../opportunity/opportunity.types";
+import type { ProjectCategory, DocTypeCategory } from "../opportunity/opportunity.types";
 
 // --- Fit Scoring ---
 
@@ -146,6 +146,8 @@ export interface OrchestratorRunState {
 export interface OrchestratorContext {
   /** Project category — drives section framing (tech-product vs field-programme). */
   projectCategory?: ProjectCategory;
+  /** Document type category — drives tone, structure, and section selection for non-standard proposals. */
+  docTypeCategory?: DocTypeCategory;
   fitScore?: {
     totalScore: number;
     decision: string;
