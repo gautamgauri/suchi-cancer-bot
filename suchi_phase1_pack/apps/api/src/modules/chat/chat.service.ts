@@ -257,16 +257,30 @@ export class ChatService {
       // Disclaimer is appended by appendDisclaimer() — no need to prepend a second one
       
       // If we have RAG content, generate a response with citations and prepend urgent guidance
+      // Wrap in try-catch so timeout doesn't block the urgent template response
       if (earlyEvidenceChunks.length > 0) {
         const queryType = QueryTypeClassifier.classify(dto.userText);
-        const ragResponse = await this.llm.generateWithCitations(
-          "explain",
-          "",
-          dto.userText,
-          earlyEvidenceChunks,
-          false,
-          { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" }
-        );
+        let ragResponse: string | null = null;
+        try {
+          // Race LLM against a 15s hard deadline for urgent path
+          const urgentLlmPromise = this.llm.generateWithCitations(
+            "explain",
+            "",
+            dto.userText,
+            earlyEvidenceChunks,
+            false,
+            { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" }
+          );
+          const urgentTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
+          ragResponse = await Promise.race([urgentLlmPromise, urgentTimeout]);
+        } catch (urgentLlmError: any) {
+          this.logger.error(`Urgent path LLM call failed: ${urgentLlmError.message} — using template-only response`);
+        }
+
+        if (!ragResponse) {
+          // LLM timed out or failed — fall through to template-only urgent response below
+          this.logger.warn('Urgent path LLM timed out or returned null — using template-only response');
+        } else {
 
         // Extract citations from RAG response
         const extractionResult = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
@@ -356,9 +370,10 @@ export class ChatService {
             lexSim: (chunk as any).lexSim
           }))
         };
+        } // close else (ragResponse succeeded)
       }
-      
-      // Fallback: no RAG content available, use template only
+
+      // Fallback: no RAG content available (or LLM timed out), use template only
       const templateResult = this.templateSelector.selectAndGenerate(
         dto.userText,
         [],
@@ -367,12 +382,17 @@ export class ChatService {
         isFirstMessage,
         "sideEffects"
       );
-      
+
+      // Inject essential terms even for template-only urgent responses
+      const urgentCancerType = detectCancerType(dto.userText, sessionCancerType);
+      const urgentQueryType = QueryTypeClassifier.classify(dto.userText);
+      const urgentResponseText = this.injectEssentialTermsIfMissing(templateResult.responseText, urgentCancerType, urgentQueryType);
+
       const assistant = await this.prisma.message.create({
         data: {
           sessionId: dto.sessionId,
           role: "assistant",
-          text: templateResult.responseText,
+          text: urgentResponseText,
           safetyClassification: "red_flag",
           latencyMs: Date.now() - started
         }
@@ -1745,7 +1765,7 @@ export class ChatService {
 
       // Validate identify question responses — skip regeneration if time budget exceeded
       const elapsedSoFar = Date.now() - started;
-      const TIME_BUDGET_MS = 45000; // 45s budget for entire explain flow — avoid stacking LLM retries
+      const TIME_BUDGET_MS = 25000; // 25s budget for entire explain flow — avoid stacking LLM retries
       if (mightBeIdentifyQuestion && elapsedSoFar < TIME_BUDGET_MS) {
         const validation = this.passesIdentifyRubric(responseText);
         if (!validation.ok) {
@@ -1764,7 +1784,10 @@ export class ChatService {
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-          
+
+          // Re-inject essential terms after regeneration (injection at line 1684 was overwritten)
+          responseText = this.injectEssentialTermsIfMissing(responseText, cancerType, queryType);
+
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
           if (revalidationResult.shouldAbstain && !isInformationalQuery) {
@@ -1942,6 +1965,8 @@ export class ChatService {
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
+        // Re-inject essential terms after citation regeneration
+        responseText = this.injectEssentialTermsIfMissing(responseText, cancerType, queryType);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
         const retryOrphanCount = retryExtractionResult.orphanCount;
@@ -2255,8 +2280,9 @@ export class ChatService {
 
     let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
 
-    // Handle RED (no citations) - retry once, then abstain
-    if (citationValidation.confidenceLevel === "RED") {
+    // Handle RED (no citations) - retry once if time budget permits, then abstain
+    const fallbackElapsed = Date.now() - started;
+    if (citationValidation.confidenceLevel === "RED" && fallbackElapsed < 25000) {
       this.logger.warn(`Citation validation RED (no citations): ${citationValidation.errors?.join(", ")}`);
       // Retry once
       responseText = await this.llm.generateWithCitations(
@@ -2331,6 +2357,14 @@ export class ChatService {
           }))
         };
       }
+    } else if (citationValidation.confidenceLevel === "RED" && fallbackElapsed >= 25000) {
+      // Time budget exceeded — skip retry, allow response through with YELLOW override
+      this.logger.warn(`Fallback citation RED but time budget exceeded (${fallbackElapsed}ms) — skipping retry, YELLOW override`);
+      citationValidation = {
+        ...citationValidation,
+        confidenceLevel: "YELLOW",
+        isValid: true
+      };
     }
 
     // Handle YELLOW (low confidence) — log but don't prepend extra disclaimer

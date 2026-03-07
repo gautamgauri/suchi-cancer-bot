@@ -153,8 +153,8 @@ export class LlmService {
       this.logger.log(`LLM Service initialized with Deepseek (${this.model}) at ${baseURL}`);
     }
 
-    // Default timeout: 25s for Gemini Flash (typically responds in 2-8s), 45s for others
-    const defaultTimeout = this.provider === "gemini" ? 25000 : 45000;
+    // Default timeout: 15s for Gemini Flash (typically responds in 2-8s), 25s for others
+    const defaultTimeout = this.provider === "gemini" ? 15000 : 25000;
     this.timeoutMs = this.configService.get<number>("LLM_TIMEOUT_MS") || defaultTimeout;
 
     // Fallback enabled for non-Gemini providers (uses Gemini as fallback)
