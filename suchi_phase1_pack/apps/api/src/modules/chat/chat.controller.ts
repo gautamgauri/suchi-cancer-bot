@@ -13,7 +13,7 @@ const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]
 @Controller("chat")
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
-  private readonly REQUEST_TIMEOUT_MS = 120000; // 120 seconds — embedding (8s) + LLM (25s) + retry (25s) + overhead, with safety margin
+  private readonly REQUEST_TIMEOUT_MS = 90000; // 90s — embedding (8s) + LLM (25s) + overhead; time budget (45s) prevents stacking
 
   constructor(private readonly chat: ChatService) {}
 

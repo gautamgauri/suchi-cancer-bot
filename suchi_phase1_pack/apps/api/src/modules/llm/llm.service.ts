@@ -705,14 +705,20 @@ CITATION FORMAT:
       // Use Gemini directly if provider is "gemini"
       if (this.provider === "gemini") {
         const maxTokens = isIdentifyQuestion ? 2000 : 1200;
+        const callStarted = Date.now();
         const result = await this.callGeminiLLM(actualSystemPrompt, citationInstructions, maxTokens, true);
+        const callDurationMs = Date.now() - callStarted;
         if (result) {
           return result;
         }
 
-        // First failure: retry with reduced context (top 3 chunks) if not already retrying
-        if (!isTimeoutRetry && chunks.length > 3) {
-          this.logger.warn(`Gemini primary call failed — retrying with reduced context (3 chunks)`);
+        // Only retry with reduced context if:
+        // 1. Not already a retry
+        // 2. Have enough chunks to reduce
+        // 3. First call didn't timeout (timeout = service issue, not context issue)
+        const wasTimeout = callDurationMs >= (this.timeoutMs * 0.9); // ~90% of timeout = likely timed out
+        if (!isTimeoutRetry && chunks.length > 3 && !wasTimeout) {
+          this.logger.warn(`Gemini primary call failed (${callDurationMs}ms, non-timeout) — retrying with reduced context (3 chunks)`);
           const reducedChunks = chunks.slice(0, 3);
           return this.generateWithCitations(
             systemPrompt,
@@ -725,7 +731,7 @@ CITATION FORMAT:
           );
         }
 
-        this.logger.error(`Gemini primary call failed after retry — returning abstention response`);
+        this.logger.warn(`Gemini call failed (${callDurationMs}ms, timeout=${wasTimeout}, retry=${isTimeoutRetry}) — returning abstention response`);
         return this.getAbstentionResponse();
       }
 

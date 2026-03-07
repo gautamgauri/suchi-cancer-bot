@@ -18,6 +18,7 @@ export function detectCancerType(userText: string, sessionCancerType?: string | 
     'prostate': 'prostate',
     'colorectal': 'colorectal',
     'colon': 'colorectal',
+    'rectal': 'colorectal',
     'pancreatic': 'pancreatic',
     'ovarian': 'ovarian',
     'leukemia': 'leukemia',
@@ -35,12 +36,29 @@ export function detectCancerType(userText: string, sessionCancerType?: string | 
     'brain': 'brain',
     'esophageal': 'esophageal',
     'head and neck': 'head and neck',
+    'oral': 'oral',
+    'mouth': 'oral',
     'sarcoma': 'sarcoma'
   };
 
   // Check for exact matches first (longer phrases)
   for (const [keyword, cancerType] of Object.entries(cancerKeywords)) {
     if (textLower.includes(keyword)) {
+      return cancerType;
+    }
+  }
+
+  // Symptom-based inference: map characteristic symptoms to likely cancer type
+  // This helps when users describe symptoms without naming the cancer
+  const symptomInference: Array<{ pattern: RegExp; cancerType: string }> = [
+    { pattern: /\b(blood|bleeding)\b.*\b(stool|bowel|rectal|rectum)\b/i, cancerType: 'colorectal' },
+    { pattern: /\b(stool|bowel)\b.*\b(blood|bleeding)\b/i, cancerType: 'colorectal' },
+    { pattern: /\blump\b.*\bbreast\b/i, cancerType: 'breast' },
+    { pattern: /\bbreast\b.*\blump\b/i, cancerType: 'breast' },
+  ];
+
+  for (const { pattern, cancerType } of symptomInference) {
+    if (pattern.test(textLower)) {
       return cancerType;
     }
   }

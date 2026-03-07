@@ -1745,7 +1745,7 @@ export class ChatService {
 
       // Validate identify question responses — skip regeneration if time budget exceeded
       const elapsedSoFar = Date.now() - started;
-      const TIME_BUDGET_MS = 60000; // 60s budget for entire explain flow — avoid stacking LLM retries
+      const TIME_BUDGET_MS = 45000; // 45s budget for entire explain flow — avoid stacking LLM retries
       if (mightBeIdentifyQuestion && elapsedSoFar < TIME_BUDGET_MS) {
         const validation = this.passesIdentifyRubric(responseText);
         if (!validation.ok) {
