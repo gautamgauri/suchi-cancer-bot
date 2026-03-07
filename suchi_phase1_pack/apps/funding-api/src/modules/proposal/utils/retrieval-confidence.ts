@@ -22,6 +22,7 @@ const THRESHOLDS = {
 
 export function computeRetrievalConfidence(
   chunks: Array<{ score?: number; docId: string }>,
+  _sectionName?: string,
 ): RetrievalConfidence {
   if (chunks.length === 0) {
     return {
@@ -61,4 +62,25 @@ export function computeRetrievalConfidence(
     uniqueDocCount: uniqueDocs,
     reason: reasons.join("; "),
   };
+}
+
+/**
+ * Sections where strong evidence is critical for credibility.
+ */
+const EVIDENCE_CRITICAL_SECTIONS = new Set([
+  "need statement",
+  "need assessment",
+  "problem statement",
+  "track record",
+  "past performance",
+  "impact",
+  "evidence base",
+  "m&e",
+  "monitoring",
+  "evaluation",
+]);
+
+export function isEvidenceCriticalSection(sectionName: string): boolean {
+  const lower = sectionName.toLowerCase();
+  return [...EVIDENCE_CRITICAL_SECTIONS].some((s) => lower.includes(s));
 }

@@ -26,6 +26,8 @@ export class PlannerService {
     funderThemes?: { primary?: string[]; secondary?: string[] };
     /** Structured activities context from ProgramActivity registry */
     activitiesContext?: string;
+    /** Framework intelligence summary for planner enrichment */
+    frameworkContext?: string;
   }): Promise<ProposalOutline> {
     // === DIAGNOSTIC: Step B — log what planner receives ===
     this.logger.log({

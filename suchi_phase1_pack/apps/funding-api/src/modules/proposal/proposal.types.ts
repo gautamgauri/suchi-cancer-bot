@@ -147,11 +147,48 @@ export interface GenerateProposalOptions {
   dontMention?: string[];
   /** If set, only draft this section (e.g. "M&E") */
   sectionOnly?: string;
+  /** Skip framework intelligence gathering */
+  skipFramework?: boolean;
   /** Framework capability context: align outline and retrieval to these capabilities */
   capabilityContext?: {
     primary: string[];
     secondary?: string[];
   };
+}
+
+export interface FunderPriorityProfile {
+  primaryCapabilities: string[];
+  secondaryCapabilities: string[];
+  themes: string[];
+  preferredEvidenceTypes: string[];
+  targetDemographics: Record<string, unknown>;
+  suggestedMIModalities: string[];
+}
+
+export interface FrameworkIntelligencePack {
+  funderProfile: FunderPriorityProfile;
+  methodCards: Array<{ title: string; description: string; capabilities: string[] }>;
+  patternCards: Array<{ title: string; description: string }>;
+  comparableCases: Array<{ programName: string; outcomes: string; geography: string }>;
+  comparablesParagraph: string;
+  transferabilityNotes: string;
+  programDesign: {
+    theoryOfChange: {
+      inputs: string[];
+      activities: string[];
+      outputs: string[];
+      outcomes: string[];
+      impact: string;
+    };
+    activityBlocks: Array<{ weekRange: string; theme: string; capabilityFocus: string[] }>;
+    gaps: string[];
+  } | null;
+  melPack: {
+    capabilityIndicators: Array<{
+      capability: string;
+      indicators: Array<{ type: string; indicator: string; frequency: string; tool: string }>;
+    }>;
+  } | null;
 }
 
 export interface RegenerateSectionOptions {
