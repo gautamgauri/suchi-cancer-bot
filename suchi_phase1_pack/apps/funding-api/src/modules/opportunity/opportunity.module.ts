@@ -38,6 +38,7 @@ import { OpportunityExtractService } from "./extract/opportunity-extract.service
     OpportunityIntelligenceService,
     OpportunityExtractService,
     OpportunityFitScoreService,
+    OpportunityIntakeService,
   ],
 })
 export class OpportunityModule {}

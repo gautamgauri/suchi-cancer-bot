@@ -10,6 +10,7 @@ import { ExtractService } from "./extract.service";
 import { InventoryService } from "./inventory.service";
 import { PipelineService } from "./pipeline.service";
 import { RetrievalService } from "./retrieval.service";
+import { QueryExpanderService } from "./query-expander.service";
 import { ReviewQueueService } from "./review-queue.service";
 
 @Module({
@@ -26,6 +27,7 @@ import { ReviewQueueService } from "./review-queue.service";
     ChunkingService,
     EmbeddingService,
     RetrievalService,
+    QueryExpanderService,
   ],
   exports: [
     DriveClientService,
@@ -38,6 +40,7 @@ import { ReviewQueueService } from "./review-queue.service";
     ChunkingService,
     EmbeddingService,
     RetrievalService,
+    QueryExpanderService,
   ],
 })
 export class EvidenceIngestModule {}
