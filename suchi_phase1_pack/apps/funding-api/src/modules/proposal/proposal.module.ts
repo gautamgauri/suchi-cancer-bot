@@ -7,6 +7,7 @@ import { PipelineModule } from "../pipeline/pipeline.module";
 import { ActivityRegistryModule } from "../activity_registry/activity-registry.module";
 import { FrameworkModule } from "../framework/framework.module";
 import { ApplicationModule } from "../application/application.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { ProposalController } from "./proposal.controller";
 import { ProposalService } from "./proposal.service";
 import { RfpParserService } from "./services/rfp-parser.service";
@@ -31,6 +32,7 @@ import { FactsheetBuilderService } from "./services/factsheet-builder.service";
     ActivityRegistryModule,
     FrameworkModule,
     ApplicationModule,
+    NotificationsModule,
   ],
   controllers: [ProposalController],
   providers: [

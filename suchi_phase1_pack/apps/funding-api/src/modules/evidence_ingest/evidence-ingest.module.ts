@@ -11,6 +11,7 @@ import { InventoryService } from "./inventory.service";
 import { PipelineService } from "./pipeline.service";
 import { RetrievalService } from "./retrieval.service";
 import { QueryExpanderService } from "./query-expander.service";
+import { RerankerService } from "./reranker.service";
 import { ReviewQueueService } from "./review-queue.service";
 
 @Module({
@@ -28,6 +29,7 @@ import { ReviewQueueService } from "./review-queue.service";
     EmbeddingService,
     RetrievalService,
     QueryExpanderService,
+    RerankerService,
   ],
   exports: [
     DriveClientService,
@@ -41,6 +43,7 @@ import { ReviewQueueService } from "./review-queue.service";
     EmbeddingService,
     RetrievalService,
     QueryExpanderService,
+    RerankerService,
   ],
 })
 export class EvidenceIngestModule {}
