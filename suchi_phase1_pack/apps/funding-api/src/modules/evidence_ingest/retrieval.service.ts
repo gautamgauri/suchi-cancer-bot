@@ -192,6 +192,7 @@ export class RetrievalService {
         queryEmbedding = await this.openai.embeddings.create({
           model: this.embeddingModel,
           input: query.slice(0, 8000),
+          dimensions: 768,
         });
       } catch (embErr) {
         // #region agent log
