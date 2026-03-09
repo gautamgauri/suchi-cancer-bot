@@ -1,7 +1,7 @@
 # Funding Bot — Business Requirements Document (BRD)
 
-**Version:** 2.1
-**Last updated:** 2026-03-01
+**Version:** 2.2
+**Last updated:** 2026-03-09
 **Owner:** Gautam Gauri, Diksha Foundation
 **Status:** Living document — updated as features ship
 
@@ -33,6 +33,9 @@
 22. [Non-Goals](#22-non-goals)
 23. [Glossary](#23-glossary)
 24. [RAG Enhancement Roadmap — Suchi Cancer Bot Learnings](#24-rag-enhancement-roadmap--suchi-cancer-bot-learnings)
+25. [Fellowship Pipeline & Voice Calibration](#25-fellowship-pipeline--voice-calibration)
+26. [Email Pipeline](#26-email-pipeline)
+27. [SCCF Document Indexer](#27-sccf-document-indexer)
 
 **Annexures**
 
@@ -91,10 +94,10 @@ The system is built as a **NestJS API** (`funding-api`) backed by **PostgreSQL +
 │  └──────────────┴──────────────┴───────────────┴──────────────┘  │
 │  ┌──────────────┬──────────────┬───────────────┬──────────────┐  │
 │  │  Framework   │  Evidence    │  Draft Gen.   │  Applications│  │
-│  │  caps/MI     │  ingest/RAG  │  emails       │  intake      │  │
-│  │  method cards│  chunk/embed │  need stmts   │  extract Q   │  │
-│  │  MEL gen.    │  retrieve    │  approval     │  draft/revise│  │
-│  │  consistency │              │               │  prefill     │  │
+│  │  caps/MI     │  ingest/RAG  │  emails       │  fellowship  │  │
+│  │  method cards│  chunk/embed │  need stmts   │  voice calib │  │
+│  │  MEL gen.    │  retrieve    │  email pipe.  │  extract Q   │  │
+│  │  consistency │  reranking   │  SCCF ingest  │  draft/revise│  │
 │  └──────────────┴──────────────┴───────────────┴──────────────┘  │
 │  ┌──────────────┬──────────────┬───────────────┬──────────────┐  │
 │  │  Gifts       │  Funder Scr. │  Reports      │  Admin       │  │
@@ -162,6 +165,9 @@ The `funding-api` is organized into these NestJS modules:
 | **health** | `modules/health` | Health + readiness checks |
 | **source_registry** | `modules/source_registry` | Source document metadata + snapshot URLs for citation traceability |
 | **activity_registry** | `modules/activity_registry` | Program activities registry: activities, instances (fortnightly reports), plans, context builder |
+| **fellowship** | `modules/fellowship` | Fellowship-specific proposal pipeline: personal voice, first-person drafting, section archetypes, voice calibration, condensation |
+| **email_pipeline** | `modules/email-pipeline` | Inbound email processing: Gmail polling, LLM-based intent classification, auto-routing to proposal or fellowship pipeline, draft delivery |
+| **sccf_ingest** | `modules/sccf-ingest` | SCCF document indexer: Google Drive + Gmail ingestion for Suchitra Cancer Care Foundation documents into evidence library |
 
 ---
 
@@ -296,6 +302,32 @@ All endpoints are prefixed with `/v1/`.
 | POST | `/admin/export/pipeline-to-sheets` | Export pipeline to Google Sheets |
 | GET/POST | `/sources/*` | Source document registry |
 | GET | `/activity-registry/*` | Program activities, instances, plans, context |
+
+### 5.10 Fellowship
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| (via orchestrator) | `/orchestrator/run` | Fellowship generation triggered when opportunity has `docTypeCategory: "fellowship"` |
+
+Note: Fellowship has no dedicated controller — it routes through the orchestrator based on `docTypeCategory`.
+
+### 5.11 Email Pipeline
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/email-pipeline/poll` | Poll Gmail for new funding-related emails, classify, and process |
+| POST | `/email-pipeline/process` | Process a specific Gmail message ID through the pipeline |
+| GET | `/email-pipeline/status` | Get pipeline processing status and recent activity |
+
+### 5.12 SCCF Ingest
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/sccf-ingest/index` | Full index: Drive + Gmail |
+| POST | `/sccf-ingest/index/drive` | Index SCCF documents from Google Drive |
+| POST | `/sccf-ingest/index/gmail` | Index SCCF documents from Gmail |
+| GET | `/sccf-ingest/index` | List indexed documents |
+| GET | `/sccf-ingest/index/summary` | Get indexing summary stats |
 
 ---
 
@@ -472,6 +504,15 @@ Stage E: Proposal Generation (enriched with all context above)
 ### Assess Mode
 
 `POST /orchestrator/assess` runs fit + gmail + budget + web evidence in parallel, without triggering proposal generation. Useful for quick go/no-go decisions.
+
+### Fellowship Routing
+
+When the opportunity's `docTypeCategory` is `"fellowship"`, the orchestrator bypasses the standard ProposalService and routes to the FellowshipService instead. Key differences:
+- **Personal voice** — All context is personal (applicant profile, past answers, personal corpus), not organizational
+- **Voice calibration** — System prompt includes a voice fingerprint extracted from Gautam's actual writing samples (Cambridge essays, Chevening SOPs)
+- **Section archetypes** — Each section is matched to an archetype (motivation, leadership, research_plan, etc.) with tailored instructions
+- **First-person singular** — Enforced via voice rewriter safety net and condensation pass
+- **No budget/org framing** — Budget language, org-centric phrases, and ToC frameworks are explicitly excluded
 
 ---
 
@@ -785,6 +826,30 @@ When testing proposals, the evaluator validates:
 - Uses Cloud SQL proxy for real database, Deepseek for cheap LLM generation
 - Reports uploaded as GitHub Actions artifacts (30-day retention)
 
+### Fellowship Acceptance Tests
+
+Three synthetic fellowship opportunities test the full fellowship pipeline:
+
+| Test ID | Fellowship | Sections | Fit Score |
+|---------|-----------|----------|-----------|
+| `eval-cat2-digital-minds-2026` | Digital Minds | 7 | 20 |
+| `eval-cat2-ashoka-changemaker-2026` | Ashoka Changemaker | 6 | 58 |
+| `eval-cat2-wellcome-health-2026` | Wellcome Health Equity | 5 | 39 |
+
+**Fellowship-specific checks:** word_limit_compliance, no_org_voice_leakage, cross_section_deduplication, no_budget_language, no_raw_tags, narrative_arc, authenticity, leadership_trajectory, research_plan, track_record_synthesis, personal_anecdote_present, not_too_proposal_like
+
+Run: `npx ts-node cli.ts proposal-suite --api-url <URL> --category fellowship --verbose --summary`
+
+### Question Verification
+
+The `verify-questions` CLI subcommand diffs stored opportunity sections against live form URLs:
+
+```bash
+npx ts-node cli.ts verify-questions --api-url <URL> --opportunity <id>
+```
+
+Checks: section name similarity matching, word limit consistency, missing/extra sections.
+
 ---
 
 ## 19. Web Frontend
@@ -877,13 +942,21 @@ Build API Docker image → Build Web Docker image
 
 Based on the gap analysis comparing manual "Gully Goal" proposal to bot output (from `plan.md`):
 
-### Priority 1: Voice & Tone (highest ROI)
+### Priority 1: Voice & Tone (highest ROI) — PARTIALLY RESOLVED
 
-| Gap | Root Cause | Fix |
-|-----|-----------|-----|
-| Impersonal third-person, bullet-heavy style | No voice/tone instruction in section writer prompt | Add WRITING STYLE block: first person plural, active voice, narrative paragraphs, funder-specific framing |
-| Generic "the funder" language | Section writer prompt doesn't instruct naming the funder | Add instruction to name funder explicitly |
-| Hollow phrases ("holistic approach", "sustainable impact") | No anti-pattern guidance | Add avoidance list with specific replacements |
+**Status (March 2026):** Voice calibration implemented for fellowship pipeline. Organizational proposal voice improvements remain open.
+
+| Gap | Root Cause | Fix | Status |
+|-----|-----------|-----|--------|
+| Impersonal third-person, bullet-heavy style | No voice/tone instruction in section writer prompt | Add WRITING STYLE block: first person plural, active voice, narrative paragraphs, funder-specific framing | Open (proposals) |
+| Generic "the funder" language | Section writer prompt doesn't instruct naming the funder | Add instruction to name funder explicitly | Open (proposals) |
+| Hollow phrases ("holistic approach", "sustainable impact") | No anti-pattern guidance | Add avoidance list with specific replacements | **Resolved** (fellowship) |
+| Fellowship voice not authentic | No voice fingerprint for personal applications | Voice calibration via `GAUTAM_VOICE_GUIDE` in `fellowship/prompts/voice-guide.ts` — covers sentence structure, emotional register, recurring patterns, anti-patterns | **Resolved** |
+
+**Fellowship voice calibration details:**
+- `GAUTAM_VOICE_GUIDE` constant extracted from actual writing samples (Cambridge essays, Chevening SOPs)
+- Gmail ingest expanded with Chevening/Commonwealth scholarship SOP queries
+- Eval scores improved from 0.42 avg core (local, broken) to 0.78 avg core (prod)
 
 ### Priority 2: Org Profile Enrichment
 
@@ -1073,6 +1146,160 @@ The Cancer Bot's intent-based architecture maps naturally to the Funding Bot's s
 
 ---
 
+## 25. Fellowship Pipeline & Voice Calibration
+
+### Overview
+
+The fellowship pipeline generates personal application essays that read as Gautam's authentic voice — not organizational grant proposals. It shares the orchestrator's gated pipeline (fit → gmail → budget → web evidence) but routes to `FellowshipService` instead of `ProposalService`.
+
+### Architecture
+
+```
+Orchestrator (docTypeCategory === "fellowship")
+    ↓
+FellowshipService.generateFellowship(opportunityId)
+    ↓
+For each section:
+  1. Match archetype (motivation | leadership | research_plan | contribution | career_direction | engagement)
+  2. Build retrieval queries (section question + expanded + personal framing)
+  3. Retrieve from personal corpus only (orgId: "gautam", corpus: ["personal"])
+  4. Assemble prompt with voice guide + archetype + cross-section dedup
+  5. LLM generation with FELLOWSHIP_SYSTEM_PROMPT
+  6. Voice rewriter safety net (rewriteToFirstPerson)
+  7. Condensation pass if over word limit × 1.15
+  8. Store as ProposalSection
+```
+
+### Voice Calibration
+
+The `GAUTAM_VOICE_GUIDE` constant (in `fellowship/prompts/voice-guide.ts`) is a voice fingerprint extracted from Gautam's actual writing samples:
+
+- **Sentence structure** — Opens with concrete action, not abstract thesis; short declarative followed by longer explanatory
+- **Emotional register** — Understated; lets facts carry weight; uses specific moments rather than grand claims
+- **Recurring patterns** — Bihar as constant anchor; "I returned to..." framing; bridge between institutional learning and ground reality
+- **Anti-patterns** — Never uses "I am passionate about", "holistic approach", "sustainable impact", or bullet-point deliverable lists
+
+### Gmail Memory Expansion
+
+Ingest queries expanded to capture fellowship-relevant writing samples:
+- Cambridge MPhil concept notes and drafts
+- Chevening/Commonwealth scholarship SOPs and personal statements
+- Pre-2018 personal writing with fellowship keywords
+
+### Eval Results (3 test fellowships)
+
+| Opportunity | Core Score | Category Score | Status |
+|---|---|---|---|
+| Digital Minds 2026 | 0.80 | 0.83 | PASS |
+| Ashoka Changemaker 2026 | 0.81 | 0.92 | PASS |
+| Wellcome Health Equity 2026 | 0.71 | 0.92 | PASS |
+
+**Average:** Core 0.77, Category 0.89 (best prod run)
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `modules/fellowship/fellowship.service.ts` | Core pipeline: retrieve → draft → condense → store |
+| `modules/fellowship/prompts/fellowship.prompts.ts` | System prompt, user prompt builder, archetype matcher |
+| `modules/fellowship/prompts/voice-guide.ts` | `GAUTAM_VOICE_GUIDE` voice fingerprint constant |
+| `modules/fellowship/utils/voice-rewriter.ts` | First-person enforcement safety net |
+| `modules/fellowship/fellowship.types.ts` | `FellowshipDraftOptions` type |
+
+---
+
+## 26. Email Pipeline
+
+### Overview
+
+The email pipeline automates inbound email processing: polling Gmail for funding-related messages, classifying intent, routing to the appropriate pipeline (opportunity intake → orchestrator → proposal/fellowship), and emailing formatted draft results back to the user.
+
+### Pipeline Flow
+
+```
+Gmail Poll (label: "funding-bot")
+    ↓
+Intent Classification (LLM-based, 4 intents)
+    ↓
+Route by intent:
+  fellowship_lead → OpportunityIntake → Orchestrator (fellowship path)
+  proposal_lead   → OpportunityIntake → Orchestrator (proposal path)
+  draft_request   → Direct draft generation
+  unknown         → Park with notification
+    ↓
+Format draft (HTML + plain text)
+    ↓
+Email to sender + gautamgauri@dikshafoundation.org
+```
+
+### Intent Classification
+
+| Intent | Description | Routing |
+|--------|-------------|---------|
+| `fellowship_lead` | Fellowship/scholarship/personal application opportunity | Fellowship pipeline |
+| `proposal_lead` | Organizational grant/CSR/foundation opportunity | Proposal pipeline |
+| `draft_request` | Request to draft/revise a specific section | Direct generation |
+| `unknown` | Unclassifiable — parked for manual review | Notification only |
+
+### Configuration
+
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+| `EMAIL_PIPELINE_POLL_ENABLED` | `false` | Enable Cloud Scheduler polling |
+| `EMAIL_PIPELINE_POLL_LABEL` | `funding-bot` | Gmail label to filter on |
+| `EMAIL_PIPELINE_OWNER_EMAIL` | — | Always receives pipeline output (default: gautamgauri@dikshafoundation.org) |
+
+### Idempotency
+
+Processed emails are tracked in the `ProcessedEmail` table to prevent duplicate processing. Each email is recorded with its Gmail message ID, classification result, and processing outcome.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `modules/email-pipeline/email-pipeline.service.ts` | Core pipeline: poll → classify → intake → orchestrate → format → send |
+| `modules/email-pipeline/email-classifier.service.ts` | LLM-based intent classification |
+| `modules/email-pipeline/draft-formatter.service.ts` | HTML/plain text email formatting |
+| `modules/email-pipeline/email-pipeline.controller.ts` | REST endpoints |
+
+---
+
+## 27. SCCF Document Indexer
+
+### Overview
+
+Indexes documents from Suchitra Cancer Care Foundation (SCCF) — Diksha's sister organization — into the evidence library. Lives in the funding-api (not suchi-api) because SCCF documents serve as proposal evidence for health-related funding opportunities.
+
+### Sources
+
+- **Google Drive** — SCCF shared Drive folder (screening reports, navigation protocols, patient data)
+- **Gmail** — SCCF-related email threads (reports, updates, partnership communications)
+
+### Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/sccf-ingest/index` | Full index: Drive + Gmail |
+| POST | `/sccf-ingest/index/drive` | Index from Google Drive only |
+| POST | `/sccf-ingest/index/gmail` | Index from Gmail only |
+| GET | `/sccf-ingest/index` | List indexed documents |
+| GET | `/sccf-ingest/index/summary` | Indexing summary stats |
+
+### Configuration
+
+| Env Var | Purpose |
+|---------|---------|
+| `SCCF_DRIVE_FOLDER_ID` | SCCF root folder on Diksha shared Drive |
+| `SCCF_GMAIL_SEARCH_QUERY` | Override default Gmail search query |
+
+Note: Reuses `FUNDING_GOOGLE_SERVICE_ACCOUNT_JSON` and `FUNDING_GMAIL_USER` from the main funding bot config.
+
+### Schema
+
+`SccfDocument` model in `apps/funding-api/prisma/schema.prisma` (diksha-db).
+
+---
+
 ## Annexure A — Reusable Code & Patterns from Suchi Cancer Bot
 
 This annexure maps specific Cancer Bot source files and code logic that can be directly reused, adapted, or ported to the Funding Bot. Both bots share the same stack (NestJS + Prisma + PostgreSQL + pgvector), making transplantation straightforward.
@@ -1194,4 +1421,4 @@ Port the Cancer Bot's `llm-judge.ts` framework (provider-agnostic, cost-tracked)
 
 ---
 
-*End of document — Funding Bot BRD v2.1*
+*End of document — Funding Bot BRD v2.2*
