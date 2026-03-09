@@ -124,7 +124,8 @@ The system is built as a **NestJS API** (`funding-api`) backed by **PostgreSQL +
 | Frontend | React + Vite, Axios, i18n (English + Hindi) |
 | LLM (production) | Gemini 2.0 Flash via OpenAI-compatible API |
 | LLM (CI eval) | Deepseek Chat |
-| Embeddings | Google `text-embedding-004` / `gemini-embedding-001` (768 dims) |
+| Embeddings (ingest) | Google `gemini-embedding-001` via direct REST (`v1beta/batchEmbedContents`), `outputDimensionality: 768` |
+| Embeddings (query) | Google `gemini-embedding-001` via OpenAI-compatible endpoint (`v1beta/openai/embeddings`), `dimensions: 768` |
 | Web Search | Gemini Grounding + Google Custom Search Engine |
 | Email | Gmail API (read-only for memory; send via notifications) |
 | Storage | Google Drive (evidence documents, proposal artifacts) |
@@ -526,6 +527,30 @@ Google Drive scan → Download → Extract (Google Docs API / PDF parser)
     → PII detection → Chunking → Embedding (768-dim) → pgvector storage
 ```
 
+### Embedding Architecture (CRITICAL — read before changing embedding code)
+
+There are **two separate embedding paths** that MUST both produce 768-dim vectors to match the `vector(768)` pgvector column:
+
+| Path | When | Implementation | Dimension Control |
+|------|------|---------------|-------------------|
+| **Ingest** (batch) | `POST /v1/evidence-ingest/embed` | Direct REST to `v1beta/models/gemini-embedding-001:batchEmbedContents` via `embedding-provider.ts` | `outputDimensionality: 768` in request body |
+| **Query** (per-request) | Every retrieval call | OpenAI SDK in `retrieval.service.ts` → Google's OpenAI-compat endpoint | `dimensions: 768` in SDK call |
+
+**Why two paths?** The ingest path uses Google's native batch API for throughput (500 chunks/call). The query path uses the OpenAI SDK because `retrieval.service.ts` was originally written for OpenAI and was migrated to Google by pointing it at Google's OpenAI-compatible endpoint.
+
+**Environment variables that MUST be set together:**
+
+| Env Var | Value | Why |
+|---------|-------|-----|
+| `FUNDING_EMBEDDING_PROVIDER` | `google` | Selects Google provider in `embedding-provider.ts` |
+| `EVIDENCE_EMBEDDING_MODEL` | `gemini-embedding-001` | Model name for both paths |
+| `FUNDING_EMBEDDINGS_API_KEY` | Gemini API key (from Secret Manager) | Auth for both paths |
+| `FUNDING_EMBEDDINGS_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | **Routes OpenAI SDK to Google's endpoint** — without this, queries hit `api.openai.com` and fail with 401 |
+
+**Common failure mode:** If `FUNDING_EMBEDDINGS_BASE_URL` is missing, the query path sends the Gemini API key to OpenAI's endpoint → 401 error → all retrieval fails → proposals/fellowships generate with zero evidence.
+
+**Dimension mismatch failure:** `gemini-embedding-001` defaults to 3072-dim. Both paths must explicitly request 768-dim. If dimensions don't match stored vectors, cosine similarity returns garbage scores.
+
 ### Retrieval Modes
 
 - **Hybrid** (default) — combines semantic (pgvector cosine similarity) + keyword matching
@@ -536,6 +561,7 @@ Google Drive scan → Download → Extract (Google Docs API / PDF parser)
 
 Documents are classified into corpora:
 - `diksha_internal` — Diksha's own proposals, reports, concept notes
+- `personal` — Personal writing (fellowship essays, SOPs, Cambridge notes) — `orgId: "gautam"`
 - `theory_frameworks` — Educational theory, capability frameworks
 - `donor_funder` — Donor profiles, funder requirements
 - `external_evidence` — WHO, UNICEF, research papers

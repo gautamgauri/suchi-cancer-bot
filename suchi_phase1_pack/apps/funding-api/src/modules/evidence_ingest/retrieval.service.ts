@@ -110,15 +110,22 @@ export class RetrievalService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    // Split provider: embeddings use separate API key/base URL from LLM
+    // EMBEDDING QUERY PATH — uses OpenAI SDK pointed at Google's OpenAI-compatible endpoint.
+    // CRITICAL: FUNDING_EMBEDDINGS_BASE_URL must be set to Google's endpoint
+    // (https://generativelanguage.googleapis.com/v1beta/openai/) otherwise queries
+    // hit api.openai.com with a Gemini key and fail with 401.
+    // Also: dimensions: 768 must be passed in every embeddings.create() call to match
+    // the vector(768) pgvector column. gemini-embedding-001 defaults to 3072-dim.
+    // See BRD §9 "Embedding Architecture" for full documentation.
     const embeddingsApiKey = this.configService.get<string>("FUNDING_EMBEDDINGS_API_KEY");
     const embeddingsBaseUrl = this.configService.get<string>("FUNDING_EMBEDDINGS_BASE_URL");
     const llmApiKey = this.configService.get<string>("FUNDING_OPENAI_API_KEY");
 
-    // Use embeddings-specific key if available, otherwise fall back to LLM key
     const apiKey = embeddingsApiKey || llmApiKey;
-    // Only use base URL if embeddings-specific one is set (OpenAI embeddings use default URL)
     const baseURL = embeddingsBaseUrl || undefined;
+    if (!baseURL) {
+      this.logger.warn("FUNDING_EMBEDDINGS_BASE_URL is not set — OpenAI SDK will hit api.openai.com. Set it to Google's OpenAI-compat endpoint.");
+    }
 
     if (apiKey) {
       this.openai = new OpenAI({ apiKey, ...(baseURL && { baseURL }) });
