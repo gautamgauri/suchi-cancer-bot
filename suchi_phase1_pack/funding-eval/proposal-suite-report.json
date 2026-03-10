@@ -1,0 +1,159 @@
+{
+  "runAt": "2026-03-06T16:21:48.843Z",
+  "apiBaseUrl": "https://funding-api-lxiveognla-uc.a.run.app",
+  "totalCategories": 1,
+  "passedCategories": 1,
+  "failedCategories": 0,
+  "categoryResults": [
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-digital-minds-2026",
+      "latencyMs": 311949,
+      "passed": true,
+      "orchestratorStages": {
+        "fitScore": 20,
+        "fitDecision": "no",
+        "gmailBlocks": 0,
+        "budgetEnvelope": {
+          "total": 396667,
+          "currency": "INR",
+          "months": 1
+        },
+        "webEvidenceChunks": 15,
+        "proposalSections": 7
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "min_section_count: PASS — 7 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: PASS — Budget of INR 8,33,333.33, timeline implied, eligibility shown, deliverables specified"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": true,
+          "score": 0.5,
+          "details": [
+            "beneficiary_count_consistent: FAIL — beneficiary_count found in 2 sections (need 3)",
+            "budget_total_matches_summary: PASS — The requested budget of INR 8,33,333.33 appears in both sections"
+          ]
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "named_locations: PASS — Bihar, Jharkhand, UP, Sikkim, Bihar Board",
+            "specific_numbers: PASS — INR 8,33,333.33, 15 years, INR 3,33,333.33, INR 3,00,000, INR 1,00,000",
+            "low_hollow_phrases: PASS — 1 hollow phrases found (max 2): \"holistic approach\" (1)"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "toc_present: PASS — Inputs: AI development tools, data acquisition. Activities: research, pilot projects. Outputs: enhanced Funding Bot, Rusty. Outcomes: personalized learning, operational efficiency. Impact: transforming education in Bihar.",
+            "measurable_outcomes: FAIL — No measurable outcomes with indicators found",
+            "activities_outputs_chain: PASS — Enhancing Rusty's AI capabilities for personalized learning pathways"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "funder_named: PASS — Digital Minds Fellowship, Digital Minds Project, University of Cambridge",
+            "no_boasting: PASS — No unsupported superlatives found",
+            "first_person_voice_singular: PASS — 100% sections use singular first-person voice (7/7, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — No false partnership claims detected"
+          ]
+        }
+      ],
+      "coreScore": 0.88,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": false,
+          "evidence": "Word limit exceeded: \"Career Plans & Fellowship Impact\": 645 words (limit 200, max 300); \"Engagement with Digital Minds\": 751 words (limit 300, max 450)"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": true,
+          "evidence": "Origin: IT background. Turning point: 15 years building Diksha. Current: AI for social good. Future: Center of excellence in Bihar."
+        },
+        {
+          "checkId": "authenticity",
+          "passed": true,
+          "evidence": "Specific projects like Funding Bot and Rusty with technical details show personal involvement."
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": true,
+          "evidence": "Co-founded two organizations, led Diksha for 15 years, developed multiple AI tools."
+        },
+        {
+          "checkId": "research_plan",
+          "passed": true,
+          "evidence": "Enhance Rusty's AI, expand Funding Bot, explore ethical AI, develop scaling strategy."
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": true,
+          "evidence": "15 years at Diksha, hundreds served through KHEL centers, specific AI tools built."
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": false,
+          "evidence": "No specific named events, people, dates, or moments provided."
+        }
+      ],
+      "categoryScore": 0.75,
+      "failureModes": [],
+      "improvementPlan": [],
+      "proposalRunId": "f7b0ff58-5f31-428d-8c9b-884d18b6a596",
+      "sectionResults": []
+    }
+  ],
+  "crossCuttingSummary": {
+    "avgCoreScore": 0.88,
+    "avgCategoryScore": 0.75,
+    "commonFailureModes": [],
+    "totalImprovementActions": 0
+  },
+  "latencyMs": {
+    "total": 321349,
+    "perCategory": {
+      "fellowship": 311949
+    }
+  }
+}

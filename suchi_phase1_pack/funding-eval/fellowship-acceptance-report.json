@@ -1,0 +1,867 @@
+{
+  "runAt": "2026-03-07T11:59:59.660Z",
+  "apiBaseUrl": "http://localhost:3001",
+  "totalCategories": 3,
+  "passedCategories": 0,
+  "failedCategories": 3,
+  "categoryResults": [
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-digital-minds-2026",
+      "latencyMs": 159249,
+      "passed": false,
+      "orchestratorStages": {
+        "fitScore": 20,
+        "fitDecision": "no",
+        "gmailBlocks": 0,
+        "budgetEnvelope": {
+          "total": 396667,
+          "currency": "INR",
+          "months": 1
+        },
+        "webEvidenceChunks": 0,
+        "proposalSections": 7
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "min_section_count: PASS — 7 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: FAIL — No proposal content found - only database errors"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "beneficiary_count_consistent: FAIL — beneficiary_count found in 0 sections (need 3)",
+            "budget_total_matches_summary: FAIL — No budget information provided in section"
+          ]
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "named_locations: FAIL — No locations mentioned - only database error messages",
+            "specific_numbers: FAIL — No content available for evaluation",
+            "low_hollow_phrases: PASS — No hollow phrases found"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "toc_present: FAIL — No content - only database error messages",
+            "measurable_outcomes: FAIL — No measurable outcomes found - only error messages",
+            "activities_outputs_chain: FAIL — No proposal content found - only error messages"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "funder_named: FAIL — No funder named in error messages",
+            "no_boasting: FAIL — Section contains only database error messages",
+            "first_person_voice_singular: FAIL — 0% sections use singular first-person voice (0/7, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — No partnership claims found in error text"
+          ]
+        }
+      ],
+      "coreScore": 0.43,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": true,
+          "evidence": "2 sections checked, all within word limits"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "cross_section_deduplication",
+          "passed": false,
+          "evidence": "Excessive overlap: \"Engagement with Digital Minds\" ↔ \"Focus Areas (Interest Ratings)\": 79% 3-gram overlap; \"Engagement with Digital Minds\" ↔ \"Career Plans & Fellowship Impact\": 79% 3-gram overlap; \"Engagement with Digital Minds\" ↔ \"Fields of Expertise\": 83% 3-gram overlap; \"Engagement with Digital Minds\" ↔ \"Availability Confirmation\": 88% 3-gram overlap; \"Engagement with Digital Minds\" ↔ \"Additional Comments\": 88% 3-gram overlap; \"Engagement with Digital Minds\" ↔ \"Online Course Interest\": 83% 3-gram overlap; \"Focus Areas (Interest Ratings)\" ↔ \"Career Plans & Fellowship Impact\": 79% 3-gram overlap; \"Focus Areas (Interest Ratings)\" ↔ \"Fields of Expertise\": 83% 3-gram overlap; \"Focus Areas (Interest Ratings)\" ↔ \"Availability Confirmation\": 88% 3-gram overlap; \"Focus Areas (Interest Ratings)\" ↔ \"Additional Comments\": 88% 3-gram overlap; \"Focus Areas (Interest Ratings)\" ↔ \"Online Course Interest\": 83% 3-gram overlap; \"Career Plans & Fellowship Impact\" ↔ \"Fields of Expertise\": 83% 3-gram overlap; \"Career Plans & Fellowship Impact\" ↔ \"Availability Confirmation\": 88% 3-gram overlap; \"Career Plans & Fellowship Impact\" ↔ \"Additional Comments\": 88% 3-gram overlap; \"Career Plans & Fellowship Impact\" ↔ \"Online Course Interest\": 83% 3-gram overlap; \"Fields of Expertise\" ↔ \"Availability Confirmation\": 88% 3-gram overlap; \"Fields of Expertise\" ↔ \"Additional Comments\": 88% 3-gram overlap; \"Fields of Expertise\" ↔ \"Online Course Interest\": 83% 3-gram overlap; \"Availability Confirmation\" ↔ \"Additional Comments\": 88% 3-gram overlap; \"Availability Confirmation\" ↔ \"Online Course Interest\": 88% 3-gram overlap; \"Additional Comments\" ↔ \"Online Course Interest\": 88% 3-gram overlap"
+        },
+        {
+          "checkId": "no_budget_language",
+          "passed": true,
+          "evidence": "No budget/financial language found"
+        },
+        {
+          "checkId": "no_raw_tags",
+          "passed": true,
+          "evidence": "No template artifacts found"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": false,
+          "evidence": "No narrative content found"
+        },
+        {
+          "checkId": "authenticity",
+          "passed": false,
+          "evidence": "No personal content found"
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": false,
+          "evidence": "No leadership content found"
+        },
+        {
+          "checkId": "research_plan",
+          "passed": false,
+          "evidence": "No research plan found"
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": false,
+          "evidence": "No track record content found"
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": false,
+          "evidence": "No anecdotes found"
+        },
+        {
+          "checkId": "not_too_proposal_like",
+          "passed": false,
+          "evidence": "No essay content found"
+        }
+      ],
+      "categoryScore": 0.33,
+      "failureModes": [
+        {
+          "id": "thin_sections",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "7 sections have fewer than 100 words",
+          "rootCause": "Insufficient context or evidence for LLM to generate substantive content",
+          "affectedSections": [
+            "Engagement with Digital Minds",
+            "Focus Areas (Interest Ratings)",
+            "Career Plans & Fellowship Impact",
+            "Fields of Expertise",
+            "Availability Confirmation",
+            "Additional Comments",
+            "Online Course Interest"
+          ]
+        },
+        {
+          "id": "evidence_gap",
+          "severity": "major",
+          "stage": "evidence_retrieval",
+          "symptom": "Only 0 citations across 7 sections",
+          "rootCause": "KB evidence not retrieved or not incorporated into generation prompts",
+          "affectedSections": [
+            "Engagement with Digital Minds",
+            "Focus Areas (Interest Ratings)",
+            "Career Plans & Fellowship Impact",
+            "Fields of Expertise",
+            "Availability Confirmation",
+            "Additional Comments",
+            "Online Course Interest"
+          ]
+        },
+        {
+          "id": "coherence_drift",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Beneficiary count varies across sections",
+          "rootCause": "Sections generated independently without shared context injection",
+          "affectedSections": [
+            "Engagement with Digital Minds",
+            "Focus Areas (Interest Ratings)",
+            "Career Plans & Fellowship Impact",
+            "Fields of Expertise",
+            "Availability Confirmation",
+            "Additional Comments",
+            "Online Course Interest"
+          ]
+        },
+        {
+          "id": "proposal_framing_leak",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Fellowship essay reads like an organizational grant proposal (budget justifications, ToC frameworks, deliverable tables)",
+          "rootCause": "ProposalService patterns leaking into fellowship pipeline, or LLM defaulting to grant-writing style",
+          "affectedSections": [
+            "Engagement with Digital Minds",
+            "Focus Areas (Interest Ratings)",
+            "Career Plans & Fellowship Impact",
+            "Fields of Expertise",
+            "Availability Confirmation",
+            "Additional Comments",
+            "Online Course Interest"
+          ]
+        },
+        {
+          "id": "missing_category_signal",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "8 of 12 category-specific checks failed",
+          "rootCause": "Proposal not tailored for fellowship category requirements",
+          "affectedSections": [
+            "all"
+          ]
+        }
+      ],
+      "improvementPlan": [
+        {
+          "priority": 1,
+          "action": "Increase evidence retrieval limit per section, add more KB documents, or improve section prompts with more context",
+          "expectedImpact": "Richer sections with 200+ words and specific details",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "thin_sections"
+          ]
+        },
+        {
+          "priority": 2,
+          "action": "Verify KB has relevant documents indexed, check embedding quality, increase retrieval top-k",
+          "expectedImpact": "More citations per section, better evidence-backed claims",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "evidence_gap"
+          ]
+        },
+        {
+          "priority": 3,
+          "action": "Inject shared context (beneficiary count, budget total, geography) into all section generation prompts",
+          "expectedImpact": "Consistent numbers across sections, no contradictions",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "coherence_drift"
+          ]
+        },
+        {
+          "priority": 4,
+          "action": "Ensure fellowship pipeline uses section archetypes, remove budget references from prompts, strengthen anti-proposal voice instructions",
+          "expectedImpact": "Fellowship essays read as personal narratives, not org grant proposals",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "proposal_framing_leak"
+          ]
+        },
+        {
+          "priority": 5,
+          "action": "Add category-aware prompt templates that inject category-specific requirements into generation",
+          "expectedImpact": "Proposals tailored to category expectations",
+          "effortEstimate": "high",
+          "relatedFailureModes": [
+            "missing_category_signal"
+          ]
+        }
+      ],
+      "proposalRunId": "91c41dbe-7d1f-4e10-81c5-004ad7d66fa1",
+      "sectionResults": []
+    },
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-ashoka-changemaker-2026",
+      "latencyMs": 145121,
+      "passed": false,
+      "orchestratorStages": {
+        "fitScore": 53,
+        "fitDecision": "no",
+        "gmailBlocks": 0,
+        "budgetEnvelope": {
+          "total": 3324999,
+          "currency": "INR",
+          "months": 12
+        },
+        "webEvidenceChunks": 0,
+        "proposalSections": 6
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "min_section_count: PASS — 6 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: FAIL — No proposal content found - only database errors"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "beneficiary_count_consistent: FAIL — beneficiary_count found in 0 sections (need 3)",
+            "budget_total_matches_summary: FAIL — No budget content found in section"
+          ]
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "named_locations: FAIL — No valid content found in section",
+            "specific_numbers: FAIL — No content found - only database error messages",
+            "low_hollow_phrases: PASS — No hollow phrases found"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "toc_present: FAIL — No content - only database error messages",
+            "measurable_outcomes: FAIL — No measurable outcomes found in section text",
+            "activities_outputs_chain: FAIL — No proposal content found - only database errors"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "funder_named: FAIL — No funder named in error messages",
+            "no_boasting: FAIL — No valid content to evaluate",
+            "first_person_voice_singular: FAIL — 0% sections use singular first-person voice (0/6, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — No partnership claims found in error text"
+          ]
+        }
+      ],
+      "coreScore": 0.43,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": true,
+          "evidence": "6 sections checked, all within word limits"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "cross_section_deduplication",
+          "passed": false,
+          "evidence": "Excessive overlap: \"Engagement with Systems Change\" ↔ \"Motivation & Origin Story\": 83% 3-gram overlap; \"Engagement with Systems Change\" ↔ \"Leadership Journey\": 88% 3-gram overlap; \"Engagement with Systems Change\" ↔ \"Contribution to Fellowship Community\": 79% 3-gram overlap; \"Engagement with Systems Change\" ↔ \"Career Direction & Fellowship Impact\": 79% 3-gram overlap; \"Engagement with Systems Change\" ↔ \"Research & Learning Agenda\": 83% 3-gram overlap; \"Motivation & Origin Story\" ↔ \"Leadership Journey\": 88% 3-gram overlap; \"Motivation & Origin Story\" ↔ \"Contribution to Fellowship Community\": 83% 3-gram overlap; \"Motivation & Origin Story\" ↔ \"Career Direction & Fellowship Impact\": 83% 3-gram overlap; \"Motivation & Origin Story\" ↔ \"Research & Learning Agenda\": 83% 3-gram overlap; \"Leadership Journey\" ↔ \"Contribution to Fellowship Community\": 88% 3-gram overlap; \"Leadership Journey\" ↔ \"Career Direction & Fellowship Impact\": 88% 3-gram overlap; \"Leadership Journey\" ↔ \"Research & Learning Agenda\": 88% 3-gram overlap; \"Contribution to Fellowship Community\" ↔ \"Career Direction & Fellowship Impact\": 79% 3-gram overlap; \"Contribution to Fellowship Community\" ↔ \"Research & Learning Agenda\": 83% 3-gram overlap; \"Career Direction & Fellowship Impact\" ↔ \"Research & Learning Agenda\": 83% 3-gram overlap"
+        },
+        {
+          "checkId": "no_budget_language",
+          "passed": true,
+          "evidence": "No budget/financial language found"
+        },
+        {
+          "checkId": "no_raw_tags",
+          "passed": true,
+          "evidence": "No template artifacts found"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": false,
+          "evidence": "No narrative content found - only database errors"
+        },
+        {
+          "checkId": "authenticity",
+          "passed": false,
+          "evidence": "No authentic personal content present"
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": false,
+          "evidence": "No leadership content provided"
+        },
+        {
+          "checkId": "research_plan",
+          "passed": false,
+          "evidence": "No research agenda articulated"
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": false,
+          "evidence": "No track record information included"
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": false,
+          "evidence": "No personal anecdotes found"
+        },
+        {
+          "checkId": "not_too_proposal_like",
+          "passed": false,
+          "evidence": "No essay content to evaluate"
+        }
+      ],
+      "categoryScore": 0.33,
+      "failureModes": [
+        {
+          "id": "thin_sections",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "6 sections have fewer than 100 words",
+          "rootCause": "Insufficient context or evidence for LLM to generate substantive content",
+          "affectedSections": [
+            "Engagement with Systems Change",
+            "Motivation & Origin Story",
+            "Leadership Journey",
+            "Contribution to Fellowship Community",
+            "Career Direction & Fellowship Impact",
+            "Research & Learning Agenda"
+          ]
+        },
+        {
+          "id": "evidence_gap",
+          "severity": "major",
+          "stage": "evidence_retrieval",
+          "symptom": "Only 0 citations across 6 sections",
+          "rootCause": "KB evidence not retrieved or not incorporated into generation prompts",
+          "affectedSections": [
+            "Engagement with Systems Change",
+            "Motivation & Origin Story",
+            "Leadership Journey",
+            "Contribution to Fellowship Community",
+            "Career Direction & Fellowship Impact",
+            "Research & Learning Agenda"
+          ]
+        },
+        {
+          "id": "coherence_drift",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Beneficiary count varies across sections",
+          "rootCause": "Sections generated independently without shared context injection",
+          "affectedSections": [
+            "Engagement with Systems Change",
+            "Motivation & Origin Story",
+            "Leadership Journey",
+            "Contribution to Fellowship Community",
+            "Career Direction & Fellowship Impact",
+            "Research & Learning Agenda"
+          ]
+        },
+        {
+          "id": "proposal_framing_leak",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Fellowship essay reads like an organizational grant proposal (budget justifications, ToC frameworks, deliverable tables)",
+          "rootCause": "ProposalService patterns leaking into fellowship pipeline, or LLM defaulting to grant-writing style",
+          "affectedSections": [
+            "Engagement with Systems Change",
+            "Motivation & Origin Story",
+            "Leadership Journey",
+            "Contribution to Fellowship Community",
+            "Career Direction & Fellowship Impact",
+            "Research & Learning Agenda"
+          ]
+        },
+        {
+          "id": "missing_category_signal",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "8 of 12 category-specific checks failed",
+          "rootCause": "Proposal not tailored for fellowship category requirements",
+          "affectedSections": [
+            "all"
+          ]
+        }
+      ],
+      "improvementPlan": [
+        {
+          "priority": 1,
+          "action": "Increase evidence retrieval limit per section, add more KB documents, or improve section prompts with more context",
+          "expectedImpact": "Richer sections with 200+ words and specific details",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "thin_sections"
+          ]
+        },
+        {
+          "priority": 2,
+          "action": "Verify KB has relevant documents indexed, check embedding quality, increase retrieval top-k",
+          "expectedImpact": "More citations per section, better evidence-backed claims",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "evidence_gap"
+          ]
+        },
+        {
+          "priority": 3,
+          "action": "Inject shared context (beneficiary count, budget total, geography) into all section generation prompts",
+          "expectedImpact": "Consistent numbers across sections, no contradictions",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "coherence_drift"
+          ]
+        },
+        {
+          "priority": 4,
+          "action": "Ensure fellowship pipeline uses section archetypes, remove budget references from prompts, strengthen anti-proposal voice instructions",
+          "expectedImpact": "Fellowship essays read as personal narratives, not org grant proposals",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "proposal_framing_leak"
+          ]
+        },
+        {
+          "priority": 5,
+          "action": "Add category-aware prompt templates that inject category-specific requirements into generation",
+          "expectedImpact": "Proposals tailored to category expectations",
+          "effortEstimate": "high",
+          "relatedFailureModes": [
+            "missing_category_signal"
+          ]
+        }
+      ],
+      "proposalRunId": "1ae3cebc-3243-4174-b3d8-474ce702d90e",
+      "sectionResults": []
+    },
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-wellcome-health-2026",
+      "latencyMs": 145049,
+      "passed": false,
+      "orchestratorStages": {
+        "fitScore": 39,
+        "fitDecision": "no",
+        "gmailBlocks": 0,
+        "budgetEnvelope": {
+          "total": 3324999,
+          "currency": "INR",
+          "months": 24
+        },
+        "webEvidenceChunks": 0,
+        "proposalSections": 5
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "min_section_count: FAIL — 5 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: FAIL — No proposal content found - only database errors"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "beneficiary_count_consistent: FAIL — beneficiary_count found in 0 sections (need 3)",
+            "budget_total_matches_summary: FAIL — No budget content found in section"
+          ]
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "named_locations: FAIL — No valid content found in section",
+            "specific_numbers: FAIL — No proposal content found - only database error messages",
+            "low_hollow_phrases: PASS — No hollow phrases found"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0,
+          "details": [
+            "toc_present: FAIL — No content found - only database errors",
+            "measurable_outcomes: FAIL — No measurable outcomes found in section text",
+            "activities_outputs_chain: FAIL — No proposal content found - only database errors"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "funder_named: FAIL — No funder named in error messages",
+            "no_boasting: PASS — No content to evaluate for boasting",
+            "first_person_voice_singular: FAIL — 0% sections use singular first-person voice (0/5, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — No partnership claims found in error text"
+          ]
+        }
+      ],
+      "coreScore": 0.4,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": true,
+          "evidence": "5 sections checked, all within word limits"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "cross_section_deduplication",
+          "passed": false,
+          "evidence": "Excessive overlap: \"Research Question or Learning Agenda\" ↔ \"Career Plans & Fellowship Acceleration\": 79% 3-gram overlap; \"Research Question or Learning Agenda\" ↔ \"Contribution to Fellow Cohort\": 79% 3-gram overlap; \"Research Question or Learning Agenda\" ↔ \"Motivation for Health Equity Work\": 75% 3-gram overlap; \"Research Question or Learning Agenda\" ↔ \"Leadership in Complex Health Systems\": 75% 3-gram overlap; \"Career Plans & Fellowship Acceleration\" ↔ \"Contribution to Fellow Cohort\": 79% 3-gram overlap; \"Career Plans & Fellowship Acceleration\" ↔ \"Motivation for Health Equity Work\": 79% 3-gram overlap; \"Career Plans & Fellowship Acceleration\" ↔ \"Leadership in Complex Health Systems\": 79% 3-gram overlap; \"Contribution to Fellow Cohort\" ↔ \"Motivation for Health Equity Work\": 79% 3-gram overlap; \"Contribution to Fellow Cohort\" ↔ \"Leadership in Complex Health Systems\": 79% 3-gram overlap; \"Motivation for Health Equity Work\" ↔ \"Leadership in Complex Health Systems\": 75% 3-gram overlap"
+        },
+        {
+          "checkId": "no_budget_language",
+          "passed": true,
+          "evidence": "No budget/financial language found"
+        },
+        {
+          "checkId": "no_raw_tags",
+          "passed": true,
+          "evidence": "No template artifacts found"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": false,
+          "evidence": "No narrative content found"
+        },
+        {
+          "checkId": "authenticity",
+          "passed": false,
+          "evidence": "No authentic content found"
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": false,
+          "evidence": "No leadership content found"
+        },
+        {
+          "checkId": "research_plan",
+          "passed": false,
+          "evidence": "No research plan found"
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": false,
+          "evidence": "No track record found"
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": false,
+          "evidence": "No anecdotes found"
+        },
+        {
+          "checkId": "not_too_proposal_like",
+          "passed": false,
+          "evidence": "No proposal content found"
+        }
+      ],
+      "categoryScore": 0.33,
+      "failureModes": [
+        {
+          "id": "thin_sections",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "5 sections have fewer than 100 words",
+          "rootCause": "Insufficient context or evidence for LLM to generate substantive content",
+          "affectedSections": [
+            "Research Question or Learning Agenda",
+            "Career Plans & Fellowship Acceleration",
+            "Contribution to Fellow Cohort",
+            "Motivation for Health Equity Work",
+            "Leadership in Complex Health Systems"
+          ]
+        },
+        {
+          "id": "evidence_gap",
+          "severity": "major",
+          "stage": "evidence_retrieval",
+          "symptom": "Only 0 citations across 5 sections",
+          "rootCause": "KB evidence not retrieved or not incorporated into generation prompts",
+          "affectedSections": [
+            "Research Question or Learning Agenda",
+            "Career Plans & Fellowship Acceleration",
+            "Contribution to Fellow Cohort",
+            "Motivation for Health Equity Work",
+            "Leadership in Complex Health Systems"
+          ]
+        },
+        {
+          "id": "coherence_drift",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Beneficiary count varies across sections",
+          "rootCause": "Sections generated independently without shared context injection",
+          "affectedSections": [
+            "Research Question or Learning Agenda",
+            "Career Plans & Fellowship Acceleration",
+            "Contribution to Fellow Cohort",
+            "Motivation for Health Equity Work",
+            "Leadership in Complex Health Systems"
+          ]
+        },
+        {
+          "id": "proposal_framing_leak",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Fellowship essay reads like an organizational grant proposal (budget justifications, ToC frameworks, deliverable tables)",
+          "rootCause": "ProposalService patterns leaking into fellowship pipeline, or LLM defaulting to grant-writing style",
+          "affectedSections": [
+            "Research Question or Learning Agenda",
+            "Career Plans & Fellowship Acceleration",
+            "Contribution to Fellow Cohort",
+            "Motivation for Health Equity Work",
+            "Leadership in Complex Health Systems"
+          ]
+        },
+        {
+          "id": "missing_category_signal",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "8 of 12 category-specific checks failed",
+          "rootCause": "Proposal not tailored for fellowship category requirements",
+          "affectedSections": [
+            "all"
+          ]
+        }
+      ],
+      "improvementPlan": [
+        {
+          "priority": 1,
+          "action": "Increase evidence retrieval limit per section, add more KB documents, or improve section prompts with more context",
+          "expectedImpact": "Richer sections with 200+ words and specific details",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "thin_sections"
+          ]
+        },
+        {
+          "priority": 2,
+          "action": "Verify KB has relevant documents indexed, check embedding quality, increase retrieval top-k",
+          "expectedImpact": "More citations per section, better evidence-backed claims",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "evidence_gap"
+          ]
+        },
+        {
+          "priority": 3,
+          "action": "Inject shared context (beneficiary count, budget total, geography) into all section generation prompts",
+          "expectedImpact": "Consistent numbers across sections, no contradictions",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "coherence_drift"
+          ]
+        },
+        {
+          "priority": 4,
+          "action": "Ensure fellowship pipeline uses section archetypes, remove budget references from prompts, strengthen anti-proposal voice instructions",
+          "expectedImpact": "Fellowship essays read as personal narratives, not org grant proposals",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "proposal_framing_leak"
+          ]
+        },
+        {
+          "priority": 5,
+          "action": "Add category-aware prompt templates that inject category-specific requirements into generation",
+          "expectedImpact": "Proposals tailored to category expectations",
+          "effortEstimate": "high",
+          "relatedFailureModes": [
+            "missing_category_signal"
+          ]
+        }
+      ],
+      "proposalRunId": "0495fc31-3af0-461a-a6b3-7ec453309062",
+      "sectionResults": []
+    }
+  ],
+  "crossCuttingSummary": {
+    "avgCoreScore": 0.42,
+    "avgCategoryScore": 0.33,
+    "commonFailureModes": [
+      {
+        "id": "thin_sections",
+        "count": 3
+      },
+      {
+        "id": "evidence_gap",
+        "count": 3
+      },
+      {
+        "id": "coherence_drift",
+        "count": 3
+      },
+      {
+        "id": "proposal_framing_leak",
+        "count": 3
+      },
+      {
+        "id": "missing_category_signal",
+        "count": 3
+      }
+    ],
+    "totalImprovementActions": 15
+  },
+  "latencyMs": {
+    "total": 458262,
+    "perCategory": {
+      "fellowship": 145049
+    }
+  }
+}

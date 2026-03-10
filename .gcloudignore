@@ -1,0 +1,56 @@
+# Root-level .gcloudignore for builds submitted from repo root
+# (cloudbuild.yaml uses paths like suchi_phase1_pack/apps/api/Dockerfile)
+
+# Git
+.git/
+
+# Dependencies (rebuilt inside Docker)
+**/node_modules/
+**/venv/
+**/__pycache__/
+
+# Build outputs (rebuilt in Cloud Build)
+**/dist/
+**/build/
+**/*.tsbuildinfo
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+.claude/
+**/.claude/
+
+# OS
+.DS_Store
+
+# Logs
+**/*.log
+
+# Knowledge base (not needed for Docker build)
+suchi_phase1_pack/kb/
+suchi_phase1_pack/kb_sources/
+
+# Test/eval artifacts
+suchi_phase1_pack/eval/results/
+suchi_phase1_pack/eval/reports/
+suchi_phase1_pack/apps/web/playwright-report/
+suchi_phase1_pack/apps/web/test-results/
+
+# Docs (not needed in build)
+suchi_phase1_pack/docs/
+
+# Landing page (separate deployment)
+suchi_phase1_pack/apps/landing/
+
+# Funding apps: exclude only node_modules (source needed for funding build)
+suchi_phase1_pack/apps/funding-api/node_modules/
+suchi_phase1_pack/apps/funding-web/node_modules/
+
+# Scripts (not needed for build)
+suchi_phase1_pack/scripts/

@@ -1,0 +1,669 @@
+{
+  "runAt": "2026-03-09T10:17:02.104Z",
+  "apiBaseUrl": "https://funding-api-lxiveognla-uc.a.run.app",
+  "totalCategories": 3,
+  "passedCategories": 3,
+  "failedCategories": 0,
+  "categoryResults": [
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-digital-minds-2026",
+      "latencyMs": 244937,
+      "passed": true,
+      "orchestratorStages": {
+        "fitScore": 30,
+        "fitDecision": "no",
+        "gmailBlocks": 0,
+        "budgetEnvelope": {
+          "total": 396667,
+          "currency": "INR",
+          "months": 1
+        },
+        "webEvidenceChunks": 15,
+        "proposalSections": 7
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "min_section_count: PASS — 7 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: FAIL — No mention of budget, timeline, eligibility, or deliverables"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "specific_numbers: PASS — 476 students directly, 511 through partnerships, ~260 adolescent girls",
+            "low_hollow_phrases: PASS — No hollow phrases found"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "toc_present: PASS — inputs → activities → outputs → outcomes → impact narrative present",
+            "measurable_outcomes: FAIL — No measurable outcomes with indicators found",
+            "activities_outputs_chain: PASS — Building AI assistants as survival strategy leads to refined tools"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "funder_named: FAIL — No funder named in section text",
+            "no_boasting: PASS — No unsupported superlatives or boastful claims found.",
+            "first_person_voice_singular: PASS — 100% sections use singular first-person voice (7/7, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — No partnership claims found in section"
+          ]
+        }
+      ],
+      "coreScore": 0.85,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": false,
+          "evidence": "Word limit exceeded: \"Career Plans & Fellowship Impact\": 337 words (limit 200, max 300)"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "cross_section_deduplication",
+          "passed": true,
+          "evidence": "2 sections checked, all below 30% overlap"
+        },
+        {
+          "checkId": "no_budget_language",
+          "passed": true,
+          "evidence": "No budget/financial language found"
+        },
+        {
+          "checkId": "no_raw_tags",
+          "passed": true,
+          "evidence": "No template artifacts found"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": true,
+          "evidence": "My engagement with the 'digital minds' framing began long before I knew it had a name."
+        },
+        {
+          "checkId": "authenticity",
+          "passed": true,
+          "evidence": "I saw it first in the faces of students at my KHEL centres, struggling with textbooks designed for a different world."
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": true,
+          "evidence": "I returned from my MPhil in Education in 2016 with frameworks like Sen's Capabilities Approach buzzing in my head."
+        },
+        {
+          "checkId": "research_plan",
+          "passed": true,
+          "evidence": "How do I ensure these AI tools remain accessible to the communities that need them most, without creating new dependencies or reinforcing existing inequalities?"
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": true,
+          "evidence": "I reach over 476 students directly through KHEL centres and another 511 through government school partnerships."
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": true,
+          "evidence": "My MPhil at Cambridge (2015-2016) gave me a language for this intuition — Amartya Sen's Capabilities Approach."
+        },
+        {
+          "checkId": "not_too_proposal_like",
+          "passed": true,
+          "evidence": "My engagement with the 'digital minds' framing began long before I knew it had a name."
+        }
+      ],
+      "categoryScore": 0.92,
+      "failureModes": [
+        {
+          "id": "thin_sections",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "5 sections have fewer than 100 words",
+          "rootCause": "Insufficient context or evidence for LLM to generate substantive content",
+          "affectedSections": [
+            "Availability Confirmation",
+            "Focus Areas (Interest Ratings)",
+            "Fields of Expertise",
+            "Online Course Interest",
+            "Additional Comments"
+          ]
+        },
+        {
+          "id": "evidence_gap",
+          "severity": "major",
+          "stage": "evidence_retrieval",
+          "symptom": "Only 0 citations across 7 sections",
+          "rootCause": "KB evidence not retrieved or not incorporated into generation prompts",
+          "affectedSections": [
+            "Engagement with Digital Minds",
+            "Availability Confirmation",
+            "Career Plans & Fellowship Impact",
+            "Focus Areas (Interest Ratings)",
+            "Fields of Expertise",
+            "Online Course Interest",
+            "Additional Comments"
+          ]
+        },
+        {
+          "id": "coherence_drift",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Beneficiary count varies across sections",
+          "rootCause": "Sections generated independently without shared context injection",
+          "affectedSections": [
+            "Engagement with Digital Minds",
+            "Availability Confirmation",
+            "Career Plans & Fellowship Impact",
+            "Focus Areas (Interest Ratings)",
+            "Fields of Expertise",
+            "Online Course Interest",
+            "Additional Comments"
+          ]
+        }
+      ],
+      "improvementPlan": [
+        {
+          "priority": 1,
+          "action": "Increase evidence retrieval limit per section, add more KB documents, or improve section prompts with more context",
+          "expectedImpact": "Richer sections with 200+ words and specific details",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "thin_sections"
+          ]
+        },
+        {
+          "priority": 2,
+          "action": "Verify KB has relevant documents indexed, check embedding quality, increase retrieval top-k",
+          "expectedImpact": "More citations per section, better evidence-backed claims",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "evidence_gap"
+          ]
+        },
+        {
+          "priority": 3,
+          "action": "Inject shared context (beneficiary count, budget total, geography) into all section generation prompts",
+          "expectedImpact": "Consistent numbers across sections, no contradictions",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "coherence_drift"
+          ]
+        }
+      ],
+      "proposalRunId": "fd87f67f-c543-48a3-8236-51ceb14a3d19",
+      "sectionResults": []
+    },
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-ashoka-changemaker-2026",
+      "latencyMs": 303959,
+      "passed": true,
+      "orchestratorStages": {
+        "fitScore": 63,
+        "fitDecision": "maybe",
+        "gmailBlocks": 2,
+        "budgetEnvelope": {
+          "total": 3324999,
+          "currency": "INR",
+          "months": 12
+        },
+        "webEvidenceChunks": 15,
+        "proposalSections": 6
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "min_section_count: PASS — 6 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: FAIL — No budget, timeline, eligibility, or deliverables mentioned"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "specific_numbers: PASS — Five years from now, 15 years of experience, 70 students, 44-member team, 2010, 2016, 2023, 2024",
+            "low_hollow_phrases: PASS — No hollow phrases found"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "toc_present: FAIL — No structured ToC or logical framework present",
+            "measurable_outcomes: FAIL — No measurable outcomes with indicators found",
+            "activities_outputs_chain: PASS — Research AI tools, build evidence base, connect with network, access mentorship, scale solutions"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "funder_named: FAIL — No funder named in the provided sections",
+            "no_boasting: PASS — No unsupported superlatives found",
+            "first_person_voice_singular: PASS — 100% sections use singular first-person voice (6/6, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — Partnerships with Glific and Bihar Education Department mentioned"
+          ]
+        }
+      ],
+      "coreScore": 0.8,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": true,
+          "evidence": "6 sections checked, all within word limits"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "cross_section_deduplication",
+          "passed": true,
+          "evidence": "6 sections checked, all below 30% overlap"
+        },
+        {
+          "checkId": "no_budget_language",
+          "passed": true,
+          "evidence": "No budget/financial language found"
+        },
+        {
+          "checkId": "no_raw_tags",
+          "passed": true,
+          "evidence": "No template artifacts found"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": true,
+          "evidence": "Origin story: Cambridge lecture, email from Patna. Turning point: Mother's cancer death. Current mission: Building AI tools. Future vision: AI as essential infrastructure."
+        },
+        {
+          "checkId": "authenticity",
+          "passed": true,
+          "evidence": "Specific personal details: mother Suchitra's cancer death, Cambridge lecture, resignation letter"
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": true,
+          "evidence": "Left corporate job, built 44-member team, embraced AI after grant loss, evolved from service to systems"
+        },
+        {
+          "checkId": "research_plan",
+          "passed": true,
+          "evidence": "Evaluate AI grant writing success, ensure equitable AI learning tools"
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": false,
+          "evidence": "No specific numbers served, programs launched, or awards mentioned"
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": true,
+          "evidence": "Cambridge lecture email, mother's cancer death, losing grant in 2023"
+        },
+        {
+          "checkId": "not_too_proposal_like",
+          "passed": true,
+          "evidence": "Personal narrative style with emotional moments, not formal proposal language"
+        }
+      ],
+      "categoryScore": 0.92,
+      "failureModes": [
+        {
+          "id": "evidence_gap",
+          "severity": "major",
+          "stage": "evidence_retrieval",
+          "symptom": "Only 0 citations across 6 sections",
+          "rootCause": "KB evidence not retrieved or not incorporated into generation prompts",
+          "affectedSections": [
+            "Career Direction & Fellowship Impact",
+            "Contribution to Fellowship Community",
+            "Motivation & Origin Story",
+            "Leadership Journey",
+            "Research & Learning Agenda",
+            "Engagement with Systems Change"
+          ]
+        },
+        {
+          "id": "coherence_drift",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Beneficiary count varies across sections",
+          "rootCause": "Sections generated independently without shared context injection",
+          "affectedSections": [
+            "Career Direction & Fellowship Impact",
+            "Contribution to Fellowship Community",
+            "Motivation & Origin Story",
+            "Leadership Journey",
+            "Research & Learning Agenda",
+            "Engagement with Systems Change"
+          ]
+        }
+      ],
+      "improvementPlan": [
+        {
+          "priority": 1,
+          "action": "Verify KB has relevant documents indexed, check embedding quality, increase retrieval top-k",
+          "expectedImpact": "More citations per section, better evidence-backed claims",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "evidence_gap"
+          ]
+        },
+        {
+          "priority": 2,
+          "action": "Inject shared context (beneficiary count, budget total, geography) into all section generation prompts",
+          "expectedImpact": "Consistent numbers across sections, no contradictions",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "coherence_drift"
+          ]
+        }
+      ],
+      "proposalRunId": "9cb95778-77b1-42f6-b70e-191e5f583868",
+      "sectionResults": []
+    },
+    {
+      "category": "fellowship",
+      "opportunityId": "eval-cat2-wellcome-health-2026",
+      "latencyMs": 221438,
+      "passed": true,
+      "orchestratorStages": {
+        "fitScore": 49,
+        "fitDecision": "no",
+        "gmailBlocks": 0,
+        "budgetEnvelope": {
+          "total": 3324999,
+          "currency": "INR",
+          "months": 24
+        },
+        "webEvidenceChunks": 15,
+        "proposalSections": 5
+      },
+      "coreScorecard": [
+        {
+          "dimension": "completeness",
+          "weight": 0.2,
+          "passed": false,
+          "score": 0.3333333333333333,
+          "details": [
+            "min_section_count: FAIL — 5 substantive sections (need 6)",
+            "no_error_sections: PASS — No error sections found",
+            "rfp_coverage: FAIL — No mention of budget, timeline, eligibility, or deliverables"
+          ]
+        },
+        {
+          "dimension": "internal_coherence",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "specificity",
+          "weight": 0.15,
+          "passed": true,
+          "score": 0.5,
+          "details": [
+            "specific_numbers: FAIL — No specific numbers found in section text",
+            "low_hollow_phrases: PASS — No hollow phrases found"
+          ]
+        },
+        {
+          "dimension": "impact_logic",
+          "weight": 0.15,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "toc_present: PASS — Inputs: fellowship skills, network. Activities: study AI deployments, build/test tools. Outputs: AI tools. Outcomes: improved capabilities. Impact: health equity.",
+            "measurable_outcomes: FAIL — No measurable outcomes with indicators found",
+            "activities_outputs_chain: PASS — Study AI deployments, build/test tools, track usage, gather feedback, measure impact"
+          ]
+        },
+        {
+          "dimension": "feasibility",
+          "weight": 0.15,
+          "passed": true,
+          "score": 1,
+          "details": []
+        },
+        {
+          "dimension": "tone_professionalism",
+          "weight": 0.1,
+          "passed": true,
+          "score": 0.6666666666666666,
+          "details": [
+            "funder_named: FAIL — No funder named in the section text",
+            "no_boasting: PASS — No unsupported superlatives or boastful claims found",
+            "first_person_voice_singular: PASS — 100% sections use singular first-person voice (5/5, need 80%)"
+          ]
+        },
+        {
+          "dimension": "compliance_risk",
+          "weight": 0.1,
+          "passed": true,
+          "score": 1,
+          "details": [
+            "no_false_partnerships: PASS — No partnership claims found in section"
+          ]
+        }
+      ],
+      "coreScore": 0.71,
+      "categoryScorecard": [
+        {
+          "checkId": "word_limit_compliance",
+          "passed": true,
+          "evidence": "5 sections checked, all within word limits"
+        },
+        {
+          "checkId": "no_org_voice_leakage",
+          "passed": true,
+          "evidence": "No org-voice leakage detected"
+        },
+        {
+          "checkId": "cross_section_deduplication",
+          "passed": true,
+          "evidence": "5 sections checked, all below 30% overlap"
+        },
+        {
+          "checkId": "no_budget_language",
+          "passed": true,
+          "evidence": "No budget/financial language found"
+        },
+        {
+          "checkId": "no_raw_tags",
+          "passed": true,
+          "evidence": "No template artifacts found"
+        },
+        {
+          "checkId": "narrative_arc",
+          "passed": true,
+          "evidence": "Origin: Cambridge return. Turning point: Mother's cancer. Current: Running two orgs. Future: Scale AI tools."
+        },
+        {
+          "checkId": "authenticity",
+          "passed": true,
+          "evidence": "Watching my mother navigate cancer diagnosis in Bihar"
+        },
+        {
+          "checkId": "leadership_trajectory",
+          "passed": true,
+          "evidence": "Co-founded Suchitra Cancer Care Foundation after mother's experience"
+        },
+        {
+          "checkId": "research_plan",
+          "passed": true,
+          "evidence": "Study AI deployments, build/test tools, adapt Capabilities Approach"
+        },
+        {
+          "checkId": "track_record_synthesis",
+          "passed": false,
+          "evidence": "No specific numbers served, programs launched, or awards mentioned"
+        },
+        {
+          "checkId": "personal_anecdote_present",
+          "passed": true,
+          "evidence": "Mother's cancer diagnosis in Bihar, losing grant in 2023"
+        },
+        {
+          "checkId": "not_too_proposal_like",
+          "passed": true,
+          "evidence": "Personal narrative style with emotional connection"
+        }
+      ],
+      "categoryScore": 0.92,
+      "failureModes": [
+        {
+          "id": "evidence_gap",
+          "severity": "major",
+          "stage": "evidence_retrieval",
+          "symptom": "Only 0 citations across 5 sections",
+          "rootCause": "KB evidence not retrieved or not incorporated into generation prompts",
+          "affectedSections": [
+            "Career Plans & Fellowship Acceleration",
+            "Motivation for Health Equity Work",
+            "Research Question or Learning Agenda",
+            "Leadership in Complex Health Systems",
+            "Contribution to Fellow Cohort"
+          ]
+        },
+        {
+          "id": "coherence_drift",
+          "severity": "major",
+          "stage": "proposal_generation",
+          "symptom": "Beneficiary count varies across sections",
+          "rootCause": "Sections generated independently without shared context injection",
+          "affectedSections": [
+            "Career Plans & Fellowship Acceleration",
+            "Motivation for Health Equity Work",
+            "Research Question or Learning Agenda",
+            "Leadership in Complex Health Systems",
+            "Contribution to Fellow Cohort"
+          ]
+        }
+      ],
+      "improvementPlan": [
+        {
+          "priority": 1,
+          "action": "Verify KB has relevant documents indexed, check embedding quality, increase retrieval top-k",
+          "expectedImpact": "More citations per section, better evidence-backed claims",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "evidence_gap"
+          ]
+        },
+        {
+          "priority": 2,
+          "action": "Inject shared context (beneficiary count, budget total, geography) into all section generation prompts",
+          "expectedImpact": "Consistent numbers across sections, no contradictions",
+          "effortEstimate": "medium",
+          "relatedFailureModes": [
+            "coherence_drift"
+          ]
+        }
+      ],
+      "proposalRunId": "6ffc0ec7-f142-4fed-b3c4-18902efedb51",
+      "sectionResults": []
+    }
+  ],
+  "crossCuttingSummary": {
+    "avgCoreScore": 0.79,
+    "avgCategoryScore": 0.92,
+    "commonFailureModes": [
+      {
+        "id": "evidence_gap",
+        "count": 3
+      },
+      {
+        "id": "coherence_drift",
+        "count": 3
+      },
+      {
+        "id": "thin_sections",
+        "count": 1
+      }
+    ],
+    "totalImprovementActions": 7
+  },
+  "latencyMs": {
+    "total": 776725,
+    "perCategory": {
+      "fellowship": 221438
+    }
+  }
+}
