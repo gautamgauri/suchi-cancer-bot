@@ -107,11 +107,11 @@ Ask the user: "Run `npm run kb:ingest` in apps/api/ to ingest the new article in
 
 If yes:
 ```bash
-cd /home/gauta/suchi_repo/suchi_phase1_pack/apps/api && npm run kb:ingest
+cd /home/gauta/suchi_repo/apps/api && npm run kb:ingest
 ```
 
 ## Constants
 
-- **KB root:** `/home/gauta/suchi_repo/suchi_phase1_pack/kb/`
-- **Manifest:** `/home/gauta/suchi_repo/suchi_phase1_pack/kb/manifest.json`
+- **KB root:** `/home/gauta/suchi_repo/kb/`
+- **Manifest:** `/home/gauta/suchi_repo/kb/manifest.json`
 - **Schema version:** `2.0`

@@ -1,56 +1,104 @@
-# Root-level .gcloudignore for builds submitted from repo root
-# (cloudbuild.yaml uses paths like suchi_phase1_pack/apps/api/Dockerfile)
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore.
 
-# Git
-.git/
-
-# Dependencies (rebuilt inside Docker)
-**/node_modules/
-**/venv/
-**/__pycache__/
-
-# Build outputs (rebuilt in Cloud Build)
-**/dist/
-**/build/
-**/*.tsbuildinfo
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
 
 # Environment files
-**/.env
-**/.env.local
-**/.env.*.local
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs (will be rebuilt in Cloud Build)
+dist/
+build/
+*.tsbuildinfo
 
 # IDE
 .vscode/
 .idea/
-.cursor/
-.claude/
-**/.claude/
+*.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Git
+.git/
+.gitignore
 
 # Logs
-**/*.log
+*.log
+logs/
 
-# Knowledge base (not needed for Docker build)
-suchi_phase1_pack/kb/
-suchi_phase1_pack/kb_sources/
+# Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Test/eval artifacts
-suchi_phase1_pack/eval/results/
-suchi_phase1_pack/eval/reports/
-suchi_phase1_pack/apps/web/playwright-report/
-suchi_phase1_pack/apps/web/test-results/
+# NCI Ingestion artifacts
+scripts/nci-ingestion/nci_urls.json
+scripts/nci-ingestion/extracted_content.json
+scripts/nci-ingestion/processed_files.json
+scripts/nci-ingestion/test_*.json
 
-# Docs (not needed in build)
-suchi_phase1_pack/docs/
+# YouTube transcripts artifacts
+scripts/youtube-transcripts/transcripts/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Generated files
+*.generated.*
+
+# Documentation (keep in repo but don't need in build)
+docs/
+
+# Prisma migrations (already in repo, don't need to copy)
+apps/api/prisma/migrations/*.sql
+
+# Knowledge Base (large JSON files, not needed for Docker build)
+kb/
+kb_sources/
+
+# Test artifacts
+eval/results/
+apps/web/playwright-report/
+apps/web/test-results/
+
+# IDE and CI config (not needed in build context)
+.cursor/
+.github/
+.claude/
+
+# Eval code is NOT excluded: needed by cloudbuild.gated.yaml eval step
+# Only exclude eval results/reports
+eval/results/
+eval/reports/
 
 # Landing page (separate deployment)
-suchi_phase1_pack/apps/landing/
+apps/landing/
 
-# Funding apps: exclude only node_modules (source needed for funding build)
-suchi_phase1_pack/apps/funding-api/node_modules/
-suchi_phase1_pack/apps/funding-web/node_modules/
 
-# Scripts (not needed for build)
-suchi_phase1_pack/scripts/
+
+
+
+
+
+
+
+
+
+
+
+
+

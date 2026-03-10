@@ -39,18 +39,18 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: suchi_phase1_pack/eval/package-lock.json
+          cache-dependency-path: eval/package-lock.json
 
       - name: Install eval dependencies
-        working-directory: suchi_phase1_pack/eval
+        working-directory: eval
         run: npm ci
 
       - name: Build eval package
-        working-directory: suchi_phase1_pack/eval
+        working-directory: eval
         run: npm run build
 
       - name: Create reports directory
-        working-directory: suchi_phase1_pack/eval
+        working-directory: eval
         run: mkdir -p reports
 
       - name: Check API health
@@ -63,7 +63,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Tier1 Eval
-        working-directory: suchi_phase1_pack/eval
+        working-directory: eval
         env:
           EVAL_API_BASE_URL: ${{ github.event.inputs.api_url || 'https://suchi-api-lxiveognla-uc.a.run.app/v1' }}
           EVAL_LLM_PROVIDER: ${{ secrets.EVAL_LLM_PROVIDER || 'deepseek' }}
@@ -76,7 +76,7 @@ jobs:
         id: eval-run
 
       - name: Generate summary
-        working-directory: suchi_phase1_pack/eval
+        working-directory: eval
         if: always()
         run: |
           if [ -f "reports/tier1-report.json" ]; then
@@ -107,8 +107,8 @@ jobs:
         with:
           name: tier1-eval-report-${{ github.run_number }}
           path: |
-            suchi_phase1_pack/eval/reports/tier1-report.json
-            suchi_phase1_pack/eval/reports/tier1-*.json
+            eval/reports/tier1-report.json
+            eval/reports/tier1-*.json
           retention-days: 30
           if-no-files-found: warn
 
@@ -122,10 +122,10 @@ jobs:
           fi
           
           # Check if report exists and has reasonable metrics
-          if [ -f "suchi_phase1_pack/eval/reports/tier1-report.json" ]; then
+          if [ -f "eval/reports/tier1-report.json" ]; then
             node -e "
               const fs = require('fs');
-              const report = JSON.parse(fs.readFileSync('suchi_phase1_pack/eval/reports/tier1-report.json', 'utf8'));
+              const report = JSON.parse(fs.readFileSync('eval/reports/tier1-report.json', 'utf8'));
               const q = report.summary.retrievalQuality || {};
               
               // Count improved cases (top3TrustedPresence === true)
@@ -151,7 +151,7 @@ jobs:
       - name: Generate email report
         id: email-report
         if: always()
-        working-directory: suchi_phase1_pack/eval
+        working-directory: eval
         run: |
           if [ -f "reports/tier1-report.json" ]; then
             node -e "
@@ -230,5 +230,5 @@ jobs:
           subject: ${{ steps.email-report.outputs.email_subject || 'Suchi Daily Eval Report' }}
           to: gautamgauri@dikshafoundation.org
           from: ${{ secrets.SMTP_USERNAME }}
-          body: file://suchi_phase1_pack/eval/email-body.md
+          body: file://eval/email-body.md
           convert_markdown: true

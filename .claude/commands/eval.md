@@ -28,19 +28,19 @@ Store the value — it will be set as an environment variable for the eval run.
 ### 2. Install dependencies (if needed)
 
 ```bash
-cd /home/gauta/suchi_repo/suchi_phase1_pack/eval && npm install
+cd /home/gauta/suchi_repo/eval && npm install
 ```
 
 ### 3. Create reports directory
 
 ```bash
-mkdir -p /home/gauta/suchi_repo/suchi_phase1_pack/eval/reports
+mkdir -p /home/gauta/suchi_repo/eval/reports
 ```
 
 ### 4. Run tier1 eval
 
 ```bash
-cd /home/gauta/suchi_repo/suchi_phase1_pack/eval && \
+cd /home/gauta/suchi_repo/eval && \
   EVAL_API_BASE_URL="<target_url>" \
   DEEPSEEK_API_KEY="<key_from_step_1>" \
   npm run eval:tier1
@@ -86,7 +86,7 @@ Also list any cases where `passed === false`, showing their `id` and failure rea
 
 ## Constants
 
-- **Eval dir:** `/home/gauta/suchi_repo/suchi_phase1_pack/eval/`
+- **Eval dir:** `/home/gauta/suchi_repo/eval/`
 - **Report path:** `eval/reports/tier1-report.json`
 - **GCP Project:** `gen-lang-client-0202543132`
 - **NCI Dominance Threshold:** 90% (informational — the command reports but does not gate)

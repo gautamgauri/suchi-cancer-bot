@@ -15,25 +15,28 @@ Parse the mode from the argument. Default to `direct` if no argument is given.
 
 Standard production deployment using `cloudbuild.yaml`.
 
-This file uses paths like `suchi_phase1_pack/apps/api/Dockerfile`, so it must be submitted from the **repo root** (parent of `suchi_phase1_pack/`).
-
 Steps:
-1. Run `gcloud builds submit --config=suchi_phase1_pack/cloudbuild.yaml .` from `/home/gauta/suchi_repo/`
+1. Run `gcloud builds submit --config=cloudbuild.yaml .` from `/home/gauta/suchi_repo/`
 2. Stream build logs. If the build takes long, poll `gcloud builds list --limit=1` every 30 seconds until complete.
-3. After build succeeds, health-check the production API:
+3. After build succeeds, **promote the latest revision to 100% traffic**:
+   ```
+   # Get the latest revision name
+   LATEST=$(gcloud run revisions list --service=suchi-api --region=us-central1 --limit=1 --format='value(name)')
+   # Route all traffic to it
+   gcloud run services update-traffic suchi-api --region=us-central1 --to-revisions=$LATEST=100
+   ```
+4. Health-check the production API:
    ```
    curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health
    ```
-4. Report: build ID, duration, health check result.
+5. Report: build ID, duration, promoted revision name, health check result.
 
 ### Mode: `gated`
 
-Gated deployment using `cloudbuild.gated.yaml` — deploys a candidate revision at 0% traffic, runs tier1 eval, and promotes only if eval passes.
-
-This file uses `dir: 'apps/api'`, so it must be submitted from **suchi_phase1_pack/**.
+Gated deployment using `cloudbuild.gated.yaml` — deploys a candidate revision at 0% traffic, runs health check, and promotes only if healthy.
 
 Steps:
-1. Run `gcloud builds submit --config=cloudbuild.gated.yaml .` from `/home/gauta/suchi_repo/suchi_phase1_pack/`
+1. Run `gcloud builds submit --config=cloudbuild.gated.yaml .` from `/home/gauta/suchi_repo/`
 2. Stream build logs. If the build takes long, poll `gcloud builds list --limit=1` every 30 seconds until complete.
 3. After build succeeds, health-check the production API:
    ```
@@ -70,7 +73,6 @@ Steps:
 - **Web Service:** `suchi-web`
 - **Production URL:** `https://suchi-api-lxiveognla-uc.a.run.app/v1`
 - **Repo root:** `/home/gauta/suchi_repo/`
-- **Project dir:** `/home/gauta/suchi_repo/suchi_phase1_pack/`
 
 ## Output Format
 
