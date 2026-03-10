@@ -10,7 +10,7 @@ import {
 } from "@nestjs/common";
 import { EmailPipelineService } from "./email-pipeline.service";
 
-@Controller("v1/email-pipeline")
+@Controller("email-pipeline")
 export class EmailPipelineController {
   constructor(private readonly pipelineService: EmailPipelineService) {}
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional, Inject } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import {
@@ -8,6 +8,7 @@ import {
   WritePreviewContract,
 } from "../contracts/funding-contracts.types";
 import { GovernanceDeliveryGuard, WriteApprovalDecision } from "./governance-delivery.guard";
+import { GmailClientService } from "../gmail/gmail-client.service";
 
 export interface SendEmailOptions {
   subject: string;
@@ -45,7 +46,8 @@ export class EmailNotificationService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly governanceGuard: GovernanceDeliveryGuard
+    private readonly governanceGuard: GovernanceDeliveryGuard,
+    @Optional() @Inject(GmailClientService) private readonly gmailClient?: GmailClientService,
   ) {
     this.initTransporter();
 
@@ -55,16 +57,17 @@ export class EmailNotificationService {
     this.reviewRecipients = recipientsEnv
       ? recipientsEnv.split(",").map((e) => e.trim()).filter(Boolean)
       : [
+          "gautamgauri@dikshafoundation.org",
           "contact@dikshafoundation.org",
-          "nisha.kumari@dikshafoundation.org",
         ];
 
     this.fromAddress =
       this.configService.get<string>("SMTP_FROM") ||
       "Bodh AI Funding Bot <funding-bot@suchi.org>";
 
+    const transport = this.gmailClient?.isConfigured() ? "Gmail API" : this.transporter ? "SMTP" : "NONE";
     this.logger.log(
-      `Email notification service initialized. Recipients: ${this.reviewRecipients.join(", ")}`
+      `Email notification service initialized. Transport: ${transport}. Recipients: ${this.reviewRecipients.join(", ")}`
     );
   }
 
@@ -93,9 +96,10 @@ export class EmailNotificationService {
 
   /**
    * Check if email notifications are configured and ready to send.
+   * Returns true if either Gmail API or SMTP is available.
    */
   isConfigured(): boolean {
-    return this.transporter !== null;
+    return !!(this.gmailClient?.isConfigured()) || this.transporter !== null;
   }
 
   /**
@@ -110,9 +114,9 @@ export class EmailNotificationService {
    * The content is included directly in the email body.
    */
   async send(options: SendEmailOptions): Promise<DeliveryAttemptResult> {
-    if (!this.transporter) {
-      this.logger.warn("Email not sent - SMTP not configured");
-      return { sent: false, blocked: true, reason: "smtp_not_configured" };
+    if (!this.gmailClient?.isConfigured() && !this.transporter) {
+      this.logger.warn("Email not sent - neither Gmail API nor SMTP configured");
+      return { sent: false, blocked: true, reason: "no_transport_configured" };
     }
 
     if (this.reviewRecipients.length === 0) {
@@ -190,36 +194,49 @@ export class EmailNotificationService {
     }
 
     try {
-      const mailOptions: nodemailer.SendMailOptions = {
-        from: this.fromAddress,
-        to: effectiveRecipients.join(", "),
-        subject: options.subject,
-      };
+      let messageId: string;
 
-      if (options.isHtml) {
-        mailOptions.html = options.body;
+      // Prefer Gmail API (uses DWD, no SMTP creds needed), fall back to SMTP
+      if (this.gmailClient?.isConfigured()) {
+        const result = await this.gmailClient.sendEmail({
+          to: effectiveRecipients,
+          subject: options.subject,
+          body: options.body,
+          isHtml: !!options.isHtml,
+        });
+        messageId = result.messageId;
+        this.logger.log(`Email sent via Gmail API: ${messageId} to ${effectiveRecipients.join(", ")}`);
+      } else if (this.transporter) {
+        const mailOptions: nodemailer.SendMailOptions = {
+          from: this.fromAddress,
+          to: effectiveRecipients.join(", "),
+          subject: options.subject,
+        };
+        if (options.isHtml) {
+          mailOptions.html = options.body;
+        } else {
+          mailOptions.text = options.body;
+        }
+        const info = await this.transporter.sendMail(mailOptions);
+        messageId = info.messageId;
+        this.logger.log(`Email sent via SMTP: ${messageId} to ${effectiveRecipients.join(", ")}`);
       } else {
-        mailOptions.text = options.body;
+        return { sent: false, blocked: true, reason: "no_transport_configured", guardDecision, approvalDecision };
       }
 
-      const info = await this.transporter.sendMail(mailOptions);
-
-      this.logger.log(
-        `Email sent: ${info.messageId} to ${this.reviewRecipients.join(", ")}`
-      );
       this.governanceGuard.logAudit({
         eventId: `evt_${Date.now()}_email_sent`,
         eventType: "funding.delivery.sent",
         module: "notifications",
         action: "send",
         entityType: "email_message",
-        entityId: options.entityId ?? info.messageId,
+        entityId: options.entityId ?? messageId,
         actor,
         timestamp: new Date().toISOString(),
         status: "accepted",
         reason: options.reason ?? "Email sent",
         approval: options.approval,
-        metadata: { messageId: info.messageId, recipients: this.reviewRecipients },
+        metadata: { messageId, recipients: effectiveRecipients },
       });
       return { sent: true, blocked: false, guardDecision, approvalDecision };
     } catch (error) {

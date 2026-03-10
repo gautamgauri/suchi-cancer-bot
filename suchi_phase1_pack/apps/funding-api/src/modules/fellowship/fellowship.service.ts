@@ -5,9 +5,22 @@ import { RetrievalService } from "../evidence_ingest/retrieval.service";
 import { QueryExpanderService } from "../evidence_ingest/query-expander.service";
 import { OpportunityService } from "../opportunity/opportunity.service";
 import { AnswerGeneratorService } from "../application/answer-generator.service";
+import { EmailNotificationService } from "../notifications/email-notification.service";
 import type { FellowshipDraftOptions } from "./fellowship.types";
+import type {
+  FellowshipInterpretation,
+  ApplicantNarrative,
+  FellowshipBridge,
+  SectionPlan,
+} from "./fellowship-pipeline.types";
 import { FELLOWSHIP_SYSTEM_PROMPT, buildFellowshipUserPrompt, matchArchetype } from "./prompts/fellowship.prompts";
 import { rewriteToFirstPerson } from "./utils/voice-rewriter";
+import { stripPipelineTags } from "./utils/tag-stripper";
+import { OpportunityInterpreterService } from "./services/opportunity-interpreter.service";
+import { BridgeSelectorService } from "./services/bridge-selector.service";
+import { NarrativeSynthesizerService } from "./services/narrative-synthesizer.service";
+import { SectionPlannerService } from "./services/section-planner.service";
+import { FellowshipCriticService } from "./services/fellowship-critic.service";
 
 const NON_ESSAY_PATTERNS = [
   /interest rat/i, /focus area.*rating/i, /fields of expertise/i,
@@ -31,12 +44,25 @@ export class FellowshipService {
     private readonly queryExpander: QueryExpanderService,
     private readonly opportunityService: OpportunityService,
     private readonly answerGenerator: AnswerGeneratorService,
+    private readonly emailNotification: EmailNotificationService,
+    private readonly opportunityInterpreter: OpportunityInterpreterService,
+    private readonly bridgeSelector: BridgeSelectorService,
+    private readonly narrativeSynthesizer: NarrativeSynthesizerService,
+    private readonly sectionPlanner: SectionPlannerService,
+    private readonly fellowshipCritic: FellowshipCriticService,
   ) {}
 
   /**
-   * Generate a fellowship proposal with all-personal context.
-   * Key difference from ProposalService: NO org profile, NO org-centric guidance.
-   * All context is personal (profile, past answers, personal corpus).
+   * Strategy-first fellowship pipeline (12 stages):
+   *   Load Opportunity → Load Context
+   *     → Stage A: Interpret Opportunity
+   *     → Stage B: Synthesize Narrative Assets
+   *     → Stage C: Select Bridge/Angle
+   *     → Stage D: Plan Sections
+   *     → For each section: (retrieve with plan-derived queries → write with brief → condense)
+   *     → Stage E: Critic Review
+   *     → Tag cleanup
+   *     → Email
    */
   async generateFellowship(
     opportunityId: string,
@@ -79,20 +105,20 @@ export class FellowshipService {
       sectionCount: sectionsToDraft.length,
     });
 
-    // 3. Create ProposalRun record (reuse existing model for eval compatibility)
+    // 3. Create ProposalRun record
     const run = await this.prisma.proposalRun.create({
       data: {
         opportunityId: opportunity.id,
         status: "drafting",
         modelConfig: {
-          pipeline: "fellowship",
+          pipeline: "fellowship-v2",
           fellowshipName,
           model: process.env.FUNDING_MODEL_DRAFT || "deepseek-chat",
         } as object,
       },
     });
 
-    // 4. Load personal context (proven first-person builders from AnswerGeneratorService)
+    // 4. Load personal context
     let applicantProfile = "";
     let pastAnswers = "";
     let dbSnippets = "";
@@ -130,6 +156,112 @@ export class FellowshipService {
       ? `${applicantProfile}\n\nADDITIONAL SNIPPETS:\n${dbSnippets}`
       : applicantProfile;
 
+    // --- Stage A: Interpret Opportunity ---
+    let interpretation: FellowshipInterpretation | undefined;
+    try {
+      const oppSummary = oppPayload.extractedRequirements?.summary || "";
+      const themes = [
+        ...(oppPayload.themes?.primary || []),
+        ...(oppPayload.themes?.secondary || []),
+      ];
+      const evalCriteria = oppPayload.extractedRequirements?.evaluationCriteria;
+
+      interpretation = await this.opportunityInterpreter.interpret({
+        fellowshipName,
+        summary: oppSummary,
+        sections: sectionsToDraft.map((s) => ({ name: s.name, guidance: s.guidance })),
+        themes,
+        evaluationCriteria: evalCriteria,
+      });
+
+      this.logger.log({
+        message: "FELLOWSHIP_STAGE_A_COMPLETE",
+        intellectualCore: interpretation.intellectualCore?.substring(0, 100),
+      });
+    } catch (err) {
+      this.logger.warn(`Stage A (interpret) failed (non-fatal, falling back): ${(err as Error).message}`);
+    }
+
+    // --- Stage B: Synthesize Narrative Assets ---
+    let narrative: ApplicantNarrative | undefined;
+    try {
+      if (interpretation) {
+        narrative = await this.narrativeSynthesizer.synthesize({
+          applicantProfile: fullProfile,
+          pastAnswers,
+          dbSnippets,
+          interpretation,
+        });
+
+        this.logger.log({
+          message: "FELLOWSHIP_STAGE_B_COMPLETE",
+          leadershipExamples: narrative.leadershipExamples?.length,
+          numericFacts: narrative.numericFacts?.length,
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`Stage B (narrative) failed (non-fatal): ${(err as Error).message}`);
+    }
+
+    // --- Stage C: Select Bridge/Angle ---
+    let bridge: FellowshipBridge | undefined;
+    try {
+      if (interpretation) {
+        bridge = await this.bridgeSelector.selectBridge({
+          interpretation,
+          applicantProfile: fullProfile,
+          pastAnswers,
+          sectionNames: sectionsToDraft.map((s) => s.name),
+        });
+
+        // Store bridge thesis in run metadata
+        await this.prisma.proposalRun.update({
+          where: { id: run.id },
+          data: {
+            modelConfig: {
+              pipeline: "fellowship-v2",
+              fellowshipName,
+              model: process.env.FUNDING_MODEL_DRAFT || "deepseek-chat",
+              bridgeThesis: bridge.thesis,
+              bridgeType: bridge.bridgeType,
+            } as object,
+          },
+        });
+
+        this.logger.log({
+          message: "FELLOWSHIP_STAGE_C_COMPLETE",
+          thesis: bridge.thesis?.substring(0, 120),
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`Stage C (bridge) failed (non-fatal): ${(err as Error).message}`);
+    }
+
+    // --- Stage D: Plan Sections ---
+    let sectionPlan: SectionPlan | undefined;
+    try {
+      if (bridge && narrative && interpretation) {
+        sectionPlan = await this.sectionPlanner.plan({
+          bridge,
+          narrative,
+          interpretation,
+          sections: sectionsToDraft.map((s) => ({
+            name: s.name,
+            guidance: s.guidance,
+            wordLimit: s.wordLimit,
+            archetype: matchArchetype(s.name),
+          })),
+        });
+
+        this.logger.log({
+          message: "FELLOWSHIP_STAGE_D_COMPLETE",
+          plannedSections: sectionPlan.sections?.length,
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`Stage D (plan) failed (non-fatal): ${(err as Error).message}`);
+    }
+
     // 5. Draft each section with cross-section context accumulator
     const sectionSummaries: string[] = [];
     const concurrency = 3;
@@ -139,8 +271,13 @@ export class FellowshipService {
       const previousSummaries = [...sectionSummaries]; // snapshot for this batch
 
       const batchSummaries = await Promise.all(
-        batch.map((section) =>
-          this.draftSection(
+        batch.map((section) => {
+          // Look up section plan entry if available
+          const planEntry = sectionPlan?.sections?.find(
+            (p) => p.name.toLowerCase() === section.name.toLowerCase(),
+          );
+
+          return this.draftSection(
             run.id,
             section,
             fullProfile,
@@ -148,15 +285,158 @@ export class FellowshipService {
             fellowshipName,
             previousSummaries,
             options,
-          ),
-        ),
+            bridge,
+            planEntry,
+          );
+        }),
       );
 
       // Accumulate summaries for subsequent batches
       sectionSummaries.push(...batchSummaries.filter(Boolean) as string[]);
     }
 
-    // 6. Mark run complete
+    // --- Stage E: Critic Review (non-blocking) ---
+    if (!options?.skipCritic && interpretation && bridge) {
+      try {
+        const draftedForCritic = await this.prisma.proposalSection.findMany({
+          where: { runId: run.id, status: "drafted" },
+          orderBy: { createdAt: "asc" },
+        });
+
+        const criticSections = draftedForCritic
+          .filter((s) => s.draftText)
+          .map((s) => ({ name: s.name, text: s.draftText! }));
+
+        if (criticSections.length > 0) {
+          const criticResult = await this.fellowshipCritic.review({
+            interpretation,
+            bridge,
+            sections: criticSections,
+            verifiedFacts: narrative?.numericFacts,
+          });
+
+          // Store critic score in run metadata
+          const currentConfig = (run.modelConfig as Record<string, unknown>) || {};
+          await this.prisma.proposalRun.update({
+            where: { id: run.id },
+            data: {
+              modelConfig: {
+                ...currentConfig,
+                criticScore: criticResult.overallScore,
+                criticDimensions: criticResult.dimensions?.map(
+                  (d) => `${d.dimension}:${d.score}`,
+                ),
+              } as object,
+            },
+          });
+
+          this.logger.log({
+            message: "FELLOWSHIP_STAGE_E_COMPLETE",
+            overallScore: criticResult.overallScore,
+            tagViolations: criticResult.tagViolations?.length,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(`Stage E (critic) failed (non-fatal): ${(err as Error).message}`);
+      }
+    }
+
+    // --- Tag Cleanup: Strip pipeline tags from DB-stored draftText ---
+    try {
+      const allSections = await this.prisma.proposalSection.findMany({
+        where: { runId: run.id, status: "drafted" },
+      });
+
+      for (const sec of allSections) {
+        if (sec.draftText) {
+          const cleaned = stripPipelineTags(sec.draftText);
+          if (cleaned !== sec.draftText) {
+            await this.prisma.proposalSection.update({
+              where: { id: sec.id },
+              data: { draftText: cleaned },
+            });
+          }
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Tag cleanup failed (non-fatal): ${(err as Error).message}`);
+    }
+
+    // 6. Send email notification with fellowship draft
+    try {
+      const draftedSections = await this.prisma.proposalSection.findMany({
+        where: { runId: run.id, status: "drafted" },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const allGaps: string[] = [];
+      const emailLines: string[] = [
+        "FELLOWSHIP DRAFT COMPLETE",
+        "=".repeat(50),
+        "",
+        `Fellowship: ${fellowshipName}`,
+        `Opportunity ID: ${opportunityId}`,
+        `Run ID: ${run.id}`,
+        `Sections: ${draftedSections.length}`,
+      ];
+
+      if (bridge) {
+        emailLines.push(`Strategic Thesis: ${bridge.thesis}`);
+      }
+      emailLines.push("");
+
+      for (const sec of draftedSections) {
+        const wordCount = sec.draftText?.split(/\s+/).length ?? 0;
+        emailLines.push(`${"─".repeat(50)}`);
+        emailLines.push(`${sec.name} (${wordCount} words)`);
+        emailLines.push(`${"─".repeat(50)}`);
+        emailLines.push(sec.draftText || "[empty]");
+        emailLines.push("");
+
+        const sectionGaps = (sec.gaps as string[]) || [];
+        allGaps.push(...sectionGaps);
+      }
+
+      if (allGaps.length > 0) {
+        emailLines.push("");
+        emailLines.push(`⚠ GAPS REQUIRING MANUAL INPUT (${allGaps.length})`);
+        emailLines.push("-".repeat(30));
+        allGaps.forEach((g) => emailLines.push(`• ${g}`));
+      }
+
+      emailLines.push("");
+      emailLines.push("Generated by Bodh AI Funding Bot");
+
+      const emailResult = await this.emailNotification.sendGeneratedContent(
+        "Fellowship Draft",
+        fellowshipName,
+        emailLines.join("\n"),
+        undefined,
+        { actorType: "agent", actorId: "fellowship_service_email" },
+      );
+
+      await this.opportunityService.appendAuditEvent(
+        opportunity.id,
+        "fellowship_email_delivery",
+        emailResult.sent ? "allowed" : "blocked",
+        {
+          reason: emailResult.reason,
+          guardDecision: emailResult.guardDecision,
+          preview: emailResult.preview,
+        },
+      );
+
+      this.logger.log({
+        message: "FELLOWSHIP_EMAIL_SENT",
+        runId: run.id,
+        sent: emailResult.sent,
+        reason: emailResult.reason,
+      });
+    } catch (err) {
+      this.logger.warn(`Fellowship email delivery failed (non-fatal): ${(err as Error).message}`);
+    }
+
+    // 7. Mark run complete
     await this.prisma.proposalRun.update({
       where: { id: run.id },
       data: {
@@ -179,16 +459,8 @@ export class FellowshipService {
   }
 
   /**
-   * Draft a single fellowship section:
-   *   1. Generate retrieval queries from section question
-   *   2. Retrieve from personal corpus only (orgId: "gautam")
-   *   3. Assemble all-personal context with archetype + cross-section dedup
-   *   4. Call LLM with minimal system prompt
-   *   5. Apply voice rewriter safety net
-   *   6. Condensation pass if over word limit
-   *   7. Store as ProposalSection
-   *
-   * Returns a one-line summary of the drafted section for cross-section dedup.
+   * Draft a single fellowship section using strategy-first context when available.
+   * Falls back to original behavior if bridge/plan are not provided.
    */
   private async draftSection(
     runId: string,
@@ -198,6 +470,8 @@ export class FellowshipService {
     fellowshipName: string,
     previousSummaries: string[],
     options?: FellowshipDraftOptions,
+    bridge?: FellowshipBridge,
+    planEntry?: SectionPlan["sections"][0],
   ): Promise<string | null> {
     const sectionStart = Date.now();
 
@@ -240,15 +514,19 @@ export class FellowshipService {
         return `- ${section.name}: [short-answer section]`;
       }
 
-      // a. Build retrieval queries: section question + 2 expanded variants
-      const baseQuery = `${section.name} ${section.guidance}`.substring(0, 200);
-      const expandedQuery = this.queryExpander.expandQuery(baseQuery, section.name);
-      const queries = [baseQuery];
-      if (expandedQuery !== baseQuery) {
-        queries.push(expandedQuery);
+      // a. Build retrieval queries: use plan-derived hints when available, else original approach
+      let queries: string[];
+      if (planEntry?.retrievalHints?.length) {
+        queries = planEntry.retrievalHints;
+      } else {
+        const baseQuery = `${section.name} ${section.guidance}`.substring(0, 200);
+        const expandedQuery = this.queryExpander.expandQuery(baseQuery, section.name);
+        queries = [baseQuery];
+        if (expandedQuery !== baseQuery) {
+          queries.push(expandedQuery);
+        }
+        queries.push(`Gautam Gauri ${section.name} experience background`);
       }
-      // Add a personal-framing variant
-      queries.push(`Gautam Gauri ${section.name} experience background`);
 
       // b. Retrieve from personal corpus only
       const allChunks = await Promise.all(
@@ -283,6 +561,7 @@ export class FellowshipService {
         queries: queries.length,
         totalRetrieved: allChunks.flat().length,
         deduped: dedupedChunks.length,
+        usedPlanHints: !!planEntry?.retrievalHints?.length,
       });
 
       // c. Look up archetype and build cross-section summary
@@ -291,7 +570,7 @@ export class FellowshipService {
         ? previousSummaries.join("\n")
         : undefined;
 
-      // d. Assemble prompt with all-personal context
+      // d. Assemble prompt with strategy-first context
       const userPrompt = buildFellowshipUserPrompt({
         pastAnswers,
         applicantProfile,
@@ -302,6 +581,15 @@ export class FellowshipService {
         fellowshipName,
         archetype,
         previousSectionsSummary,
+        bridgeThesis: bridge?.thesis,
+        applicantBringsToFellowship: bridge?.applicantBringsToFellowship,
+        sectionAnchor: bridge?.sectionAnchors?.[section.name],
+        sectionPlan: planEntry ? {
+          thesis: planEntry.thesis,
+          openingMove: planEntry.openingMove,
+          assignedFacts: planEntry.assignedFacts || [],
+          mustAvoidFrom: planEntry.mustAvoidFrom || [],
+        } : undefined,
       });
 
       // e. Call LLM with minimal system prompt

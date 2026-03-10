@@ -97,8 +97,8 @@ export class GmailClientService {
             email: credentials.client_email,
             key: credentials.private_key.replace(/\\n/g, "\n"),
             scopes: [
-              // Only request readonly scope - we don't need to modify emails
               "https://www.googleapis.com/auth/gmail.readonly",
+              "https://www.googleapis.com/auth/gmail.send",
             ],
             subject: this.user,
           });
@@ -237,6 +237,51 @@ export class GmailClientService {
       },
       this.logger,
       { context: `getAttachment(${messageId}, ${attachmentId})` },
+    );
+  }
+
+  /**
+   * Send an email via the Gmail API (requires gmail.send scope in DWD).
+   * Sends as the configured FUNDING_GMAIL_USER.
+   */
+  async sendEmail(options: {
+    to: string[];
+    subject: string;
+    body: string;
+    isHtml?: boolean;
+  }): Promise<{ messageId: string }> {
+    return withRetry(
+      async () => {
+        const gmail = await this.getGmail();
+
+        const toHeader = options.to.join(", ");
+        const mimeType = options.isHtml ? "text/html" : "text/plain";
+        const rawMessage = [
+          `From: Bodh AI Funding Bot <${this.user}>`,
+          `To: ${toHeader}`,
+          `Subject: ${options.subject}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: ${mimeType}; charset=UTF-8`,
+          "",
+          options.body,
+        ].join("\r\n");
+
+        const encoded = Buffer.from(rawMessage)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        const res = await gmail.users.messages.send({
+          userId: "me",
+          requestBody: { raw: encoded },
+        });
+
+        this.logger.log(`Gmail API email sent: ${res.data.id} to ${toHeader}`);
+        return { messageId: res.data.id! };
+      },
+      this.logger,
+      { context: "sendEmail" },
     );
   }
 

@@ -88,8 +88,41 @@ export function buildFellowshipUserPrompt(params: {
   fellowshipName: string;
   archetype?: { owns: string; avoids: string; voiceNote: string };
   previousSectionsSummary?: string;
+  bridgeThesis?: string;
+  applicantBringsToFellowship?: string;
+  sectionAnchor?: string;
+  sectionPlan?: {
+    thesis: string;
+    openingMove: string;
+    assignedFacts: string[];
+    mustAvoidFrom: string[];
+  };
 }): string {
   const parts: string[] = [];
+
+  // 0. Strategic thesis and section angle (from bridge selector + section planner)
+  if (params.bridgeThesis) {
+    parts.push(`=== STRATEGIC THESIS ===
+${params.bridgeThesis}
+This application argues: ${params.applicantBringsToFellowship || ""}
+=== END THESIS ===`);
+  }
+
+  if (params.sectionAnchor) {
+    parts.push(`=== THIS SECTION'S ANGLE ===
+${params.sectionAnchor}
+Stay focused on this angle. Do not drift to generic social impact.
+=== END ANGLE ===`);
+  }
+
+  if (params.sectionPlan) {
+    parts.push(`=== SECTION BRIEF ===
+Section thesis: ${params.sectionPlan.thesis}
+Opening move: ${params.sectionPlan.openingMove}
+${params.sectionPlan.assignedFacts.length > 0 ? `Use these verified facts: ${params.sectionPlan.assignedFacts.join("; ")}` : ""}
+${params.sectionPlan.mustAvoidFrom.length > 0 ? `Do NOT overlap with: ${params.sectionPlan.mustAvoidFrom.join(", ")}` : ""}
+=== END BRIEF ===`);
+  }
 
   // 1. Past approved answers — primes the first-person voice
   if (params.pastAnswers && params.pastAnswers !== "(No past answers available yet.)") {
