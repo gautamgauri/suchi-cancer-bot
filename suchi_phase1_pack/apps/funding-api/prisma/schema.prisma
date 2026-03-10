@@ -927,6 +927,85 @@ model SccfDocument {
   @@index([ingestStatus])
 }
 
+// --- Autoresearch: Experiment Tracking (retrieval config tuning) ---
+
+model Experiment {
+  id              String    @id @default(uuid())
+  name            String
+  hypothesis      String    @db.Text
+  targetDomain    String    @default("retrieval")
+  status          String    @default("active")
+  baselineConfig  Json
+  benchmarkSetVersion String @default("gold-retrieval-v1")
+  codeSha         String?
+  createdBy       String    @default("cli")
+  conclusion      String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  concludedAt     DateTime?
+  variants        ExperimentVariant[]
+
+  @@index([status])
+  @@index([targetDomain])
+}
+
+model ExperimentVariant {
+  id              String    @id @default(uuid())
+  experimentId    String
+  variantLabel    String
+  isBaseline      Boolean   @default(false)
+  configDelta     Json
+  resolvedConfig  Json
+  configHash      String
+  mutationSource  String    @default("manual")
+  status          String    @default("pending")
+  promotionNote   String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  experiment      Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  benchmarkRuns   BenchmarkRun[]
+
+  @@unique([experimentId, variantLabel])
+  @@index([experimentId])
+  @@index([status])
+  @@index([configHash])
+}
+
+model BenchmarkRun {
+  id              String    @id @default(uuid())
+  variantId       String
+  benchmarkSetId  String
+  benchmarkSetVersion String @default("v1")
+  queryCount      Int
+  status          String    @default("running")
+  codeSha         String?
+  apiVersion      String?
+  corpusSnapshotAt DateTime?
+  sliceMetrics    Json?
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  durationMs      Int?
+  errorMessage    String?   @db.Text
+  variant         ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  metrics         MetricSnapshot[]
+
+  @@index([variantId])
+  @@index([benchmarkSetId])
+}
+
+model MetricSnapshot {
+  id              String    @id @default(uuid())
+  benchmarkRunId  String
+  metricName      String
+  metricValue     Float
+  perQueryValues  Json?
+  createdAt       DateTime  @default(now())
+  benchmarkRun    BenchmarkRun @relation(fields: [benchmarkRunId], references: [id], onDelete: Cascade)
+
+  @@index([benchmarkRunId])
+  @@index([metricName])
+}
+
 // --- Program Plans (month-wise structured curriculum) ---
 
 model ProgramPlan {

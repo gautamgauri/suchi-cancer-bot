@@ -1,0 +1,232 @@
+{
+  "id": "gold-retrieval-v1",
+  "version": "v1",
+  "description": "Stratified benchmark query set for retrieval config tuning. Bootstrapped from existing ProposalRun records.",
+  "queries": [
+    {
+      "id": "q-budget-khel",
+      "query": "KHEL center operational costs budget breakdown per center",
+      "sectionName": "budget",
+      "orgId": "diksha",
+      "slice": "easy_win",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-budget-sports",
+      "query": "sports equipment and training materials cost estimate for 476 students",
+      "sectionName": "budget",
+      "orgId": "diksha",
+      "slice": "easy_win",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-need-bihar-education",
+      "query": "Bihar education challenges dropout rates learning outcomes government schools",
+      "sectionName": "need statement",
+      "orgId": "diksha",
+      "slice": "easy_win",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "external_evidence"]
+    },
+    {
+      "id": "q-objectives-sel",
+      "query": "social emotional learning outcomes indicators measurement for adolescents",
+      "sectionName": "objectives",
+      "orgId": "diksha",
+      "slice": "easy_win",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "theory_frameworks"]
+    },
+    {
+      "id": "q-track-record-impact",
+      "query": "Diksha Foundation past performance impact data student outcomes attendance",
+      "sectionName": "track record",
+      "orgId": "diksha",
+      "slice": "easy_win",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-team-fellow-teachers",
+      "query": "Fellow Teacher program staffing structure qualifications training model",
+      "sectionName": "team",
+      "orgId": "diksha",
+      "slice": "easy_win",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-monitoring-fln",
+      "query": "foundational literacy numeracy assessment tools baseline endline measurement",
+      "sectionName": "monitoring",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "theory_frameworks"]
+    },
+    {
+      "id": "q-sustainability-exit",
+      "query": "program sustainability exit strategy community ownership government handover",
+      "sectionName": "sustainability",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-need-gender",
+      "query": "adolescent girls education barriers Bihar gender inequality empowerment",
+      "sectionName": "need statement",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "external_evidence"]
+    },
+    {
+      "id": "q-budget-salary-staff",
+      "query": "staff salary costs center coordinator fellow teacher monthly breakdown",
+      "sectionName": "budget",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-objectives-capabilities",
+      "query": "capability framework outcomes critical thinking creativity collaboration indicators",
+      "sectionName": "objectives",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "theory_frameworks"]
+    },
+    {
+      "id": "q-results-digital",
+      "query": "Khan Academy digital literacy results student learning gains screen time data",
+      "sectionName": "results",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-monitoring-community",
+      "query": "community feedback parent engagement satisfaction survey data collection",
+      "sectionName": "monitoring",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-need-nutrition",
+      "query": "child malnutrition school meal program nutrition intervention evidence Bihar",
+      "sectionName": "need statement",
+      "orgId": "diksha",
+      "slice": "known_failure",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "external_evidence"]
+    },
+    {
+      "id": "q-budget-technology",
+      "query": "technology infrastructure costs tablets internet connectivity rural Bihar",
+      "sectionName": "budget",
+      "orgId": "diksha",
+      "slice": "known_failure",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-results-alumni",
+      "query": "KHEL alumni long-term outcomes employment higher education career tracking",
+      "sectionName": "results",
+      "orgId": "diksha",
+      "slice": "known_failure",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-sustainability-revenue",
+      "query": "earned revenue diversification model social enterprise fee structure",
+      "sectionName": "sustainability",
+      "orgId": "diksha",
+      "slice": "known_failure",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-monitoring-third-party",
+      "query": "third party evaluation external audit impact assessment report",
+      "sectionName": "monitoring",
+      "orgId": "diksha",
+      "slice": "known_failure",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "external_evidence"]
+    },
+    {
+      "id": "q-propernoun-reliance",
+      "query": "Reliance Foundation Education Sports Alliance gully goal community sports",
+      "sectionName": "background",
+      "orgId": "diksha",
+      "slice": "proper_noun",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "donor_funder"]
+    },
+    {
+      "id": "q-propernoun-khel-patna",
+      "query": "KHEL Patna Rukanpura center 200 students daily operations schedule",
+      "sectionName": "activities",
+      "orgId": "diksha",
+      "slice": "proper_noun",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-propernoun-nep",
+      "query": "National Education Policy NEP 2020 alignment foundational stage curricular goals",
+      "sectionName": "need statement",
+      "orgId": "diksha",
+      "slice": "proper_noun",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "external_evidence"]
+    },
+    {
+      "id": "q-propernoun-cambridge",
+      "query": "Cambridge MPhil Education Capabilities Approach research Gautam Gauri",
+      "sectionName": "track record",
+      "orgId": "diksha",
+      "slice": "proper_noun",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-propernoun-see-learning",
+      "query": "SEE Learning Dalai Lama Trust social emotional ethical learning curriculum integration",
+      "sectionName": "activities",
+      "orgId": "diksha",
+      "slice": "proper_noun",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal", "theory_frameworks"]
+    },
+    {
+      "id": "q-propernoun-bihta-sarairanjan",
+      "query": "KHEL Bihta KHEL Sarairanjan expansion rural center enrollment growth",
+      "sectionName": "background",
+      "orgId": "diksha",
+      "slice": "proper_noun",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    },
+    {
+      "id": "q-track-record-awards",
+      "query": "Diksha Foundation awards recognition partnerships government MoU",
+      "sectionName": "track record",
+      "orgId": "diksha",
+      "slice": "borderline",
+      "expectedDocIds": [],
+      "corpus": ["diksha_internal"]
+    }
+  ]
+}

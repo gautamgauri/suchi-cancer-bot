@@ -27,6 +27,7 @@ import { ApplicationModule } from "./modules/application/application.module";
 import { SccfIngestModule } from "./modules/sccf-ingest/sccf-ingest.module";
 import { FellowshipModule } from "./modules/fellowship/fellowship.module";
 import { EmailPipelineModule } from "./modules/email-pipeline/email-pipeline.module";
+import { AutoresearchModule } from "./modules/autoresearch/autoresearch.module";
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { EmailPipelineModule } from "./modules/email-pipeline/email-pipeline.mod
     SccfIngestModule,
     FellowshipModule,
     EmailPipelineModule,
+    AutoresearchModule,
   ],
 })
 export class AppModule {}
