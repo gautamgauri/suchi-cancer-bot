@@ -135,17 +135,20 @@ After running all checks, display results:
 
 ---
 
-## Phase 2: Manual Checklist (acknowledgment gate)
+## Phase 2: Manual Checklist (informational, single confirmation)
 
-Present these 5 items to the user. They must acknowledge before deploy proceeds. Use the AskUserQuestion tool with a multi-select question asking which items the user has verified:
+Display this checklist for the user's reference, then proceed to deploy with a single "Deploy now?" confirmation. Do NOT ask about each item individually.
 
-1. **Budget template completeness** (§5.1-5.4): Line items include all cost categories, unit costs are current, min grant floor is set, org ask ceiling gate is active.
-2. **Security review** (§8.1-8.5): SSRF protection, Slack HMAC verification, DTO validation, browser cleanup, `FUNDING_BLOCK_EXTERNAL_DELIVERY=true`.
-3. **Gold retrieval recall >= 0.6** (§3.5): Ran gold retrieval queries after last embedding update and verified top-5 recall meets threshold.
-4. **End-to-end test proposal** (§5.5): Generated a test proposal and verified budget total is within +/-15% of manual estimate.
-5. **Model change eval** (§4.5): If the LLM model changed since last deploy, re-ran eval suite and compared section-level scores.
+**Pre-deploy reminders** (for your awareness — not blocking):
+- Budget template: line items, unit costs, min grant floor, org ask ceiling
+- Security: SSRF protection, HMAC, DTO validation, `FUNDING_BLOCK_EXTERNAL_DELIVERY=true`
+- Gold retrieval recall >= 0.6 (if embeddings changed)
+- End-to-end test proposal budget within +/-15% (if pipeline changed)
+- Model change eval (only if LLM model changed)
 
-If the user acknowledges all applicable items (some may be N/A if no model change, no re-embedding, etc.), proceed to Phase 3.
+Then ask the user ONE question: **"Preflight passed. Deploy now? (y/n)"**
+
+If yes, proceed to Phase 3. If no, stop.
 
 ---
 
