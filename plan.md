@@ -1,219 +1,550 @@
-# Plan: Fix Funding Bot Output — Content Quality & Depth
+# Autoresearch Slice 1: Retrieval Config Tuning — Suchi Cancer Bot
 
-## Reference Document
-**Gully Goal Proposal** (manually written by Gautam) — a Reliance Foundation ESA grant proposal for Football-for-Development programming across Diksha Foundation's KHEL centers + Empowering Futures.
+## Context
 
-This is the quality bar. The bot's output should read like this document.
+The Suchi Cancer Bot's retrieval pipeline has ~25 hardcoded constants across 5 files (hybrid search weights, trusted-source boosts, reranker gating thresholds, multi-query boost, topK limits, evidence gate scores, etc.). These were set by intuition, never systematically optimized. Retrieval quality directly gates answer quality — `insufficient` evidence and weak confidence are the top failure modes in eval reports. There is no infrastructure for A/B experiments, variant tracking, or promotion.
 
----
+**Goal:** Build a benchmark-driven system that tunes retrieval config under safety constraints. Config mutations first, not code mutations. Interpretable, auditable, and safe — critical for a medical information bot.
 
-## Gap Analysis: Manual Proposal vs Bot Output
-
-### What the manual proposal does that the bot doesn't:
-
-| # | Quality Dimension | Manual Proposal Example | What Bot Would Produce | Root Cause |
-|---|------------------|------------------------|----------------------|------------|
-| 1 | **Funder-specific framing** | Names "Reliance Foundation", "ESA", mentions "ESA branding in all materials and signage" | Generic "the funder" language, no acknowledgment of specific program | Section writer prompt has no instruction to name and tailor to the specific funder |
-| 2 | **Program-specific methodology** | 3 paragraphs on Football3 "three halves" structure, 40×20m pitches, fair-play scoring, "used by 70+ organizations globally" | Generic "sports activities" or "football sessions" with no methodology depth | Evidence chunks truncated to 800 chars; framework method cards lack enough detail |
-| 3 | **Numbers woven into narrative** | "771 learners (511 KHEL centre learners + 260 Empowering Futures girls)" — decomposed naturally | "The program targets 476 students" as a standalone bullet, often inconsistent across sections | Activity facts injected as raw JSON; no instruction to decompose totals |
-| 4 | **Theory of Change as a flowing sentence** | "If marginalized children... are provided with structured, safe football-for-development programming... then they will develop improved physical skills..." | Structured table: Inputs → Activities → Outputs → Outcomes → Impact | Program design prompt produces JSON table format, not narrative |
-| 5 | **Budget as simple readable table** | Clean 10-line table: "Football training workshop... 1,20,000" with Indian comma format | JSON code block that must be parsed and rendered; amounts in international format | Budget guidance forces JSON output format |
-| 6 | **Concrete sustainability mechanisms** | 5 named mechanisms: Youth-Led, Existing Infrastructure, Community Ownership, Diversified Funding Base, Institutional Learning — each with 1 paragraph | Generic "will seek additional funding", "build local capacity" | Sustainability guidance is the weakest section-type in SECTION_TYPE_GUIDANCE |
-| 7 | **Board member details** | Full board with qualifications: "Saurabh Kumar (Treasurer) - Co-founder and COO at Sparklehood; Angel investor" | Not included — org profile only has "Dedicated educators and youth fellows" | Org profile (org-profile.ts) lacks board/leadership data |
-| 8 | **Compliance checklist** | Specific registration numbers, audit dates, FCRA filing dates, auditor contact | Not generated — no section type guidance for compliance | No compliance section type in SECTION_TYPE_GUIDANCE |
-| 9 | **Capability framework alignment table** | Maps each of 10 capabilities to specific program activities | Framework intelligence produces capability-aligned MEL indicators but not a mapping table | Framework intelligence service doesn't generate a capability↔activity mapping |
-| 10 | **Community voice** | "The Executive Director plays weekly football with students" — personal, authentic | Impersonal third-person descriptions | No voice/tone instruction in section writer prompt |
+**Not in scope:** Multi-agent topology, code mutations, LLM prompt optimization, live delivery changes, safety module changes.
 
 ---
 
-## Root Causes (Updated with Evidence)
+## Architecture
 
-| # | Root Cause | Location | Impact | Evidence |
-|---|-----------|----------|--------|----------|
-| 1 | **No voice/tone instruction** | `section-writer.prompt.ts:6-55` | Bot writes in impersonal third person, bullet-heavy style | Manual proposal uses "we", active voice, narrative paragraphs |
-| 2 | **Evidence chunks truncated to 800 chars** | `section-writer.service.ts:42` | Methodology sections lack depth (Football3 "three halves" needs >800 chars to explain) | Manual proposal has 3 paragraphs on methodology alone |
-| 3 | **Activity facts injected as raw JSON** | `proposal.service.ts:521` | Numbers appear awkwardly, not decomposed (e.g., "771 = 511 + 260") | Manual proposal weaves decomposed numbers into sentences |
-| 4 | **Org profile missing key data** | `org-profile.ts` | No board members, no annual budget, no funding partners list, no registration details | Manual proposal has full board (7 members), funding partners, compliance checklist |
-| 5 | **No section-type guidance for compliance, capability-mapping, or sustainability detail** | `section-writer.prompt.ts:133-298` | These sections are either missing or thin | Manual proposal has rich compliance checklist + 5 sustainability mechanisms + capability table |
-| 6 | **Theory of Change forced into structured format** | `program-design.prompt.ts` | ToC is always a JSON table, never a narrative sentence | Manual proposal has a powerful single-sentence ToC |
-| 7 | **Budget format is JSON-first** | `section-writer.prompt.ts:168-196` | Budget requires JSON parsing; Indian number format (15,00,000) not used | Manual proposal uses a simple markdown table with Indian comma format |
-| 8 | **Model is deepseek-chat** | `proposal.service.ts:188-191` | Cheaper model produces more formulaic prose | Manual proposal quality requires stronger LLM |
-| 9 | **Section-type guidance is checklist-style** | `section-writer.prompt.ts:133-298` | Bot outputs checkbox-style content, not narrative | Manual proposal reads as flowing prose with data woven in |
+```
+┌─────────────────────────────────────────────────────────┐
+│ RetrievalConfig (typed, all ~25 knobs)                  │
+│   ↓ baseline OR variant override                        │
+│ ┌─────────────────┐  ┌──────────────────┐               │
+│ │ Mutation Engine  │→│ Benchmark Runner │               │
+│ │ (rule-based)     │  │ (retrieval-only) │               │
+│ └─────────────────┘  └────────┬─────────┘               │
+│                               ↓                         │
+│                    ┌──────────────────┐                  │
+│                    │ Comparison Report│                  │
+│                    │ + Promotion Logic│                  │
+│                    └──────────────────┘                  │
+│                               ↓                         │
+│              accept / reject / hold → DB                │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Implementation Plan (7 Steps)
+## Step 1: RetrievalConfig Type + Knob Classification
 
-### Step 1: Add Voice & Tone Instructions to Section Writer Prompt
-**File:** `section-writer.prompt.ts` (SECTION_WRITER_SYSTEM_PROMPT)
-**Risk:** Low (prompt-only change)
+**New file:** `apps/api/src/modules/autoresearch/retrieval-config.ts`
 
-Add a WRITING STYLE block right after the existing CITATION RULES:
-
-```
-WRITING STYLE (CRITICAL — this determines whether the output reads as a real proposal or a bot draft):
-- Write in FIRST PERSON PLURAL: "We", "Our team", "Diksha Foundation proposes..."
-- Lead each section with a 1-2 sentence hook that states the IMPACT, not the process
-  GOOD: "Gully Goal will bring structured football-for-development programming to 771 children and adolescent girls across Bihar, using the globally proven Football3 methodology."
-  BAD: "This section describes the project activities and implementation plan."
-- Use ACTIVE VOICE: "We train 9 Young Leader mediators" — NOT "9 Young Leader mediators are trained"
-- WEAVE numbers into narrative: "Our 3 KHEL centers in Patna, Bihta, and Sarairanjan currently serve 511 learners, while the Empowering Futures program reaches 260 adolescent girls" — NOT a standalone bullet "Direct beneficiaries: 771"
-- DECOMPOSE totals: When a total combines sub-populations, always show the breakdown in prose (e.g., "771 beneficiaries — 511 KHEL learners + 260 EF girls")
-- Flow: Context → Action → Evidence → Outcome within each paragraph
-- Keep paragraphs 3-4 sentences max. Use subheadings for readability.
-- NEVER produce bullet-only sections. Funders read narrative prose. Use bullets ONLY for: deliverable lists, tables, timelines, enumerations.
-- Name the FUNDER explicitly: "In alignment with [Funder Name]'s focus on [theme]..." — do NOT write "the funder"
-- Bihar-specific framing: reference NEP 2020, Bihar Khel Niti, local geography BY NAME
-- AVOID hollow phrases: "holistic approach", "sustainable impact", "transformative change" — replace with SPECIFIC descriptions of what actually happens
-- When describing methodology, explain HOW it works in at least 2-3 sentences, not just the name
-```
-
-### Step 2: Increase Evidence Chunk Size
-**File:** `section-writer.service.ts:42`
-**Risk:** Low
-
-Change `chunk.content.substring(0, 800)` → `chunk.content.substring(0, 2000)`
-
-The Gully Goal proposal has 3 paragraphs describing Football3 methodology alone. At 800 chars, the LLM only sees a fragment of methodology documents. 2000 chars provides enough for the LLM to understand and explain a method.
-
-### Step 3: Convert Activity Facts from JSON to Narrative
-**File:** `proposal.service.ts:519-525`
-**Risk:** Medium
-
-Replace:
-```typescript
-orgCtx += `\n\nACTIVITY FACTS...\n${JSON.stringify(activityFacts, null, 2)}`;
-```
-
-With a helper that produces readable narrative like:
-```
-ACTIVITY FACTS (weave these into your narrative — do NOT dump as raw data):
-Diksha Foundation currently serves 476 students across 3 KHEL centers:
-- KHEL Patna (Rukanpura): 147 students
-- KHEL Bihta (Sita Ram Ashram): 150 students
-- KHEL Sarairanjan: 179 students (est. August 2024)
-
-Additionally, the Empowering Futures program reaches approximately 260 adolescent girls across 6 urban settlements in Patna.
-
-Program activities include: Supplementary education (daily), Digital literacy via Khan Academy (3x/week), Football and sports (Saturday sessions), SEE Learning social-emotional sessions (2x/week), Civic engagement through Bal Sansad.
-
-Latest metrics: Average attendance 82%, 45 active Khan Academy students, 120 SEL sessions delivered last quarter.
-```
-
-### Step 4: Enrich Org Profile with Missing Data
-**File:** `org-profile.ts`
-**Risk:** Medium
-
-The current profile is missing critical data that the manual proposal includes. Add:
-- **Board of Directors** (7 members with qualifications — from the Gully Goal doc)
-- **Annual operating budget** (104.56 lakhs FY 2024-25)
-- **Current funding partners** (Azim Premji Foundation, Feeding India, etc.)
-- **Past partners** (JP Morgan Chase, PRAVAH, Asha for Education, etc.)
-- **Registration details** with actual numbers (PAN, FCRA, CSR-1)
-- **Leadership team** names and qualifications (Gautam Gauri, Shivam Mishra, Nisha Kumari)
-- **Total historical reach** (2,000+ students graduated since 2010)
-
-Also rewrite the profile from bullets → narrative prose paragraphs, since the LLM mirrors the input format.
-
-### Step 5: Add Missing Section-Type Guidance
-**File:** `section-writer.prompt.ts` (SECTION_TYPE_GUIDANCE)
-**Risk:** Low
-
-Add guidance for 3 section types the manual proposal has but the bot currently lacks:
-
-**a) `compliance` section type:**
-```
-REQUIRED for this section:
-- Full compliance checklist table with columns: Particulars | Yes/No | Remarks
-- Registration details with actual certificate numbers
-- Tax filing status and dates
-- FCRA status and latest return filing
-- CSR registration status
-- Audit details including external auditor name and firm
-- Bank mandate and address proof status
-```
-
-**b) `capabilityAlignment` section type:**
-```
-REQUIRED for this section:
-- Map each of the 10 Core Capabilities to specific program activities
-- Table format: Capability | How This Program Builds It
-- Each cell should have 1-2 sentences explaining the SPECIFIC mechanism
-```
-
-**c) Strengthen `sustainability` guidance** with the 5-mechanism model from the manual proposal:
-```
-Structure sustainability around these 5 mechanisms:
-1. Youth/Community-Led Sustainability (who takes ownership after the grant?)
-2. Existing Infrastructure (what resources continue without new funding?)
-3. Community Ownership (how do families and communities invest?)
-4. Diversified Funding Base (what other funders? What CSR/government alignment?)
-5. Institutional Learning (how is the model captured for replication?)
-Each mechanism needs a concrete paragraph, not a vague aspiration.
-```
-
-### Step 6: Improve Theory of Change Format
-**File:** `section-writer.prompt.ts` (`projectDesign` guidance)
-**Risk:** Low
-
-Add instruction to produce ToC as BOTH a narrative sentence AND a structured breakdown:
-
-```
-THEORY OF CHANGE FORMAT:
-First, write the Theory of Change as a single flowing conditional statement:
-"If [target population] in [geography] are provided with [intervention description], then they will develop [outcomes], leading to [impact]."
-
-Then provide the structured breakdown:
-- Inputs: ...
-- Activities: ...
-- Outputs: ...
-- Outcomes: ...
-- Impact: ...
-```
-
-### Step 7: Make LLM Model Configurable
-**File:** `proposal.service.ts:186-192`
-**Risk:** Low
-
-Add environment variable `PROPOSAL_WRITER_MODEL` (default: `deepseek-chat`) so the writer model can be upgraded without code changes. The narrative quality gap between deepseek-chat and a stronger model is significant for proposal writing.
+Extracts every hardcoded constant into a typed config with baseline defaults. Each knob is classified:
 
 ```typescript
-const modelConfig: ProposalRunModelConfig = {
-  planner: process.env.PROPOSAL_PLANNER_MODEL || "deepseek-chat",
-  writer: process.env.PROPOSAL_WRITER_MODEL || "deepseek-chat",
-  reviewer: process.env.PROPOSAL_REVIEWER_MODEL || "deepseek-chat",
-  retriever: "hybrid",
+// Knob classification — governs sweep policy
+type KnobClass = "ranking" | "control_flow" | "cost" | "safety";
+
+export const KNOB_METADATA: Record<keyof RetrievalConfig, { class: KnobClass; sweepRange?: number[] }> = {
+  // RANKING — safe to sweep widely, pure math on existing result sets
+  hybridWeightVecLong:         { class: "ranking", sweepRange: [0.45, 0.50, 0.55, 0.60, 0.65, 0.70] },
+  hybridWeightVecShort:        { class: "ranking", sweepRange: [0.70, 0.75, 0.80, 0.85, 0.90] },
+  shortQueryMaxTokens:         { class: "ranking", sweepRange: [4, 5, 6, 7, 8] },
+  multiQueryBoost:             { class: "ranking", sweepRange: [0.05, 0.08, 0.10, 0.15, 0.20] },
+  crossIntentBoost:            { class: "ranking", sweepRange: [0.10, 0.15, 0.20, 0.25] },
+  trustedSourceBoostHigh:      { class: "ranking", sweepRange: [1.25, 1.35, 1.50, 1.60, 1.75] },
+  trustedSourceBoostMedium:    { class: "ranking", sweepRange: [1.10, 1.20, 1.25, 1.35] },
+  trustedSourceBoostLow:       { class: "ranking", sweepRange: [1.00, 1.05, 1.10, 1.15] },
+  untrustedSourcePenalty:      { class: "ranking", sweepRange: [0.85, 0.90, 0.95, 1.00] },
+
+  // CONTROL FLOW — narrow sweep only, changes pipeline behavior
+  rerankerGapThreshold3:       { class: "control_flow", sweepRange: [0.03, 0.04, 0.05, 0.06] },
+  rerankerGapThreshold6:       { class: "control_flow", sweepRange: [0.05, 0.06, 0.07, 0.08, 0.10] },
+  rerankerWeakTopThreshold:    { class: "control_flow", sweepRange: [0.55, 0.60, 0.62, 0.65, 0.70] },
+  rerankerLowLexicalThreshold: { class: "control_flow", sweepRange: [0.35, 0.40, 0.45, 0.50] },
+  rerankerClusteredThreshold:  { class: "control_flow", sweepRange: [0.04, 0.05, 0.06, 0.07] },
+  rerankerSlamDunkLexical:     { class: "control_flow" },
+  rerankerSlamDunkGap3:        { class: "control_flow" },
+  rerankerSlamDunkGap6:        { class: "control_flow" },
+  rerankerSlamDunkH1:          { class: "control_flow" },
+  rerankerSlamDunkV1:          { class: "control_flow" },
+
+  // COST — manual/capped only, affects API calls or compute
+  topKDefault:                 { class: "cost", sweepRange: [4, 5, 6, 8, 10] },
+  retrieveMultiplier:          { class: "cost" },
+  multiQueryMaxVariations:     { class: "cost", sweepRange: [2, 3, 4, 5] },
+  multiRetrieveMaxTotal:       { class: "cost" },
+  synonymExpansionLimit:       { class: "cost" },
+  rerankerMaxChars:            { class: "cost" },
+  rerankerTimeoutMs:           { class: "cost" },
+  rerankerMaxCandidateMultiplier: { class: "cost" },
+  retrieveWithExpansionMinChunks: { class: "control_flow" },
+  retrieveWithExpansionMaxRetries: { class: "control_flow" },
+
+  // SAFETY — NEVER auto-sweep, manual review only
+  // These thresholds gate whether the bot responds at all (medical safety)
+  evidenceStrongMatchScore:    { class: "safety" },
+  evidenceVeryWeakScore:       { class: "safety" },
+  evidenceMinPassagesTreatment:{ class: "safety" },
+  evidenceMinSourcesTreatment: { class: "safety" },
+  evidenceGoodSimilarityScore: { class: "safety" },
 };
+
+export interface RetrievalConfig {
+  // === Hybrid Search Weights (rag.service.ts:771-772) ===
+  hybridWeightVecLong: number;         // 0.55  — vector weight for long queries (>6 tokens)
+  hybridWeightVecShort: number;        // 0.80  — vector weight for short queries (≤6 tokens)
+  shortQueryMaxTokens: number;         // 6     — token count threshold for "short" query
+
+  // === Multi-Query Retrieval (rag.service.ts:160-165) ===
+  multiQueryBoost: number;             // 0.10  — bonus per additional query hit (RRF-lite)
+  multiQueryMaxVariations: number;     // 3     — max query variations to search
+
+  // === Cross-Intent Boost (retrieval-tool.service.ts:219) ===
+  crossIntentBoost: number;            // 0.15  — bonus for chunks found across multiple intents
+
+  // === Trusted Source Reranking (rag.service.ts:930-948) ===
+  trustedSourceBoostHigh: number;      // 1.50  — multiplier for high-priority trusted sources
+  trustedSourceBoostMedium: number;    // 1.25  — multiplier for medium-priority trusted sources
+  trustedSourceBoostLow: number;       // 1.10  — multiplier for low-priority trusted sources
+  untrustedSourcePenalty: number;      // 0.95  — multiplier for untrusted sources
+
+  // === Reranker Gating (reranker.service.ts:115-173) ===
+  rerankerGapThreshold3: number;       // 0.04  — top-1 vs top-3 score gap to trigger reranking
+  rerankerGapThreshold6: number;       // 0.07  — top-1 vs top-6 score gap to trigger reranking
+  rerankerWeakTopThreshold: number;    // 0.62  — h1 score below which reranking triggers
+  rerankerLowLexicalThreshold: number; // 0.45  — l1 below which reranking triggers
+  rerankerClusteredThreshold: number;  // 0.05  — gap6 below which "clustered results" triggers reranking
+  // Slam-dunk thresholds (skip reranking when scores are clearly strong)
+  rerankerSlamDunkLexical: number;     // 0.85
+  rerankerSlamDunkGap3: number;        // 0.12
+  rerankerSlamDunkGap6: number;        // 0.18
+  rerankerSlamDunkH1: number;          // 0.75
+  rerankerSlamDunkV1: number;          // 0.72
+  // Low-stakes intent weak retrieval thresholds
+  rerankerLowIntentWeakH1: number;     // 0.55
+  rerankerLowIntentWeakL1: number;     // 0.40
+
+  // === Retrieval Limits (rag.service.ts, retrieval-tool.service.ts) ===
+  topKDefault: number;                 // 6     — default topK for single retrieval
+  retrieveMultiplier: number;          // 2     — retrieve topK*N for reranking buffer
+  multiRetrieveMaxTotal: number;       // 15    — cap on total chunks from multi-retrieve
+  synonymExpansionLimit: number;       // 2     — max synonyms per matched term (query-expander)
+
+  // === Reranker Cost Controls (reranker.service.ts) ===
+  rerankerMaxChars: number;            // 1600  — max chars per document sent to reranker
+  rerankerTimeoutMs: number;           // 8000  — timeout for reranker API calls
+  rerankerMaxCandidateMultiplier: number; // 3  — pass topK*N candidates to reranker
+
+  // === Retrieval Expansion (rag.service.ts:453-514) ===
+  retrieveWithExpansionMinChunks: number; // 3  — min chunks before considering expansion
+  retrieveWithExpansionMaxRetries: number; // 2 — max retry attempts with expanded queries
+
+  // === Evidence Gate Thresholds (evidence-gate.service.ts) — SAFETY CLASS ===
+  evidenceStrongMatchScore: number;    // 0.70  — gateScore above which match is "strong"
+  evidenceVeryWeakScore: number;       // 0.30  — avgGateScore below which evidence is "very weak"
+  evidenceGoodSimilarityScore: number; // 0.50  — avgGateScore above which quality = "strong"
+  evidenceMinPassagesTreatment: number;// 2     — min passages for treatment queries
+  evidenceMinSourcesTreatment: number; // 2     — min unique sources for treatment queries
+}
+
+export const BASELINE_RETRIEVAL_CONFIG: RetrievalConfig = { /* all defaults above */ };
+export function mergeRetrievalConfig(baseline: RetrievalConfig, delta: Partial<RetrievalConfig>): RetrievalConfig { ... }
+export function diffRetrievalConfig(a: RetrievalConfig, b: RetrievalConfig): Partial<RetrievalConfig> { ... }
+export function configHash(config: RetrievalConfig): string { /* sha256 of sorted JSON */ }
+```
+
+**Sweep policy rules** (enforced by mutation engine):
+- `ranking` knobs: auto-sweep with sweepRange if defined
+- `control_flow` knobs: auto-sweep only if sweepRange defined, narrower ranges
+- `cost` knobs: manual variant creation only, no auto-sweep
+- `safety` knobs: NEVER auto-sweep — manual review required, changes must be approved by clinical team
+
+---
+
+## Step 2: Refactor Consumers (Zero Behavioral Change)
+
+Add optional `config?: RetrievalConfig` param to functions that currently use hardcoded constants. Default = `BASELINE_RETRIEVAL_CONFIG`. Existing callers unchanged.
+
+| File | Change |
+|------|--------|
+| `modules/rag/rag.service.ts` | `hybridSearchWithMetadata()` — accept config param, use `config.hybridWeightVecLong`, `config.hybridWeightVecShort`, `config.shortQueryMaxTokens` instead of hardcoded 0.55/0.80/6. `multiQueryRetrieve()` — use `config.multiQueryBoost`, `config.multiQueryMaxVariations`. `vectorSearchWithMetadata()` — use `config.retrieveMultiplier`. `rerankByTrustedSource()` — use `config.trustedSourceBoostHigh/Medium/Low`, `config.untrustedSourcePenalty` instead of hardcoded 1.50/1.25/1.10/0.95. `retrieveWithExpansion()` — use `config.retrieveWithExpansionMinChunks/MaxRetries` |
+| `modules/rag/reranker.service.ts` | `shouldRerank()` — accept config param for all gating thresholds (gap3, gap6, weakTop, lowLexical, clustered, slamDunk*). `rerank()` — use `config.rerankerMaxChars` for truncation |
+| `modules/rag/query-expander.service.ts` | `expandTerms()` — accept config param for `config.synonymExpansionLimit` (currently hardcoded `slice(0, 2)`) |
+| `modules/rag/retrieval-tool.service.ts` | `multiRetrieve()` — use `config.crossIntentBoost` instead of hardcoded 0.15, `config.multiRetrieveMaxTotal` instead of 15 |
+| `modules/evidence/evidence-gate.service.ts` | `hasStrongMatches()` — use `config.evidenceStrongMatchScore` instead of 0.7. `validateEvidence()` — use `config.evidenceVeryWeakScore`, `config.evidenceGoodSimilarityScore` |
+
+**Key constraint:** Production path still uses `BASELINE_RETRIEVAL_CONFIG` everywhere. A parity test asserts identical behavior (snapshot comparison of retrieval results for 5 known queries).
+
+---
+
+## Step 3: Parity Tests
+
+Before building the benchmark runner, write snapshot tests proving the refactor in Step 2 is zero-change.
+
+**New file:** `apps/api/src/modules/autoresearch/retrieval-config.spec.ts`
+
+- 5 known queries (one per query type: treatment, symptoms, navigation, caregiver, general)
+- For each: call the refactored retrieval path with `BASELINE_RETRIEVAL_CONFIG` and compare output chunk IDs + scores against a pre-recorded snapshot from the current hardcoded path
+- Test passes only if chunk IDs and ordering are identical
+
+This gates Step 4 — if parity breaks, the refactor introduced a bug.
+
+---
+
+## Step 4: Benchmark Query Set (Stratified)
+
+**New file:** `apps/api/src/modules/autoresearch/benchmark-sets/gold-retrieval-v1.json`
+
+Bootstrap 25-30 queries from existing eval test cases + real user sessions, stratified into 4 slices:
+
+| Slice | Count | Source | Purpose |
+|-------|-------|--------|---------|
+| `easy_win` | 6-8 | Queries where evidence quality = "strong", score > 0.6 | Guardrail — must not regress |
+| `borderline` | 6-8 | Queries where evidence quality = "weak", score 0.30-0.50 | Optimization target — most room to improve |
+| `known_failure` | 5-6 | Queries where bot abstained or returned 0 citations | Hard cases — improvement here is real signal |
+| `cross_lingual` | 5-6 | Hindi/Hinglish queries, mixed-language inputs | Tests cross-lingual retrieval effectiveness |
+
+Each query:
+```json
+{
+  "id": "q-treatment-breast",
+  "query": "What is the treatment for stage 2 breast cancer?",
+  "queryType": "treatment",
+  "intent": "INFORMATIONAL_GENERAL",
+  "cancerType": "breast",
+  "slice": "easy_win",
+  "expectedDocIds": ["<harvested-from-successful-eval-runs>"],
+  "expectedSourceTypes": ["02_nci_core", "01_suchi_oncotalks"]
+}
+```
+
+Cover: treatment, symptoms, screening, prevention, side effects, navigation, caregiver, psychosocial query types. Include Hindi queries ("फेफड़ों के कैंसर के लक्षण क्या हैं?") and Hinglish queries ("lung cancer ka ilaaj kaise hota hai").
+
+---
+
+## Step 5: Benchmark Runner
+
+**New file:** `apps/api/src/modules/autoresearch/retrieval-benchmark.service.ts`
+
+Runs retrieval-only benchmarks (no LLM answer generation, no reranker API calls unless testing reranker variants).
+
+Per variant, per query:
+1. Run query expansion with config params (synonym expansion limit)
+2. Run cross-lingual parallel query generation
+3. Run hybrid search with config's vec/lex weights, short-query threshold
+4. Apply multi-query merging with config's boost
+5. Apply trusted-source reranking with config's boost values
+6. Compute reranker gating decision with config thresholds (don't call API)
+7. Apply evidence gate with config's strong match/weak thresholds
+8. If expectedDocIds provided, compute recall@K
+
+Metrics computed per run (aggregate):
+- `utilityScore` — primary metric (composite, see Step 8)
+- `recallAtK` (if gold labels exist)
+- `avgScore`, `medianScore`
+- `avgChunksRetrieved`, `avgUniqueDocCount`
+- `trustedSourceFraction` — fraction of top-K from trusted sources
+- `avgConfidenceLevel` — evidence gate confidence (low=0, medium=0.5, high=1)
+- `p50LatencyMs`, `p95LatencyMs`
+- `rerankerTriggerRate` — fraction where gating says "yes"
+- `abstentionRate` — fraction where evidence gate would abstain
+
+Per-slice metrics (stored in `sliceMetrics` JSON on BenchmarkRun):
+- Same metrics as above, computed independently for each slice
+- Enables per-slice non-regression checks in promotion logic
+
+Writes BenchmarkRun + MetricSnapshot rows to DB.
+
+---
+
+## Step 6: Prisma Schema — Experiment Tracking
+
+**File:** `apps/api/prisma/schema.prisma` (append)
+
+4 new models (additive, no ALTER on existing tables):
+
+```prisma
+model Experiment {
+  id              String    @id @default(uuid())
+  name            String                         // "hybrid-weight-sweep-2026-03"
+  hypothesis      String    @db.Text
+  targetDomain    String    @default("retrieval") // retrieval | evidence_gate | reranker
+  status          String    @default("active")    // active | concluded | abandoned
+  baselineConfig  Json                            // RetrievalConfig snapshot
+  // Provenance
+  benchmarkSetVersion String @default("gold-retrieval-v1")
+  codeSha         String?                         // git SHA at experiment creation
+  createdBy       String    @default("cli")       // "cli" | "api" | user identifier
+  conclusion      String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  concludedAt     DateTime?
+  variants        ExperimentVariant[]
+  @@index([status])
+  @@index([targetDomain])
+}
+
+model ExperimentVariant {
+  id              String    @id @default(uuid())
+  experimentId    String
+  variantLabel    String                          // "hybridWeightVecLong=0.65", "baseline"
+  isBaseline      Boolean   @default(false)       // auto-created shadow baseline row
+  configDelta     Json                            // partial RetrievalConfig ({} for baseline)
+  resolvedConfig  Json                            // full merged config
+  configHash      String                          // sha256 of resolvedConfig — dedup key
+  mutationSource  String    @default("manual")    // manual | rule_sweep
+  status          String    @default("pending")   // pending|running|scored|promoted|rejected|hold
+  promotionNote   String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  experiment      Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  benchmarkRuns   BenchmarkRun[]
+  @@unique([experimentId, variantLabel])
+  @@index([experimentId])
+  @@index([status])
+  @@index([configHash])
+}
+
+model BenchmarkRun {
+  id              String    @id @default(uuid())
+  variantId       String
+  benchmarkSetId  String                          // "gold-retrieval-v1"
+  benchmarkSetVersion String @default("v1")
+  queryCount      Int
+  status          String    @default("running")   // running | complete | failed
+  // Provenance
+  codeSha         String?
+  apiVersion      String?
+  corpusSnapshotAt DateTime?                      // timestamp of corpus state
+  sliceMetrics    Json?                           // { "easy_win": { recallAtK: 0.9, ... }, ... }
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  durationMs      Int?
+  errorMessage    String?   @db.Text
+  variant         ExperimentVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  metrics         MetricSnapshot[]
+  @@index([variantId])
+  @@index([benchmarkSetId])
+}
+
+model MetricSnapshot {
+  id              String    @id @default(uuid())
+  benchmarkRunId  String
+  metricName      String                          // "utilityScore", "recallAtK", "abstentionRate"
+  metricValue     Float
+  perQueryValues  Json?                           // { "q-treatment-breast": 0.85, ... }
+  createdAt       DateTime  @default(now())
+  benchmarkRun    BenchmarkRun @relation(fields: [benchmarkRunId], references: [id], onDelete: Cascade)
+  @@index([benchmarkRunId])
+  @@index([metricName])
+}
+```
+
+**Baseline shadow row:** When an experiment is created, the system auto-creates a variant with `isBaseline: true`, `variantLabel: "baseline"`, `configDelta: {}`, `resolvedConfig: baselineConfig`. Every experiment always has a baseline to compare against.
+
+---
+
+## Step 7: Mutation Engine
+
+**New file:** `apps/api/src/modules/autoresearch/mutation-engine.ts`
+
+Rule-based only (no LLM). Respects knob classification from `KNOB_METADATA`:
+
+**`single_knob_sweep`:** Auto-generate variants from sweepRange in metadata
+- Only `ranking` and `control_flow` knobs with defined sweepRange
+- `cost` knobs blocked from auto-sweep (must be manual)
+- `safety` knobs blocked entirely from auto-sweep (medical safety)
+
+**`paired_knob`:** Two related knobs together (ranking class only)
+- `hybridWeightVecLong` + `hybridWeightVecShort` (search blend)
+- `trustedSourceBoostHigh` + `trustedSourceBoostMedium` (source priority)
+- `rerankerGapThreshold3` + `rerankerGapThreshold6` (score ambiguity)
+
+**`profile`:** Named config packages (any class, manually curated)
+- `"semantic_heavy"`: hybridWeightVecLong=0.70, hybridWeightVecShort=0.90 — favor vector search
+- `"lexical_heavy"`: hybridWeightVecLong=0.40, hybridWeightVecShort=0.60 — favor FTS
+- `"aggressive_trust"`: trustedSourceBoostHigh=1.75, untrustedSourcePenalty=0.85 — strongly prefer NCI/WHO
+- `"rerank_more"`: rerankerWeakTopThreshold=0.70, rerankerGapThreshold6=0.10 — trigger reranker more often
+- `"rerank_less"`: rerankerWeakTopThreshold=0.50, rerankerGapThreshold3=0.02 — skip reranker more often
+
+Each strategy auto-includes a baseline variant row (deduped by configHash).
+
+---
+
+## Step 8: Comparison Report + Promotion Logic
+
+**New files:**
+- `apps/api/src/modules/autoresearch/comparison-report.ts`
+- `apps/api/src/modules/autoresearch/promotion-logic.ts`
+
+**Primary metric:** `utilityScore` (composite, not a raw retrieval score):
+```
+utilityScore = 0.40 * recallAtK
+             + 0.25 * avgScore
+             + 0.20 * trustedSourceFraction
+             + 0.10 * (1 - abstentionRate)
+             + 0.05 * (1 - rerankerTriggerRate)
+```
+Weights are constants in `promotion-logic.ts`, easily adjustable.
+
+**Promotion rules:**
+1. **Minimum case coverage:** variant must have been benchmarked on ≥ 30% of queries in each slice. Insufficient coverage → `hold` (not enough data).
+2. **Aggregate gate:** utilityScore improves ≥ 3% over baseline AND no guardrail regresses > 2%.
+   - Guardrail metrics: `recallAtK`, `avgScore`, `trustedSourceFraction`
+3. **Per-slice non-regression:** For each slice (easy_win, borderline, known_failure, cross_lingual), the slice's recallAtK must not drop by more than 5% vs baseline. A variant that lifts borderline by 20% but drops easy_win by 10% is rejected.
+4. **Safety gate (CRITICAL):** If any safety-class knob is changed, variant requires manual approval flag regardless of metric improvement. No auto-promotion for safety knobs.
+5. **Hold zone:** aggregate improvement exists but < 1% (noise).
+6. **Reject:** no improvement or any guardrail/slice violation.
+
+No automatic deployment in Slice 1. Promoted config is printed for human review and manual copy to `BASELINE_RETRIEVAL_CONFIG`.
+
+---
+
+## Step 9: NestJS Module + API
+
+**New module:** `apps/api/src/modules/autoresearch/`
+
+```
+autoresearch/
+  autoresearch.module.ts
+  autoresearch.controller.ts
+  retrieval-config.ts
+  retrieval-config.spec.ts        ← parity tests (Step 3)
+  retrieval-benchmark.service.ts
+  mutation-engine.ts
+  comparison-report.ts
+  promotion-logic.ts
+  benchmark-sets/
+    gold-retrieval-v1.json
+```
+
+Endpoints:
+- `POST /v1/autoresearch/experiments` — create experiment (auto-creates baseline variant)
+- `POST /v1/autoresearch/experiments/:id/generate-variants` — auto-generate variants (respects knob class)
+- `POST /v1/autoresearch/benchmark` — run benchmark for a variant
+- `GET /v1/autoresearch/experiments/:id/report` — comparison report (includes per-slice breakdown)
+- `POST /v1/autoresearch/experiments/:id/promote/:variantId` — mark promoted (blocked for safety knobs without manual flag)
+
+---
+
+## Implementation Order
+
+1. **Config type + knob metadata** — `retrieval-config.ts` with interface, baseline, classification, hash
+2. **Refactor consumers** — Add optional config param to 5 files, zero behavioral change
+3. **Parity tests** — Snapshot tests proving refactor is zero-change (gates all subsequent steps)
+4. **Benchmark query set** — Harvest 25-30 stratified queries from existing eval cases + session data
+5. **Benchmark runner** — `retrieval-benchmark.service.ts` with per-slice metrics
+6. **Comparison report** — Report generation with per-slice breakdown
+7. **Prisma schema + migrate** — 4 models with provenance fields, auto-baseline
+8. **Mutation engine** — Variant generation respecting knob class (with safety class block)
+9. **Promotion logic** — Composite utility score, case coverage gate, per-slice non-regression, safety gate
+10. **Module + API** — Controller, wire DI, register module
+11. **First experiment** — Hybrid weight sweep, benchmark all variants, review report
+
+---
+
+## Critical Files
+
+| Purpose | Path |
+|---------|------|
+| Hybrid search + trusted-source reranking + multi-query | `modules/rag/rag.service.ts` |
+| Reranker gating thresholds | `modules/rag/reranker.service.ts` |
+| Query expansion (synonym limits) | `modules/rag/query-expander.service.ts` |
+| Cross-intent boost + multi-retrieve cap | `modules/rag/retrieval-tool.service.ts` |
+| Evidence gate (strong/weak/abstention) | `modules/evidence/evidence-gate.service.ts` |
+| Trusted source config | `config/trusted-sources.config.ts` |
+| Cross-lingual retrieval | `modules/rag/cross-lingual.service.ts` |
+| Query decomposer | `modules/rag/query-decomposer.service.ts` |
+| Prisma schema | `apps/api/prisma/schema.prisma` |
+| Eval CLI | `eval/cli.ts` |
+
+---
+
+## All Hardcoded Constants (Inventory)
+
+| Constant | File:Line | Value | Config Key |
+|----------|-----------|-------|------------|
+| Vector weight (long query) | rag.service.ts:771 | 0.55 | `hybridWeightVecLong` |
+| Vector weight (short query) | rag.service.ts:771 | 0.80 | `hybridWeightVecShort` |
+| Lexical weight (long query) | rag.service.ts:772 | 0.45 | derived (1 - vec) |
+| Lexical weight (short query) | rag.service.ts:772 | 0.20 | derived (1 - vec) |
+| Short query token threshold | rag.service.ts:770 | 6 | `shortQueryMaxTokens` |
+| Multi-query boost | rag.service.ts:164 | 0.10 | `multiQueryBoost` |
+| Multi-query max variations | rag.service.ts:74 | 3 | `multiQueryMaxVariations` |
+| Trusted boost high | rag.service.ts:932 | 1.50 | `trustedSourceBoostHigh` |
+| Trusted boost medium | rag.service.ts:935 | 1.25 | `trustedSourceBoostMedium` |
+| Trusted boost low | rag.service.ts:938 | 1.10 | `trustedSourceBoostLow` |
+| Untrusted penalty | rag.service.ts:947 | 0.95 | `untrustedSourcePenalty` |
+| Reranker gap3 threshold | reranker.service.ts:152 | 0.04 | `rerankerGapThreshold3` |
+| Reranker gap6 threshold | reranker.service.ts:152 | 0.07 | `rerankerGapThreshold6` |
+| Reranker weak top (h1) | reranker.service.ts:157 | 0.62 | `rerankerWeakTopThreshold` |
+| Reranker low lexical (l1) | reranker.service.ts:163 | 0.45 | `rerankerLowLexicalThreshold` |
+| Reranker clustered (gap6) | reranker.service.ts:167 | 0.05 | `rerankerClusteredThreshold` |
+| Slam dunk lexical | reranker.service.ts:135 | 0.85 | `rerankerSlamDunkLexical` |
+| Slam dunk gap3 | reranker.service.ts:135 | 0.12 | `rerankerSlamDunkGap3` |
+| Slam dunk gap6 | reranker.service.ts:135 | 0.18 | `rerankerSlamDunkGap6` |
+| Slam dunk h1 | reranker.service.ts:135 | 0.75 | `rerankerSlamDunkH1` |
+| Slam dunk v1 | reranker.service.ts:135 | 0.72 | `rerankerSlamDunkV1` |
+| Low intent weak h1 | reranker.service.ts:142 | 0.55 | `rerankerLowIntentWeakH1` |
+| Low intent weak l1 | reranker.service.ts:142 | 0.40 | `rerankerLowIntentWeakL1` |
+| Default topK | rag.service.ts:31 | 6 | `topKDefault` |
+| Retrieve multiplier | rag.service.ts:556 | 2 | `retrieveMultiplier` |
+| Cross-intent boost | retrieval-tool.service.ts:219 | 0.15 | `crossIntentBoost` |
+| Multi-retrieve max total | retrieval-tool.service.ts:227 | 15 | `multiRetrieveMaxTotal` |
+| Synonym expansion limit | query-expander.service.ts:368 | 2 | `synonymExpansionLimit` |
+| Reranker max chars | reranker.service.ts:241 | 1600 | `rerankerMaxChars` |
+| Reranker timeout | reranker.service.ts:49 | 8000 | `rerankerTimeoutMs` |
+| Reranker candidate multiplier | rag.service.ts:799 | 3 | `rerankerMaxCandidateMultiplier` |
+| Expansion min chunks | rag.service.ts:457 | 3 | `retrieveWithExpansionMinChunks` |
+| Expansion max retries | rag.service.ts:458 | 2 | `retrieveWithExpansionMaxRetries` |
+| Strong match score | evidence-gate.service.ts:84 | 0.70 | `evidenceStrongMatchScore` |
+| Very weak score | evidence-gate.service.ts:234 | 0.30 | `evidenceVeryWeakScore` |
+| Good similarity score | evidence-gate.service.ts:280 | 0.50 | `evidenceGoodSimilarityScore` |
+| Min passages (treatment) | trusted-sources.config.ts:67 | 2 | `evidenceMinPassagesTreatment` |
+| Min sources (treatment) | trusted-sources.config.ts:68 | 2 | `evidenceMinSourcesTreatment` |
+
+---
+
+## Verification
+
+```bash
+# 1. Build compiles
+cd apps/api && npm run build
+
+# 2. Baseline parity test: BASELINE_RETRIEVAL_CONFIG produces identical
+#    retrieval results to current hardcoded constants
+npx jest --testPathPattern=retrieval-config
+
+# 3. End-to-end: create experiment, generate variants, run benchmark, get report
+curl -X POST .../v1/autoresearch/experiments \
+  -d '{"name":"hybrid-weight-sweep","hypothesis":"Higher vector weight improves recall for cancer queries","targetDomain":"retrieval"}'
+curl -X POST .../v1/autoresearch/experiments/<id>/generate-variants \
+  -d '{"strategy":"single_knob_sweep","knob":"hybridWeightVecLong"}'
+curl -X POST .../v1/autoresearch/benchmark \
+  -d '{"variantId":"<baseline-id>","benchmarkSetId":"gold-retrieval-v1"}'
+# repeat for each variant
+curl .../v1/autoresearch/experiments/<id>/report
+
+# 4. Existing chat unchanged (regression check)
+cd eval && npx ts-node cli.ts run --cases cases/tier1/common_cancers_20_mode_matrix.yaml --summary
+
+# 5. Safety check: verify safety-class knobs cannot be auto-swept
+curl -X POST .../v1/autoresearch/experiments/<id>/generate-variants \
+  -d '{"strategy":"single_knob_sweep","knob":"evidenceStrongMatchScore"}'
+# → Should return 400: "Safety-class knobs cannot be auto-swept"
 ```
 
 ---
 
-## Files Modified (Summary)
+## Safety Considerations (Medical Bot Specific)
 
-| File | Change Type | Steps |
-|------|------------|-------|
-| `apps/funding-api/src/modules/proposal/prompts/section-writer.prompt.ts` | Major: voice/tone + section guidance + ToC format | 1, 5, 6 |
-| `apps/funding-api/src/modules/proposal/services/section-writer.service.ts` | Small: chunk size increase | 2 |
-| `apps/funding-api/src/modules/proposal/proposal.service.ts` | Medium: narrative activity facts + configurable model | 3, 7 |
-| `apps/funding-api/src/modules/proposal/prompts/org-profile.ts` | Medium: enrich with board, partners, narrative rewrite | 4 |
+This is a **medical information bot**. Unlike the funding bot, incorrect retrieval can lead to:
+1. **Missed urgent information** — patient misses warning signs
+2. **Wrong treatment info surfaced** — wrong cancer type matched
+3. **Trusted source demotion** — NCI/WHO content ranked below untrusted sources
+4. **Abstention regression** — bot answers when it should abstain (safety)
 
-## Implementation Order (Priority)
-1. **Step 1** (voice/tone) — highest ROI, pure prompt change
-2. **Step 4** (org profile) — second highest, gives LLM the data it needs
-3. **Step 5** (section-type guidance) — fills structural gaps
-4. **Step 2** (chunk size) — easy win for methodology depth
-5. **Step 3** (narrative activity facts) — improves number integration
-6. **Step 6** (ToC format) — targeted improvement for project design
-7. **Step 7** (model config) — enables quality upgrades without deploys
-
-## Non-Goals (Out of Scope)
-- Eval harness infrastructure fixes
-- Frontend/web app changes
-- Database schema changes
-- Citation integrity pipeline changes
-- New feature additions (e.g., auto-compliance generation)
-
-## Risk Assessment
-- **Low risk:** Steps 1, 2, 5, 6, 7 — prompt/config only, easy to revert
-- **Medium risk:** Steps 3, 4 — change input format; test with a real proposal run after
-- All changes are backward-compatible and don't affect API contracts
+Therefore:
+- Evidence gate thresholds (`safety` class) are **NEVER** auto-swept
+- Any config change that increases abstention rate by >5% is auto-rejected (patient experience)
+- Any config change that decreases `trustedSourceFraction` by >3% is auto-rejected (source quality)
+- Cross-lingual slice ensures Hindi/Hinglish users aren't degraded
+- All experiments log `codeSha` + `corpusSnapshotAt` for reproducibility
