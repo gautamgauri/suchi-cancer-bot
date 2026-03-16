@@ -1,220 +1,170 @@
-# Suchi Phase 1 Pack
+# Suchi Cancer Bot
 
-Suchi (Suchitra Cancer Bot) - A cancer information assistant with safety guardrails, KB-backed responses, and feedback collection.
+Cancer information assistant with safety guardrails, KB-backed responses, voice support, and feedback collection.
 
-## Contents
-- `apps/api` - NestJS + Prisma backend with Google Gemini LLM integration
-- `apps/web` - React + Vite frontend chat UI
-- `kb` - Knowledge base files and manifest
-- `docs` - PRD, technical spec, and KB structure documentation
+## Repository Layout
 
-## Prerequisites
-- Node.js 18+ and npm
-- PostgreSQL database
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- `apps/api`: NestJS backend (chat, RAG, safety, voice, admin, analytics)
+- `apps/web`: React + Vite chat app
+- `apps/landing`: Astro static site for public video/content pages
+- `kb`: Knowledge base markdown and `manifest.json`
+- `eval`: Evaluation runner, test cases, and rubrics
+- `docs`: Deployment, environment, architecture, and operational docs
+- `scripts`: KB ingestion and utility scripts
 
-## Backend Setup
+## Local Setup
 
-1. Navigate to the API directory:
-   ```bash
-   cd apps/api
-   ```
+### 1. Prerequisites
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+- Node.js 20+ and npm
+- PostgreSQL with `pgvector`
+- Google Cloud credentials for local features that call Vertex AI / Cloud APIs
+- `ffmpeg` + `ffprobe` if you plan to test voice upload endpoints locally
 
-3. Create `.env` file with the following variables:
-   ```env
-   DATABASE_URL=postgresql://user:password@localhost:5432/suchi_db
-   ADMIN_BASIC_USER=admin
-   ADMIN_BASIC_PASS=your_secure_password
-   GEMINI_API_KEY=your_gemini_api_key_here
-   PORT=3001
-   NODE_ENV=development
-   RATE_LIMIT_TTL_SEC=60
-   RATE_LIMIT_REQ_PER_TTL=20
-   ```
+### 2. API (`apps/api`)
 
-4. Generate Prisma client:
-   ```bash
-   npx prisma generate
-   ```
+```bash
+cd apps/api
+npm install
+cp .env.example .env
+npx prisma generate
+npx prisma migrate dev
+npm run dev
+```
 
-5. Run database migrations:
-   ```bash
-   npx prisma migrate dev --name init
-   ```
+API base URL: `http://localhost:3001/v1`
 
-6. (Optional) Ingest knowledge base:
-   ```bash
-   npm run kb:dry     # Dry run to verify KB structure
-   npm run kb:ingest  # Ingest KB into database
-   ```
+### 3. Web App (`apps/web`)
 
-7. Start the development server:
-   ```bash
-   npm run dev
-   ```
+```bash
+cd apps/web
+npm install
+npm run dev
+```
 
-The API will be available at `http://localhost:3001/v1`
+Web app URL: `http://localhost:3000`
 
-## Frontend Setup
+### 4. Landing Site (`apps/landing`)
 
-1. Navigate to the web directory:
-   ```bash
-   cd apps/web
-   ```
+```bash
+cd apps/landing
+npm install
+npm run dev
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+Landing site URL: `http://localhost:4321`
 
-3. (Optional) Create `.env` file to configure API URL:
-   ```env
-   VITE_API_URL=http://localhost:3001/v1
-   ```
-   If not set, it defaults to `/v1` (using Vite proxy).
+## Public API Surface
 
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+All routes are prefixed by `/v1`.
 
-The web UI will be available at `http://localhost:3000`
+### Core Endpoints
 
-## API Endpoints
-
-### Public Endpoints
-- `POST /v1/sessions` - Create a new chat session
-- `POST /v1/chat` - Send a message and get response
-- `POST /v1/feedback` - Submit feedback for a message
-- `GET /v1/health` - Health check endpoint
+- `POST /v1/sessions`: create a user session
+- `GET /v1/sessions/:sessionId`: fetch session status/context
+- `POST /v1/chat`: send user text and receive an assistant response
+- `POST /v1/feedback`: submit thumbs up/down feedback
+- `GET /v1/health`: API + database health check
+- `POST /v1/voice/respond`: one-shot voice request (audio upload -> STT -> chat -> TTS)
 
 ### Admin Endpoints (Basic Auth)
-- `GET /v1/admin/conversations` - List conversations with optional filters
-- `GET /v1/admin/metrics` - Get analytics metrics
 
-## Features
+- `GET /v1/admin/conversations`
+- `GET /v1/admin/metrics`
+- `GET /v1/admin/kb-stats`
+- `GET /v1/admin/daily-report`
+- `POST /v1/admin/youtube/ingest`
+- `POST /v1/admin/youtube/test`
 
-### Safety Features
-- Emergency detection and warning banners
-- Self-harm detection with crisis support guidance
-- Refusal to diagnose or prescribe medications
-- Misinformation detection (e.g., stopping treatment)
+### Scheduled/Admin Endpoint (OIDC Guard)
 
-### Chat Features
-- KB-backed responses using Vector RAG (pgvector semantic search)
-- Google Gemini Pro for response generation
-- Suggested prompts for new users
-- Feedback collection (thumbs up/down)
-- Session management
-- "Start over" functionality
+- `POST /v1/admin/daily-report`
 
-### Knowledge Base Features
-- Vector embeddings for semantic search (pgvector)
-- Keyword search fallback for backward compatibility
-- YouTube transcript extraction from Suchitra Cancer Care Foundation channel
-- Monthly automated KB updates
-- Gold Stack organization with source traceability
+## Request Examples
 
-### Admin Features
-- View conversations with filtering options
-- Analytics and metrics dashboard
-- Protected with Basic Authentication
-
-## Deployment
-
-For Railway deployment (recommended):
-1. Connect your GitHub repository to Railway
-2. Set environment variables in Railway dashboard
-3. Deploy both `apps/api` and `apps/web` as separate services
-4. Configure database connection string
-5. Run migrations: `npx prisma migrate deploy`
-
-## Knowledge Base Setup
-
-### Vector RAG Setup
-1. Ensure PostgreSQL has pgvector extension installed
-2. Run migrations: `npx prisma migrate dev`
-3. See [`docs/VECTOR_RAG_SETUP.md`](docs/VECTOR_RAG_SETUP.md) for detailed instructions
-
-### YouTube Transcript Extraction
-1. Install Python dependencies: `cd scripts/youtube-transcripts && pip install -r requirements.txt`
-2. Extract transcripts: `python extract_transcripts.py --video-ids VIDEO_ID1 VIDEO_ID2`
-3. See [`scripts/youtube-transcripts/README.md`](scripts/youtube-transcripts/README.md) for details
-
-### NCI Data Ingestion
-1. Install Python dependencies: `cd scripts/nci-ingestion && pip install -r requirements.txt`
-2. Run full pipeline: `python update_nci.py`
-3. Process NCIt thesaurus: `python process_ncit.py --force-download`
-4. See [`docs/NCI_INGESTION_GUIDE.md`](docs/NCI_INGESTION_GUIDE.md) for detailed instructions
-
-### Monthly Updates
-
-**YouTube Transcripts**:
-```bash
-cd scripts/youtube-transcripts
-bash update_monthly.sh
-```
-
-**NCI Content**:
-```bash
-cd scripts/nci-ingestion
-bash update_nci.sh
-```
-
-## Sanity Check
-
-A sanity check script verifies that all components are working correctly. It runs automatically when you open the workspace in Cursor, and can also be run manually.
-
-### Automatic Check
-
-The sanity check runs automatically when you open the workspace (configured in `.cursor/tasks.json`). It will:
-- ✅ Check frontend build
-- ✅ Check backend health endpoint
-- ✅ Test RAG retrieval with a sample query
-- ✅ Test AI model response generation
-
-### Manual Check
-
-Run the sanity check manually:
+Create session:
 
 ```bash
-# Full check (includes build and functional tests)
-npm run sanity-check
-
-# Quick check (skips build and functional tests, faster)
-npm run sanity-check:quick
+curl -X POST http://localhost:3001/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"channel":"web","locale":"en"}'
 ```
 
-### What It Checks
+Chat turn:
 
-1. **Frontend**: Verifies the web app can build successfully
-2. **Backend**: Checks health endpoint and database connectivity
-3. **RAG**: Tests retrieval with a sample query, verifies trusted sources in top-3
-4. **AI Model**: Tests LLM response generation, verifies citations are present
+```bash
+curl -X POST http://localhost:3001/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId":"<uuid>",
+    "channel":"web",
+    "locale":"en",
+    "userText":"What are early signs of breast cancer?"
+  }'
+```
 
-### Requirements
+Voice turn (multipart upload):
 
-- Root dependencies installed: `npm install` (from repo root)
-- Backend running (for RAG and AI model checks): Start with `cd apps/api && npm run dev`
-- Environment variables configured (API keys, database URL, etc.)
+```bash
+curl -X POST http://localhost:3001/v1/voice/respond \
+  -F "audio=@sample.wav;type=audio/wav" \
+  -F "sessionId=<uuid>" \
+  -F "locale=hi-IN"
+```
 
-### Output
+## Voice Workflows
 
-The script provides clear pass/fail indicators:
-- ✅ Success: Component is working
-- ❌ Failure: Component has issues (see details)
-- ⏭️ Skipped: Component check was skipped (e.g., backend not running)
+### HTTP Voice Endpoint
 
-## Development Notes
+`POST /v1/voice/respond` accepts audio field name `audio` and supports:
 
-- Backend runs on port 3001 by default
-- Frontend runs on port 3000 with proxy to backend
-- Health check endpoint available at `/v1/health`
-- All API endpoints are prefixed with `/v1`
-- Frontend uses sessionStorage to persist consent state
-- Vector embeddings require `EMBEDDING_API_KEY` (can use `GEMINI_API_KEY`)
+- `audio/webm`
+- `audio/ogg`
+- `audio/opus`
+- `audio/wav`
+- `audio/wave`
+- `audio/x-wav`
+- `audio/mpeg`
+- `audio/mp4`
+
+Current server-side limits:
+
+- max size: `2 MB` (configurable via `VOICE_MAX_AUDIO_SIZE_BYTES`)
+- max duration: `60 s` (configurable via `VOICE_MAX_AUDIO_DURATION_SEC`)
+
+### Realtime Voice (WebSocket, Optional)
+
+Enable with `VOICE_WS_ENABLED=true`. The namespace is:
+
+- `/v1/voice/stream`
+
+Client event flow:
+
+1. `audio:start` with `sessionId` (+ optional `locale`)
+2. repeat `audio:chunk` with PCM chunks
+3. `audio:end`
+4. receive `stt:interim`, `stt:final`, and `response`
+
+Timeout controls:
+
+- `VOICE_WS_IDLE_TIMEOUT_MS`
+- `VOICE_WS_MAX_SESSION_MS`
+
+## Deployment Overview
+
+- API/Web production deployment uses gated Cloud Build (`cloudbuild.gated.yaml`).
+- Candidate API revision is health-checked before traffic promotion.
+- Landing site deploys through GitHub Pages workflow (`.github/workflows/deploy-landing.yml`).
+
+See:
+
+- `docs/DEPLOYMENT.md`
+- `docs/DEPLOY_PREFLIGHT.md`
+- `docs/ENVIRONMENT_VARIABLES.md`
+
+## Common Pitfalls
+
+- `LLM_PROVIDER=gemini` requires `GOOGLE_CLOUD_PROJECT` (Vertex AI path).
+- If you enable voice, ensure runtime has `ffmpeg`/`ffprobe` and Cloud Storage access for TTS URLs.
+- Use `/v1/health` for smoke checks (global API prefix is always applied).
+- Keep KB ingestion and DB schema migrations in sync before deploy.

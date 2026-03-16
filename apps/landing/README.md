@@ -1,43 +1,86 @@
-# Astro Starter Kit: Minimal
+# SCCF Landing Site (`apps/landing`)
 
-```sh
-npm create astro@latest -- --template minimal
+Astro static site for:
+
+- SCCF homepage
+- curated Onco Talks video library (`/watch/`)
+- per-video pages (`/watch/:slug/`)
+
+## Tech + Deployment
+
+- Framework: Astro (`output: static`)
+- Production host: GitHub Pages via `.github/workflows/deploy-landing.yml`
+- Site URL configured in `astro.config.mjs`: `https://suchitracancercare.org`
+
+## Local Development
+
+```bash
+cd apps/landing
+npm install
+npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Default local URL: `http://localhost:4321`
 
-## 🚀 Project Structure
+Build and preview:
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+npm run build
+npm run preview
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Content Model
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Video content is driven by `src/content/videos.json`.
 
-Any static assets, like images, can be placed in the `public/` directory.
+Top-level sections:
 
-## 🧞 Commands
+- `videos`: each card/page entry
+- `cancerTypes`: filter metadata
+- `situations`: filter metadata
+- `playlists`: grouping metadata
 
-All commands are run from the root of the project, from a terminal:
+Each video entry should include at minimum:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+- `youtubeId`
+- `title`
+- `slug` (must be unique)
+- `cancerTypes` (array of IDs present in `cancerTypes`)
+- `situations` (array of IDs present in `situations`)
+- `featured` (boolean)
 
-## 👀 Want to learn more?
+Optional fields used by templates:
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+- `speaker`
+- `affiliation`
+- `date`
+- `duration`
+- `takeaways`
+- `whoIsThisFor`
+- `questionsToAsk`
+
+## Routing Notes
+
+- Homepage: `src/pages/index.astro`
+- Video listing: `src/pages/watch/index.astro`
+- Video details: `src/pages/watch/[slug].astro`
+
+`[slug].astro` uses `getStaticPaths()` over `videos.json`, so every `slug` must remain stable after publishing.
+
+## Updating Video Content
+
+1. Add/update entries in `src/content/videos.json`.
+2. Ensure the `slug` is URL-safe and unique.
+3. Verify `cancerTypes` and `situations` values reference existing IDs.
+4. Run `npm run build` to catch broken JSON/routes.
+5. Run `npm run dev` and validate:
+   - filter behavior on `/watch/`
+   - detail page rendering on `/watch/<slug>/`
+   - YouTube embed playback
+
+## Common Pitfalls
+
+- Duplicate `slug` values can break static path generation.
+- Invalid JSON formatting will fail the Astro build.
+- Unknown `cancerTypes`/`situations` IDs produce missing filter labels.
+- Very long titles can overflow cards on small screens; check the mobile layout.
