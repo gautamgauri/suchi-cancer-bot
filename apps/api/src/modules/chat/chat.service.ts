@@ -33,6 +33,8 @@ import { CrossLingualService } from "../rag/cross-lingual.service";
 import { ExecutionPlannerService } from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
+import { ReviewService } from "../review/review.service";
+import { ReviewContext } from "../review/review-checks";
 
 @Injectable()
 export class ChatService {
@@ -68,7 +70,9 @@ export class ChatService {
     // Phase 3: Planner→Executor→Verifier
     private readonly executionPlanner: ExecutionPlannerService,
     private readonly planExecutor: PlanExecutorService,
-    private readonly outputVerifier: OutputVerifierService
+    private readonly outputVerifier: OutputVerifierService,
+    // Review Copilot
+    private readonly reviewService: ReviewService
   ) {}
 
   /**
@@ -2804,6 +2808,28 @@ export class ChatService {
       options.safetyClassification === "mental_health_crisis";
     finalText = appendDisclaimer(finalText, undefined, isEmergencyResponse);
 
+    // Review Copilot — second-pass review before delivery
+    const reviewCtx: ReviewContext = {
+      responseText: finalText,
+      userText: '', // not available at persist layer; checks that need it are skipped
+      citations,
+      retrievedChunkIds: evidenceChunks.map((c: any) => c.id || c.chunkId || '').filter(Boolean),
+      retrievedDocIds: [...new Set(evidenceChunks.map((c: any) => c.docId || '').filter(Boolean))],
+      safetyClassification: options.safetyClassification,
+      evidenceQuality: options.evidenceQuality,
+      evidenceGatePassed: options.evidenceGatePassed,
+    };
+    const reviewResult = await this.reviewService.review(reviewCtx);
+
+    // In active mode: apply verdict
+    if (this.reviewService.copilotMode === 'active') {
+      if (reviewResult.verdict === 'BLOCKED') {
+        finalText = this.reviewService.buildBlockedFallback(reviewResult.hardFailures);
+      } else if (reviewResult.verdict === 'REPAIRED' && reviewResult.repairedText) {
+        finalText = reviewResult.repairedText;
+      }
+    }
+
     // Create the message
     const assistant = await this.prisma.message.create({
       data: {
@@ -2837,6 +2863,11 @@ export class ChatService {
         )
       );
     }
+
+    // Persist review record (non-blocking)
+    this.reviewService.persistRecord(assistant.id, sessionId, reviewResult).catch(err =>
+      this.logger.warn(`ReviewRecord persist failed: ${err.message}`)
+    );
 
     return { id: assistant.id, text: assistant.text };
   }
