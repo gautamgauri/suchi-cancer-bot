@@ -35,7 +35,9 @@ export const envSchema = z.object({
   // WebSocket voice streaming (opt-in)
   VOICE_WS_ENABLED: z.string().optional().default('false'),
   VOICE_WS_IDLE_TIMEOUT_MS: z.coerce.number().optional().default(30000),
-  VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000)
+  VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000),
+  // Review Copilot
+  REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off')
 }).refine(
   (data) => {
     // Validate that the required API key is present based on provider

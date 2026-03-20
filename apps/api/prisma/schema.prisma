@@ -56,6 +56,7 @@ model Message {
   feedback     Feedback[]
   safetyEvents SafetyEvent[]
   citations    MessageCitation[]
+  reviewRecord ReviewRecord?
 }
 
 model Feedback {
@@ -180,4 +181,46 @@ model MessageCitation {
 
   @@index([messageId])
   @@index([docId])
+}
+
+// ─── Review Copilot ─────────────────────────────────────────────────────────
+
+model ReviewRecord {
+  id             String   @id @default(uuid())
+  messageId      String   @unique
+  sessionId      String
+  verdict        String   // PASS | REPAIRED | BLOCKED | FLAGGED
+  hardFailures   Json?    // Array of {id, type, detail}
+  softFailures   Json?    // Array of {id, type, detail, repair}
+  ambiguousFlags Json?    // Array of {id, type, detail, reason}
+  patchesApplied Json?    // Array of {type, before, after, confidence}
+  originalResponse String? // Pre-repair response (null if PASS)
+  reviewLatencyMs  Int
+
+  humanReviewStatus String?   // PENDING | APPROVED | REJECTED | MODIFIED
+  humanReviewerId   String?
+  humanReviewNote   String?
+  humanReviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([verdict])
+  @@index([humanReviewStatus])
+  @@index([createdAt])
+}
+
+model ReviewPolicy {
+  id          String   @id @default(uuid())
+  policyCode  String   @unique // e.g., "HF-1", "SF-3"
+  category    String   // HARD | SOFT | AMBIGUOUS
+  name        String
+  description String
+  enabled     Boolean  @default(true)
+  config      Json?    // Policy-specific thresholds/patterns
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

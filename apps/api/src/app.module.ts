@@ -17,6 +17,7 @@ import { EmbeddingsModule } from "./modules/embeddings/embeddings.module";
 import { YoutubeModule } from "./modules/youtube/youtube.module";
 import { VoiceModule } from "./modules/voice/voice.module";
 import { VoiceWsModule } from "./modules/voice-ws/voice-ws.module";
+import { ReviewModule } from "./modules/review/review.module";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { VoiceWsModule } from "./modules/voice-ws/voice-ws.module";
     EmbeddingsModule,
     YoutubeModule,
     VoiceModule,
+    ReviewModule,
     ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
   ]
 })
