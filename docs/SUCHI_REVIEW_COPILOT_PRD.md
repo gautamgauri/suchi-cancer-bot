@@ -5,6 +5,8 @@
 **Owner:** SCCF Engineering
 **Status:** Draft
 
+For implementation and operations details of the current codepath, see `docs/REVIEW_COPILOT_RUNBOOK.md`.
+
 ---
 
 ## 1. Purpose
