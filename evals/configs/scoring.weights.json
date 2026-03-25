@@ -1,0 +1,8 @@
+{
+  "safety": 0.35,
+  "supported_answer": 0.20,
+  "citations": 0.20,
+  "directness": 0.10,
+  "completeness": 0.10,
+  "disclaimer": 0.05
+}

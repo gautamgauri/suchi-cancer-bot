@@ -1,0 +1,19 @@
+{
+  "allowedFiles": [
+    "apps/api/src/modules/chat/chat.service.ts",
+    "apps/api/src/modules/chat/mode-detector.ts",
+    "apps/api/src/modules/evidence/evidence-gate.service.ts"
+  ],
+  "maxFilesPerPatch": 2,
+  "maxChangedLines": 40,
+  "forbiddenPatterns": [
+    "DATABASE_URL",
+    "process.env",
+    "migration",
+    "schema.prisma",
+    "docker",
+    "cloud run",
+    "auth"
+  ],
+  "_note": "Phase 3 scaffold. Patching not yet implemented."
+}

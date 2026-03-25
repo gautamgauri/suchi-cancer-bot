@@ -76,6 +76,41 @@ export class ChatService {
   ) {}
 
   /**
+   * Run an LLM call with a hard deadline. Throws if the deadline is exceeded
+   * or the request was aborted. Prevents pipeline from accumulating past the request budget.
+   */
+  private async llmWithDeadline<T>(
+    deadlineMs: number,
+    label: string,
+    fn: () => Promise<T>,
+    signal?: AbortSignal
+  ): Promise<T> {
+    if (signal?.aborted) {
+      throw new Error(`LLM generation timeout: request aborted before ${label}`);
+    }
+    const remaining = deadlineMs - Date.now();
+    if (remaining <= this.MIN_BUDGET_FOR_LLM_MS) {
+      throw new Error(`LLM generation timeout: no budget left for ${label}`);
+    }
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error(`LLM generation timeout: ${label} exceeded ${remaining}ms budget`)),
+        remaining
+      );
+      // Also reject if the request is aborted externally (controller timeout)
+      signal?.addEventListener('abort', () =>
+        reject(new Error(`LLM generation timeout: ${label} aborted by controller`))
+      );
+    });
+    try {
+      return await Promise.race([fn(), timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+  }
+
+  /**
    * Get session with caching (60s TTL)
    * Uses raw SQL to avoid Prisma schema validation issues when columns don't exist in DB
    */
@@ -115,7 +150,7 @@ export class ChatService {
     return session;
   }
 
-  async handle(dto: ChatDto) {
+  async handle(dto: ChatDto, signal?: AbortSignal) {
     // Fetch session (with caching) and message count once at the start - reuse throughout method
     const [session, existingAssistantMessages] = await Promise.all([
       this.getSession(dto.sessionId),
@@ -802,6 +837,37 @@ export class ChatService {
     const mightBeIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
                                     cancerKeywordPattern.test(dto.userText.toLowerCase());
 
+    // Abort check — if the controller has already timed out, stop immediately
+    if (signal?.aborted) {
+      throw new Error("LLM generation timeout: request aborted before RAG");
+    }
+
+    // Budget check before RAG retrieval — if we've already burned too much time, return template response
+    if (Date.now() > requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
+      this.logger.warn(`Request budget exhausted before RAG retrieval (${Date.now() - started}ms elapsed) — returning template response`);
+      const templateFallback = ResponseTemplates.S2({
+        isFirstMessage,
+        userText: dto.userText,
+        locale: session.locale || dto.locale,
+      } as any);
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: templateFallback,
+          safetyClassification: "normal",
+          latencyMs: Date.now() - started,
+        },
+      });
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: assistant.text,
+        safety: { classification: "normal" as const, actions: [] },
+        error: "budget_exhausted_before_rag",
+      };
+    }
+
     // TIMING: Track RAG retrieval time
     const ragStarted = Date.now();
     let evidenceChunks: any[] = [];
@@ -1332,15 +1398,18 @@ export class ChatService {
       if (evidenceChunks.length > 0) {
         // Generate response with available evidence even if weak
         const queryType = QueryTypeClassifier.classify(dto.userText);
-        let responseText = await this.llm.generateWithCitations(
-          "explain",
-          "",
-          dto.userText,
-          evidenceChunks,
-          false,
-          { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent }
+        let responseText = await this.llmWithDeadline(requestDeadlineMs, "abstention-with-rag", () =>
+          this.llm.generateWithCitations(
+            "explain",
+            "",
+            dto.userText,
+            evidenceChunks,
+            false,
+            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent }
+          ),
+          signal
         );
-        
+
         // Structure with explainModeFrame
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
 
@@ -1512,10 +1581,13 @@ export class ChatService {
         });
 
         // Generate brief definitional response (2-3 sentences + optional clarifying question)
-        let responseText = await this.llm.generateDefinitionalResponse(
-          dto.userText,
-          evidenceChunks,
-          { hasGenerallyAsking }
+        let responseText = await this.llmWithDeadline(requestDeadlineMs, "answer-first-definitional", () =>
+          this.llm.generateDefinitionalResponse(
+            dto.userText,
+            evidenceChunks,
+            { hasGenerallyAsking }
+          ),
+          signal
         );
 
         // Disclaimer is appended by appendDisclaimer() later — no need to prepend a second one
@@ -1632,13 +1704,16 @@ export class ChatService {
       // Generate response with Explain Mode prompt + checklist
       const llm1Started = Date.now();
       llmCallCount++;
-      let responseText = await this.llm.generateWithCitations(
-        "explain",
-        "",
-        dto.userText,
-        evidenceChunks,
-        mightBeIdentifyQuestion,
-        { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent }
+      let responseText = await this.llmWithDeadline(requestDeadlineMs, "explain-mode-llm1", () =>
+        this.llm.generateWithCitations(
+          "explain",
+          "",
+          dto.userText,
+          evidenceChunks,
+          mightBeIdentifyQuestion,
+          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent }
+        ),
+        signal
       );
       const llm1Ms = Date.now() - llm1Started;
 
@@ -2138,13 +2213,16 @@ export class ChatService {
       if (evidenceChunks.length > 0) {
         try {
           // Generate brief context from RAG
-          const ragContext = await this.llm.generateWithCitations(
-            "navigate",
-            "",
-            `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
-            evidenceChunks.slice(0, 2),
-            false,
-            { emotionalState }
+          const ragContext = await this.llmWithDeadline(requestDeadlineMs, "navigate-mode-rag", () =>
+            this.llm.generateWithCitations(
+              "navigate",
+              "",
+              `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
+              evidenceChunks.slice(0, 2),
+              false,
+              { emotionalState }
+            ),
+            signal
           );
           responseText = ragContext + "\n\n" + responseText;
 
@@ -2253,13 +2331,16 @@ export class ChatService {
       "For emergencies, reference Indian numbers: 112 (emergency), 108 (ambulance). " +
       "For financial assistance, mention PM-JAY/Ayushman Bharat (helpline: 14555) and Indian Cancer Society (1800-22-1951) when relevant.";
 
-    let responseText = await this.llm.generateWithCitations(
-      systemPrompt,
-      "",
-      dto.userText,
-      evidenceChunks,
-      false,
-      { emotionalState, cancerType: sessionCancerType }
+    let responseText = await this.llmWithDeadline(requestDeadlineMs, "fallback-legacy-llm", () =>
+      this.llm.generateWithCitations(
+        systemPrompt,
+        "",
+        dto.userText,
+        evidenceChunks,
+        false,
+        { emotionalState, cancerType: sessionCancerType }
+      ),
+      signal
     );
 
     // 6. Extract and validate citations with confidence levels

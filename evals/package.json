@@ -1,0 +1,23 @@
+{
+  "name": "suchi-autoeval",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Eval-driven improvement loop for Suchi Cancer Bot",
+  "scripts": {
+    "eval": "tsx runners/run-evals.ts",
+    "eval:starter": "tsx runners/run-evals.ts --dataset datasets/starter.jsonl",
+    "cluster": "tsx clustering/cluster-failures.ts",
+    "compare": "tsx runners/compare-runs.ts",
+    "report": "tsx reports/generate-report.ts",
+    "single": "tsx runners/run-single-case.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  }
+}

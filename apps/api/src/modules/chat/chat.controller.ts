@@ -38,18 +38,22 @@ export class ChatController {
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60 } })
   async send(@Body() dto: ChatDto) {
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('REQUEST_TIMEOUT'));
-      }, this.REQUEST_TIMEOUT_MS);
-    });
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, this.REQUEST_TIMEOUT_MS);
 
     try {
       // Race between the actual request and timeout
       const result = await Promise.race([
-        this.chat.handle(dto),
-        timeoutPromise
+        this.chat.handle(dto, abortController.signal),
+        new Promise((_, reject) => {
+          abortController.signal.addEventListener('abort', () =>
+            reject(new Error('REQUEST_TIMEOUT'))
+          );
+        }),
       ]) as any;
+      clearTimeout(timeoutId);
 
       // Clean the response text for display (strip citation markers, numbered refs)
       // The raw text is preserved in the database for evaluation purposes

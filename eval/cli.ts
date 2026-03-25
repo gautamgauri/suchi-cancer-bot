@@ -384,4 +384,65 @@ program
     }
   });
 
+program
+  .command("loop")
+  .description("Run quality improvement loop: eval -> diagnose -> plan -> fix -> rerun -> compare")
+  .option("--api-url <url>", "API base URL", "http://localhost:3001")
+  .option("--dataset <path>", "JSONL dataset path", "../evals/datasets/starter.jsonl")
+  .option("--resume <loopId>", "Resume an existing loop by ID")
+  .option("--approve", "Approve the repair plan and continue")
+  .option("--reject", "Reject the repair plan")
+  .option("--reason <text>", "Rejection reason")
+  .option("--status <loopId>", "Show status of a loop")
+  .action(async (options) => {
+    try {
+      const {
+        startLoop,
+        resumeWithApproval,
+        resumeWithRejection,
+        printStatus,
+      } = await import("./loop/loop-runner");
+      const { execSync } = await import("child_process");
+
+      // Eval runner function that shells out to the evals runner
+      const runEval = async (apiUrl: string, dataset: string) => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const outputPath = path.resolve(__dirname, "..", "evals", "artifacts", "runs", `loop-${timestamp}.json`);
+        await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+        const cmd = `cd ${path.resolve(__dirname, "..", "evals")} && npx tsx runners/run-evals.ts --api-url ${apiUrl} --dataset ${dataset} --output ${outputPath}`;
+        console.log(`  Running: ${cmd}`);
+        execSync(cmd, { stdio: "inherit" });
+
+        const raw = await fs.readFile(outputPath, "utf-8");
+        return JSON.parse(raw);
+      };
+
+      if (options.status) {
+        await printStatus(options.status);
+        return;
+      }
+
+      if (options.resume) {
+        if (options.reject) {
+          await resumeWithRejection(options.resume, options.reason);
+        } else {
+          await resumeWithApproval(options.resume, runEval);
+        }
+        return;
+      }
+
+      // Start new loop
+      await startLoop({
+        apiUrl: options.apiUrl,
+        dataset: options.dataset,
+        runEval,
+      });
+    } catch (error: any) {
+      console.error("Loop error:", error.message);
+      if (error.stack) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
 program.parse();

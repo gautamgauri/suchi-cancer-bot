@@ -18,6 +18,7 @@ import { YoutubeModule } from "./modules/youtube/youtube.module";
 import { VoiceModule } from "./modules/voice/voice.module";
 import { VoiceWsModule } from "./modules/voice-ws/voice-ws.module";
 import { ReviewModule } from "./modules/review/review.module";
+import { CopilotModule } from "./modules/copilot/copilot.module";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ReviewModule } from "./modules/review/review.module";
     YoutubeModule,
     VoiceModule,
     ReviewModule,
+    CopilotModule,
     ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
   ]
 })
