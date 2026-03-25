@@ -17,22 +17,49 @@ export class QueryTypeClassifier {
     // 1) Side effects if treatment context is present (highest priority)
     // 2) Explicit side effects language
     // 3) Symptoms language (lowest priority)
+    // 4) Raw symptom descriptions (patient describing their own symptoms)
     const hasTreatmentContext = /\b(chemotherapy|chemo|radiation|radiotherapy|immunotherapy|after treatment|during treatment|treatment side|of treatment|of chemo|of radiation)\b/i.test(lowerQuery);
     const hasSideEffectLanguage = /\b(side effect|adverse effect|adverse reaction|complication)\b/i.test(lowerQuery);
     const hasSymptomLanguage = /\b(symptom|signs|warning sign|early sign|common sign|identify|recognize|detect)\b/i.test(lowerQuery);
-    
+
+    // Detect raw symptom descriptions: patient describing their own symptoms
+    // e.g., "I've had a persistent cough for 8 weeks", "I have blood in my stool"
+    const hasRawSymptomDescription = (
+      // Duration patterns: "for X weeks/months/days", "persistent", "ongoing", "chronic"
+      /\b(persistent|ongoing|chronic|constant|recurring|for \d+ (week|month|day|year)s?)\b/i.test(lowerQuery) &&
+      // Combined with body symptom terms (not treatment terms)
+      /\b(cough|pain|lump|bleeding|blood|swelling|fatigue|tired|weight loss|numbness|headache|fever|night sweats|discharge|sore|ache|nausea|vomiting|bloating|difficulty swallowing|shortness of breath|wheezing)\b/i.test(lowerQuery) &&
+      // Exclude treatment context
+      !hasTreatmentContext
+    ) || (
+      // First-person symptom reports: "I have/had/noticed/found..."
+      /\b(i('ve| have| had| am having| noticed| found| feel| been having| keep having| experience))\b/i.test(lowerQuery) &&
+      /\b(cough|pain|lump|bump|bleeding|blood|swelling|fatigue|tired|weight loss|numbness|headache|fever|night sweats|discharge|sore|ache|nausea|vomiting|bloating|difficulty swallowing|shortness of breath|wheezing|mole)\b/i.test(lowerQuery) &&
+      !hasTreatmentContext
+    ) || (
+      // "What should I do" + symptom context (seeking evaluation advice)
+      /\b(what should i do|should i (see|visit|go|worry|be concerned)|is this (serious|normal|cancer|dangerous))\b/i.test(lowerQuery) &&
+      /\b(cough|pain|lump|bump|bleeding|blood|swelling|fatigue|tired|weight loss|numbness|headache|fever|night sweats|discharge|sore|ache|nausea|vomiting|bloating)\b/i.test(lowerQuery) &&
+      !hasTreatmentContext
+    );
+
     // 1) Side effects with treatment context (highest priority)
     if (hasTreatmentContext && (hasSideEffectLanguage || hasSymptomLanguage)) {
       return "sideEffects";
     }
-    
+
     // 2) Explicit side effects language
     if (hasSideEffectLanguage) {
       return "sideEffects";
     }
-    
+
     // 3) Symptoms language (only if no treatment context or explicit side effects)
     if (hasSymptomLanguage) {
+      return "symptoms";
+    }
+
+    // 4) Raw symptom descriptions (patient reporting their own symptoms)
+    if (hasRawSymptomDescription) {
       return "symptoms";
     }
 

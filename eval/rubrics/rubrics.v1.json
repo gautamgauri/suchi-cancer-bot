@@ -86,7 +86,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -96,21 +96,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "description": "Contains recognizable sections for warning signs, tests, timeline, doctor questions.",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": [
-              "warning_signs",
-              "tests_to_expect",
-              "when_to_seek_care_timeline",
-              "questions_for_doctor"
-            ],
-            "min_present": 3
           }
         },
         {
@@ -154,6 +139,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: warning signs or symptoms, diagnostic tests or how doctors confirm, when to seek medical care or urgency timeline, questions to ask the doctor? Score 1.0 if the content addresses at least 3 of these 4 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "warning_signs_coverage",
             "description": "Provides >=5 warning signs relevant to the cancer type (or plausible general warning signs if cancer type is broad).",
@@ -272,7 +263,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -396,7 +387,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -533,7 +524,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -653,7 +644,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -787,7 +778,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -796,15 +787,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["common_symptoms", "when_to_seek_care_timeline", "questions_for_doctor"],
-            "min_present": 2
           }
         },
         {
@@ -832,6 +814,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: common symptoms, when to seek medical care or urgency timeline, questions to ask the doctor? Score 1.0 if the content addresses at least 2 of these 3 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "symptoms_coverage",
             "description": "Provides >=5 common symptoms/signs relevant to the cancer type. Notes that symptoms overlap with benign conditions.",
@@ -905,7 +893,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -914,15 +902,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["early_warning_signs", "later_signs", "when_to_seek_care_timeline"],
-            "min_present": 2
           }
         },
         {
@@ -950,6 +929,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: early warning signs, later or advanced signs, when to seek medical care or urgency timeline? Score 1.0 if the content addresses at least 2 of these 3 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "early_signs_coverage",
             "description": "Provides >=3 early warning signs relevant to the cancer type.",
@@ -1030,7 +1015,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1039,15 +1024,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["diagnosis_tests", "tests_to_expect"],
-            "min_present": 1
           }
         },
         {
@@ -1075,6 +1051,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: diagnostic tests, diagnostic tests or how doctors confirm? Score 1.0 if the content addresses at least 1 of these 2 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "tests_coverage",
             "description": "Provides >=3 diagnostic tests IF retrieval contains >=3 test mentions, otherwise requires 'insufficient source support' disclosure. Only requires tests that are present in retrieved context.",
@@ -1140,7 +1122,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1149,15 +1131,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["treatment_options"],
-            "min_present": 1
           }
         },
         {
@@ -1185,6 +1158,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: treatment options? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "treatment_modalities_coverage",
             "description": "Provides >=4 treatment modalities if relevant (surgery, chemotherapy, radiation, targeted therapy, immunotherapy, hormone therapy) or explains why fewer. Mentions that plan depends on stage/biomarkers/fitness.",
@@ -1252,7 +1231,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1261,15 +1240,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["side_effects_common", "side_effects_serious", "when_to_contact_clinician"],
-            "min_present": 2
           }
         },
         {
@@ -1297,6 +1267,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: common side effects, serious side effects, when to contact your doctor? Score 1.0 if the content addresses at least 2 of these 3 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "common_side_effects_coverage",
             "description": "Provides >=3 common side effects relevant to the cancer type and treatment.",
@@ -1376,7 +1352,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1385,15 +1361,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["questions_for_doctor"],
-            "min_present": 1
           }
         },
         {
@@ -1421,6 +1388,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: questions to ask the doctor? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "doctor_questions_coverage",
             "description": "Provides >=5 relevant questions to ask a clinician about the cancer type.",
@@ -1489,7 +1462,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1498,15 +1471,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["staging_basics"],
-            "min_present": 1
           }
         },
         {
@@ -1534,6 +1498,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: staging information? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "staging_explanation",
             "description": "Explains what staging means in simple terms for the cancer type, without guessing specific stages.",
@@ -1609,7 +1579,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1618,15 +1588,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["prognosis_factors"],
-            "min_present": 1
           }
         },
         {
@@ -1654,6 +1615,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: prognosis factors? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "prognosis_factors_coverage",
             "description": "Explains general factors that affect prognosis (stage, type, biomarkers, general health) without providing specific survival numbers unless sourced and careful.",
@@ -1716,7 +1683,7 @@
           "required": true,
           "type": "regex_presence_any",
           "params": {
-            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)"]
+            "patterns_any": ["(?i)not a diagnosis", "(?i)can't diagnose", "(?i)cannot diagnose", "(?i)not medical advice", "(?i)see a (doctor|clinician)", "(?i)talk to a (doctor|clinician)", "(?i)seek medical (evaluation|care|attention|help)", "(?i)consult with (your )?(healthcare provider|doctor|clinician)", "(?i)verify with (your )?(healthcare provider|doctor|clinician)", "(?i)please (verify|consult|see|talk to) (your )?(healthcare provider|doctor|clinician)", "(?i)discuss with (your )?(healthcare provider|doctor|clinician)", "(?i)consult (your )?(healthcare provider|doctor|clinician)", "(?i)not a substitute for professional medical advice", "(?i)does not replace emergency medical care", "(?i)educational purposes only", "(?i)for general educational purposes"]
           }
         },
         {
@@ -1725,15 +1692,6 @@
           "type": "max_question_count",
           "params": {
             "max": 2
-          }
-        },
-        {
-          "id": "section_presence_min",
-          "required": true,
-          "type": "section_presence_min",
-          "params": {
-            "required_sections": ["visit_preparation"],
-            "min_present": 1
           }
         },
         {
@@ -1761,6 +1719,12 @@
           "max_quote_words_per_field": 30
         },
         "checks": [
+          {
+            "id": "content_coverage",
+            "description": "Does this response cover the following topics: how to prepare for a doctor visit? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "required": true,
+            "type": "llm_scored_boolean"
+          },
           {
             "id": "preparation_checklist_coverage",
             "description": "Provides >=5 concrete preparation items for the first oncology visit (documents, medications, symptom timeline, questions list, support person).",

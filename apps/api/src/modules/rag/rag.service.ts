@@ -50,9 +50,11 @@ export class RagService {
       }
 
       // Step 1: Query rewrite using QueryTypeClassifier + cancer terms
-      const rewrittenQuery = this.rewriteQuery(query, cancerType, queryType);
+      // Resolve the effective queryType for intent-aware scoring downstream
+      const classifiedQueryType: string = queryType || QueryTypeClassifier.classify(query);
+      const rewrittenQuery = this.rewriteQuery(query, cancerType, classifiedQueryType);
       if (rewrittenQuery !== query) {
-        this.logger.debug(`Query rewritten from "${query}" to "${rewrittenQuery}"`);
+        this.logger.debug(`Query rewritten from "${query}" to "${rewrittenQuery}" (queryType: ${classifiedQueryType})`);
       }
 
       // Step 2: Medical term expansion (patient language → medical terminology)
@@ -72,7 +74,7 @@ export class RagService {
 
         // Use multi-query retrieval: run hybrid search on top 3 query variations
         const queriesToSearch = expansion.expanded.slice(0, 3);
-        const results = await this.multiQueryRetrieve(queriesToSearch, topK, cancerType, intent);
+        const results = await this.multiQueryRetrieve(queriesToSearch, topK, cancerType, intent, classifiedQueryType);
 
         if (results.length > 0) {
           return results;
@@ -89,7 +91,7 @@ export class RagService {
       }
 
       // Step 6: PRIMARY PATH - Hybrid search (vector + FTS)
-      const hybridResults = await this.hybridSearchWithMetadata(finalQuery, topK, cancerType, intent);
+      const hybridResults = await this.hybridSearchWithMetadata(finalQuery, topK, cancerType, intent, classifiedQueryType);
       if (hybridResults.length > 0) {
         this.logger.debug(`Hybrid search returned ${hybridResults.length} results`);
         return hybridResults;
@@ -125,11 +127,12 @@ export class RagService {
     queries: string[],
     topK: number,
     cancerType?: string | null,
-    intent?: string
+    intent?: string,
+    queryType?: string
   ): Promise<EvidenceChunk[]> {
     // Run hybrid searches in parallel for each query variation
     const searchPromises = queries.map(q =>
-      this.hybridSearchWithMetadata(q, topK, cancerType, intent).catch(err => {
+      this.hybridSearchWithMetadata(q, topK, cancerType, intent, queryType).catch(err => {
         this.logger.warn(`Multi-query search failed for "${q.substring(0, 30)}...": ${err.message}`);
         return [] as EvidenceChunk[];
       })
@@ -403,6 +406,13 @@ export class RagService {
         }
         // Always add "signs and symptoms" - this matches NCI PDQ exact phrasing
         parts.push("signs and symptoms");
+        // For raw symptom descriptions (patient reporting symptoms), add evaluation terms
+        // to steer retrieval toward screening/diagnosis content, away from treatment side effects
+        if (/\b(i('ve| have| had| noticed| found| feel| been)|persistent|ongoing|chronic|for \d+)\b/i.test(lowerQuery)) {
+          parts.push("when to see a doctor");
+          parts.push("screening");
+          parts.push("early detection");
+        }
         if (cancerType) {
           parts.push(`${cancerType} cancer symptoms`);
           parts.push(`${cancerType} cancer signs`);
@@ -707,7 +717,8 @@ export class RagService {
     query: string,
     topK: number,
     cancerType?: string | null,
-    intent?: string
+    intent?: string,
+    queryType?: string
   ): Promise<EvidenceChunk[]> {
     // TIMING: Track search components
     const searchStarted = Date.now();
@@ -804,7 +815,8 @@ export class RagService {
     const rerankMs = Date.now() - rerankStarted;
 
     // Step 2: Apply trust-aware reranking (preserves source quality guarantees)
-    const reranked = this.rerankByTrustedSource(semanticReranked, query);
+    // Pass queryType for intent-aware scoring (e.g., demoting side-effect content for symptom queries)
+    const reranked = this.rerankByTrustedSource(semanticReranked, query, queryType);
 
     // Total hybrid search time
     const totalMs = Date.now() - searchStarted;
@@ -906,7 +918,7 @@ export class RagService {
    * - Unknown/untrusted: no boost
    * Tie-breaker: original order for stability
    */
-  private rerankByTrustedSource(chunks: EvidenceChunk[], query: string): EvidenceChunk[] {
+  private rerankByTrustedSource(chunks: EvidenceChunk[], query: string, queryType?: string): EvidenceChunk[] {
     const enableTrace = process.env.RAG_TRACE_RERANK === 'true';
     const beforeOrder = chunks.slice(0, 3).map(c => ({
       docId: c.docId,
@@ -945,6 +957,35 @@ export class RagService {
       } else {
         // Penalize untrusted sources slightly
         rerankScore = similarity * 0.95;
+      }
+
+      // Intent-aware scoring: when queryType is "symptoms", demote treatment/side-effect
+      // content and boost screening/diagnosis content to prevent symptom-evaluation queries
+      // from retrieving treatment side-effect documents
+      if (queryType === 'symptoms') {
+        const contentLower = chunk.content.toLowerCase();
+        const titleLower = (chunk.document.title || '').toLowerCase();
+        const combinedText = contentLower + ' ' + titleLower;
+
+        // Detect treatment/side-effect content signals
+        const hasTreatmentSideEffectSignals = (
+          /\b(treatment side effect|chemotherapy.{0,20}(cause|caus)|radiation.{0,20}(cause|caus)|after (chemo|radiation|treatment|surgery)|during (chemo|radiation|treatment)|treatment.{0,15}(toxicit|adverse|complication))\b/i.test(combinedText) ||
+          /\b(manage.{0,15}side effect|cop.{0,15}(chemo|treatment)|nausea from (chemo|treatment)|hair loss from|treatment.related)\b/i.test(combinedText)
+        );
+
+        // Detect screening/diagnosis/symptom-evaluation content signals
+        const hasScreeningDiagnosisSignals = (
+          /\b(screening|early detection|warning sign|when to see.{0,10}doctor|signs and symptoms|risk factor|diagnosis|diagnostic|should.{0,10}(check|test|screen|evaluat))\b/i.test(combinedText) ||
+          /\b(see your (doctor|physician|healthcare)|consult.{0,10}(doctor|physician)|medical (attention|evaluation|advice))\b/i.test(combinedText)
+        );
+
+        if (hasTreatmentSideEffectSignals && !hasScreeningDiagnosisSignals) {
+          // Demote treatment side-effect chunks for symptom queries
+          rerankScore *= 0.65;
+        } else if (hasScreeningDiagnosisSignals && !hasTreatmentSideEffectSignals) {
+          // Boost screening/diagnosis chunks for symptom queries
+          rerankScore *= 1.20;
+        }
       }
 
       return {

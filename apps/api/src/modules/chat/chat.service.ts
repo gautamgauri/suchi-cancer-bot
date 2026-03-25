@@ -1357,7 +1357,7 @@ export class ChatService {
           data: {
             sessionId: dto.sessionId,
             role: "assistant",
-            text: clarifyingQuestion,
+            text: appendDisclaimer(clarifyingQuestion),
             safetyClassification: "normal",
             kbDocIds: [],
             latencyMs: Date.now() - started,
@@ -2070,9 +2070,10 @@ export class ChatService {
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
         if (citationValidation.confidenceLevel === "RED") {
-          if (isIdentifyWithGeneralIntent) {
+          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL")) {
             // Allow response with strong disclaimer - don't abstain for identify questions with general intent
-            this.logger.warn("Identify question with general intent has 0 citations after retry - allowing with strong disclaimer");
+            // or for general-intent informational queries (e.g. "Just asking generally" about treatment/info topics)
+            this.logger.warn("General-intent query has 0 citations after retry - allowing with strong disclaimer");
             citationValidation = {
               ...citationValidation,
               confidenceLevel: "YELLOW", // Override to YELLOW to allow response
@@ -2085,7 +2086,7 @@ export class ChatService {
               data: {
                 sessionId: dto.sessionId,
                 role: "assistant",
-                text: clarifyingQuestion,
+                text: appendDisclaimer(clarifyingQuestion),
                 safetyClassification: "normal",
                 kbDocIds: [],
                 latencyMs: Date.now() - started,
