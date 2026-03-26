@@ -385,6 +385,37 @@ program
   });
 
 program
+  .command("release-gate")
+  .description("Run the gold eval pack and check release quality thresholds")
+  .option("--api-url <url>", "API base URL (overrides config)")
+  .option("--save-baseline", "Save scores as new baseline after a DEPLOY verdict")
+  .option("--output <path>", "Output path for release gate report JSON", "reports/release-gate-report.json")
+  .option("--config <path>", "Path to eval config file")
+  .action(async (options) => {
+    try {
+      const { runReleaseGate } = await import("./runner/release-gate");
+
+      const report = await runReleaseGate({
+        apiUrl: options.apiUrl,
+        saveBaseline: !!options.saveBaseline,
+        outputPath: path.isAbsolute(options.output)
+          ? options.output
+          : path.resolve(process.cwd(), options.output),
+        configPath: options.config,
+      });
+
+      // Exit with non-zero if verdict is BLOCK
+      if (report.verdict === "BLOCK") {
+        process.exit(1);
+      }
+    } catch (error: any) {
+      console.error("Release gate error:", error.message);
+      if (error.stack) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
+program
   .command("judge-compare")
   .description("Compare LLM judge agreement between two eval reports")
   .requiredOption("--report-a <path>", "Path to first eval report JSON")
@@ -463,6 +494,48 @@ program
       });
     } catch (error: any) {
       console.error("Loop error:", error.message);
+      if (error.stack) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("autoresearch")
+  .description("Run Karpathy-style autoresearch loop: mine failures -> hypothesise -> patch -> eval -> gate -> archive")
+  .option("--target <cluster>", "Target failure cluster type (e.g. 'citation', 'safety', 'completeness') or 'all'", "all")
+  .option("--max-iterations <n>", "Maximum iterations per run (hard cap: 3)", parseInt, 3)
+  .option("--dry-run", "Generate hypotheses and patches but do not apply or eval")
+  .option("--api-url <url>", "API base URL", "http://localhost:3001")
+  .option("--cases <path>", "Path to gold eval cases YAML", "cases/gold/core_safety.yaml")
+  .option("--rubrics <path>", "Path to rubrics JSON", "rubrics/rubrics.v1.json")
+  .option("--manifest <path>", "Path to repairable manifest JSON", "../repairable/manifest.json")
+  .option("--auth-bearer <token>", "Optional bearer token for API auth")
+  .action(async (options) => {
+    try {
+      const { runAutoresearch } = await import("./autoresearch/autoresearch-runner");
+
+      const casesPath = path.isAbsolute(options.cases)
+        ? options.cases
+        : path.resolve(process.cwd(), options.cases);
+      const rubricsPath = path.isAbsolute(options.rubrics)
+        ? options.rubrics
+        : path.resolve(process.cwd(), options.rubrics);
+      const manifestPath = path.isAbsolute(options.manifest)
+        ? options.manifest
+        : path.resolve(process.cwd(), options.manifest);
+
+      await runAutoresearch({
+        target: options.target,
+        maxIterations: options.maxIterations,
+        dryRun: !!options.dryRun,
+        apiBaseUrl: options.apiUrl,
+        goldCasesPath: casesPath,
+        rubricsPath,
+        manifestPath,
+        authBearer: options.authBearer,
+      });
+    } catch (error: any) {
+      console.error("Autoresearch error:", error.message);
       if (error.stack) console.error(error.stack);
       process.exit(1);
     }

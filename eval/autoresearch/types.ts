@@ -1,0 +1,153 @@
+/**
+ * Autoresearch v0 — Type definitions
+ *
+ * Types for the bounded self-improvement loop that proposes and tests
+ * changes to the repairable surface.
+ */
+
+// ── Failure mining ──────────────────────────────────────────────────────────
+
+export type SeverityLevel = "P0" | "P1" | "P2";
+
+export interface FailureBucket {
+  /** Failure type label (e.g. "safety", "citation", "completeness", "tone") */
+  failureType: string;
+  /** Severity tier */
+  severity: SeverityLevel;
+  /** Affected eval case IDs */
+  affectedCaseIds: string[];
+  /** Count of failures in this bucket */
+  count: number;
+  /** Representative example: case ID + response excerpt + failure reason */
+  representative: {
+    caseId: string;
+    query: string;
+    responseExcerpt: string;
+    failureReason: string;
+  };
+  /** Deterministic check IDs or LLM judge check IDs that failed */
+  failedCheckIds: string[];
+}
+
+// ── Research / hypothesis ───────────────────────────────────────────────────
+
+export interface Hypothesis {
+  /** Short label for the hypothesis */
+  label: string;
+  /** Detailed explanation of root cause */
+  rootCause: string;
+  /** Proposed intervention text */
+  intervention: string;
+  /** Confidence score 0-1 */
+  confidence: number;
+  /** Risk assessment: how likely is regression */
+  risk: "low" | "medium" | "high";
+  /** Which repairable file to modify */
+  repairableFile: string;
+  /** Which section/region within the file */
+  targetSection: string;
+}
+
+// ── Patch ────────────────────────────────────────────────────────────────────
+
+export interface PatchProposal {
+  /** The repairable file path (relative to repo root) */
+  filePath: string;
+  /** The original content */
+  originalContent: string;
+  /** The proposed new content */
+  proposedContent: string;
+  /** Unified diff string */
+  diff: string;
+  /** The hypothesis that generated this patch */
+  hypothesis: Hypothesis;
+  /** Validation result */
+  validation: {
+    syntaxValid: boolean;
+    errors: string[];
+  };
+  /** Git branch name for this experiment */
+  branch: string;
+}
+
+// ── Gate check ──────────────────────────────────────────────────────────────
+
+export interface GateResult {
+  passed: boolean;
+  checks: {
+    name: string;
+    passed: boolean;
+    value: number;
+    threshold: number;
+    detail: string;
+  }[];
+  reason: string;
+}
+
+// ── Experiment archive ──────────────────────────────────────────────────────
+
+export interface ExperimentLog {
+  experimentId: string;
+  timestamp: string;
+  iteration: number;
+  failureCluster: FailureBucket;
+  hypothesis: Hypothesis;
+  patchDiff: string;
+  repairableFile: string;
+  beforeScores: ScoreSnapshot;
+  afterScores: ScoreSnapshot | null;
+  subsetBeforeScores: ScoreSnapshot | null;
+  subsetAfterScores: ScoreSnapshot | null;
+  gateResult: GateResult | null;
+  decision: "accepted" | "rejected" | "skipped";
+  reason: string;
+  branch: string;
+  durationMs: number;
+}
+
+export interface ScoreSnapshot {
+  overall: number;
+  passRate: number;
+  totalCases: number;
+  passedCases: number;
+  failedCases: number;
+  citationCoverageRate: number;
+  p0Failures: number;
+  perCheck: Record<string, { passRate: number; count: number }>;
+}
+
+// ── Runner config ───────────────────────────────────────────────────────────
+
+export interface AutoresearchConfig {
+  /** Target: "all" runs the full loop; a cluster label targets a specific failure type */
+  target: string;
+  /** Maximum iterations per run (hard cap: 3) */
+  maxIterations: number;
+  /** Dry run: generate hypotheses and patches but do not apply or eval */
+  dryRun: boolean;
+  /** API base URL for running evals */
+  apiBaseUrl: string;
+  /** Path to gold eval cases YAML */
+  goldCasesPath: string;
+  /** Path to rubrics JSON */
+  rubricsPath: string;
+  /** Path to repairable manifest */
+  manifestPath: string;
+  /** Auth bearer token (optional) */
+  authBearer?: string;
+}
+
+// ── Runner state ────────────────────────────────────────────────────────────
+
+export type AutoresearchPhase =
+  | "INIT"
+  | "MINE_FAILURES"
+  | "RESEARCH"
+  | "PROPOSE_PATCH"
+  | "SUBSET_EVAL"
+  | "FULL_REGRESSION"
+  | "GATE_CHECK"
+  | "ARCHIVE"
+  | "HUMAN_APPROVAL"
+  | "DONE"
+  | "ABORTED";

@@ -109,6 +109,21 @@ Cross-reference required env vars between `env.validation.ts` and `cloudbuild.ya
 
 Note: `PORT` and `NODE_ENV` are set by Cloud Run automatically, so exclude them from this check.
 
+### Check 9: Release Eval Gate (optional — only if `--with-eval-gate` flag is present in $ARGUMENTS)
+
+This check runs the gold eval pack via the release gate module. **Skip this check entirely unless the user explicitly passed `--with-eval-gate`.**
+
+If `--with-eval-gate` is present:
+
+```bash
+cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts release-gate --api-url http://localhost:3001 --output reports/release-gate-report.json
+```
+
+- PASS: exit code 0 (verdict is DEPLOY)
+- FAIL: exit code 1 (verdict is BLOCK — show the release gate report table)
+
+Note: This check takes several minutes because it runs 70 eval cases. That is why it is opt-in.
+
 ### Preflight Results Table
 
 After running all checks, display results:
@@ -126,6 +141,7 @@ After running all checks, display results:
 | 6  | Safety module integrity      | PASS / WARN / FAIL | ...     |
 | 7  | CloudBuild substitutions     | PASS / FAIL | ...              |
 | 8  | Env var coverage             | PASS / FAIL | ...              |
+| 9  | Release eval gate            | PASS / FAIL / SKIP | (only if --with-eval-gate) |
 ```
 
 **If mode is `preflight-only`, stop here and report results. Do NOT proceed to Phase 2.**
