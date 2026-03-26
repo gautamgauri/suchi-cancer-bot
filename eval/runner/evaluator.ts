@@ -257,7 +257,9 @@ export class Evaluator {
             cancer: testCase.cancer,
             intent: testCase.intent,
             mustMentionTests: testCase.expectations.must_mention_tests,
-            retrievedChunks: retrievedChunks.length > 0 ? retrievedChunks : undefined
+            retrievedChunks: retrievedChunks.length > 0 ? retrievedChunks : undefined,
+            citationCount: finalResponse.citations?.length ?? 0,
+            citationDocIds: finalResponse.citations?.map(c => c.docId) ?? [],
           }
         );
       }

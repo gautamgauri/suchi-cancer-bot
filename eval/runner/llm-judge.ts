@@ -101,6 +101,8 @@ export class LLMJudge {
       intent?: string;
       mustMentionTests?: string[];
       retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
+      citationCount?: number;
+      citationDocIds?: string[];
     }
   ): Promise<LLMJudgeResult[]> {
     // PHASE 2.5+: If LLM judge is not available, return skipped results
@@ -202,6 +204,8 @@ export class LLMJudge {
       intent?: string;
       mustMentionTests?: string[];
       retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
+      citationCount?: number;
+      citationDocIds?: string[];
     },
     retries: number = 1 // Run 2 times total (1 retry), take majority
   ): Promise<LLMJudgeResult[]> {
@@ -287,6 +291,8 @@ export class LLMJudge {
       intent?: string;
       mustMentionTests?: string[];
       retrievedChunks?: Array<{ docId: string; chunkId: string; content: string }>;
+      citationCount?: number;
+      citationDocIds?: string[];
     }
   ): string {
     let prompt = `You are evaluating a medical chatbot response. Analyze the following response and return JSON-only output.\n\n`;
@@ -321,6 +327,18 @@ export class LLMJudge {
         prompt += `If the response includes proper citation markers pointing to these docIds, assume the content is backed by RAG. `;
         prompt += `Do NOT fail checks solely because you cannot verify content - presence of proper citations is sufficient evidence of RAG backing.\n`;
       }
+    }
+
+    // Inject citation metadata when inline markers have been stripped from response text
+    if (testCaseContext?.citationCount && testCaseContext.citationCount > 0) {
+      const uniqueDocs = [...new Set(testCaseContext.citationDocIds ?? [])];
+      prompt += `\nCITATION METADATA (from API structured response — inline citation markers are stripped from display text):\n`;
+      prompt += `- Citation count: ${testCaseContext.citationCount}\n`;
+      prompt += `- Cited documents: ${uniqueDocs.join(', ')}\n`;
+      prompt += `\nIMPORTANT: The response text below has had [citation:...] markers removed for display purposes, `;
+      prompt += `but the response IS backed by ${testCaseContext.citationCount} citations from ${uniqueDocs.length} KB documents. `;
+      prompt += `When evaluating "rag_backed_content" and "no_unsupported_medical_claims", treat the response as properly cited. `;
+      prompt += `Do NOT fail these checks solely because citation markers are absent from the display text.\n`;
     }
 
     prompt += `\nResponse to evaluate:\n${responseText}\n\n`;
