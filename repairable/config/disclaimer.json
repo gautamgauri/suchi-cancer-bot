@@ -1,0 +1,30 @@
+{
+  "_description": "Disclaimer templates and insertion rules extracted from disclaimer-engine.ts",
+  "_source": "apps/api/src/modules/safety/disclaimer-engine.ts",
+
+  "templates": {
+    "en": {
+      "standard": "\n\n---\n*This information is for general educational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment. Always consult your healthcare provider for personalized guidance.*",
+      "safety": "\n\n---\n*If this is a medical emergency, call 112 or 108 immediately. This information does not replace emergency medical care.*"
+    },
+    "hi": {
+      "standard": "\n\n---\n*यह जानकारी केवल सामान्य शैक्षिक उद्देश्यों के लिए है और पेशेवर चिकित्सा सलाह, निदान या उपचार का विकल्प नहीं है। व्यक्तिगत मार्गदर्शन के लिए हमेशा अपने डॉक्टर से परामर्श करें।*",
+      "safety": "\n\n---\n*अगर यह आपातकालीन स्थिति है तो तुरंत 112 या 108 पर कॉल करें। यह जानकारी आपातकालीन चिकित्सा सेवा का विकल्प नहीं है।*"
+    },
+    "bh": {
+      "standard": "\n\n---\n*ई जानकारी सिर्फ जानकारी खातिर बा, डॉक्टर के सलाह के बदले नइखे। अपना डॉक्टर से ज़रूर मिलीं।*",
+      "safety": "\n\n---\n*अगर इमरजेंसी बा त तुरंत 112 या 108 पर फोन करीं। ई जानकारी इमरजेंसी इलाज के जगह नइखे ले सकत।*"
+    },
+    "mai": {
+      "standard": "\n\n---\n*ई जानकारी सामान्य शिक्षा लेल अछि, डॉक्टरक सलाहक बदला मे नहि। अपन डॉक्टर सँ अवश्य भेट करू।*",
+      "safety": "\n\n---\n*अगर ई आपातकालीन स्थिति अछि त तुरंत 112 या 108 पर फोन करू।*"
+    }
+  },
+
+  "insertionRules": {
+    "alwaysAppend": true,
+    "preventDoubleAppend": true,
+    "useSafetyVariant": "when isEmergency flag is true",
+    "doubleAppendDetectionPattern": "\\n---\\n\\*.*(?:educational purposes|चिकित्सा सलाह|जानकारी सिर्फ|शिक्षा लेल|emergency|आपातकालीन).*\\*$"
+  }
+}

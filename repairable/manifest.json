@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "description": "Repairable surface for the Suchi Cancer Bot autoresearch loop. These are the ONLY files the agent is allowed to modify during experimentation.",
+  "created": "2026-03-26",
+  "files": [
+    {
+      "path": "prompts/explain-mode.md",
+      "description": "System prompt for explain-mode responses (information-first educational answers)",
+      "source": "apps/api/src/modules/llm/llm.service.ts → getExplainModePrompt()",
+      "risk": "medium",
+      "approvalRequired": true,
+      "notes": "Changes affect tone, structure, and coverage of all explain-mode responses. Safety-critical sections (NEVER DO THIS, citation requirements) must not be weakened."
+    },
+    {
+      "path": "prompts/navigate-mode.md",
+      "description": "System prompt for navigate-mode responses (personal symptom support with warmth)",
+      "source": "apps/api/src/modules/llm/llm.service.ts → getNavigateModePrompt()",
+      "risk": "medium",
+      "approvalRequired": true,
+      "notes": "Changes affect how the bot responds to personal symptom questions. The 4-step SAFE+USEFUL contract and India context must be preserved."
+    },
+    {
+      "path": "prompts/identify-requirements.md",
+      "description": "Structured checklist prompt for 'how to identify' cancer questions (4 mandatory sections)",
+      "source": "apps/api/src/modules/llm/llm.service.ts → getIdentifyRequirements()",
+      "risk": "high",
+      "approvalRequired": true,
+      "notes": "Defines the mandatory 4-section structure (warning signs, diagnostics, when to seek care, doctor questions). Minimum bullet counts and citation requirements are safety-critical."
+    },
+    {
+      "path": "config/retrieval.json",
+      "description": "RAG retrieval parameters: topK, reranker settings, scoring factors, expansion config",
+      "source": "apps/api/src/modules/rag/rag.service.ts",
+      "risk": "low",
+      "approvalRequired": false,
+      "notes": "Numeric tuning knobs for retrieval quality. Safe to experiment with — affects recall/precision tradeoff but not safety."
+    },
+    {
+      "path": "config/routing.json",
+      "description": "Chat routing thresholds, structured response patterns, budget limits, answer-first eligibility",
+      "source": "apps/api/src/modules/chat/chat.service.ts",
+      "risk": "medium",
+      "approvalRequired": true,
+      "notes": "Patterns determine which queries get full structured responses vs answer-first. Budget values affect timeout behavior."
+    },
+    {
+      "path": "config/language.json",
+      "description": "Language detection, supported locales, Hindi/Hinglish pattern matching, multilingual guidance",
+      "source": "apps/api/src/modules/chat/chat.service.ts, apps/api/src/modules/safety/disclaimer-engine.ts",
+      "risk": "low",
+      "approvalRequired": false,
+      "notes": "Controls language routing and Hindi/Hinglish content depth. Safe to tune patterns for better Hindi query detection."
+    },
+    {
+      "path": "config/disclaimer.json",
+      "description": "Medical disclaimer templates in 4 languages (en, hi, bh, mai) and insertion rules",
+      "source": "apps/api/src/modules/safety/disclaimer-engine.ts",
+      "risk": "high",
+      "approvalRequired": true,
+      "notes": "SAFETY-CRITICAL. Disclaimers are the last line of defense. Changes must preserve the non-removable, always-append behavior. Never weaken disclaimer language."
+    }
+  ],
+  "constraints": {
+    "safetyInvariant": "Safety module (safety.rules.ts, safety.service.ts) is NOT part of the repairable surface and must never be modified by the autoresearch loop.",
+    "evalRubricInvariant": "Eval rubrics (eval/rubrics/rubrics.v1.json) are NOT part of the repairable surface. They define the scoring contract and must be modified only by humans.",
+    "databaseInvariant": "Prisma schema and migrations are NOT part of the repairable surface.",
+    "maxRiskLevel": "Files with risk=high require human approval before deployment. Files with risk=low can be auto-deployed after eval passes."
+  }
+}

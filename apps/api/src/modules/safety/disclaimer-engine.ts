@@ -7,6 +7,9 @@
  *
  * Design principle: This is the last step before a response is returned
  * to the user. It cannot be overridden by the adaptive core.
+ *
+ * REPAIRABLE SURFACE: Canonical templates at repairable/config/disclaimer.json
+ * Future: disclaimer templates will be read from that file instead of hardcoding.
  */
 
 export type SupportedLocale = "en" | "hi" | "bh" | "mai";

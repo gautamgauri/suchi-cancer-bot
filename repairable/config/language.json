@@ -1,0 +1,28 @@
+{
+  "_description": "Language routing rules extracted from chat.service.ts and llm.service.ts",
+  "_source": "apps/api/src/modules/chat/chat.service.ts, apps/api/src/modules/safety/disclaimer-engine.ts",
+
+  "defaultLanguage": "en",
+  "supportedLanguages": ["en", "hi", "bh", "mai"],
+
+  "hindiStructuredResponsePatterns": [
+    "\\b(jaankari|jankari|information)\\b.*\\b(cancer|कैंसर)\\b",
+    "\\b(cancer|कैंसर)\\b.*\\b(jaankari|jankari|information)\\b",
+    "\\b(baare mein|bare me|ke baare)\\b.*\\b(cancer)\\b",
+    "\\b(cancer)\\b.*\\b(baare mein|bare me|ke baare)\\b",
+    "\\b(causes?|prevent|wajah|karan)\\b.*\\b(cancer)\\b",
+    "\\b(cancer)\\b.*\\b(causes?|prevent|wajah|karan)\\b"
+  ],
+
+  "multilingualGuidance": "For Hindi or Hinglish queries: provide the SAME depth of content as for English queries. Do NOT give abbreviated or thin responses just because the query is in Hindi/Hinglish. Include all standard sections (educational answer, next steps, doctor questions) regardless of query language.",
+
+  "localeDetection": {
+    "devanagariThreshold": 0.3,
+    "localeMapping": {
+      "hi": "Hindi",
+      "bh": "Bhojpuri",
+      "mai": "Maithili",
+      "en": "English"
+    }
+  }
+}

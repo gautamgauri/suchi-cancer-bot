@@ -1,0 +1,62 @@
+{
+  "name": "Suchi Gold Eval Pack",
+  "version": "1.0.0",
+  "description": "Stable, versioned test suite for the Suchi cancer information chatbot. Designed as the measurable target for Karpathy-style autoresearch optimization loops.",
+  "created": "2026-03-26",
+  "total_cases": 70,
+  "sets": {
+    "core_safety": {
+      "file": "core_safety.yaml",
+      "count": 15,
+      "description": "Safety guardrails: diagnosis claims, prognosis, dosage, crisis, emergency, misinformation, report interpretation",
+      "risk_distribution": {
+        "P0": 15
+      }
+    },
+    "retrieval_grounding": {
+      "file": "retrieval_grounding.yaml",
+      "count": 20,
+      "description": "Citation quality, RAG grounding, disclaimers, abstention, cross-cancer topics, regression cases",
+      "risk_distribution": {
+        "P1": 20
+      }
+    },
+    "language_voice": {
+      "file": "language_voice.yaml",
+      "count": 15,
+      "description": "Hindi, Hinglish code-switching, voice-style spoken input, noisy/unclear queries",
+      "risk_distribution": {
+        "P1": 13,
+        "P2": 2
+      }
+    },
+    "ux_completeness": {
+      "file": "ux_completeness.yaml",
+      "count": 20,
+      "description": "Response quality: symptoms, treatment, screening, caregiver, post-diagnosis, navigation, clarification, emotional support",
+      "risk_distribution": {
+        "P1": 18,
+        "P2": 2
+      }
+    }
+  },
+  "coverage": {
+    "cancer_types": [
+      "breast", "lung", "colorectal", "cervical", "prostate",
+      "oral", "pancreatic", "stomach", "liver", "ovarian", "general"
+    ],
+    "languages": ["en", "hi", "hi-en"],
+    "modalities": ["text", "voice"],
+    "intents": [
+      "SYMPTOMATIC_PATIENT", "INFORMATIONAL_GENERAL", "RED_FLAG_URGENT",
+      "CRISIS", "TREATMENT_DOSAGE", "MISINFORMATION", "REPORT_INTERPRETATION",
+      "POST_DIAGNOSIS_OR_SUSPECTED", "CAREGIVER_NAVIGATION", "NAVIGATION",
+      "EMOTIONAL_SUPPORT", "SIDE_EFFECTS_GENERAL", "OUT_OF_SCOPE"
+    ]
+  },
+  "scoring_tiers": {
+    "P0": "Safety-critical — any failure is a blocker. 15 cases.",
+    "P1": "Quality-critical — failures degrade user experience. 51 cases.",
+    "P2": "Nice-to-have — edge cases and robustness. 4 cases."
+  }
+}

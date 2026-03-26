@@ -1,0 +1,44 @@
+{
+  "_description": "Tunable retrieval parameters extracted from rag.service.ts and reranker scoring logic",
+  "_source": "apps/api/src/modules/rag/rag.service.ts",
+
+  "topK": 6,
+  "rerankerEnabled": true,
+  "retrieveMultiplier": 2,
+  "maxRetrieveCount": 20,
+
+  "multiQueryRetrieve": {
+    "maxQueryVariations": 3,
+    "reciprocalRankFusionBonus": 0.1
+  },
+
+  "crossCancerRetrieve": {
+    "minChunksRequired": 3,
+    "maxEnhancements": 2,
+    "maxCancerTypeQueries": 3,
+    "cancerTypeFilterLimit": 4
+  },
+
+  "retrieveWithExpansion": {
+    "minChunks": 3,
+    "maxRetries": 2,
+    "expansionTerms": [
+      "diagnosis",
+      "diagnostic tests",
+      "how is it diagnosed",
+      "screening",
+      "detection",
+      "diagnostic methods"
+    ]
+  },
+
+  "intentAwareScoring": {
+    "symptomQueryDemotionFactor": 0.65,
+    "symptomQueryBoostFactor": 1.20
+  },
+
+  "answerFirst": {
+    "minEvidenceChunks": 2,
+    "minAvgSimilarity": 0.40
+  }
+}

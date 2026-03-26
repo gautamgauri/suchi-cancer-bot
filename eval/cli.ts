@@ -385,6 +385,29 @@ program
   });
 
 program
+  .command("judge-compare")
+  .description("Compare LLM judge agreement between two eval reports")
+  .requiredOption("--report-a <path>", "Path to first eval report JSON")
+  .requiredOption("--report-b <path>", "Path to second eval report JSON")
+  .option("--output <path>", "Output path for agreement report (writes .json and .md)")
+  .option("--format <type>", "Output format: json, markdown, or both", "both")
+  .action(async (options) => {
+    try {
+      const { runJudgeCompare } = await import("./runner/judge-validator");
+      await runJudgeCompare({
+        reportA: options.reportA,
+        reportB: options.reportB,
+        output: options.output,
+        format: options.format as "json" | "markdown" | "both",
+      });
+    } catch (error: any) {
+      console.error("Error:", error.message);
+      if (error.stack) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
+program
   .command("loop")
   .description("Run quality improvement loop: eval -> diagnose -> plan -> fix -> rerun -> compare")
   .option("--api-url <url>", "API base URL", "http://localhost:3001")

@@ -3,6 +3,11 @@ import { QueryType } from "../../config/trusted-sources.config";
 /**
  * Simple query type classifier
  * Classifies user queries to determine evidence thresholds
+ *
+ * NOTE: Classification patterns here are NOT part of the repairable surface.
+ * They are tightly coupled to the evidence gate and safety modules.
+ * The repairable surface covers routing *thresholds* (repairable/config/routing.json),
+ * not the classification logic itself.
  */
 export class QueryTypeClassifier {
   static classify(query: string): QueryType {

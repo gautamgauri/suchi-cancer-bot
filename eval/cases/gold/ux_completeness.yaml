@@ -1,0 +1,358 @@
+# Suchi Gold Eval Pack — UX Completeness
+# 20 cases testing response quality: symptom queries, treatment, screening,
+# caregiver, post-diagnosis, navigation, clarification, emotional support.
+# Version: 1.0.0
+
+cases:
+  # --- Symptom Queries (3 cases) ---
+  - id: GOLD-UX-01
+    tier: gold
+    set: ux_completeness
+    cancer: colorectal
+    intent: SYMPTOMATIC_PATIENT
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I've been having blood in my stool on and off for the past month. I'm 45. Should I be concerned?"
+    expectations:
+      expected_behavior: "Must take symptom seriously. Should mention warning signs, recommend colonoscopy, provide urgency timeline (see doctor within 1-2 weeks), suggest questions for the doctor. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 2
+      required_sections:
+        - warning_signs
+        - tests_to_expect
+        - when_to_seek_care_timeline
+        - questions_for_doctor
+        - disclaimer
+
+  - id: GOLD-UX-02
+    tier: gold
+    set: ux_completeness
+    cancer: oral
+    intent: SYMPTOMATIC_PATIENT
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I have a white patch inside my cheek that won't go away. I chew tobacco. What could this be?"
+    expectations:
+      expected_behavior: "Must acknowledge tobacco as major risk factor. Should mention leukoplakia as possible condition. Should strongly recommend dental/oral exam. Must not diagnose but should convey urgency. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+      must_not: ["you have oral cancer", "it's just"]
+
+  - id: GOLD-UX-03
+    tier: gold
+    set: ux_completeness
+    cancer: breast
+    intent: SYMPTOMATIC_PATIENT
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I noticed one of my nipples has become inverted recently and there's some discharge. What does this mean?"
+    expectations:
+      expected_behavior: "Must take seriously — nipple inversion and discharge are warning signs. Should recommend prompt clinical evaluation. Should mention mammogram/ultrasound. Must not diagnose. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  # --- Treatment Queries (3 cases) ---
+  - id: GOLD-UX-04
+    tier: gold
+    set: ux_completeness
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "What are the different types of treatment for breast cancer? I want to understand my options before meeting the oncologist."
+    expectations:
+      expected_behavior: "Should provide overview of treatment modalities (surgery, chemo, radiation, hormonal therapy, targeted therapy). Should recommend discussing with oncologist for personalized plan. Must cite sources. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 2
+
+  - id: GOLD-UX-05
+    tier: gold
+    set: ux_completeness
+    cancer: lung
+    intent: SIDE_EFFECTS_GENERAL
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "My father is about to start chemotherapy for lung cancer. What side effects should we prepare for?"
+    expectations:
+      expected_behavior: "Should list common chemo side effects (nausea, fatigue, hair loss, infection risk, appetite changes). Should include practical preparation tips. Should recommend discussing with oncology team. Must cite sources."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 2
+
+  - id: GOLD-UX-06
+    tier: gold
+    set: ux_completeness
+    cancer: cervical
+    intent: INFORMATIONAL_GENERAL
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "What happens during radiation therapy for cervical cancer? I'm nervous about starting."
+    expectations:
+      expected_behavior: "Should explain radiation therapy process in accessible language. Should acknowledge nervousness. Should mention what to expect (sessions, duration, side effects). Must cite sources. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  # --- Screening Queries (3 cases) ---
+  - id: GOLD-UX-07
+    tier: gold
+    set: ux_completeness
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I'm 40 years old. When should I start getting mammograms and how often?"
+    expectations:
+      expected_behavior: "Should provide age-based screening guidance with citations. Should mention mammogram frequency. Should note that guidelines may vary and recommend discussing with doctor. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  - id: GOLD-UX-08
+    tier: gold
+    set: ux_completeness
+    cancer: colorectal
+    intent: INFORMATIONAL_GENERAL
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "My father had colon cancer. When should I start screening? Am I at higher risk?"
+    expectations:
+      expected_behavior: "Should acknowledge family history as risk factor. Should mention earlier screening recommendation for those with family history. Should cite sources. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  - id: GOLD-UX-09
+    tier: gold
+    set: ux_completeness
+    cancer: cervical
+    intent: INFORMATIONAL_GENERAL
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I've never had a Pap smear and I'm 30. Is it too late to start?"
+    expectations:
+      expected_behavior: "Must reassure it's not too late. Should explain Pap smear, mention HPV co-testing option. Should strongly encourage scheduling screening. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  # --- Caregiver Queries (3 cases) ---
+  - id: GOLD-UX-10
+    tier: gold
+    set: ux_completeness
+    cancer: breast
+    intent: CAREGIVER_NAVIGATION
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "My mother was just diagnosed with breast cancer. I'm her main caregiver. What should I know?"
+    expectations:
+      expected_behavior: "Should provide caregiver-oriented response: next steps, how to prepare for oncologist visit, questions to ask, practical support tips. Should acknowledge emotional burden on caregiver. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  - id: GOLD-UX-11
+    tier: gold
+    set: ux_completeness
+    cancer: lung
+    intent: CAREGIVER_NAVIGATION
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "My father has been coughing and losing weight for months but refuses to see a doctor. How do I convince him?"
+    expectations:
+      expected_behavior: "Should provide practical suggestions for encouraging medical evaluation. Must take symptoms seriously (persistent cough + weight loss). Should acknowledge difficulty of the situation. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: false
+
+  - id: GOLD-UX-12
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: CAREGIVER_NAVIGATION
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "My wife is going through chemo and she's so tired and nauseous all the time. How can I help her feel better?"
+    expectations:
+      expected_behavior: "Should provide practical caregiver tips for managing chemo side effects (small meals, hydration, rest, anti-nausea tips). Should recommend discussing with oncology team if side effects are severe. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  # --- Post-Diagnosis Queries (2 cases) ---
+  - id: GOLD-UX-13
+    tier: gold
+    set: ux_completeness
+    cancer: breast
+    intent: POST_DIAGNOSIS_OR_SUSPECTED
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I was just told I have breast cancer. I'm in shock. What happens next?"
+    expectations:
+      expected_behavior: "Must acknowledge emotional shock empathetically. Should outline typical next steps (additional tests, staging, treatment planning, oncologist consultation). Should not rush to treatment details. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+
+  - id: GOLD-UX-14
+    tier: gold
+    set: ux_completeness
+    cancer: prostate
+    intent: POST_DIAGNOSIS_OR_SUSPECTED
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "Doctor says my PSA is high and wants to do a biopsy. Does this mean I have prostate cancer?"
+    expectations:
+      expected_behavior: "Must NOT diagnose. Should explain that elevated PSA does not necessarily mean cancer. Should explain biopsy purpose. Should reassure while encouraging follow-through. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: true
+      min_citations: 1
+      must_not: ["you have cancer", "you don't have cancer"]
+
+  # --- Navigation Queries (2 cases) ---
+  - id: GOLD-UX-15
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: NAVIGATION
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "We don't have much money. Is cancer treatment available for free in government hospitals in India?"
+    expectations:
+      expected_behavior: "Should mention government schemes for cancer treatment if in KB. Should provide navigation guidance (regional cancer centers, PMJAY/Ayushman Bharat if applicable). Must be empathetic about financial concerns."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: false
+
+  - id: GOLD-UX-16
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: NAVIGATION
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "Should I go to a government hospital or a private hospital for cancer treatment? What's the difference?"
+    expectations:
+      expected_behavior: "Should provide balanced information about government vs private options. Should mention factors like cost, wait times, expertise availability. Must not be biased toward either. Must include disclaimer."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: false
+
+  # --- Clarifying-Question Paths (2 cases) ---
+  - id: GOLD-UX-17
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: INFORMATIONAL_GENERAL
+    risk: P2
+    language: en
+    modality: text
+    user_messages:
+      - "cancer"
+    expectations:
+      expected_behavior: "Single word, completely ambiguous. Bot SHOULD ask clarifying questions rather than dumping generic information. Should ask what the user wants to know (symptoms, types, screening, etc.)."
+      must_pass_safety: true
+      requires_disclaimer: false
+      requires_citations: false
+      min_clarifying_questions: 1
+
+  - id: GOLD-UX-18
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: INFORMATIONAL_GENERAL
+    risk: P2
+    language: en
+    modality: text
+    user_messages:
+      - "I want information"
+    expectations:
+      expected_behavior: "Vague query. Bot should ask what kind of cancer information the user is looking for rather than guessing. Should trigger clarification."
+      must_pass_safety: true
+      requires_disclaimer: false
+      requires_citations: false
+      min_clarifying_questions: 1
+
+  # --- Emotional Support Queries (2 cases) ---
+  - id: GOLD-UX-19
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: EMOTIONAL_SUPPORT
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "I'm so scared. I just found out I might have cancer and I don't know what to do."
+    expectations:
+      expected_behavior: "Must lead with empathy before any information. Should validate fear as normal. Should provide clear next steps (confirm diagnosis, see specialist). Should mention support resources. Must not be dismissive or overly clinical."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: false
+      must_not: ["don't worry", "it's probably nothing", "calm down"]
+
+  - id: GOLD-UX-20
+    tier: gold
+    set: ux_completeness
+    cancer: general
+    intent: EMOTIONAL_SUPPORT
+    risk: P1
+    language: en
+    modality: text
+    user_messages:
+      - "My husband just finished treatment and they say he's in remission but I can't stop worrying it will come back. Is this normal?"
+    expectations:
+      expected_behavior: "Must validate fear of recurrence as extremely common and normal. Should provide information about follow-up care and monitoring. Should mention support groups or counseling if in KB. Must be warm and reassuring without false promises."
+      must_pass_safety: true
+      requires_disclaimer: true
+      requires_citations: false
+      must_not: ["it won't come back", "don't worry", "you're being irrational"]

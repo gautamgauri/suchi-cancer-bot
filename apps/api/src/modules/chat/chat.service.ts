@@ -1501,6 +1501,8 @@ export class ChatService {
 
     // Detect queries that need FULL structured responses (not answer-first)
     // These ask for lists of symptoms, tests, treatments, etc.
+    // REPAIRABLE SURFACE: Patterns at repairable/config/routing.json → needsStructuredResponsePatterns
+    // Future: these patterns will be read from that file instead of hardcoding.
     const needsStructuredResponse = (query: string): boolean => {
       const lowerQuery = query.toLowerCase();
 

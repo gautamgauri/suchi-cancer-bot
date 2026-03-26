@@ -5,9 +5,12 @@ import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
 /**
  * IDENTIFY_REQUIREMENTS: Structure checklist for "how to identify" questions
- * CRITICAL: This is a STRUCTURE checklist, NOT hardcoded content. 
+ * CRITICAL: This is a STRUCTURE checklist, NOT hardcoded content.
  * All information MUST come from the RAG chunks provided in the REFERENCE LIST.
  * The prompt is cancer-type-aware and instructs the LLM to extract cancer-type-specific information.
+ *
+ * REPAIRABLE SURFACE: Canonical version at repairable/prompts/identify-requirements.md
+ * Future: this function will read from that file instead of hardcoding the prompt.
  */
 function getIdentifyRequirements(cancerType: string | null): string {
   const cancerTypeContext = cancerType 
@@ -493,6 +496,9 @@ Use PLAIN, REASSURING language throughout - patients need clarity and calm guida
    * Get system prompt for Explain Mode (information-first)
    * @param isIdentifyQuestion If true, provide structured answer for "how to identify" questions
    * @param conversationContext Optional context about conversation state (e.g., general intent, cancer type, emotional state, user intent, user query)
+   *
+   * REPAIRABLE SURFACE: Canonical version at repairable/prompts/explain-mode.md
+   * Future: this method will read from that file instead of hardcoding the prompt.
    */
   getExplainModePrompt(
     isIdentifyQuestion: boolean = false,
@@ -579,6 +585,9 @@ NEVER DO THIS:
   /**
    * Get system prompt for Navigate Mode (personal symptom support)
    * @param emotionalState Optional emotional state for empathy-aware responses
+   *
+   * REPAIRABLE SURFACE: Canonical version at repairable/prompts/navigate-mode.md
+   * Future: this method will read from that file instead of hardcoding the prompt.
    */
   getNavigateModePrompt(emotionalState?: string): string {
     const empathyGuidelines = this.getEmpathyGuidelines(emotionalState);

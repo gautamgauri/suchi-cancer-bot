@@ -1,0 +1,46 @@
+{
+  "_description": "Routing thresholds and patterns extracted from chat.service.ts",
+  "_source": "apps/api/src/modules/chat/chat.service.ts",
+
+  "needsStructuredResponsePatterns": [
+    "\\b(what are|list|tell me).{0,20}(symptoms?|signs?|warning signs?)\\b",
+    "\\b(symptoms?|signs?|warning signs?) of\\b",
+    "\\b(common|early|typical|main).{0,10}(symptoms?|signs?)\\b",
+    "\\b(what|which).{0,20}(tests?|screening|diagnosis|diagnose)\\b",
+    "\\b(tests?|screening).{0,10}(used|for|to)\\b",
+    "\\bhow.{0,10}(diagnosed|detected|screened)\\b",
+    "\\b(what are|list|tell me).{0,20}(treatments?|options?|therapies?)\\b",
+    "\\b(treatment|therapy).{0,10}(options?|types?|methods?)\\b",
+    "\\b(side effects?|adverse effects?|complications?)\\b",
+    "\\bwhat are.{0,30}(common|typical|main|possible|potential)\\b",
+    "\\b(prognosis|survival|outcome|affects?|factors?).{0,20}(cancer|leukemia|lymphoma)\\b",
+    "\\bwhat affects\\b",
+    "\\b(prevent|prevention|reduce.{0,10}risk|risk factors?)\\b",
+    "\\bhow can.{0,10}(reduce|lower|prevent)\\b",
+    "\\bwhat is.{0,10}(cancer|carcinoma|tumor|tumour|leukemia|lymphoma|melanoma)\\b",
+    "\\bwhat is.{0,10}(breast|lung|colon|prostate|ovarian|pancreatic|cervical).{0,10}cancer\\b",
+    "\\b(what (does|is)).{0,10}staging\\b",
+    "\\bstaging\\b.{0,20}(mean|cancer|lymphoma|tumor)\\b",
+    "\\bhow.{0,10}(staging|staged)\\b",
+    "\\b(what happens|what's next|next steps?|what now|what do I do)\\b",
+    "\\bstage\\s*\\d\\b.*\\b(what|next|happen)\\b"
+  ],
+
+  "answerFirstEligibleIntents": [
+    "INFORMATIONAL_GENERAL",
+    "INFORMATIONAL_SYMPTOMS"
+  ],
+
+  "identifyQuestionPatterns": [
+    "\\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\\b"
+  ],
+
+  "cancerKeywordPattern": "\\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\\b",
+
+  "budgets": {
+    "requestBudgetMs": 45000,
+    "minBudgetForLlmMs": 15000,
+    "urgentPathLlmDeadlineMs": 15000,
+    "cacheTtlMs": 60000
+  }
+}

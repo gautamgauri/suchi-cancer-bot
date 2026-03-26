@@ -27,6 +27,9 @@ export class RagService {
    * @param topK Number of chunks to retrieve
    * @param cancerType Optional cancer type for query enhancement
    * @param queryType Optional pre-classified query type (to avoid re-classification)
+   *
+   * REPAIRABLE SURFACE: Tunable parameters at repairable/config/retrieval.json
+   * Future: topK, expansion terms, and scoring factors will be read from that file.
    */
   async retrieveWithMetadata(query: string, topK = 6, cancerType?: string | null, queryType?: string, intent?: string): Promise<EvidenceChunk[]> {
     try {

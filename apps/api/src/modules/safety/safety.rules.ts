@@ -1,3 +1,9 @@
+/**
+ * Safety rules and patterns for the Suchi Cancer Bot.
+ *
+ * NOT PART OF THE REPAIRABLE SURFACE. Safety patterns must never be modified
+ * by the autoresearch loop. See repairable/manifest.json → constraints.safetyInvariant.
+ */
 export type SafetyClassification = "normal" | "refusal" | "red_flag" | "self_harm";
 
 export const RULES = {

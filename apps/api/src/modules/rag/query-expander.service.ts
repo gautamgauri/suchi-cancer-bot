@@ -17,6 +17,10 @@ export interface QueryExpansion {
  * 3. Cancer type synonyms (colon → colorectal)
  * 4. Test abbreviations (PSA, CA-125, MRI)
  * 5. Staging/grade terms
+ *
+ * NOTE: Synonym maps here are NOT part of the repairable surface (too large, too coupled).
+ * The repairable surface covers retrieval *parameters* (repairable/config/retrieval.json),
+ * not the synonym dictionaries themselves.
  */
 @Injectable()
 export class QueryExpanderService {
