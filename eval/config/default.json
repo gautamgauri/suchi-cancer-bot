@@ -1,7 +1,7 @@
 {
   "apiBaseUrl": "https://suchi-api-lxiveognla-uc.a.run.app/v1",
-  "llmProvider": "deepseek",
-  "fallbackLlmProvider": "vertex_ai",
+  "llmProvider": "vertex_ai",
+  "fallbackLlmProvider": "deepseek",
   "vertexAiConfig": {
     "project": "",
     "location": "us-central1",

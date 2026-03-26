@@ -2095,10 +2095,11 @@ export class ChatService {
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
         if (citationValidation.confidenceLevel === "RED") {
-          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL") || (intentResult.intent === "INFORMATIONAL_GENERAL" && mode === "explain" && evidenceChunks.length >= 2)) {
-            // Allow response with strong disclaimer - don't abstain for identify questions with general intent,
-            // general-intent informational queries (e.g. "Just asking generally"), or
-            // explain-mode INFORMATIONAL_GENERAL queries with sufficient evidence (e.g. "what causes cervical cancer")
+          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL") || ((intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS" || intentResult.intent === "PREVENTION_SCREENING_INFO") && evidenceChunks.length >= 2)) {
+            // Allow response with strong disclaimer - don't abstain for:
+            // - identify questions with general intent
+            // - general-intent informational queries (e.g. "Just asking generally")
+            // - any informational/symptom/prevention query with sufficient evidence (regardless of mode)
             this.logger.warn("General-intent / informational query has citation-RED after retry - allowing with strong disclaimer");
             citationValidation = {
               ...citationValidation,
@@ -2414,7 +2415,16 @@ export class ChatService {
       }
 
       if (citationValidation.confidenceLevel === "RED") {
-        // Still RED after retry (or skipped retry due to budget) - abstain
+        // Override RED to YELLOW for informational/symptom/prevention queries with evidence
+        const isInformationalIntent = ["INFORMATIONAL_GENERAL", "INFORMATIONAL_SYMPTOMS", "PREVENTION_SCREENING_INFO"].includes(intentResult.intent);
+        if (isInformationalIntent && evidenceChunks.length >= 2) {
+          this.logger.warn("Legacy flow: informational query has citation-RED but has evidence - allowing with YELLOW override");
+          citationValidation = { ...citationValidation, confidenceLevel: "YELLOW", isValid: true };
+        }
+      }
+
+      if (citationValidation.confidenceLevel === "RED") {
+        // Still RED after override check - abstain
         const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType, dto.userText);
         const { modifiedText, citations: abstentionCitations } = this.attachDeterministicCitationsIfNeeded(
           abstentionMsg,
