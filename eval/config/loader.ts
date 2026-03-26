@@ -79,8 +79,8 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
     };
   }
 
-  // Deepseek config
-  if (envConfig.llmProvider === "deepseek" || config.llmProvider === "deepseek") {
+  // Deepseek config — load when primary or fallback
+  if (envConfig.llmProvider === "deepseek" || config.llmProvider === "deepseek" || envConfig.fallbackLlmProvider === "deepseek") {
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY || secrets["deepseek-api-key"] || config.deepseekConfig?.apiKey || "";
     
     // Warn if API key is missing when using Deepseek
