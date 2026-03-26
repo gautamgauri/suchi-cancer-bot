@@ -151,10 +151,7 @@ export class Patcher {
 
     // Restore original content
     await fs.writeFile(fullPath, patch.originalContent, "utf-8");
-    await execFileAsync("git", ["checkout", "main"], { cwd }).catch(() => {
-      // If main doesn't exist, try master
-      return execFileAsync("git", ["checkout", "master"], { cwd });
-    });
+    await execFileAsync("git", ["checkout", "main"], { cwd });
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
