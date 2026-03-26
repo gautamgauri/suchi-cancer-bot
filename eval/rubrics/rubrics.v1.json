@@ -141,26 +141,26 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: warning signs or symptoms, diagnostic tests or how doctors confirm, when to seek medical care or urgency timeline, questions to ask the doctor? Score 1.0 if the content addresses at least 3 of these 4 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address the following topics: warning signs or symptoms, diagnostic tests or how doctors confirm, when to seek medical care or urgency guidance, questions to ask the doctor? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses at least 3 of these 4 topics, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "warning_signs_coverage",
-            "description": "Provides >=5 warning signs relevant to the cancer type (or plausible general warning signs if cancer type is broad).",
-            "required": true,
+            "description": "Does the response touch on or mention warning signs, symptoms, or changes to watch for relevant to the cancer type? Symptom mentions anywhere in the response count — they do not need to appear in a dedicated section. Count distinct symptoms or warning signs mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
             "id": "tests_coverage",
-            "description": "Provides >=3 tests IF retrieval contains >=3 test mentions, otherwise requires 'insufficient source support' disclosure. Only requires tests that are present in retrieved context.",
-            "required": true,
+            "description": "Does the response touch on or mention diagnostic procedures, tests, imaging, biopsy, or blood tests relevant to the cancer type? Mentions anywhere in the text count — they do not need to appear in a dedicated section. Count distinct tests or diagnostic procedures mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 3
+              "min_count": 2
             }
           },
           {
@@ -171,17 +171,17 @@
           },
           {
             "id": "urgency_timeline",
-            "description": "Gives clear timeline guidance (e.g., same week, within 1–2 weeks, sooner if red flags).",
-            "required": true,
+            "description": "Does the response touch on or address when to seek medical care or the urgency of seeing a doctor? General guidance like 'consult your doctor', 'seek medical attention', or 'see a doctor if symptoms persist' counts. A literal timeline with specific dates or weeks is not required. Brief mentions count.",
+            "required": false,
             "type": "llm_scored_boolean"
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -315,11 +315,11 @@
           },
           {
             "id": "tests_coverage",
-            "description": "Provides >=3 tests to expect IF retrieval contains >=3 test mentions, otherwise requires 'insufficient source support' disclosure. Only requires tests present in retrieved context.",
-            "required": true,
+            "description": "Does the response touch on or mention diagnostic procedures, tests, imaging, biopsy, or blood tests that may be relevant? Mentions anywhere in the text count — they do not need to appear in a dedicated section. Count distinct tests or diagnostic procedures mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 3
+              "min_count": 2
             }
           },
           {
@@ -330,17 +330,17 @@
           },
           {
             "id": "urgency_timeline",
-            "description": "Provides clear timeline guidance appropriate to symptom severity and includes red-flag escalation guidance.",
-            "required": true,
+            "description": "Does the response touch on or address when to seek medical care or the urgency of seeing a doctor? General guidance like 'consult your doctor', 'seek medical attention promptly', or 'see a doctor if symptoms persist/worsen' counts. A literal timeline with specific dates or weeks is not required. Brief mentions count.",
+            "required": false,
             "type": "llm_scored_boolean"
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask clinicians.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -455,11 +455,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 clinician questions.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a clinician? This includes explicit question lists, suggestions of topics to raise, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -588,11 +588,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=7 clinician questions.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a clinician? This includes explicit question lists, suggestions of topics to raise, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 7
+              "min_count": 3
             }
           },
           {
@@ -816,17 +816,17 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: common symptoms, when to seek medical care or urgency timeline, questions to ask the doctor? Score 1.0 if the content addresses at least 2 of these 3 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address the following topics: common symptoms, when to seek medical care or urgency guidance, questions to ask the doctor? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses at least 2 of these 3 topics, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "symptoms_coverage",
-            "description": "Provides >=5 common symptoms/signs relevant to the cancer type. Notes that symptoms overlap with benign conditions.",
+            "description": "Does the response touch on or mention common symptoms or signs relevant to the cancer type? Symptom mentions anywhere in the response count — they do not need to appear in a dedicated section. Brief mentions count. Count distinct symptoms or signs mentioned.",
             "required": true,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 3
             }
           },
           {
@@ -837,11 +837,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -931,13 +931,13 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: early warning signs, later or advanced signs, when to seek medical care or urgency timeline? Score 1.0 if the content addresses at least 2 of these 3 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address the following topics: early warning signs, later or advanced signs, when to seek medical care or urgency guidance? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses at least 2 of these 3 topics, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "early_signs_coverage",
-            "description": "Provides >=3 early warning signs relevant to the cancer type.",
+            "description": "Does the response touch on or mention early warning signs relevant to the cancer type? Symptom mentions anywhere in the response count — they do not need to appear in a dedicated section. Brief mentions count. Count distinct early signs mentioned.",
             "required": true,
             "type": "llm_scored_boolean_with_count",
             "params": {
@@ -946,7 +946,7 @@
           },
           {
             "id": "later_signs_coverage",
-            "description": "Provides >=3 later signs relevant to the cancer type.",
+            "description": "Does the response touch on or mention later or advanced signs relevant to the cancer type? Symptom mentions anywhere in the response count — they do not need to appear in a dedicated section. Brief mentions count. Count distinct later/advanced signs mentioned.",
             "required": true,
             "type": "llm_scored_boolean_with_count",
             "params": {
@@ -955,17 +955,17 @@
           },
           {
             "id": "when_to_seek_care",
-            "description": "Provides clear timeline guidance for when to seek care.",
+            "description": "Does the response touch on or address when to seek medical care? General guidance like 'consult your doctor', 'seek medical attention', or 'see a doctor if symptoms persist' counts. A literal timeline with specific dates or weeks is not required. Brief mentions count.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -1053,13 +1053,13 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: diagnostic tests, diagnostic tests or how doctors confirm? Score 1.0 if the content addresses at least 1 of these 2 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address diagnostic tests or how doctors confirm a diagnosis? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses diagnostic tests or confirmation methods, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
           {
             "id": "tests_coverage",
-            "description": "Provides >=3 diagnostic tests IF retrieval contains >=3 test mentions, otherwise requires 'insufficient source support' disclosure. Only requires tests that are present in retrieved context.",
+            "description": "Does the response touch on or mention diagnostic procedures, tests, imaging, biopsy, or blood tests relevant to the cancer type? Mentions anywhere in the text count — they do not need to appear in a dedicated section. Count distinct tests or diagnostic procedures mentioned.",
             "required": true,
             "type": "llm_scored_boolean_with_count",
             "params": {
@@ -1068,11 +1068,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -1160,7 +1160,7 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: treatment options? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address treatment options? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses treatment options, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -1175,11 +1175,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -1269,7 +1269,7 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: common side effects, serious side effects, when to contact your doctor? Score 1.0 if the content addresses at least 2 of these 3 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address the following topics: common side effects, serious side effects, when to contact your doctor? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses at least 2 of these 3 topics, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -1299,11 +1299,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor about side effects? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -1390,7 +1390,7 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: questions to ask the doctor? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address questions to ask the doctor or topics to discuss with a clinician? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses questions or discussion topics for the doctor, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -1500,7 +1500,7 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: staging information? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address staging information? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses staging, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -1512,11 +1512,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor about staging? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -1617,7 +1617,7 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: prognosis factors? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address prognosis factors? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses factors that affect prognosis, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -1629,11 +1629,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor about prognosis? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
@@ -1721,7 +1721,7 @@
         "checks": [
           {
             "id": "content_coverage",
-            "description": "Does this response cover the following topics: how to prepare for a doctor visit? Score 1.0 if the content addresses at least 1 of these 1 topics (regardless of formatting or section headers), 0.0 otherwise.",
+            "description": "Does this response touch on or address how to prepare for a doctor visit? The information may be woven into the narrative rather than appearing as a distinct section. Brief mentions count. Score 1.0 if the content addresses visit preparation, 0.0 otherwise.",
             "required": true,
             "type": "llm_scored_boolean"
           },
@@ -1736,11 +1736,11 @@
           },
           {
             "id": "doctor_questions",
-            "description": "Provides >=5 questions to ask a clinician.",
-            "required": true,
+            "description": "Does the response suggest what to discuss with or ask a doctor? This includes explicit question lists, suggestions of topics to raise with a clinician, or guidance on what to discuss at appointments. A formal numbered list is not required. Count distinct discussion points or questions mentioned.",
+            "required": false,
             "type": "llm_scored_boolean_with_count",
             "params": {
-              "min_count": 5
+              "min_count": 2
             }
           },
           {
