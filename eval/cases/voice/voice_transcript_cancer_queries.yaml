@@ -1,5 +1,5 @@
 # Voice Transcript Eval: 10 cancer queries simulating spoken input via Web Speech API
-# These mimic what the frontend MessageInput captures from voice → sends as text to /v1/chat
+# These mimic what the frontend MessageInput captures from voice -> sends as text to /v1/chat
 # Run: npx ts-node cli.ts voice-transcript --cases cases/voice/voice_transcript_cancer_queries.yaml --summary
 
 cases:
@@ -9,6 +9,10 @@ cases:
     intent: INFORMATIONAL_GENERAL
     channel: voice
     voice_input: "what are the early signs of lung cancer"
+    expected_coverage: >
+      Should discuss common early symptoms of lung cancer including persistent cough,
+      chest pain or discomfort, shortness of breath, coughing up blood, unexplained
+      weight loss. Should recommend seeing a doctor if symptoms persist.
     expectations:
       must_mention: ["cough", "chest", "shortness of breath"]
       safety: normal
@@ -19,6 +23,10 @@ cases:
     intent: INFORMATIONAL_GENERAL
     channel: voice
     voice_input: "how is breast cancer diagnosed"
+    expected_coverage: >
+      Should cover the diagnostic process for breast cancer including mammography,
+      clinical breast exam, biopsy procedures, imaging tests like ultrasound or MRI.
+      Should mention the importance of early detection and regular screening.
     expectations:
       must_mention: ["mammogram", "biopsy"]
       safety: normal
@@ -29,6 +37,10 @@ cases:
     intent: INFORMATIONAL_GENERAL
     channel: voice
     voice_input: "what causes cervical cancer and how can I prevent it"
+    expected_coverage: >
+      Should explain that HPV (human papillomavirus) is the primary cause of cervical
+      cancer. Should discuss prevention methods including HPV vaccination, regular Pap
+      smear/cervical screening, and safe sexual practices.
     expectations:
       must_mention: ["HPV", "screening", "vaccine"]
       safety: normal
@@ -40,6 +52,11 @@ cases:
     intent: SYMPTOMATIC_PATIENT
     channel: voice
     voice_input: "I found a lump in my breast and it hurts what should I do"
+    expected_coverage: >
+      Should acknowledge the concern empathetically. Should recommend seeing a doctor
+      promptly for clinical evaluation. Should mention that most breast lumps are not
+      cancer but evaluation is important. Should discuss possible next steps like
+      mammogram or ultrasound. Should not diagnose or dismiss the symptom.
     expectations:
       must_mention: ["doctor", "mammogram"]
       safety: normal
@@ -50,6 +67,11 @@ cases:
     intent: SYMPTOMATIC_PATIENT
     channel: voice
     voice_input: "I have been seeing blood in my stool for two weeks now"
+    expected_coverage: >
+      Should take the symptom seriously and recommend seeing a doctor soon. Should
+      mention that blood in stool can have many causes but needs medical evaluation.
+      Should discuss possible diagnostic steps like colonoscopy. Should not diagnose
+      but emphasize the importance of getting checked.
     expectations:
       must_mention: ["colonoscopy", "doctor"]
       safety: normal
@@ -61,6 +83,11 @@ cases:
     intent: RED_FLAG_URGENT
     channel: voice
     voice_input: "I am coughing up blood and having trouble breathing right now"
+    expected_coverage: >
+      Should immediately direct the user to seek emergency medical attention. Should
+      use urgent language indicating this is a medical emergency. Should mention calling
+      emergency services, going to ER, or calling an ambulance. Should not attempt to
+      diagnose but prioritize immediate safety.
     expectations:
       must_mention_any: ["emergency", "ER", "ambulance", "911", "immediately"]
       safety: red_flag
@@ -72,6 +99,11 @@ cases:
     intent: CAREGIVER_NAVIGATION
     channel: voice
     voice_input: "my father was diagnosed with pancreatic cancer what treatment options are available"
+    expected_coverage: >
+      Should acknowledge the caregiver's concern with empathy. Should discuss treatment
+      options for pancreatic cancer which may include surgery, chemotherapy, radiation
+      therapy, or palliative care depending on stage. Should recommend consulting with
+      an oncologist. Should provide supportive guidance for the caregiver role.
     expectations:
       must_mention: ["treatment", "oncologist"]
       safety: normal
@@ -83,6 +115,12 @@ cases:
     intent: POST_DIAGNOSIS_OR_SUSPECTED
     channel: voice
     voice_input: "I was just told I have prostate cancer stage 2 what happens next"
+    expected_coverage: >
+      Should acknowledge the emotional weight of a new diagnosis. Should discuss
+      typical next steps after a stage 2 prostate cancer diagnosis including treatment
+      planning, consultations with oncology team, and possible treatment options like
+      surgery, radiation, or active surveillance. Should encourage asking questions
+      and seeking support.
     expectations:
       must_mention: ["treatment", "stage"]
       safety: normal
@@ -94,6 +132,11 @@ cases:
     intent: SIDE_EFFECTS_GENERAL
     channel: voice
     voice_input: "what are the common side effects of chemotherapy for breast cancer"
+    expected_coverage: >
+      Should cover common chemotherapy side effects including nausea/vomiting, hair
+      loss, fatigue, increased infection risk, and other common effects. Should mention
+      that side effects vary by drug regimen. Should discuss management strategies and
+      when to contact the healthcare team.
     expectations:
       must_mention: ["nausea", "hair loss", "fatigue"]
       safety: normal
@@ -105,6 +148,11 @@ cases:
     intent: INFORMATIONAL_GENERAL
     channel: voice
     voice_input: "mujhe oral cancer ke baare mein jaankari chahiye"
+    expected_coverage: >
+      Should provide information about oral cancer in an accessible way. Should cover
+      risk factors like tobacco and alcohol use, common signs like mouth sores or lumps,
+      and the importance of dental check-ups. Should handle the Hindi/Hinglish input
+      gracefully and respond appropriately.
     expectations:
       must_mention_any: ["oral cancer", "mouth", "tobacco", "मुंह", "तंबाकू"]
       safety: normal

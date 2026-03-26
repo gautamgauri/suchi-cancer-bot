@@ -1250,6 +1250,18 @@ export class ChatService {
       "ABSTENTION_WITH_RED_FLAGS"
     ];
 
+    // Override UNCLEAR_REQUEST to INFORMATIONAL_GENERAL when query has cancer-related keywords
+    // and evidence was retrieved — routes to full RAG explain-mode pipeline instead of generic template
+    // (e.g. "I was just told I have prostate cancer stage 2 what happens next")
+    if (intentResult.intent === "UNCLEAR_REQUEST" && evidenceChunks.length >= 2) {
+      const hasCancerKeywords = /\b(cancer|carcinoma|tumor|tumour|malignancy|oncology|oncologist|chemo|chemotherapy|radiation|radiotherapy|immunotherapy|biopsy|pathology|staging|metasta|prognosis|lymphoma|leukemia|leukaemia|myeloma|hodgkin|melanoma|sarcoma|adenocarcinoma|breast|lung|colon|colorectal|prostate|ovarian|pancreatic|liver|kidney|thyroid|bladder|brain|oral|cervical)\b/i.test(dto.userText);
+      if (hasCancerKeywords) {
+        this.logger.log(`Overriding UNCLEAR_REQUEST to INFORMATIONAL_GENERAL — query has cancer keywords and ${evidenceChunks.length} evidence chunks`);
+        (intentResult as any).intent = "INFORMATIONAL_GENERAL";
+        (intentResult as any).confidence = "medium";
+      }
+    }
+
     if (templateOnlyIntents.includes(intentResult.intent)) {
       const templateResult = this.templateSelector.selectAndGenerate(
         dto.userText,
@@ -1530,6 +1542,18 @@ export class ChatService {
         /\b(what (does|is)).{0,10}staging\b/i,
         /\bstaging\b.{0,20}(mean|cancer|lymphoma|tumor)/i,
         /\bhow.{0,10}(staging|staged)\b/i,
+
+        // Hindi/Hinglish general information queries (need full structured response, not 2-3 sentences)
+        /\b(jaankari|jankari|information)\b.*\b(cancer|kैंसर)\b/i,
+        /\b(cancer|कैंसर)\b.*\b(jaankari|jankari|information)\b/i,
+        /\b(baare mein|bare me|ke baare)\b.*\b(cancer)\b/i,
+        /\b(cancer)\b.*\b(baare mein|bare me|ke baare)\b/i,
+        // Hinglish causes/prevention queries
+        /\b(causes?|prevent|wajah|karan)\b.*\b(cancer)\b/i,
+        /\b(cancer)\b.*\b(causes?|prevent|wajah|karan)\b/i,
+        // Post-diagnosis queries ("what happens next", "next steps")
+        /\b(what happens|what's next|next steps?|what now|what do I do)\b/i,
+        /\bstage\s*\d\b.*\b(what|next|happen)\b/i,
       ];
 
       return structuredPatterns.some(pattern => pattern.test(lowerQuery));
@@ -1686,7 +1710,8 @@ export class ChatService {
     const isNavigationIntent = navigationIntents.includes(intentResult.intent);
 
     // Explain Mode + Strong RAG: LLM with Explain Mode prompt → structure with micro-template
-    if ((mode === "explain" && (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS")) || isNavigationIntent) {
+    // Also accepts navigate-mode queries reclassified to INFORMATIONAL_GENERAL (e.g. post-diagnosis queries with cancer keywords)
+    if ((intentResult.intent === "INFORMATIONAL_GENERAL" || (mode === "explain" && intentResult.intent === "INFORMATIONAL_SYMPTOMS")) || isNavigationIntent) {
       // DEBUG: Timing markers for explain mode performance diagnosis
       const explainStarted = Date.now();
       let llmCallCount = 0;
@@ -2070,10 +2095,11 @@ export class ChatService {
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
         if (citationValidation.confidenceLevel === "RED") {
-          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL")) {
-            // Allow response with strong disclaimer - don't abstain for identify questions with general intent
-            // or for general-intent informational queries (e.g. "Just asking generally" about treatment/info topics)
-            this.logger.warn("General-intent query has 0 citations after retry - allowing with strong disclaimer");
+          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL") || (intentResult.intent === "INFORMATIONAL_GENERAL" && mode === "explain" && evidenceChunks.length >= 2)) {
+            // Allow response with strong disclaimer - don't abstain for identify questions with general intent,
+            // general-intent informational queries (e.g. "Just asking generally"), or
+            // explain-mode INFORMATIONAL_GENERAL queries with sufficient evidence (e.g. "what causes cervical cancer")
+            this.logger.warn("General-intent / informational query has citation-RED after retry - allowing with strong disclaimer");
             citationValidation = {
               ...citationValidation,
               confidenceLevel: "YELLOW", // Override to YELLOW to allow response
