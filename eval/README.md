@@ -1,208 +1,190 @@
-## Eval Canonical Entry Points
+# Suchi Eval Framework
 
-This folder contains the evaluation harness and test cases.
+This package runs API-level quality evaluation for Suchi Cancer Bot. It is the canonical place for:
 
-Canonical entry points:
-- `eval/cli.ts` (ts-node entrypoint)
-- `eval/runner/` (core evaluation pipeline)
-- `eval/cases/` (YAML test suites)
+- Test suite execution (`run`, `voice-e2e`, `voice-transcript`)
+- Release gating (`release-gate`)
+- Judge stability analysis (`judge-compare`)
+- Automated repair loop experiments (`autoresearch`)
 
-Run the micro-suite:
-```bash
-cd eval
-npx ts-node cli.ts run \
-  --cases cases/tier1/zero_citation_regression.yaml \
-  --output reports/zero-citation-regression.json \
-  --summary
-```
-# Suchi Bot Evaluation Framework
+## What This Covers
 
-Comprehensive evaluation framework for testing Suchi Cancer Bot responses across 20 cancer types and 5 interaction modes (100 test cases total).
+- Intent: Verify safety, grounding, citations, completeness, and multilingual/voice quality before deployment.
+- Scope: The `eval` folder only (CLI, evaluators, rubrics, case packs, gate logic).
+- Non-goals: Web UI testing and backend business logic changes.
 
-## Features
+## Architecture At A Glance
 
-- **100 Test Cases**: 20 cancers × 5 interaction modes
-- **Deterministic Checks**: Regex patterns, question counting, section detection
-- **LLM Judge**: Supports both Vertex AI/Gemini and OpenAI for semantic evaluation
-- **Comprehensive Reports**: JSON and text report formats with detailed statistics
-- **Flexible Configuration**: Environment variables and config file support
+- Entry point: `eval/cli.ts`
+- Core pipeline: `eval/runner/evaluator.ts` + `eval/runner/report-generator.ts`
+- Gold release gate: `eval/runner/release-gate.ts`
+- Voice transcript path testing: `eval/runner/voice-transcript-eval.ts`
+- Judge agreement tooling: `eval/runner/judge-validator.ts`
+- Autoresearch loop: `eval/autoresearch/autoresearch-runner.ts`
 
-## Installation
+## Setup
 
 ```bash
 cd eval
 npm install
 ```
 
-For Vertex AI support (optional):
-```bash
-npm install @google-cloud/vertexai
-```
+Required for LLM-judged checks (most workflows):
 
-## Configuration
+- `DEEPSEEK_API_KEY` (or Secret Manager secret `deepseek-api-key`)
 
-### Secure Setup with Google Cloud Secret Manager (Recommended)
+Common optional overrides:
 
-**Windows (PowerShell):**
-```powershell
-cd eval
-.\setup-deepseek.ps1
-```
+- `EVAL_API_BASE_URL` (defaults to `config/default.json`)
+- `EVAL_AUTH_BEARER`
+- `EVAL_LLM_PROVIDER` (`deepseek`, `openai`, `vertex_ai`)
+- `EVAL_FALLBACK_LLM_PROVIDER`
 
-This script will:
-- Store your API key securely in Google Cloud Secret Manager
-- Set up proper IAM permissions
-- Configure your project ID
+## Primary Commands
 
-**Manual Setup:**
-See [docs/SECRETS_SETUP.md](docs/SECRETS_SETUP.md) for detailed instructions.
-
-**Quick Setup (Environment Variables - Less Secure):**
-```bash
-export EVAL_LLM_PROVIDER=deepseek
-export DEEPSEEK_API_KEY=your_api_key_here
-export DEEPSEEK_MODEL=deepseek-chat
-```
-
-### Environment Variables
-
-- `EVAL_API_BASE_URL`: API base URL (default: `http://localhost:3001`)
-- `EVAL_LLM_PROVIDER`: `openai`, `deepseek`, or `vertex_ai` (default: `openai`)
-- `OPENAI_API_KEY`: Required if using OpenAI
-- `OPENAI_MODEL`: OpenAI model (default: `gpt-4o`)
-- `DEEPSEEK_API_KEY`: Required if using Deepseek
-- `DEEPSEEK_MODEL`: Deepseek model (default: `deepseek-chat`)
-- `DEEPSEEK_BASE_URL`: Deepseek API base URL (default: `https://api.deepseek.com/v1`)
-- `GOOGLE_CLOUD_PROJECT`: Required if using Vertex AI
-- `VERTEX_AI_LOCATION`: Vertex AI location (default: `us-central1`)
-- `VERTEX_AI_MODEL`: Vertex AI model (default: `gemini-1.5-pro`)
-- `EVAL_TIMEOUT_MS`: Request timeout (default: `30000`)
-- `EVAL_RETRIES`: Number of retries (default: `2`)
-- `EVAL_PARALLEL`: Enable parallel execution (default: `false`)
-- `EVAL_MAX_CONCURRENCY`: Max concurrent tests (default: `5`)
-
-### Config File
-
-Edit `config/default.json` or provide a custom config file with `--config`.
-
-**Note:** For security, API keys should be set via environment variables, not in config files that might be committed to git.
-
-## Usage
-
-### Run All Tests
+Run via `ts-node` (recommended during development):
 
 ```bash
-npm run eval run
+npx ts-node cli.ts <command> [options]
 ```
 
-### Run Specific Test Case
+### 1) Run YAML case suites
 
 ```bash
-npm run eval run -- --case SUCHI-T1-BREAST-GEN-01
+npx ts-node cli.ts run \
+  --cases cases/tier1/retrieval_quality.yaml \
+  --output reports/tier1-report.json \
+  --summary
 ```
 
-### Run Tests by Tier
+Useful filters:
+
+- `--case <id>`
+- `--tier <number>`
+- `--cancer <type>`
+- `--intent <type>`
+- `--batch-size <n>`
+
+### 2) Run release gate on gold pack
+
+Runs all sets defined in `cases/gold/manifest.json` and evaluates threshold + regression gates.
 
 ```bash
-npm run eval run -- --tier 1
+npx ts-node cli.ts release-gate \
+  --api-url http://localhost:3001/v1 \
+  --output reports/release-gate-report.json
 ```
 
-### Filter by Cancer Type
+Save new baseline only after a passing deploy verdict:
 
 ```bash
-npm run eval run -- --cancer breast
+npx ts-node cli.ts release-gate --save-baseline
 ```
 
-### Filter by Intent
+Behavior:
+
+- Exit code `0` when verdict is `DEPLOY`
+- Exit code `1` when verdict is `BLOCK`
+
+### 3) Compare judge agreement between reports
 
 ```bash
-npm run eval run -- --intent INFORMATIONAL_GENERAL
+npx ts-node cli.ts judge-compare \
+  --report-a reports/run-a.json \
+  --report-b reports/run-b.json \
+  --output reports/judge-agreement \
+  --format both
 ```
 
-### Generate Report from Results
+Writes `.json` and `.md` agreement reports when `--format both`.
+
+### 4) Voice transcript evaluation
+
+Exercises the same text path used after Web Speech transcription (`POST /v1/chat`).
 
 ```bash
-npm run eval report -- --input report.json --format text
+npx ts-node cli.ts voice-transcript \
+  --cases cases/voice/voice_transcript_cancer_queries.yaml \
+  --output reports/voice-transcript-report.json \
+  --summary
 ```
 
-### Options
+### 5) Voice end-to-end evaluation
 
-- `--cases <path>`: Path to test cases YAML (default: `cases/tier1/common_cancers_20_mode_matrix.yaml`)
-- `--rubrics <path>`: Path to rubrics JSON (default: `rubrics/rubrics.v1.json`)
-- `--config <path>`: Path to config file
-- `--output <path>`: Output path for report JSON (default: `report.json`)
-- `--summary`: Print summary to console
-
-## Test Case Structure
-
-Test cases are defined in YAML format with:
-- `id`: Unique test case identifier
-- `tier`: Test tier (1, 2, 3, etc.)
-- `cancer`: Cancer type
-- `intent`: Interaction mode (INFORMATIONAL_GENERAL, SYMPTOMATIC_PATIENT, etc.)
-- `user_messages`: Array of user messages (multi-turn conversations)
-- `expectations`: Expected response characteristics
-
-## Rubric Structure
-
-Rubrics define evaluation criteria:
-- **Deterministic Checks**: Fast, rule-based checks (regex, counts)
-- **LLM Judge**: Semantic evaluation using LLM
-- **Weights**: Importance of each check
-- **Pass Threshold**: Minimum score to pass
-
-## Report Format
-
-Reports include:
-- Summary statistics (total, passed, failed, average score)
-- Individual test results with scores
-- Failed test details with error messages
-- Evidence quotes from LLM judge
-
-## Example Output
-
-```
-SUMMARY
-------------------------------------------------------------
-Total Tests: 100
-Passed: 85 (85.0%)
-Failed: 15 (15.0%)
-Skipped: 0
-Average Score: 87.5%
-Total Execution Time: 1250.50s
-```
-
-## Troubleshooting
-
-### API Connection Errors
-
-Ensure the Suchi API is running and accessible at the configured `apiBaseUrl`.
-
-### LLM Provider Errors
-
-- **OpenAI**: Ensure `OPENAI_API_KEY` is set
-- **Deepseek**: Ensure `DEEPSEEK_API_KEY` is set
-- **Vertex AI**: Ensure `GOOGLE_CLOUD_PROJECT` is set and Vertex AI SDK is installed
-
-### Test Case Loading Errors
-
-Verify YAML file format and paths are correct.
-
-## Development
-
-### Build
+Runs voice fixture/synthetic audio flow over HTTP, WebSocket, or both.
 
 ```bash
-npm run build
+npx ts-node cli.ts voice-e2e \
+  --cases cases/voice/voice_e2e_cases.yaml \
+  --rubrics rubrics/voice-rubrics.v1.json \
+  --transport http \
+  --synthetic \
+  --output reports/voice-e2e-report.json \
+  --summary
 ```
 
-### Run with TypeScript
+### 6) Autoresearch loop (bounded self-improvement)
 
 ```bash
-npm run eval
+npx ts-node cli.ts autoresearch \
+  --target all \
+  --max-iterations 3 \
+  --api-url http://localhost:3001/v1 \
+  --cases cases/gold/core_safety.yaml \
+  --rubrics rubrics/rubrics.v1.json \
+  --manifest ../repairable/manifest.json
 ```
 
-## License
+Dry-run mode (no patch apply/eval):
 
-MIT
+```bash
+npx ts-node cli.ts autoresearch --dry-run
+```
 
+## Gold Pack And Gate Thresholds
+
+- Gold set manifest: `eval/cases/gold/manifest.json`
+- Release gate thresholds: `eval/autoresearch/config/gate-thresholds.json`
+- Baseline file for regression checks: `eval/autoresearch/baselines/latest.json`
+
+Current release gate includes:
+
+- P0 safety failures (`== 0`)
+- Citation coverage
+- Disclaimer correctness
+- Language/voice pass rate
+- Overall pass rate
+- Regression guard vs baseline
+
+## Autoresearch Constraints (Important)
+
+- Hard iteration cap: `3` per run.
+- Patch scope is restricted to files listed in `repairable/manifest.json`.
+- Safety/rubric/database surfaces are intentionally out of repair scope.
+- Accepted experiments are archived under `eval/autoresearch/experiments/`.
+- Human approval is required before merge/deploy of autoresearch-produced changes.
+
+## Output Artifacts
+
+- Standard eval report: path passed to `--output` (JSON)
+- Release gate report: includes gate verdict + embedded eval report
+- Judge compare: agreement JSON/Markdown outputs
+- Autoresearch experiment logs: `eval/autoresearch/experiments/*.json`
+
+## Common Pitfalls And Troubleshooting
+
+- `0 cases executed`:
+  - Cause: filters did not match any cases.
+  - Fix: re-run without filters or use canonical values shown in preflight output.
+
+- LLM judge checks skipped:
+  - Cause: missing `DEEPSEEK_API_KEY` (or unavailable provider credentials).
+  - Fix: export key or configure Secret Manager before running eval.
+
+- Release gate blocks unexpectedly:
+  - Check per-gate rows in the report.
+  - Compare with prior baseline; regression gate can block even when absolute score seems acceptable.
+
+- Wrong target API:
+  - `config/default.json` may point to a remote URL.
+  - Set `EVAL_API_BASE_URL` or pass `--api-url` explicitly.
