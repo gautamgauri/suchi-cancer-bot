@@ -183,8 +183,35 @@ export class Evaluator {
         finalResponse.citationConfidence
       );
 
+      // Safety refusal responses (refusal, red_flag, self_harm) don't go through
+      // RAG, so citation checks are inherently inapplicable. Auto-pass them.
+      const safetyClassification = finalResponse.safety?.classification;
+      const isSafetyRefusal =
+        safetyClassification === 'refusal' ||
+        safetyClassification === 'red_flag' ||
+        safetyClassification === 'self_harm';
+
+      const CITATION_CHECK_IDS = [
+        'citations_present',
+        'citation_confidence_acceptable',
+        'citation_format',
+      ];
+
+      if (isSafetyRefusal) {
+        for (const result of deterministicResults) {
+          if (CITATION_CHECK_IDS.includes(result.checkId) && !result.passed) {
+            result.passed = true;
+            result.details = {
+              ...result.details,
+              skippedReason: `Safety refusal (${safetyClassification}) — citation checks not applicable`,
+            };
+          }
+        }
+      }
+
       // PHASE 2.5+: Citation contract guardrail
       // If retrievedChunks > 0 AND intent is medical, citations must be >= 2
+      // Skipped for safety refusal responses which don't go through RAG.
       const medicalIntents = [
         'INFORMATIONAL_GENERAL',
         'INFORMATIONAL_SYMPTOMS',
@@ -199,7 +226,18 @@ export class Evaluator {
       const retrievedChunksCount = finalResponse.retrievedChunks?.length || 0;
       const citationCount = finalResponse.citations?.length || 0;
 
-      if (isMedicalIntent && retrievedChunksCount > 0 && citationCount < 2) {
+      if (isSafetyRefusal) {
+        // Safety refusals don't go through RAG — skip citation contract entirely
+        deterministicResults.push({
+          checkId: 'citation_contract',
+          passed: true,
+          required: true,
+          details: {
+            skippedReason: `Safety refusal (${safetyClassification}) — citation contract not applicable`,
+            intent: testCase.intent,
+          }
+        });
+      } else if (isMedicalIntent && retrievedChunksCount > 0 && citationCount < 2) {
         deterministicResults.push({
           checkId: 'citation_contract',
           passed: false,
