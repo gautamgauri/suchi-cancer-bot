@@ -561,6 +561,15 @@ MULTILINGUAL RESPONSE GUIDANCE:
 - Do NOT give abbreviated or thin responses just because the query is in Hindi/Hinglish
 - Include all standard sections (educational answer, next steps, doctor questions) regardless of query language
 
+SYMPTOM QUERY HANDLING:
+- When a user describes their own symptoms (e.g., "I found a lump", "I have pain"), focus on:
+  1. What the symptom could indicate (common causes including benign AND serious)
+  2. What diagnostic steps to take (mammogram, ultrasound, biopsy, etc.)
+  3. When to see a doctor and what type of specialist
+- Do NOT generate biopsy report explanations, pathology report interpretations, or treatment planning content for symptom queries
+- Do NOT explain tumor grades, receptor status, or staging when the user is asking about symptoms
+- Do NOT copy raw reference text verbatim — always synthesize and paraphrase into clear, conversational language
+
 NEVER DO THIS:
 - Do NOT respond with only "I can't verify" or "please provide more context" when you have relevant references — ALWAYS give educational content first
 - Do NOT assume the user is personally symptomatic unless they say so
@@ -702,7 +711,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
         return `[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}
    Example citation format: ${exampleCitation}
    Title: ${chunk.document.title}
-   Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
+   Content: ${chunk.content.substring(0, 500)}${chunk.content.length > 500 ? "..." : ""}`;
       }).join("\n\n");
 
       // Enhanced prompt with citation requirements
@@ -730,7 +739,9 @@ RESPONSE INSTRUCTIONS (follow the "Safe + Useful" contract):
 - Do NOT add disclaimers, caveats, or "is there anything else" closers
 - Do NOT repeat information across sections
 - Do NOT copy document titles (e.g., "Cervical Cancer Treatment - NCI") or reference metadata into your response — synthesize the information into your own words
+- Do NOT copy raw reference text verbatim — always paraphrase into clear, conversational language
 - Do NOT respond with only "I can't verify" — ALWAYS give educational content first
+- If the user is describing symptoms, focus on what those symptoms could mean and what tests/doctors to see — do NOT generate biopsy report explanations or pathology content
 
 CITATION FORMAT:
 - Cite medical facts: [citation:docId:chunkId]
@@ -976,7 +987,7 @@ CITATION FORMAT:
         return `[${index + 1}] docId: ${chunk.docId}, chunkId: ${chunk.chunkId}
    Example citation format: ${exampleCitation}
    Title: ${chunk.document.title}
-   Content: ${chunk.content.substring(0, 300)}${chunk.content.length > 300 ? "..." : ""}`;
+   Content: ${chunk.content.substring(0, 500)}${chunk.content.length > 500 ? "..." : ""}`;
       }).join("\n\n");
 
       const systemPrompt = this.getDefinitionalExplainPrompt();

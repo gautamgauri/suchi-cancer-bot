@@ -532,7 +532,7 @@ program
 
       await runAutoresearch({
         target: options.target,
-        maxIterations: options.maxIterations,
+        maxIterations: options.maxIterations || 3,
         dryRun: !!options.dryRun,
         apiBaseUrl: options.apiUrl,
         goldCasesPath: casesPath,

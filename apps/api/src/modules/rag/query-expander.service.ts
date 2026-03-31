@@ -83,8 +83,11 @@ export class QueryExpanderService {
 
     // Breast symptoms
     ['breast lump', ['breast mass', 'breast nodule', 'palpable breast lesion']],
+    ['lump in my breast', ['breast mass', 'breast symptoms', 'signs and symptoms of breast cancer']],
+    ['lump in breast', ['breast mass', 'breast symptoms', 'signs and symptoms of breast cancer']],
     ['nipple discharge', ['nipple discharge', 'galactorrhea', 'bloody nipple discharge']],
     ['breast pain', ['mastalgia', 'breast tenderness', 'breast discomfort']],
+    ['breast hurts', ['mastalgia', 'breast pain', 'breast tenderness']],
 
     // Neurological symptoms
     ['headache', ['headache', 'cephalgia', 'head pain']],

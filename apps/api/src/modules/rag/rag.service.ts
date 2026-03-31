@@ -411,10 +411,18 @@ export class RagService {
         parts.push("signs and symptoms");
         // For raw symptom descriptions (patient reporting symptoms), add evaluation terms
         // to steer retrieval toward screening/diagnosis content, away from treatment side effects
+        // and away from benign-conditions/pathology-report content
         if (/\b(i('ve| have| had| noticed| found| feel| been)|persistent|ongoing|chronic|for \d+)\b/i.test(lowerQuery)) {
           parts.push("when to see a doctor");
           parts.push("screening");
           parts.push("early detection");
+          parts.push("check with your doctor");
+        }
+        // For "what should I do" queries, emphasize evaluation/next-steps content
+        if (/\b(what should i do|should i (see|visit|go|worry|be concerned)|is this (serious|normal|cancer|dangerous))\b/i.test(lowerQuery)) {
+          parts.push("see your doctor");
+          parts.push("diagnostic");
+          parts.push("evaluation");
         }
         if (cancerType) {
           parts.push(`${cancerType} cancer symptoms`);
@@ -976,6 +984,20 @@ export class RagService {
           /\b(manage.{0,15}side effect|cop.{0,15}(chemo|treatment)|nausea from (chemo|treatment)|hair loss from|treatment.related)\b/i.test(combinedText)
         );
 
+        // Detect pathology/biopsy-report explanation content signals
+        // These are post-diagnosis content that should not surface for symptom queries
+        const hasPathologyReportSignals = (
+          /\b(pathology report|biopsy report|understanding your.{0,15}report|tumor grade|receptor status|er positive|pr positive|her2 positive|invasive ductal|staging|tnm)\b/i.test(combinedText) ||
+          /\b(treatment planning|tumor type|tumor size and grade|step \d+:\s*(pathology|staging|biopsy))\b/i.test(combinedText)
+        );
+
+        // Detect benign-conditions educational content (not symptom-evaluation content)
+        // e.g., detailed descriptions of benign lump types, duct ectasia, fibroadenoma
+        const hasBenignConditionsSignals = (
+          /\b(benign.{0,20}(condition|tumor|breast)|fibroadenoma|duct ectasia|fat necrosis|fibrocystic|hematoma|lipoma|intraductal papilloma|adenosis|phyllodes)\b/i.test(combinedText) &&
+          !/\b(signs and symptoms|warning sign|when to see|see your doctor|check with your doctor)\b/i.test(combinedText)
+        );
+
         // Detect screening/diagnosis/symptom-evaluation content signals
         const hasScreeningDiagnosisSignals = (
           /\b(screening|early detection|warning sign|when to see.{0,10}doctor|signs and symptoms|risk factor|diagnosis|diagnostic|should.{0,10}(check|test|screen|evaluat))\b/i.test(combinedText) ||
@@ -985,6 +1007,14 @@ export class RagService {
         if (hasTreatmentSideEffectSignals && !hasScreeningDiagnosisSignals) {
           // Demote treatment side-effect chunks for symptom queries
           rerankScore *= 0.65;
+        } else if (hasPathologyReportSignals && !hasScreeningDiagnosisSignals) {
+          // Demote pathology/biopsy-report explanation chunks for symptom queries
+          // Users asking "I found a lump" should NOT get biopsy report interpretation content
+          rerankScore *= 0.55;
+        } else if (hasBenignConditionsSignals) {
+          // Mildly demote benign-conditions deep-dive content for symptom queries
+          // Keep some relevance (user may have a benign condition) but prioritize symptom/screening content
+          rerankScore *= 0.75;
         } else if (hasScreeningDiagnosisSignals && !hasTreatmentSideEffectSignals) {
           // Boost screening/diagnosis chunks for symptom queries
           rerankScore *= 1.20;
