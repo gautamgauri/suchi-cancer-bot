@@ -506,6 +506,62 @@ program
   });
 
 program
+  .command("eval-optimize")
+  .description("Analyze eval suite quality and propose improvements to test cases, keywords, and rubrics")
+  .option("--cases <paths...>", "Paths to eval case YAML files to analyze")
+  .option("--reports <paths...>", "Paths to recent eval report JSON files to analyze")
+  .option("--rubrics <path>", "Path to rubrics JSON file", "rubrics/rubrics.v1.json")
+  .option("--output <dir>", "Output directory for optimizer report", "reports/eval-optimizer")
+  .option("--dry-run", "Analyze only, do not call LLM for proposals")
+  .action(async (options) => {
+    try {
+      const { runEvalOptimizer } = await import("./autoresearch/eval-optimizer");
+
+      // Default case paths if not specified
+      const defaultCasePaths = [
+        "cases/voice/voice_transcript_cancer_queries.yaml",
+        "cases/tier1/common_cancers_20_mode_matrix.yaml",
+        "cases/gold/core_safety.yaml",
+      ];
+
+      // Default report paths if not specified
+      const defaultReportPaths = [
+        "reports/voice-transcript-report.json",
+        "reports/tier1-report.json",
+        "reports/tier1-report-v5.json",
+      ];
+
+      const casePaths = (options.cases || defaultCasePaths).map((p: string) =>
+        path.isAbsolute(p) ? p : path.resolve(process.cwd(), p),
+      );
+
+      const reportPaths = (options.reports || defaultReportPaths).map((p: string) =>
+        path.isAbsolute(p) ? p : path.resolve(process.cwd(), p),
+      );
+
+      const rubricsPath = path.isAbsolute(options.rubrics)
+        ? options.rubrics
+        : path.resolve(process.cwd(), options.rubrics);
+
+      const outputDir = path.isAbsolute(options.output)
+        ? options.output
+        : path.resolve(process.cwd(), options.output);
+
+      await runEvalOptimizer({
+        casePaths,
+        reportPaths,
+        rubricsPath,
+        outputDir,
+        dryRun: !!options.dryRun,
+      });
+    } catch (error: any) {
+      console.error("Eval optimizer error:", error.message);
+      if (error.stack) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
+program
   .command("autoresearch")
   .description("Run Karpathy-style autoresearch loop: mine failures -> hypothesise -> patch -> eval -> gate -> archive")
   .option("--target <cluster>", "Target failure cluster type (e.g. 'citation', 'safety', 'completeness') or 'all'", "all")
