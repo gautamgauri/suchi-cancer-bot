@@ -151,7 +151,18 @@ export class Patcher {
 
     // Restore original content
     await fs.writeFile(fullPath, patch.originalContent, "utf-8");
+
+    // Stash any uncommitted/untracked changes before switching branches
+    try {
+      await execFileAsync("git", ["stash", "--include-untracked"], { cwd });
+    } catch { /* nothing to stash */ }
+
     await execFileAsync("git", ["checkout", "main"], { cwd });
+
+    // Drop the stash — we don't need the reverted changes
+    try {
+      await execFileAsync("git", ["stash", "drop"], { cwd });
+    } catch { /* no stash to drop */ }
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
