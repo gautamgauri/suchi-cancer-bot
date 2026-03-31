@@ -1005,13 +1005,13 @@ export class RagService {
           /\b(see your (doctor|physician|healthcare)|consult.{0,10}(doctor|physician)|medical (attention|evaluation|advice))\b/i.test(combinedText)
         );
 
-        if (hasTreatmentSideEffectSignals && !hasScreeningDiagnosisSignals) {
+        if (hasPathologyReportSignals) {
+          // Hard demote pathology/biopsy content for symptom queries — UNCONDITIONAL
+          // Even if chunk also mentions "screening", biopsy content is wrong for symptom queries
+          rerankScore *= 0.2;
+        } else if (hasTreatmentSideEffectSignals && !hasScreeningDiagnosisSignals) {
           // Demote treatment side-effect chunks for symptom queries
           rerankScore *= 0.65;
-        } else if (hasPathologyReportSignals && !hasScreeningDiagnosisSignals) {
-          // Demote pathology/biopsy-report explanation chunks for symptom queries
-          // Users asking "I found a lump" should NOT get biopsy report interpretation content
-          rerankScore *= 0.55;
         } else if (hasBenignConditionsSignals) {
           // Mildly demote benign-conditions deep-dive content for symptom queries
           // Keep some relevance (user may have a benign condition) but prioritize symptom/screening content
@@ -1103,17 +1103,19 @@ export class RagService {
       let multiplier = 1.0;
 
       if (patientState === PatientState.SYMPTOMATIC) {
-        // Demote post-diagnosis / pathology content
+        // Demote post-diagnosis / pathology content — UNCONDITIONAL for symptomatic state
+        // Even if the chunk also mentions "screening", biopsy/pathology content is wrong for symptom queries
         const hasPostDiagnosisSignals =
-          /\b(biopsy report|pathology report|staging|treatment plan|treatment pathway|tumor grade|receptor status|tnm|invasive ductal|treatment planning|understanding your.{0,15}report)\b/i.test(combined);
+          /\b(biopsy report|pathology report|staging|treatment plan|treatment pathway|tumor grade|receptor status|tnm|invasive ductal|treatment planning|understanding your.{0,15}report|benign breast|blocked duct)\b/i.test(combined);
 
         // Boost symptom / screening content
         const hasSymptomScreeningSignals =
           /\b(symptoms|signs|screening|when to see|warning|early detection|risk factor|see your doctor|consult|medical evaluation|check with)\b/i.test(combined);
 
-        if (hasPostDiagnosisSignals && !hasSymptomScreeningSignals) {
-          multiplier = 0.3;
-        } else if (hasSymptomScreeningSignals && !hasPostDiagnosisSignals) {
+        if (hasPostDiagnosisSignals) {
+          // Hard demotion — biopsy/pathology content must not dominate symptom queries
+          multiplier = 0.2;
+        } else if (hasSymptomScreeningSignals) {
           multiplier = 1.3;
         }
       } else if (patientState === PatientState.POST_DIAGNOSIS) {
