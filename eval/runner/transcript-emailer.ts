@@ -2,6 +2,7 @@ import * as nodemailer from 'nodemailer';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
 interface TranscriptResult {
   caseId: string;
@@ -203,12 +204,28 @@ export async function emailTranscriptReport(
     } catch { /* no browser available, that's fine */ }
   }
 
-  // Try SMTP email if configured
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
+  // Try SMTP email — env vars first, then Secret Manager fallback
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpUser = process.env.SMTP_USER || 'gautamgauri@dikshafoundation.org';
+  let smtpPass = process.env.SMTP_PASS;
 
-  if (smtpHost && smtpUser && smtpPass) {
+  if (!smtpPass) {
+    try {
+      const client = new SecretManagerServiceClient();
+      const project = process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132';
+      const [version] = await client.accessSecretVersion({
+        name: `projects/${project}/secrets/SMTP_PASS/versions/latest`,
+      });
+      const payload = version.payload?.data;
+      if (payload) {
+        smtpPass = (typeof payload === 'string' ? payload : Buffer.from(payload).toString('utf-8')).trim();
+      }
+    } catch (err: any) {
+      console.warn(`Could not load SMTP_PASS from Secret Manager: ${err.message}`);
+    }
+  }
+
+  if (smtpPass) {
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     const transporter = nodemailer.createTransport({
       host: smtpHost,
