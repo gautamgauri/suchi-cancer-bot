@@ -7,6 +7,7 @@ import { ApiClient } from "./runner/api-client";
 import { VoiceEvaluator } from "./runner/voice-evaluator";
 import { VoiceReportGenerator } from "./runner/voice-report-generator";
 import { runVoiceTranscriptEval } from "./runner/voice-transcript-eval";
+import { emailTranscriptReport } from "./runner/transcript-emailer";
 import { loadConfig } from "./config/loader";
 import * as path from "path";
 import * as fs from "fs/promises";
@@ -353,6 +354,7 @@ program
   .option("--cases <path>", "Path to voice transcript cases YAML", "cases/voice/voice_transcript_cancer_queries.yaml")
   .option("--output <path>", "Output path for transcript report JSON", "reports/voice-transcript-report.json")
   .option("--summary", "Print full transcript summary to console")
+  .option("--email <address>", "Email complete conversation transcript to this address")
   .action(async (options) => {
     try {
       console.log("Loading configuration...");
@@ -369,7 +371,7 @@ program
       console.log(`  Cases: ${casesPath}`);
       console.log(`  Output: ${outputPath}`);
 
-      await runVoiceTranscriptEval({
+      const report = await runVoiceTranscriptEval({
         casesPath,
         apiBaseUrl: config.apiBaseUrl,
         outputPath,
@@ -377,6 +379,10 @@ program
         authBearer: config.authBearer,
         summary: !!options.summary,
       });
+
+      if (options.email) {
+        await emailTranscriptReport(report, options.email);
+      }
     } catch (error: any) {
       console.error("Error:", error.message);
       if (error.stack) console.error(error.stack);

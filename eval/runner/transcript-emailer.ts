@@ -1,0 +1,235 @@
+import * as nodemailer from 'nodemailer';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+
+interface TranscriptResult {
+  caseId: string;
+  cancer: string;
+  intent: string;
+  voiceInput: string;
+  responseText: string;
+  safety: { classification: string; actions: string[] };
+  citations: number;
+  citationConfidence?: string;
+  responseTimeMs: number;
+  passed: boolean;
+  checks: {
+    llmJudge?: {
+      results: { checkId: string; passed: boolean; evidence?: string }[];
+      overallPass: boolean;
+    };
+    mustMention: { missing: string[] };
+    safetyMatch: boolean;
+    withinLatency: boolean;
+  };
+}
+
+interface TranscriptReport {
+  runId: string;
+  timestamp: string;
+  apiBaseUrl: string;
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    passRate: number;
+    avgResponseTimeMs: number;
+    totalExecutionTimeMs: number;
+    llmJudgeAvailable: boolean;
+  };
+  transcripts: TranscriptResult[];
+  improvements: string[];
+}
+
+function statusBadge(passed: boolean): string {
+  return passed ? '✅ PASS' : '❌ FAIL';
+}
+
+function buildHtmlEmail(report: TranscriptReport): string {
+  const { summary, transcripts, improvements } = report;
+
+  const rows = transcripts.map(t => {
+    const failedChecks = t.checks.llmJudge?.results
+      .filter(r => !r.passed)
+      .map(r => r.checkId.replace(/_/g, ' '))
+      .join(', ') || '';
+
+    return `
+    <tr style="border-bottom: 2px solid #e0e0e0;">
+      <td colspan="2" style="padding: 16px; background: ${t.passed ? '#f0fdf4' : '#fef2f2'};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="font-size: 15px;">${statusBadge(t.passed)} ${t.caseId}</strong>
+          <span style="color: #666; font-size: 13px;">${t.cancer} / ${t.intent} | ${t.responseTimeMs}ms | ${t.citations} citations</span>
+        </div>
+
+        <div style="background: #f8f9fa; border-left: 4px solid #4a90d9; padding: 12px; margin: 8px 0; border-radius: 4px;">
+          <div style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">User Question</div>
+          <div style="font-size: 14px;">${escapeHtml(t.voiceInput)}</div>
+        </div>
+
+        <div style="background: #fff; border-left: 4px solid #27ae60; padding: 12px; margin: 8px 0; border-radius: 4px;">
+          <div style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Bot Response</div>
+          <div style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(t.responseText)}</div>
+        </div>
+
+        ${failedChecks ? `<div style="color: #c0392b; font-size: 13px; margin-top: 6px;">Failed checks: ${failedChecks}</div>` : ''}
+        ${t.checks.mustMention.missing.length > 0 ? `<div style="color: #e67e22; font-size: 13px;">Missing keywords: ${t.checks.mustMention.missing.join(', ')}</div>` : ''}
+      </td>
+    </tr>`;
+  }).join('\n');
+
+  const improvementsList = improvements.length > 0
+    ? improvements.map(i => `<li style="margin-bottom: 6px;">${escapeHtml(i)}</li>`).join('\n')
+    : '<li>All cases passed.</li>';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; color: #333;">
+
+  <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+    Suchi Voice Eval — Conversation Transcript
+  </h2>
+
+  <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+    <table style="width: 100%;">
+      <tr>
+        <td><strong>Run ID:</strong> ${report.runId}</td>
+        <td><strong>Time:</strong> ${new Date(report.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+      </tr>
+      <tr>
+        <td><strong>API:</strong> ${report.apiBaseUrl}</td>
+        <td><strong>Duration:</strong> ${(summary.totalExecutionTimeMs / 1000).toFixed(1)}s</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="padding-top: 10px;">
+          <strong style="font-size: 18px; color: ${summary.passRate >= 0.8 ? '#27ae60' : summary.passRate >= 0.5 ? '#f39c12' : '#e74c3c'};">
+            ${summary.passed}/${summary.total} passed (${(summary.passRate * 100).toFixed(0)}%)
+          </strong>
+          &nbsp;|&nbsp; Avg response: ${summary.avgResponseTimeMs}ms
+          &nbsp;|&nbsp; LLM Judge: ${summary.llmJudgeAvailable ? 'Active' : 'Disabled'}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <h3 style="color: #2c3e50;">Complete Conversations</h3>
+  <table style="width: 100%; border-collapse: collapse;">
+    ${rows}
+  </table>
+
+  <h3 style="color: #2c3e50; margin-top: 24px;">Improvement Areas</h3>
+  <ul style="line-height: 1.6;">
+    ${improvementsList}
+  </ul>
+
+  <hr style="margin-top: 30px; border: none; border-top: 1px solid #ddd;">
+  <p style="color: #999; font-size: 12px;">
+    Generated by Suchi Eval Framework | ${report.timestamp}
+  </p>
+</body>
+</html>`;
+}
+
+function buildPlainTextEmail(report: TranscriptReport): string {
+  const { summary, transcripts, improvements } = report;
+
+  let text = `SUCHI VOICE EVAL — CONVERSATION TRANSCRIPT\n`;
+  text += `${'='.repeat(60)}\n\n`;
+  text += `Run: ${report.runId} | ${report.timestamp}\n`;
+  text += `API: ${report.apiBaseUrl}\n`;
+  text += `Result: ${summary.passed}/${summary.total} passed (${(summary.passRate * 100).toFixed(0)}%)\n`;
+  text += `Avg response: ${summary.avgResponseTimeMs}ms | Duration: ${(summary.totalExecutionTimeMs / 1000).toFixed(1)}s\n\n`;
+
+  text += `COMPLETE CONVERSATIONS\n${'-'.repeat(60)}\n\n`;
+
+  for (const t of transcripts) {
+    text += `[${t.passed ? 'PASS' : 'FAIL'}] ${t.caseId} (${t.cancer} / ${t.intent})\n`;
+    text += `  Response: ${t.responseTimeMs}ms | Citations: ${t.citations} | Safety: ${t.safety.classification}\n\n`;
+    text += `  USER: ${t.voiceInput}\n\n`;
+    text += `  BOT: ${t.responseText}\n\n`;
+    text += `${'-'.repeat(60)}\n\n`;
+  }
+
+  if (improvements.length > 0) {
+    text += `\nIMPROVEMENT AREAS\n${'-'.repeat(60)}\n`;
+    improvements.forEach((imp, i) => { text += `  ${i + 1}. ${imp}\n`; });
+  }
+
+  return text;
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function loadSmtpPass(): Promise<string | undefined> {
+  // 1. Env var first
+  if (process.env.SMTP_PASS) return process.env.SMTP_PASS;
+
+  // 2. Fall back to GCP Secret Manager
+  try {
+    const client = new SecretManagerServiceClient();
+    const project = process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132';
+    const [version] = await client.accessSecretVersion({
+      name: `projects/${project}/secrets/SMTP_PASS/versions/latest`,
+    });
+    const payload = version.payload?.data;
+    if (payload) {
+      const pass = typeof payload === 'string' ? payload : Buffer.from(payload).toString('utf-8');
+      console.log('SMTP password loaded from Secret Manager');
+      return pass.trim();
+    }
+  } catch (err: any) {
+    console.warn(`Could not load SMTP_PASS from Secret Manager: ${err.message}`);
+  }
+  return undefined;
+}
+
+export async function emailTranscriptReport(
+  report: TranscriptReport,
+  recipientEmail: string,
+): Promise<boolean> {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER || 'gautamgauri@dikshafoundation.org';
+  const pass = await loadSmtpPass();
+  const from = process.env.SMTP_FROM || 'Suchi Eval <gautamgauri@dikshafoundation.org>';
+
+  if (!pass) {
+    console.error('SMTP password not available (checked env + Secret Manager). Skipping email.');
+    console.error('Report is still saved to disk.');
+    return false;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+
+  const { summary } = report;
+  const passLabel = `${summary.passed}/${summary.total} passed`;
+  const subject = `Suchi Voice Eval: ${passLabel} (${(summary.passRate * 100).toFixed(0)}%) — ${new Date(report.timestamp).toLocaleDateString('en-IN')}`;
+
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to: recipientEmail,
+      subject,
+      text: buildPlainTextEmail(report),
+      html: buildHtmlEmail(report),
+    });
+
+    console.log(`Transcript email sent: ${info.messageId} → ${recipientEmail}`);
+    return true;
+  } catch (error: any) {
+    console.error(`Failed to send transcript email: ${error.message}`);
+    return false;
+  }
+}
