@@ -1,5 +1,7 @@
 import * as nodemailer from 'nodemailer';
-import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { execSync } from 'child_process';
 
 interface TranscriptResult {
   caseId: string;
@@ -167,69 +169,70 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-async function loadSmtpPass(): Promise<string | undefined> {
-  // 1. Env var first
-  if (process.env.SMTP_PASS) return process.env.SMTP_PASS;
-
-  // 2. Fall back to GCP Secret Manager
-  try {
-    const client = new SecretManagerServiceClient();
-    const project = process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132';
-    const [version] = await client.accessSecretVersion({
-      name: `projects/${project}/secrets/SMTP_PASS/versions/latest`,
-    });
-    const payload = version.payload?.data;
-    if (payload) {
-      const pass = typeof payload === 'string' ? payload : Buffer.from(payload).toString('utf-8');
-      console.log('SMTP password loaded from Secret Manager');
-      return pass.trim();
-    }
-  } catch (err: any) {
-    console.warn(`Could not load SMTP_PASS from Secret Manager: ${err.message}`);
-  }
-  return undefined;
-}
-
+/**
+ * Save transcript report as a formatted HTML file and optionally email it.
+ * Always saves HTML locally. Emails via SMTP if configured.
+ */
 export async function emailTranscriptReport(
   report: TranscriptReport,
   recipientEmail: string,
 ): Promise<boolean> {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER || 'gautamgauri@dikshafoundation.org';
-  const pass = await loadSmtpPass();
-  const from = process.env.SMTP_FROM || 'Suchi Eval <gautamgauri@dikshafoundation.org>';
-
-  if (!pass) {
-    console.error('SMTP password not available (checked env + Secret Manager). Skipping email.');
-    console.error('Report is still saved to disk.');
-    return false;
-  }
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-
   const { summary } = report;
   const passLabel = `${summary.passed}/${summary.total} passed`;
   const subject = `Suchi Voice Eval: ${passLabel} (${(summary.passRate * 100).toFixed(0)}%) — ${new Date(report.timestamp).toLocaleDateString('en-IN')}`;
 
+  const html = buildHtmlEmail(report);
+  const text = buildPlainTextEmail(report);
+
+  // Always save HTML report locally
+  const htmlPath = path.resolve(process.cwd(), 'reports', `voice-transcript-${report.runId}.html`);
+  await fs.mkdir(path.dirname(htmlPath), { recursive: true });
+  await fs.writeFile(htmlPath, html, 'utf-8');
+  console.log(`\nTranscript HTML saved: ${htmlPath}`);
+
+  // Try to open in browser (best-effort)
   try {
-    const info = await transporter.sendMail({
-      from,
-      to: recipientEmail,
-      subject,
-      text: buildPlainTextEmail(report),
-      html: buildHtmlEmail(report),
+    const openCmd = process.platform === 'win32' ? 'start' :
+      process.platform === 'darwin' ? 'open' : 'xdg-open';
+    execSync(`${openCmd} "${htmlPath}" 2>/dev/null`, { stdio: 'ignore' });
+  } catch {
+    // WSL: try Windows browser
+    try {
+      const winPath = execSync(`wslpath -w "${htmlPath}" 2>/dev/null`, { encoding: 'utf-8' }).trim();
+      execSync(`cmd.exe /c start "" "${winPath}" 2>/dev/null`, { stdio: 'ignore' });
+    } catch { /* no browser available, that's fine */ }
+  }
+
+  // Try SMTP email if configured
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port,
+      secure: port === 465,
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
-    console.log(`Transcript email sent: ${info.messageId} → ${recipientEmail}`);
-    return true;
-  } catch (error: any) {
-    console.error(`Failed to send transcript email: ${error.message}`);
-    return false;
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || `Suchi Eval <${smtpUser}>`,
+        to: recipientEmail,
+        subject,
+        text,
+        html,
+      });
+      console.log(`Transcript email sent: ${info.messageId} → ${recipientEmail}`);
+      return true;
+    } catch (error: any) {
+      console.error(`SMTP send failed: ${error.message} — HTML report is still saved locally.`);
+      return false;
+    }
   }
+
+  console.log(`SMTP not configured — view the HTML report at: ${htmlPath}`);
+  return true; // HTML was saved successfully
 }
