@@ -493,11 +493,12 @@ export function selectOutputTemplate(
 ): OutputTemplate | null {
   const lowerText = userText.toLowerCase();
 
-  // Biopsy-related queries
+  // Biopsy-related queries — require explicit biopsy/report context
+  // "next_steps" alone is too broad (matches "what should I do" on symptom queries)
   if (
     signals.includes("report_received") ||
-    signals.includes("next_steps") ||
-    /\b(biopsy|बायोप्सी)\b/i.test(lowerText)
+    (signals.includes("next_steps") && /\b(biopsy|report|pathology|diagnosed|result|रिपोर्ट|बायोप्सी)\b/i.test(lowerText)) ||
+    /\b(biopsy|बायोप्सी)\s+(report|result|says?|shows?)\b/i.test(lowerText)
   ) {
     return BIOPSY_NEXT_STEPS;
   }
