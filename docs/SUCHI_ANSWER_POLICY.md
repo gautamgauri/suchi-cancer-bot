@@ -1,7 +1,7 @@
 # Suchi Answer Policy - Trust-First RAG v2
 
-**Last Updated:** 2026-01-20  
-**Version:** 2.0
+**Last Updated:** 2026-03-31
+**Version:** 2.1
 
 ---
 
@@ -236,6 +236,7 @@ All blocking decisions must be logged with structured data:
 
 ## Version History
 
+- **v2.1** (2026-03-31): Citation checks skip safety refusal responses; explain-mode prompt updated with citation rule for safety responses and symptom query handling section
 - **v2.0** (2026-01-20): Trust-First RAG v2 - Hard evidence gating, runtime citation enforcement
 - **v1.0** (2025-XX-XX): Initial policy with soft evidence checks
 

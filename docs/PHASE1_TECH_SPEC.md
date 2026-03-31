@@ -21,7 +21,7 @@
 5. Persist assistant message + analytics
 
 ## KB retrieval
-Phase 1 uses keyword contains-match on `KbChunk.content`. Upgrade path: pgvector embeddings.
+pgvector cosine-similarity search with query expansion (breast symptom synonyms), reranking (trusted-source boost, pathology/biopsy content demotion for symptom queries), and 500-char chunk size. Explain-mode prompt handles citation rules for safety responses and includes a symptom query handling section.
 
 ## Local run
 From `apps/api`:

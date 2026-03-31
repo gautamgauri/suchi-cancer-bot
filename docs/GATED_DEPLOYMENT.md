@@ -5,9 +5,11 @@
 This deployment pattern provides "staging safety" without creating a separate environment. It works by:
 
 1. Deploying a **candidate revision** with 0% traffic
-2. Running `eval:tier1` against the candidate
-3. Only shifting traffic to the candidate if eval passes
-4. If eval fails, the build stops and live traffic remains on the previous revision
+2. Running a health check against the candidate (timeout 900s)
+3. Only shifting traffic to the candidate if the health check passes
+4. If the health check fails, the build stops and live traffic remains on the previous revision
+
+> **Note (Feb 2026):** The eval:tier1 gate was removed from the gated pipeline due to reliability issues (see `cloudbuild-gated-issues.md`). The gate is now health-check only. Quality gating is handled separately by the autoresearch engine (`eval/autoresearch/`).
 
 ## How It Works
 
@@ -20,22 +22,21 @@ This deployment pattern provides "staging safety" without creating a separate en
    ↓
 3. Deploy candidate revision (0% traffic, tagged 'candidate')
    ↓
-4. Wait for candidate to be healthy
+4. Wait for candidate to be healthy (health check, 900s timeout)
    ↓
-5. Run eval:tier1 against candidate URL
+5. If healthy → Shift 100% traffic to candidate
+   If unhealthy → Build stops, traffic stays on previous revision
    ↓
-6. If eval passes → Shift 100% traffic to candidate
-   If eval fails → Build stops, traffic stays on previous revision
-   ↓
-7. Deploy web (after API is promoted)
+6. Deploy web (after API is promoted)
 ```
+
+> The eval:tier1 step was previously between steps 4 and 5 but was removed in Feb 2026.
 
 ### Key Benefits
 
-- ✅ **No separate staging environment** - uses the same Cloud Run service
-- ✅ **Zero risk to live users** - traffic only shifts after eval passes
-- ✅ **Automatic rollback** - if eval fails, previous revision stays live
-- ✅ **NCI-optimized** - strict expectations for NCI-only corpus
+- **No separate staging environment** - uses the same Cloud Run service
+- **Zero risk to live users** - traffic only shifts after health check passes
+- **Automatic rollback** - if health check fails, previous revision stays live
 
 ## Usage
 

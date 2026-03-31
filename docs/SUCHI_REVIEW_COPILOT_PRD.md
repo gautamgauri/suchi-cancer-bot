@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-20
 **Owner:** SCCF Engineering
-**Status:** Draft
+**Status:** Draft (not yet implemented; autoresearch quality engine is the active quality loop as of Mar 2026)
 
 ---
 

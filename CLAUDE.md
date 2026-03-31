@@ -15,6 +15,7 @@ eval/              → Evaluation framework (test cases, runner, rubrics)
   cases/           → Test case JSON files by category
   runner/          → Eval execution engine
   rubrics/         → Scoring rubrics
+  autoresearch/    → Autoresearch quality engine (failure miner, patcher, gatekeeper, archivist)
   cli.ts           → Entry point for eval runs
 kb/                → Knowledge base markdown files + manifest
 docs/              → Documentation (PRD, specs, policies, deployment)
@@ -48,7 +49,7 @@ cd apps/api && npx prisma migrate dev  # Run migrations
 - **Voice**: Google Cloud Speech-to-Text v2, Text-to-Speech
 - **Frontend**: React, Vite, TypeScript
 - **Deploy**: Google Cloud Run via Cloud Build
-- **Eval**: Custom TypeScript framework with rubric-based scoring
+- **Eval**: Custom TypeScript framework with rubric-based scoring + autoresearch quality engine
 
 ## Conventions
 

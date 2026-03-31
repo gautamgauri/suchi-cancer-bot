@@ -30,10 +30,16 @@ Verify responses are at Class 6-8 reading level (Flesch-Kincaid).
 
 ---
 
+## Autoresearch Quality Engine (Operational as of Mar 2026)
+
+Systematic self-improvement loop: mines eval failures, proposes prompt/config patches, gates changes via before/after eval comparison, archives experiment results. Located in `eval/autoresearch/`.
+
+---
+
 ## Other Phase 2 Items
 
 - [ ] NHS/WHO content ingestion (pending copyright review)
 - [ ] Multi-language support (Hindi, regional languages)
-- [ ] Voice input/output for accessibility
+- [x] Voice input/output for accessibility (implemented: STT v2, TTS, voice-ws module, transcript eval with HTML report + email)
 - [ ] WhatsApp integration
-- [ ] Feedback thumbs up/down buttons
+- [x] Feedback thumbs up/down buttons

@@ -11,10 +11,10 @@ The deployment pipeline uses **gated Cloud Build** with the following flow:
 3. Update migration job to use new image
 4. Execute migration job (applies pending migrations)
 5. Deploy candidate revision (0% traffic)
-6. Run health check
-7. Run eval:tier1 against candidate
-8. Check NCI dominance gate
-9. Promote candidate to 100% traffic (if all checks pass)
+6. Run health check (timeout 900s)
+7. Promote candidate to 100% traffic (if health check passes)
+
+> **Note (Feb 2026):** The eval:tier1 and NCI dominance gate steps were removed from the gated pipeline. The gate is now health-check only. After deploying with the simple pipeline (`cloudbuild.yaml`), the latest revision must be promoted to 100% traffic manually.
 
 ## Database Migrations
 
