@@ -8,6 +8,7 @@ import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/trusted-sources.config";
 import { QueryTypeClassifier } from "./query-type.classifier";
 import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer-topics";
+import { PatientState } from "../chat/patient-state.service";
 
 @Injectable()
 export class RagService {
@@ -1072,5 +1073,87 @@ export class RagService {
     }
 
     return reranked.map(r => r.chunk);
+  }
+
+  /**
+   * Apply patient-state-aware score adjustments to retrieved chunks.
+   * Called AFTER retrieval to demote/boost chunks based on the user's journey stage.
+   *
+   * - SYMPTOMATIC: demote post-diagnosis content (biopsy reports, pathology, staging),
+   *                boost symptom/screening content
+   * - POST_DIAGNOSIS: boost staging, treatment, prognosis content
+   * - URGENT: return empty array (safety module handles urgent cases, skip RAG)
+   * - Others: no adjustment
+   */
+  applyPatientStateFilter(chunks: EvidenceChunk[], patientState: PatientState): EvidenceChunk[] {
+    if (patientState === PatientState.URGENT) {
+      // Safety module handles urgent cases — skip RAG entirely
+      return [];
+    }
+
+    if (patientState === PatientState.INFORMATIONAL || patientState === PatientState.CAREGIVER || patientState === PatientState.SIDE_EFFECTS) {
+      // No filtering needed for these states
+      return chunks;
+    }
+
+    const adjusted = chunks.map((chunk) => {
+      const contentLower = chunk.content.toLowerCase();
+      const titleLower = (chunk.document.title || "").toLowerCase();
+      const combined = contentLower + " " + titleLower;
+      let multiplier = 1.0;
+
+      if (patientState === PatientState.SYMPTOMATIC) {
+        // Demote post-diagnosis / pathology content
+        const hasPostDiagnosisSignals =
+          /\b(biopsy report|pathology report|staging|treatment plan|treatment pathway|tumor grade|receptor status|tnm|invasive ductal|treatment planning|understanding your.{0,15}report)\b/i.test(combined);
+
+        // Boost symptom / screening content
+        const hasSymptomScreeningSignals =
+          /\b(symptoms|signs|screening|when to see|warning|early detection|risk factor|see your doctor|consult|medical evaluation|check with)\b/i.test(combined);
+
+        if (hasPostDiagnosisSignals && !hasSymptomScreeningSignals) {
+          multiplier = 0.3;
+        } else if (hasSymptomScreeningSignals && !hasPostDiagnosisSignals) {
+          multiplier = 1.3;
+        }
+      } else if (patientState === PatientState.POST_DIAGNOSIS) {
+        // Boost staging, treatment, prognosis content
+        const hasStagingTreatmentSignals =
+          /\b(staging|stage|treatment option|treatment plan|prognosis|survival rate|chemotherapy|radiation|surgery|immunotherapy|targeted therapy|oncologist|tumor grade|receptor|her2|triple negative)\b/i.test(combined);
+
+        // Demote pure-symptom / screening content (less relevant post-diagnosis)
+        const hasPureScreeningSignals =
+          /\b(screening|early detection|how to identify|warning signs|when to see a doctor)\b/i.test(combined) &&
+          !/\b(staging|treatment|prognosis|grade|receptor)\b/i.test(combined);
+
+        if (hasStagingTreatmentSignals) {
+          multiplier = 1.3;
+        } else if (hasPureScreeningSignals) {
+          multiplier = 0.7;
+        }
+      }
+
+      if (multiplier !== 1.0) {
+        return {
+          ...chunk,
+          similarity: (chunk.similarity || 0) * multiplier,
+        };
+      }
+      return chunk;
+    });
+
+    // Re-sort by adjusted similarity
+    adjusted.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+
+    this.logger.debug({
+      event: "patient_state_filter",
+      patientState,
+      chunksIn: chunks.length,
+      chunksOut: adjusted.length,
+      topScoreBefore: chunks[0]?.similarity || 0,
+      topScoreAfter: adjusted[0]?.similarity || 0,
+    });
+
+    return adjusted;
   }
 }

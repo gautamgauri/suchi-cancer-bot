@@ -21,6 +21,7 @@ import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { detectCancerType } from "./utils/cancer-type-detector";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
+import { PatientStateService, PatientState } from "./patient-state.service";
 // Phase 1 Agentic components
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
@@ -63,6 +64,8 @@ export class ChatService {
     private readonly greetingFlow: GreetingFlowService,
     private readonly empathyDetector: EmpathyDetector,
     private readonly structuredExtractor: StructuredExtractorService,
+    // Clinical Reasoning Layer
+    private readonly patientStateService: PatientStateService,
     // Phase 2: Retrieval-as-tool services
     private readonly retrievalTool: RetrievalToolService,
     private readonly queryDecomposer: QueryDecomposerService,
@@ -829,6 +832,17 @@ export class ChatService {
     // 3. Classify query type BEFORE RAG retrieval (for better query rewriting)
     const queryType = QueryTypeClassifier.classify(dto.userText);
 
+    // 3.5. Clinical Reasoning: Detect patient journey state (rule-based, sub-ms)
+    const patientStateResult = this.patientStateService.detect(dto.userText);
+    const patientState = patientStateResult.state;
+    this.logger.log({
+      event: "patient_state_detected",
+      sessionId: dto.sessionId,
+      state: patientState,
+      confidence: patientStateResult.confidence,
+      matchedPatterns: patientStateResult.matchedPatterns,
+    });
+
     // 4. Retrieve evidence with full metadata
     // Reuse early RAG retrieval if available (for urgent cases), otherwise retrieve normally
     // Use expanded retrieval if this might be an identify question or if we expect weak evidence
@@ -947,6 +961,22 @@ export class ChatService {
       evidenceChunks = [];
     } }
     const ragMs = Date.now() - ragStarted;
+
+    // 4.5. Clinical Reasoning: Apply patient-state-aware retrieval filter
+    if (patientState !== PatientState.INFORMATIONAL) {
+      const preFilterCount = evidenceChunks.length;
+      evidenceChunks = this.rag.applyPatientStateFilter(evidenceChunks, patientState);
+      if (evidenceChunks.length !== preFilterCount || patientState === PatientState.SYMPTOMATIC || patientState === PatientState.POST_DIAGNOSIS) {
+        this.logger.log({
+          event: "patient_state_filter_applied",
+          sessionId: dto.sessionId,
+          patientState,
+          chunksBefore: preFilterCount,
+          chunksAfter: evidenceChunks.length,
+        });
+      }
+    }
+
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 5. Intent classification (moved before evidence gate to provide context)
@@ -1417,7 +1447,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             false,
-            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent }
+            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent, patientState }
           ),
           signal
         );
@@ -1738,7 +1768,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           mightBeIdentifyQuestion,
-          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent }
+          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent, patientState }
         ),
         signal
       );
@@ -1888,7 +1918,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             true,
-            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent }
+            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState }
           );
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
@@ -2068,7 +2098,7 @@ export class ChatService {
         if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
           const llm3Started = Date.now();
           llmCallCount++;
-          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent });
+          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState });
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
@@ -2250,7 +2280,7 @@ export class ChatService {
               `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
               evidenceChunks.slice(0, 2),
               false,
-              { emotionalState }
+              { emotionalState, patientState }
             ),
             signal
           );
@@ -2368,7 +2398,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         false,
-        { emotionalState, cancerType: sessionCancerType }
+        { emotionalState, cancerType: sessionCancerType, patientState }
       ),
       signal
     );
@@ -2399,7 +2429,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           false,
-          { emotionalState, cancerType: sessionCancerType }
+          { emotionalState, cancerType: sessionCancerType, patientState }
         );
       const patientRetryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
       citations = patientRetryExtractionResult.citations;

@@ -16,6 +16,7 @@ import { ResponseValidatorService } from "./response-validator.service";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
 import { StructuredExtractorService } from "./structured-extractor.service";
+import { PatientStateService } from "./patient-state.service";
 // Phase 3 Agentic components
 import { ExecutionPlannerService } from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
@@ -34,7 +35,7 @@ import { OutputVerifierService } from "./output-verifier.service";
     ReviewModule
   ],
   controllers: [ChatController],
-  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService, ExecutionPlannerService, PlanExecutorService, OutputVerifierService],
+  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService, PatientStateService, ExecutionPlannerService, PlanExecutorService, OutputVerifierService],
   exports: [ChatService]
 })
 export class ChatModule {}

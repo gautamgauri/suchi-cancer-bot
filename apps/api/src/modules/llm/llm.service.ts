@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import OpenAI from "openai";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { PatientState } from "../chat/patient-state.service";
 
 /**
  * IDENTIFY_REQUIREMENTS: Structure checklist for "how to identify" questions
@@ -367,6 +368,59 @@ EMPATHY REQUIREMENTS (CRITICAL - user is sad/grieving):
    * @param intent The detected user intent
    * @param userQuery Optional user query to detect specific sub-intents (e.g., appointment preparation)
    */
+  /**
+   * Get response contract text for a patient journey state.
+   * These contracts control WHAT the model is allowed to discuss,
+   * preventing stage-mismatched content (e.g., biopsy reports for symptom queries).
+   */
+  getPatientStateContract(patientState?: PatientState): string {
+    if (!patientState) return "";
+
+    switch (patientState) {
+      case PatientState.SYMPTOMATIC:
+        return `
+RESPONSE CONTRACT FOR SYMPTOM QUERIES:
+You MUST structure your response with these sections:
+1. Acknowledge the symptom with empathy
+2. Explain what it could be (benign AND serious possibilities)
+3. What to do next with specific timeframe (e.g., "see a doctor within 1-2 weeks")
+4. Tests the doctor may suggest (mammogram, ultrasound, biopsy, etc.)
+5. When to seek urgent care
+
+You MUST NOT:
+- Discuss biopsy reports or pathology unless the user explicitly mentions having one
+- Assume the user has been diagnosed
+- Skip straight to treatment options
+`;
+
+      case PatientState.POST_DIAGNOSIS:
+        return `
+RESPONSE CONTRACT FOR POST-DIAGNOSIS QUERIES:
+1. Acknowledge the diagnosis empathetically
+2. Explain what the diagnosis means in plain language
+3. Outline typical treatment options for their stage/type
+4. Recommend consulting an oncologist
+5. Provide questions to ask their doctor
+`;
+
+      case PatientState.CAREGIVER:
+        return `
+RESPONSE CONTRACT FOR CAREGIVER QUERIES:
+1. Acknowledge the emotional weight of caring for someone with cancer
+2. Explain the condition and treatment options
+3. Provide practical caregiver-specific steps
+4. Include support resources (helplines, support groups)
+5. Recommend consulting with the patient's oncologist
+`;
+
+      case PatientState.URGENT:
+      case PatientState.SIDE_EFFECTS:
+      case PatientState.INFORMATIONAL:
+      default:
+        return "";
+    }
+  }
+
   private getIntentSpecificSections(intent?: string, userQuery?: string): string {
     if (!intent) return "";
 
@@ -690,7 +744,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string },
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string; patientState?: PatientState },
     isTimeoutRetry: boolean = false
   ): Promise<string> {
     // Resolve mode to actual prompt
@@ -702,6 +756,12 @@ Your response MUST include at least 2 citations or it will be rejected.`;
       actualSystemPrompt = this.getNavigateModePrompt(conversationContext?.emotionalState);
     } else {
       actualSystemPrompt = systemPrompt;
+    }
+
+    // Prepend patient-state response contract if available
+    const patientStateContract = this.getPatientStateContract(conversationContext?.patientState);
+    if (patientStateContract) {
+      actualSystemPrompt = patientStateContract + "\n" + actualSystemPrompt;
     }
     try {
       // Build reference list with citation IDs - make it very clear for LLM
