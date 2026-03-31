@@ -50,7 +50,10 @@
       "Bash(PGPASSWORD=SuchiApp2024SecurePass psql -h localhost -U suchi_app -d suchi_db -c \"SELECT now\\(\\) - query_start as duration FROM pg_stat_activity WHERE query LIKE '%hnsw%' AND state = 'active' LIMIT 1;\" 2>&1)",
       "Bash(PGPASSWORD=SuchiApp2024SecurePass psql -h localhost -U suchi_app -d suchi_db -c \"SELECT indexname, pg_size_pretty\\(pg_relation_size\\(indexname::regclass\\)\\) as size FROM pg_indexes WHERE tablename = 'KbChunk' AND indexname LIKE '%hnsw%';\" 2>&1)",
       "Bash(cmd.exe /c 'echo %USERPROFILE%')",
-      "Read(//mnt/c/Users/**)"
+      "Read(//mnt/c/Users/**)",
+      "Bash(EVAL_API_BASE_URL=https://suchi-api-lxiveognla-uc.a.run.app npx ts-node cli.ts run --summary)",
+      "Read(//home/gauta/.config/gcloud/**)",
+      "Read(//home/gauta/.config/gcloud/legacy_credentials/suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com/**)"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import * as nodemailer from 'nodemailer';
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
 interface TranscriptResult {
   caseId: string;
@@ -166,19 +167,42 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
+async function loadSmtpPass(): Promise<string | undefined> {
+  // 1. Env var first
+  if (process.env.SMTP_PASS) return process.env.SMTP_PASS;
+
+  // 2. Fall back to GCP Secret Manager
+  try {
+    const client = new SecretManagerServiceClient();
+    const project = process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132';
+    const [version] = await client.accessSecretVersion({
+      name: `projects/${project}/secrets/SMTP_PASS/versions/latest`,
+    });
+    const payload = version.payload?.data;
+    if (payload) {
+      const pass = typeof payload === 'string' ? payload : Buffer.from(payload).toString('utf-8');
+      console.log('SMTP password loaded from Secret Manager');
+      return pass.trim();
+    }
+  } catch (err: any) {
+    console.warn(`Could not load SMTP_PASS from Secret Manager: ${err.message}`);
+  }
+  return undefined;
+}
+
 export async function emailTranscriptReport(
   report: TranscriptReport,
   recipientEmail: string,
 ): Promise<boolean> {
-  const host = process.env.SMTP_HOST;
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || 'Suchi Eval <noreply@suchi.org>';
+  const user = process.env.SMTP_USER || 'gautamgauri@dikshafoundation.org';
+  const pass = await loadSmtpPass();
+  const from = process.env.SMTP_FROM || 'Suchi Eval <gautamgauri@dikshafoundation.org>';
 
-  if (!host || !user || !pass) {
-    console.error('SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS to enable email.');
-    console.error('Skipping email — report is still saved to disk.');
+  if (!pass) {
+    console.error('SMTP password not available (checked env + Secret Manager). Skipping email.');
+    console.error('Report is still saved to disk.');
     return false;
   }
 
