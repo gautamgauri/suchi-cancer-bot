@@ -91,23 +91,38 @@ export class ResponseTemplates {
 
   /**
    * Navigate Mode micro-structure - for personal symptom support
-   * Structure: Acknowledge → 1-2 questions → Short next-step list (max 3 bullets)
+   * Structure: Empathetic acknowledge → Reassurance → Next steps → Clarifying questions (at END)
+   *
+   * IMPORTANT: Guidance comes FIRST, clarifying questions come LAST.
+   * Users who are anxious about symptoms need reassurance before being asked questions.
    */
   static navigateModeFrame(userText: string, topic?: string): string {
     const lowerText = userText.toLowerCase();
     let response = "";
     const hasSymptoms = this.hasSymptomIndicators(lowerText);
 
-    // Acknowledge (brief)
+    // 1. Empathetic acknowledgement
     if (hasSymptoms) {
-      response += "I understand you're experiencing symptoms. ";
+      response += "I understand this can be worrying. ";
+      // 2. Reassurance (for symptom queries)
+      response += "Many symptoms like these turn out to have non-cancerous causes.\n\n";
     } else if (lowerText.includes("report") || lowerText.includes("scan") || lowerText.includes("test")) {
-      response += "I understand you have questions about your report. ";
+      response += "I understand you have questions about your report.\n\n";
     } else {
-      response += "I understand you have questions. ";
+      response += "I understand you have questions.\n\n";
     }
 
-    // 1-2 targeted questions
+    // 3. Next steps with specific guidance (BEFORE questions)
+    response += "**What to do next:**\n";
+    if (hasSymptoms) {
+      response += "• See a doctor within 1-2 weeks to get your symptoms evaluated\n• Track your symptoms — when they occur, how severe, what makes them better or worse\n• Seek urgent care if symptoms suddenly worsen, you have severe pain, or notice bleeding";
+    } else if (lowerText.includes("report")) {
+      response += "• Review your report with your healthcare provider\n• Prepare specific questions about findings\n• Bring your report to your next appointment";
+    } else {
+      response += "• Discuss with your healthcare provider\n• Prepare questions based on your situation\n• Share any follow-up questions you have";
+    }
+
+    // 4. Clarifying questions at the END (not the beginning)
     const questions: string[] = [];
     if (hasSymptoms) {
       questions.push("When did these symptoms start?");
@@ -120,19 +135,10 @@ export class ResponseTemplates {
       questions.push("What specific aspect would you like help with?");
     }
 
-    response += `To help you better, could you share:\n• ${questions[0]}`;
+    response += "\n\nTo help me give you more specific guidance, could you share:\n";
+    response += `• ${questions[0]}`;
     if (questions.length > 1) {
       response += `\n• ${questions[1]}`;
-    }
-
-    // Short next-step list (max 3 bullets)
-    response += "\n\n**Next steps:**\n";
-    if (hasSymptoms) {
-      response += "• Track your symptoms and when they occur\n• Prepare questions for your healthcare provider\n• Seek urgent care if symptoms worsen or become severe";
-    } else if (lowerText.includes("report")) {
-      response += "• Review your report with your healthcare provider\n• Prepare specific questions about findings\n• Bring your report to your appointment";
-    } else {
-      response += "• Discuss with your healthcare provider\n• Prepare questions based on your situation\n• Share any follow-up questions you have";
     }
 
     return response;

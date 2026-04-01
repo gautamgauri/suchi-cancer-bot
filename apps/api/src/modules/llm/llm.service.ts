@@ -373,44 +373,55 @@ EMPATHY REQUIREMENTS (CRITICAL - user is sad/grieving):
    * These contracts control WHAT the model is allowed to discuss,
    * preventing stage-mismatched content (e.g., biopsy reports for symptom queries).
    */
-  getPatientStateContract(patientState?: PatientState): string {
+  getPatientStateContract(patientState?: PatientState, cancerType?: string): string {
     if (!patientState) return "";
 
     switch (patientState) {
       case PatientState.SYMPTOMATIC:
-        return `
-RESPONSE CONTRACT FOR SYMPTOM QUERIES:
-You MUST structure your response with these sections:
-1. Acknowledge the symptom with empathy
-2. Explain what it could be (benign AND serious possibilities)
-3. What to do next with specific timeframe (e.g., "see a doctor within 1-2 weeks")
-4. Tests the doctor may suggest (mammogram, ultrasound, biopsy, etc.)
-5. When to seek urgent care
-
-You MUST NOT:
-- Discuss biopsy reports or pathology unless the user explicitly mentions having one
-- Assume the user has been diagnosed
-- Skip straight to treatment options
-`;
+        return this.getSymptomaticContract(cancerType);
 
       case PatientState.POST_DIAGNOSIS:
         return `
-RESPONSE CONTRACT FOR POST-DIAGNOSIS QUERIES:
-1. Acknowledge the diagnosis empathetically
-2. Explain what the diagnosis means in plain language
-3. Outline typical treatment options for their stage/type
-4. Recommend consulting an oncologist
-5. Provide questions to ask their doctor
+RESPONSE CONTRACT FOR POST-DIAGNOSIS QUERIES (STRICT ORDER):
+1. ACKNOWLEDGE the diagnosis empathetically: "I understand receiving a [cancer type] diagnosis can be overwhelming."
+2. EXPLAIN what the diagnosis means in plain language — avoid jargon, define medical terms
+3. STAGING OVERVIEW: If the user mentions a stage, explain what it means in plain terms (tumor size, spread, prognosis context)
+4. TREATMENT OPTIONS — you MUST mention at least 2 treatment options (e.g., surgery, chemotherapy, radiation, immunotherapy, targeted therapy) appropriate to the cancer type and stage
+5. RECOMMEND consulting an oncologist — you MUST use the word "oncologist" at least once
+6. TIMELINE: Typical next steps timeline (e.g., "Your oncologist will likely schedule staging tests within 1-2 weeks", "Treatment usually begins within 2-4 weeks of staging")
+7. QUESTIONS FOR DOCTOR: 3-5 specific questions the patient should ask (e.g., "What stage is my cancer?", "What are my treatment options and their side effects?", "Should I get a second opinion?", "What is the expected treatment timeline?", "Are there clinical trials I should consider?")
+
+You MUST follow this order. Do NOT skip sections.
+You MUST NOT:
+- Give vague guidance without specific timelines
+- Omit the word "oncologist"
+- List fewer than 2 treatment options
+- Skip the Questions for Doctor section
 `;
 
       case PatientState.CAREGIVER:
         return `
-RESPONSE CONTRACT FOR CAREGIVER QUERIES:
-1. Acknowledge the emotional weight of caring for someone with cancer
-2. Explain the condition and treatment options
-3. Provide practical caregiver-specific steps
-4. Include support resources (helplines, support groups)
-5. Recommend consulting with the patient's oncologist
+RESPONSE CONTRACT FOR CAREGIVER QUERIES (STRICT ORDER):
+1. ACKNOWLEDGE emotional weight: "Caring for someone with [cancer type] can be overwhelming. Your support matters."
+2. EXPLAIN the condition in plain language — what it is, what stage means if mentioned, what to expect
+3. TREATMENT OPTIONS with oncologist recommendation — you MUST use the word "oncologist" at least once (e.g., "The oncologist will guide the treatment plan")
+4. CAREGIVER-SPECIFIC steps — what THEY can do:
+   - Organize medical records and reports
+   - Attend appointments and take notes
+   - Track symptoms and side effects daily
+   - Seek support for themselves (caregiver burnout is real)
+   - Help coordinate between healthcare providers
+5. SUPPORT RESOURCES: helplines and support groups
+   - Indian Cancer Society: 1800-22-1951 (toll-free)
+   - Vandrevala Foundation: 9999666555 (24/7 mental health)
+   - Local cancer support groups
+6. QUESTIONS FOR DOCTOR: 3-5 questions the caregiver should ask on behalf of the patient (e.g., "What is the treatment plan and timeline?", "What side effects should we watch for?", "When should we call the oncology team urgently?", "Are there support services available?")
+
+You MUST follow this order. Do NOT skip sections.
+You MUST NOT:
+- Omit the word "oncologist"
+- Skip caregiver-specific action steps
+- Forget to include support resources with phone numbers
 `;
 
       case PatientState.URGENT:
@@ -419,6 +430,68 @@ RESPONSE CONTRACT FOR CAREGIVER QUERIES:
       default:
         return "";
     }
+  }
+
+  /**
+   * Build the SYMPTOMATIC response contract, with cancer-type-specific must-include items.
+   */
+  private getSymptomaticContract(cancerType?: string): string {
+    // Cancer-type-specific must-include items
+    let cancerSpecificItems = "";
+    const normalizedType = cancerType?.toLowerCase()?.trim() || "";
+
+    if (normalizedType.includes("breast")) {
+      cancerSpecificItems = `
+CANCER-SPECIFIC REQUIREMENTS (Breast):
+- You MUST mention these tests: mammogram, ultrasound, biopsy
+- You MUST say: "Most breast lumps are not cancer" (this is medically accurate — 80%+ are benign)
+- You MUST say: "See a doctor within 1-2 weeks"
+`;
+    } else if (normalizedType.includes("colorectal") || normalizedType.includes("colon") || normalizedType.includes("rectal")) {
+      cancerSpecificItems = `
+CANCER-SPECIFIC REQUIREMENTS (Colorectal):
+- You MUST mention these tests: colonoscopy, FOBT (fecal occult blood test)
+- You MUST say: "See a gastroenterologist within 1-2 weeks"
+- Mention that changes in bowel habits can have many non-cancerous causes
+`;
+    } else if (normalizedType.includes("lung")) {
+      cancerSpecificItems = `
+CANCER-SPECIFIC REQUIREMENTS (Lung):
+- You MUST mention these tests: chest X-ray, CT scan
+- You MUST say: "See a doctor within 1-2 weeks"
+- Mention that persistent cough can have many non-cancerous causes
+`;
+    } else if (normalizedType.includes("oral") || normalizedType.includes("mouth")) {
+      cancerSpecificItems = `
+CANCER-SPECIFIC REQUIREMENTS (Oral):
+- You MUST mention these tests: biopsy, dental exam
+- You MUST say: "See a dentist or ENT specialist within 2 weeks"
+- Mention tobacco/gutka as major risk factors
+`;
+    }
+
+    return `
+RESPONSE CONTRACT FOR SYMPTOM QUERIES (STRICT ORDER):
+1. ACKNOWLEDGE with empathy: "I understand finding [symptom] can be worrying/concerning."
+2. REASSURE: "Many [symptom type] turn out to be non-cancerous/benign." (when medically accurate — include this for most symptom types as it is statistically true)
+3. WHAT IT COULD BE: Both benign AND serious possibilities from KB — list benign causes FIRST, then serious ones
+4. WHAT TO DO: "See a [specialist type] within [specific timeframe]" — you MUST include a numeric timeframe (e.g., "within 1-2 weeks", "within 2 weeks"). NEVER say just "see a doctor" without a timeframe.
+5. TESTS: Specific tests the doctor may suggest (mammogram, ultrasound, colonoscopy, biopsy, CT scan, etc.)
+6. URGENT RED FLAGS: "Seek immediate care if [specific symptoms]" — list 2-3 symptoms that require emergency attention
+7. QUESTIONS FOR DOCTOR: 3-5 specific questions the patient should ask (e.g., "What tests do I need?", "Could this be benign?", "When will I get results?")
+
+You MUST follow this EXACT order. Do NOT rearrange sections.
+You MUST NOT start with clarifying questions — guidance comes FIRST.
+You MUST NOT ask "When did symptoms start?" or "How often do they occur?" before providing guidance.
+Clarifying questions go at the END, after all 7 sections, and only if truly needed.
+${cancerSpecificItems}
+You MUST NOT:
+- Discuss biopsy reports or pathology unless the user explicitly mentions having one
+- Assume the user has been diagnosed
+- Skip straight to treatment options
+- Give vague advice without specific timeframes
+- Lead with questions instead of reassurance
+`;
   }
 
   private getIntentSpecificSections(intent?: string, userQuery?: string): string {
@@ -759,7 +832,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     }
 
     // Prepend patient-state response contract if available
-    const patientStateContract = this.getPatientStateContract(conversationContext?.patientState);
+    const patientStateContract = this.getPatientStateContract(conversationContext?.patientState, conversationContext?.cancerType ?? undefined);
     if (patientStateContract) {
       actualSystemPrompt = patientStateContract + "\n" + actualSystemPrompt;
     }
