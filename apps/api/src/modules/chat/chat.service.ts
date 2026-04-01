@@ -4,6 +4,7 @@ import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
 import { RagService } from "../rag/rag.service";
 import { LlmService } from "../llm/llm.service";
+import { ClinicalKeywordEnforcerService } from "../llm/clinical-keyword-enforcer";
 import { EvidenceGateService } from "../evidence/evidence-gate.service";
 import { CitationService } from "../citations/citation.service";
 import { AbstentionService } from "../abstention/abstention.service";
@@ -36,6 +37,7 @@ import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { ReviewService } from "../review/review.service";
 import { ReviewContext } from "../review/review-checks";
+import { hasSection, deduplicateResponse } from "./response-deduplicator";
 
 @Injectable()
 export class ChatService {
@@ -66,6 +68,7 @@ export class ChatService {
     private readonly structuredExtractor: StructuredExtractorService,
     // Clinical Reasoning Layer
     private readonly patientStateService: PatientStateService,
+    private readonly clinicalKeywordEnforcer: ClinicalKeywordEnforcerService,
     // Phase 2: Retrieval-as-tool services
     private readonly retrievalTool: RetrievalToolService,
     private readonly queryDecomposer: QueryDecomposerService,
@@ -1844,6 +1847,9 @@ export class ChatService {
       // appear in the response even if RAG chunks didn't contain them explicitly
       responseText = this.injectEssentialTermsIfMissing(responseText, cancerType, queryType);
 
+      // Clinical keyword enforcement — patient-state-aware mandatory term checks
+      responseText = this.clinicalKeywordEnforcer.enforce(responseText, cancerType, patientState);
+
       // Validate response for ungrounded medical entities
       // For informational/general queries, don't abstain on ungrounded entities - allow response with warning
       const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -2092,6 +2098,9 @@ export class ChatService {
       
       responseText = ResponseFormatter.formatResponse(responseText, "explain", hasResolvedAnswer, isMultiStepInteraction);
 
+      // Safety-net deduplication: remove any duplicate headers, bullets, or near-duplicate paragraphs
+      responseText = deduplicateResponse(responseText);
+
       // Handle citation validation (skip regeneration if request budget exhausted)
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
@@ -2284,7 +2293,14 @@ export class ChatService {
             ),
             signal
           );
-          responseText = ragContext + "\n\n" + responseText;
+          // Source-level deduplication: if the LLM response already contains
+          // "What to do next" (from the prompt contract), skip appending the
+          // template to avoid duplicate sections. Use LLM response directly.
+          if (hasSection(ragContext, "What to do next")) {
+            responseText = ragContext;
+          } else {
+            responseText = ragContext + "\n\n" + responseText;
+          }
 
           // Validate response for ungrounded medical entities
           const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -2305,6 +2321,9 @@ export class ChatService {
       const navCancerType = detectCancerType(dto.userText, sessionCancerType);
       responseText = this.injectEssentialTermsIfMissing(responseText, navCancerType, queryType || 'symptoms');
 
+      // Clinical keyword enforcement — patient-state-aware mandatory term checks
+      responseText = this.clinicalKeywordEnforcer.enforce(responseText, navCancerType, patientState);
+
       // Apply response formatting rules
       // For navigate mode, determine if this is a multi-step interaction
       const recentAssistantMessages = await this.prisma.message.findMany({
@@ -2320,6 +2339,9 @@ export class ChatService {
       const hasResolvedAnswer = evidenceChunks.length > 0; // Navigate mode has answer if RAG chunks available
       
       responseText = ResponseFormatter.formatResponse(responseText, "navigate", hasResolvedAnswer, isMultiStepInteraction);
+
+      // Safety-net deduplication: remove any duplicate headers, bullets, or near-duplicate paragraphs
+      responseText = deduplicateResponse(responseText);
 
       // Extract citations from response text if RAG chunks were used
       let citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }> = [];
