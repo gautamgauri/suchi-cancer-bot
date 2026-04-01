@@ -16,7 +16,7 @@
     },
     "deepseekConfig": {
       "model": "deepseek-chat",
-      "apiKey": "sk-bfe80d4ec2fd4826835b34e9f312c7bc",
+      "apiKey": "REDACTED",
       "baseURL": "https://api.deepseek.com/v1"
     }
   },
