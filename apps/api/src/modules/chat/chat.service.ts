@@ -83,6 +83,32 @@ export class ChatService {
   ) {}
 
   /**
+   * Retry a Prisma operation on transient connection-pool errors.
+   * Cloud SQL connection slots can be temporarily exhausted during traffic
+   * spikes (e.g. eval batches).  A short back-off + retry is cheaper than
+   * surfacing a 500 to the user.
+   */
+  private async prismaRetry<T>(label: string, fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        const isPoolExhausted =
+          err?.code === "P2024" || // Prisma: timed out fetching connection from pool
+          (err?.message || "").includes("remaining connection slots");
+
+        if (isPoolExhausted && attempt < maxRetries) {
+          const backoffMs = (attempt + 1) * 500; // 500ms, 1000ms
+          this.logger.warn(`[prismaRetry] ${label} attempt ${attempt + 1} failed (pool exhausted), retrying in ${backoffMs}ms`);
+          await new Promise((r) => setTimeout(r, backoffMs));
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  /**
    * Run an LLM call with a hard deadline. Throws if the deadline is exceeded
    * or the request was aborted. Prevents pipeline from accumulating past the request budget.
    */
@@ -159,12 +185,16 @@ export class ChatService {
 
   async handle(dto: ChatDto, signal?: AbortSignal) {
     // Fetch session (with caching) and message count once at the start - reuse throughout method
-    const [session, existingAssistantMessages] = await Promise.all([
-      this.getSession(dto.sessionId),
-      this.prisma.message.count({
-        where: { sessionId: dto.sessionId, role: "assistant" }
-      })
-    ]);
+    // Wrapped with prismaRetry to handle transient connection-pool exhaustion under load
+    const [session, existingAssistantMessages] = await this.prismaRetry(
+      "handle:init",
+      () => Promise.all([
+        this.getSession(dto.sessionId),
+        this.prisma.message.count({
+          where: { sessionId: dto.sessionId, role: "assistant" }
+        })
+      ])
+    );
 
     if (!session) {
       throw new BadRequestException("Invalid sessionId");
@@ -176,11 +206,13 @@ export class ChatService {
     const userContext = session.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
 
     // Make analytics non-blocking (fire and forget)
-    this.analytics.emit("chat_turn_submitted", { channel: dto.channel }, dto.sessionId).catch(err => 
+    this.analytics.emit("chat_turn_submitted", { channel: dto.channel }, dto.sessionId).catch(err =>
       this.logger.warn(`Analytics emit failed: ${err.message}`)
     );
 
-    await this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } });
+    await this.prismaRetry("handle:createUserMsg", () =>
+      this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } })
+    );
 
     const started = Date.now();
     const requestDeadlineMs = started + this.REQUEST_BUDGET_MS;
@@ -3013,37 +3045,39 @@ export class ChatService {
       }
     }
 
-    // Create the message
-    const assistant = await this.prisma.message.create({
-      data: {
-        sessionId,
-        role: "assistant",
-        text: finalText,
-        safetyClassification: options.safetyClassification,
-        kbDocIds: options.kbDocIds || [],
-        latencyMs: options.latencyMs,
-        citationCount: citations.length,
-        ...(options.evidenceQuality && { evidenceQuality: options.evidenceQuality }),
-        ...(options.evidenceGatePassed !== undefined && { evidenceGatePassed: options.evidenceGatePassed }),
-        ...(options.abstentionReason && { abstentionReason: options.abstentionReason }),
-      }
-    });
+    // Create the message (with retry for transient pool exhaustion)
+    const assistant = await this.prismaRetry("persist:createMsg", () =>
+      this.prisma.message.create({
+        data: {
+          sessionId,
+          role: "assistant",
+          text: finalText,
+          safetyClassification: options.safetyClassification,
+          kbDocIds: options.kbDocIds || [],
+          latencyMs: options.latencyMs,
+          citationCount: citations.length,
+          ...(options.evidenceQuality && { evidenceQuality: options.evidenceQuality }),
+          ...(options.evidenceGatePassed !== undefined && { evidenceGatePassed: options.evidenceGatePassed }),
+          ...(options.abstentionReason && { abstentionReason: options.abstentionReason }),
+        }
+      })
+    );
 
-    // Persist citations if present
+    // Persist citations if present — use createMany to consume a single DB connection
+    // instead of N parallel create() calls which exhaust the connection pool under load
     if (citations.length > 0) {
       const enrichedCitations = await this.citationService.enrichCitations(citations, evidenceChunks);
-      await Promise.all(
-        enrichedCitations.map(citation =>
-          this.prisma.messageCitation.create({
-            data: {
-              messageId: assistant.id,
-              docId: citation.docId,
-              chunkId: citation.chunkId,
-              citationText: citation.citationText,
-              position: citation.position
-            }
-          })
-        )
+      await this.prismaRetry("persist:createCitations", () =>
+        this.prisma.messageCitation.createMany({
+          data: enrichedCitations.map(citation => ({
+            messageId: assistant.id,
+            docId: citation.docId,
+            chunkId: citation.chunkId,
+            citationText: citation.citationText,
+            position: citation.position,
+          })),
+          skipDuplicates: true,
+        })
       );
     }
 
