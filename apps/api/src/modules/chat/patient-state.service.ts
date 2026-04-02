@@ -217,7 +217,9 @@ export class PatientStateService {
     if (hasSymptomKeyword && !hasRelation) {
       // Symptom keyword without explicit first person — might still be personal
       // Lower confidence; could be informational
-      if (/\b(my|me|I)\b/.test(text)) {
+      // BUT: exclude informational framing like "tell me about symptoms", "what are the symptoms"
+      const hasInformationalFraming = /\b(tell\s+me\s+about|what\s+are|what\s+is|explain|describe|list|information\s+about|learn\s+about|know\s+about|how\s+to\s+identify|signs\s+of)\b/i.test(text);
+      if (/\b(my|me|I)\b/.test(text) && !hasInformationalFraming) {
         matched.push("symptomatic:symptom_keyword+implicit_first_person");
         return { state: PatientState.SYMPTOMATIC, confidence: "medium", matchedPatterns: matched };
       }

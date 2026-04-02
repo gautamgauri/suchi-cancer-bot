@@ -2843,24 +2843,20 @@ export class ChatService {
       citationText: `[citation:${chunk.docId}:${chunk.chunkId}]`,
     }));
 
-    // Append sources section to help evaluator and provide transparency
-    const sourcesSection = `\n\n**This answer is based on information from the following trusted sources:**\n${repairedCitations
-      .map((c, i) => {
-        const chunk = evidenceChunks[i];
-        return `${i + 1}. ${chunk.document.title}`;
-      })
-      .join('\n')}`;
-
-    const repairedText = responseText + sourcesSection;
+    // Sources are now conveyed via citations metadata, NOT appended to responseText.
+    // This prevents the "This answer is based on information from the following trusted sources:"
+    // block from cluttering the UI. Citations are available in the response metadata for
+    // auditing/eval purposes.
 
     this.logger.log({
       event: 'citation_repair_complete',
       sessionId,
       citationsAttached: repairedCitations.length,
+      sourceTitles: repairedCitations.map((c, i) => evidenceChunks[i]?.document?.title).filter(Boolean),
       path: context.path,
     });
 
-    return { responseText: repairedText, citations: repairedCitations };
+    return { responseText, citations: repairedCitations };
   }
 
   /**

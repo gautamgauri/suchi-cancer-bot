@@ -45,34 +45,11 @@ export class ModeDetector {
       return "explain";
     }
 
-    // Navigate Mode patterns - personal references
-    const navigatePatterns = [
-      // First-person pronouns with medical context
-      /\b(I|my|me|myself)\b/i,
-      // Personal experience statements
-      /\b(I am|I'm|I have|I've been|I feel|I notice|I've noticed)\b/i,
-      // Possessive medical references
-      /\b(my|my own)\s+(symptom|symptoms|report|scan|test|diagnosis|treatment|condition|pain|ache)\b/i,
-      // Personal context with medical keywords
-      /\b(me|myself|personally)\b.*\b(symptom|symptom|report|scan|test|diagnosis|treatment|cancer|tumor)\b/i,
-      // Direct personal statements
-      /\b(I'm experiencing|I am experiencing|I have been experiencing)\b/i,
-      // Personal questions about self
-      /\b(should I|do I have|am I|is my|my doctor|my treatment|my symptoms)\b/i,
-      // Hindi/Hinglish personal pronouns (मेरा=my, मुझे=me, मैं=I, हमारा=our, माय=my)
-      /मेरा|मेरी|मुझे|मैं|हमारा|हमारी|हमें|माय/,
-      // Hindi/Hinglish family references (मदर=mother, फादर=father, पत्नी=wife, बच्चा=child)
-      /मदर|फादर|माँ|मम्मी|पापा|पिता|पत्नी|बच्चा|बेटा|बेटी|भाई|बहन/,
-      // Hindi personal symptom framing (चल रहा है=is ongoing, हो रहा=is happening, हो गया=has happened)
-      /चल रहा|हो रहा|हो गया|करवानी|करवाना|लगता है|बोला/,
-    ];
-
-    // Check for Navigate Mode patterns
-    const hasPersonalReference = navigatePatterns.some(pattern => pattern.test(text));
-
     // Explain Mode patterns - general informational questions
+    // PRIORITY: Check these BEFORE navigate patterns so "tell me about X" is not
+    // misclassified as personal due to the word "me"
     const explainPatterns = [
-      // General question starters
+      // General question starters (includes "tell me about" which contains "me" but is informational)
       /\b(what are|what is|what do|how do|tell me about|explain|describe|list)\b/i,
       // General information requests
       /\b(common|typical|general|usually|often|typically)\b/i,
@@ -84,15 +61,65 @@ export class ModeDetector {
       /क्या है|क्या हैं|क्या होता|कैसे|किस तरह|बताइए|बताएं|जानकारी/,
     ];
 
-    // If we have personal references, it's Navigate Mode
-    if (hasPersonalReference) {
-      return "navigate";
+    const hasGeneralQuestion = explainPatterns.some(pattern => pattern.test(text));
+
+    // Informational framing patterns — these phrases use "me/my" but are NOT personal symptom reports
+    // e.g., "tell me about symptoms", "can you explain to me", "give me information"
+    const informationalFramingPatterns = [
+      /\btell\s+me\s+(about|more|what)\b/i,
+      /\bgive\s+me\s+(information|details|an?\s+overview)\b/i,
+      /\bexplain\s+to\s+me\b/i,
+      /\bhelp\s+me\s+(understand|learn|know)\b/i,
+      /\bcan\s+you\s+tell\s+me\b/i,
+      /\bwhat\s+can\s+you\s+tell\s+me\b/i,
+      /\blet\s+me\s+know\b/i,
+    ];
+    const hasInformationalFraming = informationalFramingPatterns.some(pattern => pattern.test(text));
+
+    // If we have clear informational framing (e.g., "tell me about symptoms of breast cancer"),
+    // return explain mode immediately — do NOT let the bare "me" trigger navigate mode
+    if (hasGeneralQuestion && hasInformationalFraming) {
+      return "explain";
     }
 
-    // If we have general question patterns and NO personal references, it's Explain Mode
-    const hasGeneralQuestion = explainPatterns.some(pattern => pattern.test(text));
-    if (hasGeneralQuestion && !hasPersonalReference) {
+    // Navigate Mode patterns - personal references
+    // These indicate the user is talking about THEIR OWN situation
+    const navigatePatterns = [
+      // First-person symptom/experience statements (stronger than bare pronouns)
+      /\b(I am|I'm|I have|I've been|I feel|I notice|I've noticed)\b/i,
+      // Possessive medical references
+      /\b(my|my own)\s+(symptom|symptoms|report|scan|test|diagnosis|treatment|condition|pain|ache)\b/i,
+      // Direct personal statements
+      /\b(I'm experiencing|I am experiencing|I have been experiencing)\b/i,
+      // Personal questions about self
+      /\b(should I|do I have|am I|is my|my doctor|my treatment|my symptoms)\b/i,
+      // First-person pronouns with medical context — but NOT bare "me" alone
+      // "I" and "my" are strong personal signals; "me" is only personal when NOT in informational framing
+      /\bI\b(?!\s+(want to|would like to|need to)\s+(know|learn|understand))/,
+      /\bmy\b(?!\s+(question|interest|curiosity))/i,
+      // "me" only counts as personal when NOT preceded by informational verbs
+      /(?<!\b(tell|give|explain to|help|show|let))\s+\bme\b/i,
+      /\bmyself\b/i,
+      // Hindi/Hinglish personal pronouns (मेरा=my, मुझे=me, मैं=I, हमारा=our, माय=my)
+      /मेरा|मेरी|मुझे|मैं|हमारा|हमारी|हमें|माय/,
+      // Hindi/Hinglish family references (मदर=mother, फादर=father, पत्नी=wife, बच्चा=child)
+      /मदर|फादर|माँ|मम्मी|पापा|पिता|पत्नी|बच्चा|बेटा|बेटी|भाई|बहन/,
+      // Hindi personal symptom framing (चल रहा है=is ongoing, हो रहा=is happening, हो गया=has happened)
+      /चल रहा|हो रहा|हो गया|करवानी|करवाना|लगता है|बोला/,
+    ];
+
+    // Check for Navigate Mode patterns
+    const hasPersonalReference = navigatePatterns.some(pattern => pattern.test(text));
+
+    // If we have general question patterns, prefer Explain Mode even if some personal pronouns are present
+    // The key insight: "tell me about symptoms of breast cancer" has "me" but is informational
+    if (hasGeneralQuestion && !this.hasStrongPersonalSignal(text)) {
       return "explain";
+    }
+
+    // If we have personal references without general question framing, it's Navigate Mode
+    if (hasPersonalReference) {
+      return "navigate";
     }
 
     // Default: if text is short and unclear, check for medical keywords
@@ -105,6 +132,28 @@ export class ModeDetector {
 
     // Default to Explain Mode for ambiguous cases (better to answer than to assume personal)
     return "explain";
+  }
+
+  /**
+   * Check if text has STRONG personal signals — first-person symptom reports, not just bare pronouns.
+   * "tell me about symptoms" → false (informational framing)
+   * "I have a lump" → true (personal symptom report)
+   * "I've been coughing blood" → true (personal symptom report)
+   */
+  private static hasStrongPersonalSignal(text: string): boolean {
+    const strongSignals = [
+      // First-person symptom/experience statements
+      /\bI\s+(have|had|found|noticed|feel|felt|see|saw|got|developed|discovered)\s/i,
+      /\bI'?ve?\s+(been|got|had|noticed|found)\s/i,
+      /\bI\s+am\s+(having|feeling|experiencing|noticing)\b/i,
+      /\bI'm\s+(having|feeling|experiencing|noticing|worried|scared)\b/i,
+      // Possessive + medical term
+      /\bmy\s+(symptom|symptoms|lump|pain|report|scan|test|diagnosis|treatment|doctor|oncologist)\b/i,
+      // Hindi strong personal signals
+      /मुझे\s+(दर्द|सूजन|खून|बुखार|थकान|गांठ)/,
+      /मेरा\s+(रिपोर्ट|टेस्ट|इलाज|डॉक्टर)/,
+    ];
+    return strongSignals.some(pattern => pattern.test(text));
   }
 
   /**
