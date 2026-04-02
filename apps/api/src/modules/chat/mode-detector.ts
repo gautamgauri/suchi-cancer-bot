@@ -50,7 +50,8 @@ export class ModeDetector {
     // misclassified as personal due to the word "me"
     const explainPatterns = [
       // General question starters (includes "tell me about" which contains "me" but is informational)
-      /\b(what are|what is|what do|how do|tell me about|explain|describe|list)\b/i,
+      // Exclude "what should I" — that's a personal action query, not informational
+      /\b(what are|what is|what do|how do|tell me about|explain|describe|list)\b(?!\s+(should|do)\s+I)/i,
       // General information requests
       /\b(common|typical|general|usually|often|typically)\b/i,
       // Educational intent
