@@ -127,7 +127,7 @@ export class LlmService {
     this.geminiLocation = this.configService.get<string>("VERTEX_AI_LOCATION") || "us-central1";
     this.geminiModel = this.configService.get<string>("GEMINI_MODEL") ||
                        this.configService.get<string>("FALLBACK_LLM_MODEL") ||
-                       "gemini-2.5-flash";
+                       "gemini-2.0-flash-001";
 
     if (this.provider === "gemini") {
       // Primary: Gemini Flash via Vertex AI (fast, cost-effective)

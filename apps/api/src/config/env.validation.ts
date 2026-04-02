@@ -12,7 +12,7 @@ export const envSchema = z.object({
   // Gemini via Vertex AI (uses Application Default Credentials, no API key needed)
   GOOGLE_CLOUD_PROJECT: z.string().optional(), // Auto-detected on Cloud Run
   VERTEX_AI_LOCATION: z.string().optional().default("us-central1"),
-  GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
+  GEMINI_MODEL: z.string().optional().default("gemini-2.0-flash-001"),
   EMBEDDING_API_KEY: z.string().min(1).optional(), // For Google embeddings
   EMBEDDING_MODEL: z.string().optional().default("text-embedding-004"),
   PORT: z.coerce.number().optional(),
