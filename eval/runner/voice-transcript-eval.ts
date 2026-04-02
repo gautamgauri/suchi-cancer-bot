@@ -529,11 +529,11 @@ export async function runVoiceTranscriptEval(opts: {
 
     const caseStart = Date.now();
     try {
-      // Create session with cancer context (mirrors what web frontend does)
-      const sessionId = await client.createSession('web', tc.cancer);
+      // Create session with voice channel (triggers voice-aware prompt constraints)
+      const sessionId = await client.createSession('voice', tc.cancer);
 
-      // Send the voice transcript as text — same as MessageInput.onSend()
-      const response = await client.sendMessage(sessionId, tc.voice_input, 'web');
+      // Send the voice transcript as text with voice channel
+      const response = await client.sendMessage(sessionId, tc.voice_input, 'voice');
       const responseTimeMs = Date.now() - caseStart;
 
       // --- Keyword checks (supplementary, non-blocking) ---
