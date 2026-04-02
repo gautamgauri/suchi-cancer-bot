@@ -470,16 +470,17 @@ export class ChatService {
         isFirstMessage,
         "sideEffects"
       );
-      
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: templateResult.responseText,
+
+      const assistant = await this.persistAssistantMessage(
+        dto.sessionId,
+        templateResult.responseText,
+        [],
+        [],
+        {
           safetyClassification: "red_flag",
           latencyMs: Date.now() - started
         }
-      });
+      );
 
       await this.prisma.safetyEvent.create({
         data: { sessionId: dto.sessionId, messageId: assistant.id, type: "red_flag", detail: "urgency_indicators_detected" }
@@ -2316,16 +2317,16 @@ export class ChatService {
       // Use navigateModeFrame for structure
       let responseText = ResponseTemplates.navigateModeFrame(dto.userText);
       
-      // If we have RAG chunks, add context — wrapped in try-catch for resilience
+      // If we have RAG chunks, generate a full navigate-mode response with evidence
       if (evidenceChunks.length > 0) {
         try {
-          // Generate brief context from RAG
+          // Generate full navigate-mode response from RAG (not just brief context)
           const ragContext = await this.llmWithDeadline(requestDeadlineMs, "navigate-mode-rag", () =>
             this.llm.generateWithCitations(
               "navigate",
               "",
-              `Provide brief context about ${dto.userText} to help frame the response. Keep it to 1-2 sentences.`,
-              evidenceChunks.slice(0, 2),
+              dto.userText,
+              evidenceChunks.slice(0, 6),
               false,
               { emotionalState, patientState }
             ),
@@ -2405,18 +2406,21 @@ export class ChatService {
         }
       }
 
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: responseText,
+      // Persist message + citations (consolidated) — uses persistAssistantMessage
+      // to ensure disclaimer engine, citation marker injection, and review copilot run
+      const assistant = await this.persistAssistantMessage(
+        dto.sessionId,
+        responseText,
+        citations,
+        evidenceChunks,
+        {
           safetyClassification: "normal",
-          kbDocIds: evidenceChunks.length > 0 ? kbDocIds : [],
           latencyMs: Date.now() - started,
+          kbDocIds: evidenceChunks.length > 0 ? kbDocIds : [],
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: !gateResult.shouldAbstain
         }
-      });
+      );
 
       await this.analytics.emit("navigate_mode_response", {
         intent: intentResult.intent,

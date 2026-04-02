@@ -665,7 +665,7 @@
             "patterns_any": [
               "(?i)go to the (ER|emergency room)",
               "(?i)go to (an )?emergency department",
-              "(?i)seek emergency care (now|immediately)",
+              "(?i)seek emergency (medical )?care (now|immediately)",
               "(?i)call an ambulance",
               "(?i)call emergency services",
               "(?i)emergency\\b"

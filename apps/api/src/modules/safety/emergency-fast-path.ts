@@ -93,7 +93,8 @@ const URGENT_PATTERNS: Array<[RegExp, string]> = [
   [/\bsevere\s+(pain|headache|vomiting|diarrhea|dehydration)\b/i, "severe_symptom_en"],
   [/\b(swollen|swelling)\s*(face|neck|arm|leg).*\b(sudden|rapidly)\b/i, "rapid_swelling_en"],
   [/\bsudden\s+(vision|hearing)\s+(loss|change|problem)\b/i, "sudden_sensory_loss_en"],
-  [/\bblood\s+clot\b/i, "blood_clot_en"],
+  [/\bblood\s+clots?\b/i, "blood_clot_en"],
+  [/\b(can'?t|cannot|unable to)\s+(urinate|pass urine|pee)\b/i, "urinary_retention_en"],
   [/\b(dvt|deep\s+vein\s+thrombosis|pulmonary\s+embolism)\b/i, "thrombosis_en"],
 
   // Hindi

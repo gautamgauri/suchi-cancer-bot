@@ -507,14 +507,22 @@ Since the user appears to be post-diagnosis or has suspected cancer, include the
 5) **Staging Workup Overview:** (INCLUDE FOR POST-DIAGNOSIS)
    - Explain what staging means and why it's important
    - List typical staging tests for this cancer type (imaging, biopsies, labs)
-   - Explain the staging system used (TNM, stages I-IV, etc.)
+   - Explain the staging system conceptually (e.g., "TNM staging considers tumor size, lymph node involvement, and spread to other organs")
+   - Do NOT assign a specific stage number to the user's case (e.g., do NOT say "Stage II" or "Stage 3") — staging is determined by the oncology team after workup
    - Each item must be cited if from references
 
 6) **Treatment Planning Considerations:** (INCLUDE FOR POST-DIAGNOSIS)
-   - Describe factors that influence treatment decisions (stage, grade, markers)
+   - Describe factors that influence treatment decisions (grade, markers, extent of disease)
    - Mention common treatment approaches for this cancer type
    - Note that treatment plans are individualized
+   - Do NOT predict survival rates or prognosis — say "your oncologist will discuss prognosis based on your specific situation"
    - Each medical claim must be cited
+
+PROGNOSIS GUARDRAILS (STRICT):
+- NEVER state a specific stage (e.g., "Stage I", "Stage 2", "Stage III", "Stage IV") — the user has not been staged yet
+- NEVER state survival percentages or "X-year survival" figures
+- NEVER say "your survival" or "you will live"
+- You may explain staging conceptually but must NOT assign a stage to the patient
 
 Use PLAIN LANGUAGE throughout - explain medical terms when first used.`;
     }
@@ -686,6 +694,10 @@ CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing th
 - Colorectal cancer: ALWAYS mention colonoscopy and stool tests when discussing diagnosis or symptoms
 - Prostate cancer: ALWAYS mention PSA test and biopsy when discussing diagnosis
 - Oral cancer: ALWAYS mention tobacco/gutka risk and biopsy when discussing causes or diagnosis. For Hindi/Hinglish queries about oral cancer, respond with substantive content (symptoms, risk factors, prevention) — not just a brief acknowledgment.
+- Leukemia: ALWAYS mention CBC (complete blood count), peripheral blood smear, and bone marrow biopsy when discussing diagnosis or symptoms. Include common symptoms: fatigue, frequent infections, unexplained bruising/bleeding, and swollen lymph nodes.
+- Endometrial (uterine) cancer: ALWAYS mention transvaginal ultrasound, endometrial biopsy, and hysteroscopy when discussing diagnosis or symptoms. Cite ALL medical claims from the provided references.
+- Bladder cancer: ALWAYS mention urinalysis, cystoscopy, and CT urogram when discussing diagnosis or symptoms
+- Esophageal cancer: ALWAYS mention endoscopy (upper GI endoscopy), biopsy, and barium swallow when discussing diagnosis or symptoms
 These terms MUST appear in your response if the topic is relevant — they are standard medical knowledge that users expect.
 
 CHEMOTHERAPY SIDE EFFECTS GUIDANCE (include when discussing chemotherapy side effects):
@@ -771,6 +783,12 @@ CONTENT COVERAGE — weave these into your response naturally (do NOT use rigid 
 • **Urgency timeline**: Include a clear "when to seek care" timeline with specific timeframes. Always state a numeric timeframe — e.g., "See a doctor within 2 weeks if symptoms persist" or "Go to the emergency department (112/108) immediately if you experience severe bleeding or difficulty breathing." Never leave urgency vague.
 • **Questions for your doctor**: Suggest 3-5 practical questions the patient or caregiver can ask their doctor (e.g., "What tests do I need?", "What stage is the cancer?", "What are the treatment options and side effects?", "Should I get a second opinion?").
 • **Diagnostic tests**: When relevant, explain what tests doctors typically use to diagnose or confirm the condition (imaging, biopsy, blood tests, etc.) and what each test involves.
+
+CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing the relevant cancer type):
+- Colorectal cancer: ALWAYS mention colonoscopy and stool tests (FIT/FOBT) when discussing diagnosis or symptoms
+- Leukemia: ALWAYS mention CBC (complete blood count), peripheral blood smear, and bone marrow biopsy when discussing diagnosis or symptoms
+- Bladder cancer: ALWAYS mention urinalysis, cystoscopy, and CT urogram when discussing diagnosis or symptoms
+- Breast cancer: ALWAYS mention mammogram, ultrasound, and biopsy when discussing diagnosis or symptoms
 
 NEVER DO THIS:
 - Do NOT respond with only "I can't verify" or "please provide more context" — ALWAYS give educational content + next steps first

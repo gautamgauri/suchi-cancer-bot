@@ -58,7 +58,13 @@ export class AbstentionService {
       /\b(one\s+side|left\s+side|right\s+side)\b.*\b(weakness|weak|numb|numbness)\b/i,
       // Post-surgical complications
       /\b(bleeding)\b.*\b(after\s+surgery|post\s+surgery|surgical)\b/i,
-      /\b(surgery|surgical)\b.*\b(bleeding|blood)\b/i
+      /\b(surgery|surgical)\b.*\b(bleeding|blood)\b/i,
+      // Blood clots in urine/stool — potential haematuria or GI bleed
+      /\b(blood\s+clots?)\b.*\b(urine|stool|pee)\b/i,
+      /\b(can'?t|cannot|unable\s+to)\s+(urinate|pass\s+urine|pee)\b/i,
+      // Coughing/vomiting blood
+      /\bcoughed?\s+(up\s+)?blood\b/i,
+      /\bvomit(ed|ing)?\s+blood\b/i
     ];
 
     return urgencyPatterns.some(pattern => pattern.test(userText));
