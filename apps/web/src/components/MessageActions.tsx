@@ -1,31 +1,24 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 
 interface MessageActionsProps {
   messageText: string;
+  audioUrl?: string | null;
   onFeedback?: (rating: "up" | "down") => void;
 }
 
 export const MessageActions: React.FC<MessageActionsProps> = ({
   messageText,
+  audioUrl,
   onFeedback
 }) => {
   const [copied, setCopied] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<"up" | "down" | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [ttsSupported, setTtsSupported] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  useEffect(() => {
-    // Check if TTS is supported
-    setTtsSupported(typeof window !== "undefined" && "speechSynthesis" in window);
-
-    // Cleanup on unmount
-    return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const cachedUrlRef = useRef<string | null>(audioUrl || null);
 
   const handleCopy = async () => {
     try {
@@ -59,45 +52,70 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
     onFeedback?.(rating);
   };
 
-  const stripMarkdownAndCitations = (text: string): string => {
-    // Remove citation markers like [doc:xxx::chunk:xxx]
-    let cleaned = text.replace(/\[doc:[^\]]+\]/g, "");
-    // Remove markdown formatting
-    cleaned = cleaned.replace(/\*\*/g, ""); // Bold
-    cleaned = cleaned.replace(/\*/g, ""); // Italic
-    cleaned = cleaned.replace(/#{1,6}\s/g, ""); // Headers
-    cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"); // Links
-    cleaned = cleaned.replace(/`[^`]+`/g, ""); // Code
-    // Clean up extra whitespace
-    cleaned = cleaned.replace(/\s+/g, " ").trim();
-    return cleaned;
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
   };
 
-  const handleSpeak = () => {
-    if (!ttsSupported) return;
+  const playAudioUrl = (url: string) => {
+    const audio = new Audio(url);
+    audioRef.current = audio;
 
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
+    audio.onended = () => {
       setIsSpeaking(false);
+    };
+
+    audio.onerror = () => {
+      setIsSpeaking(false);
+      console.error("Audio playback failed");
+    };
+
+    audio.play().then(() => {
+      setIsSpeaking(true);
+    }).catch((err) => {
+      setIsSpeaking(false);
+      console.error("Audio play failed:", err);
+    });
+  };
+
+  const handleSpeak = async () => {
+    // If already speaking, stop
+    if (isSpeaking) {
+      stopAudio();
       return;
     }
 
-    const cleanText = stripMarkdownAndCitations(messageText);
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "en-US";
-    utterance.rate = 0.9; // Slightly slower for clarity
+    // If we already have a cached audio URL, play it directly
+    if (cachedUrlRef.current) {
+      playAudioUrl(cachedUrlRef.current);
+      return;
+    }
 
-    utterance.onend = () => {
-      setIsSpeaking(false);
-    };
+    // Call backend TTS endpoint
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/voice/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: messageText }),
+      });
 
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-    };
+      if (!response.ok) {
+        throw new Error(`TTS request failed: ${response.status}`);
+      }
 
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
+      const data = await response.json();
+      cachedUrlRef.current = data.audioUrl;
+      playAudioUrl(data.audioUrl);
+    } catch (err) {
+      console.error("Server TTS failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -110,19 +128,19 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
       >
         {copied ? "✓ Copied" : "📋 Copy"}
       </button>
-      {ttsSupported && (
-        <button
-          onClick={handleSpeak}
-          style={{
-            ...styles.button,
-            ...(isSpeaking ? styles.buttonActive : {})
-          }}
-          aria-label={isSpeaking ? "Stop speaking" : "Read aloud"}
-          title={isSpeaking ? "Stop" : "Read aloud"}
-        >
-          {isSpeaking ? "⏹️ Stop" : "🔊 Listen"}
-        </button>
-      )}
+      <button
+        onClick={handleSpeak}
+        style={{
+          ...styles.button,
+          ...(isSpeaking ? styles.buttonActive : {}),
+          ...(isLoading ? { opacity: 0.6, cursor: "wait" } : {})
+        }}
+        aria-label={isSpeaking ? "Stop speaking" : isLoading ? "Loading audio" : "Read aloud"}
+        title={isSpeaking ? "Stop" : isLoading ? "Loading..." : "Read aloud"}
+        disabled={isLoading}
+      >
+        {isSpeaking ? "⏹️ Stop" : isLoading ? "⏳ Loading..." : "🔊 Listen"}
+      </button>
       {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
         <button
           onClick={handleShare}

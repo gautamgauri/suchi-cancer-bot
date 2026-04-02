@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from "class-validator";
+import { IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 
 export class VoiceRequestDto {
   @IsUUID()
@@ -7,6 +7,20 @@ export class VoiceRequestDto {
   @IsOptional()
   @IsString()
   locale?: string;
+}
+
+export class TtsRequestDto {
+  @IsString()
+  @MaxLength(5000)
+  text!: string;
+
+  @IsOptional()
+  @IsString()
+  locale?: string;
+}
+
+export interface TtsResponse {
+  audioUrl: string;
 }
 
 export interface VoiceResponse {
