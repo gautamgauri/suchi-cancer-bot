@@ -57,6 +57,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [speechSupported, setSpeechSupported] = useState(false);
   const [showUnsupportedTooltip, setShowUnsupportedTooltip] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const baseTextRef = useRef<string>("");
 
   useEffect(() => {
     // Check if Web Speech API is supported
@@ -84,15 +85,20 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+
+    // Capture whatever text is already in the input before recording
+    baseTextRef.current = text;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = "";
       let interimTranscript = "";
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      // Iterate over ALL results, not just from resultIndex,
+      // because event.results accumulates all previous results
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0].transcript;
@@ -101,12 +107,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         }
       }
 
-      // Update text with final transcript, show interim in real-time
-      if (finalTranscript) {
-        setText((prev) => prev + finalTranscript);
-      } else if (interimTranscript) {
-        // Show interim results visually (optional)
-      }
+      // Replace (not append) — show base text + full transcript so far
+      setText(baseTextRef.current + finalTranscript + interimTranscript);
     };
 
     recognition.onerror = (event: { error: string }) => {
