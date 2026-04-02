@@ -1,0 +1,365 @@
+# Tier 1.5 — Sub-Intent Precision Eval Pack
+# Catches cases where the bot answers the wrong sub-intent
+# (e.g., symptoms question gets diagnostic tools answer)
+# Run: npx ts-node cli.ts voice-transcript --cases cases/tier1.5/sub_intent_precision.yaml --summary
+
+cases:
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 1: Symptom queries
+  # Should list symptoms, NOT diagnostic tools
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-BREAST-SYMPTOM-INFO-01
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What are the common symptoms of breast cancer?"
+    expected_coverage: >
+      Should list actual symptoms: lump, nipple discharge, skin changes,
+      shape/size change. Should NOT lead with mammogram/biopsy/ultrasound.
+    expectations:
+      must_mention: ["lump"]
+      must_mention_any: ["nipple", "skin", "shape", "size", "discharge"]
+      must_not_mention: ["mammogram", "biopsy", "ultrasound"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-BREAST-SYMPTOM-INFO-02
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "Tell me about symptoms of breast cancer"
+    expected_coverage: >
+      Should describe breast cancer symptoms including lump, skin
+      dimpling, nipple changes, swelling. Should NOT pivot to
+      diagnostic procedures or treatment options.
+    expectations:
+      must_mention: ["lump"]
+      must_mention_any: ["nipple", "skin", "swelling", "dimpling", "discharge"]
+      must_not_mention: ["mammogram", "biopsy", "ultrasound"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-LUNG-SYMPTOM-INFO-01
+    cancer: lung
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What are the symptoms of lung cancer?"
+    expected_coverage: >
+      Should list lung cancer symptoms: persistent cough, coughing up
+      blood, chest pain, shortness of breath, weight loss. Should NOT
+      lead with CT scan, biopsy, or staging information.
+    expectations:
+      must_mention: ["cough"]
+      must_mention_any: ["chest", "shortness of breath", "weight loss", "blood"]
+      must_not_mention: ["CT scan", "biopsy", "staging"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-COLORECTAL-SYMPTOM-INFO-01
+    cancer: colorectal
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What are common symptoms of colorectal cancer?"
+    expected_coverage: >
+      Should list colorectal cancer symptoms: blood in stool, change in
+      bowel habits, abdominal pain/cramping, unexplained weight loss,
+      fatigue. Should NOT lead with colonoscopy or treatment.
+    expectations:
+      must_mention_any: ["blood", "bowel", "stool", "abdominal"]
+      must_not_mention: ["colonoscopy", "chemotherapy", "surgery"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-ORAL-SYMPTOM-INFO-01
+    cancer: oral
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What are the symptoms of oral cancer?"
+    expected_coverage: >
+      Should list oral cancer symptoms: sore that doesn't heal, white or
+      red patch, lump in mouth or neck, difficulty swallowing, pain.
+      Should NOT lead with biopsy or treatment options.
+    expectations:
+      must_mention_any: ["sore", "patch", "lump", "swallowing", "pain"]
+      must_not_mention: ["biopsy", "radiation", "chemotherapy"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-LEUKEMIA-SYMPTOM-INFO-01
+    cancer: leukemia
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What are common symptoms of leukemia?"
+    expected_coverage: >
+      Should list leukemia symptoms: fatigue, frequent infections, easy
+      bruising or bleeding, fever, weight loss, bone pain, swollen lymph
+      nodes. Should NOT lead with blood tests or bone marrow biopsy.
+    expectations:
+      must_mention_any: ["fatigue", "bruising", "bleeding", "fever", "infection"]
+      must_not_mention: ["bone marrow biopsy", "chemotherapy"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 2: Diagnosis queries
+  # Should list tests/procedures, NOT treatment
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-BREAST-DIAGNOSIS-01
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "How is breast cancer diagnosed?"
+    expected_coverage: >
+      Should cover diagnostic process: mammogram, ultrasound, biopsy,
+      clinical breast exam, MRI. Should NOT lead with treatment options
+      like surgery, chemotherapy, or radiation.
+    expectations:
+      must_mention: ["mammogram"]
+      must_mention_any: ["biopsy", "ultrasound", "MRI", "exam"]
+      must_not_mention: ["chemotherapy", "radiation therapy", "mastectomy"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-LUNG-DIAGNOSIS-01
+    cancer: lung
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "How do doctors diagnose lung cancer?"
+    expected_coverage: >
+      Should cover diagnostic approaches: chest X-ray, CT scan, biopsy,
+      PET scan, sputum cytology, bronchoscopy. Should NOT lead with
+      treatment or staging details.
+    expectations:
+      must_mention_any: ["CT scan", "X-ray", "biopsy", "bronchoscopy"]
+      must_not_mention: ["chemotherapy", "radiation therapy", "surgery"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-LEUKEMIA-DIAGNOSIS-01
+    cancer: leukemia
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What tests are used to diagnose leukemia?"
+    expected_coverage: >
+      Should cover diagnostic tests: complete blood count (CBC), blood
+      smear, bone marrow biopsy, flow cytometry, genetic testing. Should
+      NOT lead with treatment options.
+    expectations:
+      must_mention_any: ["blood", "bone marrow", "CBC", "biopsy"]
+      must_not_mention: ["chemotherapy", "transplant", "radiation"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 3: General info queries
+  # Should NOT start with symptomatic framing
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-BREAST-GEN-01
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "Tell me about breast cancer"
+    expected_coverage: >
+      Should provide a general overview of breast cancer: what it is,
+      how common it is, general risk factors. Should NOT open with
+      symptomatic framing like "if you notice a lump" or assume the
+      user has symptoms.
+    expectations:
+      must_mention_any: ["breast cancer", "cancer", "cells"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-LUNG-GEN-01
+    cancer: lung
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What is lung cancer?"
+    expected_coverage: >
+      Should explain what lung cancer is: abnormal cell growth in lungs,
+      types (small cell, non-small cell), risk factors like smoking.
+      Should NOT open with symptomatic framing.
+    expectations:
+      must_mention_any: ["lung", "cancer", "cells"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-LEUKEMIA-GEN-01
+    cancer: leukemia
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What is leukemia?"
+    expected_coverage: >
+      Should explain what leukemia is: cancer of blood-forming tissues,
+      affects white blood cells, types (ALL, AML, CLL, CML). Should NOT
+      open with symptomatic framing or jump to treatment.
+    expectations:
+      must_mention_any: ["blood", "white blood cells", "bone marrow"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 4: Symptomatic queries
+  # Should reassure + recommend next steps, NOT staging/treatment
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-BREAST-SYMPTOMATIC-01
+    cancer: breast
+    intent: SYMPTOMATIC_PATIENT
+    channel: web
+    voice_input: "I found a lump in my breast. What should I do?"
+    expected_coverage: >
+      Should acknowledge concern empathetically, reassure that most lumps
+      are not cancer, and recommend seeing a doctor for evaluation. Should
+      NOT jump to staging, treatment plans, or survival statistics.
+    expectations:
+      must_mention: ["doctor"]
+      must_mention_any: ["evaluate", "exam", "check", "appointment", "see"]
+      must_not_mention: ["stage", "survival rate", "chemotherapy", "mastectomy"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-COLORECTAL-SYMPTOMATIC-01
+    cancer: colorectal
+    intent: SYMPTOMATIC_PATIENT
+    channel: web
+    voice_input: "I have blood in my stool for two weeks. What should I do?"
+    expected_coverage: >
+      Should take the symptom seriously, mention it can have many causes,
+      and strongly recommend seeing a doctor. Should NOT jump to staging
+      or treatment plans.
+    expectations:
+      must_mention: ["doctor"]
+      must_mention_any: ["evaluate", "exam", "check", "appointment", "causes"]
+      must_not_mention: ["stage", "survival rate", "chemotherapy"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-ORAL-SYMPTOMATIC-01
+    cancer: oral
+    intent: SYMPTOMATIC_PATIENT
+    channel: web
+    voice_input: "I have a mouth sore that is not healing. What should I do?"
+    expected_coverage: >
+      Should acknowledge the concern, note that non-healing sores can have
+      many causes but should be evaluated, and recommend seeing a doctor or
+      dentist. Should NOT jump to treatment or staging.
+    expectations:
+      must_mention_any: ["doctor", "dentist"]
+      must_not_mention: ["stage", "survival rate", "chemotherapy", "radiation"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 5: Post-diagnosis
+  # Should include treatment orientation, NOT basic info
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-LEUKEMIA-POSTDX-01
+    cancer: leukemia
+    intent: POST_DIAGNOSIS_OR_SUSPECTED
+    channel: web
+    voice_input: "My child was diagnosed with leukemia. What happens next?"
+    expected_coverage: >
+      Should acknowledge the emotional weight, then orient toward next
+      steps: treatment planning, meeting the oncology team, understanding
+      the treatment process (likely chemotherapy). Should NOT re-explain
+      what leukemia is or list basic symptoms.
+    expectations:
+      must_mention_any: ["treatment", "oncologist", "chemotherapy", "team"]
+      must_not_mention: ["symptoms of leukemia", "what is leukemia"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 6: Cause/prevention
+  # Should include risk factors, NOT symptoms
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-CERVICAL-CAUSE-01
+    cancer: cervical
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "What causes cervical cancer and how can I prevent it?"
+    expected_coverage: >
+      Should explain HPV as the primary cause, discuss prevention methods
+      like HPV vaccination and regular screening (Pap smear). Should NOT
+      lead with symptoms or treatment options.
+    expectations:
+      must_mention: ["HPV"]
+      must_mention_any: ["vaccine", "vaccination", "screening", "Pap"]
+      must_not_mention: ["chemotherapy", "radiation", "surgery"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 7: Negative controls
+  # Should NOT catastrophize
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-NEGATIVE-01
+    cancer: general
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "Is every lump cancer?"
+    expected_coverage: >
+      Should clearly state that most lumps are NOT cancer. Should mention
+      common benign causes like cysts, fibroadenomas, lipomas. Should
+      recommend getting any new or changing lump checked by a doctor but
+      should NOT catastrophize or assume cancer.
+    expectations:
+      must_mention_any: ["not", "benign", "most", "many"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-NEGATIVE-02
+    cancer: general
+    intent: INFORMATIONAL_GENERAL
+    channel: web
+    voice_input: "Does cancer always cause pain?"
+    expected_coverage: >
+      Should explain that cancer does NOT always cause pain, especially
+      in early stages. Should note that pain depends on type, location,
+      and stage. Should NOT catastrophize or list worst-case scenarios.
+    expectations:
+      must_mention_any: ["not always", "early", "does not", "doesn't"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Category 8: Messy voice input
+  # Should still classify correctly despite transcription artifacts
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: SIP-VOICE-MESSY-01
+    cancer: breast
+    intent: INFORMATIONAL_GENERAL
+    channel: voice
+    voice_input: "telltell me about symptoms of breast cancer"
+    expected_coverage: >
+      Despite the duplicated word "telltell", should correctly identify
+      this as a symptom query and list breast cancer symptoms. Should NOT
+      respond with confusion or treat the duplication as a separate query.
+    expectations:
+      must_mention: ["lump"]
+      must_mention_any: ["nipple", "skin", "swelling", "discharge"]
+      must_not_mention: ["mammogram", "biopsy", "ultrasound"]
+      safety: normal
+      max_response_time_ms: 15000
+
+  - id: SIP-VOICE-MESSY-02
+    cancer: colorectal
+    intent: INFORMATIONAL_GENERAL
+    channel: voice
+    voice_input: "what are uh common signs of uh colon cancer"
+    expected_coverage: >
+      Despite the filler words "uh", should correctly identify this as
+      a symptom query for colorectal/colon cancer and list symptoms.
+      Should NOT respond with confusion about the filler words.
+    expectations:
+      must_mention_any: ["blood", "bowel", "stool", "abdominal", "weight"]
+      must_not_mention: ["colonoscopy", "chemotherapy"]
+      safety: normal
+      max_response_time_ms: 15000

@@ -37,6 +37,7 @@ interface VoiceTranscriptCase {
   expectations: {
     must_mention?: string[];
     must_mention_any?: string[];
+    must_not_mention?: string[];
     safety: string;
     max_response_time_ms: number;
   };
@@ -84,6 +85,7 @@ interface TranscriptResult {
     // Keyword checks (supplementary, non-blocking)
     mustMention: KeywordCheckResult;
     mustMentionAny?: { expected: string[]; found: string[]; pass: boolean };
+    mustNotMention?: { expected: string[]; found: string[]; pass: boolean };
     safetyMatch: boolean;
     withinLatency: boolean;
     // Voice quality checks (supplementary, non-blocking)
@@ -157,6 +159,12 @@ const VOICE_EVAL_CHECKS: LLMCheck[] = [
   {
     id: 'actionability',
     description: 'Does the response tell the user what to do next (see a doctor, go to ER, ask specific questions)?',
+    required: false,
+    type: 'llm_scored_boolean',
+  },
+  {
+    id: 'intent_alignment',
+    description: 'Did the response answer the user\'s actual sub-intent (symptoms/diagnosis/treatment/causes) before offering adjacent information?',
     required: false,
     type: 'llm_scored_boolean',
   },
@@ -336,6 +344,12 @@ function checkMustMentionAny(text: string, keywords: string[]): { found: string[
   return { found, pass: found.length > 0 };
 }
 
+function checkMustNotMention(text: string, keywords: string[]): { found: string[]; pass: boolean } {
+  const lower = text.toLowerCase();
+  const found = keywords.filter(kw => lower.includes(kw.toLowerCase()));
+  return { found, pass: found.length === 0 };
+}
+
 /**
  * Build LLM judge checks with case-specific context injected into descriptions.
  */
@@ -431,6 +445,16 @@ function deriveImprovements(results: TranscriptResult[]): string[] {
     mentionFails.forEach(r => r.checks.mustMention.missing.forEach(m => allMissing.add(m)));
     improvements.push(
       `Keyword check: ${mentionFails.length} case(s) missing expected terms: [${[...allMissing].join(', ')}]. (Supplementary — not blocking pass/fail.)`
+    );
+  }
+
+  // Must-not-mention violations (sub-intent precision)
+  const notMentionFails = results.filter(r => r.checks.mustNotMention && !r.checks.mustNotMention.pass);
+  if (notMentionFails.length > 0) {
+    const allUnwanted = new Set<string>();
+    notMentionFails.forEach(r => r.checks.mustNotMention?.found.forEach(m => allUnwanted.add(m)));
+    improvements.push(
+      `Sub-intent precision: ${notMentionFails.length} case(s) mentioned unwanted terms: [${[...allUnwanted].join(', ')}]. Response answered wrong sub-intent. (Supplementary — not blocking pass/fail.)`
     );
   }
 
@@ -549,6 +573,11 @@ export async function runVoiceTranscriptEval(opts: {
         mustMentionAnyResult = checkMustMentionAny(response.responseText, tc.expectations.must_mention_any);
       }
 
+      let mustNotMentionResult: { found: string[]; pass: boolean } | undefined;
+      if (tc.expectations.must_not_mention) {
+        mustNotMentionResult = checkMustNotMention(response.responseText, tc.expectations.must_not_mention);
+      }
+
       const safetyMatch = response.safety?.classification === tc.expectations.safety;
       const withinLatency = responseTimeMs <= tc.expectations.max_response_time_ms;
 
@@ -631,6 +660,7 @@ export async function runVoiceTranscriptEval(opts: {
             pass: mustMentionPass,
           },
           ...(mustMentionAnyResult ? { mustMentionAny: { expected: tc.expectations.must_mention_any!, found: mustMentionAnyResult.found, pass: mustMentionAnyResult.pass } } : {}),
+          ...(mustNotMentionResult ? { mustNotMention: { expected: tc.expectations.must_not_mention!, found: mustNotMentionResult.found, pass: mustNotMentionResult.pass } } : {}),
           safetyMatch,
           withinLatency,
           voiceQuality,
@@ -654,6 +684,10 @@ export async function runVoiceTranscriptEval(opts: {
 
       if (!mustMentionPass) {
         console.log(`  Keywords (supplementary): missing [${mustMentionResult.missing.join(', ')}]`);
+      }
+
+      if (mustNotMentionResult && !mustNotMentionResult.pass) {
+        console.log(`  Must-not-mention (supplementary): found unwanted [${mustNotMentionResult.found.join(', ')}]`);
       }
 
       // Voice quality warnings (supplementary)
@@ -786,6 +820,9 @@ export async function runVoiceTranscriptEval(opts: {
       // Keyword checks (supplementary)
       if (!r.checks.mustMention.pass) {
         console.log(`  Keywords (supplementary): missing [${r.checks.mustMention.missing.join(', ')}]`);
+      }
+      if (r.checks.mustNotMention && !r.checks.mustNotMention.pass) {
+        console.log(`  Must-not-mention (supplementary): found unwanted [${r.checks.mustNotMention.found.join(', ')}]`);
       }
 
       // Voice quality checks (supplementary)
