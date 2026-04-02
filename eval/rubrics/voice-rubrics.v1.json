@@ -69,6 +69,36 @@
       "weight": 0.10,
       "metric": "binary (0 or 1)",
       "description": "Total latency under threshold"
+    },
+    "voiceLengthCheck": {
+      "weight": 0.00,
+      "metric": "binary (0 or 1)",
+      "description": "Response is under 150 words (~60s of speech at 150 wpm). Supplementary, non-blocking.",
+      "supplementary": true
+    },
+    "voiceFormattingCheck": {
+      "weight": 0.00,
+      "metric": "binary (0 or 1)",
+      "description": "Response has no markdown, citation markers, URLs, or tables that sound bad when read aloud. Supplementary, non-blocking.",
+      "supplementary": true
+    },
+    "voicePronunciationCheck": {
+      "weight": 0.00,
+      "metric": "advisory",
+      "description": "Flags medical terms (mammogram, colonoscopy, oncologist, etc.) that TTS engines commonly mispronounce. Advisory only.",
+      "supplementary": true
+    },
+    "voiceNaturalnessCheck": {
+      "weight": 0.00,
+      "metric": "advisory",
+      "description": "Flags academic/clinical language patterns (etiology, contraindicated, etc.) that sound robotic when spoken. Advisory only.",
+      "supplementary": true
+    },
+    "voiceWarmthEmpathy": {
+      "weight": 0.00,
+      "metric": "llm_scored_boolean",
+      "description": "LLM judge evaluates whether the response uses warm, empathetic language appropriate for cancer patients. Assessed via voice_appropriate_tone LLM check.",
+      "supplementary": true
     }
   }
 }
