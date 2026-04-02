@@ -27,6 +27,7 @@ import { PatientStateService, PatientState } from "./patient-state.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
+import { cleanVoiceInput } from "./input-cleaner";
 // Phase 2 Agentic components
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
@@ -184,6 +185,11 @@ export class ChatService {
   }
 
   async handle(dto: ChatDto, signal?: AbortSignal) {
+    // ─── Phase 0: Voice Input Cleanup ────────────────────────────────
+    // Web Speech API interim results can stutter/duplicate text.
+    // Clean before any classification or persistence.
+    dto.userText = cleanVoiceInput(dto.userText);
+
     // Fetch session (with caching) and message count once at the start - reuse throughout method
     // Wrapped with prismaRetry to handle transient connection-pool exhaustion under load
     const [session, existingAssistantMessages] = await this.prismaRetry(
