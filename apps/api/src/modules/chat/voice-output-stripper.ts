@@ -5,59 +5,83 @@
 export function stripForVoice(text: string): string {
   let result = text;
 
-  // Remove bold markdown: **text** → text
-  result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
+  // ── Remove source/citation blocks ─────────────────────────────────
+  // "**This answer is based on information from the following trusted sources:**"
+  result = result.replace(/\*?\*?This answer is based on information from.*$/gs, '');
 
-  // Remove italic markdown: *text* → text (but not bullet points)
+  // Numbered source lists: "1. Signs and Symptoms of Breast Cancer - NCI"
+  result = result.replace(/^\d+\.\s+.+[-–]\s*(NCI|WHO|AIIMS|Indian Cancer).*$/gm, '');
+
+  // ── Remove all disclaimer blocks ──────────────────────────────────
+  // Italic disclaimer: *This information is for general educational...*
+  result = result.replace(/\*This information is for general educational[^]*?guidance\.\*/gi, '');
+  // Non-italic disclaimer
+  result = result.replace(/This information is for general educational purposes only[^]*?personalized guidance\./gi, '');
+  // Important disclaimer at start
+  result = result.replace(/^\s*\*?\*?Important:?\*?\*?\s*This information is for general educational[^]*?guidance\.\s*/gim, '');
+  // Emergency disclaimer
+  result = result.replace(/\*?If this is a medical emergency[^]*?emergency medical care\.\*?/gi, '');
+
+  // ── Remove markdown formatting ────────────────────────────────────
+  // Bold: **text** → text
+  result = result.replace(/\*\*([^*]+)\*\*/g, '$1');
+  // Any remaining ** markers
+  result = result.replace(/\*\*/g, '');
+
+  // Italic: *text* → text (but not bullet markers)
   result = result.replace(/(?<!\n\s*)\*([^*\n]+)\*/g, '$1');
 
-  // Remove heading markers: ## Heading → Heading
+  // Heading markers: ## Heading → Heading
   result = result.replace(/^#{1,6}\s+/gm, '');
 
-  // Convert bullet lists to flowing text
+  // Bullet lists: * item or - item → item
   result = result.replace(/^\s*[-*•]\s+/gm, '');
 
-  // Convert numbered lists to flowing text
+  // Numbered lists: 1. item → item
   result = result.replace(/^\s*\d+\.\s+/gm, '');
 
-  // Remove citation markers [citation:docId:chunkId]
+  // Citation markers [citation:docId:chunkId]
   result = result.replace(/\s*\[citation:[^\]]*\]/g, '');
   result = result.replace(/\s*\[source:[^\]]*\]/g, '');
 
-  // Remove markdown horizontal rules
-  result = result.replace(/^---+\s*$/gm, '');
+  // Horizontal rules (--- or ***)
+  result = result.replace(/^[-*_]{3,}\s*$/gm, '');
 
-  // Remove all disclaimer blocks (visual, not voice-friendly)
-  result = result.replace(/\*?This information is for general educational purposes[^]*?personalized guidance\.?\*?/gi, '');
-  result = result.replace(/^\*?Important:?.*?educational purposes[^]*?guidance\.?\*?$/gim, '');
-  result = result.replace(/^\*?If this is a medical emergency.*?emergency medical care\.?\*?$/gim, '');
-
-  // Remove any remaining standalone italic text (leftover disclaimer fragments)
+  // Standalone italic fragments (leftover disclaimer bits)
   result = result.replace(/^\*[^*]{20,}\*$/gm, '');
-
-  // Remove "Note:" prefix formatting
-  result = result.replace(/\*\*Note:\*\*\s*/g, 'Note: ');
-
-  // Remove any remaining ** bold markers the first pass missed
-  result = result.replace(/\*\*/g, '');
-
-  // Remove any remaining * markers (standalone, not mid-word)
+  // Standalone * markers
   result = result.replace(/(?<=\s)\*(?=\s)/g, '');
   result = result.replace(/^\*\s/gm, '');
 
-  // Remove markdown horizontal rules (--- or ***)
-  result = result.replace(/^[-*]{3,}\s*$/gm, '');
+  // ── Remove duplicate template blocks ──────────────────────────────
+  // Navigate-mode template that gets appended after the LLM response
+  result = result.replace(/I understand (this can be worrying|you're experiencing symptoms)\.\s*Many symptoms like these turn out to have non-cancerous causes\.\s*\n*.*?(?:When did these symptoms start\?|How often do they occur\?)\s*/gs, '');
 
-  // Remove "I understand you're experiencing symptoms" duplicate template block
-  result = result.replace(/I understand you're experiencing symptoms\.\s*To help you better.*?symptoms worsen or become severe/gs, '');
+  // "Key points to be aware of:" section if it duplicates earlier content
+  // Keep only the first occurrence
+  const keyPointsMatch = result.match(/Key points to be aware of:/g);
+  if (keyPointsMatch && keyPointsMatch.length > 1) {
+    const idx = result.lastIndexOf('Key points to be aware of:');
+    const nextSection = result.indexOf('\n\n', idx);
+    result = result.substring(0, idx) + (nextSection > -1 ? result.substring(nextSection) : '');
+  }
 
-  // Clean up multiple blank lines
+  // "What to do next:" duplicate — keep first only
+  const nextStepsMatch = result.match(/What to do next:/g);
+  if (nextStepsMatch && nextStepsMatch.length > 1) {
+    const idx = result.lastIndexOf('What to do next:');
+    const nextSection = result.indexOf('\n\n', idx + 20);
+    result = result.substring(0, idx) + (nextSection > -1 ? result.substring(nextSection) : '');
+  }
+
+  // ── Clean up ──────────────────────────────────────────────────────
+  // Multiple blank lines → single
   result = result.replace(/\n{3,}/g, '\n\n');
 
   // Trim
   result = result.trim();
 
-  // Add a simple spoken disclaimer at the end if not already present
+  // ── Add spoken disclaimer if missing ──────────────────────────────
   if (!result.includes('not medical advice') && !result.includes('not a substitute') && !result.includes('consult your doctor for personalized')) {
     result += '\n\nPlease remember, this is general information and not medical advice. Always consult your doctor for personalized guidance.';
   }
