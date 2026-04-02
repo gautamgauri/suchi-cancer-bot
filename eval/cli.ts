@@ -570,11 +570,14 @@ program
 program
   .command("autoresearch")
   .description("Run Karpathy-style autoresearch loop: mine failures -> hypothesise -> patch -> eval -> gate -> archive")
-  .option("--target <cluster>", "Target failure cluster type (e.g. 'citation', 'safety', 'completeness') or 'all'", "all")
+  .option("--target <cluster>", "Target failure cluster type (e.g. 'citation', 'safety', 'completeness', 'voice_formatting', 'voice_length') or 'all'", "all")
+  .option("--mode <mode>", "Mode: 'gold' (default) runs gold eval cases, 'voice' runs voice transcript eval", "gold")
   .option("--max-iterations <n>", "Maximum iterations per run (hard cap: 3)", parseInt, 3)
   .option("--dry-run", "Generate hypotheses and patches but do not apply or eval")
   .option("--api-url <url>", "API base URL", "http://localhost:3001")
   .option("--cases <path>", "Path to gold eval cases YAML", "cases/gold/core_safety.yaml")
+  .option("--voice-cases <path>", "Path to voice transcript cases YAML (voice mode)", "cases/voice/voice_transcript_cancer_queries.yaml")
+  .option("--voice-report <path>", "Output path for voice transcript baseline report (voice mode)", "reports/voice-autoresearch-baseline.json")
   .option("--rubrics <path>", "Path to rubrics JSON", "rubrics/rubrics.v1.json")
   .option("--manifest <path>", "Path to repairable manifest JSON", "../repairable/manifest.json")
   .option("--auth-bearer <token>", "Optional bearer token for API auth")
@@ -592,8 +595,18 @@ program
         ? options.manifest
         : path.resolve(process.cwd(), options.manifest);
 
+      const voiceCasesPath = path.isAbsolute(options.voiceCases)
+        ? options.voiceCases
+        : path.resolve(process.cwd(), options.voiceCases);
+      const voiceReportPath = path.isAbsolute(options.voiceReport)
+        ? options.voiceReport
+        : path.resolve(process.cwd(), options.voiceReport);
+
+      const mode = options.mode === "voice" ? "voice" : "gold";
+
       await runAutoresearch({
         target: options.target,
+        mode,
         maxIterations: options.maxIterations || 3,
         dryRun: !!options.dryRun,
         apiBaseUrl: options.apiUrl,
@@ -601,6 +614,8 @@ program
         rubricsPath,
         manifestPath,
         authBearer: options.authBearer,
+        voiceCasesPath: mode === "voice" ? voiceCasesPath : undefined,
+        voiceReportPath: mode === "voice" ? voiceReportPath : undefined,
       });
     } catch (error: any) {
       console.error("Autoresearch error:", error.message);

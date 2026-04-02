@@ -116,7 +116,28 @@ export interface ScoreSnapshot {
   perCheck: Record<string, { passRate: number; count: number }>;
 }
 
+// ── Voice quality snapshot ──────────────────────────────────────────────────
+
+export interface VoiceQualitySnapshot {
+  /** Total transcripts evaluated */
+  totalTranscripts: number;
+  /** Count of voice-ready responses */
+  voiceReadyCount: number;
+  /** Voice-ready rate (0-1) */
+  voiceReadyRate: number;
+  /** Average word count across responses */
+  avgWordCount: number;
+  /** Count of responses exceeding voice word limit */
+  tooLongCount: number;
+  /** Count of responses with markdown/formatting issues */
+  formattingIssueCount: number;
+  /** Count of responses with unnatural/academic language */
+  unnaturalLanguageCount: number;
+}
+
 // ── Runner config ───────────────────────────────────────────────────────────
+
+export type AutoresearchMode = "gold" | "voice";
 
 export interface AutoresearchConfig {
   /** Target: "all" runs the full loop; a cluster label targets a specific failure type */
@@ -135,6 +156,12 @@ export interface AutoresearchConfig {
   manifestPath: string;
   /** Auth bearer token (optional) */
   authBearer?: string;
+  /** Mode: "gold" (default) or "voice" */
+  mode: AutoresearchMode;
+  /** Path to voice transcript cases YAML (used when mode=voice) */
+  voiceCasesPath?: string;
+  /** Path to voice transcript report JSON (used when mode=voice) */
+  voiceReportPath?: string;
 }
 
 // ── Runner state ────────────────────────────────────────────────────────────

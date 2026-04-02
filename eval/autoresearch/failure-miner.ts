@@ -3,10 +3,14 @@
  *
  * Reads an eval report JSON and clusters failures into ranked buckets
  * by type, severity, and frequency.
+ *
+ * Supports two mining modes:
+ *   - Gold eval: mines from EvaluationReport (deterministic + LLM judge checks)
+ *   - Voice quality: mines from voice transcript report (length, formatting, naturalness)
  */
 
 import type { EvaluationReport, EvaluationResult } from "../types";
-import type { FailureBucket, SeverityLevel } from "./types";
+import type { FailureBucket, SeverityLevel, VoiceQualitySnapshot } from "./types";
 
 // ── Severity classification ─────────────────────────────────────────────────
 
@@ -221,4 +225,166 @@ function extractQuery(result: EvaluationResult): string {
   // The test case query is not stored in the result directly;
   // we use the testCaseId as a proxy
   return result.testCaseId;
+}
+
+// ── Voice quality failure mining ───────────────────────────────────────────
+
+/**
+ * Voice transcript report shape (subset of fields we read).
+ * Matches the TranscriptReport type from voice-transcript-eval.ts.
+ */
+interface VoiceTranscriptReport {
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    passRate: number;
+    voiceQuality?: {
+      tooLongCount: number;
+      formattingIssueCount: number;
+      unnaturalLanguageCount: number;
+      avgWordCount: number;
+      overallPassCount: number;
+    };
+  };
+  transcripts: Array<{
+    caseId: string;
+    voiceInput: string;
+    responseText: string;
+    checks: {
+      voiceQuality?: {
+        wordCount: number;
+        tooLongForVoice: boolean;
+        formattingIssues: string[];
+        hasFormattingIssues: boolean;
+        unnaturalPatterns: string[];
+        hasUnnaturalLanguage: boolean;
+        overallPass: boolean;
+      };
+    };
+  }>;
+}
+
+/**
+ * Mine voice quality failures from a voice transcript eval report.
+ *
+ * Creates failure buckets for three voice quality issue types:
+ *   - voice_formatting (P1): Markdown/citations that break TTS output
+ *   - voice_length (P2): Responses exceeding 150-word voice limit
+ *   - voice_naturalness (P2): Academic/clinical language that sounds unnatural when spoken
+ */
+export function mineVoiceQualityFailures(report: VoiceTranscriptReport): FailureBucket[] {
+  const buckets: FailureBucket[] = [];
+
+  const transcripts = report.transcripts || [];
+
+  // --- Formatting issues (P1 — breaks TTS output) ---
+  const formattingCases = transcripts.filter(
+    (t) => t.checks.voiceQuality?.hasFormattingIssues,
+  );
+  if (formattingCases.length > 0) {
+    const allIssues = new Set<string>();
+    formattingCases.forEach((t) =>
+      t.checks.voiceQuality?.formattingIssues.forEach((i) => allIssues.add(i)),
+    );
+
+    const rep = formattingCases[0];
+    buckets.push({
+      failureType: "voice_formatting",
+      severity: "P1",
+      affectedCaseIds: formattingCases.map((t) => t.caseId),
+      count: formattingCases.length,
+      representative: {
+        caseId: rep.caseId,
+        query: rep.voiceInput,
+        responseExcerpt: rep.responseText.slice(0, 300),
+        failureReason: `Response contains formatting unsuitable for voice: [${[...allIssues].join(", ")}]. Markdown, citations, and structured formatting are read literally by TTS.`,
+      },
+      failedCheckIds: ["voice_formatting"],
+    });
+  }
+
+  // --- Too long for voice (P2 — poor UX, not broken) ---
+  const tooLongCases = transcripts.filter(
+    (t) => t.checks.voiceQuality?.tooLongForVoice,
+  );
+  if (tooLongCases.length > 0) {
+    const avgWords = Math.round(
+      tooLongCases.reduce(
+        (s, t) => s + (t.checks.voiceQuality?.wordCount || 0),
+        0,
+      ) / tooLongCases.length,
+    );
+
+    const rep = tooLongCases[0];
+    buckets.push({
+      failureType: "voice_length",
+      severity: "P2",
+      affectedCaseIds: tooLongCases.map((t) => t.caseId),
+      count: tooLongCases.length,
+      representative: {
+        caseId: rep.caseId,
+        query: rep.voiceInput,
+        responseExcerpt: rep.responseText.slice(0, 300),
+        failureReason: `Response too long for voice delivery (avg ${avgWords} words, max 150). Users cannot absorb long spoken responses.`,
+      },
+      failedCheckIds: ["voice_length"],
+    });
+  }
+
+  // --- Unnatural language (P2 — sounds clinical when spoken) ---
+  const unnaturalCases = transcripts.filter(
+    (t) => t.checks.voiceQuality?.hasUnnaturalLanguage,
+  );
+  if (unnaturalCases.length > 0) {
+    const allPatterns = new Set<string>();
+    unnaturalCases.forEach((t) =>
+      t.checks.voiceQuality?.unnaturalPatterns.forEach((p) =>
+        allPatterns.add(p),
+      ),
+    );
+
+    const rep = unnaturalCases[0];
+    buckets.push({
+      failureType: "voice_naturalness",
+      severity: "P2",
+      affectedCaseIds: unnaturalCases.map((t) => t.caseId),
+      count: unnaturalCases.length,
+      representative: {
+        caseId: rep.caseId,
+        query: rep.voiceInput,
+        responseExcerpt: rep.responseText.slice(0, 300),
+        failureReason: `Response contains academic/clinical language that sounds unnatural when spoken: [${[...allPatterns].join(", ")}].`,
+      },
+      failedCheckIds: ["voice_naturalness"],
+    });
+  }
+
+  // Sort by severity (P1 first), then by count descending
+  return buckets.sort((a, b) => {
+    const sevDiff = severityRank(a.severity) - severityRank(b.severity);
+    if (sevDiff !== 0) return sevDiff;
+    return b.count - a.count;
+  });
+}
+
+/**
+ * Extract a VoiceQualitySnapshot from a voice transcript report.
+ * Used by the gatekeeper to compare before/after voice quality.
+ */
+export function extractVoiceQualitySnapshot(
+  report: VoiceTranscriptReport,
+): VoiceQualitySnapshot {
+  const vq = report.summary.voiceQuality;
+  const total = report.summary.total;
+
+  return {
+    totalTranscripts: total,
+    voiceReadyCount: vq?.overallPassCount ?? 0,
+    voiceReadyRate: total > 0 ? (vq?.overallPassCount ?? 0) / total : 0,
+    avgWordCount: vq?.avgWordCount ?? 0,
+    tooLongCount: vq?.tooLongCount ?? 0,
+    formattingIssueCount: vq?.formattingIssueCount ?? 0,
+    unnaturalLanguageCount: vq?.unnaturalLanguageCount ?? 0,
+  };
 }

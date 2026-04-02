@@ -1771,7 +1771,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           mightBeIdentifyQuestion,
-          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent, patientState }
+          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent, patientState, channel: dto.channel }
         ),
         signal
       );
@@ -1924,7 +1924,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             true,
-            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState }
+            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel }
           );
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
@@ -2107,7 +2107,7 @@ export class ChatService {
         if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
           const llm3Started = Date.now();
           llmCallCount++;
-          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState });
+          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel });
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);

@@ -629,7 +629,7 @@ Use PLAIN, REASSURING language throughout - patients need clarity and calm guida
    */
   getExplainModePrompt(
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; intent?: string; userQuery?: string }
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; intent?: string; userQuery?: string; channel?: string }
   ): string {
     // Empathy guidelines moved to END of prompt for better LLM attention (recency bias)
     const empathyGuidelines = this.getEmpathyGuidelines(conversationContext?.emotionalState);
@@ -640,7 +640,21 @@ Use PLAIN, REASSURING language throughout - patients need clarity and calm guida
       ? `\n\nIMPORTANT: The user appears to be ${conversationContext?.emotionalState}. Start your response with this empathetic opener (or similar):\n"${empathyOpener}"\nThen continue with the information.\n`
       : "";
 
-    const basePrompt = `You are Suchi, a cancer information assistant for users in India. Answer questions directly and concisely using ONLY the provided references.${empathyOpenerInstruction}
+    // Voice channel constraints — shorter, no markdown, conversational
+    const isVoice = conversationContext?.channel === 'voice';
+    const voiceConstraints = isVoice ? `
+
+VOICE CHANNEL RULES (this response will be read aloud by TTS):
+- Keep response under 150 words — the user is LISTENING, not reading
+- Do NOT use markdown formatting: no **, ##, bullet points (*, -), or numbered lists (1. 2. 3.)
+- Do NOT include citation markers [citation:...] — they sound terrible when spoken
+- Do NOT include URLs or phone number formatting like (helpline: 14555)
+- Use short conversational paragraphs instead of lists
+- Speak naturally as if talking to someone face-to-face
+- Mention key numbers conversationally: "You can call the Indian Cancer Society at eighteen hundred twenty-two nineteen fifty-one"
+` : '';
+
+    const basePrompt = `You are Suchi, a cancer information assistant for users in India. Answer questions directly and concisely using ONLY the provided references.${empathyOpenerInstruction}${voiceConstraints}
 
 CORE RULES:
 - Use ONLY facts from the retrieved NCI references — do NOT add general medical knowledge

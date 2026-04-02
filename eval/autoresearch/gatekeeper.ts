@@ -6,7 +6,7 @@
  * citation coverage, and overall score improvement.
  */
 
-import type { ScoreSnapshot, GateResult } from "./types";
+import type { ScoreSnapshot, GateResult, VoiceQualitySnapshot } from "./types";
 
 // ── Thresholds ──────────────────────────────────────────────────────────────
 
@@ -140,6 +140,96 @@ export function checkGates(
     checks,
     reason: allPassed
       ? "All gates passed"
+      : `Failed gates: ${failedGates.map((g) => g.name).join(", ")}`,
+  };
+}
+
+// ── Voice quality gate check ──────────────────────────────────────────────
+
+const VOICE_GATES = {
+  /** Voice-ready rate must not regress */
+  VOICE_READY_REGRESSION_TOLERANCE: 0.0,
+  /** Average word count must not increase */
+  AVG_WORD_COUNT_REGRESSION_TOLERANCE: 0,
+  /** Formatting issue count must not increase */
+  FORMATTING_REGRESSION_TOLERANCE: 0,
+};
+
+/**
+ * Check voice quality gates. Used when autoresearch runs in voice mode.
+ *
+ * Gates:
+ *   1. Voice-ready rate must not regress
+ *   2. Average word count must not increase
+ *   3. Formatting issue count must not increase
+ *   4. Also runs standard gold gates (safety, citation, overall) to prevent
+ *      voice-mode patches from breaking text-mode quality
+ */
+export function checkVoiceGates(
+  beforeVoice: VoiceQualitySnapshot,
+  afterVoice: VoiceQualitySnapshot,
+  beforeScores: ScoreSnapshot,
+  afterScores: ScoreSnapshot,
+): GateResult {
+  const checks: GateResult["checks"] = [];
+
+  // 1. Voice-ready rate must not regress
+  const voiceReadyRegressed =
+    afterVoice.voiceReadyRate <
+    beforeVoice.voiceReadyRate - VOICE_GATES.VOICE_READY_REGRESSION_TOLERANCE;
+  checks.push({
+    name: "Voice-ready rate (no regression)",
+    passed: !voiceReadyRegressed,
+    value: afterVoice.voiceReadyRate,
+    threshold: beforeVoice.voiceReadyRate,
+    detail: voiceReadyRegressed
+      ? `Regression: ${(beforeVoice.voiceReadyRate * 100).toFixed(1)}% -> ${(afterVoice.voiceReadyRate * 100).toFixed(1)}%`
+      : `Stable or improved: ${(beforeVoice.voiceReadyRate * 100).toFixed(1)}% -> ${(afterVoice.voiceReadyRate * 100).toFixed(1)}%`,
+  });
+
+  // 2. Average word count must not increase
+  const wordCountIncreased =
+    afterVoice.avgWordCount >
+    beforeVoice.avgWordCount + VOICE_GATES.AVG_WORD_COUNT_REGRESSION_TOLERANCE;
+  checks.push({
+    name: "Avg word count (no increase)",
+    passed: !wordCountIncreased,
+    value: afterVoice.avgWordCount,
+    threshold: beforeVoice.avgWordCount,
+    detail: wordCountIncreased
+      ? `Increased: ${beforeVoice.avgWordCount} -> ${afterVoice.avgWordCount} words`
+      : `Stable or decreased: ${beforeVoice.avgWordCount} -> ${afterVoice.avgWordCount} words`,
+  });
+
+  // 3. Formatting issue count must not increase
+  const formattingIncreased =
+    afterVoice.formattingIssueCount >
+    beforeVoice.formattingIssueCount +
+      VOICE_GATES.FORMATTING_REGRESSION_TOLERANCE;
+  checks.push({
+    name: "Formatting issues (no increase)",
+    passed: !formattingIncreased,
+    value: afterVoice.formattingIssueCount,
+    threshold: beforeVoice.formattingIssueCount,
+    detail: formattingIncreased
+      ? `Increased: ${beforeVoice.formattingIssueCount} -> ${afterVoice.formattingIssueCount}`
+      : `Stable or decreased: ${beforeVoice.formattingIssueCount} -> ${afterVoice.formattingIssueCount}`,
+  });
+
+  // 4. Standard gold gates (safety + overall) to prevent text-mode regression
+  const goldGateResult = checkGates(beforeScores, afterScores);
+  for (const check of goldGateResult.checks) {
+    checks.push({ ...check, name: `[gold] ${check.name}` });
+  }
+
+  const allPassed = checks.every((c) => c.passed);
+  const failedGates = checks.filter((c) => !c.passed);
+
+  return {
+    passed: allPassed,
+    checks,
+    reason: allPassed
+      ? "All voice + gold gates passed"
       : `Failed gates: ${failedGates.map((g) => g.name).join(", ")}`,
   };
 }
