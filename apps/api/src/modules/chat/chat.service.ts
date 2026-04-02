@@ -38,6 +38,7 @@ import { OutputVerifierService } from "./output-verifier.service";
 import { ReviewService } from "../review/review.service";
 import { ReviewContext } from "../review/review-checks";
 import { hasSection, deduplicateResponse } from "./response-deduplicator";
+import { stripForVoice } from "./voice-output-stripper";
 
 @Injectable()
 export class ChatService {
@@ -2101,6 +2102,11 @@ export class ChatService {
       // Safety-net deduplication: remove any duplicate headers, bullets, or near-duplicate paragraphs
       responseText = deduplicateResponse(responseText);
 
+      // Voice channel: strip markdown and shorten for TTS delivery
+      if (dto.channel === 'voice') {
+        responseText = stripForVoice(responseText);
+      }
+
       // Handle citation validation (skip regeneration if request budget exhausted)
       if (citationValidation.confidenceLevel === "RED") {
         this.logger.warn(`Citation validation RED: ${citationValidation.errors?.join(", ")}`);
@@ -2342,6 +2348,11 @@ export class ChatService {
 
       // Safety-net deduplication: remove any duplicate headers, bullets, or near-duplicate paragraphs
       responseText = deduplicateResponse(responseText);
+
+      // Voice channel: strip markdown and shorten for TTS delivery
+      if (dto.channel === 'voice') {
+        responseText = stripForVoice(responseText);
+      }
 
       // Extract citations from response text if RAG chunks were used
       let citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }> = [];
