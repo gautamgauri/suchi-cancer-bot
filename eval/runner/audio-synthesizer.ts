@@ -41,7 +41,7 @@ export class AudioSynthesizer {
 
     // Use Google TTS to generate base audio
     const ttsClient = await this.getTtsClient();
-    const voiceName = testCase.locale === 'hi-IN' ? 'hi-IN-Neural2-A' : 'en-IN-Neural2-A';
+    const voiceName = testCase.locale === 'hi-IN' ? 'hi-IN-Neural2-D' : 'en-IN-Neural2-C';
 
     const [response] = await ttsClient.synthesizeSpeech({
       input: { text: testCase.expectedTranscript },

@@ -7,6 +7,7 @@ import { GcsStorageService } from './services/gcs-storage.service';
 import { GoogleSttProvider } from './providers/google-stt.provider';
 import { GoogleSttV2Provider } from './providers/google-stt-v2.provider';
 import { GoogleTtsProvider } from './providers/google-tts.provider';
+import { SarvamTtsProvider } from './providers/sarvam-tts.provider';
 import { STT_PROVIDER, TTS_PROVIDER } from './interfaces/speech-provider.interface';
 import { ChatModule } from '../chat/chat.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
@@ -18,6 +19,12 @@ const sttProvider = {
     process.env.STT_VERSION === 'v1' ? GoogleSttProvider : GoogleSttV2Provider,
 };
 
+const ttsProvider = {
+  provide: TTS_PROVIDER,
+  useClass:
+    process.env.TTS_PROVIDER === 'sarvam' ? SarvamTtsProvider : GoogleTtsProvider,
+};
+
 @Module({
   imports: [ChatModule, AnalyticsModule, PrismaModule],
   controllers: [VoiceController],
@@ -27,7 +34,7 @@ const sttProvider = {
     VoiceResponseCondenser,
     GcsStorageService,
     sttProvider,
-    { provide: TTS_PROVIDER, useClass: GoogleTtsProvider },
+    ttsProvider,
   ],
   exports: [VoiceService, AudioConverterService, VoiceResponseCondenser, GcsStorageService, sttProvider, TTS_PROVIDER],
 })

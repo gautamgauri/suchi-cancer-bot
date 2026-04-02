@@ -86,6 +86,8 @@ interface TranscriptResult {
     mustMentionAny?: { expected: string[]; found: string[]; pass: boolean };
     safetyMatch: boolean;
     withinLatency: boolean;
+    // Voice quality checks (supplementary, non-blocking)
+    voiceQuality?: VoiceQualityCheckResult;
   };
   sessionId: string;
 }
@@ -102,6 +104,13 @@ interface TranscriptReport {
     avgResponseTimeMs: number;
     totalExecutionTimeMs: number;
     llmJudgeAvailable: boolean;
+    voiceQuality?: {
+      tooLongCount: number;
+      formattingIssueCount: number;
+      unnaturalLanguageCount: number;
+      avgWordCount: number;
+      overallPassCount: number;
+    };
   };
   transcripts: TranscriptResult[];
   improvements: string[];
@@ -163,6 +172,147 @@ const VOICE_EVAL_JUDGE_CONFIG: LLMJudgeConfig = {
   checks: VOICE_EVAL_CHECKS,
   output_schema: {},
 };
+
+// ── Voice Quality Checks (supplementary, non-blocking) ──────────────
+
+/**
+ * Known medical terms that TTS engines commonly mispronounce.
+ * Each entry maps a term to pronunciation guidance (for reporting only).
+ */
+const TTS_PROBLEMATIC_TERMS: Record<string, string> = {
+  'mammogram': 'MAM-oh-gram',
+  'mammography': 'ma-MOG-rah-fee',
+  'colonoscopy': 'koh-lon-OS-koh-pee',
+  'oncologist': 'on-KOL-oh-jist',
+  'chemotherapy': 'kee-moh-THER-ah-pee',
+  'biopsy': 'BY-op-see',
+  'metastasis': 'meh-TAS-tah-sis',
+  'metastatic': 'met-ah-STAT-ik',
+  'carcinoma': 'kar-sih-NOH-mah',
+  'lymphoma': 'lim-FOH-mah',
+  'melanoma': 'mel-ah-NOH-mah',
+  'immunotherapy': 'im-yoo-noh-THER-ah-pee',
+  'hematologist': 'hee-mah-TOL-oh-jist',
+  'radiotherapy': 'ray-dee-oh-THER-ah-pee',
+  'lumpectomy': 'lum-PEK-toh-mee',
+  'mastectomy': 'mas-TEK-toh-mee',
+  'colposcopy': 'kol-POS-koh-pee',
+  'endoscopy': 'en-DOS-koh-pee',
+  'laparoscopy': 'lap-ah-ROS-koh-pee',
+  'prognosis': 'prog-NOH-sis',
+  'palliative': 'PAL-ee-ah-tiv',
+  'neoadjuvant': 'nee-oh-AD-joo-vant',
+  'adjuvant': 'AD-joo-vant',
+  'leukemia': 'loo-KEE-mee-ah',
+  'sarcoma': 'sar-KOH-mah',
+  'myeloma': 'my-eh-LOH-mah',
+};
+
+/** Maximum words for a voice response (~60 seconds at 150 wpm) */
+const VOICE_MAX_WORDS = 150;
+
+/** Patterns that should NOT appear in voice-delivered responses */
+const VOICE_BAD_FORMAT_PATTERNS: { pattern: RegExp; label: string }[] = [
+  { pattern: /\*\*[^*]+\*\*/, label: 'bold markdown (**text**)' },
+  { pattern: /^#{1,6}\s/m, label: 'heading markdown (## heading)' },
+  { pattern: /^\s*[-*]\s/m, label: 'bullet list (* or - item)' },
+  { pattern: /^\s*\d+\.\s/m, label: 'numbered list (1. item)' },
+  { pattern: /\[citation[:\s]/i, label: 'citation marker [citation:...]' },
+  { pattern: /\[source[:\s]/i, label: 'source marker [source:...]' },
+  { pattern: /https?:\/\/\S+/, label: 'URL (https://...)' },
+  { pattern: /\|\s*[-:]+\s*\|/, label: 'markdown table' },
+  { pattern: /```/, label: 'code block (```)' },
+];
+
+/** Patterns that indicate academic/clinical language unlikely to sound natural */
+const VOICE_UNNATURAL_PATTERNS: { pattern: RegExp; label: string }[] = [
+  { pattern: /\betiology\b/i, label: 'etiology (say "cause")' },
+  { pattern: /\bcontraindicated\b/i, label: 'contraindicated (say "not recommended")' },
+  { pattern: /\bpathophysiology\b/i, label: 'pathophysiology' },
+  { pattern: /\basymptomatic\b/i, label: 'asymptomatic (say "no symptoms")' },
+  { pattern: /\bcomorbidities\b/i, label: 'comorbidities (say "other health conditions")' },
+  { pattern: /\bhematologic\b/i, label: 'hematologic (say "blood-related")' },
+  { pattern: /\bhistopathological\b/i, label: 'histopathological' },
+  { pattern: /\bcytology\b/i, label: 'cytology' },
+  { pattern: /\bprognosis is\s+(guarded|poor|favorable)\b/i, label: 'clinical prognosis phrasing' },
+  { pattern: /\bper the literature\b/i, label: '"per the literature" (academic tone)' },
+  { pattern: /\bstudies have shown\b/i, label: '"studies have shown" (academic tone)' },
+  { pattern: /\bi\.e\.\b/i, label: 'i.e. (say "that is")' },
+  { pattern: /\be\.g\.\b/i, label: 'e.g. (say "for example")' },
+];
+
+export interface VoiceQualityCheckResult {
+  /** Word count of the response */
+  wordCount: number;
+  /** Whether response exceeds voice-appropriate length */
+  tooLongForVoice: boolean;
+  /** Formatting issues found (markdown, citations, URLs, etc.) */
+  formattingIssues: string[];
+  /** Whether response has formatting issues */
+  hasFormattingIssues: boolean;
+  /** Medical terms found that TTS may mispronounce */
+  problematicTerms: { term: string; pronunciation: string }[];
+  /** Unnatural/academic language patterns found */
+  unnaturalPatterns: string[];
+  /** Whether response has unnatural language */
+  hasUnnaturalLanguage: boolean;
+  /** Overall voice quality pass (all sub-checks pass) */
+  overallPass: boolean;
+}
+
+/**
+ * Run all voice quality checks on a response text.
+ * These are supplementary (non-blocking) checks that flag issues
+ * affecting TTS delivery quality.
+ */
+export function runVoiceQualityChecks(responseText: string): VoiceQualityCheckResult {
+  // 1. Word count / length check
+  const words = responseText.trim().split(/\s+/).filter(w => w.length > 0);
+  const wordCount = words.length;
+  const tooLongForVoice = wordCount > VOICE_MAX_WORDS;
+
+  // 2. Formatting check — detect markdown, citations, URLs
+  const formattingIssues: string[] = [];
+  for (const { pattern, label } of VOICE_BAD_FORMAT_PATTERNS) {
+    if (pattern.test(responseText)) {
+      formattingIssues.push(label);
+    }
+  }
+  const hasFormattingIssues = formattingIssues.length > 0;
+
+  // 3. Pronunciation check — find medical terms TTS may struggle with
+  const lowerText = responseText.toLowerCase();
+  const problematicTerms: { term: string; pronunciation: string }[] = [];
+  for (const [term, pronunciation] of Object.entries(TTS_PROBLEMATIC_TERMS)) {
+    if (lowerText.includes(term.toLowerCase())) {
+      problematicTerms.push({ term, pronunciation });
+    }
+  }
+
+  // 4. Conversational naturalness — flag academic/clinical language
+  const unnaturalPatterns: string[] = [];
+  for (const { pattern, label } of VOICE_UNNATURAL_PATTERNS) {
+    if (pattern.test(responseText)) {
+      unnaturalPatterns.push(label);
+    }
+  }
+  const hasUnnaturalLanguage = unnaturalPatterns.length > 0;
+
+  // Overall: pass if no formatting issues AND not too long
+  // (pronunciation and naturalness are advisory, not blocking)
+  const overallPass = !tooLongForVoice && !hasFormattingIssues;
+
+  return {
+    wordCount,
+    tooLongForVoice,
+    formattingIssues,
+    hasFormattingIssues,
+    problematicTerms,
+    unnaturalPatterns,
+    hasUnnaturalLanguage,
+    overallPass,
+  };
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -292,6 +442,33 @@ function deriveImprovements(results: TranscriptResult[]): string[] {
     );
   }
 
+  // Voice quality issues
+  const tooLongCases = results.filter(r => r.checks.voiceQuality?.tooLongForVoice);
+  if (tooLongCases.length > 0) {
+    const avgWords = Math.round(tooLongCases.reduce((s, r) => s + (r.checks.voiceQuality?.wordCount || 0), 0) / tooLongCases.length);
+    improvements.push(
+      `${tooLongCases.length} response(s) too long for voice delivery (avg ${avgWords} words, max ${VOICE_MAX_WORDS}): ${tooLongCases.map(r => r.caseId).join(', ')}. Consider adding voice-mode response length limits.`
+    );
+  }
+
+  const formattingCases = results.filter(r => r.checks.voiceQuality?.hasFormattingIssues);
+  if (formattingCases.length > 0) {
+    const allIssues = new Set<string>();
+    formattingCases.forEach(r => r.checks.voiceQuality?.formattingIssues.forEach(i => allIssues.add(i)));
+    improvements.push(
+      `${formattingCases.length} response(s) contain formatting unsuitable for voice: [${[...allIssues].join(', ')}]. Strip markdown/citations before TTS.`
+    );
+  }
+
+  const unnaturalCases = results.filter(r => r.checks.voiceQuality?.hasUnnaturalLanguage);
+  if (unnaturalCases.length > 0) {
+    const allPatterns = new Set<string>();
+    unnaturalCases.forEach(r => r.checks.voiceQuality?.unnaturalPatterns.forEach(p => allPatterns.add(p)));
+    improvements.push(
+      `${unnaturalCases.length} response(s) contain academic/clinical language that sounds unnatural when spoken: [${[...allPatterns].join(', ')}]. Consider voice-mode prompt tuning.`
+    );
+  }
+
   // Hindi/Hinglish handling
   const hindiCases = results.filter(r => r.voiceInput.match(/[a-z]+\s+(ke|mein|ka|ki|hai|kya)\b/i));
   const hindiFails = hindiCases.filter(r => !r.passed);
@@ -375,6 +552,9 @@ export async function runVoiceTranscriptEval(opts: {
       const safetyMatch = response.safety?.classification === tc.expectations.safety;
       const withinLatency = responseTimeMs <= tc.expectations.max_response_time_ms;
 
+      // --- Voice quality checks (supplementary, non-blocking) ---
+      const voiceQuality = runVoiceQualityChecks(response.responseText);
+
       // --- LLM judge evaluation (primary) ---
       let llmJudgeSection: TranscriptResult['checks']['llmJudge'] | undefined;
       let llmJudgePassed = false;
@@ -453,6 +633,7 @@ export async function runVoiceTranscriptEval(opts: {
           ...(mustMentionAnyResult ? { mustMentionAny: { expected: tc.expectations.must_mention_any!, found: mustMentionAnyResult.found, pass: mustMentionAnyResult.pass } } : {}),
           safetyMatch,
           withinLatency,
+          voiceQuality,
         },
         sessionId: response.sessionId,
       };
@@ -473,6 +654,22 @@ export async function runVoiceTranscriptEval(opts: {
 
       if (!mustMentionPass) {
         console.log(`  Keywords (supplementary): missing [${mustMentionResult.missing.join(', ')}]`);
+      }
+
+      // Voice quality warnings (supplementary)
+      if (!voiceQuality.overallPass) {
+        if (voiceQuality.tooLongForVoice) {
+          console.log(`  Voice Quality: TOO LONG (${voiceQuality.wordCount} words, max ${VOICE_MAX_WORDS})`);
+        }
+        if (voiceQuality.hasFormattingIssues) {
+          console.log(`  Voice Quality: formatting issues [${voiceQuality.formattingIssues.join(', ')}]`);
+        }
+      }
+      if (voiceQuality.problematicTerms.length > 0) {
+        console.log(`  Voice Quality: TTS pronunciation risk [${voiceQuality.problematicTerms.map(t => t.term).join(', ')}]`);
+      }
+      if (voiceQuality.hasUnnaturalLanguage) {
+        console.log(`  Voice Quality: unnatural language [${voiceQuality.unnaturalPatterns.join(', ')}]`);
       }
     } catch (err: any) {
       const responseTimeMs = Date.now() - caseStart;
@@ -506,6 +703,16 @@ export async function runVoiceTranscriptEval(opts: {
   // Gather LLM cost info
   const costSummary = llmJudge.getCostSummary();
 
+  // Voice quality summary
+  const vqResults = results.filter(r => r.checks.voiceQuality);
+  const voiceQualitySummary = vqResults.length > 0 ? {
+    tooLongCount: vqResults.filter(r => r.checks.voiceQuality!.tooLongForVoice).length,
+    formattingIssueCount: vqResults.filter(r => r.checks.voiceQuality!.hasFormattingIssues).length,
+    unnaturalLanguageCount: vqResults.filter(r => r.checks.voiceQuality!.hasUnnaturalLanguage).length,
+    avgWordCount: Math.round(vqResults.reduce((s, r) => s + r.checks.voiceQuality!.wordCount, 0) / vqResults.length),
+    overallPassCount: vqResults.filter(r => r.checks.voiceQuality!.overallPass).length,
+  } : undefined;
+
   const report: TranscriptReport = {
     runId: `vt-${Date.now()}`,
     timestamp: new Date().toISOString(),
@@ -518,6 +725,7 @@ export async function runVoiceTranscriptEval(opts: {
       avgResponseTimeMs,
       totalExecutionTimeMs,
       llmJudgeAvailable,
+      voiceQuality: voiceQualitySummary,
     },
     transcripts: results,
     improvements,
@@ -546,6 +754,16 @@ export async function runVoiceTranscriptEval(opts: {
       console.log(`LLM Cost: $${costSummary.totalCost.toFixed(4)} (${costSummary.totalTokens} tokens, ${costSummary.callCount} calls)`);
     }
 
+    // Voice quality summary
+    if (voiceQualitySummary) {
+      console.log(`\n--- Voice Quality (supplementary) ---`);
+      console.log(`  Voice-ready: ${voiceQualitySummary.overallPassCount}/${vqResults.length} responses`);
+      console.log(`  Avg word count: ${voiceQualitySummary.avgWordCount} (max ${VOICE_MAX_WORDS})`);
+      console.log(`  Too long for voice: ${voiceQualitySummary.tooLongCount}`);
+      console.log(`  Formatting issues: ${voiceQualitySummary.formattingIssueCount}`);
+      console.log(`  Unnatural language: ${voiceQualitySummary.unnaturalLanguageCount}`);
+    }
+
     console.log('\n--- Transcripts ---');
     for (const r of results) {
       const status = r.passed ? 'PASS' : 'FAIL';
@@ -568,6 +786,18 @@ export async function runVoiceTranscriptEval(opts: {
       // Keyword checks (supplementary)
       if (!r.checks.mustMention.pass) {
         console.log(`  Keywords (supplementary): missing [${r.checks.mustMention.missing.join(', ')}]`);
+      }
+
+      // Voice quality checks (supplementary)
+      if (r.checks.voiceQuality) {
+        const vq = r.checks.voiceQuality;
+        const vqParts: string[] = [`${vq.wordCount} words`];
+        if (vq.tooLongForVoice) vqParts.push('TOO LONG');
+        if (vq.hasFormattingIssues) vqParts.push(`fmt:[${vq.formattingIssues.join(', ')}]`);
+        if (vq.problematicTerms.length > 0) vqParts.push(`tts-risk:[${vq.problematicTerms.map(t => t.term).join(', ')}]`);
+        if (vq.hasUnnaturalLanguage) vqParts.push(`unnatural:[${vq.unnaturalPatterns.join(', ')}]`);
+        const vqStatus = vq.overallPass ? 'ok' : 'WARN';
+        console.log(`  Voice Quality: [${vqStatus}] ${vqParts.join(' | ')}`);
       }
     }
 

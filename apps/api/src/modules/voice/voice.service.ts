@@ -118,8 +118,8 @@ export class VoiceService {
       ttsProvider: 'google',
       ttsAudioUrl: pipelineResult.audioUrl,
       ttsVoiceName: locale.startsWith('en')
-        ? 'en-IN-Neural2-A'
-        : this.config.get<string>('TTS_VOICE_NAME') || 'hi-IN-Neural2-A',
+        ? 'en-IN-Neural2-C'
+        : this.config.get<string>('TTS_VOICE_NAME') || 'hi-IN-Neural2-D',
       sttLatencyMs: sttMs,
       ttsLatencyMs: pipelineResult.ttsMs,
       totalLatencyMs: totalMs,

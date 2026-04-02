@@ -12,13 +12,13 @@ export class GoogleTtsProvider implements TtsProvider {
 
   constructor(private readonly config: ConfigService) {
     this.client = new TextToSpeechClient();
-    this.defaultVoice = this.config.get<string>("TTS_VOICE_NAME") || "hi-IN-Neural2-A";
+    this.defaultVoice = this.config.get<string>("TTS_VOICE_NAME") || "hi-IN-Neural2-D";
     this.speakingRate = this.config.get<number>("TTS_SPEAKING_RATE") || 0.9;
   }
 
   async synthesize(ssml: string, voiceName?: string, locale?: string): Promise<TtsResult> {
     const started = Date.now();
-    const voice = voiceName || (locale?.startsWith("en") ? "en-IN-Neural2-A" : this.defaultVoice);
+    const voice = voiceName || (locale?.startsWith("en") ? "en-IN-Neural2-C" : this.defaultVoice);
     const languageCode = voice.slice(0, 5); // Extract "hi-IN" or "en-IN" from voice name
 
     const [response] = await this.client.synthesizeSpeech({
@@ -30,7 +30,7 @@ export class GoogleTtsProvider implements TtsProvider {
       audioConfig: {
         audioEncoding: "MP3" as any,
         speakingRate: this.speakingRate,
-        pitch: 0,
+        pitch: 1.0,
         effectsProfileId: ["headphone-class-device"],
       },
     });

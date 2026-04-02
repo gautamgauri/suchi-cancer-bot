@@ -26,8 +26,13 @@ export const envSchema = z.object({
   STT_LANGUAGE_CODE: z.string().optional().default("hi-IN"),
   STT_MODEL: z.string().optional().default("latest_short"),
   STT_CONFIDENCE_THRESHOLD: z.coerce.number().optional().default(0.6),
-  TTS_VOICE_NAME: z.string().optional().default("hi-IN-Neural2-A"),
+  TTS_VOICE_NAME: z.string().optional().default("hi-IN-Neural2-D"),
   TTS_SPEAKING_RATE: z.coerce.number().optional().default(0.9),
+  TTS_PROVIDER: z.enum(['google', 'sarvam']).optional().default('google'),
+  // Sarvam AI TTS (optional — used when TTS_PROVIDER=sarvam)
+  SARVAM_API_KEY: z.string().min(1).optional(),
+  SARVAM_TTS_SPEAKER: z.string().optional().default('meera'),
+  SARVAM_TTS_MODEL: z.string().optional().default('bulbul:v2'),
   VOICE_MAX_AUDIO_SIZE_BYTES: z.coerce.number().optional().default(2097152),
   VOICE_MAX_AUDIO_DURATION_SEC: z.coerce.number().optional().default(60),
   // STT version: v2 uses phrase adaptation for better accuracy
