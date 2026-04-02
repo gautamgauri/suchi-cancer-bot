@@ -54,8 +54,17 @@ export function stripForVoice(text: string): string {
   result = result.replace(/^\*\s/gm, '');
 
   // ── Remove duplicate template blocks ──────────────────────────────
-  // Navigate-mode template that gets appended after the LLM response
-  result = result.replace(/I understand (this can be worrying|you're experiencing symptoms)\.\s*Many symptoms like these turn out to have non-cancerous causes\.\s*\n*.*?(?:When did these symptoms start\?|How often do they occur\?)\s*/gs, '');
+  // Only remove the SECOND occurrence of the navigate-mode template (if duplicated)
+  const navigateTemplate = /I understand (this can be worrying|you're experiencing symptoms)\.\s*Many symptoms like these/g;
+  const matches = [...result.matchAll(navigateTemplate)];
+  if (matches.length > 1) {
+    // Remove from second occurrence to "How often do they occur?"
+    const secondStart = matches[1].index!;
+    const endPattern = result.indexOf('How often do they occur?', secondStart);
+    if (endPattern > secondStart) {
+      result = result.substring(0, secondStart) + result.substring(endPattern + 'How often do they occur?'.length);
+    }
+  }
 
   // "Key points to be aware of:" section if it duplicates earlier content
   // Keep only the first occurrence
