@@ -831,7 +831,7 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     userMessage: string,
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
-    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string; patientState?: PatientState },
+    conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string; patientState?: PatientState; channel?: string },
     isTimeoutRetry: boolean = false
   ): Promise<string> {
     // Resolve mode to actual prompt
