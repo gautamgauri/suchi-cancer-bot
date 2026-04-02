@@ -133,10 +133,10 @@ export interface LLMJudgeResult {
 }
 
 export interface LLMJudgeResponse {
-  pass: boolean;
+  pass: boolean | string;
   score: number;
   checks: Record<string, {
-    ok: boolean;
+    ok: boolean | string; // Gemini may return "true"/"false" strings
     count?: number;
     evidence: string;
   }>;
