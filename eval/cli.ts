@@ -380,6 +380,12 @@ program
         summary: !!options.summary,
       });
 
+      // Print concise voice quality summary if not already shown by --summary
+      if (!options.summary && report.summary.voiceQuality) {
+        const vq = report.summary.voiceQuality;
+        console.log(`\nVoice Quality: ${vq.overallPassCount}/${report.summary.total} voice-ready | avg ${vq.avgWordCount} words | ${vq.tooLongCount} too long | ${vq.formattingIssueCount} formatting issues | ${vq.unnaturalLanguageCount} unnatural`);
+      }
+
       if (options.email) {
         await emailTranscriptReport(report, options.email);
       }
