@@ -65,7 +65,7 @@ export class ApiClient {
    * @param userContext Optional user context (general, patient, caregiver, post_diagnosis)
    */
   async createSession(
-    channel: "web" | "app" | "whatsapp" = "web",
+    channel: "web" | "app" | "whatsapp" | "voice" = "web",
     cancerType?: string,
     userContext?: "general" | "patient" | "caregiver" | "post_diagnosis"
   ): Promise<string> {
@@ -113,7 +113,7 @@ export class ApiClient {
   async sendMessage(
     sessionId: string,
     userText: string,
-    channel: "web" | "app" | "whatsapp" = "web"
+    channel: "web" | "app" | "whatsapp" | "voice" = "web"
   ): Promise<ChatResponse> {
     let lastError: Error | null = null;
     let allTimeouts = true;
@@ -180,7 +180,7 @@ export class ApiClient {
   async executeConversation(
     sessionId: string,
     userMessages: string[],
-    channel: "web" | "app" | "whatsapp" = "web"
+    channel: "web" | "app" | "whatsapp" | "voice" = "web"
   ): Promise<{
     finalResponse: ChatResponse;
     allResponses: ChatResponse[];
