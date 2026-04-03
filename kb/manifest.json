@@ -34591,6 +34591,42 @@
       ],
       "url": "https://www.cancer.gov/pediatric-adult-rare-tumor/support/coping-young-adults",
       "citation": "NCI, 2025"
+    },
+    {
+      "id": "kb_en_cancer_treatment_costs_india_v1",
+      "title": "Cancer Treatment Costs and Financial Aid in India",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Compiled (India Resources)",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/cancer-treatment-costs-india.md",
+      "license": "public_info",
+      "lastReviewed": "2026-04-01",
+      "reviewFrequency": "monthly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general",
+        "breast",
+        "lung",
+        "colorectal",
+        "cervical",
+        "leukemia",
+        "oral"
+      ],
+      "tags": [
+        "costs",
+        "financial-aid",
+        "ayushman-bharat",
+        "pm-jay",
+        "insurance",
+        "ngo",
+        "bihar",
+        "india",
+        "navigation"
+      ],
+      "url": null,
+      "citation": "SCCF Compiled, 2026"
     }
   ]
 }
