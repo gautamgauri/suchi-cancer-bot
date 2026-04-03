@@ -38,8 +38,8 @@ export class TemplateSelector {
     // Select template
     let responseText = ResponseTemplates.selectTemplate(intentResult.intent, context);
 
-    // Append closing template if needed
-    if (ResponseTemplates.needsClosingTemplate(responseText)) {
+    // Append closing template if needed (skip for greetings — they're self-contained)
+    if (intentResult.intent !== "GREETING_ONLY" && ResponseTemplates.needsClosingTemplate(responseText)) {
       // Use K1 for report-related, K2 for general
       if (intentResult.intent.includes("REPORT")) {
         responseText += ResponseTemplates.K1(context);
