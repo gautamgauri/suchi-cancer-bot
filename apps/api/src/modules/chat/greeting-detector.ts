@@ -7,6 +7,10 @@ export class GreetingDetector {
   private static readonly GREETING_PATTERNS = [
     /^(hi|hello|hey|namaste|namaskar|greetings|good morning|good afternoon|good evening)$/i,
     /^(hi|hello|hey)\s*[!.]*$/i,
+    // Conversational greetings: "hi there", "hello how are you", "hey how are you doing today"
+    /^(hi|hello|hey)\s+(there|suchi)?\s*(,?\s*)?(how are you|how's it going|what's up|how do you do|how are you doing).*$/i,
+    /^(good morning|good afternoon|good evening)\s*(,?\s*)?(how are you|how's it going)?.*$/i,
+    /^(namaste|namaskar)\s*(,?\s*)?(kaise ho|kaise hain|aap kaise hain)?.*$/i,
     /^👋\s*$/,
     /^🙏\s*$/
   ];
