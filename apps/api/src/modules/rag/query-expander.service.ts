@@ -287,6 +287,69 @@ export class QueryExpanderService {
     ['hpv cancer', ['human papillomavirus cancer', 'hpv related cancer', 'hpv infection cancer risk']],
   ]);
 
+  // ============= HINGLISH / HINDI MEDICAL SYNONYMS =============
+  // Maps Hindi/Hinglish medical terms and phrases to English equivalents
+  // so that Hinglish queries produce useful RAG embeddings matches.
+  private readonly HINGLISH_SYNONYMS = new Map<string, string[]>([
+    // Medical concepts
+    ['ilaj', ['treatment', 'therapy']],
+    ['ilaaj', ['treatment', 'therapy']],
+    ['lakshan', ['symptoms', 'signs']],
+    ['bimari', ['disease', 'cancer']],
+    ['beemari', ['disease', 'cancer']],
+    ['gaanth', ['lump', 'tumor', 'mass']],
+    ['ganth', ['lump', 'tumor', 'mass']],
+    ['dard', ['pain']],
+    ['khoon', ['blood', 'bleeding']],
+    ['jaanch', ['test', 'screening', 'examination']],
+    ['janch', ['test', 'screening']],
+    ['dawai', ['medicine', 'medication', 'drug']],
+    ['dawa', ['medicine', 'medication']],
+    ['aushadhi', ['medicine', 'medication', 'drug']],
+    ['upchar', ['treatment', 'therapy', 'cure']],
+    ['upchaar', ['treatment', 'therapy', 'cure']],
+    ['sujan', ['swelling', 'inflammation']],
+    ['bukhar', ['fever']],
+    ['thakan', ['fatigue', 'tiredness']],
+    ['kamzori', ['weakness', 'fatigue']],
+    ['ulti', ['vomiting', 'nausea']],
+    ['pet dard', ['abdominal pain', 'stomach pain']],
+
+    // Action/question phrases
+    ['bache', ['prevention', 'avoid', 'protect']],
+    ['bachav', ['prevention', 'protection']],
+    ['bachao', ['prevention', 'protect']],
+    ['kaise', ['how to']],
+    ['kya hai', ['what is']],
+    ['kya hota hai', ['what is', 'what happens']],
+    ['ho sakta hai', ['is it possible', 'can it']],
+    ['ho sakta hai kya', ['is it possible', 'can it be']],
+    ['kab', ['when', 'timing']],
+    ['kahan', ['where']],
+    ['karana chahiye', ['should get', 'recommended']],
+    ['karna chahiye', ['should do', 'recommended']],
+    ['hota hai', ['happens', 'occurs']],
+    ['hua hai', ['has happened', 'diagnosed with']],
+    ['kya kare', ['what to do', 'what should I do']],
+    ['kya karna chahiye', ['what should be done', 'what to do']],
+
+    // Family/relational (caregiver context)
+    ['mere papa', ['my father']],
+    ['meri maa', ['my mother']],
+    ['mere pita', ['my father']],
+    ['meri mata', ['my mother']],
+    ['mere bhai', ['my brother']],
+    ['meri behen', ['my sister']],
+    ['mere pati', ['my husband']],
+    ['meri patni', ['my wife']],
+
+    // Cancer-specific Hinglish
+    ['cure', ['cure', 'treatment', 'recovery']],
+    ['stage', ['stage', 'staging']],
+    ['report', ['report', 'test results']],
+    ['operation', ['surgery', 'surgical procedure']],
+  ]);
+
   // ============= INTENTS TO EXPAND =============
   // Only expand queries for these informational intents
   private readonly EXPANDABLE_INTENTS = new Set([
@@ -335,6 +398,9 @@ export class QueryExpanderService {
 
     // 6. Expand risk factor terms (for cross-cancer risk factor queries like smoking, obesity)
     this.expandTerms(lowerQuery, this.RISK_FACTOR_SYNONYMS, expanded, matchedSynonyms);
+
+    // 7. Expand Hinglish/Hindi medical terms (for multilingual queries)
+    this.expandTerms(lowerQuery, this.HINGLISH_SYNONYMS, expanded, matchedSynonyms);
 
     // Deduplicate expanded queries
     const uniqueExpanded = [...new Set(expanded)];
@@ -418,6 +484,7 @@ export class QueryExpanderService {
       || this.CANCER_SYNONYMS.get(lower)
       || this.NAVIGATION_SYNONYMS.get(lower)
       || this.RISK_FACTOR_SYNONYMS.get(lower)
+      || this.HINGLISH_SYNONYMS.get(lower)
       || this.ABBREVIATIONS.get(lower)
       || [];
   }

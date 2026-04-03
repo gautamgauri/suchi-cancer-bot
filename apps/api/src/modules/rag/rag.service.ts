@@ -53,10 +53,20 @@ export class RagService {
         this.logger.debug(`Cross-cancer retrieval returned ${crossCancerResults.length} chunks, falling through to normal retrieval`);
       }
 
+      // Step 0.5: Expand ultra-short queries (≤3 words) for better retrieval
+      // "breast cancer" alone retrieves random staging content; expanding to
+      // "tell me about breast cancer overview" steers toward general overview chunks.
+      const wordCount = query.trim().split(/\s+/).length;
+      let effectiveQuery = query;
+      if (wordCount <= 3 && !query.includes('?')) {
+        effectiveQuery = `tell me about ${query} overview`;
+        this.logger.debug(`Short query expansion: "${query}" → "${effectiveQuery}"`);
+      }
+
       // Step 1: Query rewrite using QueryTypeClassifier + cancer terms
       // Resolve the effective queryType for intent-aware scoring downstream
-      const classifiedQueryType: string = queryType || QueryTypeClassifier.classify(query);
-      const rewrittenQuery = this.rewriteQuery(query, cancerType, classifiedQueryType);
+      const classifiedQueryType: string = queryType || QueryTypeClassifier.classify(effectiveQuery);
+      const rewrittenQuery = this.rewriteQuery(effectiveQuery, cancerType, classifiedQueryType);
       if (rewrittenQuery !== query) {
         this.logger.debug(`Query rewritten from "${query}" to "${rewrittenQuery}" (queryType: ${classifiedQueryType})`);
       }
