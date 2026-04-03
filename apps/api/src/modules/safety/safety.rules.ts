@@ -33,13 +33,21 @@ export const SELF_HARM_PATTERNS = [
   /self[- ]?harm/i,
   /cut myself/i,
   /want to hurt myself/i,
+  /end it all/i,
+  /give up on life/i,
+  /just want the pain to stop/i,
+  /want to end everything/i,
   // Hindi
   /मरना\s+चाह/i,
   /जीने\s+का\s+मन\s+नहीं/i,
   /ख़ुद\s*को\s*(मार|नुकसान)/i,
+  /जीना\s+नहीं\s+चाह/i,
+  /सब\s+ख़त्म\s+कर/i,
   // Hinglish
   /\bmarna\s+chahta\b/i,
   /\bjeene\s+ka\s+mann?\s+nahi\b/i,
+  /\bjeena\s+nahi\b/i,
+  /\bsab\s+khatam\b/i,
 ];
 
 // ─── Emergency patterns (English + Hindi + Hinglish) ─────────────────

@@ -421,50 +421,55 @@ I can help you prepare what to say to the clinician. But please prioritize getti
     // CRITICAL: This template is used when crisis indicators are detected
     return `I hear you, and I'm deeply concerned about what you're sharing. Please know that you're not alone, and there are people who want to help right now.
 
+**If you're in immediate danger**, please call **112** or go to your nearest emergency room.
+
 **Please reach out for support now:**
-- **Vandrevala Foundation**: 9999666555 (24/7 mental health support)
+- **Tele-MANAS**: 14416 (Government of India, 24/7, toll-free)
+- **Vandrevala Foundation**: 1860-2662-345 (24/7 mental health support)
+- **NIMHANS**: 080-46110007 (24/7)
+- **AASRA**: 9820466726 (24/7)
 - **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)
-- **Indian Cancer Society**: 1800-22-1951 (toll-free cancer helpline)
 
 These services are confidential and staffed by trained professionals who understand what you're going through.
-
-**If you're in immediate danger**, please call 112 or go to your nearest emergency room.
 
 Cancer is incredibly hard, and the emotional weight can feel unbearable at times. But there is help, and you deserve support through this. Would you like me to share more resources or information about what you're going through?`;
   }
 
   static MH2(context: TemplateContext): string {
     // Depression/emotional distress support (non-crisis)
-    return `I hear how difficult this is for you. Cancer is not just a physical journey—the emotional weight can be overwhelming, and what you're feeling is completely valid.
+    return `I hear how difficult this is for you. Cancer is not just a physical journey — the emotional weight can be overwhelming, and what you're feeling is completely normal for someone going through this.
 
-**Support resources available to you:**
-- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST) - trained counselors
-- **Muktaa Charitable Foundation**: 7887889882 (Mon-Sat, 9:30am-5:30pm IST) - mental health helpline
-- **Indian Cancer Society**: 1800-22-1951 (toll-free) - cancer helpline
-- **Vandrevala Foundation**: 9999666555 (24/7) - mental health helpline
+**You don't have to carry this alone. These helplines have trained counsellors who understand:**
+- **Tele-MANAS**: 14416 (Government of India, 24/7, toll-free)
+- **Vandrevala Foundation**: 1860-2662-345 (24/7 mental health support)
+- **NIMHANS**: 080-46110007 (24/7)
+- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)
+- **AASRA**: 9820466726 (24/7)
 
 **Many cancer patients find these helpful:**
-- **Support groups**: Connecting with others who truly understand
-- **Counseling**: Talking to someone trained in cancer-related distress
-- **Self-compassion**: Acknowledging that you're dealing with something incredibly hard
+- **Hospital counsellors**: Most oncology centres have psycho-oncology or counselling services — ask your care team
+- **Support groups**: Connecting with others who truly understand what you're going through
+- **Professional counselling**: Talking to someone trained in cancer-related emotional distress
 
-Would you like me to share more information about cancer support groups or mental health resources?`;
+It takes courage to share what you're feeling. Would you like more information about cancer support groups or counselling services near you?`;
   }
 
   static MH3(context: TemplateContext): string {
     // Support-seeking / isolation (lightest touch)
-    return `It's a sign of strength to seek support. Dealing with cancer—whether as a patient or caregiver—takes an emotional toll, and you deserve support through this journey.
+    return `It's a sign of strength to reach out. Dealing with cancer — whether as a patient or caregiver — takes an emotional toll, and you deserve support through this journey. What you're feeling is completely understandable.
 
-**Mental health resources for cancer patients:**
-- **iCall (TISS)**: 9152987821 - psychosocial helpline with trained counselors
-- **Muktaa Charitable Foundation**: 7887889882 (Mon-Sat, 9:30am-5:30pm) - mental health helpline
-- **Indian Cancer Society**: 1800-22-1951 (toll-free) - cancer helpline
-- Many hospitals have onco-psychology or counseling services - ask your care team
+**Mental health resources for cancer patients and caregivers:**
+- **Tele-MANAS**: 14416 (Government of India, 24/7, toll-free)
+- **Vandrevala Foundation**: 1860-2662-345 (24/7 mental health support)
+- **NIMHANS**: 080-46110007 (24/7)
+- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)
+- **AASRA**: 9820466726 (24/7)
+- Most oncology centres have counselling or psycho-oncology services — ask your care team
 
 **What kind of support might help you?**
-- **Support groups**: Connect with others on a similar journey
-- **Counseling**: One-on-one support with a professional
-- **Online communities**: Virtual spaces to share and connect
+- **Support groups**: Connect with others on a similar journey who truly understand
+- **Counselling**: One-on-one support with a trained professional
+- **Hospital services**: Many cancer centres offer free or subsidised counselling
 
 Let me know if you'd like more information about any of these options, or if there's something specific you're looking for.`;
   }

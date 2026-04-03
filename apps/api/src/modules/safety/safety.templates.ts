@@ -13,13 +13,15 @@ export const TEMPLATES = {
       rulesFired: ["SAFE_SELF_HARM_V1"],
       actions: ["end_conversation"],
       responseText:
-        "I'm really sorry you're feeling this way. I can't help with harming yourself, but you deserve immediate support. " +
+        "I'm really sorry you're feeling this way. You deserve immediate support, and there are people who want to help right now. " +
         "If you are in immediate danger, call 112 (emergency) or go to your nearest emergency department now.\n\n" +
-        "**Please reach out for support:**\n" +
-        "- **Vandrevala Foundation**: 9999666555 (24/7 mental health support)\n" +
-        "- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)\n" +
-        "- **Indian Cancer Society**: 1800-22-1951 (toll-free cancer helpline)\n\n" +
-        "These services are confidential and staffed by trained professionals. You are not alone."
+        "**Please reach out for support now:**\n" +
+        "- **Tele-MANAS**: 14416 (Government of India, 24/7, toll-free)\n" +
+        "- **Vandrevala Foundation**: 1860-2662-345 (24/7 mental health support)\n" +
+        "- **NIMHANS**: 080-46110007 (24/7)\n" +
+        "- **AASRA**: 9820466726 (24/7)\n" +
+        "- **iCall (TISS)**: 9152987821 (Mon-Sat, 8am-10pm IST)\n\n" +
+        "These services are confidential and staffed by trained professionals who understand what you're going through. You are not alone."
     };
   },
   emergency(ruleId: string): SafetyResult {

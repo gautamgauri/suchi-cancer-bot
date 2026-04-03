@@ -76,9 +76,12 @@ export class EmpathyDetector {
     /\b(can't go on|don't want to live|better off dead|harm myself)\b/i,
     /\b(ending my life|give up on life|nothing to live for)\b/i,
     /\b(want to hurt myself|self[- ]?harm|cut myself)\b/i,
+    /\bjust want the pain to stop\b/i,
+    /\bwant to end everything\b/i,
   ];
 
   // Mental health support patterns (non-crisis)
+  // Includes cancer-specific emotional distress: treatment fatigue, family guilt, hopelessness
   private static readonly MENTAL_HEALTH_PATTERNS = [
     /\b(depressed|depression|feeling hopeless|feel alone|so isolated)\b/i,
     /\b(can't cope anymore|overwhelmed|breaking down|falling apart)\b/i,
@@ -86,6 +89,43 @@ export class EmpathyDetector {
     /\b(therapy|therapist|counselor|counselling|mental health)\b/i,
     /\b(anxiety|panic attacks|can't sleep|insomnia|nightmares)\b/i,
     /\b(support group|cancer support|emotional support)\b/i,
+    // Cancer-specific emotional distress
+    /\bi feel hopeless\b/i,
+    /\bwhat'?s the point of treatment\b/i,
+    /\bwhat'?s the point anymore\b/i,
+    /\bi can'?t take this anymore\b/i,
+    /\bi'?m a burden on my family\b/i,
+    /\bfamily is suffering because of me\b/i,
+    /\bchemo is (destroying|killing|ruining) me\b/i,
+    /\bcan'?t watch .* suffer\b/i,
+    /\btoo tired to fight\b/i,
+    /\bgiven up hope\b/i,
+    /\bno hope left\b/i,
+    /\bwhat'?s the use\b/i,
+    /\bcan'?t do this anymore\b/i,
+    /\bI give up\b/i,
+    /\btoo much pain\b/i,
+    /\bwish I wasn'?t here\b/i,
+    // Hindi / Hinglish emotional distress
+    /\bmujhe koi umeed nahi\b/i,
+    /\bbahut takleef\b/i,
+    /\bkoi fayda nahi\b/i,
+    /\bthak gaya\b/i,
+    /\bthak gayi\b/i,
+    /\bab nahi hota\b/i,
+    /\bsab khatam\b/i,
+    /\bjeena mushkil\b/i,
+    /\bbojh ban gaya\b/i,
+    /\bparivar ko takleef\b/i,
+    // Hindi script
+    /मुझे\s*कोई\s*उम्मीद\s*नहीं/i,
+    /बहुत\s*तकलीफ/i,
+    /कोई\s*फ़ायदा\s*नहीं/i,
+    /थक\s*गय[ाी]/i,
+    /अब\s*नहीं\s*होता/i,
+    /जीना\s*मुश्किल/i,
+    /बोझ\s*बन\s*गय[ाी]/i,
+    /परिवार\s*को\s*तकलीफ/i,
   ];
 
   // Loneliness/isolation patterns (common in cancer journey)
@@ -94,6 +134,12 @@ export class EmpathyDetector {
     /\b(friends don't understand|family doesn't get it)\b/i,
     /\b(going through this alone|nobody to talk to)\b/i,
     /\b(feel like a burden|don't want to bother)\b/i,
+    /\b(no one cares|everyone has moved on)\b/i,
+    // Hindi / Hinglish
+    /\bakela\b/i,
+    /\bkoi samajhta nahi\b/i,
+    /अकेला\b/i,
+    /कोई\s*समझता\s*नहीं/i,
   ];
 
   constructor(private readonly llmService?: LlmService) {}
