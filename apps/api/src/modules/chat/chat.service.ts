@@ -386,7 +386,7 @@ export class ChatService {
         // NOTE: Not using consolidated helper because urgent path has different flow:
         // - ragResponse is embedded in urgentResponse under "Information from trusted sources"
         // - Adding another sources section would be redundant
-        if (citations.length < 2 && earlyEvidenceChunks.length > 0 && orphanCount === 0) {
+        if (citations.length < 2 && earlyEvidenceChunks.length > 0) {
           this.logger.warn({
             event: 'urgent_citation_repair',
             message: `Urgent path: LLM generated ${citations.length} citation(s) but need 2+ - attaching deterministic citations`,
@@ -1503,13 +1503,12 @@ export class ChatService {
         let citations = extractionResult.citations;
         const orphanCount = extractionResult.orphanCount;
 
-        // Citation repair (consolidated) - only if no orphan citations detected
-        if (orphanCount === 0) {
-          ({ responseText, citations } = this.repairCitationsIfNeeded(
-            citations, responseText, evidenceChunks, dto.sessionId,
-            { intent: intentResult.intent, mode: 'explain', queryType }
-          ));
-        }
+        // Citation repair (consolidated) - always run to ensure >= 2 citations
+        ({ responseText, citations } = this.repairCitationsIfNeeded(
+          citations, responseText, evidenceChunks, dto.sessionId,
+          { intent: intentResult.intent, mode: 'explain', queryType },
+          extractionResult.orphanCitations
+        ));
 
         const citationValidation = this.citationService.validateCitations(
           citations,
@@ -1696,13 +1695,12 @@ export class ChatService {
         let citations = extractionResult2.citations;
         const orphanCount2 = extractionResult2.orphanCount;
 
-        // Citation repair (consolidated) - only if no orphan citations detected
-        if (orphanCount2 === 0) {
-          ({ responseText, citations } = this.repairCitationsIfNeeded(
-            citations, responseText, evidenceChunks, dto.sessionId,
-            { intent: intentResult.intent, path: 'answer_first' }
-          ));
-        }
+        // Citation repair (consolidated) - always run to ensure >= 2 citations
+        ({ responseText, citations } = this.repairCitationsIfNeeded(
+          citations, responseText, evidenceChunks, dto.sessionId,
+          { intent: intentResult.intent, path: 'answer_first' },
+          extractionResult2.orphanCitations
+        ));
 
         const citationValidation = this.citationService.validateCitations(
           citations,
@@ -2025,14 +2023,13 @@ export class ChatService {
       let citations = extractionResult3.citations;
       const orphanCount3 = extractionResult3.orphanCount;
 
-      // Citation repair (consolidated) - only if no orphan citations detected
-      if (orphanCount3 === 0) {
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, queryType, path: 'navigate_main' }
-        ));
-      }
-      
+      // Citation repair (consolidated) - always run to ensure >= 2 citations
+      ({ responseText, citations } = this.repairCitationsIfNeeded(
+        citations, responseText, evidenceChunks, dto.sessionId,
+        { intent: intentResult.intent, queryType, path: 'explain_main' },
+        extractionResult3.orphanCitations
+      ));
+
       // RUNTIME ENFORCEMENT: Medical content requires 2-5 citations
       const isMedicalContent = this.isMedicalContent(responseText, intentResult.intent);
       if (isMedicalContent && citations.length < 2) {
@@ -2045,21 +2042,29 @@ export class ChatService {
           'INSUFFICIENT_CITATIONS',
           queryType
         );
-        
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: safeFallback,
+
+        // Attach deterministic citations so the fallback still meets the citation contract
+        const { modifiedText: enforcementText, citations: enforcementCitations } = this.attachDeterministicCitationsIfNeeded(
+          safeFallback,
+          evidenceChunks,
+          intentResult.intent,
+          dto.sessionId
+        );
+
+        const assistant = await this.persistAssistantMessage(
+          dto.sessionId,
+          enforcementText,
+          enforcementCitations,
+          evidenceChunks,
+          {
             safetyClassification: "normal",
-            kbDocIds: [],
             latencyMs: Date.now() - started,
+            kbDocIds: enforcementCitations.length > 0 ? Array.from(new Set(enforcementCitations.map(c => c.docId))) : [],
             evidenceQuality: gateResult.quality,
-            evidenceGatePassed: true, // Gate passed, but citation enforcement failed
+            evidenceGatePassed: true,
             abstentionReason: 'citation_validation_failed',
-            citationCount: 0
           }
-        });
+        );
 
         // Log structured error
         this.logger.error({
@@ -2084,6 +2089,10 @@ export class ChatService {
           responseText: assistant.text,
           safety: { classification: "normal" as const, actions: [] },
           abstentionReason: 'citation_validation_failed',
+          ...(enforcementCitations.length > 0 && {
+            citations: enforcementCitations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
+            citationConfidence: "GREEN" as const,
+          }),
           retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
             docId: chunk.docId,
             chunkId: chunk.chunkId,
@@ -2164,13 +2173,12 @@ export class ChatService {
         citations = retryExtractionResult.citations;
         const retryOrphanCount = retryExtractionResult.orphanCount;
 
-        // Citation repair (consolidated) - only if no orphan citations detected
-        if (retryOrphanCount === 0) {
-          ({ responseText, citations } = this.repairCitationsIfNeeded(
-            citations, responseText, evidenceChunks, dto.sessionId,
-            { intent: intentResult.intent, queryType, path: 'explain_retry' }
-          ));
-        }
+        // Citation repair (consolidated) - always run to ensure >= 2 citations
+        ({ responseText, citations } = this.repairCitationsIfNeeded(
+          citations, responseText, evidenceChunks, dto.sessionId,
+          { intent: intentResult.intent, queryType, path: 'explain_retry' },
+          retryExtractionResult.orphanCitations
+        ));
 
         citationValidation = this.citationService.validateCitations(
           citations,
@@ -2405,15 +2413,12 @@ export class ChatService {
         citations = navigateExtractionResult.citations;
         navigateOrphanCount = navigateExtractionResult.orphanCount;
 
-        // Citation repair (consolidated) - only if no orphan citations detected
-        if (navigateOrphanCount === 0) {
-          ({ responseText, citations } = this.repairCitationsIfNeeded(
-            citations, responseText, evidenceChunks, dto.sessionId,
-            { intent: intentResult.intent, path: 'navigate_mode' }
-          ));
-        } else {
-          this.logger.error(`Navigate mode: ${navigateOrphanCount} orphan citations detected - skipping repair, response will be flagged`);
-        }
+        // Citation repair (consolidated) - always run to ensure >= 2 citations
+        ({ responseText, citations } = this.repairCitationsIfNeeded(
+          citations, responseText, evidenceChunks, dto.sessionId,
+          { intent: intentResult.intent, path: 'navigate_mode' },
+          navigateExtractionResult.orphanCitations
+        ));
       }
 
       // Persist message + citations (consolidated) — uses persistAssistantMessage
@@ -2487,13 +2492,12 @@ export class ChatService {
     let citations = patientExtractionResult.citations;
     let patientOrphanCount = patientExtractionResult.orphanCount;
 
-    // Citation repair (consolidated) - only if no orphan citations detected
-    if (patientOrphanCount === 0) {
-      ({ responseText, citations } = this.repairCitationsIfNeeded(
-        citations, responseText, evidenceChunks, dto.sessionId,
-        { intent: intentResult.intent, path: 'patient_mode' }
-      ));
-    }
+    // Citation repair (consolidated) - always run to ensure >= 2 citations
+    ({ responseText, citations } = this.repairCitationsIfNeeded(
+      citations, responseText, evidenceChunks, dto.sessionId,
+      { intent: intentResult.intent, path: 'patient_mode' },
+      patientExtractionResult.orphanCitations
+    ));
 
     let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
 
@@ -2514,13 +2518,12 @@ export class ChatService {
       citations = patientRetryExtractionResult.citations;
       patientOrphanCount = patientRetryExtractionResult.orphanCount;
 
-      // Citation repair (consolidated) - only if no orphan citations detected
-      if (patientOrphanCount === 0) {
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, path: 'patient_mode_retry' }
-        ));
-      }
+      // Citation repair (consolidated) - always run to ensure >= 2 citations
+      ({ responseText, citations } = this.repairCitationsIfNeeded(
+        citations, responseText, evidenceChunks, dto.sessionId,
+        { intent: intentResult.intent, path: 'patient_mode_retry' },
+        patientRetryExtractionResult.orphanCitations
+      ));
 
       citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
       }
@@ -2829,11 +2832,35 @@ export class ChatService {
     responseText: string,
     evidenceChunks: Array<{ docId: string; chunkId: string; document: { title: string }; similarity?: number }>,
     sessionId: string,
-    context: { intent?: string; mode?: string; queryType?: string; path?: string }
+    context: { intent?: string; mode?: string; queryType?: string; path?: string },
+    orphanCitations?: string[]
   ): { responseText: string; citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }> } {
     // No repair needed if we have enough citations or no evidence
     if (citations.length >= 2 || evidenceChunks.length === 0) {
+      // Still strip orphan citations from text even when we have enough valid ones
+      if (orphanCitations && orphanCitations.length > 0) {
+        let cleanedText = responseText;
+        for (const orphan of orphanCitations) {
+          cleanedText = cleanedText.split(orphan).join('');
+        }
+        return { responseText: cleanedText, citations };
+      }
       return { responseText, citations };
+    }
+
+    // Strip orphan (hallucinated) citation markers from response text before repair
+    let cleanedResponseText = responseText;
+    if (orphanCitations && orphanCitations.length > 0) {
+      for (const orphan of orphanCitations) {
+        cleanedResponseText = cleanedResponseText.split(orphan).join('');
+      }
+      this.logger.warn({
+        event: 'orphan_citations_stripped',
+        message: `Stripped ${orphanCitations.length} hallucinated citation(s) from response before repair`,
+        sessionId,
+        orphanCitations: orphanCitations.slice(0, 5),
+        ...context,
+      });
     }
 
     this.logger.warn({
@@ -2866,7 +2893,7 @@ export class ChatService {
       path: context.path,
     });
 
-    return { responseText, citations: repairedCitations };
+    return { responseText: cleanedResponseText, citations: repairedCitations };
   }
 
   /**
