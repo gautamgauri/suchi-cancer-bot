@@ -624,4 +624,45 @@ program
     }
   });
 
+program
+  .command("generate-cases")
+  .description("Generate randomised eval test cases from dynamic scenario templates")
+  .option("--count <number>", "Number of cases to generate", parseInt, 30)
+  .option(
+    "--language <style>",
+    "Language style: english, hinglish, hindi, casual, emotional, typo, or mixed",
+    "mixed",
+  )
+  .option("--cancer <type>", "Cancer type filter: breast, lung, cervical, ... or all", "all")
+  .option("--output <path>", "Output YAML file path", "cases/tier2/generated.yaml")
+  .action(async (options) => {
+    try {
+      const { generateCases, casesToYaml } = await import(
+        "./cases/tier2/dynamic_scenario_generator"
+      );
+
+      const count = options.count || 30;
+      const language = options.language || "mixed";
+      const cancer = options.cancer || "all";
+
+      console.log(`Generating ${count} test cases (language=${language}, cancer=${cancer})...`);
+
+      const cases = generateCases({ count, language, cancer });
+      const yamlContent = casesToYaml(cases);
+
+      const outputPath = path.isAbsolute(options.output)
+        ? options.output
+        : path.resolve(process.cwd(), options.output);
+
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.writeFile(outputPath, yamlContent, "utf-8");
+
+      console.log(`Generated ${cases.length} test cases -> ${outputPath}`);
+    } catch (error: any) {
+      console.error("Generate cases error:", error.message);
+      if (error.stack) console.error(error.stack);
+      process.exit(1);
+    }
+  });
+
 program.parse();
