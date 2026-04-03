@@ -102,6 +102,7 @@ export class QueryExpanderService {
     ['sore', ['painful', 'tenderness']],
 
     // General symptom phrases
+    ['cancer symptoms', ['cancer warning signs', 'signs and symptoms of cancer', 'common cancer symptoms', 'general cancer symptoms overview']],
     ['early warning signs', ['signs and symptoms', 'early symptoms', 'warning signs', 'clinical presentation']],
     ['warning signs', ['signs and symptoms', 'symptoms', 'clinical signs']],
     ['signs of', ['signs and symptoms of', 'symptoms of', 'manifestations of']],
@@ -348,6 +349,14 @@ export class QueryExpanderService {
     ['stage', ['stage', 'staging']],
     ['report', ['report', 'test results']],
     ['operation', ['surgery', 'surgical procedure']],
+
+    // Composite Hinglish phrases (multi-word patterns for better English expansion)
+    ['cure ho sakta hai', ['can cancer be cured', 'cancer treatment curability', 'cancer prognosis recovery']],
+    ['treatment kya hai', ['what is the treatment', 'treatment options available', 'how is it treated']],
+    ['cancer hua hai', ['diagnosed with cancer', 'cancer diagnosis', 'has cancer']],
+    ['kya karna chahiye', ['what should be done', 'recommended next steps', 'what to do']],
+    ['kaise pata chale', ['how to detect', 'how to find out', 'diagnosis methods']],
+    ['theek ho sakta hai', ['can it be cured', 'treatment outcome', 'cancer curability prognosis']],
   ]);
 
   // ============= INTENTS TO EXPAND =============
@@ -401,6 +410,15 @@ export class QueryExpanderService {
 
     // 7. Expand Hinglish/Hindi medical terms (for multilingual queries)
     this.expandTerms(lowerQuery, this.HINGLISH_SYNONYMS, expanded, matchedSynonyms);
+
+    // 8. Hinglish full-translation: build a clean English query by replacing ALL
+    //    matched Hinglish phrases simultaneously, producing a single coherent query
+    //    instead of many half-translated fragments.
+    const hinglishTranslated = this.translateHinglishQuery(lowerQuery);
+    if (hinglishTranslated && hinglishTranslated !== lowerQuery) {
+      expanded.push(hinglishTranslated);
+      this.logger.debug(`Hinglish full translation: "${lowerQuery}" → "${hinglishTranslated}"`);
+    }
 
     // Deduplicate expanded queries
     const uniqueExpanded = [...new Set(expanded)];
@@ -487,6 +505,70 @@ export class QueryExpanderService {
       || this.HINGLISH_SYNONYMS.get(lower)
       || this.ABBREVIATIONS.get(lower)
       || [];
+  }
+
+  /**
+   * Translate a Hinglish query into clean English by replacing ALL matched
+   * Hinglish phrases simultaneously. Matches longest phrases first to avoid
+   * partial replacements (e.g., "cure ho sakta hai" before "ho sakta hai").
+   * Uses positional tracking to prevent overlapping replacements.
+   * Returns null if no Hinglish terms were found.
+   */
+  private translateHinglishQuery(lowerQuery: string): string | null {
+    // Collect all matching Hinglish terms with their positions
+    const matches: Array<{ term: string; replacement: string; start: number; end: number }> = [];
+
+    for (const [term, synonyms] of this.HINGLISH_SYNONYMS.entries()) {
+      const idx = lowerQuery.indexOf(term);
+      if (idx !== -1) {
+        matches.push({ term, replacement: synonyms[0], start: idx, end: idx + term.length });
+      }
+    }
+
+    if (matches.length === 0) return null;
+
+    // Sort by term length descending so longer phrases get priority
+    matches.sort((a, b) => b.term.length - a.term.length);
+
+    // Greedy non-overlapping selection: pick longest matches first
+    const selected: typeof matches = [];
+    const used = new Array(lowerQuery.length).fill(false);
+
+    for (const match of matches) {
+      // Check if any character in this range is already claimed
+      let overlaps = false;
+      for (let i = match.start; i < match.end; i++) {
+        if (used[i]) { overlaps = true; break; }
+      }
+      if (overlaps) continue;
+
+      selected.push(match);
+      for (let i = match.start; i < match.end; i++) {
+        used[i] = true;
+      }
+    }
+
+    if (selected.length === 0) return null;
+
+    // Sort selected by position for left-to-right replacement
+    selected.sort((a, b) => a.start - b.start);
+
+    // Build translated string
+    let translated = '';
+    let pos = 0;
+    for (const sel of selected) {
+      translated += lowerQuery.slice(pos, sel.start) + sel.replacement;
+      pos = sel.end;
+    }
+    translated += lowerQuery.slice(pos);
+
+    // Clean up: remove common Hinglish particles/connectors left over
+    translated = translated
+      .replace(/\b(ko|ka|ki|ke|hai|kya|mein|mera|meri|mere|se|ne)\b/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    return translated || null;
   }
 
   /**

@@ -18,6 +18,7 @@ const MEDICAL_SPELL_CORRECTIONS: Record<string, string> = {
   'kemotherapy': 'chemotherapy',
   'keemotherapy': 'chemotherapy',
   'chemotheraphy': 'chemotherapy',
+  'chemo therapy': 'chemotherapy',
   // Mammogram
   'mamogram': 'mammogram',
   'mamography': 'mammography',
