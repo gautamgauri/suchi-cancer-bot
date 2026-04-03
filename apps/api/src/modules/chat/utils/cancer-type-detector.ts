@@ -34,6 +34,9 @@ export function detectCancerType(userText: string, sessionCancerType?: string | 
     'endometrial': 'endometrial',
     'brain': 'brain',
     'esophageal': 'esophageal',
+    'esophagus': 'esophageal',
+    'laryngeal': 'laryngeal',
+    'larynx': 'laryngeal',
     'head and neck': 'head and neck',
     'sarcoma': 'sarcoma'
   };

@@ -890,7 +890,7 @@ export class ChatService {
     // Reuse early RAG retrieval if available (for urgent cases), otherwise retrieve normally
     // Use expanded retrieval if this might be an identify question or if we expect weak evidence
     const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
-    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning)\b/i;
+    const cancerKeywordPattern = /\b(cancer|lymphoma|leukemia|leukaemia|melanoma|sarcoma|carcinoma|tumou?r|symptom|sign|warning)\b/i;
     const mightBeIdentifyQuestion = identifyGeneralPattern.test(dto.userText.toLowerCase()) &&
                                     cancerKeywordPattern.test(dto.userText.toLowerCase());
 
@@ -1778,9 +1778,12 @@ export class ChatService {
     }
 
     // Navigation intents route through Explain Mode to leverage India navigation KB content
+    // CAREGIVER_NAVIGATION included here so caregivers get full RAG-backed responses with
+    // the caregiver response contract (caregiver steps, prep checklist, doctor questions)
     const navigationIntents = [
       "CARE_NAVIGATION_PROVIDER_CHOICE",
       "CARE_NAVIGATION_SECOND_OPINION",
+      "CAREGIVER_NAVIGATION",
     ];
     const isNavigationIntent = navigationIntents.includes(intentResult.intent);
 
@@ -2327,14 +2330,15 @@ export class ChatService {
       if (evidenceChunks.length > 0) {
         try {
           // Generate full navigate-mode response from RAG (not just brief context)
+          const navCancerTypeForLLM = detectCancerType(dto.userText, sessionCancerType);
           const ragContext = await this.llmWithDeadline(requestDeadlineMs, "navigate-mode-rag", () =>
             this.llm.generateWithCitations(
               "navigate",
               "",
               dto.userText,
-              evidenceChunks.slice(0, 6),
+              evidenceChunks,
               false,
-              { emotionalState, patientState }
+              { hasGenerallyAsking, cancerType: navCancerTypeForLLM, emotionalState, intent: intentResult.intent, patientState }
             ),
             signal
           );

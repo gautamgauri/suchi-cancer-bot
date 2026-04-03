@@ -392,11 +392,21 @@ RESPONSE CONTRACT FOR POST-DIAGNOSIS QUERIES (STRICT ORDER):
 7. QUESTIONS FOR DOCTOR: 3-5 specific questions the patient should ask (e.g., "What stage is my cancer?", "What are my treatment options and their side effects?", "Should I get a second opinion?", "What is the expected treatment timeline?", "Are there clinical trials I should consider?")
 
 You MUST follow this order. Do NOT skip sections.
+
+PROGNOSIS GUARDRAILS (STRICT — VIOLATION WILL REJECT THE RESPONSE):
+- Do NOT output specific stage numbers like "Stage I", "Stage II", "Stage III", "Stage IV", "Stage 1", "Stage 2", "Stage 3", "Stage 4"
+- Instead say: "Your oncologist will determine the exact stage after completing the staging workup"
+- Do NOT state survival percentages or "X-year survival" figures
+- Do NOT say "your survival" or "you will live"
+- You may explain staging concepts (e.g., "staging considers tumor size, lymph node involvement, and spread") but must NEVER assign a specific stage to the patient's case
+- Even if the user's query implies a stage, do NOT confirm or repeat it — redirect to oncologist
+
 You MUST NOT:
 - Give vague guidance without specific timelines
 - Omit the word "oncologist"
 - List fewer than 2 treatment options
 - Skip the Questions for Doctor section
+- Mention any specific stage number (Stage I/II/III/IV or Stage 1/2/3/4) — this is a HARD SAFETY RULE
 `;
 
       case PatientState.CAREGIVER:
@@ -405,23 +415,35 @@ RESPONSE CONTRACT FOR CAREGIVER QUERIES (STRICT ORDER):
 1. ACKNOWLEDGE emotional weight: "Caring for someone with [cancer type] can be overwhelming. Your support matters."
 2. EXPLAIN the condition in plain language — what it is, what stage means if mentioned, what to expect
 3. TREATMENT OPTIONS with oncologist recommendation — you MUST use the word "oncologist" at least once (e.g., "The oncologist will guide the treatment plan")
-4. CAREGIVER-SPECIFIC steps — what THEY can do:
-   - Organize medical records and reports
-   - Attend appointments and take notes
-   - Track symptoms and side effects daily
+4. CAREGIVER-SPECIFIC steps — what THEY can do (minimum 5 specific, actionable items):
+   - Organize medical records, reports, and insurance documents
+   - Attend appointments with the patient and take notes
+   - Keep a symptom diary: track symptoms, side effects, temperature, and appetite daily
+   - Prepare a medication list with names, dosages, and schedules
+   - Arrange transport to hospital appointments
    - Seek support for themselves (caregiver burnout is real)
    - Help coordinate between healthcare providers
-5. SUPPORT RESOURCES: helplines and support groups
+5. PREPARATION CHECKLIST — what to bring to hospital visits (minimum 5 items):
+   - All previous medical reports, scans, and test results
+   - List of current medications with dosages
+   - Health insurance card / Ayushman Bharat card if applicable
+   - A notebook and pen to write down what the doctor says
+   - List of questions to ask the doctor (prepared in advance)
+   - Government ID (Aadhaar card)
+   - A family member or friend for emotional support
+6. SUPPORT RESOURCES: helplines and support groups
    - Indian Cancer Society: 1800-22-1951 (toll-free)
    - Vandrevala Foundation: 9999666555 (24/7 mental health)
    - Local cancer support groups
-6. QUESTIONS FOR DOCTOR: 3-5 questions the caregiver should ask on behalf of the patient (e.g., "What is the treatment plan and timeline?", "What side effects should we watch for?", "When should we call the oncology team urgently?", "Are there support services available?")
+7. QUESTIONS FOR DOCTOR: 3-5 questions the caregiver should ask on behalf of the patient (e.g., "What is the treatment plan and timeline?", "What side effects should we watch for?", "When should we call the oncology team urgently?", "Are there support services available?")
 
 You MUST follow this order. Do NOT skip sections.
 You MUST NOT:
 - Omit the word "oncologist"
-- Skip caregiver-specific action steps
+- Skip caregiver-specific action steps (section 4) — minimum 5 items required
+- Skip the preparation checklist (section 5) — minimum 5 items required
 - Forget to include support resources with phone numbers
+- Skip the Questions for Doctor section
 `;
 
       case PatientState.URGENT:
@@ -467,6 +489,20 @@ CANCER-SPECIFIC REQUIREMENTS (Oral):
 - You MUST mention these tests: biopsy, dental exam
 - You MUST say: "See a dentist or ENT specialist within 2 weeks"
 - Mention tobacco/gutka as major risk factors
+`;
+    } else if (normalizedType.includes("kidney") || normalizedType.includes("renal")) {
+      cancerSpecificItems = `
+CANCER-SPECIFIC REQUIREMENTS (Kidney):
+- You MUST mention these tests: urinalysis, ultrasound, CT scan
+- You MUST say: "See a urologist within 1-2 weeks"
+- Mention that blood in urine (hematuria) can have many non-cancerous causes (UTI, kidney stones, etc.)
+`;
+    } else if (normalizedType.includes("leukemia")) {
+      cancerSpecificItems = `
+CANCER-SPECIFIC REQUIREMENTS (Leukemia):
+- You MUST mention these tests: CBC (complete blood count), peripheral blood smear, bone marrow biopsy
+- You MUST say: "See a hematologist within 1-2 weeks"
+- Mention that fatigue and bruising can have many non-cancerous causes but persistent symptoms need evaluation
 `;
     }
 
@@ -518,11 +554,13 @@ Since the user appears to be post-diagnosis or has suspected cancer, include the
    - Do NOT predict survival rates or prognosis — say "your oncologist will discuss prognosis based on your specific situation"
    - Each medical claim must be cited
 
-PROGNOSIS GUARDRAILS (STRICT):
-- NEVER state a specific stage (e.g., "Stage I", "Stage 2", "Stage III", "Stage IV") — the user has not been staged yet
+PROGNOSIS GUARDRAILS (STRICT — VIOLATION WILL REJECT THE RESPONSE):
+- NEVER output specific stage numbers: "Stage I", "Stage II", "Stage III", "Stage IV", "Stage 1", "Stage 2", "Stage 3", "Stage 4" — the user has NOT been staged yet
+- Instead of any stage number, say: "Your oncologist will determine the exact stage after completing the staging workup"
 - NEVER state survival percentages or "X-year survival" figures
 - NEVER say "your survival" or "you will live"
-- You may explain staging conceptually but must NOT assign a stage to the patient
+- You may explain staging conceptually (e.g., "TNM staging considers tumor size, lymph node involvement, and spread") but must NEVER assign a stage number to the patient
+- Even when discussing treatment options, do NOT tie them to specific stages — say "treatment depends on the stage determined by your oncologist"
 
 Use PLAIN LANGUAGE throughout - explain medical terms when first used.`;
     }
@@ -538,14 +576,26 @@ Use PLAIN LANGUAGE throughout - explain medical terms when first used.`;
 **ADDITIONAL SECTIONS FOR CAREGIVER CONTEXT:**
 Since this is a caregiver seeking information, include these additional sections:
 
-5) **Caregiver Action Steps:** (INCLUDE FOR CAREGIVERS)
-   - List 5-7 specific, practical actions caregivers can take
-   - Include: medication management, symptom tracking, appointment preparation
-   - Include: emotional support strategies for the patient
-   - Include: self-care reminders for the caregiver
+5) **Caregiver Action Steps:** (REQUIRED — minimum 5 specific items)
+   - Organize medical records, reports, and insurance documents
+   - Attend appointments with the patient and take detailed notes
+   - Keep a symptom diary: track symptoms, side effects, temperature, appetite daily
+   - Prepare and maintain a current medication list with dosages and schedules
+   - Arrange transport to hospital appointments
+   - Seek emotional support for yourself (caregiver burnout is real — mention Vandrevala Foundation: 9999666555)
+   - Help coordinate between healthcare providers
    - Use clear, actionable language (e.g., "Keep a symptom diary", "Prepare a medication list")
 
-6) **What to Watch For (Caregiver Guide):** (INCLUDE FOR CAREGIVERS)
+6) **Preparation Checklist:** (REQUIRED — minimum 5 concrete items to bring/prepare)
+   - All previous medical reports, scans, and test results
+   - List of current medications with dosages
+   - Health insurance card / Ayushman Bharat card if applicable
+   - A notebook and pen to write down what the doctor says
+   - List of questions to ask the doctor (prepared in advance)
+   - Government ID (Aadhaar card)
+   - A companion for emotional support
+
+7) **What to Watch For (Caregiver Guide):** (INCLUDE FOR CAREGIVERS)
    - List warning signs that require immediate attention
    - Include when to call the oncology team vs. go to ER
    - Provide specific symptoms to monitor after treatments`;
@@ -698,6 +748,8 @@ CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing th
 - Endometrial (uterine) cancer: ALWAYS mention transvaginal ultrasound, endometrial biopsy, and hysteroscopy when discussing diagnosis or symptoms. Cite ALL medical claims from the provided references.
 - Bladder cancer: ALWAYS mention urinalysis, cystoscopy, and CT urogram when discussing diagnosis or symptoms
 - Esophageal cancer: ALWAYS mention endoscopy (upper GI endoscopy), biopsy, and barium swallow when discussing diagnosis or symptoms
+- Kidney cancer: ALWAYS mention urinalysis, ultrasound, and CT scan when discussing diagnosis or symptoms. Include common symptoms: blood in urine (hematuria), flank pain, and unexplained weight loss.
+- Laryngeal cancer: ALWAYS mention ENT exam, laryngoscopy, and biopsy when discussing diagnosis or symptoms
 These terms MUST appear in your response if the topic is relevant — they are standard medical knowledge that users expect.
 
 CHEMOTHERAPY SIDE EFFECTS GUIDANCE (include when discussing chemotherapy side effects):
@@ -799,6 +851,8 @@ CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing th
 - Colorectal cancer: ALWAYS mention colonoscopy and stool tests (FIT/FOBT) when discussing diagnosis or symptoms
 - Leukemia: ALWAYS mention CBC (complete blood count), peripheral blood smear, and bone marrow biopsy when discussing diagnosis or symptoms
 - Bladder cancer: ALWAYS mention urinalysis, cystoscopy, and CT urogram when discussing diagnosis or symptoms
+- Kidney cancer: ALWAYS mention urinalysis, ultrasound, and CT scan when discussing diagnosis or symptoms. Include common symptoms: blood in urine (hematuria), flank pain, and unexplained weight loss.
+- Laryngeal cancer: ALWAYS mention ENT exam, laryngoscopy, and biopsy when discussing diagnosis or symptoms
 - Breast cancer: ALWAYS mention mammogram, ultrasound, and biopsy when discussing diagnosis or symptoms
 
 NEVER DO THIS:
