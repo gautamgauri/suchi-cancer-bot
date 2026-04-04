@@ -380,7 +380,7 @@ export class ChatService {
         // Extract citations from RAG response
         const extractionResult = this.citationService.extractCitations(ragResponse, earlyEvidenceChunks);
         let citations = extractionResult.citations;
-        const orphanCount = extractionResult.orphanCount;
+        let orphanCount = extractionResult.orphanCount;
 
         // PHASE 2.5+: Citation repair for urgent path - ensure citations are attached
         // NOTE: Not using consolidated helper because urgent path has different flow:
@@ -401,6 +401,7 @@ export class ChatService {
             position: idx * 100,
             citationText: `[citation:${chunk.docId}:${chunk.chunkId}]`,
           }));
+          orphanCount = 0; // Reset after repair — orphans were stripped
         }
         
         // Validate citations to determine confidence level (required for eval)
@@ -1501,7 +1502,7 @@ export class ChatService {
         // Extract and validate citations
         const extractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         let citations = extractionResult.citations;
-        const orphanCount = extractionResult.orphanCount;
+        let orphanCount = extractionResult.orphanCount;
 
         // Citation repair (consolidated) - always run to ensure >= 2 citations
         ({ responseText, citations } = this.repairCitationsIfNeeded(
@@ -1509,6 +1510,7 @@ export class ChatService {
           { intent: intentResult.intent, mode: 'explain', queryType },
           extractionResult.orphanCitations
         ));
+        orphanCount = 0; // Reset after repair — orphans were stripped
 
         const citationValidation = this.citationService.validateCitations(
           citations,
@@ -1628,6 +1630,22 @@ export class ChatService {
         // Post-diagnosis queries ("what happens next", "next steps")
         /\b(what happens|what's next|next steps?|what now|what do I do)\b/i,
         /\bstage\s*\d\b.*\b(what|next|happen)\b/i,
+
+        // Bare cancer-type queries (just the cancer name, needs full overview not 2-3 sentences)
+        // e.g. "breast cancer", "prostate cancer", "leukemia", "lung cancer"
+        /^[\s!?.]*(?:is\s+this\s+)?(?:breast|lung|colon|colorectal|prostate|ovarian|pancreatic|liver|kidney|thyroid|bladder|brain|oral|cervical|stomach|skin|blood|bone|throat|esophageal|uterine|testicular|rectal|gallbladder)\s+cancer[\s!?.]*$/i,
+        /^[\s!?.]*(?:is\s+this\s+)?(?:cancer|leukemia|leukaemia|lymphoma|melanoma|myeloma|sarcoma|carcinoma|mesothelioma|glioma)[\s!?.]*$/i,
+
+        // "Is this [cancer]?" / "is this prostate cancer??" — terse identification queries
+        /\bis this\b.{0,20}\b(cancer|carcinoma|tumor|tumour|leukemia|lymphoma|melanoma|sarcoma)\b/i,
+
+        // Hinglish post-diagnosis queries ("doctor ne bola cancer hai", "ab kya karna chahiye")
+        /\b(bola|bataya|kaha)\b.*\b(cancer|kैंसर)\b/i,
+        /\b(cancer|kैंसर)\b.*\b(bola|bataya|kaha)\b/i,
+        /\b(ab kya|kya karna|kya karein|kya kare|kya hoga|aage kya)\b/i,
+        // Hinglish curability/treatability ("theek ho sakta hai", "ilaaj ho sakta hai", "cure ho sakta")
+        /\b(theek|thik|cure|ilaaj|ilaj)\b.*\b(ho sakta|hota hai|ho jata|possible|mumkin)\b/i,
+        /\b(ho sakta|hota hai|ho jata|possible|mumkin)\b.*\b(theek|thik|cure|ilaaj|ilaj)\b/i,
       ];
 
       return structuredPatterns.some(pattern => pattern.test(lowerQuery));
@@ -1693,7 +1711,7 @@ export class ChatService {
         // Extract and validate citations
         const extractionResult2 = this.citationService.extractCitations(responseText, evidenceChunks);
         let citations = extractionResult2.citations;
-        const orphanCount2 = extractionResult2.orphanCount;
+        let orphanCount2 = extractionResult2.orphanCount;
 
         // Citation repair (consolidated) - always run to ensure >= 2 citations
         ({ responseText, citations } = this.repairCitationsIfNeeded(
@@ -1701,6 +1719,7 @@ export class ChatService {
           { intent: intentResult.intent, path: 'answer_first' },
           extractionResult2.orphanCitations
         ));
+        orphanCount2 = 0; // Reset after repair — orphans were stripped
 
         const citationValidation = this.citationService.validateCitations(
           citations,
@@ -2021,7 +2040,7 @@ export class ChatService {
       // Extract and validate citations (before formatting)
       const extractionResult3 = this.citationService.extractCitations(responseText, evidenceChunks);
       let citations = extractionResult3.citations;
-      const orphanCount3 = extractionResult3.orphanCount;
+      let orphanCount3 = extractionResult3.orphanCount;
 
       // Citation repair (consolidated) - always run to ensure >= 2 citations
       ({ responseText, citations } = this.repairCitationsIfNeeded(
@@ -2029,6 +2048,7 @@ export class ChatService {
         { intent: intentResult.intent, queryType, path: 'explain_main' },
         extractionResult3.orphanCitations
       ));
+      orphanCount3 = 0; // Reset after repair — orphans were stripped
 
       // RUNTIME ENFORCEMENT: Medical content requires 2-5 citations
       const isMedicalContent = this.isMedicalContent(responseText, intentResult.intent);
@@ -2171,7 +2191,7 @@ export class ChatService {
         responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
-        const retryOrphanCount = retryExtractionResult.orphanCount;
+        let retryOrphanCount = retryExtractionResult.orphanCount;
 
         // Citation repair (consolidated) - always run to ensure >= 2 citations
         ({ responseText, citations } = this.repairCitationsIfNeeded(
@@ -2179,6 +2199,7 @@ export class ChatService {
           { intent: intentResult.intent, queryType, path: 'explain_retry' },
           retryExtractionResult.orphanCitations
         ));
+        retryOrphanCount = 0; // Reset after repair — orphans were stripped
 
         citationValidation = this.citationService.validateCitations(
           citations,
@@ -2192,7 +2213,7 @@ export class ChatService {
 
         // For identify questions with general intent, allow response even if citations are RED (with strong disclaimer)
         if (citationValidation.confidenceLevel === "RED") {
-          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL") || ((intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS" || intentResult.intent === "PREVENTION_SCREENING_INFO") && evidenceChunks.length >= 2)) {
+          if (isIdentifyWithGeneralIntent || (hasGenerallyAsking && intentResult.intent === "INFORMATIONAL_GENERAL") || ((intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS" || intentResult.intent === "PREVENTION_SCREENING_INFO" || intentResult.intent === "SIDE_EFFECTS_GENERAL") && evidenceChunks.length >= 2)) {
             // Allow response with strong disclaimer - don't abstain for:
             // - identify questions with general intent
             // - general-intent informational queries (e.g. "Just asking generally")
@@ -2419,6 +2440,7 @@ export class ChatService {
           { intent: intentResult.intent, path: 'navigate_mode' },
           navigateExtractionResult.orphanCitations
         ));
+        navigateOrphanCount = 0; // Reset after repair — orphans were stripped
       }
 
       // Persist message + citations (consolidated) — uses persistAssistantMessage
@@ -2498,6 +2520,7 @@ export class ChatService {
       { intent: intentResult.intent, path: 'patient_mode' },
       patientExtractionResult.orphanCitations
     ));
+    patientOrphanCount = 0; // Reset after repair — orphans were stripped
 
     let citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
 
@@ -2524,13 +2547,14 @@ export class ChatService {
         { intent: intentResult.intent, path: 'patient_mode_retry' },
         patientRetryExtractionResult.orphanCitations
       ));
+      patientOrphanCount = 0; // Reset after repair — orphans were stripped
 
       citationValidation = this.citationService.validateCitations(citations, evidenceChunks, responseText, false, patientOrphanCount, dto.userText);
       }
 
       if (citationValidation.confidenceLevel === "RED") {
         // Override RED to YELLOW for informational/symptom/prevention queries with evidence
-        const isInformationalIntent = ["INFORMATIONAL_GENERAL", "INFORMATIONAL_SYMPTOMS", "PREVENTION_SCREENING_INFO"].includes(intentResult.intent);
+        const isInformationalIntent = ["INFORMATIONAL_GENERAL", "INFORMATIONAL_SYMPTOMS", "PREVENTION_SCREENING_INFO", "SIDE_EFFECTS_GENERAL"].includes(intentResult.intent);
         if (isInformationalIntent && evidenceChunks.length >= 2) {
           this.logger.warn("Legacy flow: informational query has citation-RED but has evidence - allowing with YELLOW override");
           citationValidation = { ...citationValidation, confidenceLevel: "YELLOW", isValid: true };

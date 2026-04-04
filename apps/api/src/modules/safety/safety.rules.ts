@@ -94,11 +94,11 @@ export const DIAGNOSIS_PATTERNS = [
   /what is my (diagnosis|prognosis|stage)/i,
   /confirm.*diagnosis/i,
   // Hindi
-  /क्या\s*(मुझे|मेरे|ये|यह)\s*कैंसर\s*(है|हो)/i,
-  /कैंसर\s*(है|हो)\s*क्या/i,
+  /क्या\s*(मुझे|मेरे|ये|यह)\s*कैंसर\s*(है|हो(?!\s*सकता))/i,
+  /कैंसर\s*(है|हो(?!\s*सकता))\s*क्या/i,
   /जांच\s*करो/i,
-  // Hinglish
-  /\bkya\s*(mujhe|mere|ye|yeh)\s*cancer\s*(hai|ho)\b/i,
+  // Hinglish — negative lookahead excludes "ho sakta" (possibility = educational, not diagnosis)
+  /\bkya\s*(mujhe|mere|ye|yeh)\s*cancer\s*(hai|ho(?!\s*sakta))\b/i,
   /\bcancer\s*hai\s*kya\b/i,
 ];
 

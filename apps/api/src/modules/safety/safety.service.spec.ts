@@ -172,6 +172,32 @@ describe("SafetyService — expanded refusal bank", () => {
     });
   });
 
+  describe("Hinglish symptom queries with possibility (should NOT refuse)", () => {
+    const cases = [
+      "prostate mein gaanth hai, kya yeh cancer ho sakta hai",
+      "pet mein gaanth hai, kya yeh cancer ho sakta hai",
+      "kamar mein gaanth hai, kya yeh cancer ho sakta hai",
+    ];
+
+    test.each(cases)("passes through (not refusal): %s", (text) => {
+      const result = service.evaluate(text);
+      expect(result.classification).toBe("normal");
+    });
+  });
+
+  describe("Diagnosis refusal still works for definitive requests", () => {
+    const cases = [
+      "kya mujhe cancer hai",
+      "kya yeh cancer hai",
+      "kya mere cancer ho gaya",
+    ];
+
+    test.each(cases)("still refuses diagnosis: %s", (text) => {
+      const result = service.evaluate(text);
+      expect(result.classification).toBe("refusal");
+    });
+  });
+
   describe("Normal messages (should pass)", () => {
     const normalCases = [
       "What are the symptoms of breast cancer?",

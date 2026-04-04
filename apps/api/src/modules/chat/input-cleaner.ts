@@ -19,6 +19,15 @@ const MEDICAL_SPELL_CORRECTIONS: Record<string, string> = {
   'keemotherapy': 'chemotherapy',
   'chemotheraphy': 'chemotherapy',
   'chemo therapy': 'chemotherapy',
+  'kemotheraphy': 'chemotherapy',
+  'kemoterapi': 'chemotherapy',
+  'chemotherapi': 'chemotherapy',
+  // Side effects
+  'effcts': 'effects',
+  'efects': 'effects',
+  'affcts': 'effects',
+  'side efects': 'side effects',
+  'side effcts': 'side effects',
   // Mammogram
   'mamogram': 'mammogram',
   'mamography': 'mammography',
@@ -75,6 +84,18 @@ const MEDICAL_SPELL_CORRECTIONS: Record<string, string> = {
   // Metastasis
   'metastatis': 'metastasis',
   'metastisis': 'metastasis',
+  // Prognosis
+  'prognsis': 'prognosis',
+  'progonsis': 'prognosis',
+  // Treatment
+  'treatmnt': 'treatment',
+  'tretment': 'treatment',
+  // Immunotherapy
+  'immunotheraphy': 'immunotherapy',
+  'imunotherapy': 'immunotherapy',
+  // Palliative
+  'paliative': 'palliative',
+  'pallative': 'palliative',
 };
 
 /**

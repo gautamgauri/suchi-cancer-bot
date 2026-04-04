@@ -2,7 +2,7 @@ import { Controller, Get, Patch, Query, Param, Body, UseGuards, Logger } from '@
 import { BasicAuthGuard } from '../../common/guards/basic-auth.guard';
 import { ReviewService } from './review.service';
 
-@Controller('v1/review')
+@Controller('review')
 export class ReviewController {
   private readonly logger = new Logger(ReviewController.name);
 

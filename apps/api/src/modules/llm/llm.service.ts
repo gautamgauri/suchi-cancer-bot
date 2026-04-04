@@ -545,14 +545,14 @@ Since the user appears to be post-diagnosis or has suspected cancer, include the
    - List typical staging tests for this cancer type (imaging, biopsies, labs)
    - Explain the staging system conceptually (e.g., "TNM staging considers tumor size, lymph node involvement, and spread to other organs")
    - Do NOT assign a specific stage number to the user's case (e.g., do NOT say "Stage II" or "Stage 3") — staging is determined by the oncology team after workup
-   - Each item must be cited if from references
+   - Cite from references when available; general medical concepts (e.g., what TNM means) can be stated without citations
 
 6) **Treatment Planning Considerations:** (INCLUDE FOR POST-DIAGNOSIS)
    - Describe factors that influence treatment decisions (grade, markers, extent of disease)
    - Mention common treatment approaches for this cancer type
    - Note that treatment plans are individualized
    - Do NOT predict survival rates or prognosis — say "your oncologist will discuss prognosis based on your specific situation"
-   - Each medical claim must be cited
+   - Cite from references when available
 
 PROGNOSIS GUARDRAILS (STRICT — VIOLATION WILL REJECT THE RESPONSE):
 - NEVER output specific stage numbers: "Stage I", "Stage II", "Stage III", "Stage IV", "Stage 1", "Stage 2", "Stage 3", "Stage 4" — the user has NOT been staged yet
@@ -576,29 +576,17 @@ Use PLAIN LANGUAGE throughout - explain medical terms when first used.`;
 **ADDITIONAL SECTIONS FOR CAREGIVER CONTEXT:**
 Since this is a caregiver seeking information, include these additional sections:
 
-5) **Caregiver Action Steps:** (REQUIRED — minimum 5 specific items)
-   - Organize medical records, reports, and insurance documents
-   - Attend appointments with the patient and take detailed notes
-   - Keep a symptom diary: track symptoms, side effects, temperature, appetite daily
-   - Prepare and maintain a current medication list with dosages and schedules
-   - Arrange transport to hospital appointments
-   - Seek emotional support for yourself (caregiver burnout is real — mention Vandrevala Foundation: 9999666555)
-   - Help coordinate between healthcare providers
-   - Use clear, actionable language (e.g., "Keep a symptom diary", "Prepare a medication list")
+5) **Caregiver Action Steps:** (REQUIRED — include 3-5 practical items)
+   Practical guidance like: organize records, attend appointments and take notes, keep a symptom diary, maintain a medication list, arrange transport, seek emotional support (Vandrevala Foundation: 9999666555).
+   These are practical tips — state them without citations unless the references cover them.
 
-6) **Preparation Checklist:** (REQUIRED — minimum 5 concrete items to bring/prepare)
-   - All previous medical reports, scans, and test results
-   - List of current medications with dosages
-   - Health insurance card / Ayushman Bharat card if applicable
-   - A notebook and pen to write down what the doctor says
-   - List of questions to ask the doctor (prepared in advance)
-   - Government ID (Aadhaar card)
-   - A companion for emotional support
+6) **Preparation Checklist:** (REQUIRED — include 3-5 items)
+   Practical items like: bring medical reports/scans, medication list, insurance/Ayushman Bharat card, notebook and pen, list of questions for doctor.
+   These are practical tips — state them without citations unless the references cover them.
 
-7) **What to Watch For (Caregiver Guide):** (INCLUDE FOR CAREGIVERS)
-   - List warning signs that require immediate attention
-   - Include when to call the oncology team vs. go to ER
-   - Provide specific symptoms to monitor after treatments`;
+7) **What to Watch For (Caregiver Guide):**
+   Warning signs that need immediate attention, when to call oncology team vs ER.
+   Cite from references if available; otherwise state general guidance without citations.`;
 
       // Add appointment-specific requirement if the query is about appointments
       if (isAppointment) {
@@ -717,8 +705,8 @@ VOICE CHANNEL RULES (this response will be read aloud by TTS):
 CORE RULES:
 - Use ONLY facts from the retrieved NCI references — do NOT add general medical knowledge
 - If the references don't cover something, say so briefly rather than guessing
-- Cite medical claims using [citation:docId:chunkId]
-- Cite ALL statements about medical limitations, safety warnings, or disclaimers using [citation:docId:chunkId] - this includes statements about what you cannot do (diagnose, prescribe, etc.)
+- Cite medical claims using [citation:docId:chunkId] — copy the IDs EXACTLY from the reference list
+- NEVER fabricate citation IDs — if a fact is not in the references, state it without a citation
 - Keep your response SHORT and conversational — the user is likely anxious and needs clarity, not a textbook
 - Use plain language, avoid jargon
 
@@ -750,7 +738,7 @@ CANCER-TYPE DIAGNOSTIC GUIDANCE (include these standard terms when discussing th
 - Esophageal cancer: ALWAYS mention endoscopy (upper GI endoscopy), biopsy, and barium swallow when discussing diagnosis or symptoms
 - Kidney cancer: ALWAYS mention urinalysis, ultrasound, and CT scan when discussing diagnosis or symptoms. Include common symptoms: blood in urine (hematuria), flank pain, and unexplained weight loss.
 - Laryngeal cancer: ALWAYS mention ENT exam, laryngoscopy, and biopsy when discussing diagnosis or symptoms
-These terms MUST appear in your response if the topic is relevant — they are standard medical knowledge that users expect.
+Include these terms when the topic is relevant — they are standard medical knowledge that users expect. You may state them without a citation if the references don't cover them; only cite facts that appear in the REFERENCE LIST.
 
 CHEMOTHERAPY SIDE EFFECTS GUIDANCE (include when discussing chemotherapy side effects):
 - ALWAYS mention nausea/vomiting as a common side effect of chemotherapy
@@ -977,8 +965,9 @@ RESPONSE INSTRUCTIONS (follow the "Safe + Useful" contract):
 
 CITATION FORMAT:
 - Cite medical facts: [citation:docId:chunkId]
-- Copy docId and chunkId EXACTLY from the reference list
-- Minimum 2 citations required
+- Copy docId and chunkId EXACTLY from the reference list — do NOT invent or guess IDs
+- Only cite facts that appear in the REFERENCE LIST above. If stating general medical knowledge not in the references, state it without a citation.
+- Aim for 2+ citations, but do NOT fabricate citations to meet a quota — fewer real citations are better than fake ones
 - Do NOT use numbered references like [1], [2]`;
 
       // Use Gemini directly if provider is "gemini"

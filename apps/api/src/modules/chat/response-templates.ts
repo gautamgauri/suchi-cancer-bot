@@ -28,8 +28,7 @@ export class ResponseTemplates {
     const lowerText = userText.toLowerCase();
     let response = "";
 
-    // Add disclaimer at the start (required for eval)
-    response += "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
+    // Disclaimer is appended at the end by appendDisclaimer() — do not add a second one here
 
     // Optional one-line framing based on query type
     if (queryType === "symptoms") {

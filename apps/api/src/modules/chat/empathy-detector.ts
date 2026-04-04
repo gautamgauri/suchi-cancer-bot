@@ -86,7 +86,9 @@ export class EmpathyDetector {
     /\b(depressed|depression|feeling hopeless|feel alone|so isolated)\b/i,
     /\b(can't cope anymore|overwhelmed|breaking down|falling apart)\b/i,
     /\b(need someone to talk to|need support|need help emotionally)\b/i,
-    /\b(therapy|therapist|counselor|counselling|mental health)\b/i,
+    /\b(therapist|counselor|counselling|mental health)\b/i,
+    // "therapy" only when NOT preceded by medical qualifiers (chemo, radio, immuno, hormone, targeted, keemo, kemo, radiation)
+    /(?<!(chemo|radio|immuno|hormone|targeted|keemo|kemo|radiation)\s*)\btherapy\b/i,
     /\b(anxiety|panic attacks|can't sleep|insomnia|nightmares)\b/i,
     /\b(support group|cancer support|emotional support)\b/i,
     // Cancer-specific emotional distress

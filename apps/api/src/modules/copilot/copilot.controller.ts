@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Param } from '@nestjs/common';
 import { CopilotService } from './copilot.service';
 import { CreateSessionDto, ApproveDto, RejectDto } from './copilot.dto';
 
-@Controller('v1/copilot')
+@Controller('copilot')
 export class CopilotController {
   constructor(private readonly copilot: CopilotService) {}
 

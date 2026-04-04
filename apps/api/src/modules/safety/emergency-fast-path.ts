@@ -72,7 +72,8 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
   [/मिर्गी/i, "epilepsy_hi"],
 
   // Hinglish / transliterated
-  [/\b(khoon|khun)\s*(bahut|zyada|bht)\b/i, "severe_bleeding_hinglish"],
+  [/\b(?:khoon|khun)\b.*\b(?:bahut|zyada|bht)\b|\b(?:bahut|zyada|bht)\b.*\b(?:khoon|khun)\b/i, "severe_bleeding_hinglish"],
+  [/\b(?:khoon|khun)\b.*\b(?:turant|jaldi|abhi)\b|\b(?:turant|jaldi|abhi)\b.*\b(?:khoon|khun)\b/i, "urgent_bleeding_hinglish"],
   [/\b(khoon|khun)\s*(ruk|band)\s*nahi/i, "bleeding_not_stopping_hinglish"],
   [/\bsaans?\s*nahi\s*(aa|le)\s*raha/i, "cant_breathe_hinglish"],
   [/\bbehosh\b/i, "unconscious_hinglish"],
