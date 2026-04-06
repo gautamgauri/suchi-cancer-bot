@@ -1,208 +1,147 @@
-## Eval Canonical Entry Points
+# Eval Framework
 
-This folder contains the evaluation harness and test cases.
+This folder contains the evaluation harness for Suchi:
+- case suites in `eval/cases`
+- scoring logic in `eval/runner`
+- CLI entrypoint in `eval/cli.ts`
+- config loader in `eval/config/loader.ts`
 
-Canonical entry points:
-- `eval/cli.ts` (ts-node entrypoint)
-- `eval/runner/` (core evaluation pipeline)
-- `eval/cases/` (YAML test suites)
-
-Run the micro-suite:
-```bash
-cd eval
-npx ts-node cli.ts run \
-  --cases cases/tier1/zero_citation_regression.yaml \
-  --output reports/zero-citation-regression.json \
-  --summary
-```
-# Suchi Bot Evaluation Framework
-
-Comprehensive evaluation framework for testing Suchi Cancer Bot responses across 20 cancer types and 5 interaction modes (100 test cases total).
-
-## Features
-
-- **100 Test Cases**: 20 cancers × 5 interaction modes
-- **Deterministic Checks**: Regex patterns, question counting, section detection
-- **LLM Judge**: Supports both Vertex AI/Gemini and OpenAI for semantic evaluation
-- **Comprehensive Reports**: JSON and text report formats with detailed statistics
-- **Flexible Configuration**: Environment variables and config file support
-
-## Installation
-
+## Prerequisites
+- API reachable at `EVAL_API_BASE_URL` (default: `http://localhost:3001`)
+- Node dependencies installed:
 ```bash
 cd eval
 npm install
 ```
 
-For Vertex AI support (optional):
+## Canonical Commands
+
+### 1. Core text eval
 ```bash
-npm install @google-cloud/vertexai
+cd eval
+npx ts-node cli.ts run \
+  --cases cases/tier1/common_cancers_20_mode_matrix.yaml \
+  --rubrics rubrics/rubrics.v1.json \
+  --output reports/tier1-report.json \
+  --summary
 ```
+
+Useful filters:
+- `--case <id>`
+- `--tier <number>`
+- `--cancer <type>`
+- `--intent <type>`
+- `--batch-size <n>` (writes incremental reports after each batch)
+
+### 2. Voice E2E eval (`/v1/voice/respond` and optional WS)
+```bash
+npx ts-node cli.ts voice-e2e \
+  --cases cases/voice/voice_e2e_cases.yaml \
+  --rubrics rubrics/voice-rubrics.v1.json \
+  --transport both \
+  --synthetic \
+  --output reports/voice-e2e-report.json \
+  --summary
+```
+
+Notes:
+- `--transport` supports `http`, `ws`, or `both`.
+- WS tests require API started with `VOICE_WS_ENABLED=true`.
+- `--synthetic` generates test audio via TTS; without it, fixture files are used.
+
+### 3. Voice transcript eval (text channel with voice-like prompts)
+```bash
+npx ts-node cli.ts voice-transcript \
+  --cases cases/voice/voice_transcript_cancer_queries.yaml \
+  --output reports/voice-transcript-report.json \
+  --summary
+```
+
+Optional:
+- `--email <address>` sends transcript report email via eval emailer.
+
+### 4. Release gate
+```bash
+npx ts-node cli.ts release-gate \
+  --output reports/release-gate-report.json
+```
+
+Exit code is non-zero when verdict is `BLOCK`.
+
+### 5. Judge agreement and optimization tools
+```bash
+npx ts-node cli.ts judge-compare \
+  --report-a reports/tier1-report.json \
+  --report-b reports/tier1-report-v5.json
+```
+
+```bash
+npx ts-node cli.ts eval-optimize --dry-run
+```
+
+### 6. Autoresearch loop
+```bash
+npx ts-node cli.ts autoresearch \
+  --target all \
+  --mode gold \
+  --api-url http://localhost:3001
+```
+
+Mode options:
+- `gold`: uses gold pack cases
+- `voice`: uses voice transcript cases
 
 ## Configuration
 
-### Secure Setup with Google Cloud Secret Manager (Recommended)
+Default config is `eval/config/default.json`. Override with `--config` or env vars.
 
-**Windows (PowerShell):**
-```powershell
-cd eval
-.\setup-deepseek.ps1
-```
+High-signal env vars:
+- `EVAL_API_BASE_URL`: target API base URL
+- `EVAL_AUTH_BEARER`: bearer token for protected targets
+- `EVAL_LLM_PROVIDER`: `vertex_ai`, `openai`, or `deepseek`
+- `EVAL_FALLBACK_LLM_PROVIDER`: optional fallback provider
+- `EVAL_TIMEOUT_MS`: request timeout
+- `EVAL_RETRIES`: retries for API calls
+- `EVAL_PARALLEL`: run in parallel
+- `EVAL_MAX_CONCURRENCY`: parallel worker count
 
-This script will:
-- Store your API key securely in Google Cloud Secret Manager
-- Set up proper IAM permissions
-- Configure your project ID
+Provider-specific:
+- OpenAI: `OPENAI_API_KEY`, `OPENAI_MODEL`
+- DeepSeek: `DEEPSEEK_API_KEY`, `DEEPSEEK_MODEL`, `DEEPSEEK_BASE_URL`
+- Vertex AI: `GOOGLE_CLOUD_PROJECT`, `VERTEX_AI_LOCATION`, `VERTEX_AI_MODEL`
 
-**Manual Setup:**
-See [docs/SECRETS_SETUP.md](docs/SECRETS_SETUP.md) for detailed instructions.
+Secret Manager:
+- Loader can pull from GCP Secret Manager when available.
+- If API keys are already present in env vars, loader skips Secret Manager access.
 
-**Quick Setup (Environment Variables - Less Secure):**
-```bash
-export EVAL_LLM_PROVIDER=deepseek
-export DEEPSEEK_API_KEY=your_api_key_here
-export DEEPSEEK_MODEL=deepseek-chat
-```
+## Output and Reporting
 
-### Environment Variables
+`run` writes incremental JSON report snapshots during execution, then finalizes the output file.
 
-- `EVAL_API_BASE_URL`: API base URL (default: `http://localhost:3001`)
-- `EVAL_LLM_PROVIDER`: `openai`, `deepseek`, or `vertex_ai` (default: `openai`)
-- `OPENAI_API_KEY`: Required if using OpenAI
-- `OPENAI_MODEL`: OpenAI model (default: `gpt-4o`)
-- `DEEPSEEK_API_KEY`: Required if using Deepseek
-- `DEEPSEEK_MODEL`: Deepseek model (default: `deepseek-chat`)
-- `DEEPSEEK_BASE_URL`: Deepseek API base URL (default: `https://api.deepseek.com/v1`)
-- `GOOGLE_CLOUD_PROJECT`: Required if using Vertex AI
-- `VERTEX_AI_LOCATION`: Vertex AI location (default: `us-central1`)
-- `VERTEX_AI_MODEL`: Vertex AI model (default: `gemini-1.5-pro`)
-- `EVAL_TIMEOUT_MS`: Request timeout (default: `30000`)
-- `EVAL_RETRIES`: Number of retries (default: `2`)
-- `EVAL_PARALLEL`: Enable parallel execution (default: `false`)
-- `EVAL_MAX_CONCURRENCY`: Max concurrent tests (default: `5`)
-
-### Config File
-
-Edit `config/default.json` or provide a custom config file with `--config`.
-
-**Note:** For security, API keys should be set via environment variables, not in config files that might be committed to git.
-
-## Usage
-
-### Run All Tests
-
-```bash
-npm run eval run
-```
-
-### Run Specific Test Case
-
-```bash
-npm run eval run -- --case SUCHI-T1-BREAST-GEN-01
-```
-
-### Run Tests by Tier
-
-```bash
-npm run eval run -- --tier 1
-```
-
-### Filter by Cancer Type
-
-```bash
-npm run eval run -- --cancer breast
-```
-
-### Filter by Intent
-
-```bash
-npm run eval run -- --intent INFORMATIONAL_GENERAL
-```
-
-### Generate Report from Results
-
-```bash
-npm run eval report -- --input report.json --format text
-```
-
-### Options
-
-- `--cases <path>`: Path to test cases YAML (default: `cases/tier1/common_cancers_20_mode_matrix.yaml`)
-- `--rubrics <path>`: Path to rubrics JSON (default: `rubrics/rubrics.v1.json`)
-- `--config <path>`: Path to config file
-- `--output <path>`: Output path for report JSON (default: `report.json`)
-- `--summary`: Print summary to console
-
-## Test Case Structure
-
-Test cases are defined in YAML format with:
-- `id`: Unique test case identifier
-- `tier`: Test tier (1, 2, 3, etc.)
-- `cancer`: Cancer type
-- `intent`: Interaction mode (INFORMATIONAL_GENERAL, SYMPTOMATIC_PATIENT, etc.)
-- `user_messages`: Array of user messages (multi-turn conversations)
-- `expectations`: Expected response characteristics
-
-## Rubric Structure
-
-Rubrics define evaluation criteria:
-- **Deterministic Checks**: Fast, rule-based checks (regex, counts)
-- **LLM Judge**: Semantic evaluation using LLM
-- **Weights**: Importance of each check
-- **Pass Threshold**: Minimum score to pass
-
-## Report Format
-
-Reports include:
-- Summary statistics (total, passed, failed, average score)
-- Individual test results with scores
-- Failed test details with error messages
-- Evidence quotes from LLM judge
-
-## Example Output
-
-```
-SUMMARY
-------------------------------------------------------------
-Total Tests: 100
-Passed: 85 (85.0%)
-Failed: 15 (15.0%)
-Skipped: 0
-Average Score: 87.5%
-Total Execution Time: 1250.50s
-```
+Report includes:
+- suite metadata (`loaded`, `selected`, `executed`)
+- pass/fail summary and average score
+- per-case deterministic + judge checks
+- failure breakdown
 
 ## Troubleshooting
 
-### API Connection Errors
+### 1. Zero cases executed
+- The CLI fails fast when filters select zero cases.
+- Check canonicalized `--cancer` and `--intent` values in preflight output.
 
-Ensure the Suchi API is running and accessible at the configured `apiBaseUrl`.
+### 2. Repeated 504s / timeouts
+- This generally indicates API latency issues rather than rubric logic.
+- Try smaller `--batch-size`, lower parallelism, or warm up API first.
 
-### LLM Provider Errors
+### 3. DeepSeek/OpenAI judge failures
+- Confirm API key env vars are present for chosen provider.
+- If using Vertex fallback, ensure `GOOGLE_CLOUD_PROJECT` is set.
 
-- **OpenAI**: Ensure `OPENAI_API_KEY` is set
-- **Deepseek**: Ensure `DEEPSEEK_API_KEY` is set
-- **Vertex AI**: Ensure `GOOGLE_CLOUD_PROJECT` is set and Vertex AI SDK is installed
+### 4. Voice WS failures
+- Ensure API runs with `VOICE_WS_ENABLED=true`.
+- Confirm eval target URL matches the deployed WS namespace `/v1/voice/stream`.
 
-### Test Case Loading Errors
-
-Verify YAML file format and paths are correct.
-
-## Development
-
-### Build
-
-```bash
-npm run build
-```
-
-### Run with TypeScript
-
-```bash
-npm run eval
-```
-
-## License
-
-MIT
+### 5. Audio URL reachability failures in voice E2E
+- Check API `GCS_BUCKET_TTS` access and signed URL expiry settings.
 

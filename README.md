@@ -1,220 +1,133 @@
-# Suchi Phase 1 Pack
+# Suchi Cancer Bot
 
-Suchi (Suchitra Cancer Bot) - A cancer information assistant with safety guardrails, KB-backed responses, and feedback collection.
+Suchi is a safety-constrained cancer information assistant with KB-grounded responses, citation enforcement, voice workflows, and evaluation tooling.
 
-## Contents
-- `apps/api` - NestJS + Prisma backend with Google Gemini LLM integration
-- `apps/web` - React + Vite frontend chat UI
-- `kb` - Knowledge base files and manifest
-- `docs` - PRD, technical spec, and KB structure documentation
+## Repository Layout
+- `apps/api`: NestJS API (main runtime)
+- `apps/web`: React + Vite chat frontend
+- `kb`: Knowledge base markdown + manifest
+- `eval`: Evaluation framework and test suites
+- `docs`: Product, architecture, ops, and deployment docs
+- `scripts`: Ingestion/content generation utilities
 
-## Prerequisites
-- Node.js 18+ and npm
-- PostgreSQL database
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+## Quick Start
 
-## Backend Setup
-
-1. Navigate to the API directory:
-   ```bash
-   cd apps/api
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create `.env` file with the following variables:
-   ```env
-   DATABASE_URL=postgresql://user:password@localhost:5432/suchi_db
-   ADMIN_BASIC_USER=admin
-   ADMIN_BASIC_PASS=your_secure_password
-   GEMINI_API_KEY=your_gemini_api_key_here
-   PORT=3001
-   NODE_ENV=development
-   RATE_LIMIT_TTL_SEC=60
-   RATE_LIMIT_REQ_PER_TTL=20
-   ```
-
-4. Generate Prisma client:
-   ```bash
-   npx prisma generate
-   ```
-
-5. Run database migrations:
-   ```bash
-   npx prisma migrate dev --name init
-   ```
-
-6. (Optional) Ingest knowledge base:
-   ```bash
-   npm run kb:dry     # Dry run to verify KB structure
-   npm run kb:ingest  # Ingest KB into database
-   ```
-
-7. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-The API will be available at `http://localhost:3001/v1`
-
-## Frontend Setup
-
-1. Navigate to the web directory:
-   ```bash
-   cd apps/web
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. (Optional) Create `.env` file to configure API URL:
-   ```env
-   VITE_API_URL=http://localhost:3001/v1
-   ```
-   If not set, it defaults to `/v1` (using Vite proxy).
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-The web UI will be available at `http://localhost:3000`
-
-## API Endpoints
-
-### Public Endpoints
-- `POST /v1/sessions` - Create a new chat session
-- `POST /v1/chat` - Send a message and get response
-- `POST /v1/feedback` - Submit feedback for a message
-- `GET /v1/health` - Health check endpoint
-
-### Admin Endpoints (Basic Auth)
-- `GET /v1/admin/conversations` - List conversations with optional filters
-- `GET /v1/admin/metrics` - Get analytics metrics
-
-## Features
-
-### Safety Features
-- Emergency detection and warning banners
-- Self-harm detection with crisis support guidance
-- Refusal to diagnose or prescribe medications
-- Misinformation detection (e.g., stopping treatment)
-
-### Chat Features
-- KB-backed responses using Vector RAG (pgvector semantic search)
-- Google Gemini Pro for response generation
-- Suggested prompts for new users
-- Feedback collection (thumbs up/down)
-- Session management
-- "Start over" functionality
-
-### Knowledge Base Features
-- Vector embeddings for semantic search (pgvector)
-- Keyword search fallback for backward compatibility
-- YouTube transcript extraction from Suchitra Cancer Care Foundation channel
-- Monthly automated KB updates
-- Gold Stack organization with source traceability
-
-### Admin Features
-- View conversations with filtering options
-- Analytics and metrics dashboard
-- Protected with Basic Authentication
-
-## Deployment
-
-For Railway deployment (recommended):
-1. Connect your GitHub repository to Railway
-2. Set environment variables in Railway dashboard
-3. Deploy both `apps/api` and `apps/web` as separate services
-4. Configure database connection string
-5. Run migrations: `npx prisma migrate deploy`
-
-## Knowledge Base Setup
-
-### Vector RAG Setup
-1. Ensure PostgreSQL has pgvector extension installed
-2. Run migrations: `npx prisma migrate dev`
-3. See [`docs/VECTOR_RAG_SETUP.md`](docs/VECTOR_RAG_SETUP.md) for detailed instructions
-
-### YouTube Transcript Extraction
-1. Install Python dependencies: `cd scripts/youtube-transcripts && pip install -r requirements.txt`
-2. Extract transcripts: `python extract_transcripts.py --video-ids VIDEO_ID1 VIDEO_ID2`
-3. See [`scripts/youtube-transcripts/README.md`](scripts/youtube-transcripts/README.md) for details
-
-### NCI Data Ingestion
-1. Install Python dependencies: `cd scripts/nci-ingestion && pip install -r requirements.txt`
-2. Run full pipeline: `python update_nci.py`
-3. Process NCIt thesaurus: `python process_ncit.py --force-download`
-4. See [`docs/NCI_INGESTION_GUIDE.md`](docs/NCI_INGESTION_GUIDE.md) for detailed instructions
-
-### Monthly Updates
-
-**YouTube Transcripts**:
+### 1. Backend (`apps/api`)
 ```bash
-cd scripts/youtube-transcripts
-bash update_monthly.sh
+cd apps/api
+npm install
 ```
 
-**NCI Content**:
-```bash
-cd scripts/nci-ingestion
-bash update_nci.sh
+Create `apps/api/.env` (minimum local dev variables):
+```env
+DATABASE_URL=postgresql://suchi_app:password@localhost:5432/suchi_db
+ADMIN_BASIC_USER=admin
+ADMIN_BASIC_PASS=your_secure_password
+
+# LLM runtime (default provider is gemini)
+LLM_PROVIDER=gemini
+GOOGLE_CLOUD_PROJECT=your-gcp-project
+VERTEX_AI_LOCATION=us-central1
+GEMINI_MODEL=gemini-2.0-flash-001
+
+# Embeddings are required for KB retrieval
+EMBEDDING_API_KEY=your_google_ai_key
+EMBEDDING_MODEL=text-embedding-004
 ```
 
-## Sanity Check
-
-A sanity check script verifies that all components are working correctly. It runs automatically when you open the workspace in Cursor, and can also be run manually.
-
-### Automatic Check
-
-The sanity check runs automatically when you open the workspace (configured in `.cursor/tasks.json`). It will:
-- ✅ Check frontend build
-- ✅ Check backend health endpoint
-- ✅ Test RAG retrieval with a sample query
-- ✅ Test AI model response generation
-
-### Manual Check
-
-Run the sanity check manually:
-
+Then:
 ```bash
-# Full check (includes build and functional tests)
-npm run sanity-check
-
-# Quick check (skips build and functional tests, faster)
-npm run sanity-check:quick
+npx prisma generate
+npx prisma migrate dev
+npm run dev
 ```
 
-### What It Checks
+API base URL: `http://localhost:3001/v1`
 
-1. **Frontend**: Verifies the web app can build successfully
-2. **Backend**: Checks health endpoint and database connectivity
-3. **RAG**: Tests retrieval with a sample query, verifies trusted sources in top-3
-4. **AI Model**: Tests LLM response generation, verifies citations are present
+### 2. Frontend (`apps/web`)
+```bash
+cd apps/web
+npm install
+npm run dev
+```
 
-### Requirements
+Frontend URL: `http://localhost:3000`
+The Vite dev proxy forwards `/v1` to `http://localhost:3001`.
 
-- Root dependencies installed: `npm install` (from repo root)
-- Backend running (for RAG and AI model checks): Start with `cd apps/api && npm run dev`
-- Environment variables configured (API keys, database URL, etc.)
+## API Surface
 
-### Output
+All endpoints are prefixed with `/v1`.
 
-The script provides clear pass/fail indicators:
-- ✅ Success: Component is working
-- ❌ Failure: Component has issues (see details)
-- ⏭️ Skipped: Component check was skipped (e.g., backend not running)
+### Core Chat
+- `POST /sessions`: Create a session (`channel` in `web|app|whatsapp|voice`)
+- `GET /sessions/:sessionId`: Get session metadata
+- `POST /chat`: Run chat turn
+- `POST /feedback`: Submit feedback (`up|down`)
+- `GET /health`: DB connectivity and service health
 
-## Development Notes
+### Voice HTTP
+- `POST /voice/respond`: Multipart audio (`audio` file + `sessionId`, optional `locale`)
+- `POST /voice/tts`: Text-to-speech for web “Listen” playback
 
-- Backend runs on port 3001 by default
-- Frontend runs on port 3000 with proxy to backend
-- Health check endpoint available at `/v1/health`
-- All API endpoints are prefixed with `/v1`
-- Frontend uses sessionStorage to persist consent state
-- Vector embeddings require `EMBEDDING_API_KEY` (can use `GEMINI_API_KEY`)
+### Voice WebSocket (opt-in)
+- Namespace: `/v1/voice/stream`
+- Enable with `VOICE_WS_ENABLED=true`
+- Events: `audio:start` (with `sessionId`, optional `locale`), `audio:chunk` (binary chunks), `audio:end`
+- Server emits: `stt:interim`, `stt:final`, `response`, `error`
+
+### Admin / Review / Copilot
+- Admin (Basic Auth): `/admin/*` and `/admin/youtube/*`
+- Review queue and policies (Basic Auth): `/review/*`
+- Copilot workflow APIs (internal workflow): `/copilot/*`
+
+## Examples
+
+### Create session + chat
+```bash
+curl -sS -X POST "http://localhost:3001/v1/sessions" \
+  -H "content-type: application/json" \
+  -d '{"channel":"web"}'
+```
+
+```bash
+curl -sS -X POST "http://localhost:3001/v1/chat" \
+  -H "content-type: application/json" \
+  -d '{
+    "sessionId":"<SESSION_UUID>",
+    "channel":"web",
+    "userText":"What are warning signs of oral cancer?"
+  }'
+```
+
+### Voice respond (multipart)
+```bash
+curl -sS -X POST "http://localhost:3001/v1/voice/respond" \
+  -F "audio=@sample.wav" \
+  -F "sessionId=<SESSION_UUID>" \
+  -F "locale=en-IN"
+```
+
+### TTS for web playback
+```bash
+curl -sS -X POST "http://localhost:3001/v1/voice/tts" \
+  -H "content-type: application/json" \
+  -d '{"text":"Please consult your oncologist.","locale":"en-IN"}'
+```
+
+## Operational Notes
+- Chat responses are cleaned for UI display while citations are returned in structured fields.
+- `POST /chat` has a bounded request timeout and returns a user-safe timeout payload when exceeded.
+- Voice uploads are size-limited in the controller (`2 MB` max file size).
+- WebSocket voice is disabled unless explicitly enabled.
+
+## Developer Runbooks
+- Environment variables: `docs/ENVIRONMENT_VARIABLES.md`
+- Deployment and migrations: `docs/DEPLOYMENT.md`
+- Gated deployment flow: `docs/GATED_DEPLOYMENT.md`
+- Eval framework: `eval/README.md`
+- NCI ingestion pipeline: `docs/NCI_INGESTION_GUIDE.md`
+
+## Common Pitfalls
+- Missing `GOOGLE_CLOUD_PROJECT` with `LLM_PROVIDER=gemini` causes API startup failure.
+- Missing embedding key (`EMBEDDING_API_KEY` or `GEMINI_API_KEY`) prevents embedding service startup.
+- Calling WS voice endpoint without `VOICE_WS_ENABLED=true` results in connection failure.
