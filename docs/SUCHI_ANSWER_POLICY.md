@@ -1,7 +1,7 @@
 # Suchi Answer Policy - Trust-First RAG v2
 
-**Last Updated:** 2026-03-31
-**Version:** 2.1
+**Last Updated:** 2026-04-13
+**Version:** 2.2
 
 ---
 
@@ -17,6 +17,21 @@ If Suchi provides medical information, it must:
 ### The Rule: No Citations → No Medical Content
 
 Medical content without citations must never be returned to users. When evidence is insufficient, Suchi returns a SafeFallbackResponse (navigational guidance only).
+
+---
+
+## Implementation Notes (Current Runtime)
+
+This policy is enforced in the live chat pipeline:
+
+1. **Input is normalized first:** Voice/transcript cleanup runs before classification or retrieval (stutter cleanup, filler-word cleanup, common medical spelling correction).
+2. **Query expansion is multilingual:** Informational intents expand English medical synonyms plus Hindi/Hinglish phrases and full-phrase translation for retrieval.
+3. **Citations are persisted in response text:** The final write path appends `[citation:docId:chunkId]` markers when citations exist but markers are missing from text.
+
+Primary codepaths:
+- `apps/api/src/modules/chat/chat.service.ts`
+- `apps/api/src/modules/chat/input-cleaner.ts`
+- `apps/api/src/modules/rag/query-expander.service.ts`
 
 ---
 
@@ -149,6 +164,18 @@ After LLM generates a response:
 
 **No exceptions.** Medical content without sufficient citations is never returned.
 
+### Deterministic Citation Repair
+
+Before hard-failing a response, Suchi runs deterministic citation repair when evidence exists:
+
+1. Strip hallucinated/orphan citation markers from response text.
+2. If valid citations are still `< 2`, attach deterministic citations from top retrieved evidence chunks (2-5 citations).
+3. Validate repaired citations against retrieved evidence.
+
+Important runtime behavior:
+- Repair is metadata-first (citation objects are attached); the repair helper itself does not inject a verbose source-title block into answer text.
+- For template/fallback paths, deterministic citation attachment may include a human-readable `Sources` list plus citation markers for evaluator compatibility.
+
 ### Medical Content Detection
 
 Content is classified as "medical" if:
@@ -199,6 +226,47 @@ All blocking decisions must be logged with structured data:
 }
 ```
 
+### Citation Repair Triggered
+```json
+{
+  "event": "citation_repair",
+  "sessionId": "...",
+  "intent": "INFORMATIONAL_GENERAL",
+  "mode": "explain",
+  "evidenceChunksAvailable": 6
+}
+```
+
+### Orphan Citations Stripped
+```json
+{
+  "event": "orphan_citations_stripped",
+  "sessionId": "...",
+  "orphanCitations": ["[citation:fake:chunk]"]
+}
+```
+
+---
+
+## Troubleshooting & Pitfalls
+
+### Symptom: frequent `citation_enforcement_failed`
+
+Check:
+1. Whether retrieval returned enough relevant trusted chunks for the query.
+2. Whether response intent was classified as medical (`INFORMATIONAL_*`) and therefore requires 2+ citations.
+3. Whether LLM output format changed and reduced extractable citation markers.
+
+### Symptom: citations exist in metadata but response text appears uncited
+
+Check:
+1. Whether citation markers were appended during the final persistence step.
+2. Whether downstream UI rendering strips `[citation:docId:chunkId]` markers.
+
+### Symptom: orphan citation warnings
+
+`orphan_citations_stripped` indicates the model emitted citation markers that do not map to retrieved chunks. This is treated as a reliability issue and cleaned before persistence.
+
 ---
 
 ## Exceptions & Edge Cases
@@ -236,6 +304,7 @@ All blocking decisions must be logged with structured data:
 
 ## Version History
 
+- **v2.2** (2026-04-13): Added current runtime notes for input normalization + multilingual query expansion, deterministic citation repair flow, orphan-citation stripping behavior, and troubleshooting guidance
 - **v2.1** (2026-03-31): Citation checks skip safety refusal responses; explain-mode prompt updated with citation rule for safety responses and symptom query handling section
 - **v2.0** (2026-01-20): Trust-First RAG v2 - Hard evidence gating, runtime citation enforcement
 - **v1.0** (2025-XX-XX): Initial policy with soft evidence checks
@@ -245,4 +314,4 @@ All blocking decisions must be logged with structured data:
 ## Questions or Clarifications?
 
 For policy questions: Contact medical team or compliance  
-For technical implementation: See `docs/ops/handoffs/2026-01-20-safety-gatekeeper-trust-first-rag-v2.md`
+For technical implementation: See `apps/api/src/modules/chat/chat.service.ts` and `docs/ops/handoffs/2026-01-20-safety-gatekeeper-trust-first-rag-v2.md`

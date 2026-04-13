@@ -1,8 +1,8 @@
 # Suchi Safety Contract
 
-**Version:** 1.0  
-**Last Updated:** 2025-01-24  
-**Status:** Phase 1 - Active
+**Version:** 1.1  
+**Last Updated:** 2026-04-13  
+**Status:** Active
 
 ## Purpose
 
@@ -11,6 +11,21 @@ This document defines the safety architecture and behavioral contract for Suchi 
 ## Core Principle: Grounded or Silent
 
 **Policy:** Suchi may answer **only** when it can quote/attribute from the trusted knowledge base. Otherwise, it must say it does not know and route the user to safe next steps.
+
+## Current Runtime Safety Pipeline
+
+Safety routing is enforced in this order inside the chat runtime:
+
+1. **Emergency fast-path first (deterministic):** `evaluateEmergencyFastPath()` runs before LLM calls and returns immediate emergency guidance for critical/urgent patterns.
+2. **Rule-based safety evaluation:** If non-emergency, `SafetyService.evaluate()` applies refusal/misinformation/self-harm patterns.
+3. **Mental health escalation:** If still normal, mental-health crisis/support detection can short-circuit into MH templates.
+4. **RAG + citation policy:** Only after safety checks does the assistant continue to retrieval and answer generation.
+
+Primary codepaths:
+- `apps/api/src/modules/chat/chat.service.ts`
+- `apps/api/src/modules/safety/emergency-fast-path.ts`
+- `apps/api/src/modules/safety/safety.service.ts`
+- `apps/api/src/modules/chat/empathy-detector.ts`
 
 ## Phase 1 Scope
 
@@ -87,6 +102,17 @@ Suchi will **automatically refuse** and route users appropriately for:
 5. **Emergency Symptoms**
    - Severe symptoms (chest pain, difficulty breathing, uncontrolled bleeding)
    - Immediate escalation to urgent care guidance
+
+6. **Prognosis / Survival Prediction**
+   - "How long do I have?"
+   - "Am I going to die?"
+   - "What are my survival chances?"
+   - "What is my life expectancy?"
+
+7. **Alternative-Only Cure Claims**
+   - "Can turmeric/haldi cure cancer?"
+   - "Natural/home remedy can replace treatment"
+   - "Only ayurveda/homeopathy is enough"
 
 ## Evidence Requirements
 
@@ -177,7 +203,7 @@ Suchi will abstain (say "I don't know") when:
 3. **Insufficient Sources:** Fewer than minimum required sources for query type
 4. **Untrusted Sources:** Only untrusted sources found
 5. **Outdated Content:** Content exceeds maximum age for topic
-6. **Citation Validation Failed:** LLM response lacks valid citations
+6. **Citation Validation Failed:** LLM response lacks valid citations after repair/validation attempts
 
 ### Abstention Messages
 
@@ -223,7 +249,24 @@ After LLM generates response:
 2. Validate against retrieved chunks
 3. Check citation format
 4. Verify no uncited claims
-5. Reject if validation fails (retry once, then abstain)
+5. If citations are insufficient and evidence exists, run deterministic citation repair
+6. Reject if validation still fails and return safe fallback/abstention path
+
+### Deterministic Safety Shell
+
+The emergency route is deterministic and multilingual:
+- No LLM call required to detect emergencies
+- Pattern coverage includes English, Hindi, and Hinglish
+- Critical and urgent severities map to different response templates
+
+### Mental Health Support Routing
+
+In addition to self-harm refusal patterns, runtime support includes:
+- **Crisis support routing** (immediate crisis resources)
+- **Non-crisis support routing** (depression/isolation/support-seeking templates)
+- India-focused helpline guidance
+
+This runs after core safety checks and before normal greeting/RAG response flow.
 
 ### Source Verification
 
@@ -234,6 +277,7 @@ Database-level enforcement:
 
 ## Version History
 
+- **v1.1** (2026-04-13): Updated runtime safety pipeline (emergency fast-path ordering, prognosis refusal, alternative-only cure refusal, deterministic citation-repair note, and mental-health routing)
 - **v1.0** (2025-01-24): Initial safety contract for Phase 1
 
 ## Compliance
