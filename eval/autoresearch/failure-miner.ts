@@ -74,13 +74,28 @@ function labelFailureType(checkId: string): string {
 
 // ── Mine failures from report ───────────────────────────────────────────────
 
+/**
+ * Cap on cases per bucket. Tighter clusters → patches that target a concrete,
+ * inspectable set of failures rather than one generic edit for "all citation
+ * failures across 50 cases". Oversized buckets get split into chunks of this
+ * size and tagged "checkId (N/M)" for log clarity.
+ */
+const MAX_BUCKET_CASES = 5;
+
+interface PreBucketEntry {
+  failureType: string;
+  specificCheckId: string;
+  severity: SeverityLevel;
+  cases: Array<{ result: EvaluationResult; reason: string }>;
+}
+
 export function mineFailures(report: EvaluationReport): FailureBucket[] {
-  const bucketMap = new Map<string, FailureBucket>();
+  // Step 1: gather (case, failedCheck) pairs from both deterministic + LLM judge.
+  const preBuckets = new Map<string, PreBucketEntry>();
 
   for (const result of report.results) {
     if (result.passed) continue;
 
-    // Gather all failed check IDs from deterministic + LLM judge
     const failedChecks: Array<{ checkId: string; reason: string }> = [];
 
     for (const dr of result.deterministicResults) {
@@ -103,7 +118,6 @@ export function mineFailures(report: EvaluationReport): FailureBucket[] {
       }
     }
 
-    // If no specific check failures but case failed, bucket as "unknown"
     if (failedChecks.length === 0 && result.error) {
       failedChecks.push({
         checkId: result.errorStep || "execution_error",
@@ -111,46 +125,65 @@ export function mineFailures(report: EvaluationReport): FailureBucket[] {
       });
     }
 
-    // Group by failure type
+    // Step 2: key by (failureType, specificCheckId) so that, e.g., a case failing
+    // `has_citations` is in a different sub-bucket from one failing `citation_contract`,
+    // even though both share failureType="citation".
     for (const fc of failedChecks) {
       const failureType = labelFailureType(fc.checkId);
-      const key = failureType;
+      const key = `${failureType}::${fc.checkId}`;
 
-      if (bucketMap.has(key)) {
-        const bucket = bucketMap.get(key)!;
-        bucket.count++;
-        if (!bucket.affectedCaseIds.includes(result.testCaseId)) {
-          bucket.affectedCaseIds.push(result.testCaseId);
-        }
-        if (!bucket.failedCheckIds.includes(fc.checkId)) {
-          bucket.failedCheckIds.push(fc.checkId);
-        }
-        // Update severity to worst seen
-        const newSeverity = classifyCheckSeverity(fc.checkId);
-        if (severityRank(newSeverity) < severityRank(bucket.severity)) {
-          bucket.severity = newSeverity;
-        }
-      } else {
-        const query = extractQuery(result);
-        bucketMap.set(key, {
+      let entry = preBuckets.get(key);
+      if (!entry) {
+        entry = {
           failureType,
+          specificCheckId: fc.checkId,
           severity: classifyCheckSeverity(fc.checkId),
-          affectedCaseIds: [result.testCaseId],
-          count: 1,
-          representative: {
-            caseId: result.testCaseId,
-            query,
-            responseExcerpt: result.responseText?.slice(0, 300) || "(no response)",
-            failureReason: fc.reason,
-          },
-          failedCheckIds: [fc.checkId],
-        });
+          cases: [],
+        };
+        preBuckets.set(key, entry);
+      }
+      // Dedup: a case can only appear once per (type, check) sub-bucket.
+      if (!entry.cases.some((c) => c.result.testCaseId === result.testCaseId)) {
+        entry.cases.push({ result, reason: fc.reason });
       }
     }
   }
 
-  // Sort by severity (P0 first), then by count descending
-  return [...bucketMap.values()].sort((a, b) => {
+  // Step 3: split any pre-bucket bigger than MAX_BUCKET_CASES into chunks so each
+  // patch targets a concrete handful of similar cases.
+  const finalBuckets: FailureBucket[] = [];
+  for (const entry of preBuckets.values()) {
+    const chunks: PreBucketEntry["cases"][] = [];
+    for (let i = 0; i < entry.cases.length; i += MAX_BUCKET_CASES) {
+      chunks.push(entry.cases.slice(i, i + MAX_BUCKET_CASES));
+    }
+
+    chunks.forEach((chunk, idx) => {
+      const rep = chunk[0];
+      const clusterTag =
+        chunks.length > 1
+          ? `${entry.specificCheckId} (${idx + 1}/${chunks.length})`
+          : entry.specificCheckId;
+
+      finalBuckets.push({
+        failureType: entry.failureType,
+        severity: entry.severity,
+        affectedCaseIds: chunk.map((c) => c.result.testCaseId),
+        count: chunk.length,
+        representative: {
+          caseId: rep.result.testCaseId,
+          query: extractQuery(rep.result),
+          responseExcerpt: rep.result.responseText?.slice(0, 300) || "(no response)",
+          failureReason: rep.reason,
+        },
+        failedCheckIds: [entry.specificCheckId],
+        clusterTag,
+      });
+    });
+  }
+
+  // Sort by severity (P0 first), then by case count descending.
+  return finalBuckets.sort((a, b) => {
     const sevDiff = severityRank(a.severity) - severityRank(b.severity);
     if (sevDiff !== 0) return sevDiff;
     return b.count - a.count;

@@ -5,6 +5,20 @@
  * changes to the repairable surface.
  */
 
+// ── Repair agent types ─────────────────────────────────────────────────────
+
+/** Which specialized agent handles the repair */
+export type RepairAgentType = "config" | "prompt" | "kb";
+
+/** Triage decision: which agent should handle a failure bucket */
+export interface TriageDecision {
+  agent: RepairAgentType;
+  confidence: number;
+  reason: string;
+  /** Hint files the agent should focus on */
+  candidateFiles: string[];
+}
+
 // ── Failure mining ──────────────────────────────────────────────────────────
 
 export type SeverityLevel = "P0" | "P1" | "P2";
@@ -27,6 +41,11 @@ export interface FailureBucket {
   };
   /** Deterministic check IDs or LLM judge check IDs that failed */
   failedCheckIds: string[];
+  /**
+   * Cluster identifier shown in logs to disambiguate sub-buckets.
+   * Set when the miner splits an oversized cluster (e.g., "has_citations (2/4)").
+   */
+  clusterTag?: string;
 }
 
 // ── Research / hypothesis ───────────────────────────────────────────────────
@@ -46,6 +65,8 @@ export interface Hypothesis {
   repairableFile: string;
   /** Which section/region within the file */
   targetSection: string;
+  /** Which agent generated this hypothesis */
+  agent?: RepairAgentType;
 }
 
 // ── Patch ────────────────────────────────────────────────────────────────────
@@ -90,6 +111,8 @@ export interface ExperimentLog {
   experimentId: string;
   timestamp: string;
   iteration: number;
+  /** Which agent handled this experiment */
+  agent?: RepairAgentType;
   failureCluster: FailureBucket;
   hypothesis: Hypothesis;
   patchDiff: string;
@@ -162,6 +185,10 @@ export interface AutoresearchConfig {
   voiceCasesPath?: string;
   /** Path to voice transcript report JSON (used when mode=voice) */
   voiceReportPath?: string;
+  /** If set, email a run summary to this address at the end. */
+  emailRecipient?: string;
+  /** Optional label included in the email subject (e.g., "nightly", "manual"). */
+  runLabel?: string;
 }
 
 // ── Runner state ────────────────────────────────────────────────────────────

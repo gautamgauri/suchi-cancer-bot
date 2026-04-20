@@ -11,6 +11,7 @@ import * as path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import OpenAI from "openai";
+import { retryableCompletion } from "./llm-retry";
 import type { Hypothesis, PatchProposal } from "./types";
 
 const execFileAsync = promisify(execFile);
@@ -209,18 +210,22 @@ CONSTRAINTS:
 - NEVER weaken existing safety language (e.g., "you must" -> "you should")
 - Preserve all existing sections/keys not targeted by the intervention`;
 
-    const response = await this.llmClient.chat.completions.create({
-      model: this.model,
-      messages: [
-        {
-          role: "system",
-          content: "You are a precise file editor. Output only the complete updated file content with no wrapping, no explanation, no code blocks.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.1,
-      max_tokens: 8000,
-    });
+    const response = await retryableCompletion(
+      this.llmClient,
+      {
+        model: this.model,
+        messages: [
+          {
+            role: "system",
+            content: "You are a precise file editor. Output only the complete updated file content with no wrapping, no explanation, no code blocks.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 8000,
+      },
+      { label: `patcher:${path.basename(filePath)}` },
+    );
 
     let content = response.choices[0]?.message?.content || "";
 

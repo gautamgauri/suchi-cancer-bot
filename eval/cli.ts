@@ -572,7 +572,7 @@ program
   .description("Run Karpathy-style autoresearch loop: mine failures -> hypothesise -> patch -> eval -> gate -> archive")
   .option("--target <cluster>", "Target failure cluster type (e.g. 'citation', 'safety', 'completeness', 'voice_formatting', 'voice_length') or 'all'", "all")
   .option("--mode <mode>", "Mode: 'gold' (default) runs gold eval cases, 'voice' runs voice transcript eval", "gold")
-  .option("--max-iterations <n>", "Maximum iterations per run (hard cap: 3)", parseInt, 3)
+  .option("--max-iterations <n>", "Maximum iterations per run (hard cap: 20)", parseInt, 20)
   .option("--dry-run", "Generate hypotheses and patches but do not apply or eval")
   .option("--api-url <url>", "API base URL", "http://localhost:3001")
   .option("--cases <path>", "Path to gold eval cases YAML", "cases/gold/core_safety.yaml")
@@ -581,6 +581,8 @@ program
   .option("--rubrics <path>", "Path to rubrics JSON", "rubrics/rubrics.v1.json")
   .option("--manifest <path>", "Path to repairable manifest JSON", "../repairable/manifest.json")
   .option("--auth-bearer <token>", "Optional bearer token for API auth")
+  .option("--email <addr>", "Email an HTML summary of the run to this address (uses SMTP_PASS from env or Secret Manager)")
+  .option("--run-label <label>", "Label included in the email subject (e.g. 'nightly')", "manual")
   .action(async (options) => {
     try {
       const { runAutoresearch } = await import("./autoresearch/autoresearch-runner");
@@ -607,7 +609,7 @@ program
       await runAutoresearch({
         target: options.target,
         mode,
-        maxIterations: options.maxIterations || 3,
+        maxIterations: options.maxIterations || 20,
         dryRun: !!options.dryRun,
         apiBaseUrl: options.apiUrl,
         goldCasesPath: casesPath,
@@ -616,6 +618,8 @@ program
         authBearer: options.authBearer,
         voiceCasesPath: mode === "voice" ? voiceCasesPath : undefined,
         voiceReportPath: mode === "voice" ? voiceReportPath : undefined,
+        emailRecipient: options.email,
+        runLabel: options.runLabel,
       });
     } catch (error: any) {
       console.error("Autoresearch error:", error.message);

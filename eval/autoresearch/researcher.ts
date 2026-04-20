@@ -9,6 +9,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import OpenAI from "openai";
+import { retryableCompletion } from "./llm-retry";
 import type { FailureBucket, Hypothesis } from "./types";
 
 // ── Manifest types ──────────────────────────────────────────────────────────
@@ -66,18 +67,22 @@ export class Researcher {
   /**
    * Generate hypotheses for a failure bucket.
    * Returns 2-5 hypotheses sorted by confidence descending.
+   * @param candidateFiles - Optional hint files from triage router (used if provided)
    */
-  async generateHypotheses(bucket: FailureBucket): Promise<Hypothesis[]> {
+  async generateHypotheses(bucket: FailureBucket, candidateFiles?: string[]): Promise<Hypothesis[]> {
     // 1. Load manifest to get allowed files
     const manifest = await this.loadManifest();
     const allowedFiles = manifest.files.map((f) => f.path);
 
     // 2. Identify candidate files for this failure type
-    const candidateFiles = this.getCandidateFiles(bucket, manifest);
+    // Use triage hints if provided, otherwise fall back to built-in hints
+    const resolvedCandidateFiles = candidateFiles?.length
+      ? candidateFiles.filter((f) => allowedFiles.includes(f))
+      : this.getCandidateFiles(bucket, manifest);
 
     // 3. Read the content of candidate files
     const fileContents: Record<string, string> = {};
-    for (const filePath of candidateFiles.slice(0, 3)) {
+    for (const filePath of resolvedCandidateFiles.slice(0, 3)) {
       try {
         const fullPath = path.join(this.repoRoot, "repairable", filePath);
         fileContents[filePath] = await fs.readFile(fullPath, "utf-8");
@@ -87,7 +92,7 @@ export class Researcher {
     }
 
     // 4. Build the research prompt
-    const prompt = this.buildResearchPrompt(bucket, candidateFiles, fileContents, allowedFiles);
+    const prompt = this.buildResearchPrompt(bucket, resolvedCandidateFiles, fileContents, allowedFiles);
 
     // 5. Call LLM
     const response = await this.callLLM(prompt);
@@ -189,19 +194,23 @@ Respond in valid JSON format as an array of hypothesis objects:
   }
 
   private async callLLM(prompt: string): Promise<string> {
-    const response = await this.llmClient.chat.completions.create({
-      model: this.model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a research engineer specialising in LLM prompt engineering and RAG system tuning for a cancer information chatbot. Respond only with valid JSON.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.4,
-      max_tokens: 4000,
-    });
+    const response = await retryableCompletion(
+      this.llmClient,
+      {
+        model: this.model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a research engineer specialising in LLM prompt engineering and RAG system tuning for a cancer information chatbot. Respond only with valid JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.4,
+        max_tokens: 4000,
+      },
+      { label: "researcher" },
+    );
 
     return response.choices[0]?.message?.content || "[]";
   }
@@ -246,6 +255,7 @@ Respond in valid JSON format as an array of hypothesis objects:
         risk: (["low", "medium", "high"].includes(h.risk) ? h.risk : "medium") as "low" | "medium" | "high",
         repairableFile: String(h.repairableFile),
         targetSection: String(h.targetSection || ""),
+        agent: "config" as const,
       }));
   }
 }
