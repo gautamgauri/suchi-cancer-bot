@@ -557,9 +557,14 @@ export async function runAutoresearch(config: AutoresearchConfig): Promise<void>
       console.log(`  Branch: ${exp.branch}`);
       console.log(`  File: ${exp.repairableFile}`);
       console.log(`  Hypothesis: ${exp.hypothesis.label}`);
-      const delta = (exp.afterScores!.overall - exp.beforeScores.overall) * 100;
-      const sign = delta >= 0 ? "+" : "";
-      console.log(`  Score delta: ${sign}${delta.toFixed(1)}pp`);
+      // afterScores is null in proposal mode (we skip the regression eval).
+      if (exp.afterScores) {
+        const delta = (exp.afterScores.overall - exp.beforeScores.overall) * 100;
+        const sign = delta >= 0 ? "+" : "";
+        console.log(`  Score delta: ${sign}${delta.toFixed(1)}pp`);
+      } else {
+        console.log(`  Score delta: (proposal mode — no post-patch measurement)`);
+      }
     }
 
     console.log(`\nTo review and merge:`);

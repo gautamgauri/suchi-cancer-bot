@@ -38,6 +38,11 @@ steps:
         # Configure git so applyPatch's commits succeed inside the build env.
         git config --global user.email "suchi-autoresearch@bot.local"
         git config --global user.name "Suchi Autoresearch"
+        # Cloud Build checks out detached HEAD — create a local `main` branch
+        # at the current commit so the proposal-mode `git checkout main`
+        # between iterations works and each autoresearch branch is rooted
+        # at main instead of stacking on the previous iteration's branch.
+        git checkout -B main
         cd eval
         # --proposal-mode: the prod API doesn't read repairable/* at runtime
         # (prompts are compiled into apps/api/src/modules/llm/llm.service.ts),
