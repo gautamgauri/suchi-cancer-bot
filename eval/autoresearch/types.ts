@@ -189,6 +189,14 @@ export interface AutoresearchConfig {
   emailRecipient?: string;
   /** Optional label included in the email subject (e.g., "nightly", "manual"). */
   runLabel?: string;
+  /**
+   * Proposal mode: skip subset/regression/gate checks after patch application
+   * and accept every syntax-valid judge-winner as a human-review candidate.
+   * Used when the eval target (e.g., prod API) doesn't actually consume the
+   * patched files at runtime, making post-patch evals meaningless. Each
+   * accepted branch is pushed for human review.
+   */
+  proposalMode?: boolean;
 }
 
 // ── Runner state ────────────────────────────────────────────────────────────

@@ -413,6 +413,35 @@ export async function runAutoresearch(config: AutoresearchConfig): Promise<void>
       continue;
     }
 
+    // ── Proposal-mode short-circuit ────────────────────────────────────
+    // When the eval target (e.g., prod API) doesn't consume the patched
+    // files at runtime, post-patch subset eval + full regression are
+    // meaningless — they'd measure the same baseline every time. Skip
+    // straight to acceptance and push the branch for human review.
+    if (config.proposalMode) {
+      const log = buildExperimentLog(
+        experimentId, iter + 1, bucket, patch.hypothesis, patch,
+        currentBestScores, null, null, null, null,
+        "accepted", "Proposal mode — branch pushed for human review (no gate run)",
+        iterStart, agentType,
+      );
+      const logPath = await saveExperiment(log);
+      allExperiments.push(log);
+      acceptedExperiments.push(log);
+      console.log(`Experiment log saved: ${logPath}`);
+      console.log(`\n[PROPOSAL MODE] ${agentLabel}: candidate branch ${appliedBranch} ready for review.`);
+
+      // Return to main so next iteration branches independently instead
+      // of stacking on the branch we just committed.
+      try {
+        execSync("git checkout main", { cwd: repoRoot, stdio: "ignore" });
+      } catch (err: any) {
+        console.warn(`Failed to return to main (non-fatal): ${err.message}`);
+      }
+      console.log("\n" + formatExperimentSummary(log));
+      continue;
+    }
+
     // ── Phase 5: Subset eval ───────────────────────────────────────────
     console.log("\nPhase 5: Running subset eval on affected cases...");
     const subsetCaseIds = new Set(bucket.affectedCaseIds);

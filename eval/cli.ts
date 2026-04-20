@@ -583,6 +583,7 @@ program
   .option("--auth-bearer <token>", "Optional bearer token for API auth")
   .option("--email <addr>", "Email an HTML summary of the run to this address (uses SMTP_PASS from env or Secret Manager)")
   .option("--run-label <label>", "Label included in the email subject (e.g. 'nightly')", "manual")
+  .option("--proposal-mode", "Skip post-patch eval gates; accept every syntax-valid judge-winner as a human-review candidate (use when eval target doesn't consume patched files at runtime)")
   .action(async (options) => {
     try {
       const { runAutoresearch } = await import("./autoresearch/autoresearch-runner");
@@ -620,6 +621,7 @@ program
         voiceReportPath: mode === "voice" ? voiceReportPath : undefined,
         emailRecipient: options.email,
         runLabel: options.runLabel,
+        proposalMode: !!options.proposalMode,
       });
     } catch (error: any) {
       console.error("Autoresearch error:", error.message);

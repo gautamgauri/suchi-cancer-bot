@@ -39,10 +39,17 @@ steps:
         git config --global user.email "suchi-autoresearch@bot.local"
         git config --global user.name "Suchi Autoresearch"
         cd eval
+        # --proposal-mode: the prod API doesn't read repairable/* at runtime
+        # (prompts are compiled into apps/api/src/modules/llm/llm.service.ts),
+        # so post-patch eval gates can't measure anything. We commit every
+        # judge-winner patch as a branch for human review instead of chasing
+        # unmeasurable improvements. Remove the flag once prompts load from
+        # disk at runtime.
         npx ts-node cli.ts autoresearch \
           --target all \
           --mode gold \
           --max-iterations 20 \
+          --proposal-mode \
           --api-url "${_API_URL}" \
           --cases "${_CASES}" \
           --rubrics "${_RUBRICS}" \
