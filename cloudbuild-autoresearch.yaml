@@ -54,7 +54,10 @@ steps:
       - 'SMTP_PASS'
 
   # 3. Push any autoresearch/* branches the loop created so humans can review.
-  #    Uses the build SA's GitHub deploy key, mounted via Secret Manager.
+  #    Shell `$` escaped as `$$` so Cloud Build doesn't misread bash vars as
+  #    its own substitution tokens. Push is best-effort — if the Cloud Build
+  #    SA lacks GitHub write access the branches still exist in the log and
+  #    can be recreated from the patchDiff field in each experiment archive.
   - name: 'gcr.io/cloud-builders/git'
     id: 'push-branches'
     entrypoint: 'bash'
@@ -62,14 +65,14 @@ steps:
       - '-c'
       - |
         set -euo pipefail
-        BRANCHES=$(git branch --list 'autoresearch/*' | sed 's/^[* ] //')
-        if [ -z "$BRANCHES" ]; then
+        BRANCHES=$$(git branch --list 'autoresearch/*' | sed 's/^[* ] //')
+        if [ -z "$$BRANCHES" ]; then
           echo "No autoresearch branches to push."
           exit 0
         fi
-        echo "$BRANCHES" | while read -r branch; do
-          echo "Pushing $branch..."
-          git push origin "$branch" || echo "Push of $branch failed (non-fatal)."
+        echo "$$BRANCHES" | while read -r branch; do
+          echo "Pushing $$branch..."
+          git push origin "$$branch" || echo "Push of $$branch failed (non-fatal)."
         done
 
 # Secrets pulled from Secret Manager (run setup-nightly-autoresearch.sh once
