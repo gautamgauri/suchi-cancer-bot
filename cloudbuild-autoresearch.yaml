@@ -31,6 +31,10 @@ steps:
       - '-c'
       - |
         set -euo pipefail
+        # node:20-slim doesn't ship git. The autoresearch loop's applyPatch
+        # runs git checkout/commit/stash via execFile, so install it first.
+        apt-get update -qq
+        apt-get install -y -qq git >/dev/null
         # Configure git so applyPatch's commits succeed inside the build env.
         git config --global user.email "suchi-autoresearch@bot.local"
         git config --global user.name "Suchi Autoresearch"
