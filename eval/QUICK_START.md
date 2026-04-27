@@ -34,9 +34,9 @@ npm run eval run
 ```
 
 The framework will automatically:
-1. ✅ Load secrets from Google Cloud Secret Manager
-2. ✅ Fall back to environment variables if needed
-3. ✅ Use config file as final fallback
+1. Load secrets from Google Cloud Secret Manager
+2. Fall back to environment variables if needed
+3. Use config file as final fallback
 
 ## Manual Secret Creation
 
@@ -47,13 +47,15 @@ If you prefer to create secrets manually:
 export PROJECT_ID=$(gcloud config get-value project)
 
 # Create Deepseek API key secret
-echo -n "sk-6bc325dec38c4d4c95f9f4ecb185e1dc" | gcloud secrets create deepseek-api-key \
+read -rsp "Deepseek API key: " DEEPSEEK_API_KEY
+printf '%s' "$DEEPSEEK_API_KEY" | gcloud secrets create deepseek-api-key \
     --project=$PROJECT_ID \
     --data-file=- \
     --replication-policy="automatic"
+unset DEEPSEEK_API_KEY
 
 # Set provider
-echo -n "deepseek" | gcloud secrets create eval-llm-provider \
+printf '%s' "deepseek" | gcloud secrets create eval-llm-provider \
     --project=$PROJECT_ID \
     --data-file=- \
     --replication-policy="automatic"
