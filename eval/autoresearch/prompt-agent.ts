@@ -235,7 +235,7 @@ Respond in valid JSON format:
           { role: "user", content: prompt },
         ],
         temperature: 0.3,
-        max_tokens: 4000,
+        max_tokens: 8000,
       },
       { label: "prompt-researcher" },
     );
@@ -244,11 +244,12 @@ Respond in valid JSON format:
   }
 
   private parseHypotheses(response: string, allowedFiles: string[]): Hypothesis[] {
-    let jsonStr = response;
-    const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
-    }
+    // Strip fences defensively — see researcher.ts for the failure mode.
+    let jsonStr = response
+      .trim()
+      .replace(/^```(?:json|JSON)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "")
+      .trim();
 
     let parsed: any[];
     try {

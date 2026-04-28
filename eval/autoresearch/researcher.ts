@@ -207,7 +207,7 @@ Respond in valid JSON format as an array of hypothesis objects:
           { role: "user", content: prompt },
         ],
         temperature: 0.4,
-        max_tokens: 4000,
+        max_tokens: 8000,
       },
       { label: "researcher" },
     );
@@ -216,12 +216,16 @@ Respond in valid JSON format as an array of hypothesis objects:
   }
 
   private parseHypotheses(response: string, allowedFiles: string[]): Hypothesis[] {
-    // Extract JSON from response (handle markdown code blocks)
-    let jsonStr = response;
-    const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
-    }
+    // Strip markdown fences defensively. The earlier regex required a
+    // CLOSING fence too; if the LLM hit max_tokens mid-array, no closing
+    // fence existed, the regex returned null, and JSON.parse choked on
+    // the raw "```json\n[..." string. This handles all four cases (both
+    // fences, opening only, closing only, no fences).
+    let jsonStr = response
+      .trim()
+      .replace(/^```(?:json|JSON)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "")
+      .trim();
 
     let parsed: any[];
     try {

@@ -187,9 +187,13 @@ Respond ONLY with JSON:
   }
 
   private parseResult(raw: string): PairwiseResult {
-    let jsonStr = raw;
-    const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (match) jsonStr = match[1].trim();
+    // Strip fences defensively — closing fence may be absent when the
+    // judge's response was truncated. See researcher.ts for context.
+    let jsonStr = raw
+      .trim()
+      .replace(/^```(?:json|JSON)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "")
+      .trim();
 
     let parsed: { winner?: string; reason?: string };
     try {

@@ -229,11 +229,14 @@ CONSTRAINTS:
 
     let content = response.choices[0]?.message?.content || "";
 
-    // Strip any accidental code blocks
-    const codeBlockMatch = content.match(/^```(?:\w+)?\s*\n([\s\S]*?)\n```\s*$/);
-    if (codeBlockMatch) {
-      content = codeBlockMatch[1];
-    }
+    // Strip accidental fences defensively. The earlier regex anchored on
+    // both opening AND closing fences; if max_tokens cut the response
+    // mid-content, no closing fence existed and the raw "```json\n..."
+    // string was returned, blowing up downstream JSON.parse / file write.
+    content = content
+      .trim()
+      .replace(/^```(?:\w+)?\s*\n?/, "")
+      .replace(/\n?```\s*$/, "");
 
     return content.trim();
   }
