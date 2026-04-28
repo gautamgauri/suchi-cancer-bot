@@ -19,9 +19,13 @@ const currentPath = Astro.url.pathname;
     <!-- Desktop Links -->
     <div class="nav-links">
       <a href={base} class={`nav-link ${currentPath === base || currentPath === base.slice(0, -1) ? 'nav-link--active' : ''}`}>Home</a>
-      <a href={`${base}about/`} class={`nav-link ${currentPath.includes('/about') ? 'nav-link--active' : ''}`}>About</a>
-      <a href={`${base}watch/`} class={`nav-link ${currentPath.includes('/watch') ? 'nav-link--active' : ''}`}>Onco Talks</a>
-      <a href={`${base}#contact`} class="nav-link">Contact</a>
+      <a href={`${base}cancer-types/`} class={`nav-link ${currentPath.includes('/cancer-types') ? 'nav-link--active' : ''}`}>Cancer Types</a>
+      <a href={`${base}symptoms/`} class={`nav-link ${currentPath.includes('/symptoms') ? 'nav-link--active' : ''}`}>Symptoms</a>
+      <a href={`${base}tests-treatment/`} class={`nav-link ${currentPath.includes('/tests-treatment') ? 'nav-link--active' : ''}`}>Tests &amp; Treatment</a>
+      <a href={`${base}living-with-cancer/`} class={`nav-link ${currentPath.includes('/living-with-cancer') ? 'nav-link--active' : ''}`}>Living With Cancer</a>
+      <a href={`${base}find-care/`} class={`nav-link ${currentPath.includes('/find-care') ? 'nav-link--active' : ''}`}>Find Care</a>
+      <a href={`${base}watch/`} class={`nav-link ${currentPath.includes('/watch') ? 'nav-link--active' : ''}`}>Watch</a>
+      <a href={botUrl} target="_blank" rel="noopener" class="nav-link">Ask Suchi</a>
     </div>
 
     <!-- Actions -->
@@ -50,9 +54,12 @@ const currentPath = Astro.url.pathname;
 <!-- Mobile Menu Panel -->
 <nav class="mobile-menu" id="mobile-menu" aria-hidden="true">
   <a href={base}>Home</a>
-  <a href={`${base}about/`}>About</a>
-  <a href={`${base}watch/`}>Onco Talks</a>
-  <a href={`${base}#contact`}>Contact</a>
+  <a href={`${base}cancer-types/`}>Cancer Types</a>
+  <a href={`${base}symptoms/`}>Symptoms</a>
+  <a href={`${base}tests-treatment/`}>Tests &amp; Treatment</a>
+  <a href={`${base}living-with-cancer/`}>Living With Cancer</a>
+  <a href={`${base}find-care/`}>Find Care</a>
+  <a href={`${base}watch/`}>Watch</a>
   <a href={botUrl} target="_blank" rel="noopener" class="mobile-cta">
     Ask Suchi
   </a>
