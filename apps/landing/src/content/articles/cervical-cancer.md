@@ -58,6 +58,9 @@ provenance:
     - doc_id: kb_local.bihar-cancer-navigation-guide
       chunk_id: mahavir-cancer-sansthan
       source: kb_local
+  gaps:
+    - section: risk-factors
+      description: Confirm current Indian government HPV vaccination program rollout status (Cervavac uptake, state-level inclusion in routine immunization, age coverage). No Tier-1 KB source covers this directly today.
   # eval_scores omitted intentionally — populated by Module 7 (Eval gate) in production.
 
 related_pages:

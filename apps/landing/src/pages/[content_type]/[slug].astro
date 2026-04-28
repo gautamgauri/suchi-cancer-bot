@@ -57,13 +57,61 @@ function contentTypeToUrlSegment(t: string): string {
   return CONTENT_TYPE_TO_URL[t] ?? 'resources';
 }
 
-// Pretty-print a kebab-case slug as a readable title fallback when the
-// related article doesn't exist yet. "persistent-mouth-ulcer" → "Persistent
-// mouth ulcer". Sentence case (only first letter capitalized) reads more
-// naturally than full Title Case for medical-content slugs.
+// Pretty-print a kebab-case slug as a readable title fallback when the related
+// article doesn't exist yet. Sentence case for the first word, lowercase for
+// the rest, EXCEPT proper nouns and medical acronyms which keep canonical
+// casing. Compound terms ("x-ray", "head-and-neck") are reassembled.
+//
+// Examples:
+//   "cancer-care-in-bihar"  → "Cancer care in Bihar"
+//   "chest-x-ray"           → "Chest X-ray"
+//   "ct-scan"               → "CT scan"
+//   "hpv-vaccine"           → "HPV vaccine"
+//   "persistent-mouth-ulcer" → "Persistent mouth ulcer"
+const PROPER_CASING: Record<string, string> = {
+  bihar: 'Bihar',
+  india: 'India',
+  patna: 'Patna',
+  jharkhand: 'Jharkhand',
+  hpv: 'HPV',
+  ct: 'CT',
+  mri: 'MRI',
+  pet: 'PET',
+  ldct: 'LDCT',
+  pmjay: 'PMJAY',
+  sclc: 'SCLC',
+  nsclc: 'NSCLC',
+  egfr: 'EGFR',
+  alk: 'ALK',
+  her2: 'HER2',
+  brca1: 'BRCA1',
+  brca2: 'BRCA2',
+  aiims: 'AIIMS',
+  igims: 'IGIMS',
+  sccf: 'SCCF',
+  tb: 'TB',
+  fnac: 'FNAC',
+  fna: 'FNA',
+  leep: 'LEEP',
+  dcis: 'DCIS',
+};
+
 function slugToReadableTitle(slug: string): string {
-  const spaced = slug.replace(/-/g, ' ');
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  const tokens = slug.split('-');
+  const cased = tokens.map((token, i) => {
+    const lower = token.toLowerCase();
+    if (PROPER_CASING[lower]) return PROPER_CASING[lower];
+    if (i === 0) return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+    return lower;
+  });
+  let result = cased.join(' ');
+  // Reassemble compound terms after the per-token pass. Case-insensitive
+  // because the per-token pass leaves "x" and "ray" lowercase before this
+  // step runs.
+  result = result.replace(/\bx ray\b/gi, 'X-ray');
+  // Capitalize "X-ray" after a sentence start ("Chest x ray" → "Chest X-ray").
+  result = result.replace(/\bChest x-ray\b/gi, 'Chest X-ray');
+  return result;
 }
 
 interface Props {

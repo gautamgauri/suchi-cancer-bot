@@ -70,6 +70,14 @@ const articleSchema = z.object({
       timestamp: z.coerce.date(),
     }).optional(),
     safety_violations: z.array(z.string()).optional(),
+    // Sections where Module 3 (RAG retrieval) returned insufficient evidence
+    // and the generator left a {{MISSING_EVIDENCE}} placeholder. Inline
+    // placeholders are stripped from public render by the remark plugin;
+    // this structured list is what review tools and human QA consume.
+    gaps: z.array(z.object({
+      section: z.string(),
+      description: z.string(),
+    })).optional(),
   }),
 
   // ── Cross-references ────────────────────────────────────────────────
