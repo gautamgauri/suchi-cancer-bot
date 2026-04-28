@@ -46,11 +46,8 @@ provenance:
     - doc_id: kb_local.bihar-cancer-navigation-guide
       chunk_id: mahavir-cancer-sansthan
       source: kb_local
-  eval_scores:
-    overall: null  # to be populated by Module 7 in production
-    safety: null
-    grounding: null
-    completeness: null
+  # eval_scores omitted intentionally — populated by Module 7 (Eval gate) in production.
+  # Schema marks eval_scores as .optional(); absence is valid for ai_draft articles.
 
 related_pages:
   - persistent-mouth-ulcer
