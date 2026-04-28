@@ -1,0 +1,323 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// NOTE: Astro hoists getStaticPaths() — it cannot reference module-scope identifiers.
+// We define the URL-segment map inline both inside getStaticPaths() and in the page
+// body to avoid the "X is not defined" runtime error.
+
+export async function getStaticPaths() {
+  const CONTENT_TYPE_TO_URL: Record<string, string> = {
+    cancer_type: 'cancer-types',
+    symptom: 'symptoms',
+    test: 'tests-treatment/diagnosis-tests',
+    treatment: 'tests-treatment/treatments',
+    side_effect: 'tests-treatment/side-effects',
+    journey: 'living-with-cancer',
+    find_care: 'find-care',
+    meta: 'resources',
+    resource: 'resources',
+  };
+  const articles = await getCollection('articles');
+  return articles.map((article) => ({
+    params: {
+      content_type: CONTENT_TYPE_TO_URL[article.data.content_type] ?? 'resources',
+      slug: article.data.page_id,
+    },
+    props: { article },
+  }));
+}
+
+// Page-body copy of the same map (see note above re: Astro hoisting).
+const CONTENT_TYPE_TO_URL: Record<string, string> = {
+  cancer_type: 'cancer-types',
+  symptom: 'symptoms',
+  test: 'tests-treatment/diagnosis-tests',
+  treatment: 'tests-treatment/treatments',
+  side_effect: 'tests-treatment/side-effects',
+  journey: 'living-with-cancer',
+  find_care: 'find-care',
+  meta: 'resources',
+  resource: 'resources',
+};
+
+function contentTypeToUrlSegment(t: string): string {
+  return CONTENT_TYPE_TO_URL[t] ?? 'resources';
+}
+
+interface Props {
+  article: CollectionEntry<'articles'>;
+}
+
+const { article } = Astro.props;
+const { Content } = await article.render();
+
+// Resolve related-page slugs to actual articles so we can build correct URLs.
+// If a slug doesn't resolve, warn and render an unlinked text fallback.
+const allArticles = await getCollection('articles');
+const articlesBySlug = new Map(allArticles.map((a) => [a.data.page_id, a]));
+
+type RelatedLink = { slug: string; title: string; href: string | null };
+const related: RelatedLink[] = (article.data.related_pages || []).map((slug) => {
+  const target = articlesBySlug.get(slug);
+  if (!target) {
+    // Soft-fail: log and render as plain text. Don't crash the build.
+    console.warn(
+      `[content] related_pages slug "${slug}" referenced in "${article.data.page_id}" does not resolve to an existing article.`
+    );
+    return { slug, title: slug, href: null };
+  }
+  const seg = contentTypeToUrlSegment(target.data.content_type);
+  return {
+    slug,
+    title: target.data.title,
+    href: `/${seg}/${target.data.page_id}/`,
+  };
+});
+
+// Sources: dedupe provenance.source_chunks by doc_id, count cited chunks per doc.
+type SourceGroup = { doc_id: string; source: string; count: number };
+const sourceGroups: SourceGroup[] = (() => {
+  const map = new Map<string, SourceGroup>();
+  for (const chunk of article.data.provenance.source_chunks) {
+    const existing = map.get(chunk.doc_id);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      map.set(chunk.doc_id, { doc_id: chunk.doc_id, source: chunk.source, count: 1 });
+    }
+  }
+  return Array.from(map.values());
+})();
+---
+
+<BaseLayout title={article.data.title} description={article.data.summary}>
+  <article class="article-page">
+    <div class="article-inner">
+      <h1>{article.data.title}</h1>
+
+      {/* The disclaimer block, body, and any inline "Related pages" / "Ask Suchi"
+          markdown sections are rendered by <Content /> directly from the .md body. */}
+      <div class="article-body">
+        <Content />
+      </div>
+
+      {/* Frontmatter-derived related pages footer.
+          Note: this lives alongside the markdown body's own "Related pages" section,
+          which contains hand-authored links. Frontmatter list is the structured form
+          used by cross-ref validation; both can co-exist for now. */}
+      {related.length > 0 && (
+        <section class="related-pages-footer">
+          <h2>Related pages</h2>
+          <ul>
+            {related.map((r) => (
+              <li>
+                {r.href ? (
+                  <a href={r.href}>{r.title}</a>
+                ) : (
+                  <span class="related-missing">{r.title} (not yet published)</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {sourceGroups.length > 0 && (
+        <details class="article-sources">
+          <summary>Sources</summary>
+          <ul>
+            {sourceGroups.map((g) => (
+              <li>
+                <span class="source-label">{g.source}</span>
+                <code>{g.doc_id}</code>
+                <span class="source-count">({g.count} {g.count === 1 ? 'chunk' : 'chunks'} cited)</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .article-page {
+    padding: 3rem 1rem 4rem;
+    background: var(--color-bg);
+  }
+
+  .article-inner {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .article-page h1 {
+    font-family: var(--font-serif);
+    font-size: var(--text-5xl);
+    line-height: 1.2;
+    color: var(--color-text-dark);
+    margin-bottom: 1.5rem;
+  }
+
+  .article-body {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: var(--color-text);
+  }
+
+  .article-body :global(blockquote) {
+    border-left: 4px solid var(--color-accent);
+    background: var(--color-accent-soft);
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    color: var(--color-text-warm);
+  }
+
+  .article-body :global(blockquote p) {
+    margin: 0;
+    max-width: none;
+  }
+
+  .article-body :global(h2) {
+    font-family: var(--font-serif);
+    font-size: var(--text-3xl);
+    margin-top: 2.25rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-dark);
+  }
+
+  .article-body :global(h3) {
+    font-family: var(--font-serif);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .article-body :global(p),
+  .article-body :global(ul),
+  .article-body :global(ol) {
+    margin-bottom: 1rem;
+    max-width: none;
+  }
+
+  .article-body :global(ul),
+  .article-body :global(ol) {
+    padding-left: 1.5rem;
+  }
+
+  .article-body :global(li) {
+    margin-bottom: 0.375rem;
+  }
+
+  .article-body :global(a) {
+    color: var(--color-teal-dark);
+    text-decoration: underline;
+  }
+
+  .article-body :global(a:hover) {
+    color: var(--color-primary-dark);
+  }
+
+  .article-body :global(strong) {
+    font-weight: 600;
+    color: var(--color-text-dark);
+  }
+
+  .related-pages-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .related-pages-footer h2 {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    margin-bottom: 0.75rem;
+  }
+
+  .related-pages-footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .related-pages-footer li {
+    margin-bottom: 0.5rem;
+  }
+
+  .related-pages-footer a {
+    color: var(--color-teal-dark);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .related-pages-footer a:hover {
+    text-decoration: underline;
+  }
+
+  .related-missing {
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .article-sources {
+    margin-top: 2.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--color-bg-soft);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+  }
+
+  .article-sources summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: var(--text-xs);
+  }
+
+  .article-sources ul {
+    list-style: none;
+    padding: 0.75rem 0 0;
+    margin: 0;
+  }
+
+  .article-sources li {
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--color-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+
+  .article-sources li:last-child {
+    border-bottom: none;
+  }
+
+  .source-label {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: var(--color-accent-soft);
+    color: #9a7b14;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .source-count {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .article-sources code {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.8125rem;
+    color: var(--color-text);
+  }
+</style>
