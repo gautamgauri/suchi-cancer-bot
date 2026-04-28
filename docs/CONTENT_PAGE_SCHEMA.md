@@ -266,21 +266,42 @@ apps/landing/src/pages/[content_type]/[slug].astro   # NEW — to be added
 
 Implementation (illustrative):
 
+> **Astro hoisting note:** `getStaticPaths()` is hoisted out of the component
+> scope at build time, so it cannot reference module-scope helpers declared
+> in the same file. Inline the `contentTypeToUrlSegment` map directly inside
+> `getStaticPaths()` (and again in the page-body scope if needed for rendering
+> related-page links). Or pull the helper into a separate `.ts` file and
+> import it.
+
 ```typescript
 // In the dynamic route file
 import { getCollection } from 'astro:content';
 
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
+  // Inline the map here — getStaticPaths is hoisted; can't reference
+  // module-scope `contentTypeToUrlSegment` directly.
+  const map = {
+    cancer_type: 'cancer-types',
+    symptom: 'symptoms',
+    test: 'tests-treatment/diagnosis-tests',
+    treatment: 'tests-treatment/treatments',
+    side_effect: 'tests-treatment/side-effects',
+    journey: 'living-with-cancer',
+    find_care: 'find-care',
+    meta: 'resources',
+    resource: 'resources',
+  };
   return articles.map(article => ({
     params: {
-      content_type: contentTypeToUrlSegment(article.data.content_type),
+      content_type: map[article.data.content_type],
       slug: article.data.page_id,
     },
     props: { article },
   }));
 }
 
+// Module-scope helper (usable in the page body, NOT inside getStaticPaths)
 function contentTypeToUrlSegment(t) {
   const map = {
     cancer_type: 'cancer-types',

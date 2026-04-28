@@ -165,13 +165,6 @@ In India, you can call **108** or **112** for ambulance services. The Indian Can
 
 If you live in Bihar and need a starting point for cancer evaluation, Mahavir Cancer Sansthan in Phulwarisharif, Patna is Bihar's super-specialty cancer centre and has surgical, medical, and radiation oncology departments [citation:kb_local.bihar-cancer-navigation-guide:mahavir-cancer-sansthan]. AIIMS Patna also has a developing oncology department that runs head-and-neck clinics [citation:kb_local.bihar-cancer-navigation-guide:mahavir-cancer-sansthan].
 
-## Related pages
-
-- [Persistent mouth ulcer: when to worry](/symptoms/persistent-mouth-ulcer/)
-- [What to do after a cancer diagnosis](/living-with-cancer/just-diagnosed/)
-- [Questions to ask your doctor about cancer](/resources/questions-to-ask-your-doctor/)
-- [Cancer care in Bihar](/find-care/hospitals/bihar/)
-
 ## Ask Suchi
 
 Still unsure about something? You can ask Suchi questions like:
