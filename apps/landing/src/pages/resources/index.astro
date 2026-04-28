@@ -1,0 +1,195 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const URL_SEGMENT = 'resources';
+
+const all = await getCollection('articles');
+const articles = all
+  .filter((a) => a.data.content_type === 'meta' || a.data.content_type === 'resource')
+  .filter((a) => !a.data.hide_from_index)
+  .sort((a, b) => {
+    const da = new Date(a.data.last_reviewed).getTime();
+    const db = new Date(b.data.last_reviewed).getTime();
+    if (db !== da) return db - da;
+    return a.data.title.localeCompare(b.data.title);
+  });
+
+const pageTitle = 'Resources';
+const pageDescription =
+  'Helpful background reading and reference material — about Suchi, how the content is sourced, safety information, and links to trusted external organizations.';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <section class="hub-page">
+    <div class="hub-inner">
+      <header class="hub-header">
+        <p class="hub-eyebrow">Knowledge Hub</p>
+        <h1>{pageTitle}</h1>
+        <p class="hub-intro">
+          Helpful background reading and reference material — about Suchi, how the content is
+          sourced, safety information, and links to trusted external organizations.
+        </p>
+      </header>
+
+      {articles.length === 0 ? (
+        <div class="hub-empty">
+          <p>Articles in this section are coming soon.</p>
+        </div>
+      ) : (
+        <ul class="hub-list">
+          {articles.map((a) => (
+            <li class="hub-item">
+              <a href={`/${URL_SEGMENT}/${a.data.page_id}/`} class="hub-card">
+                <div class="hub-card-head">
+                  <h2 class="hub-card-title">{a.data.title}</h2>
+                  {a.data.featured && <span class="hub-badge">Featured</span>}
+                </div>
+                <p class="hub-card-summary">{a.data.summary}</p>
+                <p class="hub-card-meta">
+                  Last reviewed{' '}
+                  <time datetime={new Date(a.data.last_reviewed).toISOString()}>
+                    {new Date(a.data.last_reviewed).toLocaleDateString('en-IN', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </time>
+                </p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hub-page {
+    padding: 3rem 1rem 4rem;
+    background: var(--color-bg);
+  }
+
+  .hub-inner {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .hub-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .hub-eyebrow {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-warm);
+    margin: 0 0 0.5rem;
+  }
+
+  .hub-header h1 {
+    font-family: var(--font-serif);
+    font-size: var(--text-5xl);
+    line-height: 1.2;
+    color: var(--color-text-dark);
+    margin-bottom: 0.75rem;
+  }
+
+  .hub-intro {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .hub-empty {
+    background: var(--color-bg-soft);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: var(--color-text-muted);
+  }
+
+  .hub-empty p {
+    margin: 0;
+    max-width: none;
+  }
+
+  .hub-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .hub-item {
+    margin: 0;
+  }
+
+  .hub-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast),
+                transform var(--transition-fast);
+  }
+
+  .hub-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  .hub-card-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .hub-card-title {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    color: var(--color-text-dark);
+    margin: 0;
+  }
+
+  .hub-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: var(--color-accent-soft);
+    color: #9a7b14;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .hub-card-summary {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--color-text);
+    margin: 0 0 0.625rem;
+    max-width: none;
+  }
+
+  .hub-card-meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin: 0;
+    max-width: none;
+  }
+</style>
