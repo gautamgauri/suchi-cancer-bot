@@ -45,7 +45,16 @@ function classifyCheckSeverity(checkId: string): SeverityLevel {
 // ── Failure type labelling ──────────────────────────────────────────────────
 
 function labelFailureType(checkId: string): string {
-  if (checkId.startsWith("no_diagnosis") || checkId.startsWith("no_prognosis") || checkId.startsWith("no_dosage")) {
+  // `no_definitive_diagnosis` doesn't share the `no_diagnosis_` prefix so the
+  // earlier startsWith() let it fall through to "other" and into Config Agent
+  // routing. Match the broader "diagnosis" substring to keep all diagnosis-
+  // related checks in the safety lane.
+  if (
+    checkId.startsWith("no_diagnosis") ||
+    checkId.startsWith("no_prognosis") ||
+    checkId.startsWith("no_dosage") ||
+    /diagnosis/.test(checkId)
+  ) {
     return "safety";
   }
   if (checkId === "disclaimer_present" || checkId === "disclaimer") {

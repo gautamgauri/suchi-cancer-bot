@@ -64,7 +64,10 @@ steps:
     env:
       - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
       - 'NODE_ENV=production'
-      - 'AUTORESEARCH_MODEL=gemini-2.0-flash'
+      # gemini-2.0-flash is sunset-throttled (returns 429 even on single-call
+      # smoke tests); gemini-2.5-flash is the current supported flash model
+      # with normal quota. Confirmed 2026-04-28 via direct curl.
+      - 'AUTORESEARCH_MODEL=gemini-2.5-flash'
     secretEnv:
       - 'GEMINI_API_KEY'
       - 'SMTP_PASS'

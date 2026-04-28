@@ -264,6 +264,11 @@ export async function runAutoresearch(config: AutoresearchConfig): Promise<void>
   // ── Iteration loop (with triage) ────────────────────────────────────
   let currentBestScores = baselineScores;
   const acceptedExperiments: ExperimentLog[] = [];
+  // Fail-fast guard: when the LLM provider is hard-blocking us (auth, quota
+  // exhausted), every research call will fail the same way. Abort after a
+  // few consecutive failures rather than burning an hour of build time.
+  let consecutiveResearchFailures = 0;
+  const MAX_CONSECUTIVE_RESEARCH_FAILURES = 3;
 
   for (let iter = 0; iter < maxIter && iter < targetBuckets.length; iter++) {
     const bucket = targetBuckets[iter];
@@ -291,9 +296,19 @@ export async function runAutoresearch(config: AutoresearchConfig): Promise<void>
     let hypotheses: Hypothesis[];
     try {
       hypotheses = await researcher.generateHypotheses(bucket, triageDecision.candidateFiles);
+      consecutiveResearchFailures = 0;
     } catch (err: any) {
       console.error(`Research failed (${agentLabel}): ${err.message}`);
       allExperiments.push(await archiveSkipped(experimentId, iter + 1, bucket, currentBestScores, `${agentLabel} research failed: ` + err.message, iterStart, agentType));
+      consecutiveResearchFailures++;
+      if (consecutiveResearchFailures >= MAX_CONSECUTIVE_RESEARCH_FAILURES) {
+        console.error(
+          `\nABORTING: ${consecutiveResearchFailures} consecutive research failures. ` +
+            `Likely cause: LLM provider auth, quota, or outage — not something the loop can fix by retrying. ` +
+            `Investigate ${agentModel} access for the autoresearch credential, then re-run.`,
+        );
+        break;
+      }
       continue;
     }
 

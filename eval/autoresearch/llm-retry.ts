@@ -11,10 +11,17 @@ type CreateParams = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreami
 type Completion = OpenAI.Chat.Completions.ChatCompletion;
 
 export interface RetryOpts {
-  /** Max attempts including the first one. Default 4. */
+  /** Max attempts including the first one. Default 6. */
   maxAttempts?: number;
-  /** Base delay for exponential backoff. Default 2000ms. */
+  /** Base delay for exponential backoff on non-rate-limit transients. Default 2000ms. */
   baseDelayMs?: number;
+  /**
+   * Floor for 429 retries — at least one full RPM window past reset.
+   * Gemini's per-minute quota resets every 60s and the API rarely sends
+   * Retry-After, so anything shorter just lands the next attempt back on
+   * the wall. Default 65000ms.
+   */
+  rateLimitFloorMs?: number;
   /** Human-readable label for log lines (e.g., "researcher", "judge pair 0v2"). */
   label?: string;
 }
@@ -27,8 +34,9 @@ export async function retryableCompletion(
   request: CreateParams,
   opts: RetryOpts = {},
 ): Promise<Completion> {
-  const maxAttempts = opts.maxAttempts ?? 4;
+  const maxAttempts = opts.maxAttempts ?? 6;
   const baseDelayMs = opts.baseDelayMs ?? 2000;
+  const rateLimitFloorMs = opts.rateLimitFloorMs ?? 65_000;
   const label = opts.label ?? "llm";
 
   let lastErr: any;
@@ -39,6 +47,7 @@ export async function retryableCompletion(
       lastErr = err;
       const status: number | undefined = err?.status ?? err?.response?.status;
       const isTransient = status !== undefined && TRANSIENT_STATUSES.has(status);
+      const isRateLimit = status === 429;
       const isLast = attempt === maxAttempts;
 
       if (!isTransient || isLast) {
@@ -59,7 +68,11 @@ export async function retryableCompletion(
       // that all got 429 at the same time.
       const expDelay = baseDelayMs * Math.pow(2, attempt - 1);
       const jitter = Math.floor(Math.random() * baseDelayMs);
-      const delay = Math.max(serverDelay, expDelay + jitter);
+      // 429s need a longer floor to span Gemini's 60s RPM window — exp
+      // backoff alone tops out around 64s on attempt 6 and burns retries
+      // on the same wall.
+      const minDelay = isRateLimit ? rateLimitFloorMs : 0;
+      const delay = Math.max(serverDelay, minDelay, expDelay + jitter);
 
       console.warn(
         `[llm-retry:${label}] attempt ${attempt}/${maxAttempts} got ${status}, retrying in ${delay}ms`,

@@ -226,23 +226,27 @@ Respond in valid JSON format as an array of hypothesis objects:
     let parsed: any[];
     try {
       parsed = JSON.parse(jsonStr);
-    } catch {
-      console.warn("Failed to parse LLM response as JSON, returning empty hypotheses");
+    } catch (err: any) {
+      console.warn(
+        `Failed to parse LLM response as JSON (${err.message}). Raw response (first 600 chars): ${response.slice(0, 600)}`,
+      );
       return [];
     }
 
     if (!Array.isArray(parsed)) {
-      console.warn("LLM response is not an array, returning empty hypotheses");
+      console.warn(
+        `LLM response is not an array (got ${typeof parsed}). Raw response (first 600 chars): ${response.slice(0, 600)}`,
+      );
       return [];
     }
 
     const allowedSet = new Set(allowedFiles);
+    const rejectedFiles: string[] = [];
 
-    return parsed
+    const accepted = parsed
       .filter((h: any) => {
-        // Validate that the target file is in the allowed list
         if (!h.repairableFile || !allowedSet.has(h.repairableFile)) {
-          console.warn(`Hypothesis targets non-allowed file: ${h.repairableFile}, skipping`);
+          rejectedFiles.push(String(h.repairableFile ?? "(missing)"));
           return false;
         }
         return true;
@@ -257,5 +261,18 @@ Respond in valid JSON format as an array of hypothesis objects:
         targetSection: String(h.targetSection || ""),
         agent: "config" as const,
       }));
+
+    if (rejectedFiles.length > 0) {
+      console.warn(
+        `Researcher: filtered ${rejectedFiles.length} hypothesis(es) targeting non-allowed file(s): [${rejectedFiles.join(", ")}]. Allowed: [${allowedFiles.join(", ")}]`,
+      );
+    }
+    if (accepted.length === 0 && parsed.length > 0) {
+      console.warn(
+        `Researcher: LLM returned ${parsed.length} hypothesis(es) but ALL were filtered out as non-allowed files — bucket will skip with "(none)".`,
+      );
+    }
+
+    return accepted;
   }
 }

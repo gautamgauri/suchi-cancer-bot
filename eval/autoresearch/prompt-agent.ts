@@ -253,19 +253,27 @@ Respond in valid JSON format:
     let parsed: any[];
     try {
       parsed = JSON.parse(jsonStr);
-    } catch {
-      console.warn("Prompt Agent: failed to parse LLM response as JSON");
+    } catch (err: any) {
+      console.warn(
+        `Prompt Agent: failed to parse LLM response as JSON (${err.message}). Raw response (first 600 chars): ${response.slice(0, 600)}`,
+      );
       return [];
     }
 
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      console.warn(
+        `Prompt Agent: LLM response is not an array (got ${typeof parsed}). Raw response (first 600 chars): ${response.slice(0, 600)}`,
+      );
+      return [];
+    }
 
     const allowedSet = new Set(allowedFiles);
+    const rejectedFiles: string[] = [];
 
-    return parsed
+    const accepted = parsed
       .filter((h: any) => {
         if (!h.repairableFile || !allowedSet.has(h.repairableFile)) {
-          console.warn(`Prompt Agent: hypothesis targets non-prompt file: ${h.repairableFile}`);
+          rejectedFiles.push(String(h.repairableFile ?? "(missing)"));
           return false;
         }
         return true;
@@ -282,6 +290,19 @@ Respond in valid JSON format:
       }))
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 5);
+
+    if (rejectedFiles.length > 0) {
+      console.warn(
+        `Prompt Agent: filtered ${rejectedFiles.length} hypothesis(es) targeting non-allowed file(s): [${rejectedFiles.join(", ")}]. Allowed: [${allowedFiles.join(", ")}]`,
+      );
+    }
+    if (accepted.length === 0 && parsed.length > 0) {
+      console.warn(
+        `Prompt Agent: LLM returned ${parsed.length} hypothesis(es) but ALL were filtered out as non-allowed files — bucket will skip with "(none)".`,
+      );
+    }
+
+    return accepted;
   }
 }
 

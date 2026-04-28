@@ -149,12 +149,18 @@ function buildHtml(d: {
     const after = e.afterScores;
     const delta = after ? ((after.passRate - e.beforeScores.passRate) * 100).toFixed(1) : "—";
     const sign = after && after.passRate >= e.beforeScores.passRate ? "+" : "";
+    // Surface the skip/reject reason inline in the Hypothesis cell — without it,
+    // every "(none)" hypothesis collapses to the same opaque row in the email.
+    const reasonHtml =
+      e.decision !== "accepted" && e.reason
+        ? `<br><span style="color:#888;font-size:11px;font-style:italic">${escape(e.reason)}</span>`
+        : "";
     return `
       <tr>
         <td style="padding:6px;border:1px solid #ddd">${e.iteration}</td>
         <td style="padding:6px;border:1px solid #ddd">${agentLabel}</td>
         <td style="padding:6px;border:1px solid #ddd">${escape(e.failureCluster.failureType)}${bucketTag} <span style="color:#666">[${e.failureCluster.severity}]</span></td>
-        <td style="padding:6px;border:1px solid #ddd">${escape(e.hypothesis.label)}</td>
+        <td style="padding:6px;border:1px solid #ddd">${escape(e.hypothesis.label)}${reasonHtml}</td>
         <td style="padding:6px;border:1px solid #ddd"><code>${escape(e.repairableFile || "—")}</code></td>
         <td style="padding:6px;border:1px solid #ddd"><span style="color:${decisionColor};font-weight:bold">${e.decision.toUpperCase()}</span></td>
         <td style="padding:6px;border:1px solid #ddd">${after ? `${sign}${delta}pp` : "—"}</td>
@@ -253,6 +259,9 @@ function buildPlainText(d: {
     const after = e.afterScores;
     const delta = after ? `${after.passRate >= e.beforeScores.passRate ? "+" : ""}${((after.passRate - e.beforeScores.passRate) * 100).toFixed(1)}pp` : "—";
     lines.push(`  #${e.iteration} ${e.decision.toUpperCase()} | ${e.failureCluster.failureType}${tag} | ${e.hypothesis.label} | ${delta}`);
+    if (e.decision !== "accepted" && e.reason) {
+      lines.push(`     reason: ${e.reason}`);
+    }
   }
   return lines.join("\n");
 }
