@@ -164,14 +164,3 @@ Please seek urgent medical help — go to the nearest hospital or call an ambula
 In India, you can call **108** or **112** for ambulance services. The Indian Cancer Society helpline is **1800-22-1951** for non-emergency questions and support.
 
 If you live in Bihar and need a starting point for cancer evaluation, Mahavir Cancer Sansthan in Phulwarisharif, Patna is Bihar's super-specialty cancer centre and has surgical, medical, and radiation oncology departments [citation:kb_local.bihar-cancer-navigation-guide:mahavir-cancer-sansthan]. AIIMS Patna also has a developing oncology department that runs head-and-neck clinics [citation:kb_local.bihar-cancer-navigation-guide:mahavir-cancer-sansthan].
-
-## Ask Suchi
-
-Still unsure about something? You can ask Suchi questions like:
-
-- What does a biopsy involve?
-- How long does it take to get biopsy results?
-- What questions should I prepare for my first oncology visit?
-- How do I check if my treatment is covered under PMJAY?
-
-[Open Suchi chat →](https://chat.suchitracancercare.org)

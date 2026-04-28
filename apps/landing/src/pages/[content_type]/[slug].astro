@@ -45,6 +45,15 @@ function contentTypeToUrlSegment(t: string): string {
   return CONTENT_TYPE_TO_URL[t] ?? 'resources';
 }
 
+// Pretty-print a kebab-case slug as a readable title fallback when the
+// related article doesn't exist yet. "persistent-mouth-ulcer" → "Persistent
+// mouth ulcer". Sentence case (only first letter capitalized) reads more
+// naturally than full Title Case for medical-content slugs.
+function slugToReadableTitle(slug: string): string {
+  const spaced = slug.replace(/-/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 interface Props {
   article: CollectionEntry<'articles'>;
 }
@@ -65,7 +74,7 @@ const related: RelatedLink[] = (article.data.related_pages || []).map((slug) => 
     console.warn(
       `[content] related_pages slug "${slug}" referenced in "${article.data.page_id}" does not resolve to an existing article.`
     );
-    return { slug, title: slug, href: null };
+    return { slug, title: slugToReadableTitle(slug), href: null };
   }
   const seg = contentTypeToUrlSegment(target.data.content_type);
   return {
@@ -102,10 +111,10 @@ const sourceGroups: SourceGroup[] = (() => {
         <Content />
       </div>
 
-      {/* Frontmatter-derived related pages footer.
-          Note: this lives alongside the markdown body's own "Related pages" section,
-          which contains hand-authored links. Frontmatter list is the structured form
-          used by cross-ref validation; both can co-exist for now. */}
+      {/* Frontmatter-derived related pages — canonical, single source of truth.
+          The hand-authored "## Related pages" markdown section was removed from
+          article bodies on purpose; this footer is the structured form used by
+          cross-ref validation. */}
       {related.length > 0 && (
         <section class="related-pages-footer">
           <h2>Related pages</h2>
@@ -122,6 +131,21 @@ const sourceGroups: SourceGroup[] = (() => {
           </ul>
         </section>
       )}
+
+      {/* Ask Suchi — rendered as a consistent template block from the dynamic
+          route, NOT from the markdown body. Every article gets the same call-
+          to-action, in the same place (after Related pages, before Sources),
+          matching the IA Section 4 page template order. */}
+      <section class="ask-suchi-cta">
+        <h2>Ask Suchi</h2>
+        <p>
+          Still unsure about something? You can ask Suchi for help with questions about your situation —
+          symptoms, tests, treatment plans, or finding care near you.
+        </p>
+        <a class="ask-suchi-button" href="https://chat.suchitracancercare.org" rel="noopener">
+          Open Suchi chat →
+        </a>
+      </section>
 
       {sourceGroups.length > 0 && (
         <details class="article-sources">
@@ -259,6 +283,42 @@ const sourceGroups: SourceGroup[] = (() => {
   .related-missing {
     color: var(--color-text-muted);
     font-style: italic;
+  }
+
+  .ask-suchi-cta {
+    margin-top: 2.5rem;
+    padding: 1.5rem 1.75rem;
+    background: var(--color-accent-soft);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+  }
+
+  .ask-suchi-cta h2 {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    margin: 0 0 0.5rem;
+    color: var(--color-text-dark);
+  }
+
+  .ask-suchi-cta p {
+    margin: 0 0 1rem;
+    color: var(--color-text);
+    line-height: 1.55;
+  }
+
+  .ask-suchi-button {
+    display: inline-block;
+    padding: 0.625rem 1.25rem;
+    background: var(--color-primary);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    transition: background 0.15s ease;
+  }
+
+  .ask-suchi-button:hover {
+    background: var(--color-primary-dark);
   }
 
   .article-sources {
