@@ -1,6 +1,18 @@
 ---
 import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import VideoCard from '../../components/VideoCard.astro';
+import videosData from '../../content/videos.json';
+
+interface VideoEntry {
+  youtubeId: string;
+  title: string;
+  slug: string;
+  speaker?: string;
+  cancerTypes: string[];
+  situations: string[];
+  featured?: boolean;
+}
 
 // NOTE: Astro hoists getStaticPaths() — it cannot reference module-scope identifiers.
 // We define the URL-segment map inline both inside getStaticPaths() and in the page
@@ -84,6 +96,39 @@ const related: RelatedLink[] = (article.data.related_pages || []).map((slug) => 
   };
 });
 
+// Related videos: match this article's tags against videos.json. Cap at 3.
+// Match priority:
+//   1. Any of article.tags.cancer_types ∈ video.cancerTypes
+//   2. Else, any of article.tags.situations ∈ video.situations
+// Featured videos surface first.
+const articleCancerTypes = article.data.tags.cancer_types ?? [];
+const articleSituations = article.data.tags.situations ?? [];
+const allVideos = (videosData as { videos: VideoEntry[] }).videos;
+
+const relatedVideos: VideoEntry[] = (() => {
+  const matchByCancer = articleCancerTypes.length > 0
+    ? allVideos.filter((v) => v.cancerTypes.some((c) => articleCancerTypes.includes(c as any)))
+    : [];
+
+  if (matchByCancer.length >= 3) {
+    return matchByCancer
+      .sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false))
+      .slice(0, 3);
+  }
+
+  const matchBySituation = articleSituations.length > 0
+    ? allVideos.filter(
+        (v) =>
+          v.situations.some((s) => articleSituations.includes(s as any)) &&
+          !matchByCancer.includes(v),
+      )
+    : [];
+
+  return [...matchByCancer, ...matchBySituation]
+    .sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false))
+    .slice(0, 3);
+})();
+
 // Sources: dedupe provenance.source_chunks by doc_id, count cited chunks per doc.
 type SourceGroup = { doc_id: string; source: string; count: number };
 const sourceGroups: SourceGroup[] = (() => {
@@ -110,6 +155,30 @@ const sourceGroups: SourceGroup[] = (() => {
       <div class="article-body">
         <Content />
       </div>
+
+      {/* Related videos — surfaced from videos.json by matching this article's
+          tags.cancer_types (preferred) or tags.situations (fallback). Capped at 3
+          so the article doesn't drown in video cards. Featured videos rank first. */}
+      {relatedVideos.length > 0 && (
+        <section class="related-videos">
+          <div class="related-videos-header">
+            <h2>Related videos from Suchi OncoTalks</h2>
+            <a href="/watch/" class="related-videos-all">See all videos →</a>
+          </div>
+          <div class="related-videos-grid">
+            {relatedVideos.map((v) => (
+              <VideoCard
+                youtubeId={v.youtubeId}
+                title={v.title}
+                slug={v.slug}
+                speaker={v.speaker}
+                cancerTypes={v.cancerTypes}
+                situations={v.situations}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Frontmatter-derived related pages — canonical, single source of truth.
           The hand-authored "## Related pages" markdown section was removed from
@@ -246,6 +315,44 @@ const sourceGroups: SourceGroup[] = (() => {
   .article-body :global(strong) {
     font-weight: 600;
     color: var(--color-text-dark);
+  }
+
+  .related-videos {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .related-videos-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .related-videos-header h2 {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    margin: 0;
+  }
+
+  .related-videos-all {
+    color: var(--color-teal-dark);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: var(--text-sm);
+  }
+
+  .related-videos-all:hover {
+    text-decoration: underline;
+  }
+
+  .related-videos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
   }
 
   .related-pages-footer {
