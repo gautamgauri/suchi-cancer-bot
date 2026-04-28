@@ -1180,6 +1180,7 @@
     { "id": "ovarian", "label": "Ovarian Cancer" },
     { "id": "lung", "label": "Lung Cancer" },
     { "id": "colorectal", "label": "Colorectal Cancer" },
+    { "id": "cervical", "label": "Cervical Cancer" },
     { "id": "pediatric", "label": "Pediatric Cancers" },
     { "id": "general", "label": "General / Multiple" }
   ],
