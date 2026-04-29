@@ -23,7 +23,8 @@
     "\\bstaging\\b.{0,20}(mean|cancer|lymphoma|tumor)\\b",
     "\\bhow.{0,10}(staging|staged)\\b",
     "\\b(what happens|what's next|next steps?|what now|what do I do)\\b",
-    "\\bstage\\s*\\d\\b.*\\b(what|next|happen)\\b"
+    "\\bstage\\s*\\d\\b.*\\b(what|next|happen)\\b",
+    "\\b(what should I do|what to do now|what to expect|questions to ask( my)? doctor|before (my )?(appointment|doctor visit))\\b"
   ],
 
   "answerFirstEligibleIntents": [
