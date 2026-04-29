@@ -74,9 +74,9 @@ steps:
 
   # 3. Push any autoresearch/* branches the loop created so humans can review.
   #    Shell `$` escaped as `$$` so Cloud Build doesn't misread bash vars as
-  #    its own substitution tokens. Push is best-effort — if the Cloud Build
-  #    SA lacks GitHub write access the branches still exist in the log and
-  #    can be recreated from the patchDiff field in each experiment archive.
+  #    its own substitution tokens. GITHUB_TOKEN is a PAT (repo scope) stored
+  #    in Secret Manager — injected here to rewrite the remote URL so push
+  #    works without interactive credentials.
   - name: 'gcr.io/cloud-builders/git'
     id: 'push-branches'
     entrypoint: 'bash'
@@ -84,6 +84,8 @@ steps:
       - '-c'
       - |
         set -euo pipefail
+        # Rewrite remote to embed the PAT so push authenticates without a keychain.
+        git remote set-url origin "https://x-access-token:$${GITHUB_TOKEN}@github.com/gautamgauri/suchi-cancer-bot.git"
         BRANCHES=$$(git branch --list 'autoresearch/*' | sed 's/^[* ] //')
         if [ -z "$$BRANCHES" ]; then
           echo "No autoresearch branches to push."
@@ -93,6 +95,8 @@ steps:
           echo "Pushing $$branch..."
           git push origin "$$branch" || echo "Push of $$branch failed (non-fatal)."
         done
+    secretEnv:
+      - 'GITHUB_TOKEN'
 
 # Secrets pulled from Secret Manager (run setup-nightly-autoresearch.sh once
 # to create gemini-api-key if it doesn't exist).
@@ -102,6 +106,8 @@ availableSecrets:
       env: 'GEMINI_API_KEY'
     - versionName: projects/${PROJECT_ID}/secrets/SMTP_PASS/versions/latest
       env: 'SMTP_PASS'
+    - versionName: projects/${PROJECT_ID}/secrets/github-token/versions/latest
+      env: 'GITHUB_TOKEN'
 
 substitutions:
   _API_URL: 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
