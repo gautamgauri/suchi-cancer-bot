@@ -30,6 +30,14 @@ Extract ALL diagnostic methods SPECIFIC to {{cancerTypeTarget}} from the referen
 - Biopsy types and procedures mentioned in references - MUST be included if mentioned, and explicitly state it as the diagnostic gold standard / confirmation step if the references indicate this. Include specific biopsy types (e.g., needle biopsy, surgical biopsy, bronchoscopy biopsy) if mentioned.
 - Pathology, staging, and molecular testing mentioned in references (receptor testing, genetic markers, tumor markers, histology, etc. - as mentioned in references)
 
+CANCER-TYPE SPECIFIC REQUIREMENTS (you MUST include these tests if the cancer type matches):
+- Breast cancer: mammogram, ultrasound, MRI (if mentioned), and biopsy (core needle biopsy or surgical biopsy)
+- Cervical cancer: Pap smear, HPV test, colposcopy, and biopsy
+- Lung cancer: chest X-ray, CT scan, bronchoscopy, and biopsy
+- Colorectal cancer: colonoscopy, stool tests (FIT/FOBT), CT scan, and biopsy
+- Prostate cancer: PSA blood test, digital rectal exam (DRE), MRI, and biopsy
+- Oral cancer: visual/physical examination, biopsy, CT/MRI imaging
+
 EVIDENCE-ONLY POLICY (CRITICAL):
 - DO NOT use phrases like "common tests include...", "usually doctors do...", "often done..." unless these exact phrases appear in the retrieved references
 - DO NOT add general medical knowledge - only state what is explicitly mentioned in the retrieved chunks

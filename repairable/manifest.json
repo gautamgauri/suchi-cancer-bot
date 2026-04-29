@@ -9,6 +9,7 @@
       "source": "apps/api/src/modules/llm/llm.service.ts → getExplainModePrompt()",
       "risk": "medium",
       "approvalRequired": true,
+      "agent": "prompt",
       "notes": "Changes affect tone, structure, and coverage of all explain-mode responses. Safety-critical sections (NEVER DO THIS, citation requirements) must not be weakened."
     },
     {
@@ -17,6 +18,7 @@
       "source": "apps/api/src/modules/llm/llm.service.ts → getNavigateModePrompt()",
       "risk": "medium",
       "approvalRequired": true,
+      "agent": "prompt",
       "notes": "Changes affect how the bot responds to personal symptom questions. The 4-step SAFE+USEFUL contract and India context must be preserved."
     },
     {
@@ -25,6 +27,7 @@
       "source": "apps/api/src/modules/llm/llm.service.ts → getIdentifyRequirements()",
       "risk": "high",
       "approvalRequired": true,
+      "agent": "prompt",
       "notes": "Defines the mandatory 4-section structure (warning signs, diagnostics, when to seek care, doctor questions). Minimum bullet counts and citation requirements are safety-critical."
     },
     {
@@ -33,6 +36,7 @@
       "source": "apps/api/src/modules/rag/rag.service.ts",
       "risk": "low",
       "approvalRequired": false,
+      "agent": "config",
       "notes": "Numeric tuning knobs for retrieval quality. Safe to experiment with — affects recall/precision tradeoff but not safety."
     },
     {
@@ -41,6 +45,7 @@
       "source": "apps/api/src/modules/chat/chat.service.ts",
       "risk": "medium",
       "approvalRequired": true,
+      "agent": "config",
       "notes": "Patterns determine which queries get full structured responses vs answer-first. Budget values affect timeout behavior."
     },
     {
@@ -49,6 +54,7 @@
       "source": "apps/api/src/modules/chat/chat.service.ts, apps/api/src/modules/safety/disclaimer-engine.ts",
       "risk": "low",
       "approvalRequired": false,
+      "agent": "config",
       "notes": "Controls language routing and Hindi/Hinglish content depth. Safe to tune patterns for better Hindi query detection."
     },
     {
@@ -57,6 +63,7 @@
       "source": "apps/api/src/modules/safety/disclaimer-engine.ts",
       "risk": "high",
       "approvalRequired": true,
+      "agent": "config",
       "notes": "SAFETY-CRITICAL. Disclaimers are the last line of defense. Changes must preserve the non-removable, always-append behavior. Never weaken disclaimer language."
     }
   ],
