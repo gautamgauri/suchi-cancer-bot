@@ -208,8 +208,8 @@
       "accreditation": ["NABH"],
       "ncg_member": false,
       "tmc_affiliated": false,
-      "specialization": "Surgical — Robotic Oncology",
-      "departments": ["surgical_oncology", "hemato_oncology", "uro_oncology"],
+      "specialization": "Surgical & Medical Oncology — Robotic Surgery",
+      "departments": ["medical_oncology", "surgical_oncology", "hemato_oncology", "uro_oncology"],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -364,7 +364,7 @@
       "score": 5,
       "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "incomplete_departments"
     },
 
     {
@@ -427,7 +427,7 @@
       "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": -2},
       "risk_flag": "Limited departments — medical oncology only, no radiation or surgical oncology on site",
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "incomplete_departments"
     },
 
     {
