@@ -1181,6 +1181,8 @@
     { "id": "lung", "label": "Lung Cancer" },
     { "id": "colorectal", "label": "Colorectal Cancer" },
     { "id": "cervical", "label": "Cervical Cancer" },
+    { "id": "leukemia", "label": "Leukemia" },
+    { "id": "lymphoma", "label": "Lymphoma" },
     { "id": "pediatric", "label": "Pediatric Cancers" },
     { "id": "general", "label": "General / Multiple" }
   ],
