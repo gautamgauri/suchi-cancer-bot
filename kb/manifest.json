@@ -34627,6 +34627,175 @@
       ],
       "url": null,
       "citation": "SCCF Compiled, 2026"
+    },
+    {
+      "id": "kb_en_oral_cancer_signs_diagnosis_treatment_v1",
+      "title": "Oral Cancer: Signs, Diagnosis, and Treatment Basics",
+      "version": "v1",
+      "status": "active",
+      "source": "Suchi Cancer Care Foundation",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/website/oral-cancer-signs-diagnosis-treatment.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-04-03",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "oral"
+      ],
+      "tags": [
+        "oral-cancer",
+        "signs",
+        "diagnosis",
+        "treatment",
+        "symptoms",
+        "biopsy",
+        "tobacco"
+      ],
+      "url": null,
+      "citation": "SCCF Website Content, 2026"
+    },
+    {
+      "id": "kb_en_persistent_mouth_ulcer_when_to_worry_v1",
+      "title": "Persistent Mouth Ulcer: When to Worry",
+      "version": "v1",
+      "status": "active",
+      "source": "Suchi Cancer Care Foundation",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/website/persistent-mouth-ulcer-when-to-worry.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-04-03",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "oral"
+      ],
+      "tags": [
+        "mouth-ulcer",
+        "oral-cancer",
+        "symptoms",
+        "screening",
+        "tobacco",
+        "when-to-worry"
+      ],
+      "url": null,
+      "citation": "SCCF Website Content, 2026"
+    },
+    {
+      "id": "kb_en_what_to_do_after_cancer_diagnosis_v1",
+      "title": "What to Do After a Cancer Diagnosis",
+      "version": "v1",
+      "status": "active",
+      "source": "Suchi Cancer Care Foundation",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/website/what-to-do-after-cancer-diagnosis.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-04-03",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "diagnosis",
+        "next-steps",
+        "practical-guidance",
+        "records",
+        "second-opinion",
+        "caregiver"
+      ],
+      "url": null,
+      "citation": "SCCF Website Content, 2026"
+    },
+    {
+      "id": "kb_en_chemotherapy_what_to_expect_v1",
+      "title": "Chemotherapy: What to Expect",
+      "version": "v1",
+      "status": "active",
+      "source": "Suchi Cancer Care Foundation",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/website/chemotherapy-what-to-expect.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-04-03",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "chemotherapy",
+        "treatment",
+        "side-effects",
+        "cycles",
+        "practical-tips",
+        "safety-signs"
+      ],
+      "url": null,
+      "citation": "SCCF Website Content, 2026"
+    },
+    {
+      "id": "kb_en_questions_to_ask_your_doctor_website_v1",
+      "title": "Questions to Ask Your Doctor About Cancer",
+      "version": "v1",
+      "status": "active",
+      "source": "Suchi Cancer Care Foundation",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/website/questions-to-ask-your-doctor.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-04-03",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "questions",
+        "doctor-visit",
+        "preparation",
+        "communication",
+        "caregiver",
+        "diagnosis",
+        "treatment"
+      ],
+      "url": null,
+      "citation": "SCCF Website Content, 2026"
+    },
+    {
+      "id": "kb_en_hospital_directory_v1",
+      "title": "Cancer Hospital Directory — East India and National Referral Centres",
+      "version": "v1",
+      "status": "active",
+      "source": "SCCF Navigator Research",
+      "sourceType": "99_local_navigation",
+      "path": "en/99_local_navigation/hospital-directory.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-04-30",
+      "reviewFrequency": "quarterly",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general"
+      ],
+      "tags": [
+        "hospitals",
+        "find-care",
+        "navigation",
+        "Bihar",
+        "East India",
+        "PMJAY",
+        "NCG",
+        "referral",
+        "Jharkhand",
+        "Odisha",
+        "West Bengal"
+      ],
+      "url": null,
+      "citation": "SCCF Navigator Research, 2026"
     }
   ]
 }

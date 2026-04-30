@@ -1,0 +1,502 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import hospitalsData from '../../../content/hospitals.json';
+
+type Hospital = (typeof hospitalsData.hospitals)[number];
+
+const LISTABLE = hospitalsData.hospitals.filter(
+  (h) => h.status !== 'incomplete_departments',
+) as Hospital[];
+
+const STATE_ORDER = [
+  'Bihar',
+  'Jharkhand',
+  'West Bengal',
+  'Odisha',
+  'Assam',
+  'Uttar Pradesh',
+  'National',
+];
+
+function filterGroup(h: Hospital): string {
+  if (h.state === 'Maharashtra' || h.state === 'Delhi') return 'National';
+  return h.state;
+}
+
+const SORTED = [...LISTABLE].sort((a, b) => {
+  const ai = STATE_ORDER.indexOf(filterGroup(a));
+  const bi = STATE_ORDER.indexOf(filterGroup(b));
+  if (ai !== bi) return ai - bi;
+  return b.score - a.score;
+});
+
+const FILTER_COUNTS: Record<string, number> = { All: LISTABLE.length };
+STATE_ORDER.forEach((s) => {
+  FILTER_COUNTS[s] = LISTABLE.filter((h) => filterGroup(h) === s).length;
+});
+
+const FILTERS = [
+  { key: 'All', label: 'All' },
+  ...STATE_ORDER.map((s) => ({ key: s, label: s })),
+].filter((f) => FILTER_COUNTS[f.key] > 0);
+
+const DEPT_LABELS: Record<string, string> = {
+  medical_oncology: 'Medical Oncology',
+  surgical_oncology: 'Surgical Oncology',
+  radiation_oncology: 'Radiation Oncology',
+  hemato_oncology: 'Haematology',
+  pediatric_oncology: 'Paediatric',
+  palliative_care: 'Palliative Care',
+  nuclear_medicine: 'Nuclear Medicine',
+  gynaec_oncology: 'Gynaecology',
+  uro_oncology: 'Uro-Oncology',
+  head_and_neck: 'Head & Neck',
+};
+
+const COST_LABEL: Record<string, string> = {
+  Low: 'Free / Subsidised',
+  Medium: 'Moderate Cost',
+  High: 'Private Rates',
+};
+
+function scoreClass(score: number): string {
+  if (score >= 9) return 'high';
+  if (score >= 7) return 'mid';
+  return 'low';
+}
+---
+
+<BaseLayout
+  title="Hospital Directory — Find Cancer Care"
+  description={`${LISTABLE.length} verified cancer hospitals across East India and national referral centres — Bihar, Jharkhand, West Bengal, Odisha, Assam, and beyond.`}
+>
+  <section class="dir-page">
+    <div class="dir-inner">
+
+      <header class="dir-header">
+        <p class="dir-eyebrow">Find Care</p>
+        <h1>Hospital Directory</h1>
+        <p class="dir-intro">
+          {LISTABLE.length} verified cancer hospitals with at least a Medical Oncologist and
+          Surgical Oncologist — covering Bihar, Jharkhand, Odisha, West Bengal, Assam, and
+          national referral centres. Scored on quality, cost, and accessibility.
+        </p>
+      </header>
+
+      <div class="filter-bar" role="group" aria-label="Filter by state">
+        {FILTERS.map((f) => (
+          <button
+            class="filter-pill"
+            data-filter={f.key}
+            aria-pressed={f.key === 'All' ? 'true' : 'false'}
+          >
+            {f.label}
+            <span class="pill-count">{FILTER_COUNTS[f.key]}</span>
+          </button>
+        ))}
+      </div>
+
+      <ul class="hosp-grid" id="hosp-grid">
+        {SORTED.map((h) => (
+          <li class="hosp-item" data-state={filterGroup(h)}>
+            <div class="hosp-card">
+
+              <div class="card-top">
+                <div class="card-badges">
+                  {h.ncg_member && <span class="badge badge-ncg">NCG Member</span>}
+                  {h.tmc_affiliated && <span class="badge badge-tmc">TMC</span>}
+                  {h.pmjay_empanelled === true && (
+                    <span class="badge badge-pmjay">PMJAY</span>
+                  )}
+                </div>
+                <span class={`score-badge score-${scoreClass(h.score)}`}>
+                  {h.score}/10
+                </span>
+              </div>
+
+              <h2 class="hosp-name">{h.name}</h2>
+              <p class="hosp-location">
+                {h.city}, {h.state}
+                <span class="hosp-type"> · {h.type}</span>
+              </p>
+
+              <div class="dept-row">
+                {h.departments.slice(0, 4).map((d) => (
+                  <span class="dept-tag">{DEPT_LABELS[d] ?? d}</span>
+                ))}
+                {h.departments.length > 4 && (
+                  <span class="dept-more">+{h.departments.length - 4}</span>
+                )}
+              </div>
+
+              <p class="hosp-notes">{h.notes}</p>
+
+              {h.risk_flag && (
+                <p class="hosp-risk">
+                  <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 10.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM7.25 5h1.5v4h-1.5V5z"/></svg>
+                  {h.risk_flag}
+                </p>
+              )}
+
+              <div class="card-foot">
+                <span class={`cost-badge cost-${(h.cost_tier ?? '').toLowerCase()}`}>
+                  {COST_LABEL[h.cost_tier] ?? h.cost_tier}
+                </span>
+                {h.contact?.phone && (
+                  <a href={`tel:${h.contact.phone.replace(/\s/g, '')}`} class="hosp-phone">
+                    {h.contact.phone}
+                  </a>
+                )}
+              </div>
+
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <aside class="suchi-cta">
+        <div class="cta-inner">
+          <p class="cta-heading">Not sure which hospital is right for you?</p>
+          <p class="cta-body">
+            Tell Suchi your location and type of cancer — she can help you find the best
+            option and explain what to expect at each step.
+          </p>
+          <a href="/" class="cta-btn">Ask Suchi →</a>
+        </div>
+      </aside>
+
+      <p class="dir-footnote">
+        Hospital data verified April 2026. Scores reflect quality accreditation, cost,
+        East India location, and PMJAY empanelment. Always call ahead to confirm
+        appointments and available services. <strong>West Bengal note:</strong> WB uses
+        Swasthya Sathi (not central PMJAY) — Bihar PMJAY cards may not be accepted at
+        WB state hospitals.
+      </p>
+
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
+  const items = document.querySelectorAll<HTMLLIElement>('.hosp-item');
+
+  pills.forEach((pill) => {
+    pill.addEventListener('click', () => {
+      const filter = pill.dataset.filter ?? 'All';
+      pills.forEach((p) => p.setAttribute('aria-pressed', 'false'));
+      pill.setAttribute('aria-pressed', 'true');
+      items.forEach((item) => {
+        const match = filter === 'All' || item.dataset.state === filter;
+        item.hidden = !match;
+      });
+    });
+  });
+</script>
+
+<style>
+  .dir-page {
+    padding: 3rem 1rem 4rem;
+    background: var(--color-bg);
+  }
+
+  .dir-inner {
+    max-width: 1060px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .dir-header { margin-bottom: 2rem; }
+
+  .dir-eyebrow {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-warm);
+    margin: 0 0 0.5rem;
+  }
+
+  .dir-header h1 {
+    font-family: var(--font-serif);
+    font-size: var(--text-5xl);
+    line-height: 1.2;
+    color: var(--color-text-dark);
+    margin-bottom: 0.75rem;
+  }
+
+  .dir-intro {
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+    max-width: 64ch;
+    margin: 0;
+  }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  }
+
+  .filter-pill:hover,
+  .filter-pill[aria-pressed='true'] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-text-dark);
+  }
+
+  .pill-count {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background: var(--color-bg-soft);
+    padding: 0.0625rem 0.375rem;
+    border-radius: 999px;
+  }
+
+  .filter-pill[aria-pressed='true'] .pill-count {
+    background: white;
+  }
+
+  /* ── Grid ── */
+  .hosp-grid {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2.5rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+
+  .hosp-item { margin: 0; }
+
+  /* ── Card ── */
+  .hosp-card {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.375rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-ncg  { background: #dbeafe; color: #1e40af; }
+  .badge-tmc  { background: #f3e8ff; color: #6b21a8; }
+  .badge-pmjay { background: #dcfce7; color: #15803d; }
+
+  .score-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .score-high { background: #dcfce7; color: #166534; }
+  .score-mid  { background: #fef3c7; color: #92400e; }
+  .score-low  { background: var(--color-bg-soft); color: var(--color-text-muted); }
+
+  .hosp-name {
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    color: var(--color-text-dark);
+    margin: 0;
+  }
+
+  .hosp-location {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .hosp-type {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+  }
+
+  /* ── Departments ── */
+  .dept-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3125rem;
+  }
+
+  .dept-tag {
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    background: var(--color-bg-soft);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .dept-more {
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    color: var(--color-text-muted);
+  }
+
+  /* ── Notes ── */
+  .hosp-notes {
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--color-text);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  /* ── Risk flag ── */
+  .hosp-risk {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: #b45309;
+    background: #fef3c7;
+    border-radius: var(--radius-sm);
+    padding: 0.375rem 0.625rem;
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .hosp-risk svg { flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Footer ── */
+  .card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--color-border);
+    margin-top: auto;
+  }
+
+  .cost-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .cost-low    { background: #dcfce7; color: #166534; }
+  .cost-medium { background: #fef3c7; color: #92400e; }
+  .cost-high   { background: #fee2e2; color: #991b1b; }
+
+  .hosp-phone {
+    font-size: 0.8125rem;
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .hosp-phone:hover { text-decoration: underline; }
+
+  /* ── Suchi CTA ── */
+  .suchi-cta {
+    background: var(--color-bg-soft);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-heading {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    color: var(--color-text-dark);
+    margin: 0 0 0.5rem;
+  }
+
+  .cta-body {
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 1.25rem;
+    max-width: 52ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cta-btn {
+    display: inline-block;
+    padding: 0.625rem 1.5rem;
+    background: var(--color-accent);
+    color: white;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9375rem;
+    transition: opacity var(--transition-fast);
+  }
+
+  .cta-btn:hover { opacity: 0.88; }
+
+  /* ── Footnote ── */
+  .dir-footnote {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin: 0;
+    max-width: none;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 760px) {
+    .hosp-grid { grid-template-columns: 1fr; }
+    .filter-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.75rem; }
+    .dir-header h1 { font-size: var(--text-4xl, 1.875rem); }
+  }
+</style>

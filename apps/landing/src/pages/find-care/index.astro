@@ -33,6 +33,28 @@ const pageDescription =
         </p>
       </header>
 
+      <a href="/find-care/hospitals/" class="hosp-dir-card">
+        <div class="hosp-dir-icon" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="14" width="28" height="22" rx="2"/>
+            <path d="M14 36V26h12v10"/>
+            <path d="M6 18l14-12 14 12"/>
+            <line x1="20" y1="20" x2="20" y2="24"/>
+            <line x1="18" y1="22" x2="22" y2="22"/>
+          </svg>
+        </div>
+        <div class="hosp-dir-body">
+          <p class="hosp-dir-eyebrow">New</p>
+          <h2 class="hosp-dir-title">Hospital Directory</h2>
+          <p class="hosp-dir-desc">
+            29 verified cancer hospitals across Bihar, Jharkhand, West Bengal, Odisha, Assam
+            and national referral centres — with departments, cost, PMJAY status, and contact
+            details.
+          </p>
+        </div>
+        <span class="hosp-dir-arrow">→</span>
+      </a>
+
       {articles.length === 0 ? (
         <div class="hub-empty">
           <p>Articles in this section are coming soon.</p>
@@ -118,6 +140,75 @@ const pageDescription =
   .hub-empty p {
     margin: 0;
     max-width: none;
+  }
+
+  .hosp-dir-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: white;
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    text-decoration: none;
+    color: inherit;
+    margin-bottom: 2rem;
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .hosp-dir-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  .hosp-dir-icon {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hosp-dir-icon svg { width: 26px; height: 26px; }
+
+  .hosp-dir-body { flex: 1; min-width: 0; }
+
+  .hosp-dir-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-accent);
+    margin: 0 0 0.25rem;
+  }
+
+  .hosp-dir-title {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    color: var(--color-text-dark);
+    margin: 0 0 0.375rem;
+  }
+
+  .hosp-dir-desc {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .hosp-dir-arrow {
+    font-size: 1.375rem;
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 540px) {
+    .hosp-dir-card { flex-wrap: wrap; }
+    .hosp-dir-arrow { display: none; }
   }
 
   .hub-list {
