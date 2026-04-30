@@ -1,0 +1,523 @@
+{
+  "_meta": {
+    "version": "v0.1",
+    "last_updated": "2026-04-30",
+    "description": "Suchi Navigator hospital directory. Editable source of truth — one object per hospital. Sync to Google Sheet later if needed.",
+    "scoring": {
+      "quality": "TMC/NCG full member=5, AIIMS=4, NABH full=3, NABH recommended=2, Govt tertiary=2, Private multi-specialty=1",
+      "cost": "Low (govt/trust)=3, Medium=2, High=1",
+      "location": "East India state=1, elsewhere=0",
+      "pmjay": "Yes=1, No/Unknown=0",
+      "sccf_affiliation": "Reserved — add +2 once conference doctor list obtained from Divya",
+      "risk_flag": "Verified concern=-3",
+      "max_score": 10
+    },
+    "todo": [
+      "Add SCCF affiliation scores once conference attendee list obtained from divya.vats@dikshafoundation.org",
+      "Add Jharkhand hospitals (HCG Ranchi, RIMS, etc.) — needs research",
+      "Add West Bengal / Kolkata hospitals beyond Tata Medical Center",
+      "Add Odisha hospitals (AIIMS Bhubaneswar, AHRCC)",
+      "Add Eastern UP hospitals (BHU Varanasi, SGPGI Lucknow)",
+      "Verify PMJAY empanelment status for private hospitals",
+      "Add phone numbers for national referral centres"
+    ]
+  },
+  "hospitals": [
+
+    {
+      "id": "homi-bhabha-cancer-hospital-muzaffarpur",
+      "name": "Homi Bhabha Cancer Hospital & Research Centre",
+      "short_name": "HBCH Muzaffarpur",
+      "city": "Muzaffarpur",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Government / TMC",
+      "accreditation": ["TMC_AFFILIATED"],
+      "ncg_member": true,
+      "tmc_affiliated": true,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Muzaffarpur, Bihar"
+      },
+      "key_doctors": [],
+      "notes": "Unit of Tata Memorial Centre (TMC) Mumbai — operates under TMH standards. Closest TMC-network hospital for North Bihar patients. Highly recommended first stop for North Bihar.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 9,
+      "score_breakdown": {"quality": 5, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "aiims-patna",
+      "name": "All India Institute of Medical Sciences, Patna",
+      "short_name": "AIIMS Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Government",
+      "accreditation": ["NABL", "AERB"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "pediatric_oncology", "head_and_neck"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": "+91-612-2451070",
+        "address": "Phulwarisharif, Patna - 801507"
+      },
+      "key_doctors": [
+        {"name": "Dr. Jagjit Pandey", "role": "Surgical Oncology"},
+        {"name": "Dr. Pritanjali Singh", "role": "Radiation Oncology"}
+      ],
+      "notes": "Government tertiary institute. Linear accelerator + brachytherapy. Specialised clinics: head & neck, breast, pediatric oncology. Book via AIIMS ORS portal (ors.gov.in). Low cost, long wait times. Not NABH but NABL and AERB licensed.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 9,
+      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "mahavir-cancer-sansthan-patna",
+      "name": "Mahavir Cancer Sansthan & Research Centre",
+      "short_name": "Mahavir Cancer Sansthan",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Trust",
+      "accreditation": ["NABH_RECOMMENDED"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "nuclear_medicine", "hemato_oncology", "preventive_oncology"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": "+91-612-2250127",
+        "phone_alt": "+91-612-2253956",
+        "address": "Phulwarisharif, Patna - 801505"
+      },
+      "key_doctors": [
+        {"name": "Dr. Manisha Singh", "role": "Medical Director & HOD Medical Oncology — DNB, ESMO certified"},
+        {"name": "Dr. Vinita Trivedi", "role": "HOD Radiation Oncology"},
+        {"name": "Dr. Chiranjiva Khandelwal", "role": "HOD Surgical Oncology — FRCS qualified"},
+        {"name": "Dr. Biswajit Sanyal", "role": "Director Administration — veteran radiation oncologist"}
+      ],
+      "notes": "Bihar's dedicated super-specialty cancer centre. 618 beds. Free treatment for children under 18. Rs 10,000 grant for low-income adults. Dharmashala (low-cost lodging) available for outstation patients. ~7km from Patna Junction.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 7,
+      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "paras-hmri-patna",
+      "name": "Paras HMRI Hospital — Paras Cancer Centre",
+      "short_name": "Paras HMRI Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "cost_tier": "High",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Raja Bazar, Bailey Road, Patna"
+      },
+      "key_doctors": [
+        {"name": "Dr. Abhishek Anand", "role": "Director & HOD Medical Oncology — DM Medical Oncology, solid tumors, lymphomas, stem cell transplants"},
+        {"name": "Dr. Shekhar Kumar Keshri", "role": "Director & HOD Radiation Oncology — 21+ years, SBRT, SRS"},
+        {"name": "Dr. Mitali Dandekar Lall", "role": "Chief Consultant & HOD Surgical Oncology — Head & Neck specialist"},
+        {"name": "Dr. R. N. Tagore", "role": "Chief Consultant Medical Oncology — 31 years experience"},
+        {"name": "Dr. Mosarrat Shaheen", "role": "Consultant Medical Oncology — Precision Oncology, immunotherapy"}
+      ],
+      "notes": "First NABH-accredited hospital in Bihar. Has LINAC, PET-CT, Gamma Camera. Bone marrow transplant for leukemia/lymphoma. High cost — check PMJAY empanelment before visiting.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 5,
+      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "jay-prabha-medanta-patna",
+      "name": "Jay Prabha Medanta Super Specialty Hospital",
+      "short_name": "Medanta Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck"],
+      "cost_tier": "High",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Kankarbagh, Patna"
+      },
+      "key_doctors": [
+        {"name": "Dr. Ravi Shankar Singh", "role": "Medical Director & Senior Medical Oncologist — solid tumors"},
+        {"name": "Dr. Rajiv Ranjan Prasad", "role": "Director Radiation Oncology — 30+ years, IMRT, IGRT, SRS"},
+        {"name": "Dr. Sundeep Kumar", "role": "Associate Director Surgical Oncology — GI, Gynae, Head & Neck, robotic"},
+        {"name": "Dr. Amarendra Amar", "role": "Associate Director Medical Oncology — prostate, breast, immunotherapy"},
+        {"name": "Dr. Niharika Roy", "role": "Senior Consultant Breast Services — oncoplastic surgery"}
+      ],
+      "notes": "Largest private hospital in Patna. NABH + NABL. Has Varian Edge radiation machine (first in Eastern India). Da Vinci robotic surgery for oncology. High cost.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 5,
+      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "ruban-memorial-patna",
+      "name": "Ruban Memorial Hospital",
+      "short_name": "Ruban Memorial Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Surgical — Robotic Oncology",
+      "departments": ["surgical_oncology", "hemato_oncology", "uro_oncology"],
+      "cost_tier": "High",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Patliputra Colony, Patna"
+      },
+      "key_doctors": [
+        {"name": "Dr. Arun Pandey", "role": "Director & HOD Surgical Oncology & Robotic Surgery"},
+        {"name": "Dr. Sanjeev Kumar", "role": "Consultant Onco Surgeon"},
+        {"name": "Dr. Ravi Ranjan Kumar", "role": "Consultant Robotic & Thoracic Surgery"}
+      ],
+      "notes": "450-bed quaternary care. High-volume robotic surgery centre for prostate, kidney, colorectal, gynecologic cancers. Strong for surgical cases — limited medical oncology compared to Paras/Medanta.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 5,
+      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "buddha-cancer-centre-patna",
+      "name": "Buddha Cancer Centre",
+      "short_name": "Buddha Cancer Centre Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH_RECOMMENDED"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "hemato_oncology", "palliative_care"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Bailey Road, Patna"
+      },
+      "key_doctors": [
+        {"name": "Dr. Arvind Kumar", "role": "Founder Director & Senior Medical Oncologist — first DM Medical Oncology in Bihar, AIIMS Delhi alumnus"},
+        {"name": "Dr. Rahul Kumar Chaudhary", "role": "Surgical Oncology — gallbladder cancer specialist, fellowship Japan"},
+        {"name": "Dr. Rayaz Ahmed", "role": "Senior Hematologist — DM CMC Vellore, bone marrow transplants"},
+        {"name": "Dr. Tanveer Abdul Majeed", "role": "Surgical Oncologist — GI and Thoracic"}
+      ],
+      "notes": "NABH Recommended (Nov 2023). Has NGS genetic testing. Dedicated pain & palliative care clinic. Medium cost — more affordable than Paras/Medanta for medical oncology cases.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 4,
+      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "ss-hospital-patna",
+      "name": "S.S. Hospital & Research Centre",
+      "short_name": "SS Hospital Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH_RECOMMENDED"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Medical & Surgical Oncology",
+      "departments": ["medical_oncology", "surgical_oncology"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Kankarbagh, Patna"
+      },
+      "key_doctors": [
+        {"name": "Dr. J.K. Singh", "role": "Director & Senior Oncologist — Padma Shri awardee, 49+ years experience"},
+        {"name": "Dr. Tanveer Majid", "role": "Surgical Oncologist — 29+ years"},
+        {"name": "Dr. Sweta Das", "role": "Medical & Clinical Oncology — also Clinical Geneticist"}
+      ],
+      "notes": "NABH Recommended (Apr 2024). Led by Dr. J.K. Singh — Padma Shri, one of Bihar's most respected oncologists. Day-care chemo unit with zero drug wastage policy.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 4,
+      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "igims-patna",
+      "name": "Indira Gandhi Institute of Medical Sciences (State Cancer Institute)",
+      "short_name": "IGIMS Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Government",
+      "accreditation": [],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": "0612-2297631",
+        "address": "Sheikhpura, Patna - 800014"
+      },
+      "key_doctors": [
+        {"name": "Dr. Manish Kumar", "role": "Surgical Oncology"},
+        {"name": "Dr. Rajesh Kumar Singh", "role": "Radiation Oncology"}
+      ],
+      "notes": "Designated Regional Cancer Centre. Subsidized / free treatment for low-income patients. OPD Mon–Fri 8:30am–4:30pm, Sat till noon. Not NABH accredited. Quality variable — recommended as option when Mahavir/AIIMS Patna is not accessible.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 4,
+      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 1, "risk": -3},
+      "risk_flag": "Quality concerns — use with caution; verify department capacity before referral",
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "healing-touch-bhagalpur",
+      "name": "Healing Touch Hospital",
+      "short_name": "Healing Touch Bhagalpur",
+      "city": "Bhagalpur",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Surgical Oncology — Uro-Oncology",
+      "departments": ["surgical_oncology", "uro_oncology"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Bhagalpur, Bihar"
+      },
+      "key_doctors": [
+        {"name": "Dr. Sanjay Singh", "role": "Senior Consultant — General Surgery & Oncology"},
+        {"name": "Dr. Siddharth Jai Singh", "role": "Consultant Urologist — kidney, bladder, prostate cancers"}
+      ],
+      "notes": "First NABH-accredited hospital in Bhagalpur. Best option for surgical oncology and uro-oncology for patients in East Bihar (Bhagalpur, Munger, Banka). Refer to Patna/Muzaffarpur for radiation or medical oncology.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 5,
+      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "narayana-cancer-centre-patna",
+      "name": "Narayana Cancer Centre, Patna",
+      "short_name": "Narayana Cancer Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH_RECOMMENDED"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Patna, Bihar"
+      },
+      "key_doctors": [],
+      "notes": "NABH Recommended (Feb 2025). Part of Narayana Health group. Doctor list to be verified.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 4,
+      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "needs_verification"
+    },
+
+    {
+      "id": "atlantis-super-speciality-patna",
+      "name": "Atlantis Super Speciality Hospital",
+      "short_name": "Atlantis Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Medical Oncology",
+      "departments": ["medical_oncology"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Patna, Bihar"
+      },
+      "key_doctors": [
+        {"name": "Dr. Rohan Singh", "role": "DM Oncology, ex-Tata Memorial"}
+      ],
+      "notes": "NABH Accredited. Dr. Rohan Singh trained at Tata Memorial. Limited to medical oncology — refer surgical cases elsewhere.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 4,
+      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": -2},
+      "risk_flag": "Limited departments — medical oncology only, no radiation or surgical oncology on site",
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "tata-medical-center-kolkata",
+      "name": "Tata Medical Center",
+      "short_name": "TMC Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East India",
+      "type": "Trust / TMC",
+      "accreditation": ["NABH", "TMC_AFFILIATED"],
+      "ncg_member": true,
+      "tmc_affiliated": true,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "New Town, Kolkata, West Bengal"
+      },
+      "key_doctors": [],
+      "notes": "Part of Tata Memorial Centre network. Major referral centre for East India — serves patients from Bihar, Jharkhand, Odisha, Northeast. More accessible than TMH Mumbai for East India patients. Medium cost.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 8,
+      "score_breakdown": {"quality": 5, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "tata-memorial-hospital-mumbai",
+      "name": "Tata Memorial Hospital",
+      "short_name": "TMH Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West India",
+      "type": "Government / TMC",
+      "accreditation": ["NABH", "TMC_AFFILIATED"],
+      "ncg_member": true,
+      "tmc_affiliated": true,
+      "specialization": "Comprehensive — National Referral",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Dr. Ernest Borges Road, Parel, Mumbai - 400012"
+      },
+      "key_doctors": [],
+      "notes": "India's premier cancer centre. Government rates — highly affordable but very high patient volume and long wait times. Best for complex cases, second opinions, rare cancers, and when local treatment capacity is insufficient. Outstation patients need significant logistical planning.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 8,
+      "score_breakdown": {"quality": 5, "cost": 3, "location": 0, "pmjay": 1, "risk": -1},
+      "risk_flag": "Long wait times — not suitable for urgent cases without prior referral coordination",
+      "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "aiims-delhi",
+      "name": "All India Institute of Medical Sciences, New Delhi",
+      "short_name": "AIIMS Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North India",
+      "type": "Government",
+      "accreditation": ["NABL"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive — National Referral",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Sri Aurobindo Marg, Ansari Nagar, New Delhi - 110029"
+      },
+      "key_doctors": [],
+      "notes": "Top government medical institute. Extremely low cost. Very high volume — expect long waits for appointments. Book via ORS portal. Accessible from Bihar by train (Rajdhani/Shatabdi to Delhi). Strong for second opinions.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 8,
+      "score_breakdown": {"quality": 4, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "verified_date": "2026-04-30",
+      "status": "active"
+    }
+
+  ]
+}
