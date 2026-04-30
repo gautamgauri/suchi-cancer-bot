@@ -4,10 +4,9 @@ page_id: pediatric-cancers
 title: "Childhood Cancer: Warning Signs, Diagnosis, and Support"
 summary: >
   Childhood cancer affects children of all ages. Acute lymphoblastic leukemia
-  is the most common type, followed by brain tumors, lymphomas, and others.
-  This page covers warning signs parents should know, how diagnosis works,
-  India's main referral centres including Tata Memorial, and emotional support
-  for families.
+  is the most common type, followed by brain tumors and lymphomas. This page
+  covers warning signs parents should know, how diagnosis works, India's main
+  referral centres including Tata Memorial, and support for families.
 content_type: cancer_type
 
 locale: en
