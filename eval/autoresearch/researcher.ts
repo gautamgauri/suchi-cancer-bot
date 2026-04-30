@@ -8,6 +8,7 @@
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { jsonrepair } from "jsonrepair";
 import OpenAI from "openai";
 import { retryableCompletion } from "./llm-retry";
 import type { FailureBucket, Hypothesis } from "./types";
@@ -231,10 +232,19 @@ Respond in valid JSON format as an array of hypothesis objects:
     try {
       parsed = JSON.parse(jsonStr);
     } catch (err: any) {
-      console.warn(
-        `Failed to parse LLM response as JSON (${err.message}). Raw response (first 600 chars): ${response.slice(0, 600)}`,
-      );
-      return [];
+      // Response may be truncated mid-array (finish_reason=length). Try
+      // jsonrepair to recover complete objects before the cut point.
+      try {
+        parsed = JSON.parse(jsonrepair(jsonStr));
+        console.warn(
+          `Researcher: JSON was malformed (${err.message}) — repaired successfully. Raw (first 300 chars): ${response.slice(0, 300)}`,
+        );
+      } catch {
+        console.warn(
+          `Failed to parse LLM response as JSON (${err.message}). Raw response (first 600 chars): ${response.slice(0, 600)}`,
+        );
+        return [];
+      }
     }
 
     if (!Array.isArray(parsed)) {

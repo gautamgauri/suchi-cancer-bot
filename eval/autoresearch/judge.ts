@@ -12,6 +12,7 @@
  */
 
 import OpenAI from "openai";
+import { jsonrepair } from "jsonrepair";
 import { retryableCompletion } from "./llm-retry";
 import type { FailureBucket, PatchProposal } from "./types";
 
@@ -199,10 +200,15 @@ Respond ONLY with JSON:
     try {
       parsed = JSON.parse(jsonStr);
     } catch {
-      // Fallback: scan for "winner": "A" / "B" anywhere in the text.
-      const m = raw.match(/"?winner"?\s*[:=]\s*"?([AB])"?/i);
-      if (!m) throw new Error("Judge response not parseable as JSON and no winner field found");
-      parsed = { winner: m[1].toUpperCase(), reason: raw.slice(0, 200) };
+      // Try jsonrepair for truncated responses before falling back to regex.
+      try {
+        parsed = JSON.parse(jsonrepair(jsonStr));
+      } catch {
+        // Last resort: scan for "winner": "A" / "B" anywhere in the text.
+        const m = raw.match(/"?winner"?\s*[:=]\s*"?([AB])"?/i);
+        if (!m) throw new Error("Judge response not parseable as JSON and no winner field found");
+        parsed = { winner: m[1].toUpperCase(), reason: raw.slice(0, 200) };
+      }
     }
 
     const winner = (parsed.winner || "").toUpperCase();

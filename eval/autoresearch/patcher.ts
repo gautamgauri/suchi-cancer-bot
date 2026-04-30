@@ -222,17 +222,24 @@ CONSTRAINTS:
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 8000,
+        max_tokens: 16000,
       },
       { label: `patcher:${path.basename(filePath)}` },
     );
 
-    let content = response.choices[0]?.message?.content || "";
+    const choice = response.choices[0];
+    // Fail fast on truncation — a cut-off file would pass fence-stripping but
+    // produce a broken patch that fails syntax validation anyway. Better to
+    // surface the root cause early than waste time on downstream checks.
+    if (choice?.finish_reason === "length") {
+      throw new Error(
+        `Patcher: response truncated at max_tokens for ${path.basename(filePath)} — file content too long for one completion. Consider splitting the patch.`,
+      );
+    }
 
-    // Strip accidental fences defensively. The earlier regex anchored on
-    // both opening AND closing fences; if max_tokens cut the response
-    // mid-content, no closing fence existed and the raw "```json\n..."
-    // string was returned, blowing up downstream JSON.parse / file write.
+    let content = choice?.message?.content || "";
+
+    // Strip accidental fences defensively.
     content = content
       .trim()
       .replace(/^```(?:\w+)?\s*\n?/, "")
