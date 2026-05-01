@@ -18,9 +18,12 @@ const STATE_ORDER = [
   'National',
 ];
 
+const NAMED_FILTER_STATES = new Set([
+  'Bihar', 'Jharkhand', 'West Bengal', 'Odisha', 'Assam', 'Uttar Pradesh',
+]);
+
 function filterGroup(h: Hospital): string {
-  if (h.state === 'Maharashtra' || h.state === 'Delhi') return 'National';
-  return h.state;
+  return NAMED_FILTER_STATES.has(h.state) ? h.state : 'National';
 }
 
 const SORTED = [...LISTABLE].sort((a, b) => {
