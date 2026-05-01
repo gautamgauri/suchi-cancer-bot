@@ -194,9 +194,8 @@ export class ChatService {
 
     const obsTrace = this.observability.startTrace('chat_turn', {
       query: dto.userText?.substring(0, 200),
-      sessionId: dto.sessionId,
       channel: dto.channel,
-    });
+    }, undefined, dto.sessionId);
 
     // Fetch session (with caching) and message count once at the start - reuse throughout method
     // Wrapped with prismaRetry to handle transient connection-pool exhaustion under load

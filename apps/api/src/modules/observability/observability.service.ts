@@ -31,8 +31,8 @@ export class ObservabilityService implements OnModuleInit, OnApplicationShutdown
         publicKey,
         secretKey,
         baseUrl: this.configService.get<string>("LANGFUSE_HOST") ?? "https://cloud.langfuse.com",
-        flushAt: 20,
-        flushInterval: 10000,
+        flushAt: 1,
+        flushInterval: 5000,
       });
       this.logger.log("Langfuse observability initialized");
     } catch (err: any) {
@@ -49,10 +49,10 @@ export class ObservabilityService implements OnModuleInit, OnApplicationShutdown
     }
   }
 
-  startTrace(name: string, input: Record<string, any>, metadata?: Record<string, any>): TraceHandle {
+  startTrace(name: string, input: Record<string, any>, metadata?: Record<string, any>, sessionId?: string): TraceHandle {
     if (!this.enabled || !this.client) return null;
     try {
-      const trace = this.client.trace({ name, input, metadata });
+      const trace = this.client.trace({ name, input, metadata, ...(sessionId ? { sessionId } : {}) });
       return { id: trace.id, _trace: trace };
     } catch (err: any) {
       this.logger.warn(`startTrace failed: ${err.message}`);
@@ -116,6 +116,7 @@ export class ObservabilityService implements OnModuleInit, OnApplicationShutdown
     if (!trace) return;
     try {
       trace._trace.update({ output });
+      this.client?.flush().catch((err: any) => this.logger.warn(`flush failed: ${err.message}`));
     } catch (err: any) {
       this.logger.warn(`finalizeTrace failed: ${err.message}`);
     }
