@@ -2,7 +2,7 @@
   "_meta": {
     "version": "v0.1",
     "last_updated": "2026-05-01",
-    "total_hospitals": 49,
+    "total_hospitals": 51,
     "description": "Suchi Navigator hospital directory. Editable source of truth — one object per hospital. Sync to Google Sheet later if needed.",
     "scoring": {
       "quality": "TMC/NCG full member=5, AIIMS=4, NABH full=3, NABH recommended=2, Govt tertiary=2, Private multi-specialty=1",
@@ -891,6 +891,68 @@
       "score": 5,
       "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
       "verified_date": "2026-04-30",
+      "status": "active"
+    },
+
+    {
+      "id": "cchrc-silchar",
+      "name": "Cachar Cancer Hospital & Research Centre",
+      "short_name": "CCHRC Silchar",
+      "city": "Silchar",
+      "state": "Assam",
+      "region": "East India",
+      "type": "Trust",
+      "accreditation": [],
+      "ncg_member": true,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "palliative_care"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": "03842-260099",
+        "address": "Meherpur, Silchar, Assam - 788015"
+      },
+      "key_doctors": [],
+      "notes": "NCG member, Tata Trusts-supported dedicated cancer hospital (est. 1999) — one of India's pioneering rural cancer hospitals. Linear Accelerator, brachytherapy, surgical oncology, full palliative care. Free/subsidized for low-income patients; PMJAY accepted. Key referral centre for South Assam, Mizoram, and Manipur border patients who cannot travel to Guwahati.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 7,
+      "score_breakdown": {"quality": 5, "cost": 3, "location": 1, "pmjay": 1, "risk": -3},
+      "risk_flag": "Limited capacity — confirm appointment availability before travel from long distance",
+      "verified_date": "2026-05-01",
+      "status": "active"
+    },
+
+    {
+      "id": "neigrihms-shillong",
+      "name": "North Eastern Indira Gandhi Regional Institute of Health & Medical Sciences",
+      "short_name": "NEIGRIHMS Shillong",
+      "city": "Shillong",
+      "state": "Meghalaya",
+      "region": "East India",
+      "type": "Government",
+      "accreditation": ["NABL"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": true,
+      "referral_required": false,
+      "contact": {
+        "phone": "0364-2538023",
+        "address": "Mawdiangdiang, Shillong, Meghalaya - 793018"
+      },
+      "key_doctors": [],
+      "notes": "Central government autonomous medical institute — the AIIMS-equivalent for the North East (est. 1987). Department of Radiotherapy handles oncology with LINAC and brachytherapy. Surgical and medical oncology via dedicated faculty. PMJAY accepted; government rates. Serves Meghalaya, Nagaland, Mizoram, and Manipur patients who prefer Shillong over Guwahati.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 8,
+      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": -1},
+      "risk_flag": "Not a dedicated cancer centre — oncology is one department among many; complex cases should go to BBCI Guwahati",
+      "verified_date": "2026-05-01",
       "status": "active"
     },
 

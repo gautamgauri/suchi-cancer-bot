@@ -13,17 +13,27 @@ const STATE_ORDER = [
   'Jharkhand',
   'West Bengal',
   'Odisha',
-  'Assam',
+  'Northeast',
   'Uttar Pradesh',
   'National',
 ];
 
-const NAMED_FILTER_STATES = new Set([
-  'Bihar', 'Jharkhand', 'West Bengal', 'Odisha', 'Assam', 'Uttar Pradesh',
+const EAST_INDIA_STATES: Record<string, string> = {
+  Bihar: 'Bihar',
+  Jharkhand: 'Jharkhand',
+  'West Bengal': 'West Bengal',
+  Odisha: 'Odisha',
+  'Uttar Pradesh': 'Uttar Pradesh',
+};
+const NORTHEAST_STATES = new Set([
+  'Assam', 'Meghalaya', 'Manipur', 'Mizoram',
+  'Nagaland', 'Arunachal Pradesh', 'Tripura', 'Sikkim',
 ]);
 
 function filterGroup(h: Hospital): string {
-  return NAMED_FILTER_STATES.has(h.state) ? h.state : 'National';
+  if (EAST_INDIA_STATES[h.state]) return EAST_INDIA_STATES[h.state];
+  if (NORTHEAST_STATES.has(h.state)) return 'Northeast';
+  return 'National';
 }
 
 const SORTED = [...LISTABLE].sort((a, b) => {
