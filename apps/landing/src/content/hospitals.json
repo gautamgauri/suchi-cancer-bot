@@ -2,7 +2,7 @@
   "_meta": {
     "version": "v0.1",
     "last_updated": "2026-05-01",
-    "total_hospitals": 51,
+    "total_hospitals": 56,
     "description": "Suchi Navigator hospital directory. Editable source of truth — one object per hospital. Sync to Google Sheet later if needed.",
     "scoring": {
       "quality": "TMC/NCG full member=5, AIIMS=4, NABH full=3, NABH recommended=2, Govt tertiary=2, Private multi-specialty=1",
@@ -427,6 +427,171 @@
       "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": -2},
       "risk_flag": "Limited departments — medical oncology only, no radiation or surgical oncology on site",
       "verified_date": "2026-04-30",
+      "status": "incomplete_departments"
+    },
+
+    {
+      "id": "manipal-hospital-rangapani",
+      "name": "Manipal Hospitals Rangapani (formerly Medica Cancer Centre)",
+      "short_name": "Manipal Rangapani",
+      "city": "Siliguri",
+      "state": "West Bengal",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive — North Bengal's only dedicated cancer centre",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "gynaec_oncology", "head_and_neck"],
+      "cost_tier": "High",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": "+91-353-6650000",
+        "address": "Vill & P.O. Rangapani, Dist. Darjeeling, West Bengal - 734434"
+      },
+      "key_doctors": [
+        {"name": "Dr. Arkoprovo Halder", "role": "Medical Oncology — DM"},
+        {"name": "Dr. Chinnu Jomi", "role": "Medical Oncology — DrNB, MRCP (SCE) UK"},
+        {"name": "Dr. Nishana Paul", "role": "Radiation Oncology — DNB"}
+      ],
+      "notes": "North Bengal's only comprehensive dedicated cancer hospital — formerly Medica Cancer Centre (est. 2014), acquired and rebranded by Manipal Hospitals in 2024. Located 14 km from Siliguri city centre. Halcyon LINAC, VMAT, IMRT, brachytherapy, robotic surgery, 150+ radiation sessions daily. 140+ beds. NABH accredited. Best all-round cancer facility in the Siliguri region for Bihar, Sikkim, and Northeast patients transiting through the Siliguri corridor. High cost — check insurance coverage before admission.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 5,
+      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-05-01",
+      "status": "active"
+    },
+
+    {
+      "id": "hope-and-heal-jalpaiguri",
+      "name": "Hope & Heal Cancer Hospital & Research Center",
+      "short_name": "Hope & Heal Jalpaiguri",
+      "city": "Siliguri",
+      "state": "West Bengal",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck", "palliative_care", "nuclear_medicine"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": "+91-86177-87387",
+        "address": "Jatiakhali, Fulbari, Jalpaiguri District, West Bengal - 734015"
+      },
+      "key_doctors": [
+        {"name": "Dr. Saptarshi Ghosh", "role": "Founder, Radiation Oncology — MD, FRCR (UK)"},
+        {"name": "Dr. Vishal Mukherjee", "role": "Surgical Oncology — DrNB"},
+        {"name": "Dr. Bramhanand A. Bhangargi", "role": "Surgical Oncology — DrNB"},
+        {"name": "Dr. Thiruvengadaswamy Kannan", "role": "Medical Oncology — DM"},
+        {"name": "Dr. Mainak Deb", "role": "Medical Oncology — DrNB"},
+        {"name": "Rajesh Mishra", "role": "Nuclear Medicine — MD"}
+      ],
+      "notes": "NABH + NABL dedicated cancer hospital near Siliguri (Fulbari area). Halcyon-E LINAC, first GE 3-Ring PET-CT in North Bengal, full surgical and medical oncology team. Strong fellowship-trained doctors. Medium cost positioning. Located near the Fulbari border crossing — strategically close to Kishanganj, Araria, Purnea, and Katihar in Bihar, making it a practical first-stop for North Bihar patients who cannot travel to Kolkata.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 6,
+      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-05-01",
+      "status": "active"
+    },
+
+    {
+      "id": "desun-hospital-siliguri",
+      "name": "Desun Hospital Siliguri",
+      "short_name": "Desun Siliguri",
+      "city": "Siliguri",
+      "state": "West Bengal",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Comprehensive",
+      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "cost_tier": "Medium",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": "+91-90517-15171",
+        "address": "Beside NBMCH, Kwakhali, Siliguri, West Bengal - 734012"
+      },
+      "key_doctors": [
+        {"name": "Dr. Gunjan H. Prasad", "role": "Haemato-Oncology"}
+      ],
+      "notes": "NABH + NABL accredited 304-bed hospital (NABH received Nov 2024). Located adjacent to NBMCH government medical college. All four oncology branches listed. Surgical oncologist not publicly named — verify surgical oncology availability before referral. Good medium-cost option in central Siliguri.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 6,
+      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "verified_date": "2026-05-01",
+      "status": "needs_verification"
+    },
+
+    {
+      "id": "nbmch-siliguri",
+      "name": "North Bengal Medical College and Hospital",
+      "short_name": "NBMCH Siliguri",
+      "city": "Siliguri",
+      "state": "West Bengal",
+      "region": "East India",
+      "type": "Government",
+      "accreditation": [],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Radiotherapy only",
+      "departments": ["radiation_oncology"],
+      "cost_tier": "Low",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": null,
+        "address": "Sushrutanagar, Siliguri, Darjeeling District, West Bengal - 734012"
+      },
+      "key_doctors": [],
+      "notes": "The only government radiotherapy unit in all of North Bengal — Cobalt-60 teletherapy. No LINAC or brachytherapy on site. Medical and surgical oncology as named departments not independently confirmed. Very high patient volume. Low cost. TMC partnership for a 100-bed dedicated cancer hospital was announced but status unconfirmed as of May 2026.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 4,
+      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 0, "risk": -2},
+      "risk_flag": "Cobalt radiotherapy only — no LINAC, no brachytherapy. Surgical and medical oncology as formal departments not confirmed. Refer comprehensive oncology cases to Manipal Rangapani or Hope & Heal.",
+      "verified_date": "2026-05-01",
+      "status": "incomplete_departments"
+    },
+
+    {
+      "id": "neotia-getwel-siliguri",
+      "name": "Neotia Getwel Multispecialty Hospital",
+      "short_name": "Neotia Getwel Siliguri",
+      "city": "Siliguri",
+      "state": "West Bengal",
+      "region": "East India",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "tmc_affiliated": false,
+      "specialization": "Multi-specialty — oncology not confirmed",
+      "departments": [],
+      "cost_tier": "High",
+      "pmjay_empanelled": null,
+      "referral_required": false,
+      "contact": {
+        "phone": "+91-353-3053000",
+        "address": "Uttorayon, Matigara, Siliguri, West Bengal - 734010"
+      },
+      "key_doctors": [],
+      "notes": "NABH-accredited 225-bed multi-specialty hospital. Oncology not listed on official department page as of May 2026. Do not refer cancer patients without direct verification.",
+      "sccf_affiliated": false,
+      "sccf_notes": "",
+      "score": 2,
+      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": -3},
+      "risk_flag": "Oncology department NOT confirmed on hospital website — do not refer cancer patients without calling to verify.",
+      "verified_date": "2026-05-01",
       "status": "incomplete_departments"
     },
 
