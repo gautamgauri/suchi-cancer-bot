@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import OpenAI from "openai";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { PatientState } from "../chat/patient-state.service";
+import { ObservabilityService } from "../observability/observability.service";
 
 /**
  * IDENTIFY_REQUIREMENTS: Structure checklist for "how to identify" questions
@@ -126,7 +127,10 @@ export class LlmService {
   private readonly fallbackEnabled: boolean;
   private fallbackUsedCount: number = 0;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly observability: ObservabilityService,
+  ) {
     // Determine LLM provider - Gemini Flash is now default for better latency
     this.provider = (this.configService.get<string>("LLM_PROVIDER") as "deepseek" | "openai" | "gemini") || "gemini";
 
@@ -186,7 +190,7 @@ export class LlmService {
   /**
    * Call Gemini via Vertex AI - used as primary (when provider=gemini) or fallback
    */
-  private async callGeminiLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, isPrimary: boolean = false): Promise<string | null> {
+  private async callGeminiLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, isPrimary: boolean = false, traceId?: string): Promise<string | null> {
     if (!this.geminiProject) {
       return null;
     }
@@ -219,10 +223,21 @@ export class LlmService {
         setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
       });
 
+      const genLabel = isPrimary ? 'gemini_primary' : 'gemini_fallback';
+      const genInput = `[SYSTEM]\n${systemPrompt.substring(0, 500)}\n\n[USER]\n${userPrompt.substring(0, 500)}`;
+      const gen = this.observability.startGenerationById(traceId, genLabel, genInput, this.geminiModel);
+
       const result = await Promise.race([geminiPromise, timeoutPromise]);
 
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const usage = response.usageMetadata;
+
+      this.observability.endGeneration(gen, text.substring(0, 1000), {
+        promptTokens: usage?.promptTokenCount,
+        completionTokens: usage?.candidatesTokenCount,
+        totalTokens: usage?.totalTokenCount,
+      });
 
       if (text && !isPrimary) {
         this.fallbackUsedCount++;
@@ -245,11 +260,11 @@ export class LlmService {
    * Call fallback LLM (Gemini Flash via Vertex AI)
    * Used when primary LLM fails with rate limit, timeout, or server error
    */
-  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000): Promise<string | null> {
+  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, traceId?: string): Promise<string | null> {
     if (!this.fallbackEnabled) {
       return null;
     }
-    return this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, false);
+    return this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, false, traceId);
   }
 
   /**
@@ -919,7 +934,8 @@ Your response MUST include at least 2 citations or it will be rejected.`;
     chunks: EvidenceChunk[],
     isIdentifyQuestion: boolean = false,
     conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string; patientState?: PatientState; channel?: string },
-    isTimeoutRetry: boolean = false
+    isTimeoutRetry: boolean = false,
+    traceId?: string
   ): Promise<string> {
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
@@ -987,7 +1003,7 @@ CITATION FORMAT:
       // Use Gemini directly if provider is "gemini"
       if (this.provider === "gemini") {
         const maxTokens = isIdentifyQuestion ? 2000 : 1200;
-        const result = await this.callGeminiLLM(actualSystemPrompt, citationInstructions, maxTokens, true);
+        const result = await this.callGeminiLLM(actualSystemPrompt, citationInstructions, maxTokens, true, traceId);
         if (result) {
           return result;
         }
@@ -1074,7 +1090,7 @@ CITATION FORMAT:
             }
             // Second timeout or already minimal context: try Gemini fallback before abstention
             this.logger.warn(`LLM generation timeout after retry - trying Gemini fallback...`);
-            const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000);
+            const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId);
             if (fallbackResult) {
               this.logger.log(`Gemini fallback succeeded after Deepseek timeout`);
               return fallbackResult;
@@ -1096,7 +1112,7 @@ CITATION FORMAT:
 
           // Non-retryable error or last attempt - try fallback
           this.logger.warn(`Primary LLM failed after ${attempt + 1} attempts: ${error.message}, trying fallback...`);
-          const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000);
+          const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId);
           if (fallbackResult) {
             return fallbackResult;
           }
@@ -1109,7 +1125,7 @@ CITATION FORMAT:
       this.logger.error(`LLM generation failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
 
       // Try fallback before giving up
-      const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000);
+      const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId);
       if (fallbackResult) {
         return fallbackResult;
       }

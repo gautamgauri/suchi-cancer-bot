@@ -42,7 +42,12 @@ export const envSchema = z.object({
   VOICE_WS_IDLE_TIMEOUT_MS: z.coerce.number().optional().default(30000),
   VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000),
   // Review Copilot
-  REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off')
+  REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
+  // Observability (Langfuse)
+  LANGFUSE_ENABLED: z.coerce.boolean().optional().default(false),
+  LANGFUSE_PUBLIC_KEY: z.string().optional(),
+  LANGFUSE_SECRET_KEY: z.string().optional(),
+  LANGFUSE_HOST: z.string().optional().default("https://cloud.langfuse.com")
 }).refine(
   (data) => {
     // Validate that the required API key is present based on provider

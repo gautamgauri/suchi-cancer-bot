@@ -19,6 +19,7 @@ import { VoiceModule } from "./modules/voice/voice.module";
 import { VoiceWsModule } from "./modules/voice-ws/voice-ws.module";
 import { ReviewModule } from "./modules/review/review.module";
 import { CopilotModule } from "./modules/copilot/copilot.module";
+import { ObservabilityModule } from "./modules/observability/observability.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CopilotModule } from "./modules/copilot/copilot.module";
         }]
       })
     }),
+    ObservabilityModule,
     PrismaModule,
     AnalyticsModule,
     SafetyModule,

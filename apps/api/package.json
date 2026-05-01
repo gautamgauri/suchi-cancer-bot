@@ -37,6 +37,7 @@
     "googleapis": "^144.0.0",
     "gray-matter": "^4.0.3",
     "helmet": "^7.1.0",
+    "langfuse": "^3.38.20",
     "nodemailer": "^7.0.13",
     "openai": "^4.77.0",
     "puppeteer": "^22.0.0",

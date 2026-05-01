@@ -12,6 +12,7 @@ import { CitationModule } from "../citations/citation.module";
 import { AbstentionModule } from "../abstention/abstention.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { ReviewModule } from "../review/review.module";
+import { ObservabilityModule } from "../observability/observability.module";
 import { ResponseValidatorService } from "./response-validator.service";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
@@ -24,6 +25,7 @@ import { OutputVerifierService } from "./output-verifier.service";
 
 @Module({
   imports: [
+    ObservabilityModule,
     SafetyModule,
     RagModule,
     LlmModule,

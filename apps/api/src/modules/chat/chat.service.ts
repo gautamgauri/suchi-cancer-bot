@@ -40,6 +40,7 @@ import { ReviewService } from "../review/review.service";
 import { ReviewContext } from "../review/review-checks";
 import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
+import { ObservabilityService } from "../observability/observability.service";
 
 @Injectable()
 export class ChatService {
@@ -80,7 +81,8 @@ export class ChatService {
     private readonly planExecutor: PlanExecutorService,
     private readonly outputVerifier: OutputVerifierService,
     // Review Copilot
-    private readonly reviewService: ReviewService
+    private readonly reviewService: ReviewService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   /**
@@ -190,6 +192,12 @@ export class ChatService {
     // Clean before any classification or persistence.
     dto.userText = cleanVoiceInput(dto.userText);
 
+    const obsTrace = this.observability.startTrace('chat_turn', {
+      query: dto.userText?.substring(0, 200),
+      sessionId: dto.sessionId,
+      channel: dto.channel,
+    });
+
     // Fetch session (with caching) and message count once at the start - reuse throughout method
     // Wrapped with prismaRetry to handle transient connection-pool exhaustion under load
     const [session, existingAssistantMessages] = await this.prismaRetry(
@@ -285,7 +293,9 @@ export class ChatService {
       };
     }
 
+    const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
     const safetyResult = this.safety.evaluate(dto.userText);
+    this.observability.endSpan(safetySpan, { classification: safetyResult.classification, rulesFired: safetyResult.rulesFired, blocked: safetyResult.classification !== 'normal' });
 
     if (safetyResult.classification !== "normal") {
       const assistant = await this.prisma.message.create({
@@ -362,7 +372,9 @@ export class ChatService {
               dto.userText,
               earlyEvidenceChunks,
               false,
-              { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" }
+              { hasGenerallyAsking: false, cancerType: null, emotionalState: "urgent" },
+              undefined,
+              obsTrace?.id
             ),
             urgentTimeoutPromise,
           ]);
@@ -928,6 +940,7 @@ export class ChatService {
 
     // TIMING: Track RAG retrieval time
     const ragStarted = Date.now();
+    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: sessionCancerType });
     let evidenceChunks: any[] = [];
     if (earlyEvidenceChunks.length > 0) {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
@@ -1005,6 +1018,11 @@ export class ChatService {
       evidenceChunks = [];
     } }
     const ragMs = Date.now() - ragStarted;
+    this.observability.endSpan(ragSpan, {
+      chunksReturned: evidenceChunks.length,
+      latencyMs: ragMs,
+      topChunks: evidenceChunks.slice(0, 3).map(c => ({ docId: c.docId, chunkId: c.chunkId, similarity: c.similarity })),
+    });
 
     // 4.5. Clinical Reasoning: Apply patient-state-aware retrieval filter
     if (patientState !== PatientState.INFORMATIONAL) {
@@ -1491,7 +1509,9 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             false,
-            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent, patientState }
+            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent, patientState },
+            undefined,
+            obsTrace?.id
           ),
           signal
         );
@@ -1831,7 +1851,9 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           mightBeIdentifyQuestion,
-          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent, patientState, channel: dto.channel }
+          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent, patientState, channel: dto.channel },
+          undefined,
+          obsTrace?.id
         ),
         signal
       );
@@ -1984,7 +2006,9 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             true,
-            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel }
+            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel },
+            undefined,
+            obsTrace?.id
           );
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
@@ -2184,7 +2208,7 @@ export class ChatService {
         if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
           const llm3Started = Date.now();
           llmCallCount++;
-          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel });
+          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel }, undefined, obsTrace?.id);
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
@@ -2367,7 +2391,9 @@ export class ChatService {
               dto.userText,
               evidenceChunks,
               false,
-              { hasGenerallyAsking, cancerType: navCancerTypeForLLM, emotionalState, intent: intentResult.intent, patientState }
+              { hasGenerallyAsking, cancerType: navCancerTypeForLLM, emotionalState, intent: intentResult.intent, patientState },
+              undefined,
+              obsTrace?.id
             ),
             signal
           );
@@ -2504,7 +2530,9 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         false,
-        { emotionalState, cancerType: sessionCancerType, patientState }
+        { emotionalState, cancerType: sessionCancerType, patientState },
+        undefined,
+        obsTrace?.id
       ),
       signal
     );
@@ -2535,7 +2563,9 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           false,
-          { emotionalState, cancerType: sessionCancerType, patientState }
+          { emotionalState, cancerType: sessionCancerType, patientState },
+          undefined,
+          obsTrace?.id
         );
       const patientRetryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
       citations = patientRetryExtractionResult.citations;
@@ -2644,6 +2674,14 @@ export class ChatService {
       evidenceQuality: gateResult.quality,
       queryType
     }, dto.sessionId);
+
+    this.observability.finalizeTrace(obsTrace, {
+      safety: 'normal',
+      citationConfidence: citationValidation.confidenceLevel,
+      citationCount: citations.length,
+      evidenceQuality: gateResult.quality,
+      latencyMs: Date.now() - started,
+    });
 
     return {
       sessionId: dto.sessionId,
