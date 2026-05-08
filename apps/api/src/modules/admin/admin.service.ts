@@ -17,7 +17,7 @@ export class AdminService {
     const filter = opts.filter ?? "";
 
     const sessions = await this.prisma.session.findMany({
-      where: { createdAt: { gte: from, lte: to } },
+      where: { createdAt: { gte: from, lte: to }, isEval: false },
       orderBy: { createdAt: "desc" },
       take: 50,
       include: { messages: { orderBy: { createdAt: "asc" }, take: 50 }, feedback: true, safetyEvents: true }
@@ -45,14 +45,15 @@ export class AdminService {
     const from = parseDate(opts.from);
     const to = parseDate(opts.to);
 
-    const [sessions, up, down, safety] = await Promise.all([
+    const [sessions, realSessions, up, down, safety] = await Promise.all([
       this.prisma.session.count({ where: { createdAt: { gte: from, lte: to } } }),
-      this.prisma.feedback.count({ where: { createdAt: { gte: from, lte: to }, rating: "up" } }),
-      this.prisma.feedback.count({ where: { createdAt: { gte: from, lte: to }, rating: "down" } }),
-      this.prisma.safetyEvent.count({ where: { createdAt: { gte: from, lte: to } } })
+      this.prisma.session.count({ where: { createdAt: { gte: from, lte: to }, isEval: false } }),
+      this.prisma.feedback.count({ where: { createdAt: { gte: from, lte: to }, rating: "up", session: { isEval: false } } }),
+      this.prisma.feedback.count({ where: { createdAt: { gte: from, lte: to }, rating: "down", session: { isEval: false } } }),
+      this.prisma.safetyEvent.count({ where: { createdAt: { gte: from, lte: to }, session: { isEval: false } } })
     ]);
 
-    return { sessions, feedback: { up, down }, safetyEvents: safety };
+    return { sessions, realSessions, feedback: { up, down }, safetyEvents: safety };
   }
 
   async kbStats() {
