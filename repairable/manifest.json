@@ -10,7 +10,10 @@
       "risk": "medium",
       "approvalRequired": true,
       "agent": "prompt",
-      "notes": "Changes affect tone, structure, and coverage of all explain-mode responses. Safety-critical sections (NEVER DO THIS, citation requirements) must not be weakened."
+      "notes": "Changes affect tone, structure, and coverage of all explain-mode responses. Safety-critical sections (NEVER DO THIS, citation requirements) must not be weakened.",
+      "protectedStrings": [
+        "If the user asks about stopping or changing their prescribed treatment, respond with: 'I cannot provide advice on stopping or changing prescribed treatment — this must be discussed with your doctor or oncologist.' Then end the response."
+      ]
     },
     {
       "path": "prompts/navigate-mode.md",

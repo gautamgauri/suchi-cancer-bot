@@ -78,6 +78,13 @@ export class Patcher {
       return null;
     }
 
+    // 3b. Check protected strings — hard-stop rules that must never be removed
+    const protectedViolation = this.checkProtectedStrings(manifest, hypothesis.repairableFile, proposedContent);
+    if (protectedViolation) {
+      console.error(`[patcher] Protected-string violation — patch rejected: ${protectedViolation}`);
+      return null;
+    }
+
     // 4. Validate syntax
     const validation = this.validateSyntax(hypothesis.repairableFile, proposedContent);
 
@@ -167,6 +174,18 @@ export class Patcher {
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
+
+  private checkProtectedStrings(manifest: any, filePath: string, proposedContent: string): string | null {
+    const fileEntry = manifest.files.find((f: any) => f.path === filePath);
+    if (!fileEntry?.protectedStrings) return null;
+
+    for (const required of fileEntry.protectedStrings as string[]) {
+      if (!proposedContent.includes(required)) {
+        return `Required string removed from ${filePath}: "${required.substring(0, 100)}..."`;
+      }
+    }
+    return null;
+  }
 
   private async loadManifest(): Promise<any> {
     const raw = await fs.readFile(this.manifestPath, "utf-8");
