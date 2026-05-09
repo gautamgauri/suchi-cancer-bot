@@ -2,12 +2,13 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { parseArticle } from "./parser";
 import { loadQueue } from "./queue-manager";
-import { generatePack, GeneratedPack } from "./generator";
+import { generatePack, GeneratedPack, ChannelName } from "./generator";
 import { checkSafety, SafetyReport } from "./safety-checker";
 import { checkEthics, EthicsReport } from "./ethics-checker";
 import { validateSchema, SchemaReport } from "./schema-validator";
 import { writePack } from "./pack-writer";
 import { scoreHooks, HookReport } from "./hook-scorer";
+import { scoreEditorial, EditorialReport } from "./editorial-scorer";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const QUEUE_PATH = path.resolve(__dirname, "queue.json");
@@ -144,6 +145,35 @@ function printSchemaReport(report: SchemaReport): void {
 // Hook report printer
 // ---------------------------------------------------------------------------
 
+function printEditorialReport(report: EditorialReport): void {
+  const channelOrder: ChannelName[] = [
+    "linkedin", "twitter", "instagram", "whatsapp", "youtube_short",
+  ];
+  const dimNames = [
+    "calmUrgency", "humanFirst", "indiaGrounded", "clinicallyHumble", "practical",
+  ] as const;
+
+  console.log("\n=== Editorial Scores ===");
+  for (const channel of channelOrder) {
+    const result = report.channels[channel];
+    if (!result) continue;
+
+    const label = `[${channel}]`.padEnd(16);
+    console.log(`${label} ${result.totalScore}/100  ${result.grade}`);
+
+    for (const dim of dimNames) {
+      const d = result.dimensions[dim];
+      const dimLabel = d.name.padEnd(18);
+      const bar = "█".repeat(d.score) + "░".repeat(d.max - d.score);
+      console.log(`  ${dimLabel} ${String(d.score).padStart(2)}/${d.max}  ${bar}`);
+      for (const sig of d.signals) {
+        console.log(`    ${sig}`);
+      }
+    }
+  }
+  console.log(`\nAverage editorial score: ${report.averageScore}/100  ${report.overallGrade}`);
+}
+
 function printHookReport(report: HookReport): void {
   const channelOrder: Array<keyof typeof report.channels> = [
     "linkedin",
@@ -214,6 +244,10 @@ async function cmdGenerate(articleArg: string): Promise<void> {
   const hookReport = scoreHooks(pack);
   printHookReport(hookReport);
 
+  // Score full editorial quality against Suchi Editorial Principles
+  const editorialReport = scoreEditorial(pack);
+  printEditorialReport(editorialReport);
+
   // Save pack JSON (with safety report + approval token) and send review email
   const writeResult = await writePack(pack, safetyReport, PACKS_DIR);
 
@@ -243,6 +277,9 @@ async function cmdCheck(packArg: string): Promise<void> {
 
   const ethicsReport = checkEthics(pack);
   printEthicsReport(ethicsReport);
+
+  const editorialReport = scoreEditorial(pack);
+  printEditorialReport(editorialReport);
 }
 
 async function cmdSchema(packArg: string): Promise<void> {
