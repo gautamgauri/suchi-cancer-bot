@@ -28,7 +28,11 @@ AUDIENCE: NGOs, CSR teams, oncologists, health professionals
 TONE: Authoritative, educational, credibility-forward
 FORMAT:
 - 150–250 words total (count before outputting — 150 is a strict minimum; aim for 175–200)
-- Opening hook: one punchy line that creates urgency without alarmism
+- Opening hook: 1–2 sentences grounded in a human observation or scenario — NOT a disease definition
+  ✓ "Many people ignore mouth sores for weeks, assuming they will heal. Sometimes, they don't."
+  ✓ "In Bihar, gutka and paan masala are everywhere. So is oral cancer."
+  ❌ "Oral cancer is a serious concern." (definition — not allowed)
+  ❌ "A mouth ulcer that won't heal could be more than a nuisance." (still a statement — not allowed)
 - 3–4 short paragraphs covering key facts from the article
 - 3–5 relevant hashtags (e.g. #CancerAwareness #OralCancer #SuchiCares)
 - Closing CTA: link to full article
