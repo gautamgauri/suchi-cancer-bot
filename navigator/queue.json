@@ -24,7 +24,7 @@
     {
       "id": "national-referral-gov-01",
       "region": "National Referral — Government (Batch 1)",
-      "status": "researched",
+      "status": "email_sent",
       "hospitals": [
         {
           "id": "aiims-new-delhi",
@@ -294,7 +294,9 @@
           "national_referral": true
         }
       ],
-      "createdAt": "2026-05-09T00:00:00Z"
+      "createdAt": "2026-05-09T00:00:00Z",
+      "approvalToken": "2e517722c562d76ea676b284d1f3b143b1c7013774cd80b9d92929ef0478356d",
+      "emailSentAt": "2026-05-09T17:58:02.347Z"
     },
     {
       "id": "national-referral-gov-02",
