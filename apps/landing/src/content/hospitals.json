@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "version": "v0.1",
-    "last_updated": "2026-05-01",
+    "version": "v0.2",
+    "last_updated": "2026-05-09",
     "total_hospitals": 56,
     "description": "Suchi Navigator hospital directory. Editable source of truth — one object per hospital. Sync to Google Sheet later if needed.",
     "scoring": {
@@ -22,10 +22,16 @@
       "Add key_doctors for CNCI, BBCI, RCHRC, AIIMS Bhubaneswar once faculty lists confirmed",
       "Verify PMJAY status for Odisha hospitals — Odisha uses BSKY scheme not central PMJAY",
       "Promote AIIMS Kalyani from risk_flag once radiation capacity confirmed (LINAC since Feb 2024)"
-    ]
+    ],
+    "fields": {
+      "tier": "A=Major comprehensive cancer centre (TMC units, AIIMS, full RCCs); B=Strong regional multispecialty oncology; C=Limited (1-2 services only); D=Internal flag — avoid for complex care",
+      "cost_ranges": "INR cost estimates: opd_min/max per visit, chemo_day_min/max per day-care session, surgery_package_min/max for major surgery. null = unknown.",
+      "logistics": "nearest_railway, nearest_airport (with km distance), lodging_nearby (bool), patient_guesthouse (bool), languages spoken, telemedicine availability",
+      "trust_signals": "tumor_board (bool), case_volume_annual (string estimate), academic_affiliation (string)",
+      "navigation_notes": "Human-written routing guidance for navigators and patients"
+    }
   },
   "hospitals": [
-
     {
       "id": "homi-bhabha-cancer-hospital-muzaffarpur",
       "name": "Homi Bhabha Cancer Hospital & Research Centre",
@@ -34,11 +40,17 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Government / TMC",
-      "accreditation": ["TMC_AFFILIATED"],
+      "accreditation": [
+        "TMC_AFFILIATED"
+      ],
       "ncg_member": true,
       "tmc_affiliated": true,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -51,11 +63,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 500,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Muzaffarpur Junction (~2km)",
+        "nearest_airport": "Darbhanga Airport (~50km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Maithili",
+          "Bhojpuri"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Tata Memorial Centre"
+      },
+      "navigation_notes": [
+        "First choice for North Bihar patients (Muzaffarpur, Sitamarhi, Vaishali, Sheohar, Gopalganj)",
+        "TMC standard protocols and staff — same quality as Tata Memorial Mumbai",
+        "Government rates — free or near-free for most patients"
+      ]
     },
-
     {
       "id": "aiims-patna",
       "name": "All India Institute of Medical Sciences, Patna",
@@ -64,11 +113,20 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Government",
-      "accreditation": ["NABL", "AERB"],
+      "accreditation": [
+        "NABL",
+        "AERB"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "pediatric_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "pediatric_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -77,18 +135,61 @@
         "address": "Phulwarisharif, Patna - 801507"
       },
       "key_doctors": [
-        {"name": "Dr. Jagjit Pandey", "role": "Surgical Oncology"},
-        {"name": "Dr. Pritanjali Singh", "role": "Radiation Oncology"}
+        {
+          "name": "Dr. Jagjit Pandey",
+          "role": "Surgical Oncology"
+        },
+        {
+          "name": "Dr. Pritanjali Singh",
+          "role": "Radiation Oncology"
+        }
       ],
       "notes": "Government tertiary institute. Linear accelerator + brachytherapy. Specialised clinics: head & neck, breast, pediatric oncology. Book via AIIMS ORS portal (ors.gov.in). Low cost, long wait times. Not NABH but NABL and AERB licensed.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 1000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~12km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English",
+          "Bhojpuri"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "Book via AIIMS ORS portal (ors.gov.in) — no walk-in OPD for new patients",
+        "Long wait times — plan for multiple visits before treatment starts",
+        "Best government option in Patna for pediatric oncology and head & neck cancers"
+      ]
     },
-
     {
       "id": "mahavir-cancer-sansthan-patna",
       "name": "Mahavir Cancer Sansthan & Research Centre",
@@ -97,11 +198,20 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Trust",
-      "accreditation": ["NABH_RECOMMENDED"],
+      "accreditation": [
+        "NABH_RECOMMENDED"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "nuclear_medicine", "hemato_oncology", "preventive_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "nuclear_medicine",
+        "hemato_oncology",
+        "preventive_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -111,20 +221,70 @@
         "address": "Phulwarisharif, Patna - 801505"
       },
       "key_doctors": [
-        {"name": "Dr. Manisha Singh", "role": "Medical Director & HOD Medical Oncology — DNB, ESMO certified"},
-        {"name": "Dr. Vinita Trivedi", "role": "HOD Radiation Oncology"},
-        {"name": "Dr. Chiranjiva Khandelwal", "role": "HOD Surgical Oncology — FRCS qualified"},
-        {"name": "Dr. Biswajit Sanyal", "role": "Director Administration — veteran radiation oncologist"}
+        {
+          "name": "Dr. Manisha Singh",
+          "role": "Medical Director & HOD Medical Oncology — DNB, ESMO certified"
+        },
+        {
+          "name": "Dr. Vinita Trivedi",
+          "role": "HOD Radiation Oncology"
+        },
+        {
+          "name": "Dr. Chiranjiva Khandelwal",
+          "role": "HOD Surgical Oncology — FRCS qualified"
+        },
+        {
+          "name": "Dr. Biswajit Sanyal",
+          "role": "Director Administration — veteran radiation oncologist"
+        }
       ],
       "notes": "Bihar's dedicated super-specialty cancer centre. 618 beds. Free treatment for children under 18. Rs 10,000 grant for low-income adults. Dharmashala (low-cost lodging) available for outstation patients. ~7km from Patna Junction.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 50,
+        "opd_max": 300,
+        "chemo_day_min": 500,
+        "chemo_day_max": 5000,
+        "surgery_package_min": 5000,
+        "surgery_package_max": 50000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~7km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~10km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": true,
+        "languages": [
+          "Hindi",
+          "Bhojpuri",
+          "Maithili"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Dharmashala on-campus — affordable lodging for outstation patients",
+        "Free treatment for children under 18",
+        "Rs 10,000 grant for low-income adults — ask at registration counter",
+        "618 beds — Bihar's largest dedicated cancer hospital"
+      ]
     },
-
     {
       "id": "paras-hmri-patna",
       "name": "Paras HMRI Hospital — Paras Cancer Centre",
@@ -133,11 +293,18 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -146,21 +313,72 @@
         "address": "Raja Bazar, Bailey Road, Patna"
       },
       "key_doctors": [
-        {"name": "Dr. Abhishek Anand", "role": "Director & HOD Medical Oncology — DM Medical Oncology, solid tumors, lymphomas, stem cell transplants"},
-        {"name": "Dr. Shekhar Kumar Keshri", "role": "Director & HOD Radiation Oncology — 21+ years, SBRT, SRS"},
-        {"name": "Dr. Mitali Dandekar Lall", "role": "Chief Consultant & HOD Surgical Oncology — Head & Neck specialist"},
-        {"name": "Dr. R. N. Tagore", "role": "Chief Consultant Medical Oncology — 31 years experience"},
-        {"name": "Dr. Mosarrat Shaheen", "role": "Consultant Medical Oncology — Precision Oncology, immunotherapy"}
+        {
+          "name": "Dr. Abhishek Anand",
+          "role": "Director & HOD Medical Oncology — DM Medical Oncology, solid tumors, lymphomas, stem cell transplants"
+        },
+        {
+          "name": "Dr. Shekhar Kumar Keshri",
+          "role": "Director & HOD Radiation Oncology — 21+ years, SBRT, SRS"
+        },
+        {
+          "name": "Dr. Mitali Dandekar Lall",
+          "role": "Chief Consultant & HOD Surgical Oncology — Head & Neck specialist"
+        },
+        {
+          "name": "Dr. R. N. Tagore",
+          "role": "Chief Consultant Medical Oncology — 31 years experience"
+        },
+        {
+          "name": "Dr. Mosarrat Shaheen",
+          "role": "Consultant Medical Oncology — Precision Oncology, immunotherapy"
+        }
       ],
       "notes": "First NABH-accredited hospital in Bihar. Has LINAC, PET-CT, Gamma Camera. Bone marrow transplant for leukemia/lymphoma. High cost — check PMJAY empanelment before visiting.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 60000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 500000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~8km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "First NABH-accredited hospital in Bihar",
+        "Verify PMJAY empanelment before visiting — private rates are high",
+        "Strong for bone marrow transplant (BMT) for leukemia and lymphoma"
+      ]
     },
-
     {
       "id": "jay-prabha-medanta-patna",
       "name": "Jay Prabha Medanta Super Specialty Hospital",
@@ -169,11 +387,22 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "uro_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -182,21 +411,72 @@
         "address": "Kankarbagh, Patna"
       },
       "key_doctors": [
-        {"name": "Dr. Ravi Shankar Singh", "role": "Medical Director & Senior Medical Oncologist — solid tumors"},
-        {"name": "Dr. Rajiv Ranjan Prasad", "role": "Director Radiation Oncology — 30+ years, IMRT, IGRT, SRS"},
-        {"name": "Dr. Sundeep Kumar", "role": "Associate Director Surgical Oncology — GI, Gynae, Head & Neck, robotic"},
-        {"name": "Dr. Amarendra Amar", "role": "Associate Director Medical Oncology — prostate, breast, immunotherapy"},
-        {"name": "Dr. Niharika Roy", "role": "Senior Consultant Breast Services — oncoplastic surgery"}
+        {
+          "name": "Dr. Ravi Shankar Singh",
+          "role": "Medical Director & Senior Medical Oncologist — solid tumors"
+        },
+        {
+          "name": "Dr. Rajiv Ranjan Prasad",
+          "role": "Director Radiation Oncology — 30+ years, IMRT, IGRT, SRS"
+        },
+        {
+          "name": "Dr. Sundeep Kumar",
+          "role": "Associate Director Surgical Oncology — GI, Gynae, Head & Neck, robotic"
+        },
+        {
+          "name": "Dr. Amarendra Amar",
+          "role": "Associate Director Medical Oncology — prostate, breast, immunotherapy"
+        },
+        {
+          "name": "Dr. Niharika Roy",
+          "role": "Senior Consultant Breast Services — oncoplastic surgery"
+        }
       ],
       "notes": "Largest private hospital in Patna. NABH + NABL. Has Varian Edge radiation machine (first in Eastern India). Da Vinci robotic surgery for oncology. High cost.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 70000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~10km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~8km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Largest private hospital in Patna — strong across all oncology sub-specialties",
+        "Varian Edge radiation machine — first in Eastern India",
+        "Da Vinci robotic surgery available for oncology"
+      ]
     },
-
     {
       "id": "ruban-memorial-patna",
       "name": "Ruban Memorial Hospital",
@@ -205,11 +485,18 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Surgical & Medical Oncology — Robotic Surgery",
-      "departments": ["medical_oncology", "surgical_oncology", "hemato_oncology", "uro_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "hemato_oncology",
+        "uro_oncology"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -218,19 +505,64 @@
         "address": "Patliputra Colony, Patna"
       },
       "key_doctors": [
-        {"name": "Dr. Arun Pandey", "role": "Director & HOD Surgical Oncology & Robotic Surgery"},
-        {"name": "Dr. Sanjeev Kumar", "role": "Consultant Onco Surgeon"},
-        {"name": "Dr. Ravi Ranjan Kumar", "role": "Consultant Robotic & Thoracic Surgery"}
+        {
+          "name": "Dr. Arun Pandey",
+          "role": "Director & HOD Surgical Oncology & Robotic Surgery"
+        },
+        {
+          "name": "Dr. Sanjeev Kumar",
+          "role": "Consultant Onco Surgeon"
+        },
+        {
+          "name": "Dr. Ravi Ranjan Kumar",
+          "role": "Consultant Robotic & Thoracic Surgery"
+        }
       ],
       "notes": "450-bed quaternary care. High-volume robotic surgery centre for prostate, kidney, colorectal, gynecologic cancers. Strong for surgical cases — limited medical oncology compared to Paras/Medanta.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 600,
+        "opd_max": 1200,
+        "chemo_day_min": 8000,
+        "chemo_day_max": 50000,
+        "surgery_package_min": 80000,
+        "surgery_package_max": 500000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~6km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~10km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "High-volume robotic surgery centre — strong for prostate, kidney, colorectal, gynecologic cancers",
+        "Limited medical oncology compared to Paras/Medanta — best for surgical cases",
+        "Verify PMJAY empanelment before visiting"
+      ]
     },
-
     {
       "id": "buddha-cancer-centre-patna",
       "name": "Buddha Cancer Centre",
@@ -239,11 +571,18 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH_RECOMMENDED"],
+      "accreditation": [
+        "NABH_RECOMMENDED"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "hemato_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "hemato_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -252,20 +591,68 @@
         "address": "Bailey Road, Patna"
       },
       "key_doctors": [
-        {"name": "Dr. Arvind Kumar", "role": "Founder Director & Senior Medical Oncologist — first DM Medical Oncology in Bihar, AIIMS Delhi alumnus"},
-        {"name": "Dr. Rahul Kumar Chaudhary", "role": "Surgical Oncology — gallbladder cancer specialist, fellowship Japan"},
-        {"name": "Dr. Rayaz Ahmed", "role": "Senior Hematologist — DM CMC Vellore, bone marrow transplants"},
-        {"name": "Dr. Tanveer Abdul Majeed", "role": "Surgical Oncologist — GI and Thoracic"}
+        {
+          "name": "Dr. Arvind Kumar",
+          "role": "Founder Director & Senior Medical Oncologist — first DM Medical Oncology in Bihar, AIIMS Delhi alumnus"
+        },
+        {
+          "name": "Dr. Rahul Kumar Chaudhary",
+          "role": "Surgical Oncology — gallbladder cancer specialist, fellowship Japan"
+        },
+        {
+          "name": "Dr. Rayaz Ahmed",
+          "role": "Senior Hematologist — DM CMC Vellore, bone marrow transplants"
+        },
+        {
+          "name": "Dr. Tanveer Abdul Majeed",
+          "role": "Surgical Oncologist — GI and Thoracic"
+        }
       ],
       "notes": "NABH Recommended (Nov 2023). Has NGS genetic testing. Dedicated pain & palliative care clinic. Medium cost — more affordable than Paras/Medanta for medical oncology cases.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 400,
+        "opd_max": 800,
+        "chemo_day_min": 5000,
+        "chemo_day_max": 30000,
+        "surgery_package_min": 50000,
+        "surgery_package_max": 250000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~9km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~13km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "More affordable than Paras/Medanta for medical oncology",
+        "NGS genetic testing available — useful for targeted therapy decisions",
+        "Dedicated palliative care clinic"
+      ]
     },
-
     {
       "id": "ss-hospital-patna",
       "name": "S.S. Hospital & Research Centre",
@@ -274,11 +661,16 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH_RECOMMENDED"],
+      "accreditation": [
+        "NABH_RECOMMENDED"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Medical & Surgical Oncology",
-      "departments": ["medical_oncology", "surgical_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -287,19 +679,63 @@
         "address": "Kankarbagh, Patna"
       },
       "key_doctors": [
-        {"name": "Dr. J.K. Singh", "role": "Director & Senior Oncologist — Padma Shri awardee, 49+ years experience"},
-        {"name": "Dr. Tanveer Majid", "role": "Surgical Oncologist — 29+ years"},
-        {"name": "Dr. Sweta Das", "role": "Medical & Clinical Oncology — also Clinical Geneticist"}
+        {
+          "name": "Dr. J.K. Singh",
+          "role": "Director & Senior Oncologist — Padma Shri awardee, 49+ years experience"
+        },
+        {
+          "name": "Dr. Tanveer Majid",
+          "role": "Surgical Oncologist — 29+ years"
+        },
+        {
+          "name": "Dr. Sweta Das",
+          "role": "Medical & Clinical Oncology — also Clinical Geneticist"
+        }
       ],
       "notes": "NABH Recommended (Apr 2024). Led by Dr. J.K. Singh — Padma Shri, one of Bihar's most respected oncologists. Day-care chemo unit with zero drug wastage policy.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "C",
+      "cost_ranges": {
+        "opd_min": 300,
+        "opd_max": 700,
+        "chemo_day_min": 4000,
+        "chemo_day_max": 25000,
+        "surgery_package_min": 40000,
+        "surgery_package_max": 200000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~10km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~14km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Led by Dr. J.K. Singh — Padma Shri awardee, one of Bihar's most respected oncologists",
+        "Medical and surgical oncology only — no radiation on site",
+        "Day-care chemo unit — suitable for outpatient chemotherapy"
+      ]
     },
-
     {
       "id": "igims-patna",
       "name": "Indira Gandhi Institute of Medical Sciences (State Cancer Institute)",
@@ -312,7 +748,11 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -321,19 +761,61 @@
         "address": "Sheikhpura, Patna - 800014"
       },
       "key_doctors": [
-        {"name": "Dr. Manish Kumar", "role": "Surgical Oncology"},
-        {"name": "Dr. Rajesh Kumar Singh", "role": "Radiation Oncology"}
+        {
+          "name": "Dr. Manish Kumar",
+          "role": "Surgical Oncology"
+        },
+        {
+          "name": "Dr. Rajesh Kumar Singh",
+          "role": "Radiation Oncology"
+        }
       ],
       "notes": "Designated Regional Cancer Centre. Subsidized / free treatment for low-income patients. OPD Mon–Fri 8:30am–4:30pm, Sat till noon. Not NABH accredited. Quality variable — recommended as option when Mahavir/AIIMS Patna is not accessible.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 1, "risk": -3},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": -3
+      },
       "risk_flag": "Quality concerns — use with caution; verify department capacity before referral",
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~8km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Bhojpuri"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Designated Regional Cancer Centre — PMJAY accepted",
+        "Quality variable — use when AIIMS Patna or Mahavir Cancer Sansthan not accessible",
+        "Verify radiation department capacity before referral"
+      ]
     },
-
     {
       "id": "healing-touch-bhagalpur",
       "name": "Healing Touch Hospital",
@@ -342,11 +824,16 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Surgical Oncology — Uro-Oncology",
-      "departments": ["surgical_oncology", "uro_oncology"],
+      "departments": [
+        "surgical_oncology",
+        "uro_oncology"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -355,18 +842,60 @@
         "address": "Bhagalpur, Bihar"
       },
       "key_doctors": [
-        {"name": "Dr. Sanjay Singh", "role": "Senior Consultant — General Surgery & Oncology"},
-        {"name": "Dr. Siddharth Jai Singh", "role": "Consultant Urologist — kidney, bladder, prostate cancers"}
+        {
+          "name": "Dr. Sanjay Singh",
+          "role": "Senior Consultant — General Surgery & Oncology"
+        },
+        {
+          "name": "Dr. Siddharth Jai Singh",
+          "role": "Consultant Urologist — kidney, bladder, prostate cancers"
+        }
       ],
       "notes": "First NABH-accredited hospital in Bhagalpur. Best option for surgical oncology and uro-oncology for patients in East Bihar (Bhagalpur, Munger, Banka). Refer to Patna/Muzaffarpur for radiation or medical oncology.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "incomplete_departments"
+      "status": "incomplete_departments",
+      "tier": "C",
+      "cost_ranges": {
+        "opd_min": 400,
+        "opd_max": 800,
+        "chemo_day_min": null,
+        "chemo_day_max": null,
+        "surgery_package_min": 50000,
+        "surgery_package_max": 200000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Bhagalpur Junction (~3km)",
+        "nearest_airport": "Patna Airport (~200km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Maithili"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Best surgical oncology option for East Bihar (Bhagalpur, Munger, Banka)",
+        "No radiation or medical oncology — refer to Patna or Muzaffarpur for those needs",
+        "First NABH-accredited hospital in Bhagalpur"
+      ]
     },
-
     {
       "id": "narayana-cancer-centre-patna",
       "name": "Narayana Cancer Centre, Patna",
@@ -375,11 +904,17 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH_RECOMMENDED"],
+      "accreditation": [
+        "NABH_RECOMMENDED"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -392,11 +927,46 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "needs_verification"
+      "status": "needs_verification",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 500,
+        "opd_max": 1000,
+        "chemo_day_min": 6000,
+        "chemo_day_max": 35000,
+        "surgery_package_min": 60000,
+        "surgery_package_max": 300000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~8km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Narayana Health"
+      },
+      "navigation_notes": [
+        "Part of Narayana Health national network — doctor list needs verification",
+        "NABH Recommended (Feb 2025) — newer, still establishing reputation"
+      ]
     },
-
     {
       "id": "atlantis-super-speciality-patna",
       "name": "Atlantis Super Speciality Hospital",
@@ -405,11 +975,15 @@
       "state": "Bihar",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Medical Oncology",
-      "departments": ["medical_oncology"],
+      "departments": [
+        "medical_oncology"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -418,18 +992,57 @@
         "address": "Patna, Bihar"
       },
       "key_doctors": [
-        {"name": "Dr. Rohan Singh", "role": "DM Oncology, ex-Tata Memorial"}
+        {
+          "name": "Dr. Rohan Singh",
+          "role": "DM Oncology, ex-Tata Memorial"
+        }
       ],
       "notes": "NABH Accredited. Dr. Rohan Singh trained at Tata Memorial. Limited to medical oncology — refer surgical cases elsewhere.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": -2},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": -2
+      },
       "risk_flag": "Limited departments — medical oncology only, no radiation or surgical oncology on site",
       "verified_date": "2026-04-30",
-      "status": "incomplete_departments"
+      "status": "incomplete_departments",
+      "tier": "C",
+      "cost_ranges": {
+        "opd_min": 500,
+        "opd_max": 1000,
+        "chemo_day_min": 6000,
+        "chemo_day_max": 30000,
+        "surgery_package_min": null,
+        "surgery_package_max": null,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Patna Junction (~7km)",
+        "nearest_airport": "Jay Prakash Narayan Airport Patna (~11km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Medical oncology only — no radiation or surgical oncology on site",
+        "Dr. Rohan Singh trained at Tata Memorial — good for second opinion on chemo protocol",
+        "Refer surgical cases to Paras, Medanta, or Mahavir"
+      ]
     },
-
     {
       "id": "manipal-hospital-rangapani",
       "name": "Manipal Hospitals Rangapani (formerly Medica Cancer Centre)",
@@ -438,11 +1051,21 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive — North Bengal's only dedicated cancer centre",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "gynaec_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "gynaec_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -451,19 +1074,67 @@
         "address": "Vill & P.O. Rangapani, Dist. Darjeeling, West Bengal - 734434"
       },
       "key_doctors": [
-        {"name": "Dr. Arkoprovo Halder", "role": "Medical Oncology — DM"},
-        {"name": "Dr. Chinnu Jomi", "role": "Medical Oncology — DrNB, MRCP (SCE) UK"},
-        {"name": "Dr. Nishana Paul", "role": "Radiation Oncology — DNB"}
+        {
+          "name": "Dr. Arkoprovo Halder",
+          "role": "Medical Oncology — DM"
+        },
+        {
+          "name": "Dr. Chinnu Jomi",
+          "role": "Medical Oncology — DrNB, MRCP (SCE) UK"
+        },
+        {
+          "name": "Dr. Nishana Paul",
+          "role": "Radiation Oncology — DNB"
+        }
       ],
       "notes": "North Bengal's only comprehensive dedicated cancer hospital — formerly Medica Cancer Centre (est. 2014), acquired and rebranded by Manipal Hospitals in 2024. Located 14 km from Siliguri city centre. Halcyon LINAC, VMAT, IMRT, brachytherapy, robotic surgery, 150+ radiation sessions daily. 140+ beds. NABH accredited. Best all-round cancer facility in the Siliguri region for Bihar, Sikkim, and Northeast patients transiting through the Siliguri corridor. High cost — check insurance coverage before admission.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 700,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 60000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 500000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Jalpaiguri (NJP) Station (~20km)",
+        "nearest_airport": "Bagdogra Airport (~20km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Bengali",
+          "Nepali",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Manipal Hospitals"
+      },
+      "navigation_notes": [
+        "North Bengal's only comprehensive dedicated cancer hospital",
+        "Accessible from Bihar via NJP station (trains from Patna/Muzaffarpur)",
+        "High cost — verify insurance before admission",
+        "Best all-round cancer facility in Siliguri region for Bihar/Sikkim/Northeast patients"
+      ]
     },
-
     {
       "id": "hope-and-heal-jalpaiguri",
       "name": "Hope & Heal Cancer Hospital & Research Center",
@@ -472,11 +1143,25 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "gynaec_oncology",
+        "uro_oncology",
+        "head_and_neck",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -485,22 +1170,78 @@
         "address": "Jatiakhali, Fulbari, Jalpaiguri District, West Bengal - 734015"
       },
       "key_doctors": [
-        {"name": "Dr. Saptarshi Ghosh", "role": "Founder, Radiation Oncology — MD, FRCR (UK)"},
-        {"name": "Dr. Vishal Mukherjee", "role": "Surgical Oncology — DrNB"},
-        {"name": "Dr. Bramhanand A. Bhangargi", "role": "Surgical Oncology — DrNB"},
-        {"name": "Dr. Thiruvengadaswamy Kannan", "role": "Medical Oncology — DM"},
-        {"name": "Dr. Mainak Deb", "role": "Medical Oncology — DrNB"},
-        {"name": "Rajesh Mishra", "role": "Nuclear Medicine — MD"}
+        {
+          "name": "Dr. Saptarshi Ghosh",
+          "role": "Founder, Radiation Oncology — MD, FRCR (UK)"
+        },
+        {
+          "name": "Dr. Vishal Mukherjee",
+          "role": "Surgical Oncology — DrNB"
+        },
+        {
+          "name": "Dr. Bramhanand A. Bhangargi",
+          "role": "Surgical Oncology — DrNB"
+        },
+        {
+          "name": "Dr. Thiruvengadaswamy Kannan",
+          "role": "Medical Oncology — DM"
+        },
+        {
+          "name": "Dr. Mainak Deb",
+          "role": "Medical Oncology — DrNB"
+        },
+        {
+          "name": "Rajesh Mishra",
+          "role": "Nuclear Medicine — MD"
+        }
       ],
       "notes": "NABH + NABL dedicated cancer hospital near Siliguri (Fulbari area). Halcyon-E LINAC, first GE 3-Ring PET-CT in North Bengal, full surgical and medical oncology team. Strong fellowship-trained doctors. Medium cost positioning. Located near the Fulbari border crossing — strategically close to Kishanganj, Araria, Purnea, and Katihar in Bihar, making it a practical first-stop for North Bihar patients who cannot travel to Kolkata.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 6,
-      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 500,
+        "opd_max": 1000,
+        "chemo_day_min": 7000,
+        "chemo_day_max": 40000,
+        "surgery_package_min": 70000,
+        "surgery_package_max": 350000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Jalpaiguri (NJP) Station (~15km)",
+        "nearest_airport": "Bagdogra Airport (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Bengali",
+          "Nepali",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Near Fulbari border — practical option for Kishanganj, Araria, Purnea, Katihar patients",
+        "First GE 3-Ring PET-CT in North Bengal — good for staging",
+        "NABH + NABL — medium cost, more affordable than Manipal Rangapani"
+      ]
     },
-
     {
       "id": "desun-hospital-siliguri",
       "name": "Desun Hospital Siliguri",
@@ -509,11 +1250,19 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -522,17 +1271,58 @@
         "address": "Beside NBMCH, Kwakhali, Siliguri, West Bengal - 734012"
       },
       "key_doctors": [
-        {"name": "Dr. Gunjan H. Prasad", "role": "Haemato-Oncology"}
+        {
+          "name": "Dr. Gunjan H. Prasad",
+          "role": "Haemato-Oncology"
+        }
       ],
       "notes": "NABH + NABL accredited 304-bed hospital (NABH received Nov 2024). Located adjacent to NBMCH government medical college. All four oncology branches listed. Surgical oncologist not publicly named — verify surgical oncology availability before referral. Good medium-cost option in central Siliguri.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 6,
-      "score_breakdown": {"quality": 3, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "needs_verification"
+      "status": "needs_verification",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 500,
+        "opd_max": 1000,
+        "chemo_day_min": 7000,
+        "chemo_day_max": 40000,
+        "surgery_package_min": 70000,
+        "surgery_package_max": 350000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Jalpaiguri (NJP) Station (~10km)",
+        "nearest_airport": "Bagdogra Airport (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Bengali",
+          "Nepali",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Adjacent to NBMCH government medical college — central Siliguri location",
+        "Verify surgical oncologist availability before referral",
+        "NABH received Nov 2024 — relatively newly accredited"
+      ]
     },
-
     {
       "id": "nbmch-siliguri",
       "name": "North Bengal Medical College and Hospital",
@@ -545,7 +1335,9 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Radiotherapy only",
-      "departments": ["radiation_oncology"],
+      "departments": [
+        "radiation_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -558,12 +1350,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 0, "risk": -2},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 0,
+        "risk": -2
+      },
       "risk_flag": "Cobalt radiotherapy only — no LINAC, no brachytherapy. Surgical and medical oncology as formal departments not confirmed. Refer comprehensive oncology cases to Manipal Rangapani or Hope & Heal.",
       "verified_date": "2026-05-01",
-      "status": "incomplete_departments"
+      "status": "incomplete_departments",
+      "tier": "C",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 50,
+        "chemo_day_min": null,
+        "chemo_day_max": null,
+        "surgery_package_min": null,
+        "surgery_package_max": null,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Jalpaiguri (NJP) Station (~10km)",
+        "nearest_airport": "Bagdogra Airport (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "Nepali"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Only government radiotherapy unit in North Bengal — Cobalt-60 only",
+        "No LINAC or brachytherapy — for comprehensive cancer care go to Manipal Rangapani or Hope & Heal",
+        "Very high patient volume — expect long waiting lists"
+      ]
     },
-
     {
       "id": "neotia-getwel-siliguri",
       "name": "Neotia Getwel Multispecialty Hospital",
@@ -572,7 +1401,9 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Multi-specialty — oncology not confirmed",
@@ -589,12 +1420,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 2,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": -3},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": -3
+      },
       "risk_flag": "Oncology department NOT confirmed on hospital website — do not refer cancer patients without calling to verify.",
       "verified_date": "2026-05-01",
-      "status": "incomplete_departments"
+      "status": "incomplete_departments",
+      "tier": "D",
+      "cost_ranges": {
+        "opd_min": null,
+        "opd_max": null,
+        "chemo_day_min": null,
+        "chemo_day_max": null,
+        "surgery_package_min": null,
+        "surgery_package_max": null,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Jalpaiguri (NJP) Station (~8km)",
+        "nearest_airport": "Bagdogra Airport (~10km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Do not refer cancer patients — oncology department not confirmed on hospital website",
+        "Call to verify before sending any patient"
+      ]
     },
-
     {
       "id": "tata-medical-center-kolkata",
       "name": "Tata Medical Center",
@@ -603,11 +1470,21 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Trust / TMC",
-      "accreditation": ["NABH", "TMC_AFFILIATED"],
+      "accreditation": [
+        "NABH",
+        "TMC_AFFILIATED"
+      ],
       "ncg_member": true,
       "tmc_affiliated": true,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -620,11 +1497,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 5, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 500,
+        "opd_max": 1000,
+        "chemo_day_min": 5000,
+        "chemo_day_max": 40000,
+        "surgery_package_min": 80000,
+        "surgery_package_max": 400000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Town / Kolkata (Sealdah ~30km, Howrah ~35km)",
+        "nearest_airport": "Netaji Subhas Chandra Bose International Airport (~10km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Tata Memorial Centre"
+      },
+      "navigation_notes": [
+        "Major TMC referral centre for East India — Bihar, Jharkhand, Odisha, Northeast",
+        "More accessible than TMH Mumbai for East India patients",
+        "West Bengal uses Swasthya Sathi — PMJAY cards from Bihar may need verification"
+      ]
     },
-
     {
       "id": "tata-memorial-hospital-mumbai",
       "name": "Tata Memorial Hospital",
@@ -633,11 +1547,22 @@
       "state": "Maharashtra",
       "region": "West India",
       "type": "Government / TMC",
-      "accreditation": ["NABH", "TMC_AFFILIATED"],
+      "accreditation": [
+        "NABH",
+        "TMC_AFFILIATED"
+      ],
       "ncg_member": true,
       "tmc_affiliated": true,
       "specialization": "Comprehensive — National Referral",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -650,12 +1575,51 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 0, "pmjay": 1, "risk": -1},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": -1
+      },
       "risk_flag": "Long wait times — not suitable for urgent cases without prior referral coordination",
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 5000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 50000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Parel Station (< 1km)",
+        "nearest_airport": "Chhatrapati Shivaji Maharaj International Airport (~9km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": true,
+        "languages": [
+          "Hindi",
+          "Marathi",
+          "English",
+          "Bengali"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": "~50,000 new patients/year",
+        "academic_affiliation": "Tata Memorial Centre / Government of India"
+      },
+      "navigation_notes": [
+        "India's premier cancer centre — best for complex, rare, and refractory cases",
+        "Very high volume — plan for 2–4 weeks wait for appointments",
+        "Government rates — highly affordable once registered",
+        "Logistical planning essential: train from Patna to Mumbai takes ~30 hours"
+      ]
     },
-
     {
       "id": "aiims-delhi",
       "name": "All India Institute of Medical Sciences, New Delhi",
@@ -664,11 +1628,19 @@
       "state": "Delhi",
       "region": "North India",
       "type": "Government",
-      "accreditation": ["NABL"],
+      "accreditation": [
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive — National Referral",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -681,11 +1653,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 5000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 50000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Hazrat Nizamuddin Station (~5km) / New Delhi Station (~8km)",
+        "nearest_airport": "Indira Gandhi International Airport (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "Book via ORS portal (ors.gov.in) — no walk-in OPD for new patients",
+        "Rajdhani Express from Patna to Delhi — ~8-9 hours overnight",
+        "Extremely long wait times — plan significantly in advance",
+        "Best for second opinions and rare cancers"
+      ]
     },
-
     {
       "id": "rims-ranchi",
       "name": "Rajendra Institute of Medical Sciences",
@@ -698,7 +1707,10 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Surgical & Radiation Oncology",
-      "departments": ["surgical_oncology", "radiation_oncology"],
+      "departments": [
+        "surgical_oncology",
+        "radiation_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -707,20 +1719,68 @@
         "address": "Bariatu, Ranchi, Jharkhand"
       },
       "key_doctors": [
-        {"name": "Dr. Ajit Kumar Kushwaha", "role": "HOD Surgical Oncology"},
-        {"name": "Dr. Rohit Kumar Jha", "role": "Surgical Oncology"},
-        {"name": "Prof. Anup Kumar", "role": "Radiation Oncology"},
-        {"name": "Dr. Rashmi Singh", "role": "Radiation Oncology"}
+        {
+          "name": "Dr. Ajit Kumar Kushwaha",
+          "role": "HOD Surgical Oncology"
+        },
+        {
+          "name": "Dr. Rohit Kumar Jha",
+          "role": "Surgical Oncology"
+        },
+        {
+          "name": "Prof. Anup Kumar",
+          "role": "Radiation Oncology"
+        },
+        {
+          "name": "Dr. Rashmi Singh",
+          "role": "Radiation Oncology"
+        }
       ],
       "notes": "State government medical institute. Surgical Oncology OPD Mon/Thu; Radiation OPD Mon–Thu. Linear Accelerator installed. Free/subsidized care for state residents. Very high patient volume — plan for long waits.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": null,
+        "chemo_day_max": null,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Ranchi Station (~5km)",
+        "nearest_airport": "Birsa Munda Airport Ranchi (~8km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Jharkhand tribal languages"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Surgical OPD Mon/Thu; Radiation OPD Mon–Thu",
+        "Very high patient volume — plan for long waits",
+        "Free/subsidized for Jharkhand state residents"
+      ]
     },
-
     {
       "id": "rchrc-ranchi",
       "name": "Ranchi Cancer Hospital and Research Centre",
@@ -733,7 +1793,13 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -746,11 +1812,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 300,
+        "chemo_day_min": 500,
+        "chemo_day_max": 5000,
+        "surgery_package_min": 5000,
+        "surgery_package_max": 60000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Ranchi Station (~10km)",
+        "nearest_airport": "Birsa Munda Airport Ranchi (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Jharkhand tribal languages"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Tata Trusts / Tata Cancer Care Foundation"
+      },
+      "navigation_notes": [
+        "First dedicated cancer hospital in Jharkhand — opened May 2023",
+        "Tata Trusts operated — subsidized rates; PMJAY accepted",
+        "Toll-free helpline: 1800-313-4922",
+        "Serves Jharkhand, Bihar, WB, Chhattisgarh, MP patients"
+      ]
     },
-
     {
       "id": "hcg-ranchi",
       "name": "HCG Abdur Razzaque Ansari Cancer Hospital",
@@ -759,11 +1862,20 @@
       "state": "Jharkhand",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -776,11 +1888,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 700,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 60000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 500000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Ranchi Station (~15km)",
+        "nearest_airport": "Birsa Munda Airport Ranchi (~5km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "HCG Oncology"
+      },
+      "navigation_notes": [
+        "Premier private cancer hospital in Jharkhand since 2008",
+        "24/7 — good for urgent cases needing private sector access",
+        "Verify PMJAY/insurance before visiting — high private rates"
+      ]
     },
-
     {
       "id": "aiims-deoghar",
       "name": "All India Institute of Medical Sciences, Deoghar",
@@ -789,11 +1937,17 @@
       "state": "Jharkhand",
       "region": "East India",
       "type": "Government",
-      "accreditation": ["AERB"],
+      "accreditation": [
+        "AERB"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Surgical & Radiation Oncology",
-      "departments": ["surgical_oncology", "radiation_oncology", "medical_oncology"],
+      "departments": [
+        "surgical_oncology",
+        "radiation_oncology",
+        "medical_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -806,11 +1960,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Deoghar Station (~5km) / Jasidih Junction (~25km)",
+        "nearest_airport": "Deoghar Airport (~8km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Santali",
+          "Bengali"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "Best option for Santhal Pargana and Jharkhand–WB border patients",
+        "OPD Mon–Fri 8:30am–4:30pm, Sat till 2pm",
+        "Medical Oncology department expanding — verify availability before referral",
+        "Deoghar Airport now operational — direct flights from some cities"
+      ]
     },
-
     {
       "id": "ahpgic-cuttack",
       "name": "Acharya Harihar Post Graduate Institute of Cancer",
@@ -823,7 +2015,13 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "gynaec_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "gynaec_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -836,11 +2034,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 6,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 0,
+        "chemo_day_min": 0,
+        "chemo_day_max": 0,
+        "surgery_package_min": 0,
+        "surgery_package_max": 0,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Cuttack Station (~5km)",
+        "nearest_airport": "Biju Patnaik International Airport Bhubaneswar (~30km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Odia",
+          "Hindi",
+          "Bengali"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Government of Odisha / National Cancer Grid"
+      },
+      "navigation_notes": [
+        "ALL hospital services are FREE except cabin charges",
+        "NIRAMAYA program — free anti-cancer drugs",
+        "Uses Odisha BSKY scheme — Bihar PMJAY cards not accepted; self-pay at government rates (very low)",
+        "One of India's 25 Regional Cancer Centres — 507 beds"
+      ]
     },
-
     {
       "id": "hcg-panda-cuttack",
       "name": "HCG Panda Cancer Hospital",
@@ -849,11 +2085,20 @@
       "state": "Odisha",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": true,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -862,19 +2107,65 @@
         "address": "NH-16, Telengapentha, Cuttack, Odisha"
       },
       "key_doctors": [
-        {"name": "Dr. Jyoti Ranjan Swain", "role": "Surgical Oncology — MCh"},
-        {"name": "Dr. Srigopal Mohanty", "role": "Medical Oncology — DM"},
-        {"name": "Dr. Prakash Kumar Swain", "role": "Radiation Oncology — DNB"}
+        {
+          "name": "Dr. Jyoti Ranjan Swain",
+          "role": "Surgical Oncology — MCh"
+        },
+        {
+          "name": "Dr. Srigopal Mohanty",
+          "role": "Medical Oncology — DM"
+        },
+        {
+          "name": "Dr. Prakash Kumar Swain",
+          "role": "Radiation Oncology — DNB"
+        }
       ],
       "notes": "Confirmed NCG member. 130 beds. Elekta Versa HD Linear Accelerator + PET-CT + Brachytherapy + Bone Marrow Transplant. Established 2002 — experienced team. Private rates — high cost; check insurance before visiting.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 5, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 700,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 60000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 500000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Cuttack Station (~8km)",
+        "nearest_airport": "Biju Patnaik International Airport Bhubaneswar (~35km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Odia",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "HCG Oncology / National Cancer Grid"
+      },
+      "navigation_notes": [
+        "Confirmed NCG member — Elekta Versa HD LINAC + BMT",
+        "Private rates — high cost; check insurance before visiting",
+        "Established 2002 — experienced team for Odisha region"
+      ]
     },
-
     {
       "id": "aiims-bhubaneswar",
       "name": "All India Institute of Medical Sciences, Bhubaneswar",
@@ -883,11 +2174,19 @@
       "state": "Odisha",
       "region": "East India",
       "type": "Government",
-      "accreditation": ["NABL"],
+      "accreditation": [
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "pediatric_oncology", "hemato_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "pediatric_oncology",
+        "hemato_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -900,11 +2199,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Bhubaneswar Station (~10km)",
+        "nearest_airport": "Biju Patnaik International Airport (~5km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Odia",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": "~250-300 new pediatric patients/year",
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "Only government institution providing specialized pediatric cancer care in Odisha–Jharkhand–WB region",
+        "BMT unit being established — call ahead for blood cancer cases",
+        "PMJAY accepted; government rates"
+      ]
     },
-
     {
       "id": "cnci-kolkata",
       "name": "Chittaranjan National Cancer Institute",
@@ -913,11 +2249,23 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Government",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": true,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "palliative_care", "nuclear_medicine", "gynaec_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "palliative_care",
+        "nuclear_medicine",
+        "gynaec_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -931,11 +2279,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 10,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 3000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Sealdah Station (~8km, Hazra campus) / Rajarhat New Town (New campus)",
+        "nearest_airport": "Netaji Subhas Chandra Bose International Airport (~20km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Government of India"
+      },
+      "navigation_notes": [
+        "Two campuses — New Town Rajarhat (460 beds, ultramodern) preferred for new patients",
+        "Free for BPL; heavily subsidized for all — PMJAY and Swasthya Sathi both accepted",
+        "Top government referral centre after TMC Kolkata for East India"
+      ]
     },
-
     {
       "id": "aiims-kalyani",
       "name": "All India Institute of Medical Sciences, Kalyani",
@@ -948,7 +2333,10 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Medical & Radiation Oncology",
-      "departments": ["medical_oncology", "radiation_oncology"],
+      "departments": [
+        "medical_oncology",
+        "radiation_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -961,12 +2349,50 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": -1},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": -1
+      },
       "risk_flag": "Radiation services only started Feb 2024 — capacity still ramping up",
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": null,
+        "surgery_package_max": null,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Kalyani Station (~5km)",
+        "nearest_airport": "Netaji Subhas Chandra Bose International Airport (~40km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "Weekly Multidisciplinary Tumour Board",
+        "Radiation (LINAC) operational since Feb 2024 — capacity still ramping up; verify before referral",
+        "Accessible for lower West Bengal and Bihar border patients",
+        "Surgical oncology not yet independently confirmed"
+      ]
     },
-
     {
       "id": "hcg-eko-kolkata",
       "name": "HCG EKO Cancer Centre, New Town",
@@ -975,11 +2401,22 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -992,11 +2429,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 70000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "New Town / Kolkata (Sealdah ~30km)",
+        "nearest_airport": "Netaji Subhas Chandra Bose International Airport (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "HCG Oncology"
+      },
+      "navigation_notes": [
+        "First Radixact TomoTherapy in Eastern India",
+        "Best for patients with corporate/mediclaim insurance",
+        "West Bengal uses Swasthya Sathi — PMJAY from Bihar may not be accepted"
+      ]
     },
-
     {
       "id": "nscri-kolkata",
       "name": "Netaji Subhas Chandra Bose Cancer Research Institute",
@@ -1009,7 +2483,13 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -1018,17 +2498,57 @@
         "address": "Nayabad, New Garia, Kolkata, West Bengal"
       },
       "key_doctors": [
-        {"name": "Dr. Ashis Mukhopadhyay", "role": "Founder & Medical Director"}
+        {
+          "name": "Dr. Ashis Mukhopadhyay",
+          "role": "Founder & Medical Director"
+        }
       ],
       "notes": "Charitable trust hospital with explicit mission to serve poor and middle-class patients at affordable cost. Full oncology spectrum including HIPEC/PIPAC (surgical), Bone Marrow Transplant (allogenic + autologous), PET/SPECT. Affiliated with Jadavpur University. 24/7 subsidized pharmacy. 24 insurance providers accepted.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 2, "cost": 2, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 2,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 300,
+        "opd_max": 700,
+        "chemo_day_min": 5000,
+        "chemo_day_max": 25000,
+        "surgery_package_min": 50000,
+        "surgery_package_max": 200000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Garia Station (~3km)",
+        "nearest_airport": "Netaji Subhas Chandra Bose International Airport (~25km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Jadavpur University"
+      },
+      "navigation_notes": [
+        "Charitable trust — mission to serve poor and middle-class patients at affordable cost",
+        "24 insurance providers accepted",
+        "HIPEC/PIPAC surgical procedures and BMT available"
+      ]
     },
-
     {
       "id": "apollo-gleneagles-kolkata",
       "name": "Apollo Gleneagles Cancer Hospital, Kolkata",
@@ -1037,11 +2557,20 @@
       "state": "West Bengal",
       "region": "East India",
       "type": "Private",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "pediatric_oncology", "uro_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "pediatric_oncology",
+        "uro_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -1054,11 +2583,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 1, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 1,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 1500,
+        "chemo_day_min": 12000,
+        "chemo_day_max": 70000,
+        "surgery_package_min": 120000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Park Circus / Sealdah (~5km)",
+        "nearest_airport": "Netaji Subhas Chandra Bose International Airport (~20km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Sole JCI-accredited hospital in Eastern India — best for international insurance",
+        "First Radiosurgery (knifeless brain surgery) in Eastern India",
+        "High private rates — best for patients with comprehensive insurance"
+      ]
     },
-
     {
       "id": "cchrc-silchar",
       "name": "Cachar Cancer Hospital & Research Centre",
@@ -1071,7 +2637,12 @@
       "ncg_member": true,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1084,12 +2655,51 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 1, "pmjay": 1, "risk": -3},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": -3
+      },
       "risk_flag": "Limited capacity — confirm appointment availability before travel from long distance",
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 3000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Silchar Station (~5km)",
+        "nearest_airport": "Silchar Airport (~10km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Bengali",
+          "Hindi",
+          "Meitei",
+          "Mizo"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Tata Trusts / National Cancer Grid"
+      },
+      "navigation_notes": [
+        "Key referral centre for South Assam, Mizoram, and Manipur border patients",
+        "Tata Trusts supported — free/subsidized for low-income patients",
+        "PMJAY accepted",
+        "Confirm appointment availability before long-distance travel — limited capacity"
+      ]
     },
-
     {
       "id": "neigrihms-shillong",
       "name": "North Eastern Indira Gandhi Regional Institute of Health & Medical Sciences",
@@ -1098,11 +2708,18 @@
       "state": "Meghalaya",
       "region": "East India",
       "type": "Government",
-      "accreditation": ["NABL"],
+      "accreditation": [
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1115,12 +2732,51 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 1, "pmjay": 1, "risk": -1},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": -1
+      },
       "risk_flag": "Not a dedicated cancer centre — oncology is one department among many; complex cases should go to BBCI Guwahati",
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 3000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Guwahati Station (~100km)",
+        "nearest_airport": "Umroi Airport Shillong (~30km) / Guwahati Airport (~110km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Khasi",
+          "English",
+          "Hindi",
+          "Bengali"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "AIIMS-equivalent for Northeast India (est. 1987)",
+        "PMJAY accepted; government rates",
+        "Complex cancer cases should go to BBCI Guwahati — NEIGRIHMS is not a dedicated cancer centre",
+        "Serves Meghalaya, Nagaland, Mizoram, and Manipur patients"
+      ]
     },
-
     {
       "id": "bbci-guwahati",
       "name": "Dr. Bhubaneswar Borooah Cancer Institute",
@@ -1129,11 +2785,21 @@
       "state": "Assam",
       "region": "East India",
       "type": "Government / TMC",
-      "accreditation": ["TMC_AFFILIATED"],
+      "accreditation": [
+        "TMC_AFFILIATED"
+      ],
       "ncg_member": true,
       "tmc_affiliated": true,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1146,11 +2812,50 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 10,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 1, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 1,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Guwahati Station (~5km)",
+        "nearest_airport": "Lokpriya Gopinath Bordoloi Airport (~20km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Assamese",
+          "Bengali",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Tata Memorial Centre"
+      },
+      "navigation_notes": [
+        "Premier government cancer hospital for all 8 Northeast states",
+        "TMC unit — confirmed NCG member, PMJAY award-winning implementation (ranked 3rd nationally)",
+        "Direct trains from Patna to Guwahati (Avadh Assam Express ~22 hrs)",
+        "311 beds; full spectrum including BMT/SCT"
+      ]
     },
-
     {
       "id": "mpmmcc-varanasi",
       "name": "Mahamana Pandit Madan Mohan Malaviya Cancer Centre",
@@ -1159,11 +2864,21 @@
       "state": "Uttar Pradesh",
       "region": "North India",
       "type": "Government / TMC",
-      "accreditation": ["TMC_AFFILIATED"],
+      "accreditation": [
+        "TMC_AFFILIATED"
+      ],
       "ncg_member": true,
       "tmc_affiliated": true,
       "specialization": "Comprehensive — Adult Solid Tumours",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "gynaec_oncology",
+        "uro_oncology",
+        "head_and_neck",
+        "palliative_care"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1172,17 +2887,58 @@
         "address": "Naria Road, BHU Campus, Varanasi, Uttar Pradesh"
       },
       "key_doctors": [
-        {"name": "Dr. Amita Maheshwari", "role": "Director (also Director of HBCH Varanasi)"}
+        {
+          "name": "Dr. Amita Maheshwari",
+          "role": "Director (also Director of HBCH Varanasi)"
+        }
       ],
       "notes": "TMC unit on BHU campus — confirmed NCG member, ESMO designated centre. 352 beds, 6 radiation machines treating 350 patients/day (shared with HBCH). Handles adult solid tumours; blood cancers and pediatric cancers go to HBCH Varanasi (9 km away). Free/subsidized treatment, PMJAY accepted. Most accessible TMC for Bihar patients — 3 hrs from Patna by road.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Varanasi Junction (~8km)",
+        "nearest_airport": "Lal Bahadur Shastri Airport Varanasi (~30km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Bhojpuri",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": "~350 patients treated/day (radiation)",
+        "academic_affiliation": "Tata Memorial Centre / BHU"
+      },
+      "navigation_notes": [
+        "Most accessible TMC unit for Bihar patients — ~3 hours from Patna by road or train",
+        "Handles adult solid tumours — blood cancers and pediatric go to HBCH Varanasi (9km)",
+        "ESMO Designated Centre; PMJAY accepted; free/subsidized treatment",
+        "352 beds, 6 radiation machines"
+      ]
     },
-
     {
       "id": "hbch-varanasi",
       "name": "Homi Bhabha Cancer Hospital, Varanasi",
@@ -1191,11 +2947,18 @@
       "state": "Uttar Pradesh",
       "region": "North India",
       "type": "Government / TMC",
-      "accreditation": ["TMC_AFFILIATED"],
+      "accreditation": [
+        "TMC_AFFILIATED"
+      ],
       "ncg_member": true,
       "tmc_affiliated": true,
       "specialization": "Haematology-Oncology & Pediatric Cancers",
-      "departments": ["medical_oncology", "hemato_oncology", "pediatric_oncology", "radiation_oncology"],
+      "departments": [
+        "medical_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "radiation_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1204,17 +2967,57 @@
         "address": "Shivpurwa, Varanasi, Uttar Pradesh"
       },
       "key_doctors": [
-        {"name": "Dr. Amita Maheshwari", "role": "Director (shared with MPMMCC)"}
+        {
+          "name": "Dr. Amita Maheshwari",
+          "role": "Director (shared with MPMMCC)"
+        }
       ],
       "notes": "TMC unit — confirmed NCG member. Companion to MPMMCC Varanasi (9 km apart). HBCH handles ALL blood cancers (leukemia, lymphoma) and pediatric cancers; adult solid tumours go to MPMMCC. Bone Marrow Transplant facility. 179 beds. Free/subsidized, PMJAY accepted. Bihar patients with leukemia or childhood cancers should come here, not MPMMCC.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Varanasi Junction (~12km)",
+        "nearest_airport": "Lal Bahadur Shastri Airport Varanasi (~35km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Bhojpuri",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Tata Memorial Centre"
+      },
+      "navigation_notes": [
+        "Bihar patients with leukemia, lymphoma, or childhood cancer should come here — not MPMMCC",
+        "Companion to MPMMCC (9km apart, same director)",
+        "BMT facility; 179 beds; PMJAY accepted; free/subsidized"
+      ]
     },
-
     {
       "id": "sgpgi-lucknow",
       "name": "Sanjay Gandhi Postgraduate Institute of Medical Sciences",
@@ -1227,7 +3030,11 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Medical & Radiation Oncology",
-      "departments": ["medical_oncology", "radiation_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "radiation_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -1236,18 +3043,60 @@
         "address": "Raebareli Road, Lucknow, Uttar Pradesh - 226014"
       },
       "key_doctors": [
-        {"name": "Prof. Punita Lal", "role": "HOD Medical Oncology"},
-        {"name": "Prof. Shalini Singh", "role": "Radiation Oncology — Gynae/Neuro/Lung/Brachytherapy"}
+        {
+          "name": "Prof. Punita Lal",
+          "role": "HOD Medical Oncology"
+        },
+        {
+          "name": "Prof. Shalini Singh",
+          "role": "Radiation Oncology — Gynae/Neuro/Lung/Brachytherapy"
+        }
       ],
       "notes": "State government PG medical institute. Two Linear Accelerators, 32-bed chemo day care, 200+ brachytherapy cases/year. Palliative care clinics with home visits within 25km. ICMR-funded cancer registry. Note: not a dedicated cancer centre — less specialised than TMC Varanasi for cancer-only cases. Better suited for lower Bihar patients needing Lucknow referral.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-04-30",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 3000,
+        "surgery_package_min": null,
+        "surgery_package_max": null,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Lucknow Charbagh Station (~8km)",
+        "nearest_airport": "Chaudhary Charan Singh International Airport (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Not a dedicated cancer centre — one oncology department among many",
+        "Palliative care with home visits within 25km radius",
+        "Better suited for lower Bihar patients who need Lucknow referral"
+      ]
     },
-
     {
       "id": "kgmu-lucknow",
       "name": "King George's Medical University — Cancer Centre",
@@ -1256,11 +3105,19 @@
       "state": "Uttar Pradesh",
       "region": "North India",
       "type": "Government",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynec_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynec_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1273,11 +3130,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 3000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Lucknow Charbagh Station (~3km)",
+        "nearest_airport": "Chaudhary Charan Singh International Airport (~18km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Critical referral for Bihar patients from western districts (Gopalganj, Saran, Siwan) — closer than Varanasi",
+        "NABH accredited; PMJAY accepted; government rates",
+        "One of India's oldest and largest government medical universities (est. 1911)"
+      ]
     },
-
     {
       "id": "pgimer-chandigarh",
       "name": "PGIMER — Dr. B.R. Ambedkar Institute-Rotary Cancer Hospital",
@@ -1286,11 +3179,21 @@
       "state": "Punjab",
       "region": "North India",
       "type": "Government",
-      "accreditation": ["NABL"],
+      "accreditation": [
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1303,11 +3206,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 0,
+        "chemo_day_max": 3000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 30000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Chandigarh Station (~8km)",
+        "nearest_airport": "Chandigarh International Airport (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Punjabi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Ministry of Health, Government of India"
+      },
+      "navigation_notes": [
+        "AIIMS-equivalent — ESMO Designated Centre; CAR-T cell therapy available",
+        "PMJAY accepted; government rates",
+        "Accessible from Bihar via Delhi by train then Shatabdi to Chandigarh"
+      ]
     },
-
     {
       "id": "rgci-delhi",
       "name": "Rajiv Gandhi Cancer Institute & Research Centre",
@@ -1316,11 +3256,22 @@
       "state": "Delhi",
       "region": "North India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": true,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1333,11 +3284,48 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 5, "cost": 1, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 1500,
+        "chemo_day_min": 8000,
+        "chemo_day_max": 50000,
+        "surgery_package_min": 80000,
+        "surgery_package_max": 400000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Rohini West Metro (~2km)",
+        "nearest_airport": "Indira Gandhi International Airport (~30km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "National Cancer Grid"
+      },
+      "navigation_notes": [
+        "Delhi's premier dedicated cancer hospital — confirmed NCG member",
+        "PMJAY empanelled — significant cost relief for eligible patients",
+        "Accessible from Patna by Rajdhani (8-9 hrs) or flight (1 hr)",
+        "400+ beds; BMT, PET-CT, advanced surgical oncology"
+      ]
     },
-
     {
       "id": "sir-ganga-ram-delhi",
       "name": "Sir Ganga Ram Hospital — Cancer Centre",
@@ -1346,11 +3334,20 @@
       "state": "Delhi",
       "region": "North India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1363,11 +3360,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 1000,
+        "opd_max": 2000,
+        "chemo_day_min": 12000,
+        "chemo_day_max": 70000,
+        "surgery_package_min": 120000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Rajinder Nagar Metro (~2km)",
+        "nearest_airport": "Indira Gandhi International Airport (~20km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "200-bed dedicated cancer centre (expanded 2025)",
+        "PMJAY empanelled — call to confirm coverage for specific treatment before travel",
+        "High private rates — useful for insured patients"
+      ]
     },
-
     {
       "id": "apollo-cancer-delhi",
       "name": "Apollo Cancer Centre, New Delhi",
@@ -1376,11 +3409,23 @@
       "state": "Delhi",
       "region": "North India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL", "JCI"],
+      "accreditation": [
+        "NABH",
+        "NABL",
+        "JCI"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "uro_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1393,11 +3438,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 1200,
+        "opd_max": 2500,
+        "chemo_day_min": 15000,
+        "chemo_day_max": 100000,
+        "surgery_package_min": 150000,
+        "surgery_package_max": 800000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Jasola Apollo Metro (~1km)",
+        "nearest_airport": "Indira Gandhi International Airport (~8km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "JCI + NABH + NABL — proton therapy, Da Vinci robotic surgery",
+        "Not PMJAY empanelled — best for patients with comprehensive insurance or NRIs",
+        "High private rates"
+      ]
     },
-
     {
       "id": "max-cancer-saket",
       "name": "Max Institute of Cancer Care, Saket",
@@ -1406,11 +3487,21 @@
       "state": "Delhi",
       "region": "North India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1423,11 +3514,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 1000,
+        "opd_max": 2000,
+        "chemo_day_min": 12000,
+        "chemo_day_max": 80000,
+        "surgery_package_min": 130000,
+        "surgery_package_max": 700000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Saket Metro (~2km)",
+        "nearest_airport": "Indira Gandhi International Airport (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "No PMJAY — best for Max Health Insurance or corporate coverage",
+        "SRS/SBRT Stereotactic Radiosurgery; Da Vinci robotic surgery",
+        "High private rates"
+      ]
     },
-
     {
       "id": "blk-max-delhi",
       "name": "BLK-Max Centre for Cancer & Haematology",
@@ -1436,11 +3563,20 @@
       "state": "Delhi",
       "region": "North India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1453,11 +3589,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 1000,
+        "opd_max": 2000,
+        "chemo_day_min": 12000,
+        "chemo_day_max": 80000,
+        "surgery_package_min": 120000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Rajendra Place Metro (~2km)",
+        "nearest_airport": "Indira Gandhi International Airport (~18km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "Strongest BMT programme in Delhi — best for blood cancers (leukemia, lymphoma, myeloma)",
+        "Cyberknife, IMRT, PET-CT",
+        "No PMJAY — high private rates"
+      ]
     },
-
     {
       "id": "fortis-fmri-gurugram",
       "name": "Fortis Memorial Research Institute — Cancer Centre",
@@ -1466,11 +3638,22 @@
       "state": "Haryana",
       "region": "North India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL", "JCI"],
+      "accreditation": [
+        "NABH",
+        "NABL",
+        "JCI"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "uro_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "uro_oncology"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1483,11 +3666,47 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 1000,
+        "opd_max": 2000,
+        "chemo_day_min": 15000,
+        "chemo_day_max": 100000,
+        "surgery_package_min": 150000,
+        "surgery_package_max": 800000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Sikanderpur Metro (~5km)",
+        "nearest_airport": "Indira Gandhi International Airport (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "JCI + NABH + NABL — Cyberknife, Tomotherapy, robotic surgery",
+        "No PMJAY — best for corporate or international insurance",
+        "~30 min from Delhi airport; near Delhi for patients transiting"
+      ]
     },
-
     {
       "id": "kokilaben-mumbai",
       "name": "Kokilaben Dhirubhai Ambani Hospital — Cancer Centre",
@@ -1496,11 +3715,22 @@
       "state": "Maharashtra",
       "region": "West India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "head_and_neck", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "head_and_neck",
+        "palliative_care"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1509,17 +3739,58 @@
         "address": "Rao Saheb Achutrao Patwardhan Marg, Four Bungalows, Andheri West, Mumbai - 400053"
       },
       "key_doctors": [
-        {"name": "Dr. Mandar Deshpande", "role": "Head & Neck Surgical Oncology — internationally trained"}
+        {
+          "name": "Dr. Mandar Deshpande",
+          "role": "Head & Neck Surgical Oncology — internationally trained"
+        }
       ],
       "notes": "NABH + NABL accredited, ESMO Designated Centre. Cyberknife, Tomotherapy, Da Vinci robotic surgery. PMJAY empanelled — significant cost relief for eligible patients. Strong for Head & Neck, Breast, GI cancers. Good alternative to TMH when TMH wait times are very long.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 2000,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 80000,
+        "surgery_package_min": 120000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "D.N. Nagar Metro (~2km) / Andheri Station (~3km)",
+        "nearest_airport": "Chhatrapati Shivaji Maharaj International Airport (~5km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Marathi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "ESMO Designated Centre; PMJAY empanelled — significant cost relief",
+        "Cyberknife, Tomotherapy, Da Vinci robotic surgery",
+        "Good alternative to TMH when TMH wait times are very long",
+        "Strong for Head & Neck, Breast, GI cancers"
+      ]
     },
-
     {
       "id": "hn-reliance-mumbai",
       "name": "HN Reliance Foundation Hospital & Research Centre",
@@ -1528,11 +3799,19 @@
       "state": "Maharashtra",
       "region": "West India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": null,
       "referral_required": false,
@@ -1545,11 +3824,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
-      "score_breakdown": {"quality": 3, "cost": 2, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 2,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 500,
+        "opd_max": 1200,
+        "chemo_day_min": 8000,
+        "chemo_day_max": 50000,
+        "surgery_package_min": 80000,
+        "surgery_package_max": 400000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Charni Road Station (~1km)",
+        "nearest_airport": "Chhatrapati Shivaji Maharaj International Airport (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Hindi",
+          "Marathi",
+          "English",
+          "Gujarati"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": null,
+        "academic_affiliation": "Reliance Foundation"
+      },
+      "navigation_notes": [
+        "Charitable trust — subsidized rates for economically weaker patients",
+        "Good option for Mumbai referrals when TMH has very long waits",
+        "NABH + NABL accredited"
+      ]
     },
-
     {
       "id": "gcri-ahmedabad",
       "name": "Gujarat Cancer Research Institute",
@@ -1558,11 +3875,22 @@
       "state": "Gujarat",
       "region": "West India",
       "type": "Government",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine", "gynaec_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine",
+        "gynaec_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1575,11 +3903,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Ahmedabad Station (~5km)",
+        "nearest_airport": "Sardar Vallabhbhai Patel International Airport (~12km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Gujarati",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "Government of Gujarat"
+      },
+      "navigation_notes": [
+        "Ranked 2nd best public hospital under PMJAY nationally",
+        "7 Linear Accelerators, PET-CT, comprehensive BMT unit",
+        "Free/subsidized for BPL; very low cost for all",
+        "Best referral for Bihar patients with family in Gujarat"
+      ]
     },
-
     {
       "id": "cmc-vellore",
       "name": "Christian Medical College & Hospital — Cancer Institute",
@@ -1588,11 +3954,22 @@
       "state": "Tamil Nadu",
       "region": "South India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": true,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1605,11 +3982,50 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 5, "cost": 2, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 2,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 300,
+        "opd_max": 800,
+        "chemo_day_min": 5000,
+        "chemo_day_max": 30000,
+        "surgery_package_min": 60000,
+        "surgery_package_max": 300000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Katpadi Junction (~8km) / Vellore Cantonment (~3km)",
+        "nearest_airport": "Chennai International Airport (~135km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": true,
+        "languages": [
+          "Tamil",
+          "Telugu",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "National Cancer Grid"
+      },
+      "navigation_notes": [
+        "Internationally renowned for complex cancers, rare diagnoses, and BMT",
+        "Sliding-scale fees — socio-economic assessment for reduced rates (not PMJAY)",
+        "Worth the distance for rare cancers or cases where local hospitals struggle",
+        "~24 hrs from Patna by train; book via CMC appointment app"
+      ]
     },
-
     {
       "id": "cancer-institute-wia-chennai",
       "name": "Cancer Institute (WIA)",
@@ -1618,11 +4034,23 @@
       "state": "Tamil Nadu",
       "region": "South India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": true,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine", "gynaec_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine",
+        "gynaec_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1635,11 +4063,50 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 5, "cost": 3, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 5,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 200,
+        "chemo_day_min": 500,
+        "chemo_day_max": 5000,
+        "surgery_package_min": 5000,
+        "surgery_package_max": 50000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Guindy Station (~1km)",
+        "nearest_airport": "Chennai International Airport (~8km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Tamil",
+          "Telugu",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "National Cancer Grid / Women's India Association"
+      },
+      "navigation_notes": [
+        "India's first dedicated cancer hospital (est. 1954) — confirmed NCG member",
+        "700 beds; subsidized rates for all, free for BPL; PMJAY accepted",
+        "Highly respected for Head & Neck, Gynaecological, and Blood cancers",
+        "Proton therapy and BMT available"
+      ]
     },
-
     {
       "id": "apollo-cancer-chennai",
       "name": "Apollo Cancer Centre, Chennai",
@@ -1648,11 +4115,22 @@
       "state": "Tamil Nadu",
       "region": "South India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL", "JCI"],
+      "accreditation": [
+        "NABH",
+        "NABL",
+        "JCI"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "head_and_neck"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "head_and_neck"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1665,11 +4143,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 1000,
+        "opd_max": 2500,
+        "chemo_day_min": 15000,
+        "chemo_day_max": 100000,
+        "surgery_package_min": 150000,
+        "surgery_package_max": 800000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Nungambakkam Station (~2km)",
+        "nearest_airport": "Chennai International Airport (~15km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Tamil",
+          "Telugu",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "JCI + NABH — proton therapy, Da Vinci robotic surgery",
+        "High private rates — not PMJAY empanelled",
+        "Cancer Institute WIA Chennai nearby offers equivalent care at far lower cost"
+      ]
     },
-
     {
       "id": "kidwai-kmio-bangalore",
       "name": "Kidwai Memorial Institute of Oncology",
@@ -1678,11 +4194,22 @@
       "state": "Karnataka",
       "region": "South India",
       "type": "Government",
-      "accreditation": ["NABH"],
+      "accreditation": [
+        "NABH"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "pediatric_oncology", "palliative_care", "nuclear_medicine", "gynaec_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "pediatric_oncology",
+        "palliative_care",
+        "nuclear_medicine",
+        "gynaec_oncology"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1695,11 +4222,51 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
-      "score_breakdown": {"quality": 4, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 100,
+        "chemo_day_min": 0,
+        "chemo_day_max": 2000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Krishnarajapuram / Bangalore City Station (~10km)",
+        "nearest_airport": "Kempegowda International Airport (~40km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Kannada",
+          "Telugu",
+          "Hindi",
+          "Tamil",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": "~1,000+ new patients/month",
+        "academic_affiliation": "Government of Karnataka"
+      },
+      "navigation_notes": [
+        "Karnataka's premier government Regional Cancer Centre (est. 1973)",
+        "863 beds, 7 Linear Accelerators, PET-CT, BMT unit",
+        "PMJAY accepted; government rates — very affordable",
+        "Best for Bihar patients with family in Bangalore"
+      ]
     },
-
     {
       "id": "hcg-bangalore",
       "name": "HCG Cancer Centre, Bangalore",
@@ -1708,11 +4275,23 @@
       "state": "Karnataka",
       "region": "South India",
       "type": "Private",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck", "pediatric_oncology"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "uro_oncology",
+        "head_and_neck",
+        "pediatric_oncology"
+      ],
       "cost_tier": "High",
       "pmjay_empanelled": false,
       "referral_required": false,
@@ -1725,11 +4304,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
-      "score_breakdown": {"quality": 3, "cost": 1, "location": 0, "pmjay": 0, "risk": 0},
+      "score_breakdown": {
+        "quality": 3,
+        "cost": 1,
+        "location": 0,
+        "pmjay": 0,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "B",
+      "cost_ranges": {
+        "opd_min": 800,
+        "opd_max": 1500,
+        "chemo_day_min": 10000,
+        "chemo_day_max": 70000,
+        "surgery_package_min": 100000,
+        "surgery_package_max": 600000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Bangalore City Station (~3km)",
+        "nearest_airport": "Kempegowda International Airport (~35km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Kannada",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": true
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": "HCG Oncology"
+      },
+      "navigation_notes": [
+        "HCG's flagship — largest private oncology network in India",
+        "BMT, robotic surgery, proton therapy referral, molecular diagnostics",
+        "Not PMJAY — Kidwai KMIO nearby offers affordable government care",
+        "High private rates — best for insured patients in Bangalore"
+      ]
     },
-
     {
       "id": "basavatarakam-hyderabad",
       "name": "Basavatarakam Indo-American Cancer Hospital & Research Institute",
@@ -1738,11 +4355,24 @@
       "state": "Telangana",
       "region": "South India",
       "type": "Trust",
-      "accreditation": ["NABH", "NABL"],
+      "accreditation": [
+        "NABH",
+        "NABL"
+      ],
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "uro_oncology", "head_and_neck", "pediatric_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "uro_oncology",
+        "head_and_neck",
+        "pediatric_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Medium",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1755,11 +4385,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
-      "score_breakdown": {"quality": 4, "cost": 2, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 4,
+        "cost": 2,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 300,
+        "opd_max": 800,
+        "chemo_day_min": 5000,
+        "chemo_day_max": 30000,
+        "surgery_package_min": 50000,
+        "surgery_package_max": 300000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Hyderabad Deccan / Kachiguda Station (~8km)",
+        "nearest_airport": "Rajiv Gandhi International Airport (~25km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Telugu",
+          "Hindi",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": true,
+        "case_volume_annual": null,
+        "academic_affiliation": null
+      },
+      "navigation_notes": [
+        "ESMO Designated Centre — ranked 2nd best cancer hospital in India (2023 survey)",
+        "PMJAY accepted; medium cost — more affordable than private hospitals",
+        "Strong for Head & Neck, GI, and Gynaecological cancers",
+        "BMT, Cyberknife, proton therapy referral"
+      ]
     },
-
     {
       "id": "mnj-hyderabad",
       "name": "MNJ Institute of Oncology & Regional Cancer Centre",
@@ -1772,7 +4440,14 @@
       "ncg_member": false,
       "tmc_affiliated": false,
       "specialization": "Comprehensive",
-      "departments": ["medical_oncology", "surgical_oncology", "radiation_oncology", "hemato_oncology", "gynaec_oncology", "palliative_care"],
+      "departments": [
+        "medical_oncology",
+        "surgical_oncology",
+        "radiation_oncology",
+        "hemato_oncology",
+        "gynaec_oncology",
+        "palliative_care"
+      ],
       "cost_tier": "Low",
       "pmjay_empanelled": true,
       "referral_required": false,
@@ -1785,10 +4460,49 @@
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 6,
-      "score_breakdown": {"quality": 2, "cost": 3, "location": 0, "pmjay": 1, "risk": 0},
+      "score_breakdown": {
+        "quality": 2,
+        "cost": 3,
+        "location": 0,
+        "pmjay": 1,
+        "risk": 0
+      },
       "verified_date": "2026-05-01",
-      "status": "active"
+      "status": "active",
+      "tier": "A",
+      "cost_ranges": {
+        "opd_min": 0,
+        "opd_max": 50,
+        "chemo_day_min": 0,
+        "chemo_day_max": 1000,
+        "surgery_package_min": 0,
+        "surgery_package_max": 20000,
+        "currency": "INR"
+      },
+      "logistics": {
+        "nearest_railway": "Lakdi-Ka-Pool Station (~1km)",
+        "nearest_airport": "Rajiv Gandhi International Airport (~28km)",
+        "lodging_nearby": true,
+        "patient_guesthouse": null,
+        "languages": [
+          "Telugu",
+          "Hindi",
+          "Urdu",
+          "English"
+        ],
+        "telemedicine": null
+      },
+      "trust_signals": {
+        "tumor_board": null,
+        "case_volume_annual": "500+ new patients/week",
+        "academic_affiliation": "Government of Telangana"
+      },
+      "navigation_notes": [
+        "One of India's 25 designated Regional Cancer Centres",
+        "Free/subsidized for BPL; PMJAY accepted",
+        "Very high patient load — expect significant waiting times",
+        "Best for Bihar patients with family in Hyderabad needing affordable government care"
+      ]
     }
-
   ]
 }

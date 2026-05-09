@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Query, UseGuards, Logger } from "@nestjs/common";
+import { Controller, Get, Post, Query, Param, Res, UseGuards, Logger } from "@nestjs/common";
+import { Response } from "express";
 import { BasicAuthGuard } from "../../common/guards/basic-auth.guard";
 import { SchedulerOidcGuard } from "../../common/guards/scheduler-oidc.guard";
 import { AdminService } from "./admin.service";
 import { DailyReportService } from "../analytics/daily-report.service";
 import { EmailService } from "../email/email.service";
 import { generateMarkdownReport } from "../analytics/report-generator";
+import { NavigatorApproveService } from "./navigator-approve.service";
 
 @Controller("admin")
 export class AdminController {
@@ -14,6 +16,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly dailyReport: DailyReportService,
     private readonly email: EmailService,
+    private readonly navigatorApprove: NavigatorApproveService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -112,6 +115,77 @@ export class AdminController {
         flaggedConversations: metrics.flaggedConversations.length,
       },
     };
+  }
+
+  /**
+   * Navigator batch approval endpoint.
+   *
+   * Triggered by the "Approve All" link in the hospital research review email.
+   * Uses a GET request because the email button is an <a href="..."> link.
+   *
+   * URL: GET /admin/navigator/approve/:batchId?token=<hmac>
+   */
+  @Get("navigator/approve/:batchId")
+  async approveNavigatorBatch(
+    @Param("batchId") batchId: string,
+    @Query("token") token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const result = await this.navigatorApprove.approveNavigatorBatch(batchId, token);
+
+      if (result.error === "Already approved") {
+        res.status(200).send(this.buildApprovalHtml(
+          batchId,
+          0,
+          [],
+          "Already approved — these hospitals are already in the directory.",
+        ));
+        return;
+      }
+
+      res.status(200).send(this.buildApprovalHtml(
+        batchId,
+        result.hospitalsAdded,
+        result.hospitalNames,
+      ));
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      const status = error.status ?? 500;
+      const message = error.message ?? "Unexpected error";
+      this.logger.error(`Navigator approval failed for batch ${batchId}: ${message}`);
+      res.status(status).send(this.buildErrorHtml(batchId, message));
+    }
+  }
+
+  private buildApprovalHtml(
+    batchId: string,
+    count: number,
+    names: string[],
+    note?: string,
+  ): string {
+    const namesLine = names.length > 0
+      ? `<p style="color:#555;font-size:13px;">Added: ${names.join(", ")}</p>`
+      : "";
+    const noteHtml = note
+      ? `<p style="color:#888;font-size:13px;">${note}</p>`
+      : "";
+    return `<!DOCTYPE html><html><body style="font-family:Arial;max-width:600px;margin:60px auto;text-align:center;">
+<h2 style="color:#188038;">&#10003; Hospitals Approved</h2>
+<p>Batch <strong>${batchId}</strong> approved. ${count} hospital(s) added to the Suchi Navigator directory.</p>
+${namesLine}
+${noteHtml}
+<p style="color:#999;font-size:12px;">You can close this tab.</p>
+</body></html>`;
+  }
+
+  private buildErrorHtml(batchId: string, message: string): string {
+    return `<!DOCTYPE html><html><body style="font-family:Arial;max-width:600px;margin:60px auto;text-align:center;">
+<h2 style="color:#c0392b;">&#10007; Approval Failed</h2>
+<p>Could not approve batch <strong>${batchId}</strong>.</p>
+<p style="color:#555;font-size:13px;">${message}</p>
+<p style="color:#999;font-size:12px;">Please contact the team if this was unexpected.</p>
+</body></html>`;
   }
 
   private parseDateRange(date?: string): { from: Date; to: Date; dateStr: string } {

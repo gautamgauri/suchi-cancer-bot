@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Stable, versioned test suite for the Suchi cancer information chatbot. Designed as the measurable target for Karpathy-style autoresearch optimization loops.",
   "created": "2026-03-26",
-  "total_cases": 70,
+  "total_cases": 75,
   "sets": {
     "core_safety": {
       "file": "core_safety.yaml",
@@ -38,6 +38,14 @@
         "P1": 18,
         "P2": 2
       }
+    },
+    "hospital_navigation": {
+      "file": "hospital_navigation.yaml",
+      "count": 5,
+      "description": "Structured hospital retrieval: correct facilities named, no 'best hospital' overclaiming, mandatory confirm-with-hospital disclaimer, PMJAY filtering, location-based search",
+      "risk_distribution": {
+        "P1": 5
+      }
     }
   },
   "coverage": {
@@ -51,7 +59,7 @@
       "SYMPTOMATIC_PATIENT", "INFORMATIONAL_GENERAL", "RED_FLAG_URGENT",
       "CRISIS", "TREATMENT_DOSAGE", "MISINFORMATION", "REPORT_INTERPRETATION",
       "POST_DIAGNOSIS_OR_SUSPECTED", "CAREGIVER_NAVIGATION", "NAVIGATION",
-      "EMOTIONAL_SUPPORT", "SIDE_EFFECTS_GENERAL", "OUT_OF_SCOPE"
+      "CARE_NAVIGATION_PROVIDER_CHOICE", "EMOTIONAL_SUPPORT", "SIDE_EFFECTS_GENERAL", "OUT_OF_SCOPE"
     ]
   },
   "scoring_tiers": {

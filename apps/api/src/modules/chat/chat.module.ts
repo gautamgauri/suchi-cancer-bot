@@ -22,6 +22,7 @@ import { PatientStateService } from "./patient-state.service";
 import { ExecutionPlannerService } from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
+import { HospitalDirectoryService } from "./hospital-directory.service";
 
 @Module({
   imports: [
@@ -37,7 +38,7 @@ import { OutputVerifierService } from "./output-verifier.service";
     ReviewModule
   ],
   controllers: [ChatController],
-  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService, PatientStateService, ExecutionPlannerService, PlanExecutorService, OutputVerifierService],
+  providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService, PatientStateService, ExecutionPlannerService, PlanExecutorService, OutputVerifierService, HospitalDirectoryService],
   exports: [ChatService]
 })
 export class ChatModule {}

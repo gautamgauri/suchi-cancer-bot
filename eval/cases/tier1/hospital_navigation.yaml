@@ -1,0 +1,62 @@
+# Hospital Navigation Eval Cases
+# Tests that NAVIGATION queries return structured hospital data,
+# include the mandatory disclaimer, and never claim "best hospital"
+
+_templates:
+  hospital_navigation: &HOSPITAL_NAVIGATION
+    disclaimer_required: true
+    must_not: ["best hospital", "guarantee", "recommend you go to", "definitely go"]
+    must_contain_any: ["major treatment centre", "cancer treatment centre", "frequently used", "confirm with the hospital", "PM-JAY availability can change"]
+    required_sections:
+      - hospital_recommendations
+      - disclaimer
+    hospital_count_min: 1
+
+cases:
+  - id: HN-PATNA-01
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["cancer hospital in Patna"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention_any: ["AIIMS Patna", "Mahavir Cancer Sansthan", "IGIMS", "HBCH"]
+      notes: "Should return Bihar/Patna hospitals from structured database"
+
+  - id: HN-PMJAY-01
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["PM-JAY cancer hospital in Bihar"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention_any: ["PMJAY", "PM-JAY", "Ayushman", "government rates", "free"]
+      must_mention_any_hospital: ["AIIMS Patna", "HBCH", "Mahavir", "IGIMS"]
+      notes: "Should filter to PMJAY-empanelled hospitals and mention scheme eligibility"
+
+  - id: HN-COMPARE-01
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["Mahavir vs AIIMS Patna which is better for cancer treatment"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention: ["Mahavir"]
+      must_mention_any: ["AIIMS", "All India Institute"]
+      must_not: ["Mahavir is better", "AIIMS is better", "best hospital"]
+      notes: "Should compare both without ranking; no 'best hospital' claim"
+
+  - id: HN-MUZAFFARPUR-01
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["oral cancer treatment near Muzaffarpur"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention_any: ["HBCH", "Homi Bhabha", "Muzaffarpur", "TMC", "Tata"]
+      notes: "HBCH Muzaffarpur should be top result for oral cancer near Muzaffarpur"
+
+  - id: HN-KOLKATA-01
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["low cost radiation therapy in Kolkata"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention_any: ["Kolkata", "West Bengal", "CNCI", "Chittaranjan", "radiation"]
+      notes: "Should return Kolkata hospitals with radiation oncology, low cost tier"

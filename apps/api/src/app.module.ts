@@ -20,6 +20,7 @@ import { VoiceWsModule } from "./modules/voice-ws/voice-ws.module";
 import { ReviewModule } from "./modules/review/review.module";
 import { CopilotModule } from "./modules/copilot/copilot.module";
 import { ObservabilityModule } from "./modules/observability/observability.module";
+import { WhatsAppNavigatorModule } from "./modules/whatsapp-navigator/whatsapp-navigator.module";
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ObservabilityModule } from "./modules/observability/observability.modul
     VoiceModule,
     ReviewModule,
     CopilotModule,
+    WhatsAppNavigatorModule,
     ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
   ]
 })

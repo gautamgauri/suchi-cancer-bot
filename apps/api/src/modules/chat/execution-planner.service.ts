@@ -23,6 +23,29 @@ import {
   selectOutputTemplate,
   TEMPLATE_REGISTRY,
 } from "./structured-output-templates";
+import { HospitalDirectoryService } from "./hospital-directory.service";
+import { detectLocation } from "./utils/location-detector";
+
+// ─── Hospital Search Result (mirrored from HospitalDirectoryService) ──────────
+
+export interface HospitalSearchResult {
+  id: string;
+  name: string;
+  short_name: string;
+  city: string;
+  state: string;
+  type: string;
+  tier: "A" | "B" | "C" | "D" | null;
+  departments: string[];
+  cost_tier: string | null;
+  pmjay_empanelled: boolean | null;
+  ncg_member: boolean;
+  contact: { phone: string | null; address: string | null };
+  key_doctors: Array<{ name: string; role: string }>;
+  notes: string;
+  navigation_notes: string[];
+  score: number;
+}
 
 // ─── Plan Step Types ───────────────────────────────────────────
 
@@ -100,6 +123,8 @@ export interface ExecutionPlan {
   estimatedRetrievalCalls: number;
   /** Whether this plan uses the structured template path */
   usesStructuredTemplate: boolean;
+  /** Structured hospital search results (populated when hospitalSearch signal detected) */
+  structuredHospitalResults?: HospitalSearchResult[] | null;
 }
 
 // ─── Signal Detection (reuses Phase 2 patterns) ────────────────
@@ -181,6 +206,25 @@ export class ExecutionPlannerService {
   private readonly logger = new Logger(ExecutionPlannerService.name);
   private planCounter = 0;
 
+  constructor(private readonly hospitalDirectory: HospitalDirectoryService) {}
+
+  /**
+   * Extract a cancer type keyword from free text.
+   * Returns a key that maps into CANCER_TYPE_DEPARTMENTS inside HospitalDirectoryService.
+   */
+  private extractCancerType(userText: string): string | null {
+    const lower = userText.toLowerCase();
+    if (/\b(oral|mouth|tongue|lip|throat|head.*neck|neck.*head)\b/i.test(lower)) return "oral";
+    if (/\b(breast)\b/i.test(lower)) return "breast";
+    if (/\b(cervical|cervix|uterus|uterine|ovarian|ovary|gynae)\b/i.test(lower)) return "cervical";
+    if (/\b(blood|leukemia|leukaemia|lymphoma|lymph)\b/i.test(lower)) return "blood";
+    if (/\b(child|pediatric|paediatric|bachche|bacha)\b/i.test(lower)) return "pediatric";
+    if (/\b(lung|pheph)\b/i.test(lower)) return "lung";
+    if (/\b(stomach|gastric|colon|colorectal|intestine|gi cancer|liver|pancrea)\b/i.test(lower)) return "gi";
+    if (/\b(prostate)\b/i.test(lower)) return "prostate";
+    return null;
+  }
+
   /**
    * Generate an execution plan for a given query.
    *
@@ -197,6 +241,30 @@ export class ExecutionPlannerService {
     const detected = detectSignals(userText, sessionContext);
     const steps: PlanStep[] = [];
     const reasoningParts: string[] = [];
+
+    // ── Hospital Intelligence: structured lookup for hospital_search signals ──
+    let structuredHospitalResults: HospitalSearchResult[] | null = null;
+    if (detected.hospitalSearch && category === "NAVIGATION" && this.hospitalDirectory.isLoaded()) {
+      const locationResult = detectLocation(userText);
+      const cancerType = this.extractCancerType(userText);
+      const pmjayRequired =
+        detected.schemeQuery ||
+        /\b(pmjay|ayushman|pm-jay|government\s+hospital|sarkari|free\s+hospital)\b/i.test(userText.toLowerCase());
+      const affordabilityTier: "low" | "medium" | "any" = detected.budgetConcern ? "low" : "any";
+
+      structuredHospitalResults = this.hospitalDirectory.searchHospitals({
+        city: locationResult?.city ?? null,
+        state: locationResult?.state ?? null,
+        cancerType,
+        pmjayRequired,
+        affordabilityTier,
+        maxResults: 3,
+      });
+
+      reasoningParts.push(
+        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, cancerType=${cancerType ?? "any"}, pmjay=${pmjayRequired})`
+      );
+    }
 
     // 1. Select structured template (if applicable)
     const template = selectOutputTemplate(category, detected.signals, userText);
@@ -352,6 +420,7 @@ export class ExecutionPlannerService {
         signals: detected.signals,
         estimatedRetrievalCalls: 5,
         usesStructuredTemplate,
+        structuredHospitalResults,
       };
     }
 
@@ -374,6 +443,7 @@ export class ExecutionPlannerService {
       signals: detected.signals,
       estimatedRetrievalCalls: retrievalCalls.length,
       usesStructuredTemplate,
+      structuredHospitalResults,
     };
   }
 

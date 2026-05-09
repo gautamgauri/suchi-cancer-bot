@@ -1,0 +1,23 @@
+# Dockerfile for Suchi Navigator Daily Research Job
+# Runs as a Cloud Run Job triggered by Cloud Scheduler.
+# On each run: picks next pending batch → researches via Claude API →
+# gates through inclusion criteria → emails Gautam + Divya for approval.
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy navigator package files
+COPY navigator/package.json navigator/package-lock.json* ./
+
+# Install all dependencies (including @anthropic-ai/sdk)
+RUN npm ci 2>/dev/null || npm install
+
+# Copy navigator source
+COPY navigator/ ./
+
+# Copy seed data (queue.json and hospitals.json are overridden at runtime by GCS adapter)
+COPY apps/landing/src/content/hospitals.json ./hospitals.json
+
+ENV NODE_ENV=production
+
+CMD ["npx", "ts-node", "--transpile-only", "daily-researcher.ts"]

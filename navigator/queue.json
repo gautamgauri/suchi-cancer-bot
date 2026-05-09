@@ -1,0 +1,25 @@
+{
+  "batches": [
+    {
+      "id": "jharkhand-batch-1",
+      "region": "Jharkhand",
+      "status": "pending",
+      "hospitals": [],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "west-bengal-batch-1",
+      "region": "West Bengal",
+      "status": "pending",
+      "hospitals": [],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "sikkim-northeast-batch-1",
+      "region": "Sikkim and Northeast",
+      "status": "pending",
+      "hospitals": [],
+      "createdAt": "2026-05-09T00:00:00Z"
+    }
+  ]
+}

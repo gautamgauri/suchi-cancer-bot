@@ -1,0 +1,55 @@
+steps:
+  # Build the navigator research job image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile.navigator-research'
+      - '-t'
+      - 'gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
+      - '.'
+
+  # Push the image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
+
+  # Deploy as a Cloud Run Job (create or update)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'deploy'
+      - 'suchi-navigator-research'
+      - '--image=gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
+      - '--region=us-central1'
+      - '--service-account=suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com'
+      - '--set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,NAVIGATOR_APPROVAL_SECRET=NAVIGATOR_APPROVAL_SECRET:latest,SMTP_PASS=SMTP_PASS:latest'
+      - '--set-env-vars=QUEUE_GCS_BUCKET=suchi-navigator-state,GOOGLE_CLOUD_PROJECT=gen-lang-client-0202543132'
+      - '--max-retries=1'
+      - '--task-timeout=600s'
+      - '--project=gen-lang-client-0202543132'
+
+images:
+  - 'gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
+
+# After deploying, set up Cloud Scheduler trigger with:
+#
+#   gcloud scheduler jobs create http suchi-navigator-daily \
+#     --location=us-central1 \
+#     --schedule="0 8 * * *" \
+#     --time-zone="Asia/Kolkata" \
+#     --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/gen-lang-client-0202543132/jobs/suchi-navigator-research:run" \
+#     --message-body='{}' \
+#     --oauth-service-account-email=suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com
+#
+# GCS bucket setup (one-time):
+#   gsutil mb -p gen-lang-client-0202543132 -l us-central1 gs://suchi-navigator-state
+#   gsutil cp navigator/queue.json gs://suchi-navigator-state/queue.json
+#   gsutil cp apps/landing/src/content/hospitals.json gs://suchi-navigator-state/hospitals.json
+#
+# Required Secret Manager secrets (create if not present):
+#   gcloud secrets create ANTHROPIC_API_KEY --data-file=- <<< "<key>"
+#   gcloud secrets create NAVIGATOR_APPROVAL_SECRET --data-file=- <<< "<random-secret>"

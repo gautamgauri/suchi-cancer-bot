@@ -20,6 +20,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import {
   ExecutionPlan,
+  HospitalSearchResult,
   PlanStep,
   RetrievalStep,
   TemplateStep,
@@ -96,6 +97,8 @@ export interface PlanExecutionResult {
   totalLatencyMs: number;
   /** Errors encountered */
   errors: string[];
+  /** Structured hospital results from HospitalDirectoryService (when hospital_search detected) */
+  structuredHospitalResults?: HospitalSearchResult[] | null;
 }
 
 // ─── Service ───────────────────────────────────────────────────
@@ -254,6 +257,7 @@ export class PlanExecutorService {
       verification,
       totalLatencyMs,
       errors,
+      structuredHospitalResults: plan.structuredHospitalResults ?? null,
     };
   }
 

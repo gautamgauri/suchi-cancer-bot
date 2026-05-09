@@ -33,7 +33,7 @@ import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
 import { CrossLingualService } from "../rag/cross-lingual.service";
 // Phase 3 Agentic components
-import { ExecutionPlannerService } from "./execution-planner.service";
+import { ExecutionPlannerService, HospitalSearchResult } from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { ReviewService } from "../review/review.service";
@@ -1079,6 +1079,8 @@ export class ChatService {
       emotionalState,
     };
 
+    let structuredHospitalResults: HospitalSearchResult[] | null = null;
+
     if (this.executionPlanner.needsPlanning(dto.userText, agenticIntent.category, intentResult.intent)) {
       const plan = this.executionPlanner.plan(
         dto.userText,
@@ -1087,6 +1089,7 @@ export class ChatService {
         session.locale || dto.locale || "en",
         intentResult.intent
       );
+      structuredHospitalResults = plan.structuredHospitalResults ?? null;
 
       // Only use the structured template path (non-template path falls through to existing flow)
       if (plan.usesStructuredTemplate) {
@@ -1840,6 +1843,11 @@ export class ChatService {
       const checklist = this.structuredExtractor.formatForPrompt(extraction);
       const extractionMs = Date.now() - extractionStarted;
 
+      // For navigation intents: prepend structured hospital facts to the checklist slot so the LLM
+      // treats them as authoritative before KB references. KB markdown remains for pathway guidance.
+      const hospitalContextBlock = isNavigationIntent ? this.buildHospitalContextBlock(structuredHospitalResults) : "";
+      const combinedChecklist = [hospitalContextBlock, checklist].filter(Boolean).join("\n\n");
+
       // Generate response with Explain Mode prompt + checklist
       const llm1Started = Date.now();
       llmCallCount++;
@@ -1850,7 +1858,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           mightBeIdentifyQuestion,
-          { hasGenerallyAsking, cancerType, emotionalState, checklist, intent: intentResult.intent, patientState, channel: dto.channel },
+          { hasGenerallyAsking, cancerType, emotionalState, checklist: combinedChecklist, intent: intentResult.intent, patientState, channel: dto.channel },
           undefined,
           obsTrace?.id
         ),
@@ -3185,5 +3193,42 @@ export class ChatService {
     );
 
     return { id: assistant.id, text: assistant.text };
+  }
+
+  /**
+   * Formats structured hospital search results into an authoritative context block
+   * for the LLM. Injected into the checklist slot so hospital facts are treated as
+   * verified data, not probabilistic RAG retrieval.
+   *
+   * Returns empty string if no results (LLM falls back to KB markdown only).
+   */
+  private buildHospitalContextBlock(results: HospitalSearchResult[] | null): string {
+    if (!results || results.length === 0) return "";
+
+    const hospitalLines = results.map((h, i) => {
+      const depts = h.departments.map((d) => d.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())).join(", ");
+      const pmjay = h.pmjay_empanelled === true ? "Yes" : h.pmjay_empanelled === false ? "No" : "Unverified — confirm with hospital";
+      const ncg = h.ncg_member ? "Yes" : "No";
+      const tier = h.tier ? ` (Tier ${h.tier})` : "";
+      const phone = h.contact?.phone ? `\n  Phone: ${h.contact.phone}` : "";
+      const address = h.contact?.address ? `\n  Address: ${h.contact.address}` : "";
+      const navNotes = h.navigation_notes?.length > 0 ? `\n  Navigation: ${h.navigation_notes.join(" | ")}` : "";
+      const notes = h.notes ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}` : "";
+
+      return `[Hospital ${i + 1}] ${h.name}${tier}
+  Type: ${h.type} | City: ${h.city}, ${h.state}
+  Departments: ${depts || "Not specified"}
+  PMJAY: ${pmjay} | NCG Member: ${ncg} | Cost: ${h.cost_tier || "Unknown"}${phone}${address}${navNotes}${notes}`;
+    }).join("\n\n");
+
+    return `=== VERIFIED HOSPITAL DIRECTORY DATA ===
+The following hospitals are from the Suchi Navigator structured database (verified entries). Use these facts directly — do NOT infer, embellish, or mention hospitals not listed here.
+
+Present hospitals as "major treatment centres" or "cancer treatment centres available in the area." NEVER say "best hospital" or make definitive treatment recommendations.
+
+${hospitalLines}
+
+MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
+=== END HOSPITAL DATA ===`;
   }
 }

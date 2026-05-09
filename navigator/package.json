@@ -1,0 +1,25 @@
+{
+  "name": "suchi-navigator",
+  "version": "1.0.0",
+  "description": "Hospital research pipeline for Suchi Navigator — find, review, and approve cancer hospitals",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "run": "ts-node cli.ts",
+    "daily-research": "ts-node daily-researcher.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "nodemailer": "^8.0.4"
+  },
+  "optionalDependencies": {
+    "@google-cloud/secret-manager": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/nodemailer": "^7.0.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
