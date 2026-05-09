@@ -1,0 +1,171 @@
+{
+  "batch_id": "national-referral-gov-10",
+  "hospitals": [
+    {
+      "id": "govt-medical-college-kozhikode",
+      "name": "Government Medical College Kozhikode — Regional Cancer Centre",
+      "short_name": "GMC Kozhikode Cancer",
+      "city": "Kozhikode",
+      "state": "Kerala",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0495-2350216",
+        "address": "Medical College Road, Kozhikode - 673008",
+        "website": "https://www.gmckozhikode.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Abdul Azeez", "role": "Radiation Oncology" }
+      ],
+      "notes": "Regional cancer centre for Malabar coast; strong in tobacco-related oral cancers. Kerala Karunya health scheme anchor.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Kerala Karunya scheme and PMJAY accepted; free for BPL"
+      ],
+      "score": 76,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.gmckozhikode.ac.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "mgmch-indore",
+      "name": "Mahatma Gandhi Memorial Medical College and MY Hospital — Cancer Department",
+      "short_name": "MGMMC Indore",
+      "city": "Indore",
+      "state": "Madhya Pradesh",
+      "region": "Central",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0731-2527500",
+        "address": "Maharani Hospital Road, Indore - 452001",
+        "website": "https://mgmindore.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Dinesh Pendharkar", "role": "Medical Oncology" }
+      ],
+      "notes": "Major government cancer referral for western MP and Malwa region. Mukhyamantri Swasthya Seva Yojana anchor.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; MP Swasthya Seva Yojana and PMJAY accepted"
+      ],
+      "score": 74,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://mgmindore.ac.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-rajkot",
+      "name": "All India Institute of Medical Sciences, Rajkot",
+      "short_name": "AIIMS Rajkot",
+      "city": "Rajkot",
+      "state": "Gujarat",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0281-2577700",
+        "address": "Manavadar Road, Rajkot - 360001",
+        "website": "https://www.aiimsrajkot.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Kiran Parmar", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS for Saurashtra and Kutch regions; supplements GCRI for Gujarat. Oncology department operational 2024.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; MA Yojana (Gujarat) and PMJAY accepted"
+      ],
+      "score": 75,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsrajkot.edu.in"],
+      "national_referral": true
+    },
+    {
+      "id": "rims-imphal",
+      "name": "Regional Institute of Medical Sciences — Cancer Unit",
+      "short_name": "RIMS Imphal",
+      "city": "Imphal",
+      "state": "Manipur",
+      "region": "Northeast",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0385-2441396",
+        "address": "Lamphelpat, Imphal - 795004",
+        "website": "https://rims.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Kh. Ratan Singh", "role": "Surgical Oncology" }
+      ],
+      "notes": "Primary government cancer referral for Manipur and surrounding northeastern states. Critical in context of tobacco and betel-related cancers in region.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; PMJAY and Manipur state scheme accepted"
+      ],
+      "score": 73,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://rims.nic.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "pgimer-dr-rml-hospital-delhi",
+      "name": "Dr. Ram Manohar Lohia Hospital — Oncology Department",
+      "short_name": "RML Hospital Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "011-23365525",
+        "address": "Baba Kharak Singh Marg, New Delhi - 110001",
+        "website": "https://www.rmlh.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Avinash Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Central Government hospital in the heart of Delhi; CGHS primary empanelled centre. Key referral for government employees and EWS patients in Delhi.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; CGHS, ECHS, and PMJAY accepted; free for economically weak",
+        "Located near Connaught Place — central and accessible by metro"
+      ],
+      "score": 79,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.rmlh.nic.in/departments/oncology"],
+      "national_referral": true
+    }
+  ]
+}

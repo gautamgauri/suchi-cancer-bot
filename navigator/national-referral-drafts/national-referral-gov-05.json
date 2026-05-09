@@ -1,0 +1,178 @@
+{
+  "batch_id": "national-referral-gov-05",
+  "hospitals": [
+    {
+      "id": "gauhati-medical-college-guwahati",
+      "name": "Gauhati Medical College and Hospital — Dr. B. Borooah Cancer Institute",
+      "short_name": "BBCI Guwahati",
+      "city": "Guwahati",
+      "state": "Assam",
+      "region": "Northeast",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0361-2529457",
+        "address": "A. K. Azad Road, Gopinath Nagar, Guwahati - 781016",
+        "website": "https://www.bbcionline.org"
+      },
+      "key_doctors": [
+        { "name": "Dr. Manigreeva Krishnatreya", "role": "Director & Surgical Oncology" },
+        { "name": "Dr. Apurba Kumar Kalita", "role": "Medical Oncology" }
+      ],
+      "notes": "NCI-designated apex cancer institute for Northeast India; handles highest volume in the region.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; Atal Amrit Abhiyan (Assam) and PMJAY accepted",
+        "Patient dormitory available on campus"
+      ],
+      "score": 88,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.bbcionline.org/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "sri-ram-chandra-bhanj-medical-college-cuttack",
+      "name": "Acharya Harihar Post Graduate Institute of Cancer, Cuttack",
+      "short_name": "AHPGI Cancer Cuttack",
+      "city": "Cuttack",
+      "state": "Odisha",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0671-2304233",
+        "address": "Manglabag, Cuttack - 753007",
+        "website": "https://ahpgi.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Lalit Kumar Pattanayak", "role": "Director & Medical Oncology" }
+      ],
+      "notes": "State apex cancer centre for Odisha. High volume in cervical and oral cavity cancers. Biju Swasthya Kalyan Yojana anchor.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; Biju Swasthya Kalyan Yojana and PMJAY accepted; free for BPL",
+        "Patient rest house nearby at Cuttack town"
+      ],
+      "score": 87,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://ahpgi.nic.in/department"],
+      "national_referral": true
+    },
+    {
+      "id": "rajiv-gandhi-cancer-institute-new-delhi",
+      "name": "Rajiv Gandhi Cancer Institute and Research Centre",
+      "short_name": "RGCI New Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Head & Neck Oncology", "Robotic Surgery", "Palliative Care"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "011-47022222",
+        "address": "Sir Chhotu Ram Marg, Sector 5, Rohini, New Delhi - 110085",
+        "website": "https://www.rgcirc.org"
+      },
+      "key_doctors": [
+        { "name": "Dr. Vinod Raina", "role": "Medical Oncology" },
+        { "name": "Dr. Ullas Batra", "role": "Medical Oncology" }
+      ],
+      "notes": "Delhi government-supported institute with advanced technology. Handles complex haematology and robotic surgery. CGHS empanelled.",
+      "tier": "A",
+      "navigation_notes": [
+        "Online appointment via website recommended",
+        "CGHS, ECHS, PMJAY, and Delhi Arogya Kosh accepted"
+      ],
+      "score": 91,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.rgcirc.org/departments/medical-oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-lucknow",
+      "name": "Dr. Ram Manohar Lohia Institute of Medical Sciences",
+      "short_name": "RMLIMS Lucknow",
+      "city": "Lucknow",
+      "state": "Uttar Pradesh",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0522-4940000",
+        "address": "Vibhuti Khand, Gomti Nagar, Lucknow - 226010",
+        "website": "https://rmlims.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Munna Lal Patel", "role": "Medical Oncology" }
+      ],
+      "notes": "Key UP state referral centre; serves large Hindi-belt population. Strong surgical oncology for GI and breast cancers.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; UP Mukhyamantri Jan Arogya Abhiyan and PMJAY accepted",
+        "Suvidha patient accommodation block on campus"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://rmlims.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "kgmu-lucknow",
+      "name": "King George's Medical University — Cancer Research Centre",
+      "short_name": "KGMU Lucknow",
+      "city": "Lucknow",
+      "state": "Uttar Pradesh",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Haematology", "Nuclear Medicine"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0522-2257450",
+        "address": "Shah Mina Road, Chowk, Lucknow - 226003",
+        "website": "https://kgmu.org"
+      },
+      "key_doctors": [
+        { "name": "Dr. Narendra Kumar", "role": "Radiation Oncology" },
+        { "name": "Dr. Soniya Nityanand", "role": "Haematology" }
+      ],
+      "notes": "One of India's oldest medical universities; strong haematology and BMT. High volume north Indian referral centre.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; free for BPL patients; PMJAY accepted",
+        "Multiple patient rest houses around campus area"
+      ],
+      "score": 84,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://kgmu.org/departments/oncology"],
+      "national_referral": true
+    }
+  ]
+}

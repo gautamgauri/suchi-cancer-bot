@@ -1,0 +1,181 @@
+{
+  "batch_id": "national-referral-gov-01",
+  "hospitals": [
+    {
+      "id": "aiims-new-delhi",
+      "name": "All India Institute of Medical Sciences, New Delhi",
+      "short_name": "AIIMS New Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Paediatric Oncology", "Nuclear Medicine", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "011-26588500",
+        "address": "Sri Aurobindo Marg, Ansari Nagar, New Delhi - 110029",
+        "website": "https://www.aiims.edu"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sanjay Sharma", "role": "Head, Medical Oncology" },
+        { "name": "Dr. Seema Mishra", "role": "Head, Palliative Care" }
+      ],
+      "notes": "Premier national referral centre; one of the highest-volume cancer programmes in India. Apex referral for complex oncology cases nationwide.",
+      "tier": "A",
+      "navigation_notes": [
+        "Registration via AIIMS OPD Registration Portal or on-site at 8 AM",
+        "Bring all prior records and biopsy slides",
+        "Accommodation at Dharamshala nearby; Asha Jyoti Kendra for outstation patients"
+      ],
+      "score": 98,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.aiims.edu/en/departments-and-centres/oncology.html", "https://mohfw.gov.in"],
+      "national_referral": true
+    },
+    {
+      "id": "tata-memorial-mumbai",
+      "name": "Tata Memorial Hospital",
+      "short_name": "TMH Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Head & Neck Oncology", "Gynaecologic Oncology", "Paediatric Oncology", "Bone Marrow Transplant", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "022-24177000",
+        "address": "Dr. E Borges Road, Parel, Mumbai - 400012",
+        "website": "https://tmc.gov.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. C.S. Pramesh", "role": "Director" },
+        { "name": "Dr. Rajendra Badwe", "role": "Former Director, Surgical Oncology" }
+      ],
+      "notes": "Largest dedicated cancer centre in Asia; DAE-funded. National apex centre for cancer research and treatment.",
+      "tier": "A",
+      "navigation_notes": [
+        "Walk-in registration Monday–Friday 7:30 AM at OPD registration counter",
+        "Subsidised canteen and patient dormitory available",
+        "CGHS and state insurance accepted"
+      ],
+      "score": 99,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://tmc.gov.in", "https://www.ncbi.nlm.nih.gov/pmc/articles/TMH"],
+      "national_referral": true
+    },
+    {
+      "id": "pgimer-chandigarh",
+      "name": "Post Graduate Institute of Medical Education and Research",
+      "short_name": "PGIMER Chandigarh",
+      "city": "Chandigarh",
+      "state": "Chandigarh",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Nuclear Medicine", "Haematology", "Bone Marrow Transplant", "Palliative Medicine"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0172-2746018",
+        "address": "Sector 12, Chandigarh - 160012",
+        "website": "https://pgimer.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Rakesh Kapoor", "role": "Head, Radiotherapy" },
+        { "name": "Dr. Deepak Aggarwal", "role": "Medical Oncology" }
+      ],
+      "notes": "Premier institute serving North India and neighbouring states; strong haematology-oncology programme.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD registration open 8 AM; carry referral from district hospital for priority",
+        "Patient lodges (Atal Kendra) available within campus"
+      ],
+      "score": 95,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://pgimer.edu.in/PGIMER_PORTAL/PGIMERMAINPORTAL/deptpage.jsp?deptID=26"],
+      "national_referral": true
+    },
+    {
+      "id": "jipmer-puducherry",
+      "name": "Jawaharlal Institute of Postgraduate Medical Education and Research",
+      "short_name": "JIPMER Puducherry",
+      "city": "Puducherry",
+      "state": "Puducherry",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Palliative Care", "Nuclear Medicine"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0413-2296000",
+        "address": "Dhanvantari Nagar, Gorimedu, Puducherry - 605006",
+        "website": "https://www.jipmer.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Raja Sundaram", "role": "Medical Oncology" },
+        { "name": "Dr. Smita Kayal", "role": "Medical Oncology" }
+      ],
+      "notes": "National institute serving South India, particularly Tamil Nadu and Andhra Pradesh. Autonomous under MoHFW.",
+      "tier": "A",
+      "navigation_notes": [
+        "Free OPD registration; bring referral letter from PHC/CHC",
+        "Accommodation at JIPMER hospital complex dharamshala"
+      ],
+      "score": 93,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.jipmer.edu.in/departments/medical-oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "sctimst-thiruvananthapuram",
+      "name": "Sree Chitra Tirunal Institute for Medical Sciences and Technology",
+      "short_name": "SCTIMST Thiruvananthapuram",
+      "city": "Thiruvananthapuram",
+      "state": "Kerala",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Surgical Oncology", "Medical Oncology", "Radiation Oncology", "Neurosurgery Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0471-2524664",
+        "address": "Medical College PO, Thiruvananthapuram - 695011",
+        "website": "https://sctimst.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Rajesh U.", "role": "Surgical Oncology" }
+      ],
+      "notes": "Autonomous national institute under DST; specialises in complex surgical and cardio-oncology cases.",
+      "tier": "A",
+      "navigation_notes": [
+        "Referral via district hospitals recommended for faster access",
+        "Arogyasree and PMJAY accepted"
+      ],
+      "score": 88,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://sctimst.ac.in/care/oncology/"],
+      "national_referral": true
+    }
+  ]
+}

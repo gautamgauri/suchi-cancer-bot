@@ -1,0 +1,178 @@
+{
+  "batch_id": "national-referral-pvt-02",
+  "hospitals": [
+    {
+      "id": "hcg-cancer-centre-bangalore",
+      "name": "HCG Cancer Centre, Bengaluru",
+      "short_name": "HCG Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Head & Neck Oncology", "Paediatric Oncology", "Nuclear Medicine"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "080-40206000",
+        "address": "HCG Cancer Centre, No 8, P. Kalinga Rao Road, Sampangiramnagar, Bengaluru - 560027",
+        "website": "https://www.hcgoncology.com"
+      },
+      "key_doctors": [
+        { "name": "Dr. BS Ajaikumar", "role": "Chairman & Radiation Oncology" },
+        { "name": "Dr. Vishal Rao", "role": "Head & Neck Surgical Oncology" }
+      ],
+      "notes": "India's largest cancer-specific network (50+ centres). Bengaluru flagship is the most advanced. Strong in head & neck, BMT, and radiosurgery.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via hcgoncology.com or 080-40206000",
+        "Corporate insurance and CGHS accepted at flagship; some affordable packages"
+      ],
+      "score": 92,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.hcgoncology.com/centres/bangalore"],
+      "national_referral": true
+    },
+    {
+      "id": "manipal-comprehensive-cancer-centre-manipal",
+      "name": "Manipal Comprehensive Cancer Centre, Manipal",
+      "short_name": "MCCC Manipal",
+      "city": "Manipal",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0820-2922340",
+        "address": "Manipal Hospital, Tiger Circle, Madhav Nagar, Manipal - 576104",
+        "website": "https://www.manipalhospitals.com/manipal/specialties/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Krishna Sharan", "role": "Radiation Oncology" },
+        { "name": "Dr. Sandeep Nayak", "role": "Surgical Oncology" }
+      ],
+      "notes": "Deemed university hospital; one of the best-balanced cost-to-quality cancer centres in India. Ayushman Bharat empanelled. NCG member.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via manipalhospitals.com or 0820-2922340",
+        "Ayushman Bharat, Karnataka Arogya scheme, and PMJAY accepted",
+        "Affordable campus accommodation at Manipal"
+      ],
+      "score": 89,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.manipalhospitals.com/manipal/specialties/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "lilavati-hospital-cancer-mumbai",
+      "name": "Lilavati Hospital and Research Centre — Oncology",
+      "short_name": "Lilavati Cancer Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Bone Marrow Transplant"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "022-26751000",
+        "address": "A-791, Bandra Reclaimation, Bandra (West), Mumbai - 400050",
+        "website": "https://lilavatihospital.com/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sudeep Gupta", "role": "Medical Oncology" },
+        { "name": "Dr. Anil D'Cruz", "role": "Head & Neck Surgical Oncology" }
+      ],
+      "notes": "Reputed private hospital with strong head & neck and gynaecologic oncology programme. Well-known for complex surgical oncology.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via lilavatihospital.com or 022-26751000",
+        "Corporate and private insurance accepted; no PMJAY"
+      ],
+      "score": 87,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://lilavatihospital.com/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "breach-candy-hospital-cancer-mumbai",
+      "name": "Breach Candy Hospital Trust — Oncology",
+      "short_name": "Breach Candy Cancer Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "022-23667888",
+        "address": "60-A, Bhulabhai Desai Road, Mumbai - 400026",
+        "website": "https://breachcandyhospital.org"
+      },
+      "key_doctors": [
+        { "name": "Dr. Piyush Ostwal", "role": "Medical Oncology" }
+      ],
+      "notes": "Historic private hospital; smaller volume but high quality. Preferred by south Mumbai affluent catchment. Strong post-op palliative support.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via 022-23667888; private pay or insurance only"
+      ],
+      "score": 79,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://breachcandyhospital.org/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "jaslok-hospital-cancer-mumbai",
+      "name": "Jaslok Hospital and Research Centre — Cancer Care",
+      "short_name": "Jaslok Cancer Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "022-66573333",
+        "address": "15, Dr. G. Deshmukh Marg, Mumbai - 400026",
+        "website": "https://www.jaslokhospital.net/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Rajiv Sarin", "role": "Radiation Oncology" }
+      ],
+      "notes": "Well-established private hospital with comprehensive oncology. Strong in breast and haematological malignancies. CGHS empanelled.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via 022-66573333 or jaslokhospital.net",
+        "CGHS, ECHS, and most private insurance accepted"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.jaslokhospital.net/oncology"],
+      "national_referral": true
+    }
+  ]
+}

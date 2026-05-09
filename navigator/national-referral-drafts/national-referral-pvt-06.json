@@ -1,0 +1,175 @@
+{
+  "batch_id": "national-referral-pvt-06",
+  "hospitals": [
+    {
+      "id": "amri-hospitals-cancer-kolkata",
+      "name": "AMRI Hospitals — Cancer Care, Kolkata",
+      "short_name": "AMRI Cancer Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "033-30309999",
+        "address": "P-4 & 5, CIT Scheme LXXII, Gariahat, Kolkata - 700029",
+        "website": "https://www.amrihospitals.in/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Ranajit Mandal", "role": "Surgical Oncology" }
+      ],
+      "notes": "Established private cancer centre for South Kolkata catchment. Preferred private option for insured patients in West Bengal.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via amrihospitals.in or 033-30309999",
+        "Corporate and private insurance accepted"
+      ],
+      "score": 78,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.amrihospitals.in/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "medica-cancer-hospital-kolkata",
+      "name": "Medica Superspecialty Hospital — Cancer Institute, Kolkata",
+      "short_name": "Medica Cancer Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "033-66520000",
+        "address": "127, Mukundapur, E.M. Bypass, Kolkata - 700099",
+        "website": "https://www.medicainstitutions.com/cancer-institute"
+      },
+      "key_doctors": [
+        { "name": "Dr. Biswajit Ghosh", "role": "Medical Oncology" }
+      ],
+      "notes": "Mid-cost private cancer option in Kolkata; PMJAY empanelled. Important for patients who need private-sector quality without prohibitive cost in West Bengal.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via medicainstitutions.com or 033-66520000",
+        "PMJAY (Swasthya Sathi) and corporate insurance accepted"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.medicainstitutions.com/cancer-institute"],
+      "national_referral": true
+    },
+    {
+      "id": "hcg-cancer-ahmedabad",
+      "name": "HCG Cancer Centre, Ahmedabad",
+      "short_name": "HCG Cancer Ahmedabad",
+      "city": "Ahmedabad",
+      "state": "Gujarat",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "079-40018800",
+        "address": "Commerce Six Roads, Navrangpura, Ahmedabad - 380009",
+        "website": "https://www.hcgoncology.com/centres/ahmedabad"
+      },
+      "key_doctors": [
+        { "name": "Dr. Gaurang Baxi", "role": "Medical Oncology" }
+      ],
+      "notes": "HCG's Gujarat flagship; complements GCRI for private-pay patients in Ahmedabad. Strong oral and tobacco-related cancer programme.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via hcgoncology.com or 079-40018800",
+        "Corporate and private insurance accepted; MA Yojana tie-up pending"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.hcgoncology.com/centres/ahmedabad"],
+      "national_referral": true
+    },
+    {
+      "id": "sterling-hospital-cancer-ahmedabad",
+      "name": "Sterling Hospital — Cancer Care, Ahmedabad",
+      "short_name": "Sterling Cancer Ahmedabad",
+      "city": "Ahmedabad",
+      "state": "Gujarat",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "079-40011000",
+        "address": "Sterling Hospital Road, Bodakdev, Ahmedabad - 380052",
+        "website": "https://www.sterlinghospitals.com/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Purvesh Patel", "role": "Radiation Oncology" }
+      ],
+      "notes": "Affordable mid-tier private cancer centre in Ahmedabad; MA Yojana and PMJAY empanelled. Good option for middle-income Gujarat patients.",
+      "tier": "C",
+      "navigation_notes": [
+        "Appointment via sterlinghospitals.com or 079-40011000",
+        "MA Yojana (Gujarat) and PMJAY accepted"
+      ],
+      "score": 73,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.sterlinghospitals.com/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "care-hospitals-cancer-hyderabad",
+      "name": "CARE Hospitals — Cancer Centre, Hyderabad",
+      "short_name": "CARE Cancer Hyderabad",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant"],
+      "cost_tier": "high",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "040-30418888",
+        "address": "Exhibition Road, Nampally, Hyderabad - 500001",
+        "website": "https://www.carehospitals.com/specialities/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Srinivas Chakravarthy", "role": "Medical Oncology" }
+      ],
+      "notes": "Established private cancer centre in Hyderabad; Aarogyasri and PMJAY empanelled — important for middle-income Telangana patients. Bone marrow transplant available.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via carehospitals.com or 040-30418888",
+        "Aarogyasri and PMJAY accepted"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.carehospitals.com/specialities/cancer-care"],
+      "national_referral": true
+    }
+  ]
+}

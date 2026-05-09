@@ -25,6 +25,8 @@ export interface HospitalSearchParams {
   pmjayRequired?: boolean;
   affordabilityTier?: "low" | "medium" | "any";
   maxResults?: number;
+  /** When false, skip appending national referral centres (e.g. already national-scope query) */
+  includeNational?: boolean;
 }
 
 export interface HospitalSearchResult {
@@ -45,7 +47,10 @@ export interface HospitalSearchResult {
   notes: string;
   navigation_notes: string[];
   score: number;
+  /** True when this is a national referral centre surfaced alongside regional results */
+  national_referral?: boolean;
 }
+
 
 export interface ComparisonResult {
   hospitals: HospitalSearchResult[];
@@ -70,10 +75,19 @@ export interface VisitPrep {
 
 // ─── Service ───────────────────────────────────────────────────
 
+/** National states — queries for these locations don't need national referrals appended */
+const NATIONAL_SCOPE_STATES = new Set([
+  "Delhi", "Maharashtra", "Karnataka", "Tamil Nadu", "Telangana",
+  "Gujarat", "Punjab", "Haryana", "Chandigarh",
+]);
+
 @Injectable()
 export class HospitalDirectoryService implements OnModuleInit {
   private readonly logger = new Logger(HospitalDirectoryService.name);
+  /** Regional hospitals: East India + Uttar Pradesh + Northeast */
   private hospitals: HospitalSearchResult[] = [];
+  /** National referral centres: major cancer hospitals patients travel to from anywhere in India */
+  private nationalHospitals: HospitalSearchResult[] = [];
 
   /** Cancer type keyword → departments that treat it */
   private readonly CANCER_TYPE_DEPARTMENTS: Record<string, string[]> = {
@@ -117,15 +131,22 @@ export class HospitalDirectoryService implements OnModuleInit {
         if (fs.existsSync(candidate)) {
           const raw = fs.readFileSync(candidate, "utf-8");
           const parsed = JSON.parse(raw);
-          const allHospitals: HospitalSearchResult[] = parsed.hospitals ?? [];
-          // Filter out Tier D at load time — never expose in search
-          this.hospitals = allHospitals.filter((h) => h.tier !== "D");
+          const allHospitals: (HospitalSearchResult & { national_referral?: boolean })[] =
+            parsed.hospitals ?? [];
+          // Exclude Tier D entirely
+          const active = allHospitals.filter((h) => h.tier !== "D");
+          // Split into regional pool and national referral pool
+          this.nationalHospitals = active
+            .filter((h) => h.national_referral === true)
+            .map((h) => ({ ...h, national_referral: true as const }));
+          this.hospitals = active.filter((h) => h.national_referral !== true);
           this.logger.log({
             event: "hospital_directory_loaded",
             path: candidate,
             total: allHospitals.length,
-            active: this.hospitals.length,
-            tierDFiltered: allHospitals.length - this.hospitals.length,
+            regional: this.hospitals.length,
+            national: this.nationalHospitals.length,
+            tierDFiltered: allHospitals.length - active.length,
           });
           return;
         }
@@ -145,6 +166,7 @@ export class HospitalDirectoryService implements OnModuleInit {
       message: "Hospital directory unavailable — falling back to KB markdown for navigation queries",
     });
     this.hospitals = [];
+    this.nationalHospitals = [];
   }
 
   // ─── Public API ────────────────────────────────────────────────
@@ -246,14 +268,65 @@ export class HospitalDirectoryService implements OnModuleInit {
 
     // ── 5. Sort + limit ──
     results.sort((a, b) => b.score - a.score);
-    return results.slice(0, params.maxResults ?? 3);
+    const regionalResults = results.slice(0, params.maxResults ?? 3);
+
+    // ── 6. Append national referral centres ──
+    // Skip if: explicitly disabled, or the query is already national-scope
+    // (i.e. user asked about Delhi/Mumbai/Bangalore directly)
+    const skipNational =
+      params.includeNational === false ||
+      NATIONAL_SCOPE_STATES.has(params.state ?? "") ||
+      NATIONAL_SCOPE_STATES.has(params.city ?? "");
+
+    if (skipNational || this.nationalHospitals.length === 0) {
+      return regionalResults;
+    }
+
+    // Filter national pool by cancer type if specified, then pick top 2 by score
+    let nationalPool = [...this.nationalHospitals];
+    if (params.cancerType) {
+      const targetDepts = this.CANCER_TYPE_DEPARTMENTS[params.cancerType] ?? [];
+      if (targetDepts.length > 0) {
+        const typeFiltered = nationalPool.filter((h) =>
+          h.departments.some((d) => targetDepts.includes(d))
+        );
+        if (typeFiltered.length > 0) nationalPool = typeFiltered;
+      }
+    }
+    // When PMJAY required, prefer government/low-cost national centres
+    if (params.pmjayRequired) {
+      const govNational = nationalPool.filter(
+        (h) =>
+          h.pmjay_empanelled === true ||
+          h.type.includes("Government") ||
+          h.cost_tier === "Low"
+      );
+      if (govNational.length > 0) nationalPool = govNational;
+    }
+
+    nationalPool.sort((a, b) => b.score - a.score);
+    const nationalResults = nationalPool
+      .slice(0, 2)
+      .map((h) => ({ ...h, national_referral: true as const }));
+
+    this.logger.debug({
+      event: "national_referrals_appended",
+      count: nationalResults.length,
+      ids: nationalResults.map((h) => h.id),
+    });
+
+    return [...regionalResults, ...nationalResults];
   }
 
   /**
-   * Fetch a single hospital by its stable ID.
+   * Fetch a single hospital by its stable ID (checks both regional and national pools).
    */
   getHospitalById(id: string): HospitalSearchResult | null {
-    return this.hospitals.find((h) => h.id === id) ?? null;
+    return (
+      this.hospitals.find((h) => h.id === id) ??
+      this.nationalHospitals.find((h) => h.id === id) ??
+      null
+    );
   }
 
   /**

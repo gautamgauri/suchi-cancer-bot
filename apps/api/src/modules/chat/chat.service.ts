@@ -3205,28 +3205,57 @@ export class ChatService {
   private buildHospitalContextBlock(results: HospitalSearchResult[] | null): string {
     if (!results || results.length === 0) return "";
 
-    const hospitalLines = results.map((h, i) => {
-      const depts = h.departments.map((d) => d.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())).join(", ");
-      const pmjay = h.pmjay_empanelled === true ? "Yes" : h.pmjay_empanelled === false ? "No" : "Unverified — confirm with hospital";
+    const regional = results.filter((h) => !h.national_referral);
+    const national = results.filter((h) => h.national_referral === true);
+
+    const formatHospital = (h: HospitalSearchResult, i: number): string => {
+      const depts = h.departments
+        .map((d) => d.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))
+        .join(", ");
+      const pmjay =
+        h.pmjay_empanelled === true
+          ? "Yes"
+          : h.pmjay_empanelled === false
+            ? "No"
+            : "Unverified — confirm with hospital";
       const ncg = h.ncg_member ? "Yes" : "No";
       const tier = h.tier ? ` (Tier ${h.tier})` : "";
       const phone = h.contact?.phone ? `\n  Phone: ${h.contact.phone}` : "";
       const address = h.contact?.address ? `\n  Address: ${h.contact.address}` : "";
-      const navNotes = h.navigation_notes?.length > 0 ? `\n  Navigation: ${h.navigation_notes.join(" | ")}` : "";
-      const notes = h.notes ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}` : "";
+      const navNotes =
+        h.navigation_notes?.length > 0
+          ? `\n  Navigation: ${h.navigation_notes.join(" | ")}`
+          : "";
+      const notes = h.notes
+        ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}`
+        : "";
 
-      return `[Hospital ${i + 1}] ${h.name}${tier}
+      return `[${i + 1}] ${h.name}${tier}
   Type: ${h.type} | City: ${h.city}, ${h.state}
   Departments: ${depts || "Not specified"}
   PMJAY: ${pmjay} | NCG Member: ${ncg} | Cost: ${h.cost_tier || "Unknown"}${phone}${address}${navNotes}${notes}`;
-    }).join("\n\n");
+    };
+
+    const regionalBlock =
+      regional.length > 0
+        ? `--- Regional / Nearby Centres ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
+        : "";
+
+    const nationalBlock =
+      national.length > 0
+        ? `--- National Referral Centres (patients from this region commonly travel here for specialised or complex care) ---\n${national.map((h, i) => formatHospital(h, i)).join("\n\n")}`
+        : "";
+
+    const combinedBlocks = [regionalBlock, nationalBlock].filter(Boolean).join("\n\n");
 
     return `=== VERIFIED HOSPITAL DIRECTORY DATA ===
 The following hospitals are from the Suchi Navigator structured database (verified entries). Use these facts directly — do NOT infer, embellish, or mention hospitals not listed here.
 
-Present hospitals as "major treatment centres" or "cancer treatment centres available in the area." NEVER say "best hospital" or make definitive treatment recommendations.
+Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
-${hospitalLines}
+When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
+
+${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
 === END HOSPITAL DATA ===`;

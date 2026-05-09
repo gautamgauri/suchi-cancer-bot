@@ -1,0 +1,180 @@
+{
+  "batch_id": "national-referral-gov-03",
+  "hospitals": [
+    {
+      "id": "kidwai-memorial-bangalore",
+      "name": "Kidwai Memorial Institute of Oncology",
+      "short_name": "KMIO Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "080-26094000",
+        "address": "Dr. M.H. Marigowda Road, Bengaluru - 560029",
+        "website": "https://www.kmio.kar.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. C. Ramachandra", "role": "Director & Head, Surgical Oncology" },
+        { "name": "Dr. Linu Abraham Jacob", "role": "Medical Oncology" }
+      ],
+      "notes": "Dedicated state cancer institute; one of South India's highest-volume cancer centres. Strong in gynaecologic and head & neck cancers.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD registration 8 AM; free for BPL patients",
+        "Arogya Karnataka scheme fully accepted; dormitory on campus"
+      ],
+      "score": 92,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.kmio.kar.nic.in", "https://indiancancersociety.org"],
+      "national_referral": true
+    },
+    {
+      "id": "cancer-institute-adyar-chennai",
+      "name": "Cancer Institute (WIA), Adyar",
+      "short_name": "Cancer Institute Chennai",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Palliative Care", "Cancer Genetics"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "044-24910754",
+        "address": "38, Sardar Patel Road, Adyar, Chennai - 600020",
+        "website": "https://cancerinstitutewia.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Shirley Sundersingh", "role": "Radiation Oncology" },
+        { "name": "Dr. Arvind Krishnamurthy", "role": "Surgical Oncology" }
+      ],
+      "notes": "Oldest dedicated cancer hospital in India (est. 1952). Strong genetics programme and palliative care.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD walk-in 8:30 AM; nominal registration fee",
+        "Chief Minister's Comprehensive Health Insurance accepted"
+      ],
+      "score": 91,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://cancerinstitutewia.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "regional-cancer-centre-thiruvananthapuram",
+      "name": "Regional Cancer Centre Thiruvananthapuram",
+      "short_name": "RCC Thiruvananthapuram",
+      "city": "Thiruvananthapuram",
+      "state": "Kerala",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Head & Neck Oncology", "Palliative Medicine", "Molecular Diagnostics"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0471-2442541",
+        "address": "Medical College Campus, Thiruvananthapuram - 695011",
+        "website": "https://www.rcctvm.gov.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Fiby George Lal", "role": "Director" },
+        { "name": "Dr. Arun Peter Mathew", "role": "Surgical Oncology" }
+      ],
+      "notes": "NCI-designated regional cancer centre; internationally recognised palliative care programme (WHO model). Best palliative access in India.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD token system from 7:30 AM; arrive early",
+        "Arogyasree, PMJAY, and Kerala state scheme accepted; free treatment for BPL"
+      ],
+      "score": 94,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.rcctvm.gov.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "gujarat-cancer-research-institute-ahmedabad",
+      "name": "Gujarat Cancer and Research Institute",
+      "short_name": "GCRI Ahmedabad",
+      "city": "Ahmedabad",
+      "state": "Gujarat",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "079-22685000",
+        "address": "New Civil Campus, Asarwa, Ahmedabad - 380016",
+        "website": "https://www.gcri.org.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Shilin N. Shukla", "role": "Director" },
+        { "name": "Dr. Prabhash Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Apex cancer centre for Gujarat and parts of Rajasthan. High volume; strong in oral and tobacco-related cancers.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD registration 8 AM; MA Yojana (Gujarat) and PMJAY accepted",
+        "Patient lodging at nearby Ma Amrutam scheme hostels"
+      ],
+      "score": 90,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.gcri.org.in/about-us"],
+      "national_referral": true
+    },
+    {
+      "id": "chittaranjan-national-cancer-institute-kolkata",
+      "name": "Chittaranjan National Cancer Institute",
+      "short_name": "CNCI Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "033-24765101",
+        "address": "37 S.P. Mukherjee Road, Kolkata - 700026",
+        "website": "https://cnci.org.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Subrata Mandal", "role": "Director" },
+        { "name": "Dr. Debjit Chatterjee", "role": "Medical Oncology" }
+      ],
+      "notes": "Premier cancer institute for eastern India; NCI-designated. Strong in haematological malignancies and gynaecologic cancers.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 9 AM; free for economically weak patients under state scheme",
+        "Swasthya Sathi (West Bengal) and PMJAY accepted"
+      ],
+      "score": 89,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://cnci.org.in/departments"],
+      "national_referral": true
+    }
+  ]
+}

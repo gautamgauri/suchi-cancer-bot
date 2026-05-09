@@ -1,0 +1,174 @@
+{
+  "batch_id": "national-referral-pvt-08",
+  "hospitals": [
+    {
+      "id": "kamineni-hospitals-cancer-hyderabad",
+      "name": "Kamineni Hospitals — Cancer Care, Hyderabad",
+      "short_name": "Kamineni Cancer Hyderabad",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "040-44550000",
+        "address": "L.B. Nagar, Hyderabad - 500068",
+        "website": "https://www.kamineihospitals.com/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Kishore Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Mid-size private cancer unit; Aarogyasri and PMJAY empanelled. Good lower-cost option for patients in South Hyderabad catchment.",
+      "tier": "C",
+      "navigation_notes": [
+        "Appointment via kamineihospitals.com or 040-44550000",
+        "Aarogyasri and PMJAY accepted"
+      ],
+      "score": 71,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.kamineihospitals.com/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "apollo-cancer-pune",
+      "name": "Jehangir Hospital Apollo — Cancer Centre, Pune",
+      "short_name": "Jehangir Apollo Cancer Pune",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "020-66810100",
+        "address": "32, Sassoon Road, Pune - 411001",
+        "website": "https://jehangir.apollohospitals.com/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sujay Susikar", "role": "Surgical Oncology" }
+      ],
+      "notes": "Apollo affiliate in Pune; strong in breast and GI cancers. Key private-sector referral for Pune and Nashik corridor.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via Apollo 24/7 app or 020-66810100",
+        "Corporate and private insurance accepted"
+      ],
+      "score": 78,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://jehangir.apollohospitals.com/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "rainbow-cancer-care-centre-vijayawada",
+      "name": "Andhra Hospital — Cancer Centre, Vijayawada",
+      "short_name": "Andhra Hospital Cancer Vijayawada",
+      "city": "Vijayawada",
+      "state": "Andhra Pradesh",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0866-2493300",
+        "address": "C.B.M. Compound, Maharani Peta, Vijayawada - 520002",
+        "website": "https://www.andrahospital.com/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Subha Rajan", "role": "Medical Oncology" }
+      ],
+      "notes": "Key private cancer centre for Krishna district and surrounding AP corridor. Aarogyasri empanelled — important for middle-income patients who cannot reach SVIMS.",
+      "tier": "C",
+      "navigation_notes": [
+        "Appointment via 0866-2493300; Aarogyasri (AP) and PMJAY accepted"
+      ],
+      "score": 72,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.andrahospital.com/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "narayana-cancer-ahmedabad",
+      "name": "Narayana Multispeciality Hospital — Cancer Care, Ahmedabad",
+      "short_name": "Narayana Cancer Ahmedabad",
+      "city": "Ahmedabad",
+      "state": "Gujarat",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "079-66770000",
+        "address": "Rakhial Road, Dharampur, Ahmedabad - 380005",
+        "website": "https://www.narayanahealth.org/hospitals/ahmedabad"
+      },
+      "key_doctors": [
+        { "name": "Dr. Vivek Garg", "role": "Medical Oncology" }
+      ],
+      "notes": "Affordable Narayana network cancer unit in Ahmedabad; PMJAY empanelled. Key option for low-income Gujarat patients who cannot access GCRI.",
+      "tier": "C",
+      "navigation_notes": [
+        "Appointment via narayanahealth.org or 079-66770000",
+        "PMJAY and MA Yojana (Gujarat) accepted"
+      ],
+      "score": 74,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.narayanahealth.org/hospitals/ahmedabad"],
+      "national_referral": true
+    },
+    {
+      "id": "sparsh-hospital-cancer-bangalore",
+      "name": "Sparsh Hospital — Cancer Care, Bengaluru",
+      "short_name": "Sparsh Cancer Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "080-40202020",
+        "address": "29/P2, Infantry Road, Bengaluru - 560001",
+        "website": "https://www.sparsh-hospital.com/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Prasad Narayanan", "role": "Medical Oncology" }
+      ],
+      "notes": "Mid-tier private cancer centre in Bengaluru; Arogya Karnataka and PMJAY empanelled. Good option for lower-income patients who cannot access KMIO or HCG.",
+      "tier": "C",
+      "navigation_notes": [
+        "Appointment via sparsh-hospital.com or 080-40202020",
+        "Arogya Karnataka and PMJAY accepted"
+      ],
+      "score": 72,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.sparsh-hospital.com/cancer-care"],
+      "national_referral": true
+    }
+  ]
+}

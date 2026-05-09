@@ -45,6 +45,7 @@ export interface HospitalSearchResult {
   notes: string;
   navigation_notes: string[];
   score: number;
+  national_referral?: boolean;
 }
 
 // ─── Plan Step Types ───────────────────────────────────────────

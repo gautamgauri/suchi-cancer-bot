@@ -1,0 +1,174 @@
+{
+  "batch_id": "national-referral-gov-06",
+  "hospitals": [
+    {
+      "id": "pgims-rohtak",
+      "name": "Pt. B.D. Sharma University of Health Sciences — PGIMS Rohtak",
+      "short_name": "PGIMS Rohtak",
+      "city": "Rohtak",
+      "state": "Haryana",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Nuclear Medicine"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "01262-211300",
+        "address": "PGIMS Road, Rohtak - 124001",
+        "website": "https://pgims.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Narendra Kumar Rana", "role": "Radiation Oncology" }
+      ],
+      "notes": "Primary government cancer referral for Haryana; handles large volume of head & neck and cervical cancers.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Ayushman Bharat and Haryana scheme accepted",
+        "Patient dharamshala within hospital campus"
+      ],
+      "score": 77,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://pgims.ac.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "sms-medical-college-jaipur",
+      "name": "Sawai Man Singh Medical College and Hospital — Oncology Department",
+      "short_name": "SMS Hospital Jaipur",
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Haematology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0141-2560291",
+        "address": "JLN Marg, Jaipur - 302004",
+        "website": "https://smsmc.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Anil Pareek", "role": "Medical Oncology" }
+      ],
+      "notes": "Largest government hospital in Rajasthan; oncology wing handles high patient load. Bhamashah Swasthya Bima anchor hospital.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Chiranjeevi Yojana (Rajasthan) and PMJAY accepted; free for BPL",
+        "Patient lodging at JTSHRC hostel nearby"
+      ],
+      "score": 78,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://smsmc.ac.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "irch-aiims-delhi",
+      "name": "Institute Rotary Cancer Hospital, AIIMS New Delhi",
+      "short_name": "IRCH AIIMS Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Head & Neck Oncology", "Paediatric Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "011-26593468",
+        "address": "IRCH Building, AIIMS Campus, Ansari Nagar, New Delhi - 110029",
+        "website": "https://www.aiims.edu/en/departments-and-centres/irch.html"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sanjay Thulkar", "role": "Radiology/Cancer Imaging" },
+        { "name": "Dr. Ritu Gupta", "role": "Medical Oncology / BMT" }
+      ],
+      "notes": "Dedicated cancer building within AIIMS New Delhi; handles the most complex oncology cases in north India. Apex national referral.",
+      "tier": "A",
+      "navigation_notes": [
+        "Registration through AIIMS OPD portal; arrive before 8 AM on registration days",
+        "All AIIMS New Delhi navigation notes apply"
+      ],
+      "score": 97,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.aiims.edu/en/departments-and-centres/irch.html"],
+      "national_referral": true
+    },
+    {
+      "id": "mgh-chennai-govt",
+      "name": "Government Royapettah Hospital — Cancer Institute Wing",
+      "short_name": "Royapettah Cancer Wing Chennai",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "044-28131006",
+        "address": "Royapettah High Road, Royapettah, Chennai - 600014",
+        "website": "https://www.grhtamilnadu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. V. Ganesan", "role": "Medical Oncology" }
+      ],
+      "notes": "Government tertiary cancer unit for urban Chennai and surrounding districts. Chief Minister's Health Insurance anchor centre.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Chief Minister's Comprehensive Health Insurance and PMJAY accepted; free for BPL"
+      ],
+      "score": 75,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.grhtamilnadu.in"],
+      "national_referral": true
+    },
+    {
+      "id": "scb-medical-college-cuttack-oncology",
+      "name": "SCB Medical College and Hospital — Regional Cancer Centre",
+      "short_name": "SCB Medical Cuttack",
+      "city": "Cuttack",
+      "state": "Odisha",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0671-2414004",
+        "address": "Dock Road, Manglabag, Cuttack - 753007",
+        "website": "https://scbmch.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sushant Kumar Meher", "role": "Surgical Oncology" }
+      ],
+      "notes": "Largest government hospital in Odisha; cancer unit handles overflow from AHPGI. Biju Swasthya Kalyan anchor.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Biju Swasthya Kalyan Yojana and PMJAY accepted; free for BPL"
+      ],
+      "score": 74,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://scbmch.nic.in/departments"],
+      "national_referral": true
+    }
+  ]
+}

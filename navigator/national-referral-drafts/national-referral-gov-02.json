@@ -1,0 +1,176 @@
+{
+  "batch_id": "national-referral-gov-02",
+  "hospitals": [
+    {
+      "id": "aiims-bhubaneswar",
+      "name": "All India Institute of Medical Sciences, Bhubaneswar",
+      "short_name": "AIIMS Bhubaneswar",
+      "city": "Bhubaneswar",
+      "state": "Odisha",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0674-2476789",
+        "address": "Sijua, Patrapada, Bhubaneswar - 751019",
+        "website": "https://www.aiimsbhubaneswar.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Saroj Kumar Das Majumdar", "role": "Head, Radiation Oncology" }
+      ],
+      "notes": "New-generation AIIMS serving Odisha and neighbouring eastern states. Rapidly expanding oncology programme.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD registration via AIIMS online portal or walk-in 8 AM",
+        "Biju Swasthya Kalyan Yojana accepted"
+      ],
+      "score": 86,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.aiimsbhubaneswar.nic.in/department/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-jodhpur",
+      "name": "All India Institute of Medical Sciences, Jodhpur",
+      "short_name": "AIIMS Jodhpur",
+      "city": "Jodhpur",
+      "state": "Rajasthan",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0291-2740741",
+        "address": "Basni Industrial Area Phase-2, Jodhpur - 342005",
+        "website": "https://www.aiims.edu/jodhpur"
+      },
+      "key_doctors": [
+        { "name": "Dr. Mukesh Kumar Singhal", "role": "Medical Oncology" }
+      ],
+      "notes": "Apex referral centre for western Rajasthan and neighbouring Sindh corridor communities.",
+      "tier": "A",
+      "navigation_notes": [
+        "Walk-in OPD 8 AM; CGHS, PMJAY accepted",
+        "Nearby dharamshala at Mahamandir area"
+      ],
+      "score": 84,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiims.edu/jodhpur/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-patna",
+      "name": "All India Institute of Medical Sciences, Patna",
+      "short_name": "AIIMS Patna",
+      "city": "Patna",
+      "state": "Bihar",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0612-2451070",
+        "address": "Phulwarisharif, Patna - 801507",
+        "website": "https://www.aiimspatna.org"
+      },
+      "key_doctors": [
+        { "name": "Dr. Umesh Kumar Bhadani", "role": "Surgical Oncology" }
+      ],
+      "notes": "Apex referral for Bihar and eastern UP. Critical for underserved cancer patients in Gangetic plain.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD Monday–Saturday 8 AM; bring prior records",
+        "Ayushman Bharat accepted; state Mukhyamantri scheme also covered"
+      ],
+      "score": 83,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.aiimspatna.org/dept-oncology.php"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-rishikesh",
+      "name": "All India Institute of Medical Sciences, Rishikesh",
+      "short_name": "AIIMS Rishikesh",
+      "city": "Rishikesh",
+      "state": "Uttarakhand",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Nuclear Medicine"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0135-2462927",
+        "address": "Virbhadra Road, Rishikesh - 249203",
+        "website": "https://www.aiimsrishikesh.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Pawan Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Serves Uttarakhand, Himachal Pradesh hill populations and parts of UP. Strong cancer surgery programme.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD registration 8 AM; CGHS, ECHS, PMJAY accepted",
+        "Patient accommodation available within hospital premises"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsrishikesh.edu.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "nimhans-bangalore",
+      "name": "National Institute of Mental Health and Neurosciences — Neuro-Oncology",
+      "short_name": "NIMHANS Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Neuro-Oncology", "Neurosurgery", "Radiation Oncology", "Pathology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "080-46110007",
+        "address": "Hosur Road, Bengaluru - 560029",
+        "website": "https://nimhans.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Arun Kumar Ramamurthy", "role": "Neuro-Oncology" },
+        { "name": "Dr. Bhaskara Rao Bhatt", "role": "Neurosurgery Oncology" }
+      ],
+      "notes": "National apex centre for brain and spinal tumours. Refer all primary CNS malignancies.",
+      "tier": "A",
+      "navigation_notes": [
+        "Referral from neurologist strongly recommended",
+        "Ayushman Bharat and Karnataka Arogya Karnataka accepted"
+      ],
+      "score": 90,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://nimhans.ac.in/neuro-oncology/"],
+      "national_referral": true
+    }
+  ]
+}

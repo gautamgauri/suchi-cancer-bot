@@ -1,0 +1,170 @@
+{
+  "batch_id": "national-referral-gov-08",
+  "hospitals": [
+    {
+      "id": "nrs-medical-college-kolkata",
+      "name": "Nil Ratan Sircar Medical College and Hospital — Oncology Department",
+      "short_name": "NRS Medical Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "033-22441585",
+        "address": "138 A.J.C. Bose Road, Kolkata - 700014",
+        "website": "https://nrsmc.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sujata Byari", "role": "Radiotherapy" }
+      ],
+      "notes": "Major government hospital in Kolkata for cancer care overflow alongside CNCI. Swasthya Sathi Yojana anchor.",
+      "tier": "C",
+      "navigation_notes": [
+        "OPD 8 AM; Swasthya Sathi and PMJAY accepted; free for BPL"
+      ],
+      "score": 70,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://nrsmc.edu.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-bathinda",
+      "name": "All India Institute of Medical Sciences, Bathinda",
+      "short_name": "AIIMS Bathinda",
+      "city": "Bathinda",
+      "state": "Punjab",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0164-2100300",
+        "address": "Sriganganagar Road, Mandi Dabwali Road, Bathinda - 151001",
+        "website": "https://www.aiimsbathinda.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Gurinderbir Singh Sekhon", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS in the cancer belt of Malwa region; addressing high cancer incidence from pesticide exposure. Critical for Punjab.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; PMJAY and Punjab Sarbat Sehat Bima Yojana accepted"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsbathinda.edu.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-vijaypur-jammu",
+      "name": "All India Institute of Medical Sciences, Jammu (Vijaypur)",
+      "short_name": "AIIMS Jammu",
+      "city": "Jammu",
+      "state": "Jammu & Kashmir",
+      "region": "North",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "01923-234000",
+        "address": "Vijaypur, Samba District, Jammu - 184120",
+        "website": "https://www.aiimsjammu.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Ashish Gupta", "role": "Surgical Oncology" }
+      ],
+      "notes": "Serves J&K region; apex referral for UT. PMJAY Sehat anchor for J&K residents.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; PMJAY-Sehat for J&K residents; CGHS also accepted"
+      ],
+      "score": 78,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsjammu.edu.in"],
+      "national_referral": true
+    },
+    {
+      "id": "government-medical-college-kottayam",
+      "name": "Government Medical College Kottayam — Regional Cancer Centre",
+      "short_name": "GMC Kottayam Cancer",
+      "city": "Kottayam",
+      "state": "Kerala",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0481-2597521",
+        "address": "Gandhi Nagar, Kottayam - 686008",
+        "website": "https://www.gmckottayam.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Bency Paul", "role": "Radiation Oncology" }
+      ],
+      "notes": "Regional cancer hub for central Kerala; overflow referral from RCC Thiruvananthapuram. Arogyasree anchor.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; PMJAY and Kerala Karunya health scheme accepted"
+      ],
+      "score": 75,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.gmckottayam.ac.in"],
+      "national_referral": true
+    },
+    {
+      "id": "svmch-puducherry",
+      "name": "Sri Venkateshwaraa Medical College — Cancer Care Unit",
+      "short_name": "SVMCH Cancer Puducherry",
+      "city": "Puducherry",
+      "state": "Puducherry",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0413-2656471",
+        "address": "Ariyur, Puducherry - 605102",
+        "website": "https://svmch.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Ravi Kannan", "role": "Surgical Oncology" }
+      ],
+      "notes": "Government cancer unit supporting JIPMER overflow. CMCHIS and PMJAY anchor for Puducherry UT.",
+      "tier": "C",
+      "navigation_notes": [
+        "OPD 8 AM; PMJAY and Puducherry state scheme accepted"
+      ],
+      "score": 68,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "low",
+      "sources": ["https://svmch.ac.in/departments"],
+      "national_referral": true
+    }
+  ]
+}

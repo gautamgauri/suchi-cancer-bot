@@ -1,0 +1,178 @@
+{
+  "batch_id": "national-referral-pvt-07",
+  "hospitals": [
+    {
+      "id": "apollo-cancer-kolkata",
+      "name": "Apollo Gleneagles Cancer Centre, Kolkata",
+      "short_name": "Apollo Cancer Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "033-23201340",
+        "address": "58, Canal Circular Road, Kadapara, Phool Bagan, Kolkata - 700054",
+        "website": "https://apollohospitals.com/kolkata/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sanjay Bhattacharyya", "role": "Medical Oncology" }
+      ],
+      "notes": "Apollo's East India flagship cancer centre; strong in haematological malignancies and BMT. Key private referral for Bangladesh border patients.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via Apollo 24/7 app or 033-23201340",
+        "Corporate and international insurance accepted"
+      ],
+      "score": 86,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://apollohospitals.com/kolkata/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "blk-max-cancer-delhi",
+      "name": "BLK-Max Super Speciality Hospital — Cancer Centre, Delhi",
+      "short_name": "BLK-Max Cancer Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "011-30403040",
+        "address": "5, Pusa Road, New Delhi - 110005",
+        "website": "https://www.blkmaxhospital.com/specialities/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Rakesh Chopra", "role": "Medical Oncology / BMT" },
+        { "name": "Dr. Sajjan Rajpurohit", "role": "Medical Oncology" }
+      ],
+      "notes": "One of Delhi's top private cancer centres; known for BMT and complex haematology. CGHS empanelled. Strong international patient base from South Asia.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via blkmaxhospital.com or 011-30403040",
+        "CGHS, ECHS, and most private insurance accepted"
+      ],
+      "score": 90,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.blkmaxhospital.com/specialities/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "amrita-cancer-centre-kochi",
+      "name": "Amrita Institute of Medical Sciences — Cancer Centre, Kochi",
+      "short_name": "Amrita Cancer Kochi",
+      "city": "Kochi",
+      "state": "Kerala",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0484-2858001",
+        "address": "AIMS Ponekkara PO, Kochi - 682041",
+        "website": "https://www.aims.amrita.edu/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sajith Babu", "role": "Bone Marrow Transplant" },
+        { "name": "Dr. Rajanish Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "JCI-accredited; one of South India's strongest private cancer centres. Known for paediatric oncology and BMT. Kerala Karunya and PMJAY accepted.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via aims.amrita.edu or 0484-2858001",
+        "PMJAY, Kerala Karunya scheme, and corporate insurance accepted"
+      ],
+      "score": 91,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.aims.amrita.edu/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "aster-medcity-cancer-kochi",
+      "name": "Aster Medcity — Comprehensive Cancer Centre, Kochi",
+      "short_name": "Aster Medcity Cancer Kochi",
+      "city": "Kochi",
+      "state": "Kerala",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Head & Neck Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0484-6699999",
+        "address": "Kuttisahib Road, South Chittoor, Cheranalloor, Kochi - 682027",
+        "website": "https://www.astermedcity.com/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sajeev Kumar", "role": "Medical Oncology" },
+        { "name": "Dr. Sanjay Popat", "role": "Thoracic Oncology" }
+      ],
+      "notes": "JCI-accredited; Aster's flagship hospital in India. Comprehensive cancer programme with strong international patient services. Key for Gulf diaspora returning for treatment.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via astermedcity.com or 0484-6699999",
+        "International insurance and corporate plans widely accepted"
+      ],
+      "score": 90,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.astermedcity.com/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "psri-cancer-delhi",
+      "name": "Pushpawati Singhania Hospital and Research Institute — Oncology",
+      "short_name": "PSRI Cancer Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Hepatobiliary Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "011-29515151",
+        "address": "Press Enclave Road, Sheikh Sarai Phase-II, New Delhi - 110017",
+        "website": "https://www.psri.in/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. A.S. Puri", "role": "Gastroenterology & GI Oncology" }
+      ],
+      "notes": "Specialised private hospital; strong in hepatobiliary and GI oncology. CGHS empanelled. Useful for complex hepatocellular carcinoma cases.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via psri.in or 011-29515151",
+        "CGHS and private insurance accepted"
+      ],
+      "score": 75,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.psri.in/oncology"],
+      "national_referral": true
+    }
+  ]
+}

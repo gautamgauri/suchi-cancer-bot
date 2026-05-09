@@ -1,0 +1,176 @@
+{
+  "batch_id": "national-referral-pvt-09",
+  "hospitals": [
+    {
+      "id": "manipal-hospital-cancer-jaipur",
+      "name": "Manipal Hospitals — Cancer Care, Jaipur",
+      "short_name": "Manipal Cancer Jaipur",
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0141-3999999",
+        "address": "Sector 5, Vidhyadhar Nagar, Jaipur - 302023",
+        "website": "https://www.manipalhospitals.com/jaipur/specialties/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Satya Prakash Yadav", "role": "Paediatric Haematology & BMT" }
+      ],
+      "notes": "Manipal's Rajasthan flagship; notable for paediatric cancer and BMT. Key private referral for Rajasthan families who need private-sector quality.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via manipalhospitals.com or 0141-3999999",
+        "Corporate and private insurance accepted; some CGHS tie-up"
+      ],
+      "score": 83,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.manipalhospitals.com/jaipur/specialties/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "fortis-cancer-jaipur",
+      "name": "Fortis Escorts Hospital — Cancer Care, Jaipur",
+      "short_name": "Fortis Cancer Jaipur",
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0141-2547000",
+        "address": "Jawaharlal Nehru Marg, Malviya Nagar, Jaipur - 302017",
+        "website": "https://www.fortishealthcare.com/hospitals/fortis-escorts-hospital-jaipur"
+      },
+      "key_doctors": [
+        { "name": "Dr. Dinesh Singh Chauhan", "role": "Medical Oncology" }
+      ],
+      "notes": "Established private cancer referral for Jaipur; complements Manipal for Rajasthan patients. Strong in GI and breast oncology.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via fortishealthcare.com or 0141-2547000",
+        "Corporate insurance accepted; CGHS tie-up for select services"
+      ],
+      "score": 77,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.fortishealthcare.com/hospitals/fortis-escorts-hospital-jaipur"],
+      "national_referral": true
+    },
+    {
+      "id": "tata-memorial-advanced-centre-navi-mumbai",
+      "name": "Advanced Centre for Treatment, Research and Education in Cancer (ACTREC)",
+      "short_name": "ACTREC Navi Mumbai",
+      "city": "Navi Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Cancer Genetics", "Clinical Trials", "Bone Marrow Transplant"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "022-27405000",
+        "address": "Sector 22, Kharghar, Navi Mumbai - 410210",
+        "website": "https://actrec.gov.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sudeep Gupta", "role": "Director, TMC" },
+        { "name": "Dr. Kumar Prabhash", "role": "Medical Oncology" }
+      ],
+      "notes": "Research arm of Tata Memorial; access to cutting-edge clinical trials. Ideal for patients seeking experimental treatment options under DAE/TMC umbrella.",
+      "tier": "A",
+      "navigation_notes": [
+        "Referral from TMH Mumbai usually required for ACTREC trials",
+        "Bus service from Kharghar station; DAE concessional rates for patients"
+      ],
+      "score": 95,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://actrec.gov.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "apollo-cancer-bhubaneswar",
+      "name": "Apollo Hospitals — Cancer Care, Bhubaneswar",
+      "short_name": "Apollo Cancer Bhubaneswar",
+      "city": "Bhubaneswar",
+      "state": "Odisha",
+      "region": "East",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0674-6666000",
+        "address": "Plot No-251, Sainik School Road, Unit-15, Bhubaneswar - 751005",
+        "website": "https://apollohospitals.com/bhubaneswar/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Prafulla Kumar Mohanty", "role": "Medical Oncology" }
+      ],
+      "notes": "Key private cancer referral for Odisha; complements AHPGI and AIIMS Bhubaneswar for patients seeking private-sector care.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via Apollo 24/7 app or 0674-6666000",
+        "Biju Swasthya Kalyan Yojana tie-up via select packages; corporate insurance accepted"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://apollohospitals.com/bhubaneswar/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "manipal-cancer-visakhapatnam",
+      "name": "Manipal Hospitals — Cancer Care, Visakhapatnam",
+      "short_name": "Manipal Cancer Vizag",
+      "city": "Visakhapatnam",
+      "state": "Andhra Pradesh",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0891-6788888",
+        "address": "Tadepalli, Visakhapatnam - 530002",
+        "website": "https://www.manipalhospitals.com/visakhapatnam/specialties/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Kiran Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Key private cancer referral for North Andhra Pradesh and Odisha coast. Growing programme; important for Vizag's industrial workers with occupational cancer risk.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via manipalhospitals.com or 0891-6788888",
+        "Corporate and private insurance accepted"
+      ],
+      "score": 75,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.manipalhospitals.com/visakhapatnam/specialties/cancer-care"],
+      "national_referral": true
+    }
+  ]
+}

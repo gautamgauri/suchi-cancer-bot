@@ -1,0 +1,178 @@
+{
+  "batch_id": "national-referral-pvt-10",
+  "hospitals": [
+    {
+      "id": "christian-medical-college-vellore-cancer",
+      "name": "Christian Medical College Vellore — Cancer Institute",
+      "short_name": "CMC Vellore Cancer",
+      "city": "Vellore",
+      "state": "Tamil Nadu",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": true,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care", "Nuclear Medicine"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0416-2281000",
+        "address": "Ida Scudder Road, Vellore - 632004",
+        "website": "https://www.cmch-vellore.edu/department/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Vikram Mathews", "role": "Haematology & BMT" },
+        { "name": "Dr. Subramanian Bhanu", "role": "Medical Oncology" }
+      ],
+      "notes": "One of India's most trusted cancer institutions; cross-subsidised model makes it accessible for low-income patients. Strongest BMT programme in South India. NCG member. PMJAY accepted.",
+      "tier": "A",
+      "navigation_notes": [
+        "Walk-in registration from 6 AM; token system; arrive very early",
+        "Accommodation at Kamalasabai Hostel within CMC campus",
+        "CMCHIS (TN), PMJAY, and most insurance accepted; subsidised rates for low-income"
+      ],
+      "score": 96,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.cmch-vellore.edu/department/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "kasturba-medical-college-cancer-mangalore",
+      "name": "Kasturba Medical College Hospital — Cancer Centre, Mangaluru",
+      "short_name": "KMC Cancer Mangaluru",
+      "city": "Mangaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0824-2444600",
+        "address": "Lighthouse Hill Road, Mangaluru - 575001",
+        "website": "https://www.manipalhospitals.com/mangalore/specialties/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Prasanna Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Manipal group's Mangaluru campus cancer unit; strong teaching hospital pedigree. Key for coastal Karnataka and Kerala border patients. PMJAY empanelled.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via manipalhospitals.com or 0824-2444600",
+        "PMJAY and Arogya Karnataka accepted; moderate cost overall"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.manipalhospitals.com/mangalore/specialties/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "hinduja-hospital-cancer-mumbai",
+      "name": "P.D. Hinduja National Hospital — Cancer Care, Mumbai",
+      "short_name": "Hinduja Cancer Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "022-24447000",
+        "address": "Veer Savarkar Marg, Mahim, Mumbai - 400016",
+        "website": "https://www.hindujahospital.com/clinical-services/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Philip Abraham", "role": "GI Oncology" },
+        { "name": "Dr. Geeta Kamath", "role": "Gynaecologic Oncology" }
+      ],
+      "notes": "Trusted private hospital in Mumbai; strong GI and gynaecologic oncology. CGHS empanelled. Well-regarded second-opinion destination.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via hindujahospital.com or 022-24447000",
+        "CGHS, ECHS, and most private insurance accepted"
+      ],
+      "score": 84,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.hindujahospital.com/clinical-services/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "saifee-hospital-cancer-mumbai",
+      "name": "Saifee Hospital — Cancer Care, Mumbai",
+      "short_name": "Saifee Cancer Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "022-67570111",
+        "address": "15/17, Maharshi Karve Road, Charni Road, Mumbai - 400004",
+        "website": "https://www.saifee.hospital/departments/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Suresh Advani", "role": "Medical Oncology" }
+      ],
+      "notes": "Reputed mid-size private cancer centre in South Mumbai; strong in medical oncology and chemotherapy protocols. Well-regarded for second opinions.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via saifee.hospital or 022-67570111",
+        "Most private insurance and corporate plans accepted"
+      ],
+      "score": 76,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.saifee.hospital/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "fortis-la-femme-cancer-delhi",
+      "name": "Fortis La Femme — Gynaecologic Oncology, New Delhi",
+      "short_name": "Fortis La Femme Gyn-Onc Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Gynaecologic Oncology", "Medical Oncology", "Radiation Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "011-42004200",
+        "address": "S-549, Greater Kailash Part-II, New Delhi - 110048",
+        "website": "https://www.fortishealthcare.com/hospitals/fortis-la-femme-delhi"
+      },
+      "key_doctors": [
+        { "name": "Dr. Nita Nair", "role": "Gynaecologic Oncology" }
+      ],
+      "notes": "Specialised women's cancer centre; best-in-class gynaecologic oncology in NCR. Unique focus on cervical, ovarian, and uterine cancers. CGHS empanelled.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via fortishealthcare.com or 011-42004200",
+        "CGHS and private insurance accepted"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.fortishealthcare.com/hospitals/fortis-la-femme-delhi"],
+      "national_referral": true
+    }
+  ]
+}

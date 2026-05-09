@@ -20,6 +20,5030 @@
       "status": "pending",
       "hospitals": [],
       "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-01",
+      "region": "National Referral — Government (Batch 1)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "aiims-new-delhi",
+          "name": "All India Institute of Medical Sciences, New Delhi",
+          "short_name": "AIIMS New Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Nuclear Medicine",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "011-26588500",
+            "address": "Sri Aurobindo Marg, Ansari Nagar, New Delhi - 110029",
+            "website": "https://www.aiims.edu"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sanjay Sharma",
+              "role": "Head, Medical Oncology"
+            },
+            {
+              "name": "Dr. Seema Mishra",
+              "role": "Head, Palliative Care"
+            }
+          ],
+          "notes": "Premier national referral centre; one of the highest-volume cancer programmes in India. Apex referral for complex oncology cases nationwide.",
+          "tier": "A",
+          "navigation_notes": [
+            "Registration via AIIMS OPD Registration Portal or on-site at 8 AM",
+            "Bring all prior records and biopsy slides",
+            "Accommodation at Dharamshala nearby; Asha Jyoti Kendra for outstation patients"
+          ],
+          "score": 98,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.aiims.edu/en/departments-and-centres/oncology.html",
+            "https://mohfw.gov.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "tata-memorial-mumbai",
+          "name": "Tata Memorial Hospital",
+          "short_name": "TMH Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Head & Neck Oncology",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Bone Marrow Transplant",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "022-24177000",
+            "address": "Dr. E Borges Road, Parel, Mumbai - 400012",
+            "website": "https://tmc.gov.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. C.S. Pramesh",
+              "role": "Director"
+            },
+            {
+              "name": "Dr. Rajendra Badwe",
+              "role": "Former Director, Surgical Oncology"
+            }
+          ],
+          "notes": "Largest dedicated cancer centre in Asia; DAE-funded. National apex centre for cancer research and treatment.",
+          "tier": "A",
+          "navigation_notes": [
+            "Walk-in registration Monday–Friday 7:30 AM at OPD registration counter",
+            "Subsidised canteen and patient dormitory available",
+            "CGHS and state insurance accepted"
+          ],
+          "score": 99,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://tmc.gov.in",
+            "https://www.ncbi.nlm.nih.gov/pmc/articles/TMH"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "pgimer-chandigarh",
+          "name": "Post Graduate Institute of Medical Education and Research",
+          "short_name": "PGIMER Chandigarh",
+          "city": "Chandigarh",
+          "state": "Chandigarh",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Nuclear Medicine",
+            "Haematology",
+            "Bone Marrow Transplant",
+            "Palliative Medicine"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0172-2746018",
+            "address": "Sector 12, Chandigarh - 160012",
+            "website": "https://pgimer.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Rakesh Kapoor",
+              "role": "Head, Radiotherapy"
+            },
+            {
+              "name": "Dr. Deepak Aggarwal",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Premier institute serving North India and neighbouring states; strong haematology-oncology programme.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD registration open 8 AM; carry referral from district hospital for priority",
+            "Patient lodges (Atal Kendra) available within campus"
+          ],
+          "score": 95,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://pgimer.edu.in/PGIMER_PORTAL/PGIMERMAINPORTAL/deptpage.jsp?deptID=26"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "jipmer-puducherry",
+          "name": "Jawaharlal Institute of Postgraduate Medical Education and Research",
+          "short_name": "JIPMER Puducherry",
+          "city": "Puducherry",
+          "state": "Puducherry",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Palliative Care",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0413-2296000",
+            "address": "Dhanvantari Nagar, Gorimedu, Puducherry - 605006",
+            "website": "https://www.jipmer.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Raja Sundaram",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Smita Kayal",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "National institute serving South India, particularly Tamil Nadu and Andhra Pradesh. Autonomous under MoHFW.",
+          "tier": "A",
+          "navigation_notes": [
+            "Free OPD registration; bring referral letter from PHC/CHC",
+            "Accommodation at JIPMER hospital complex dharamshala"
+          ],
+          "score": 93,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.jipmer.edu.in/departments/medical-oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sctimst-thiruvananthapuram",
+          "name": "Sree Chitra Tirunal Institute for Medical Sciences and Technology",
+          "short_name": "SCTIMST Thiruvananthapuram",
+          "city": "Thiruvananthapuram",
+          "state": "Kerala",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Surgical Oncology",
+            "Medical Oncology",
+            "Radiation Oncology",
+            "Neurosurgery Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0471-2524664",
+            "address": "Medical College PO, Thiruvananthapuram - 695011",
+            "website": "https://sctimst.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Rajesh U.",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Autonomous national institute under DST; specialises in complex surgical and cardio-oncology cases.",
+          "tier": "A",
+          "navigation_notes": [
+            "Referral via district hospitals recommended for faster access",
+            "Arogyasree and PMJAY accepted"
+          ],
+          "score": 88,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://sctimst.ac.in/care/oncology/"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-02",
+      "region": "National Referral — Government (Batch 2)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "aiims-bhubaneswar",
+          "name": "All India Institute of Medical Sciences, Bhubaneswar",
+          "short_name": "AIIMS Bhubaneswar",
+          "city": "Bhubaneswar",
+          "state": "Odisha",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0674-2476789",
+            "address": "Sijua, Patrapada, Bhubaneswar - 751019",
+            "website": "https://www.aiimsbhubaneswar.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Saroj Kumar Das Majumdar",
+              "role": "Head, Radiation Oncology"
+            }
+          ],
+          "notes": "New-generation AIIMS serving Odisha and neighbouring eastern states. Rapidly expanding oncology programme.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD registration via AIIMS online portal or walk-in 8 AM",
+            "Biju Swasthya Kalyan Yojana accepted"
+          ],
+          "score": 86,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.aiimsbhubaneswar.nic.in/department/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-jodhpur",
+          "name": "All India Institute of Medical Sciences, Jodhpur",
+          "short_name": "AIIMS Jodhpur",
+          "city": "Jodhpur",
+          "state": "Rajasthan",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0291-2740741",
+            "address": "Basni Industrial Area Phase-2, Jodhpur - 342005",
+            "website": "https://www.aiims.edu/jodhpur"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Mukesh Kumar Singhal",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Apex referral centre for western Rajasthan and neighbouring Sindh corridor communities.",
+          "tier": "A",
+          "navigation_notes": [
+            "Walk-in OPD 8 AM; CGHS, PMJAY accepted",
+            "Nearby dharamshala at Mahamandir area"
+          ],
+          "score": 84,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiims.edu/jodhpur/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-patna",
+          "name": "All India Institute of Medical Sciences, Patna",
+          "short_name": "AIIMS Patna",
+          "city": "Patna",
+          "state": "Bihar",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0612-2451070",
+            "address": "Phulwarisharif, Patna - 801507",
+            "website": "https://www.aiimspatna.org"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Umesh Kumar Bhadani",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Apex referral for Bihar and eastern UP. Critical for underserved cancer patients in Gangetic plain.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD Monday–Saturday 8 AM; bring prior records",
+            "Ayushman Bharat accepted; state Mukhyamantri scheme also covered"
+          ],
+          "score": 83,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.aiimspatna.org/dept-oncology.php"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-rishikesh",
+          "name": "All India Institute of Medical Sciences, Rishikesh",
+          "short_name": "AIIMS Rishikesh",
+          "city": "Rishikesh",
+          "state": "Uttarakhand",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0135-2462927",
+            "address": "Virbhadra Road, Rishikesh - 249203",
+            "website": "https://www.aiimsrishikesh.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Pawan Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Serves Uttarakhand, Himachal Pradesh hill populations and parts of UP. Strong cancer surgery programme.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD registration 8 AM; CGHS, ECHS, PMJAY accepted",
+            "Patient accommodation available within hospital premises"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsrishikesh.edu.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "nimhans-bangalore",
+          "name": "National Institute of Mental Health and Neurosciences — Neuro-Oncology",
+          "short_name": "NIMHANS Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Neuro-Oncology",
+            "Neurosurgery",
+            "Radiation Oncology",
+            "Pathology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "080-46110007",
+            "address": "Hosur Road, Bengaluru - 560029",
+            "website": "https://nimhans.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Arun Kumar Ramamurthy",
+              "role": "Neuro-Oncology"
+            },
+            {
+              "name": "Dr. Bhaskara Rao Bhatt",
+              "role": "Neurosurgery Oncology"
+            }
+          ],
+          "notes": "National apex centre for brain and spinal tumours. Refer all primary CNS malignancies.",
+          "tier": "A",
+          "navigation_notes": [
+            "Referral from neurologist strongly recommended",
+            "Ayushman Bharat and Karnataka Arogya Karnataka accepted"
+          ],
+          "score": 90,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://nimhans.ac.in/neuro-oncology/"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-03",
+      "region": "National Referral — Government (Batch 3)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "kidwai-memorial-bangalore",
+          "name": "Kidwai Memorial Institute of Oncology",
+          "short_name": "KMIO Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "080-26094000",
+            "address": "Dr. M.H. Marigowda Road, Bengaluru - 560029",
+            "website": "https://www.kmio.kar.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. C. Ramachandra",
+              "role": "Director & Head, Surgical Oncology"
+            },
+            {
+              "name": "Dr. Linu Abraham Jacob",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Dedicated state cancer institute; one of South India's highest-volume cancer centres. Strong in gynaecologic and head & neck cancers.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD registration 8 AM; free for BPL patients",
+            "Arogya Karnataka scheme fully accepted; dormitory on campus"
+          ],
+          "score": 92,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.kmio.kar.nic.in",
+            "https://indiancancersociety.org"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "cancer-institute-adyar-chennai",
+          "name": "Cancer Institute (WIA), Adyar",
+          "short_name": "Cancer Institute Chennai",
+          "city": "Chennai",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Palliative Care",
+            "Cancer Genetics"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "044-24910754",
+            "address": "38, Sardar Patel Road, Adyar, Chennai - 600020",
+            "website": "https://cancerinstitutewia.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Shirley Sundersingh",
+              "role": "Radiation Oncology"
+            },
+            {
+              "name": "Dr. Arvind Krishnamurthy",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Oldest dedicated cancer hospital in India (est. 1952). Strong genetics programme and palliative care.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD walk-in 8:30 AM; nominal registration fee",
+            "Chief Minister's Comprehensive Health Insurance accepted"
+          ],
+          "score": 91,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://cancerinstitutewia.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "regional-cancer-centre-thiruvananthapuram",
+          "name": "Regional Cancer Centre Thiruvananthapuram",
+          "short_name": "RCC Thiruvananthapuram",
+          "city": "Thiruvananthapuram",
+          "state": "Kerala",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Palliative Medicine",
+            "Molecular Diagnostics"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0471-2442541",
+            "address": "Medical College Campus, Thiruvananthapuram - 695011",
+            "website": "https://www.rcctvm.gov.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Fiby George Lal",
+              "role": "Director"
+            },
+            {
+              "name": "Dr. Arun Peter Mathew",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "NCI-designated regional cancer centre; internationally recognised palliative care programme (WHO model). Best palliative access in India.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD token system from 7:30 AM; arrive early",
+            "Arogyasree, PMJAY, and Kerala state scheme accepted; free treatment for BPL"
+          ],
+          "score": 94,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.rcctvm.gov.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "gujarat-cancer-research-institute-ahmedabad",
+          "name": "Gujarat Cancer and Research Institute",
+          "short_name": "GCRI Ahmedabad",
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "079-22685000",
+            "address": "New Civil Campus, Asarwa, Ahmedabad - 380016",
+            "website": "https://www.gcri.org.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Shilin N. Shukla",
+              "role": "Director"
+            },
+            {
+              "name": "Dr. Prabhash Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Apex cancer centre for Gujarat and parts of Rajasthan. High volume; strong in oral and tobacco-related cancers.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD registration 8 AM; MA Yojana (Gujarat) and PMJAY accepted",
+            "Patient lodging at nearby Ma Amrutam scheme hostels"
+          ],
+          "score": 90,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.gcri.org.in/about-us"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "chittaranjan-national-cancer-institute-kolkata",
+          "name": "Chittaranjan National Cancer Institute",
+          "short_name": "CNCI Kolkata",
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "033-24765101",
+            "address": "37 S.P. Mukherjee Road, Kolkata - 700026",
+            "website": "https://cnci.org.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Subrata Mandal",
+              "role": "Director"
+            },
+            {
+              "name": "Dr. Debjit Chatterjee",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Premier cancer institute for eastern India; NCI-designated. Strong in haematological malignancies and gynaecologic cancers.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 9 AM; free for economically weak patients under state scheme",
+            "Swasthya Sathi (West Bengal) and PMJAY accepted"
+          ],
+          "score": 89,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://cnci.org.in/departments"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-04",
+      "region": "National Referral — Government (Batch 4)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "aiims-raipur",
+          "name": "All India Institute of Medical Sciences, Raipur",
+          "short_name": "AIIMS Raipur",
+          "city": "Raipur",
+          "state": "Chhattisgarh",
+          "region": "Central",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0771-2573777",
+            "address": "G.E. Road, Tatibandh, Raipur - 492099",
+            "website": "https://www.aiimsraipur.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Nirdesh Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Apex referral for Chhattisgarh; growing oncology programme serving tribal belt populations.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM Monday–Saturday; PMJAY and Dr. Khubchand Baghel scheme accepted",
+            "Patient accommodation at hospital campus hostel"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsraipur.edu.in/department/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-nagpur",
+          "name": "All India Institute of Medical Sciences, Nagpur",
+          "short_name": "AIIMS Nagpur",
+          "city": "Nagpur",
+          "state": "Maharashtra",
+          "region": "Central",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0712-2975300",
+            "address": "Plot No. 2, Sector-20, MIHAN, Nagpur - 441108",
+            "website": "https://www.aiimsnagpur.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Arun Bhatt",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Serves Vidarbha region and Central India corridor. Filling a critical gap in central Maharashtra.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; PMJAY and Mahatma Jyotiba Phule Jan Arogya Yojana accepted"
+          ],
+          "score": 79,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsnagpur.edu.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-bhopal",
+          "name": "All India Institute of Medical Sciences, Bhopal",
+          "short_name": "AIIMS Bhopal",
+          "city": "Bhopal",
+          "state": "Madhya Pradesh",
+          "region": "Central",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0755-2672355",
+            "address": "Saket Nagar, Bhopal - 462020",
+            "website": "https://www.aiimsbhopal.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Rajesh Patidar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Apex referral for Madhya Pradesh; serves large tribal and rural population. Good linear accelerator facility.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; Ayushman Bharat and MP Mukhyamantri Swasthya Seva Yojana accepted",
+            "Patient lodging at AIIMS campus hostel"
+          ],
+          "score": 81,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsbhopal.edu.in/department/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-hyderabad",
+          "name": "All India Institute of Medical Sciences, Hyderabad (Bibinagar)",
+          "short_name": "AIIMS Bibinagar",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "08682-281800",
+            "address": "Bibinagar, Yadadri Bhuvanagiri District, Telangana - 508126",
+            "website": "https://www.aiimsbibinagar.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Ramachandra Bhatt",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS serving Telangana and parts of AP. Oncology department rapidly scaling.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD registration 8 AM; Aarogyasri (Telangana) and PMJAY accepted"
+          ],
+          "score": 76,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsbibinagar.edu.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "nims-hyderabad",
+          "name": "Nizam's Institute of Medical Sciences",
+          "short_name": "NIMS Hyderabad",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Haematology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "040-23489000",
+            "address": "Punjagutta, Hyderabad - 500082",
+            "website": "https://nims.ap.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sadashivudu Gundeti",
+              "role": "Medical Oncology & Haematology"
+            }
+          ],
+          "notes": "Premier state medical university hospital; strong in haematological malignancies and BMT. Key Aarogyasri referral.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; Aarogyasri and PMJAY accepted; free for EWS patients",
+            "Accommodation facilities on campus"
+          ],
+          "score": 85,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://nims.ap.nic.in/departments/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-05",
+      "region": "National Referral — Government (Batch 5)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "gauhati-medical-college-guwahati",
+          "name": "Gauhati Medical College and Hospital — Dr. B. Borooah Cancer Institute",
+          "short_name": "BBCI Guwahati",
+          "city": "Guwahati",
+          "state": "Assam",
+          "region": "Northeast",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0361-2529457",
+            "address": "A. K. Azad Road, Gopinath Nagar, Guwahati - 781016",
+            "website": "https://www.bbcionline.org"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Manigreeva Krishnatreya",
+              "role": "Director & Surgical Oncology"
+            },
+            {
+              "name": "Dr. Apurba Kumar Kalita",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "NCI-designated apex cancer institute for Northeast India; handles highest volume in the region.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; Atal Amrit Abhiyan (Assam) and PMJAY accepted",
+            "Patient dormitory available on campus"
+          ],
+          "score": 88,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.bbcionline.org/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sri-ram-chandra-bhanj-medical-college-cuttack",
+          "name": "Acharya Harihar Post Graduate Institute of Cancer, Cuttack",
+          "short_name": "AHPGI Cancer Cuttack",
+          "city": "Cuttack",
+          "state": "Odisha",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0671-2304233",
+            "address": "Manglabag, Cuttack - 753007",
+            "website": "https://ahpgi.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Lalit Kumar Pattanayak",
+              "role": "Director & Medical Oncology"
+            }
+          ],
+          "notes": "State apex cancer centre for Odisha. High volume in cervical and oral cavity cancers. Biju Swasthya Kalyan Yojana anchor.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; Biju Swasthya Kalyan Yojana and PMJAY accepted; free for BPL",
+            "Patient rest house nearby at Cuttack town"
+          ],
+          "score": 87,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://ahpgi.nic.in/department"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "rajiv-gandhi-cancer-institute-new-delhi",
+          "name": "Rajiv Gandhi Cancer Institute and Research Centre",
+          "short_name": "RGCI New Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Robotic Surgery",
+            "Palliative Care"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "011-47022222",
+            "address": "Sir Chhotu Ram Marg, Sector 5, Rohini, New Delhi - 110085",
+            "website": "https://www.rgcirc.org"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Vinod Raina",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Ullas Batra",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Delhi government-supported institute with advanced technology. Handles complex haematology and robotic surgery. CGHS empanelled.",
+          "tier": "A",
+          "navigation_notes": [
+            "Online appointment via website recommended",
+            "CGHS, ECHS, PMJAY, and Delhi Arogya Kosh accepted"
+          ],
+          "score": 91,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.rgcirc.org/departments/medical-oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-lucknow",
+          "name": "Dr. Ram Manohar Lohia Institute of Medical Sciences",
+          "short_name": "RMLIMS Lucknow",
+          "city": "Lucknow",
+          "state": "Uttar Pradesh",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0522-4940000",
+            "address": "Vibhuti Khand, Gomti Nagar, Lucknow - 226010",
+            "website": "https://rmlims.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Munna Lal Patel",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Key UP state referral centre; serves large Hindi-belt population. Strong surgical oncology for GI and breast cancers.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; UP Mukhyamantri Jan Arogya Abhiyan and PMJAY accepted",
+            "Suvidha patient accommodation block on campus"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://rmlims.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "kgmu-lucknow",
+          "name": "King George's Medical University — Cancer Research Centre",
+          "short_name": "KGMU Lucknow",
+          "city": "Lucknow",
+          "state": "Uttar Pradesh",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Haematology",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0522-2257450",
+            "address": "Shah Mina Road, Chowk, Lucknow - 226003",
+            "website": "https://kgmu.org"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Narendra Kumar",
+              "role": "Radiation Oncology"
+            },
+            {
+              "name": "Dr. Soniya Nityanand",
+              "role": "Haematology"
+            }
+          ],
+          "notes": "One of India's oldest medical universities; strong haematology and BMT. High volume north Indian referral centre.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; free for BPL patients; PMJAY accepted",
+            "Multiple patient rest houses around campus area"
+          ],
+          "score": 84,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://kgmu.org/departments/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-06",
+      "region": "National Referral — Government (Batch 6)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "pgims-rohtak",
+          "name": "Pt. B.D. Sharma University of Health Sciences — PGIMS Rohtak",
+          "short_name": "PGIMS Rohtak",
+          "city": "Rohtak",
+          "state": "Haryana",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "01262-211300",
+            "address": "PGIMS Road, Rohtak - 124001",
+            "website": "https://pgims.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Narendra Kumar Rana",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "Primary government cancer referral for Haryana; handles large volume of head & neck and cervical cancers.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Ayushman Bharat and Haryana scheme accepted",
+            "Patient dharamshala within hospital campus"
+          ],
+          "score": 77,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://pgims.ac.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sms-medical-college-jaipur",
+          "name": "Sawai Man Singh Medical College and Hospital — Oncology Department",
+          "short_name": "SMS Hospital Jaipur",
+          "city": "Jaipur",
+          "state": "Rajasthan",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Haematology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0141-2560291",
+            "address": "JLN Marg, Jaipur - 302004",
+            "website": "https://smsmc.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Anil Pareek",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Largest government hospital in Rajasthan; oncology wing handles high patient load. Bhamashah Swasthya Bima anchor hospital.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Chiranjeevi Yojana (Rajasthan) and PMJAY accepted; free for BPL",
+            "Patient lodging at JTSHRC hostel nearby"
+          ],
+          "score": 78,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://smsmc.ac.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "irch-aiims-delhi",
+          "name": "Institute Rotary Cancer Hospital, AIIMS New Delhi",
+          "short_name": "IRCH AIIMS Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Paediatric Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "011-26593468",
+            "address": "IRCH Building, AIIMS Campus, Ansari Nagar, New Delhi - 110029",
+            "website": "https://www.aiims.edu/en/departments-and-centres/irch.html"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sanjay Thulkar",
+              "role": "Radiology/Cancer Imaging"
+            },
+            {
+              "name": "Dr. Ritu Gupta",
+              "role": "Medical Oncology / BMT"
+            }
+          ],
+          "notes": "Dedicated cancer building within AIIMS New Delhi; handles the most complex oncology cases in north India. Apex national referral.",
+          "tier": "A",
+          "navigation_notes": [
+            "Registration through AIIMS OPD portal; arrive before 8 AM on registration days",
+            "All AIIMS New Delhi navigation notes apply"
+          ],
+          "score": 97,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.aiims.edu/en/departments-and-centres/irch.html"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "mgh-chennai-govt",
+          "name": "Government Royapettah Hospital — Cancer Institute Wing",
+          "short_name": "Royapettah Cancer Wing Chennai",
+          "city": "Chennai",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "044-28131006",
+            "address": "Royapettah High Road, Royapettah, Chennai - 600014",
+            "website": "https://www.grhtamilnadu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. V. Ganesan",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Government tertiary cancer unit for urban Chennai and surrounding districts. Chief Minister's Health Insurance anchor centre.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Chief Minister's Comprehensive Health Insurance and PMJAY accepted; free for BPL"
+          ],
+          "score": 75,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.grhtamilnadu.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "scb-medical-college-cuttack-oncology",
+          "name": "SCB Medical College and Hospital — Regional Cancer Centre",
+          "short_name": "SCB Medical Cuttack",
+          "city": "Cuttack",
+          "state": "Odisha",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0671-2414004",
+            "address": "Dock Road, Manglabag, Cuttack - 753007",
+            "website": "https://scbmch.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sushant Kumar Meher",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Largest government hospital in Odisha; cancer unit handles overflow from AHPGI. Biju Swasthya Kalyan anchor.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Biju Swasthya Kalyan Yojana and PMJAY accepted; free for BPL"
+          ],
+          "score": 74,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://scbmch.nic.in/departments"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-07",
+      "region": "National Referral — Government (Batch 7)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "aiims-guwahati",
+          "name": "All India Institute of Medical Sciences, Guwahati",
+          "short_name": "AIIMS Guwahati",
+          "city": "Guwahati",
+          "state": "Assam",
+          "region": "Northeast",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0361-2332100",
+            "address": "Changsari, Kamrup, Assam - 781101",
+            "website": "https://www.aiimsguwahati.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Arup Borkakoty",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS for Northeast; oncology programme scaling rapidly. Complements BBCI in Guwahati.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Atal Amrit Abhiyan and PMJAY accepted"
+          ],
+          "score": 76,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsguwahati.ac.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "pt-jnm-medical-college-raipur",
+          "name": "Pt. Jawahar Lal Nehru Memorial Medical College — Cancer Centre",
+          "short_name": "PJNMMC Raipur",
+          "city": "Raipur",
+          "state": "Chhattisgarh",
+          "region": "Central",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0771-2235002",
+            "address": "Near Jai Stambh Chowk, Raipur - 492001",
+            "website": "https://pjnmmc.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Anurag Srivastava",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "State cancer reference centre for Chhattisgarh alongside AIIMS Raipur. Serves tribal belt patients with free treatment under CG scheme.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Dr. Khubchand Baghel scheme and PMJAY accepted"
+          ],
+          "score": 74,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://pjnmmc.ac.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-kalyani",
+          "name": "All India Institute of Medical Sciences, Kalyani",
+          "short_name": "AIIMS Kalyani",
+          "city": "Kalyani",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "033-29040000",
+            "address": "NH 34, Basantapur, Saguna, Kalyani - 741245",
+            "website": "https://www.aiimskalyani.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Partha Basu",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS serving West Bengal and north-east India overflow. Oncology unit growing; good cancer screening outreach.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Swasthya Sathi and PMJAY accepted"
+          ],
+          "score": 77,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimskalyani.edu.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "jln-hospital-ajmer",
+          "name": "J.L.N. Medical College and Hospital — Cancer Unit",
+          "short_name": "JLN Hospital Ajmer",
+          "city": "Ajmer",
+          "state": "Rajasthan",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0145-2622255",
+            "address": "Nasirabad Road, Ajmer - 305001",
+            "website": "https://jlnmcajmer.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Hemant Kumar Pandya",
+              "role": "Radiotherapy"
+            }
+          ],
+          "notes": "Major government referral for central Rajasthan; serves Bhilwara, Nagaur, and Pali districts. Chiranjeevi Yojana anchor.",
+          "tier": "C",
+          "navigation_notes": [
+            "OPD 8 AM; Chiranjeevi Yojana and PMJAY accepted"
+          ],
+          "score": 70,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://jlnmcajmer.ac.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "mgm-cancer-institute-trichy",
+          "name": "Government Mahatma Gandhi Memorial Hospital — Cancer Institute",
+          "short_name": "MGM Cancer Institute Trichy",
+          "city": "Tiruchirappalli",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0431-2701301",
+            "address": "Palpannai, Tiruchirappalli - 620017",
+            "website": "https://mgmcri.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. P. Shanmugasundaram",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Key government cancer referral for central Tamil Nadu region. Chief Minister's Health Insurance anchor hospital.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Chief Minister's Comprehensive Health Insurance and PMJAY accepted"
+          ],
+          "score": 73,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://mgmcri.ac.in/departments"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-08",
+      "region": "National Referral — Government (Batch 8)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "nrs-medical-college-kolkata",
+          "name": "Nil Ratan Sircar Medical College and Hospital — Oncology Department",
+          "short_name": "NRS Medical Kolkata",
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "033-22441585",
+            "address": "138 A.J.C. Bose Road, Kolkata - 700014",
+            "website": "https://nrsmc.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sujata Byari",
+              "role": "Radiotherapy"
+            }
+          ],
+          "notes": "Major government hospital in Kolkata for cancer care overflow alongside CNCI. Swasthya Sathi Yojana anchor.",
+          "tier": "C",
+          "navigation_notes": [
+            "OPD 8 AM; Swasthya Sathi and PMJAY accepted; free for BPL"
+          ],
+          "score": 70,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://nrsmc.edu.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-bathinda",
+          "name": "All India Institute of Medical Sciences, Bathinda",
+          "short_name": "AIIMS Bathinda",
+          "city": "Bathinda",
+          "state": "Punjab",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0164-2100300",
+            "address": "Sriganganagar Road, Mandi Dabwali Road, Bathinda - 151001",
+            "website": "https://www.aiimsbathinda.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Gurinderbir Singh Sekhon",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS in the cancer belt of Malwa region; addressing high cancer incidence from pesticide exposure. Critical for Punjab.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; PMJAY and Punjab Sarbat Sehat Bima Yojana accepted"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsbathinda.edu.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-vijaypur-jammu",
+          "name": "All India Institute of Medical Sciences, Jammu (Vijaypur)",
+          "short_name": "AIIMS Jammu",
+          "city": "Jammu",
+          "state": "Jammu & Kashmir",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "01923-234000",
+            "address": "Vijaypur, Samba District, Jammu - 184120",
+            "website": "https://www.aiimsjammu.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Ashish Gupta",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Serves J&K region; apex referral for UT. PMJAY Sehat anchor for J&K residents.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; PMJAY-Sehat for J&K residents; CGHS also accepted"
+          ],
+          "score": 78,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsjammu.edu.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "government-medical-college-kottayam",
+          "name": "Government Medical College Kottayam — Regional Cancer Centre",
+          "short_name": "GMC Kottayam Cancer",
+          "city": "Kottayam",
+          "state": "Kerala",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0481-2597521",
+            "address": "Gandhi Nagar, Kottayam - 686008",
+            "website": "https://www.gmckottayam.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Bency Paul",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "Regional cancer hub for central Kerala; overflow referral from RCC Thiruvananthapuram. Arogyasree anchor.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; PMJAY and Kerala Karunya health scheme accepted"
+          ],
+          "score": 75,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.gmckottayam.ac.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "svmch-puducherry",
+          "name": "Sri Venkateshwaraa Medical College — Cancer Care Unit",
+          "short_name": "SVMCH Cancer Puducherry",
+          "city": "Puducherry",
+          "state": "Puducherry",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0413-2656471",
+            "address": "Ariyur, Puducherry - 605102",
+            "website": "https://svmch.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Ravi Kannan",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Government cancer unit supporting JIPMER overflow. CMCHIS and PMJAY anchor for Puducherry UT.",
+          "tier": "C",
+          "navigation_notes": [
+            "OPD 8 AM; PMJAY and Puducherry state scheme accepted"
+          ],
+          "score": 68,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "low",
+          "sources": [
+            "https://svmch.ac.in/departments"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-09",
+      "region": "National Referral — Government (Batch 9)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "aiims-mangalagiri",
+          "name": "All India Institute of Medical Sciences, Mangalagiri",
+          "short_name": "AIIMS Mangalagiri",
+          "city": "Mangalagiri",
+          "state": "Andhra Pradesh",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0863-2370000",
+            "address": "Punnami Nagar, Mangalagiri, Guntur District - 522503",
+            "website": "https://www.aiimsmangalagiri.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Veera Venkata Lakshmi",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS for Andhra Pradesh. Apex referral for Seemandhra region; oncology department operational since 2023.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Aarogyasri (AP) and PMJAY accepted"
+          ],
+          "score": 76,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsmangalagiri.edu.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sri-venkateswara-institute-tirupati",
+          "name": "Sri Venkateswara Institute of Medical Sciences",
+          "short_name": "SVIMS Tirupati",
+          "city": "Tirupati",
+          "state": "Andhra Pradesh",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Nuclear Medicine",
+            "Haematology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0877-2287777",
+            "address": "Alipiri Road, Tirupati - 517507",
+            "website": "https://www.svims.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. N. Subba Rao",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Sireesha Bala",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "State apex medical institute for AP; strong oncology programme. Aarogyasri anchor centre. Excellent PET-CT facility.",
+          "tier": "A",
+          "navigation_notes": [
+            "OPD 8 AM; Aarogyasri and PMJAY accepted; free for BPL",
+            "Pilgrim accommodation plentiful in Tirupati; dharamshala near hospital"
+          ],
+          "score": 86,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.svims.ac.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "govt-stanley-medical-college-chennai",
+          "name": "Government Stanley Medical College and Hospital — Oncology",
+          "short_name": "Stanley Medical Chennai",
+          "city": "Chennai",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "044-25281401",
+            "address": "Old Jail Road, Royapuram, Chennai - 600001",
+            "website": "https://stanleymedicalcollege.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Latha Kannan",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Key government cancer unit for North Chennai population. CMCHIS anchor; handles high volume of GI and lung cancers.",
+          "tier": "C",
+          "navigation_notes": [
+            "OPD 8 AM; CMCHIS and PMJAY accepted; free for BPL"
+          ],
+          "score": 72,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://stanleymedicalcollege.ac.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-deoghar",
+          "name": "All India Institute of Medical Sciences, Deoghar",
+          "short_name": "AIIMS Deoghar",
+          "city": "Deoghar",
+          "state": "Jharkhand",
+          "region": "East",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "06432-232001",
+            "address": "Daburgram, Deoghar - 814142",
+            "website": "https://www.aiimsdeoghar.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Abhishek Singh",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS serving Jharkhand and Santhal Parganas tribal belt. Critical apex referral for one of India's most underserved cancer corridors.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Ayushman Bharat and Jharkhand Mukhyamantri Swasthya Bima accepted"
+          ],
+          "score": 78,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsdeoghar.edu.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "rm-cancer-research-centre-bangalore",
+          "name": "HCG — M.S. Ramaiah Narayana Cancer Centre (Government Wing)",
+          "short_name": "MSRNCC Bengaluru Govt Wing",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "080-23600822",
+            "address": "MSR Nagar, Mathikere, Bengaluru - 560054",
+            "website": "https://msramaiah.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Prasad K.S.N.",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "Government-affiliated cancer unit under Ramaiah Medical Teaching Hospital; Arogya Karnataka anchor for north Bengaluru catchment.",
+          "tier": "C",
+          "navigation_notes": [
+            "OPD 8 AM; Arogya Karnataka and PMJAY accepted"
+          ],
+          "score": 71,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "low",
+          "sources": [
+            "https://msramaiah.edu.in/departments/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-gov-10",
+      "region": "National Referral — Government (Batch 10)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "govt-medical-college-kozhikode",
+          "name": "Government Medical College Kozhikode — Regional Cancer Centre",
+          "short_name": "GMC Kozhikode Cancer",
+          "city": "Kozhikode",
+          "state": "Kerala",
+          "region": "South",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0495-2350216",
+            "address": "Medical College Road, Kozhikode - 673008",
+            "website": "https://www.gmckozhikode.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Abdul Azeez",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "Regional cancer centre for Malabar coast; strong in tobacco-related oral cancers. Kerala Karunya health scheme anchor.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; Kerala Karunya scheme and PMJAY accepted; free for BPL"
+          ],
+          "score": 76,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.gmckozhikode.ac.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "mgmch-indore",
+          "name": "Mahatma Gandhi Memorial Medical College and MY Hospital — Cancer Department",
+          "short_name": "MGMMC Indore",
+          "city": "Indore",
+          "state": "Madhya Pradesh",
+          "region": "Central",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0731-2527500",
+            "address": "Maharani Hospital Road, Indore - 452001",
+            "website": "https://mgmindore.ac.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Dinesh Pendharkar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Major government cancer referral for western MP and Malwa region. Mukhyamantri Swasthya Seva Yojana anchor.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; MP Swasthya Seva Yojana and PMJAY accepted"
+          ],
+          "score": 74,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://mgmindore.ac.in/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aiims-rajkot",
+          "name": "All India Institute of Medical Sciences, Rajkot",
+          "short_name": "AIIMS Rajkot",
+          "city": "Rajkot",
+          "state": "Gujarat",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0281-2577700",
+            "address": "Manavadar Road, Rajkot - 360001",
+            "website": "https://www.aiimsrajkot.edu.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Kiran Parmar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "New AIIMS for Saurashtra and Kutch regions; supplements GCRI for Gujarat. Oncology department operational 2024.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; MA Yojana (Gujarat) and PMJAY accepted"
+          ],
+          "score": 75,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.aiimsrajkot.edu.in"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "rims-imphal",
+          "name": "Regional Institute of Medical Sciences — Cancer Unit",
+          "short_name": "RIMS Imphal",
+          "city": "Imphal",
+          "state": "Manipur",
+          "region": "Northeast",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0385-2441396",
+            "address": "Lamphelpat, Imphal - 795004",
+            "website": "https://rims.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Kh. Ratan Singh",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Primary government cancer referral for Manipur and surrounding northeastern states. Critical in context of tobacco and betel-related cancers in region.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; PMJAY and Manipur state scheme accepted"
+          ],
+          "score": 73,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://rims.nic.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "pgimer-dr-rml-hospital-delhi",
+          "name": "Dr. Ram Manohar Lohia Hospital — Oncology Department",
+          "short_name": "RML Hospital Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Government",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiotherapy",
+            "Palliative Care"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "011-23365525",
+            "address": "Baba Kharak Singh Marg, New Delhi - 110001",
+            "website": "https://www.rmlh.nic.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Avinash Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Central Government hospital in the heart of Delhi; CGHS primary empanelled centre. Key referral for government employees and EWS patients in Delhi.",
+          "tier": "B",
+          "navigation_notes": [
+            "OPD 8 AM; CGHS, ECHS, and PMJAY accepted; free for economically weak",
+            "Located near Connaught Place — central and accessible by metro"
+          ],
+          "score": 79,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.rmlh.nic.in/departments/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-01",
+      "region": "National Referral — Private (Batch 1)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "apollo-cancer-centre-chennai",
+          "name": "Apollo Cancer Centres, Chennai",
+          "short_name": "Apollo Cancer Chennai",
+          "city": "Chennai",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Paediatric Oncology",
+            "Proton Therapy",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "044-28290200",
+            "address": "21, Greams Lane, Off Greams Road, Chennai - 600006",
+            "website": "https://apollohospitals.com/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Vijay Anand Reddy",
+              "role": "Radiation Oncology"
+            },
+            {
+              "name": "Dr. Arvind Krishnamurthy",
+              "role": "Surgical Oncology (Head & Neck)"
+            }
+          ],
+          "notes": "Largest private cancer network in India. Chennai flagship has proton therapy — one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via Apollo 24/7 app or 1860-500-1066",
+            "International patient services available; EMI and insurance tie-ups",
+            "Some government insurance schemes via individual agreements"
+          ],
+          "score": 96,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://apollohospitals.com/cancer",
+            "https://www.jcrinternational.org"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "medanta-cancer-institute-gurugram",
+          "name": "Medanta — The Medicity, Cancer Institute",
+          "short_name": "Medanta Gurugram",
+          "city": "Gurugram",
+          "state": "Haryana",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Robotic Surgery",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0124-4141414",
+            "address": "Sector 38, Gurugram - 122001",
+            "website": "https://www.medanta.org/cancer-institute"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Naresh Trehan",
+              "role": "Chairman & Cardio-thoracic"
+            },
+            {
+              "name": "Dr. Surender Kumar Dabas",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Flagship private multi-specialty hospital for NCR; comprehensive cancer institute. Excellent robotic surgery and BMT programme. CGHS empanelled.",
+          "tier": "A",
+          "navigation_notes": [
+            "Online appointment at medanta.org or 0124-4141414",
+            "CGHS and ECHS accepted; corporate insurance widely accepted",
+            "Guest house and patient lodging on campus"
+          ],
+          "score": 94,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.medanta.org/cancer-institute"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "fortis-memorial-research-institute-gurugram",
+          "name": "Fortis Memorial Research Institute — Oncology",
+          "short_name": "FMRI Gurugram",
+          "city": "Gurugram",
+          "state": "Haryana",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Robotic Surgery"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0124-4962200",
+            "address": "Sector 44, Gurugram - 122002",
+            "website": "https://www.fortishealthcare.com/hospitals/fortis-memorial-research-institute-gurgaon"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Rahul Bhargava",
+              "role": "Haematology & BMT"
+            },
+            {
+              "name": "Dr. Ashish Goel",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "JCI-accredited tertiary cancer centre; one of the top BMT programmes in North India. Leading destination for international patients from South Asia.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via Fortis app or 1800-103-8800",
+            "CGHS, ECHS, corporate insurance accepted; international insurance welcome"
+          ],
+          "score": 92,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.fortishealthcare.com/hospitals/fortis-memorial-research-institute-gurgaon"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "max-cancer-centre-saket-delhi",
+          "name": "Max Cancer Centre, Saket",
+          "short_name": "Max Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Neuro-Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-26515050",
+            "address": "1-2, Press Enclave Road, Saket, New Delhi - 110017",
+            "website": "https://www.maxhealthcare.in/specialities/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Harit Chaturvedi",
+              "role": "Head & Neck Surgical Oncology"
+            },
+            {
+              "name": "Dr. Lalit Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Leading private cancer centre in Delhi; known for head & neck oncology and BMT. CGHS empanelled.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via maxhealthcare.in or 011-26515050",
+            "CGHS, ECHS, and most corporate insurance accepted"
+          ],
+          "score": 91,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.maxhealthcare.in/specialities/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
+          "name": "Kokilaben Dhirubhai Ambani Hospital — Cancer Centre",
+          "short_name": "KDH Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Robotic Surgery",
+            "Gynaecologic Oncology",
+            "Proton Therapy",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-42696969",
+            "address": "Four Bungalows, Andheri West, Mumbai - 400053",
+            "website": "https://www.kokilabenhospital.com/departments/cancercare"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Shailesh Shrikhande",
+              "role": "GI Surgical Oncology"
+            },
+            {
+              "name": "Dr. Anoop Attam",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "One of Mumbai's premier private cancer centres; proton therapy available. Strong in GI, hepatobiliary, and robotic surgery. JCI-accredited.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment at kokilabenhospital.com or 022-42696969",
+            "International patients welcome; CGHS, ECHS, corporate insurance accepted"
+          ],
+          "score": 93,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.kokilabenhospital.com/departments/cancercare"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-02",
+      "region": "National Referral — Private (Batch 2)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "hcg-cancer-centre-bangalore",
+          "name": "HCG Cancer Centre, Bengaluru",
+          "short_name": "HCG Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Paediatric Oncology",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "080-40206000",
+            "address": "HCG Cancer Centre, No 8, P. Kalinga Rao Road, Sampangiramnagar, Bengaluru - 560027",
+            "website": "https://www.hcgoncology.com"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. BS Ajaikumar",
+              "role": "Chairman & Radiation Oncology"
+            },
+            {
+              "name": "Dr. Vishal Rao",
+              "role": "Head & Neck Surgical Oncology"
+            }
+          ],
+          "notes": "India's largest cancer-specific network (50+ centres). Bengaluru flagship is the most advanced. Strong in head & neck, BMT, and radiosurgery.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via hcgoncology.com or 080-40206000",
+            "Corporate insurance and CGHS accepted at flagship; some affordable packages"
+          ],
+          "score": 92,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.hcgoncology.com/centres/bangalore"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "manipal-comprehensive-cancer-centre-manipal",
+          "name": "Manipal Comprehensive Cancer Centre, Manipal",
+          "short_name": "MCCC Manipal",
+          "city": "Manipal",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0820-2922340",
+            "address": "Manipal Hospital, Tiger Circle, Madhav Nagar, Manipal - 576104",
+            "website": "https://www.manipalhospitals.com/manipal/specialties/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Krishna Sharan",
+              "role": "Radiation Oncology"
+            },
+            {
+              "name": "Dr. Sandeep Nayak",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Deemed university hospital; one of the best-balanced cost-to-quality cancer centres in India. Ayushman Bharat empanelled. NCG member.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via manipalhospitals.com or 0820-2922340",
+            "Ayushman Bharat, Karnataka Arogya scheme, and PMJAY accepted",
+            "Affordable campus accommodation at Manipal"
+          ],
+          "score": 89,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.manipalhospitals.com/manipal/specialties/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "lilavati-hospital-cancer-mumbai",
+          "name": "Lilavati Hospital and Research Centre — Oncology",
+          "short_name": "Lilavati Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-26751000",
+            "address": "A-791, Bandra Reclaimation, Bandra (West), Mumbai - 400050",
+            "website": "https://lilavatihospital.com/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sudeep Gupta",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Anil D'Cruz",
+              "role": "Head & Neck Surgical Oncology"
+            }
+          ],
+          "notes": "Reputed private hospital with strong head & neck and gynaecologic oncology programme. Well-known for complex surgical oncology.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via lilavatihospital.com or 022-26751000",
+            "Corporate and private insurance accepted; no PMJAY"
+          ],
+          "score": 87,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://lilavatihospital.com/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "breach-candy-hospital-cancer-mumbai",
+          "name": "Breach Candy Hospital Trust — Oncology",
+          "short_name": "Breach Candy Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-23667888",
+            "address": "60-A, Bhulabhai Desai Road, Mumbai - 400026",
+            "website": "https://breachcandyhospital.org"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Piyush Ostwal",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Historic private hospital; smaller volume but high quality. Preferred by south Mumbai affluent catchment. Strong post-op palliative support.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via 022-23667888; private pay or insurance only"
+          ],
+          "score": 79,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://breachcandyhospital.org/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "jaslok-hospital-cancer-mumbai",
+          "name": "Jaslok Hospital and Research Centre — Cancer Care",
+          "short_name": "Jaslok Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-66573333",
+            "address": "15, Dr. G. Deshmukh Marg, Mumbai - 400026",
+            "website": "https://www.jaslokhospital.net/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Rajiv Sarin",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "Well-established private hospital with comprehensive oncology. Strong in breast and haematological malignancies. CGHS empanelled.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via 022-66573333 or jaslokhospital.net",
+            "CGHS, ECHS, and most private insurance accepted"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.jaslokhospital.net/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-03",
+      "region": "National Referral — Private (Batch 3)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "apollo-cancer-centre-hyderabad",
+          "name": "Apollo Cancer Centres, Hyderabad",
+          "short_name": "Apollo Cancer Hyderabad",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Robotic Surgery",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "040-23607777",
+            "address": "Jubilee Hills, Hyderabad - 500033",
+            "website": "https://apollohospitals.com/hyderabad/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Raghunadha Rao",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Pavan Kumar Reddy",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Apollo's Hyderabad flagship; JCI-accredited. Strong in haematological malignancies and robotic surgical oncology. Key private referral for Telangana and AP.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via Apollo 24/7 app or 1860-500-1066",
+            "Aarogyasri tie-up via specific packages; corporate insurance widely accepted"
+          ],
+          "score": 91,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://apollohospitals.com/hyderabad/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "yashoda-hospitals-cancer-hyderabad",
+          "name": "Yashoda Hospitals — Comprehensive Cancer Centre, Hyderabad",
+          "short_name": "Yashoda Cancer Hyderabad",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "040-45678901",
+            "address": "Raj Bhavan Road, Somajiguda, Hyderabad - 500082",
+            "website": "https://www.yashodahospitals.com/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. T. Subramanya Sharma",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Leading private cancer centre in Hyderabad; Aarogyasri empanelled. Good mid-tier cost option for Telangana patients who can't access government centres.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via yashodahospitals.com or 040-45678901",
+            "Aarogyasri (Telangana) and PMJAY accepted"
+          ],
+          "score": 84,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.yashodahospitals.com/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "narayana-cancer-hospital-bangalore",
+          "name": "Narayana Comprehensive Cancer Centre, Bengaluru",
+          "short_name": "Narayana Cancer Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "080-71222222",
+            "address": "258/A, Bommasandra Industrial Area, Bengaluru - 560099",
+            "website": "https://www.narayanahealth.org/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Devi Prasad Shetty",
+              "role": "Founder / Cardiac Surgery"
+            },
+            {
+              "name": "Dr. Somashekhar S.P.",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Narayana Health's model of affordable quality cancer care. Strongest private option for cost-sensitive patients needing tertiary care. PMJAY empanelled.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via narayanahealth.org or 1800-3010-2000",
+            "PMJAY and Arogya Karnataka accepted; sliding scale fees for low-income"
+          ],
+          "score": 88,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.narayanahealth.org/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "fortis-cancer-institute-kolkata",
+          "name": "Fortis Hospital Anandapur — Cancer Care",
+          "short_name": "Fortis Cancer Kolkata",
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "033-66284444",
+            "address": "730, Anandapur, E.M. Bypass, Kolkata - 700107",
+            "website": "https://www.fortishealthcare.com/hospitals/fortis-hospital-kolkata"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Anirban Ghosh",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Sanjit Agarwal",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Premier private cancer referral in Kolkata. Strong in haematology, BMT, and GI oncology. Key referral for patients who need private-sector quality in eastern India.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via fortishealthcare.com or 033-66284444",
+            "Corporate and private insurance accepted; CGHS tie-up for select services"
+          ],
+          "score": 86,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.fortishealthcare.com/hospitals/fortis-hospital-kolkata"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "ruby-hall-clinic-cancer-pune",
+          "name": "Ruby Hall Clinic — Cancer Care, Pune",
+          "short_name": "Ruby Hall Cancer Pune",
+          "city": "Pune",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "020-26163391",
+            "address": "40, Sassoon Road, Pune - 411001",
+            "website": "https://rubyhall.com/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Prasad Bhagwat",
+              "role": "Surgical Oncology"
+            },
+            {
+              "name": "Dr. Deepak Rao",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Leading private cancer centre for Pune and surrounding Maharashtra; well-regarded surgical oncology programme. Key referral for patients from Western Ghats corridor.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via rubyhall.com or 020-26163391",
+            "Corporate insurance and private pay; some ECHS services"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://rubyhall.com/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-04",
+      "region": "National Referral — Private (Batch 4)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "fortis-cancer-malar-chennai",
+          "name": "Fortis Malar Hospital — Oncology, Chennai",
+          "short_name": "Fortis Malar Cancer Chennai",
+          "city": "Chennai",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "044-42892222",
+            "address": "52, First Main Road, Gandhi Nagar, Adyar, Chennai - 600020",
+            "website": "https://www.fortishealthcare.com/hospitals/fortis-malar-hospitals-chennai"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Arun Parthasarathy",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Private oncology referral for Chennai; located near Cancer Institute WIA in Adyar. Key alternative for insured patients.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via fortishealthcare.com or 044-42892222",
+            "Corporate and private insurance accepted"
+          ],
+          "score": 78,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.fortishealthcare.com/hospitals/fortis-malar-hospitals-chennai"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "globalhospitals-cancer-hyderabad",
+          "name": "Global Hospitals — Cancer Care, Hyderabad",
+          "short_name": "Global Cancer Hyderabad",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Liver Transplant Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "040-30244444",
+            "address": "6-1-1070/1 to 4, Lakdi Ka Pul, Hyderabad - 500004",
+            "website": "https://www.globalhospitalsindia.com/specialities/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Subramanyeshwar Rao",
+              "role": "Surgical Oncology & Liver Transplant"
+            }
+          ],
+          "notes": "JCI-accredited; strong in liver cancer and transplant oncology. Key for hepatobiliary malignancies in the Deccan region.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via globalhospitalsindia.com or 040-30244444",
+            "International insurance and corporate plans widely accepted"
+          ],
+          "score": 85,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.globalhospitalsindia.com/specialities/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "wockhardt-hospitals-cancer-mumbai",
+          "name": "Wockhardt Hospitals — Cancer Centre, Mumbai",
+          "short_name": "Wockhardt Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-26282828",
+            "address": "1877, Dr. Anandrao Nair Road, Mumbai Central, Mumbai - 400011",
+            "website": "https://www.wockhardthospitals.com/specialities/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Manish Singhal",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Mid-sized private cancer centre; strong in breast and lung oncology. Good option for patients in central Mumbai catchment.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via wockhardthospitals.com or 022-26282828",
+            "Corporate insurance accepted"
+          ],
+          "score": 76,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.wockhardthospitals.com/specialities/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sir-ganga-ram-hospital-cancer-delhi",
+          "name": "Sir Ganga Ram Hospital — Cancer Centre, New Delhi",
+          "short_name": "SGRH Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-25750000",
+            "address": "Rajinder Nagar, New Delhi - 110060",
+            "website": "https://www.sgrh.com/departments/cancer-centre"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Ajay Sharma",
+              "role": "Surgical Oncology"
+            },
+            {
+              "name": "Dr. Ramesh Sarin",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "One of Delhi's most respected private cancer centres; strong in surgical oncology and GI malignancies. CGHS empanelled.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via sgrh.com or 011-25750000",
+            "CGHS, ECHS, and private insurance accepted"
+          ],
+          "score": 88,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.sgrh.com/departments/cancer-centre"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "batra-hospital-cancer-delhi",
+          "name": "Batra Hospital and Medical Research Centre — Oncology",
+          "short_name": "Batra Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-29958747",
+            "address": "1, Tughlakabad Institutional Area, Mehrauli-Badarpur Road, New Delhi - 110062",
+            "website": "https://batrahospital.com/departments/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. S.K. Wangnoo",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Accessible mid-cost private cancer centre in South Delhi; CGHS empanelled. Good for middle-income patients who need private-sector care.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via batrahospital.com or 011-29958747",
+            "CGHS, ECHS, and most insurance accepted"
+          ],
+          "score": 74,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://batrahospital.com/departments/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-05",
+      "region": "National Referral — Private (Batch 5)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "manipal-hospital-cancer-delhi",
+          "name": "Manipal Hospitals — Cancer Care, Dwarka, New Delhi",
+          "short_name": "Manipal Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-40701500",
+            "address": "Palam Vihar, Sector 6, Dwarka, New Delhi - 110075",
+            "website": "https://www.manipalhospitals.com/dwarka/specialties/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Jayant Sastri",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Manipal's Delhi flagship oncology centre; growing fast. Good option for West Delhi and Haryana-border patients needing private cancer care.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via manipalhospitals.com or 011-40701500",
+            "CGHS, ECHS, and corporate insurance accepted"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.manipalhospitals.com/dwarka/specialties/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "indraprastha-apollo-cancer-delhi",
+          "name": "Indraprastha Apollo Hospital — Cancer Centre, New Delhi",
+          "short_name": "Apollo Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Robotic Surgery",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-71791090",
+            "address": "Sarita Vihar, Delhi-Mathura Road, New Delhi - 110076",
+            "website": "https://apollohospitals.com/new-delhi/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Surender Kumar Dabas",
+              "role": "Surgical Oncology"
+            },
+            {
+              "name": "Dr. Meenu Walia",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "JCI-accredited; Apollo's NCR flagship with one of the strongest private-sector tumour boards in India. Key international patient destination.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via Apollo 24/7 app or 011-71791090",
+            "CGHS, ECHS, and international insurance accepted"
+          ],
+          "score": 93,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://apollohospitals.com/new-delhi/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "bgs-gleneagles-cancer-bangalore",
+          "name": "BGS Gleneagles Global Hospitals — Cancer Care, Bengaluru",
+          "short_name": "BGS Gleneagles Cancer Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Liver Transplant Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "080-50118181",
+            "address": "67, Uttarahalli Road, Kengeri, Bengaluru - 560060",
+            "website": "https://www.bgsgleneaglesglobalhospitals.com/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Nataraj K.S.",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "JCI-accredited international hospital; strong liver transplant oncology programme. Key destination for patients from Sri Lanka and Southeast Asia.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via bgsgleneaglesglobalhospitals.com or 080-50118181",
+            "International insurance and corporate plans accepted"
+          ],
+          "score": 81,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.bgsgleneaglesglobalhospitals.com/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aster-cmi-cancer-bangalore",
+          "name": "Aster CMI Hospital — Comprehensive Cancer Centre, Bengaluru",
+          "short_name": "Aster CMI Cancer Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "080-43426262",
+            "address": "No.43/2 New Airport Road, NH-7, Hebbal, Bengaluru - 560092",
+            "website": "https://www.asterindia.com/hospitals/aster-cmi-hospital/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Suresh Babu",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Growing Aster network cancer centre in North Bengaluru; strong in gynaecologic oncology. Aster's India flagship for comprehensive cancer care.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via asterindia.com or 080-43426262",
+            "Corporate and private insurance accepted"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.asterindia.com/hospitals/aster-cmi-hospital/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "dharamshila-narayana-cancer-delhi",
+          "name": "Dharamshila Narayana Superspeciality Hospital — Cancer Centre",
+          "short_name": "Dharamshila Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "011-43088888",
+            "address": "1, Dharamshila Marg, Vasundhara Enclave, New Delhi - 110096",
+            "website": "https://www.narayanahealth.org/hospitals/dharamshila"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Ashok Kumar Vaid",
+              "role": "Medical Oncology / BMT"
+            },
+            {
+              "name": "Dr. Dinesh Pendharkar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Dedicated cancer hospital in East Delhi; one of the most affordable private-sector options with genuine PMJAY empanelment. Strong BMT programme. Key referral for UP-border patients.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via narayanahealth.org or 011-43088888",
+            "PMJAY, CGHS, and sliding-scale fees for low-income patients"
+          ],
+          "score": 87,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.narayanahealth.org/hospitals/dharamshila"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-06",
+      "region": "National Referral — Private (Batch 6)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "amri-hospitals-cancer-kolkata",
+          "name": "AMRI Hospitals — Cancer Care, Kolkata",
+          "short_name": "AMRI Cancer Kolkata",
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "033-30309999",
+            "address": "P-4 & 5, CIT Scheme LXXII, Gariahat, Kolkata - 700029",
+            "website": "https://www.amrihospitals.in/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Ranajit Mandal",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Established private cancer centre for South Kolkata catchment. Preferred private option for insured patients in West Bengal.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via amrihospitals.in or 033-30309999",
+            "Corporate and private insurance accepted"
+          ],
+          "score": 78,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.amrihospitals.in/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "medica-cancer-hospital-kolkata",
+          "name": "Medica Superspecialty Hospital — Cancer Institute, Kolkata",
+          "short_name": "Medica Cancer Kolkata",
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "033-66520000",
+            "address": "127, Mukundapur, E.M. Bypass, Kolkata - 700099",
+            "website": "https://www.medicainstitutions.com/cancer-institute"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Biswajit Ghosh",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Mid-cost private cancer option in Kolkata; PMJAY empanelled. Important for patients who need private-sector quality without prohibitive cost in West Bengal.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via medicainstitutions.com or 033-66520000",
+            "PMJAY (Swasthya Sathi) and corporate insurance accepted"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.medicainstitutions.com/cancer-institute"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "hcg-cancer-ahmedabad",
+          "name": "HCG Cancer Centre, Ahmedabad",
+          "short_name": "HCG Cancer Ahmedabad",
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "079-40018800",
+            "address": "Commerce Six Roads, Navrangpura, Ahmedabad - 380009",
+            "website": "https://www.hcgoncology.com/centres/ahmedabad"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Gaurang Baxi",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "HCG's Gujarat flagship; complements GCRI for private-pay patients in Ahmedabad. Strong oral and tobacco-related cancer programme.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via hcgoncology.com or 079-40018800",
+            "Corporate and private insurance accepted; MA Yojana tie-up pending"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.hcgoncology.com/centres/ahmedabad"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sterling-hospital-cancer-ahmedabad",
+          "name": "Sterling Hospital — Cancer Care, Ahmedabad",
+          "short_name": "Sterling Cancer Ahmedabad",
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "079-40011000",
+            "address": "Sterling Hospital Road, Bodakdev, Ahmedabad - 380052",
+            "website": "https://www.sterlinghospitals.com/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Purvesh Patel",
+              "role": "Radiation Oncology"
+            }
+          ],
+          "notes": "Affordable mid-tier private cancer centre in Ahmedabad; MA Yojana and PMJAY empanelled. Good option for middle-income Gujarat patients.",
+          "tier": "C",
+          "navigation_notes": [
+            "Appointment via sterlinghospitals.com or 079-40011000",
+            "MA Yojana (Gujarat) and PMJAY accepted"
+          ],
+          "score": 73,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.sterlinghospitals.com/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "care-hospitals-cancer-hyderabad",
+          "name": "CARE Hospitals — Cancer Centre, Hyderabad",
+          "short_name": "CARE Cancer Hyderabad",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "040-30418888",
+            "address": "Exhibition Road, Nampally, Hyderabad - 500001",
+            "website": "https://www.carehospitals.com/specialities/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Srinivas Chakravarthy",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Established private cancer centre in Hyderabad; Aarogyasri and PMJAY empanelled — important for middle-income Telangana patients. Bone marrow transplant available.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via carehospitals.com or 040-30418888",
+            "Aarogyasri and PMJAY accepted"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.carehospitals.com/specialities/cancer-care"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-07",
+      "region": "National Referral — Private (Batch 7)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "apollo-cancer-kolkata",
+          "name": "Apollo Gleneagles Cancer Centre, Kolkata",
+          "short_name": "Apollo Cancer Kolkata",
+          "city": "Kolkata",
+          "state": "West Bengal",
+          "region": "East",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "033-23201340",
+            "address": "58, Canal Circular Road, Kadapara, Phool Bagan, Kolkata - 700054",
+            "website": "https://apollohospitals.com/kolkata/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sanjay Bhattacharyya",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Apollo's East India flagship cancer centre; strong in haematological malignancies and BMT. Key private referral for Bangladesh border patients.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via Apollo 24/7 app or 033-23201340",
+            "Corporate and international insurance accepted"
+          ],
+          "score": 86,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://apollohospitals.com/kolkata/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "blk-max-cancer-delhi",
+          "name": "BLK-Max Super Speciality Hospital — Cancer Centre, Delhi",
+          "short_name": "BLK-Max Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-30403040",
+            "address": "5, Pusa Road, New Delhi - 110005",
+            "website": "https://www.blkmaxhospital.com/specialities/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Rakesh Chopra",
+              "role": "Medical Oncology / BMT"
+            },
+            {
+              "name": "Dr. Sajjan Rajpurohit",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "One of Delhi's top private cancer centres; known for BMT and complex haematology. CGHS empanelled. Strong international patient base from South Asia.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via blkmaxhospital.com or 011-30403040",
+            "CGHS, ECHS, and most private insurance accepted"
+          ],
+          "score": 90,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.blkmaxhospital.com/specialities/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "amrita-cancer-centre-kochi",
+          "name": "Amrita Institute of Medical Sciences — Cancer Centre, Kochi",
+          "short_name": "Amrita Cancer Kochi",
+          "city": "Kochi",
+          "state": "Kerala",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0484-2858001",
+            "address": "AIMS Ponekkara PO, Kochi - 682041",
+            "website": "https://www.aims.amrita.edu/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sajith Babu",
+              "role": "Bone Marrow Transplant"
+            },
+            {
+              "name": "Dr. Rajanish Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "JCI-accredited; one of South India's strongest private cancer centres. Known for paediatric oncology and BMT. Kerala Karunya and PMJAY accepted.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via aims.amrita.edu or 0484-2858001",
+            "PMJAY, Kerala Karunya scheme, and corporate insurance accepted"
+          ],
+          "score": 91,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.aims.amrita.edu/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "aster-medcity-cancer-kochi",
+          "name": "Aster Medcity — Comprehensive Cancer Centre, Kochi",
+          "short_name": "Aster Medcity Cancer Kochi",
+          "city": "Kochi",
+          "state": "Kerala",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL",
+            "JCI"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Head & Neck Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0484-6699999",
+            "address": "Kuttisahib Road, South Chittoor, Cheranalloor, Kochi - 682027",
+            "website": "https://www.astermedcity.com/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sajeev Kumar",
+              "role": "Medical Oncology"
+            },
+            {
+              "name": "Dr. Sanjay Popat",
+              "role": "Thoracic Oncology"
+            }
+          ],
+          "notes": "JCI-accredited; Aster's flagship hospital in India. Comprehensive cancer programme with strong international patient services. Key for Gulf diaspora returning for treatment.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via astermedcity.com or 0484-6699999",
+            "International insurance and corporate plans widely accepted"
+          ],
+          "score": 90,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.astermedcity.com/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "psri-cancer-delhi",
+          "name": "Pushpawati Singhania Hospital and Research Institute — Oncology",
+          "short_name": "PSRI Cancer Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Hepatobiliary Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-29515151",
+            "address": "Press Enclave Road, Sheikh Sarai Phase-II, New Delhi - 110017",
+            "website": "https://www.psri.in/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. A.S. Puri",
+              "role": "Gastroenterology & GI Oncology"
+            }
+          ],
+          "notes": "Specialised private hospital; strong in hepatobiliary and GI oncology. CGHS empanelled. Useful for complex hepatocellular carcinoma cases.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via psri.in or 011-29515151",
+            "CGHS and private insurance accepted"
+          ],
+          "score": 75,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.psri.in/oncology"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-08",
+      "region": "National Referral — Private (Batch 8)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "kamineni-hospitals-cancer-hyderabad",
+          "name": "Kamineni Hospitals — Cancer Care, Hyderabad",
+          "short_name": "Kamineni Cancer Hyderabad",
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "040-44550000",
+            "address": "L.B. Nagar, Hyderabad - 500068",
+            "website": "https://www.kamineihospitals.com/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Kishore Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Mid-size private cancer unit; Aarogyasri and PMJAY empanelled. Good lower-cost option for patients in South Hyderabad catchment.",
+          "tier": "C",
+          "navigation_notes": [
+            "Appointment via kamineihospitals.com or 040-44550000",
+            "Aarogyasri and PMJAY accepted"
+          ],
+          "score": 71,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.kamineihospitals.com/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "apollo-cancer-pune",
+          "name": "Jehangir Hospital Apollo — Cancer Centre, Pune",
+          "short_name": "Jehangir Apollo Cancer Pune",
+          "city": "Pune",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "020-66810100",
+            "address": "32, Sassoon Road, Pune - 411001",
+            "website": "https://jehangir.apollohospitals.com/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sujay Susikar",
+              "role": "Surgical Oncology"
+            }
+          ],
+          "notes": "Apollo affiliate in Pune; strong in breast and GI cancers. Key private-sector referral for Pune and Nashik corridor.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via Apollo 24/7 app or 020-66810100",
+            "Corporate and private insurance accepted"
+          ],
+          "score": 78,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://jehangir.apollohospitals.com/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "rainbow-cancer-care-centre-vijayawada",
+          "name": "Andhra Hospital — Cancer Centre, Vijayawada",
+          "short_name": "Andhra Hospital Cancer Vijayawada",
+          "city": "Vijayawada",
+          "state": "Andhra Pradesh",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0866-2493300",
+            "address": "C.B.M. Compound, Maharani Peta, Vijayawada - 520002",
+            "website": "https://www.andrahospital.com/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Subha Rajan",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Key private cancer centre for Krishna district and surrounding AP corridor. Aarogyasri empanelled — important for middle-income patients who cannot reach SVIMS.",
+          "tier": "C",
+          "navigation_notes": [
+            "Appointment via 0866-2493300; Aarogyasri (AP) and PMJAY accepted"
+          ],
+          "score": 72,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.andrahospital.com/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "narayana-cancer-ahmedabad",
+          "name": "Narayana Multispeciality Hospital — Cancer Care, Ahmedabad",
+          "short_name": "Narayana Cancer Ahmedabad",
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "079-66770000",
+            "address": "Rakhial Road, Dharampur, Ahmedabad - 380005",
+            "website": "https://www.narayanahealth.org/hospitals/ahmedabad"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Vivek Garg",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Affordable Narayana network cancer unit in Ahmedabad; PMJAY empanelled. Key option for low-income Gujarat patients who cannot access GCRI.",
+          "tier": "C",
+          "navigation_notes": [
+            "Appointment via narayanahealth.org or 079-66770000",
+            "PMJAY and MA Yojana (Gujarat) accepted"
+          ],
+          "score": 74,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.narayanahealth.org/hospitals/ahmedabad"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "sparsh-hospital-cancer-bangalore",
+          "name": "Sparsh Hospital — Cancer Care, Bengaluru",
+          "short_name": "Sparsh Cancer Bengaluru",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "080-40202020",
+            "address": "29/P2, Infantry Road, Bengaluru - 560001",
+            "website": "https://www.sparsh-hospital.com/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Prasad Narayanan",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Mid-tier private cancer centre in Bengaluru; Arogya Karnataka and PMJAY empanelled. Good option for lower-income patients who cannot access KMIO or HCG.",
+          "tier": "C",
+          "navigation_notes": [
+            "Appointment via sparsh-hospital.com or 080-40202020",
+            "Arogya Karnataka and PMJAY accepted"
+          ],
+          "score": 72,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.sparsh-hospital.com/cancer-care"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-09",
+      "region": "National Referral — Private (Batch 9)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "manipal-hospital-cancer-jaipur",
+          "name": "Manipal Hospitals — Cancer Care, Jaipur",
+          "short_name": "Manipal Cancer Jaipur",
+          "city": "Jaipur",
+          "state": "Rajasthan",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0141-3999999",
+            "address": "Sector 5, Vidhyadhar Nagar, Jaipur - 302023",
+            "website": "https://www.manipalhospitals.com/jaipur/specialties/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Satya Prakash Yadav",
+              "role": "Paediatric Haematology & BMT"
+            }
+          ],
+          "notes": "Manipal's Rajasthan flagship; notable for paediatric cancer and BMT. Key private referral for Rajasthan families who need private-sector quality.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via manipalhospitals.com or 0141-3999999",
+            "Corporate and private insurance accepted; some CGHS tie-up"
+          ],
+          "score": 83,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.manipalhospitals.com/jaipur/specialties/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "fortis-cancer-jaipur",
+          "name": "Fortis Escorts Hospital — Cancer Care, Jaipur",
+          "short_name": "Fortis Cancer Jaipur",
+          "city": "Jaipur",
+          "state": "Rajasthan",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0141-2547000",
+            "address": "Jawaharlal Nehru Marg, Malviya Nagar, Jaipur - 302017",
+            "website": "https://www.fortishealthcare.com/hospitals/fortis-escorts-hospital-jaipur"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Dinesh Singh Chauhan",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Established private cancer referral for Jaipur; complements Manipal for Rajasthan patients. Strong in GI and breast oncology.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via fortishealthcare.com or 0141-2547000",
+            "Corporate insurance accepted; CGHS tie-up for select services"
+          ],
+          "score": 77,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.fortishealthcare.com/hospitals/fortis-escorts-hospital-jaipur"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "tata-memorial-advanced-centre-navi-mumbai",
+          "name": "Advanced Centre for Treatment, Research and Education in Cancer (ACTREC)",
+          "short_name": "ACTREC Navi Mumbai",
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Government",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Cancer Genetics",
+            "Clinical Trials",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "low",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "022-27405000",
+            "address": "Sector 22, Kharghar, Navi Mumbai - 410210",
+            "website": "https://actrec.gov.in"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Sudeep Gupta",
+              "role": "Director, TMC"
+            },
+            {
+              "name": "Dr. Kumar Prabhash",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Research arm of Tata Memorial; access to cutting-edge clinical trials. Ideal for patients seeking experimental treatment options under DAE/TMC umbrella.",
+          "tier": "A",
+          "navigation_notes": [
+            "Referral from TMH Mumbai usually required for ACTREC trials",
+            "Bus service from Kharghar station; DAE concessional rates for patients"
+          ],
+          "score": 95,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://actrec.gov.in/departments"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "apollo-cancer-bhubaneswar",
+          "name": "Apollo Hospitals — Cancer Care, Bhubaneswar",
+          "short_name": "Apollo Cancer Bhubaneswar",
+          "city": "Bhubaneswar",
+          "state": "Odisha",
+          "region": "East",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0674-6666000",
+            "address": "Plot No-251, Sainik School Road, Unit-15, Bhubaneswar - 751005",
+            "website": "https://apollohospitals.com/bhubaneswar/cancer"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Prafulla Kumar Mohanty",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Key private cancer referral for Odisha; complements AHPGI and AIIMS Bhubaneswar for patients seeking private-sector care.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via Apollo 24/7 app or 0674-6666000",
+            "Biju Swasthya Kalyan Yojana tie-up via select packages; corporate insurance accepted"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://apollohospitals.com/bhubaneswar/cancer"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "manipal-cancer-visakhapatnam",
+          "name": "Manipal Hospitals — Cancer Care, Visakhapatnam",
+          "short_name": "Manipal Cancer Vizag",
+          "city": "Visakhapatnam",
+          "state": "Andhra Pradesh",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "0891-6788888",
+            "address": "Tadepalli, Visakhapatnam - 530002",
+            "website": "https://www.manipalhospitals.com/visakhapatnam/specialties/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Kiran Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Key private cancer referral for North Andhra Pradesh and Odisha coast. Growing programme; important for Vizag's industrial workers with occupational cancer risk.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via manipalhospitals.com or 0891-6788888",
+            "Corporate and private insurance accepted"
+          ],
+          "score": 75,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.manipalhospitals.com/visakhapatnam/specialties/cancer-care"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
+    },
+    {
+      "id": "national-referral-pvt-10",
+      "region": "National Referral — Private (Batch 10)",
+      "status": "researched",
+      "hospitals": [
+        {
+          "id": "christian-medical-college-vellore-cancer",
+          "name": "Christian Medical College Vellore — Cancer Institute",
+          "short_name": "CMC Vellore Cancer",
+          "city": "Vellore",
+          "state": "Tamil Nadu",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": true,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology",
+            "Paediatric Oncology",
+            "Palliative Care",
+            "Nuclear Medicine"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0416-2281000",
+            "address": "Ida Scudder Road, Vellore - 632004",
+            "website": "https://www.cmch-vellore.edu/department/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Vikram Mathews",
+              "role": "Haematology & BMT"
+            },
+            {
+              "name": "Dr. Subramanian Bhanu",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "One of India's most trusted cancer institutions; cross-subsidised model makes it accessible for low-income patients. Strongest BMT programme in South India. NCG member. PMJAY accepted.",
+          "tier": "A",
+          "navigation_notes": [
+            "Walk-in registration from 6 AM; token system; arrive very early",
+            "Accommodation at Kamalasabai Hostel within CMC campus",
+            "CMCHIS (TN), PMJAY, and most insurance accepted; subsidised rates for low-income"
+          ],
+          "score": 96,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.cmch-vellore.edu/department/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "kasturba-medical-college-cancer-mangalore",
+          "name": "Kasturba Medical College Hospital — Cancer Centre, Mangaluru",
+          "short_name": "KMC Cancer Mangaluru",
+          "city": "Mangaluru",
+          "state": "Karnataka",
+          "region": "South",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Gynaecologic Oncology",
+            "Palliative Care"
+          ],
+          "cost_tier": "medium",
+          "pmjay_empanelled": true,
+          "contact": {
+            "phone": "0824-2444600",
+            "address": "Lighthouse Hill Road, Mangaluru - 575001",
+            "website": "https://www.manipalhospitals.com/mangalore/specialties/cancer-care"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Prasanna Kumar",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Manipal group's Mangaluru campus cancer unit; strong teaching hospital pedigree. Key for coastal Karnataka and Kerala border patients. PMJAY empanelled.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via manipalhospitals.com or 0824-2444600",
+            "PMJAY and Arogya Karnataka accepted; moderate cost overall"
+          ],
+          "score": 80,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.manipalhospitals.com/mangalore/specialties/cancer-care"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "hinduja-hospital-cancer-mumbai",
+          "name": "P.D. Hinduja National Hospital — Cancer Care, Mumbai",
+          "short_name": "Hinduja Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH",
+            "NABL"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology",
+            "Bone Marrow Transplant",
+            "Gynaecologic Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-24447000",
+            "address": "Veer Savarkar Marg, Mahim, Mumbai - 400016",
+            "website": "https://www.hindujahospital.com/clinical-services/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Philip Abraham",
+              "role": "GI Oncology"
+            },
+            {
+              "name": "Dr. Geeta Kamath",
+              "role": "Gynaecologic Oncology"
+            }
+          ],
+          "notes": "Trusted private hospital in Mumbai; strong GI and gynaecologic oncology. CGHS empanelled. Well-regarded second-opinion destination.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via hindujahospital.com or 022-24447000",
+            "CGHS, ECHS, and most private insurance accepted"
+          ],
+          "score": 84,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "high",
+          "sources": [
+            "https://www.hindujahospital.com/clinical-services/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "saifee-hospital-cancer-mumbai",
+          "name": "Saifee Hospital — Cancer Care, Mumbai",
+          "short_name": "Saifee Cancer Mumbai",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "region": "West",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Medical Oncology",
+            "Surgical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "022-67570111",
+            "address": "15/17, Maharshi Karve Road, Charni Road, Mumbai - 400004",
+            "website": "https://www.saifee.hospital/departments/oncology"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Suresh Advani",
+              "role": "Medical Oncology"
+            }
+          ],
+          "notes": "Reputed mid-size private cancer centre in South Mumbai; strong in medical oncology and chemotherapy protocols. Well-regarded for second opinions.",
+          "tier": "B",
+          "navigation_notes": [
+            "Appointment via saifee.hospital or 022-67570111",
+            "Most private insurance and corporate plans accepted"
+          ],
+          "score": 76,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.saifee.hospital/departments/oncology"
+          ],
+          "national_referral": true
+        },
+        {
+          "id": "fortis-la-femme-cancer-delhi",
+          "name": "Fortis La Femme — Gynaecologic Oncology, New Delhi",
+          "short_name": "Fortis La Femme Gyn-Onc Delhi",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "region": "North",
+          "type": "Private",
+          "accreditation": [
+            "NABH"
+          ],
+          "ncg_member": false,
+          "departments": [
+            "Gynaecologic Oncology",
+            "Medical Oncology",
+            "Radiation Oncology"
+          ],
+          "cost_tier": "high",
+          "pmjay_empanelled": false,
+          "contact": {
+            "phone": "011-42004200",
+            "address": "S-549, Greater Kailash Part-II, New Delhi - 110048",
+            "website": "https://www.fortishealthcare.com/hospitals/fortis-la-femme-delhi"
+          },
+          "key_doctors": [
+            {
+              "name": "Dr. Nita Nair",
+              "role": "Gynaecologic Oncology"
+            }
+          ],
+          "notes": "Specialised women's cancer centre; best-in-class gynaecologic oncology in NCR. Unique focus on cervical, ovarian, and uterine cancers. CGHS empanelled.",
+          "tier": "A",
+          "navigation_notes": [
+            "Appointment via fortishealthcare.com or 011-42004200",
+            "CGHS and private insurance accepted"
+          ],
+          "score": 82,
+          "verified_date": "2026-05-09",
+          "status": "draft",
+          "confidence": "medium",
+          "sources": [
+            "https://www.fortishealthcare.com/hospitals/fortis-la-femme-delhi"
+          ],
+          "national_referral": true
+        }
+      ],
+      "createdAt": "2026-05-09T00:00:00Z"
     }
   ]
 }

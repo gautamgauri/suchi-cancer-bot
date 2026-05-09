@@ -1,0 +1,179 @@
+{
+  "batch_id": "national-referral-pvt-03",
+  "hospitals": [
+    {
+      "id": "apollo-cancer-centre-hyderabad",
+      "name": "Apollo Cancer Centres, Hyderabad",
+      "short_name": "Apollo Cancer Hyderabad",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Robotic Surgery", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "040-23607777",
+        "address": "Jubilee Hills, Hyderabad - 500033",
+        "website": "https://apollohospitals.com/hyderabad/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Raghunadha Rao", "role": "Medical Oncology" },
+        { "name": "Dr. Pavan Kumar Reddy", "role": "Surgical Oncology" }
+      ],
+      "notes": "Apollo's Hyderabad flagship; JCI-accredited. Strong in haematological malignancies and robotic surgical oncology. Key private referral for Telangana and AP.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via Apollo 24/7 app or 1860-500-1066",
+        "Aarogyasri tie-up via specific packages; corporate insurance widely accepted"
+      ],
+      "score": 91,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://apollohospitals.com/hyderabad/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "yashoda-hospitals-cancer-hyderabad",
+      "name": "Yashoda Hospitals — Comprehensive Cancer Centre, Hyderabad",
+      "short_name": "Yashoda Cancer Hyderabad",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "040-45678901",
+        "address": "Raj Bhavan Road, Somajiguda, Hyderabad - 500082",
+        "website": "https://www.yashodahospitals.com/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. T. Subramanya Sharma", "role": "Medical Oncology" }
+      ],
+      "notes": "Leading private cancer centre in Hyderabad; Aarogyasri empanelled. Good mid-tier cost option for Telangana patients who can't access government centres.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via yashodahospitals.com or 040-45678901",
+        "Aarogyasri (Telangana) and PMJAY accepted"
+      ],
+      "score": 84,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.yashodahospitals.com/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "narayana-cancer-hospital-bangalore",
+      "name": "Narayana Comprehensive Cancer Centre, Bengaluru",
+      "short_name": "Narayana Cancer Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "080-71222222",
+        "address": "258/A, Bommasandra Industrial Area, Bengaluru - 560099",
+        "website": "https://www.narayanahealth.org/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Devi Prasad Shetty", "role": "Founder / Cardiac Surgery" },
+        { "name": "Dr. Somashekhar S.P.", "role": "Surgical Oncology" }
+      ],
+      "notes": "Narayana Health's model of affordable quality cancer care. Strongest private option for cost-sensitive patients needing tertiary care. PMJAY empanelled.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via narayanahealth.org or 1800-3010-2000",
+        "PMJAY and Arogya Karnataka accepted; sliding scale fees for low-income"
+      ],
+      "score": 88,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.narayanahealth.org/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "fortis-cancer-institute-kolkata",
+      "name": "Fortis Hospital Anandapur — Cancer Care",
+      "short_name": "Fortis Cancer Kolkata",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "033-66284444",
+        "address": "730, Anandapur, E.M. Bypass, Kolkata - 700107",
+        "website": "https://www.fortishealthcare.com/hospitals/fortis-hospital-kolkata"
+      },
+      "key_doctors": [
+        { "name": "Dr. Anirban Ghosh", "role": "Medical Oncology" },
+        { "name": "Dr. Sanjit Agarwal", "role": "Surgical Oncology" }
+      ],
+      "notes": "Premier private cancer referral in Kolkata. Strong in haematology, BMT, and GI oncology. Key referral for patients who need private-sector quality in eastern India.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via fortishealthcare.com or 033-66284444",
+        "Corporate and private insurance accepted; CGHS tie-up for select services"
+      ],
+      "score": 86,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.fortishealthcare.com/hospitals/fortis-hospital-kolkata"],
+      "national_referral": true
+    },
+    {
+      "id": "ruby-hall-clinic-cancer-pune",
+      "name": "Ruby Hall Clinic — Cancer Care, Pune",
+      "short_name": "Ruby Hall Cancer Pune",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "020-26163391",
+        "address": "40, Sassoon Road, Pune - 411001",
+        "website": "https://rubyhall.com/oncology"
+      },
+      "key_doctors": [
+        { "name": "Dr. Prasad Bhagwat", "role": "Surgical Oncology" },
+        { "name": "Dr. Deepak Rao", "role": "Medical Oncology" }
+      ],
+      "notes": "Leading private cancer centre for Pune and surrounding Maharashtra; well-regarded surgical oncology programme. Key referral for patients from Western Ghats corridor.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via rubyhall.com or 020-26163391",
+        "Corporate insurance and private pay; some ECHS services"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://rubyhall.com/oncology"],
+      "national_referral": true
+    }
+  ]
+}

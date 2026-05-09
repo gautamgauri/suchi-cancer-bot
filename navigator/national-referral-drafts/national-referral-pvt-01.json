@@ -1,0 +1,182 @@
+{
+  "batch_id": "national-referral-pvt-01",
+  "hospitals": [
+    {
+      "id": "apollo-cancer-centre-chennai",
+      "name": "Apollo Cancer Centres, Chennai",
+      "short_name": "Apollo Cancer Chennai",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Head & Neck Oncology", "Paediatric Oncology", "Proton Therapy", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "044-28290200",
+        "address": "21, Greams Lane, Off Greams Road, Chennai - 600006",
+        "website": "https://apollohospitals.com/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Vijay Anand Reddy", "role": "Radiation Oncology" },
+        { "name": "Dr. Arvind Krishnamurthy", "role": "Surgical Oncology (Head & Neck)" }
+      ],
+      "notes": "Largest private cancer network in India. Chennai flagship has proton therapy — one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via Apollo 24/7 app or 1860-500-1066",
+        "International patient services available; EMI and insurance tie-ups",
+        "Some government insurance schemes via individual agreements"
+      ],
+      "score": 96,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://apollohospitals.com/cancer", "https://www.jcrinternational.org"],
+      "national_referral": true
+    },
+    {
+      "id": "medanta-cancer-institute-gurugram",
+      "name": "Medanta — The Medicity, Cancer Institute",
+      "short_name": "Medanta Gurugram",
+      "city": "Gurugram",
+      "state": "Haryana",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Robotic Surgery", "Gynaecologic Oncology", "Head & Neck Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0124-4141414",
+        "address": "Sector 38, Gurugram - 122001",
+        "website": "https://www.medanta.org/cancer-institute"
+      },
+      "key_doctors": [
+        { "name": "Dr. Naresh Trehan", "role": "Chairman & Cardio-thoracic" },
+        { "name": "Dr. Surender Kumar Dabas", "role": "Surgical Oncology" }
+      ],
+      "notes": "Flagship private multi-specialty hospital for NCR; comprehensive cancer institute. Excellent robotic surgery and BMT programme. CGHS empanelled.",
+      "tier": "A",
+      "navigation_notes": [
+        "Online appointment at medanta.org or 0124-4141414",
+        "CGHS and ECHS accepted; corporate insurance widely accepted",
+        "Guest house and patient lodging on campus"
+      ],
+      "score": 94,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.medanta.org/cancer-institute"],
+      "national_referral": true
+    },
+    {
+      "id": "fortis-memorial-research-institute-gurugram",
+      "name": "Fortis Memorial Research Institute — Oncology",
+      "short_name": "FMRI Gurugram",
+      "city": "Gurugram",
+      "state": "Haryana",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Robotic Surgery"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "0124-4962200",
+        "address": "Sector 44, Gurugram - 122002",
+        "website": "https://www.fortishealthcare.com/hospitals/fortis-memorial-research-institute-gurgaon"
+      },
+      "key_doctors": [
+        { "name": "Dr. Rahul Bhargava", "role": "Haematology & BMT" },
+        { "name": "Dr. Ashish Goel", "role": "Medical Oncology" }
+      ],
+      "notes": "JCI-accredited tertiary cancer centre; one of the top BMT programmes in North India. Leading destination for international patients from South Asia.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via Fortis app or 1800-103-8800",
+        "CGHS, ECHS, corporate insurance accepted; international insurance welcome"
+      ],
+      "score": 92,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.fortishealthcare.com/hospitals/fortis-memorial-research-institute-gurgaon"],
+      "national_referral": true
+    },
+    {
+      "id": "max-cancer-centre-saket-delhi",
+      "name": "Max Cancer Centre, Saket",
+      "short_name": "Max Cancer Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Neuro-Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "011-26515050",
+        "address": "1-2, Press Enclave Road, Saket, New Delhi - 110017",
+        "website": "https://www.maxhealthcare.in/specialities/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Harit Chaturvedi", "role": "Head & Neck Surgical Oncology" },
+        { "name": "Dr. Lalit Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Leading private cancer centre in Delhi; known for head & neck oncology and BMT. CGHS empanelled.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via maxhealthcare.in or 011-26515050",
+        "CGHS, ECHS, and most corporate insurance accepted"
+      ],
+      "score": 91,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.maxhealthcare.in/specialities/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
+      "name": "Kokilaben Dhirubhai Ambani Hospital — Cancer Centre",
+      "short_name": "KDH Cancer Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "West",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Robotic Surgery", "Gynaecologic Oncology", "Proton Therapy", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "022-42696969",
+        "address": "Four Bungalows, Andheri West, Mumbai - 400053",
+        "website": "https://www.kokilabenhospital.com/departments/cancercare"
+      },
+      "key_doctors": [
+        { "name": "Dr. Shailesh Shrikhande", "role": "GI Surgical Oncology" },
+        { "name": "Dr. Anoop Attam", "role": "Radiation Oncology" }
+      ],
+      "notes": "One of Mumbai's premier private cancer centres; proton therapy available. Strong in GI, hepatobiliary, and robotic surgery. JCI-accredited.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment at kokilabenhospital.com or 022-42696969",
+        "International patients welcome; CGHS, ECHS, corporate insurance accepted"
+      ],
+      "score": 93,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.kokilabenhospital.com/departments/cancercare"],
+      "national_referral": true
+    }
+  ]
+}

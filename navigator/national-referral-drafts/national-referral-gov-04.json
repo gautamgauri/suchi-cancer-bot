@@ -1,0 +1,173 @@
+{
+  "batch_id": "national-referral-gov-04",
+  "hospitals": [
+    {
+      "id": "aiims-raipur",
+      "name": "All India Institute of Medical Sciences, Raipur",
+      "short_name": "AIIMS Raipur",
+      "city": "Raipur",
+      "state": "Chhattisgarh",
+      "region": "Central",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0771-2573777",
+        "address": "G.E. Road, Tatibandh, Raipur - 492099",
+        "website": "https://www.aiimsraipur.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Nirdesh Kumar", "role": "Medical Oncology" }
+      ],
+      "notes": "Apex referral for Chhattisgarh; growing oncology programme serving tribal belt populations.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM Monday–Saturday; PMJAY and Dr. Khubchand Baghel scheme accepted",
+        "Patient accommodation at hospital campus hostel"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsraipur.edu.in/department/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-nagpur",
+      "name": "All India Institute of Medical Sciences, Nagpur",
+      "short_name": "AIIMS Nagpur",
+      "city": "Nagpur",
+      "state": "Maharashtra",
+      "region": "Central",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0712-2975300",
+        "address": "Plot No. 2, Sector-20, MIHAN, Nagpur - 441108",
+        "website": "https://www.aiimsnagpur.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Arun Bhatt", "role": "Surgical Oncology" }
+      ],
+      "notes": "Serves Vidarbha region and Central India corridor. Filling a critical gap in central Maharashtra.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; PMJAY and Mahatma Jyotiba Phule Jan Arogya Yojana accepted"
+      ],
+      "score": 79,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsnagpur.edu.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-bhopal",
+      "name": "All India Institute of Medical Sciences, Bhopal",
+      "short_name": "AIIMS Bhopal",
+      "city": "Bhopal",
+      "state": "Madhya Pradesh",
+      "region": "Central",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Nuclear Medicine"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0755-2672355",
+        "address": "Saket Nagar, Bhopal - 462020",
+        "website": "https://www.aiimsbhopal.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Rajesh Patidar", "role": "Medical Oncology" }
+      ],
+      "notes": "Apex referral for Madhya Pradesh; serves large tribal and rural population. Good linear accelerator facility.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; Ayushman Bharat and MP Mukhyamantri Swasthya Seva Yojana accepted",
+        "Patient lodging at AIIMS campus hostel"
+      ],
+      "score": 81,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsbhopal.edu.in/department/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-hyderabad",
+      "name": "All India Institute of Medical Sciences, Hyderabad (Bibinagar)",
+      "short_name": "AIIMS Bibinagar",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "08682-281800",
+        "address": "Bibinagar, Yadadri Bhuvanagiri District, Telangana - 508126",
+        "website": "https://www.aiimsbibinagar.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Ramachandra Bhatt", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS serving Telangana and parts of AP. Oncology department rapidly scaling.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD registration 8 AM; Aarogyasri (Telangana) and PMJAY accepted"
+      ],
+      "score": 76,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsbibinagar.edu.in"],
+      "national_referral": true
+    },
+    {
+      "id": "nims-hyderabad",
+      "name": "Nizam's Institute of Medical Sciences",
+      "short_name": "NIMS Hyderabad",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Haematology", "Bone Marrow Transplant"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "040-23489000",
+        "address": "Punjagutta, Hyderabad - 500082",
+        "website": "https://nims.ap.nic.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Sadashivudu Gundeti", "role": "Medical Oncology & Haematology" }
+      ],
+      "notes": "Premier state medical university hospital; strong in haematological malignancies and BMT. Key Aarogyasri referral.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; Aarogyasri and PMJAY accepted; free for EWS patients",
+        "Accommodation facilities on campus"
+      ],
+      "score": 85,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://nims.ap.nic.in/departments/oncology"],
+      "national_referral": true
+    }
+  ]
+}

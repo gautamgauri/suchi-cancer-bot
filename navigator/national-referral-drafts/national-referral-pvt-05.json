@@ -1,0 +1,177 @@
+{
+  "batch_id": "national-referral-pvt-05",
+  "hospitals": [
+    {
+      "id": "manipal-hospital-cancer-delhi",
+      "name": "Manipal Hospitals — Cancer Care, Dwarka, New Delhi",
+      "short_name": "Manipal Cancer Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Paediatric Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "011-40701500",
+        "address": "Palam Vihar, Sector 6, Dwarka, New Delhi - 110075",
+        "website": "https://www.manipalhospitals.com/dwarka/specialties/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Jayant Sastri", "role": "Medical Oncology" }
+      ],
+      "notes": "Manipal's Delhi flagship oncology centre; growing fast. Good option for West Delhi and Haryana-border patients needing private cancer care.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via manipalhospitals.com or 011-40701500",
+        "CGHS, ECHS, and corporate insurance accepted"
+      ],
+      "score": 80,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.manipalhospitals.com/dwarka/specialties/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "indraprastha-apollo-cancer-delhi",
+      "name": "Indraprastha Apollo Hospital — Cancer Centre, New Delhi",
+      "short_name": "Apollo Cancer Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Robotic Surgery", "Gynaecologic Oncology", "Paediatric Oncology", "Palliative Care"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "011-71791090",
+        "address": "Sarita Vihar, Delhi-Mathura Road, New Delhi - 110076",
+        "website": "https://apollohospitals.com/new-delhi/cancer"
+      },
+      "key_doctors": [
+        { "name": "Dr. Surender Kumar Dabas", "role": "Surgical Oncology" },
+        { "name": "Dr. Meenu Walia", "role": "Medical Oncology" }
+      ],
+      "notes": "JCI-accredited; Apollo's NCR flagship with one of the strongest private-sector tumour boards in India. Key international patient destination.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via Apollo 24/7 app or 011-71791090",
+        "CGHS, ECHS, and international insurance accepted"
+      ],
+      "score": 93,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://apollohospitals.com/new-delhi/cancer"],
+      "national_referral": true
+    },
+    {
+      "id": "bgs-gleneagles-cancer-bangalore",
+      "name": "BGS Gleneagles Global Hospitals — Cancer Care, Bengaluru",
+      "short_name": "BGS Gleneagles Cancer Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL", "JCI"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Liver Transplant Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "080-50118181",
+        "address": "67, Uttarahalli Road, Kengeri, Bengaluru - 560060",
+        "website": "https://www.bgsgleneaglesglobalhospitals.com/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Nataraj K.S.", "role": "Medical Oncology" }
+      ],
+      "notes": "JCI-accredited international hospital; strong liver transplant oncology programme. Key destination for patients from Sri Lanka and Southeast Asia.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via bgsgleneaglesglobalhospitals.com or 080-50118181",
+        "International insurance and corporate plans accepted"
+      ],
+      "score": 81,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.bgsgleneaglesglobalhospitals.com/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "aster-cmi-cancer-bangalore",
+      "name": "Aster CMI Hospital — Comprehensive Cancer Centre, Bengaluru",
+      "short_name": "Aster CMI Cancer Bengaluru",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology"],
+      "cost_tier": "high",
+      "pmjay_empanelled": false,
+      "contact": {
+        "phone": "080-43426262",
+        "address": "No.43/2 New Airport Road, NH-7, Hebbal, Bengaluru - 560092",
+        "website": "https://www.asterindia.com/hospitals/aster-cmi-hospital/cancer-care"
+      },
+      "key_doctors": [
+        { "name": "Dr. Suresh Babu", "role": "Medical Oncology" }
+      ],
+      "notes": "Growing Aster network cancer centre in North Bengaluru; strong in gynaecologic oncology. Aster's India flagship for comprehensive cancer care.",
+      "tier": "B",
+      "navigation_notes": [
+        "Appointment via asterindia.com or 080-43426262",
+        "Corporate and private insurance accepted"
+      ],
+      "score": 82,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.asterindia.com/hospitals/aster-cmi-hospital/cancer-care"],
+      "national_referral": true
+    },
+    {
+      "id": "dharamshila-narayana-cancer-delhi",
+      "name": "Dharamshila Narayana Superspeciality Hospital — Cancer Centre",
+      "short_name": "Dharamshila Cancer Delhi",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "region": "North",
+      "type": "Private",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Bone Marrow Transplant", "Gynaecologic Oncology", "Palliative Care"],
+      "cost_tier": "medium",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "011-43088888",
+        "address": "1, Dharamshila Marg, Vasundhara Enclave, New Delhi - 110096",
+        "website": "https://www.narayanahealth.org/hospitals/dharamshila"
+      },
+      "key_doctors": [
+        { "name": "Dr. Ashok Kumar Vaid", "role": "Medical Oncology / BMT" },
+        { "name": "Dr. Dinesh Pendharkar", "role": "Medical Oncology" }
+      ],
+      "notes": "Dedicated cancer hospital in East Delhi; one of the most affordable private-sector options with genuine PMJAY empanelment. Strong BMT programme. Key referral for UP-border patients.",
+      "tier": "A",
+      "navigation_notes": [
+        "Appointment via narayanahealth.org or 011-43088888",
+        "PMJAY, CGHS, and sliding-scale fees for low-income patients"
+      ],
+      "score": 87,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.narayanahealth.org/hospitals/dharamshila"],
+      "national_referral": true
+    }
+  ]
+}

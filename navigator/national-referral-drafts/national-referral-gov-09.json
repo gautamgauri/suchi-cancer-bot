@@ -1,0 +1,172 @@
+{
+  "batch_id": "national-referral-gov-09",
+  "hospitals": [
+    {
+      "id": "aiims-mangalagiri",
+      "name": "All India Institute of Medical Sciences, Mangalagiri",
+      "short_name": "AIIMS Mangalagiri",
+      "city": "Mangalagiri",
+      "state": "Andhra Pradesh",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0863-2370000",
+        "address": "Punnami Nagar, Mangalagiri, Guntur District - 522503",
+        "website": "https://www.aiimsmangalagiri.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Veera Venkata Lakshmi", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS for Andhra Pradesh. Apex referral for Seemandhra region; oncology department operational since 2023.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Aarogyasri (AP) and PMJAY accepted"
+      ],
+      "score": 76,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsmangalagiri.edu.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "sri-venkateswara-institute-tirupati",
+      "name": "Sri Venkateswara Institute of Medical Sciences",
+      "short_name": "SVIMS Tirupati",
+      "city": "Tirupati",
+      "state": "Andhra Pradesh",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH", "NABL"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology", "Nuclear Medicine", "Haematology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0877-2287777",
+        "address": "Alipiri Road, Tirupati - 517507",
+        "website": "https://www.svims.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. N. Subba Rao", "role": "Medical Oncology" },
+        { "name": "Dr. Sireesha Bala", "role": "Radiation Oncology" }
+      ],
+      "notes": "State apex medical institute for AP; strong oncology programme. Aarogyasri anchor centre. Excellent PET-CT facility.",
+      "tier": "A",
+      "navigation_notes": [
+        "OPD 8 AM; Aarogyasri and PMJAY accepted; free for BPL",
+        "Pilgrim accommodation plentiful in Tirupati; dharamshala near hospital"
+      ],
+      "score": 86,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "high",
+      "sources": ["https://www.svims.ac.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "govt-stanley-medical-college-chennai",
+      "name": "Government Stanley Medical College and Hospital — Oncology",
+      "short_name": "Stanley Medical Chennai",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "044-25281401",
+        "address": "Old Jail Road, Royapuram, Chennai - 600001",
+        "website": "https://stanleymedicalcollege.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Latha Kannan", "role": "Surgical Oncology" }
+      ],
+      "notes": "Key government cancer unit for North Chennai population. CMCHIS anchor; handles high volume of GI and lung cancers.",
+      "tier": "C",
+      "navigation_notes": [
+        "OPD 8 AM; CMCHIS and PMJAY accepted; free for BPL"
+      ],
+      "score": 72,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://stanleymedicalcollege.ac.in/departments"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-deoghar",
+      "name": "All India Institute of Medical Sciences, Deoghar",
+      "short_name": "AIIMS Deoghar",
+      "city": "Deoghar",
+      "state": "Jharkhand",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "06432-232001",
+        "address": "Daburgram, Deoghar - 814142",
+        "website": "https://www.aiimsdeoghar.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Abhishek Singh", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS serving Jharkhand and Santhal Parganas tribal belt. Critical apex referral for one of India's most underserved cancer corridors.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Ayushman Bharat and Jharkhand Mukhyamantri Swasthya Bima accepted"
+      ],
+      "score": 78,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsdeoghar.edu.in"],
+      "national_referral": true
+    },
+    {
+      "id": "rm-cancer-research-centre-bangalore",
+      "name": "HCG — M.S. Ramaiah Narayana Cancer Centre (Government Wing)",
+      "short_name": "MSRNCC Bengaluru Govt Wing",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "080-23600822",
+        "address": "MSR Nagar, Mathikere, Bengaluru - 560054",
+        "website": "https://msramaiah.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Prasad K.S.N.", "role": "Radiation Oncology" }
+      ],
+      "notes": "Government-affiliated cancer unit under Ramaiah Medical Teaching Hospital; Arogya Karnataka anchor for north Bengaluru catchment.",
+      "tier": "C",
+      "navigation_notes": [
+        "OPD 8 AM; Arogya Karnataka and PMJAY accepted"
+      ],
+      "score": 71,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "low",
+      "sources": ["https://msramaiah.edu.in/departments/oncology"],
+      "national_referral": true
+    }
+  ]
+}

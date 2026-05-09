@@ -1,0 +1,170 @@
+{
+  "batch_id": "national-referral-gov-07",
+  "hospitals": [
+    {
+      "id": "aiims-guwahati",
+      "name": "All India Institute of Medical Sciences, Guwahati",
+      "short_name": "AIIMS Guwahati",
+      "city": "Guwahati",
+      "state": "Assam",
+      "region": "Northeast",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0361-2332100",
+        "address": "Changsari, Kamrup, Assam - 781101",
+        "website": "https://www.aiimsguwahati.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Arup Borkakoty", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS for Northeast; oncology programme scaling rapidly. Complements BBCI in Guwahati.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Atal Amrit Abhiyan and PMJAY accepted"
+      ],
+      "score": 76,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimsguwahati.ac.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "pt-jnm-medical-college-raipur",
+      "name": "Pt. Jawahar Lal Nehru Memorial Medical College — Cancer Centre",
+      "short_name": "PJNMMC Raipur",
+      "city": "Raipur",
+      "state": "Chhattisgarh",
+      "region": "Central",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy", "Palliative Care"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0771-2235002",
+        "address": "Near Jai Stambh Chowk, Raipur - 492001",
+        "website": "https://pjnmmc.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Anurag Srivastava", "role": "Medical Oncology" }
+      ],
+      "notes": "State cancer reference centre for Chhattisgarh alongside AIIMS Raipur. Serves tribal belt patients with free treatment under CG scheme.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Dr. Khubchand Baghel scheme and PMJAY accepted"
+      ],
+      "score": 74,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://pjnmmc.ac.in"],
+      "national_referral": true
+    },
+    {
+      "id": "aiims-kalyani",
+      "name": "All India Institute of Medical Sciences, Kalyani",
+      "short_name": "AIIMS Kalyani",
+      "city": "Kalyani",
+      "state": "West Bengal",
+      "region": "East",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "033-29040000",
+        "address": "NH 34, Basantapur, Saguna, Kalyani - 741245",
+        "website": "https://www.aiimskalyani.edu.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Partha Basu", "role": "Medical Oncology" }
+      ],
+      "notes": "New AIIMS serving West Bengal and north-east India overflow. Oncology unit growing; good cancer screening outreach.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Swasthya Sathi and PMJAY accepted"
+      ],
+      "score": 77,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://www.aiimskalyani.edu.in/departments/oncology"],
+      "national_referral": true
+    },
+    {
+      "id": "jln-hospital-ajmer",
+      "name": "J.L.N. Medical College and Hospital — Cancer Unit",
+      "short_name": "JLN Hospital Ajmer",
+      "city": "Ajmer",
+      "state": "Rajasthan",
+      "region": "West",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiotherapy"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0145-2622255",
+        "address": "Nasirabad Road, Ajmer - 305001",
+        "website": "https://jlnmcajmer.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. Hemant Kumar Pandya", "role": "Radiotherapy" }
+      ],
+      "notes": "Major government referral for central Rajasthan; serves Bhilwara, Nagaur, and Pali districts. Chiranjeevi Yojana anchor.",
+      "tier": "C",
+      "navigation_notes": [
+        "OPD 8 AM; Chiranjeevi Yojana and PMJAY accepted"
+      ],
+      "score": 70,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://jlnmcajmer.ac.in"],
+      "national_referral": true
+    },
+    {
+      "id": "mgm-cancer-institute-trichy",
+      "name": "Government Mahatma Gandhi Memorial Hospital — Cancer Institute",
+      "short_name": "MGM Cancer Institute Trichy",
+      "city": "Tiruchirappalli",
+      "state": "Tamil Nadu",
+      "region": "South",
+      "type": "Government",
+      "accreditation": ["NABH"],
+      "ncg_member": false,
+      "departments": ["Medical Oncology", "Surgical Oncology", "Radiation Oncology"],
+      "cost_tier": "low",
+      "pmjay_empanelled": true,
+      "contact": {
+        "phone": "0431-2701301",
+        "address": "Palpannai, Tiruchirappalli - 620017",
+        "website": "https://mgmcri.ac.in"
+      },
+      "key_doctors": [
+        { "name": "Dr. P. Shanmugasundaram", "role": "Medical Oncology" }
+      ],
+      "notes": "Key government cancer referral for central Tamil Nadu region. Chief Minister's Health Insurance anchor hospital.",
+      "tier": "B",
+      "navigation_notes": [
+        "OPD 8 AM; Chief Minister's Comprehensive Health Insurance and PMJAY accepted"
+      ],
+      "score": 73,
+      "verified_date": "2026-05-09",
+      "status": "draft",
+      "confidence": "medium",
+      "sources": ["https://mgmcri.ac.in/departments"],
+      "national_referral": true
+    }
+  ]
+}
