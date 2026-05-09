@@ -121,6 +121,9 @@ export class HospitalDirectoryService implements OnModuleInit {
 
   onModuleInit(): void {
     const candidates = [
+      // Staged by cloudbuild.yaml into the container at build time
+      path.resolve(process.cwd(), "data/hospitals.json"),
+      // Local dev paths
       path.resolve(process.cwd(), "apps/landing/src/content/hospitals.json"),
       path.resolve(__dirname, "../../../../../apps/landing/src/content/hospitals.json"),
       path.resolve(__dirname, "../../../../../../apps/landing/src/content/hospitals.json"),

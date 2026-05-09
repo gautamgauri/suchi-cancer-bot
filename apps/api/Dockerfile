@@ -50,6 +50,8 @@ RUN npm ci --only=production && \
 COPY --from=builder /app/dist ./dist
 # Copy scripts directory for migration and utility scripts
 COPY --from=builder /app/scripts ./scripts
+# Copy hospital directory data (staged from apps/landing/src/content/hospitals.json by cloudbuild.yaml)
+COPY --from=builder /app/data ./data
 # Make migration script executable
 RUN chmod +x /app/scripts/migrate-with-repair.sh
 
