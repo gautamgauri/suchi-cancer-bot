@@ -9,6 +9,7 @@ import { validateSchema, SchemaReport } from "./schema-validator";
 import { writePack } from "./pack-writer";
 import { scoreHooks, HookReport } from "./hook-scorer";
 import { scoreEditorial, EditorialReport } from "./editorial-scorer";
+import { applyEditorialGate, EDITORIAL_THRESHOLD } from "./quality-gate";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const QUEUE_PATH = path.resolve(__dirname, "queue.json");
@@ -244,12 +245,26 @@ async function cmdGenerate(articleArg: string): Promise<void> {
   const hookReport = scoreHooks(pack);
   printHookReport(hookReport);
 
-  // Score full editorial quality against Suchi Editorial Principles
-  const editorialReport = scoreEditorial(pack);
+  // Score full editorial quality — gate channels below 75 with feedback retries
+  const initialEditorial = scoreEditorial(pack);
+  console.log(`\n[quality-gate] Checking editorial scores (threshold: ${EDITORIAL_THRESHOLD}/100)...`);
+  const { pack: finalPack, editorialReport, retriesDone, allPassed } = await applyEditorialGate(
+    pack, initialEditorial, article, PROMPTS_DIR,
+  );
   printEditorialReport(editorialReport);
 
+  if (Object.keys(retriesDone).length > 0) {
+    const summary = Object.entries(retriesDone)
+      .map(([ch, n]) => `${ch} (${n} retry)`)
+      .join(", ");
+    console.log(`\n[quality-gate] Retried: ${summary}`);
+  }
+  if (allPassed) {
+    console.log(`[quality-gate] ✓ All channels ≥${EDITORIAL_THRESHOLD} — sending for review`);
+  }
+
   // Save pack JSON (with safety report + approval token) and send review email
-  const writeResult = await writePack(pack, safetyReport, PACKS_DIR);
+  const writeResult = await writePack(finalPack, safetyReport, PACKS_DIR);
 
   console.log(`\nPack saved → ${writeResult.packPath}`);
   if (writeResult.emailSent) {

@@ -24,7 +24,7 @@ CHANNEL: WhatsApp
 AUDIENCE: Caregivers and patients
 TONE: Conversational, caring, actionable
 FORMAT:
-- Single message ≤300 characters
+- Single message ≤400 characters
 - One key warning sign or fact
 - One concrete action
 - Article link on its own line

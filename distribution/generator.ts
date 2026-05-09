@@ -75,7 +75,7 @@ const CHANNEL_TEMPERATURE: Record<ChannelName, number> = {
 // ---------------------------------------------------------------------------
 
 /** Fill template placeholders with article data. */
-function fillTemplate(template: string, article: ParsedArticle): string {
+export function fillTemplate(template: string, article: ParsedArticle): string {
   return template
     .replace(/\{\{ARTICLE_BODY\}\}/g, article.body)
     .replace(/\{\{ARTICLE_URL\}\}/g, article.canonicalUrl)
@@ -83,7 +83,7 @@ function fillTemplate(template: string, article: ParsedArticle): string {
 }
 
 /** Generate content for a single channel with a 30-second timeout. */
-async function generateChannel(
+export async function generateChannel(
   channel: ChannelName,
   prompt: string,
 ): Promise<ChannelResult> {

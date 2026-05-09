@@ -178,19 +178,19 @@ function checkInstagram(content: string): SchemaViolation[] {
 
 /**
  * WhatsApp rules:
- *   - message_length : total content ≤300 chars
+ *   - message_length : total content ≤400 chars
  *   - cta_present    : contains "suchitracancercare.org"
  */
 function checkWhatsapp(content: string): SchemaViolation[] {
   const violations: SchemaViolation[] = [];
 
   const length = content.length;
-  if (length > 300) {
+  if (length > 400) {
     violations.push({
       rule: "message_length",
-      description: `WhatsApp message is too long (${length} chars, maximum 300)`,
+      description: `WhatsApp message is too long (${length} chars, maximum 400)`,
       actual: length,
-      expected: "≤300 chars",
+      expected: "≤400 chars",
     });
   }
 
