@@ -1,0 +1,84 @@
+{
+  "articles": [
+    {
+      "slug": "breast-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/breast-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/breast-cancer/",
+      "title": "Breast Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "cervical-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/cervical-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/cervical-cancer/",
+      "title": "Cervical Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "oral-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/oral-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/oral-cancer/",
+      "title": "Oral Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "lung-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/lung-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/lung-cancer/",
+      "title": "Lung Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "colorectal-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/colorectal-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/colorectal-cancer/",
+      "title": "Colorectal Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "lymphoma",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/lymphoma.md",
+      "url": "https://suchitracancercare.org/cancer-type/lymphoma/",
+      "title": "Lymphoma: Types, Signs, Diagnosis, and Treatment",
+      "status": "pending"
+    },
+    {
+      "slug": "leukemia",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/leukemia.md",
+      "url": "https://suchitracancercare.org/cancer-type/leukemia/",
+      "title": "Leukemia: Types, Signs, Diagnosis, and Treatment",
+      "status": "pending"
+    },
+    {
+      "slug": "ovarian-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/ovarian-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/ovarian-cancer/",
+      "title": "Ovarian Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "prostate-cancer",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/prostate-cancer.md",
+      "url": "https://suchitracancercare.org/cancer-type/prostate-cancer/",
+      "title": "Prostate Cancer: Signs, Diagnosis, and Treatment Basics",
+      "status": "pending"
+    },
+    {
+      "slug": "pediatric-cancers",
+      "contentType": "cancer_type",
+      "sourcePath": "apps/landing/src/content/articles/pediatric-cancers.md",
+      "url": "https://suchitracancercare.org/cancer-type/pediatric-cancers/",
+      "title": "Childhood Cancer: Warning Signs, Diagnosis, and Support",
+      "status": "pending"
+    }
+  ]
+}
