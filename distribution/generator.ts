@@ -55,10 +55,20 @@ const vertexAI = new VertexAI({
   location: "us-central1",
 });
 
-const model = vertexAI.getGenerativeModel({
+const baseModel = vertexAI.getGenerativeModel({
   model: process.env.GEMINI_MODEL || "gemini-2.0-flash-001",
   generationConfig: { temperature: 0.4, maxOutputTokens: 2000 },
 });
+
+// Higher temperature for channels that benefit from human texture and warmth;
+// lower for channels where precision and brevity matter most.
+const CHANNEL_TEMPERATURE: Record<ChannelName, number> = {
+  linkedin:      0.4, // institutional audience — consistency over creativity
+  twitter:       0.5, // factual but needs personality
+  whatsapp:      0.4, // short and precise — no room for drift
+  instagram:     0.6, // visual-first, benefits from warmth and rhythm
+  youtube_short: 0.65, // conversational script — most human of all channels
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,8 +97,9 @@ async function generateChannel(
   );
 
   const generatePromise = (async () => {
-    const result = await model.generateContent({
+    const result = await baseModel.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: CHANNEL_TEMPERATURE[channel] },
     });
     const text =
       result.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
