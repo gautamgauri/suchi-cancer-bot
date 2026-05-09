@@ -26,13 +26,15 @@ import * as path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 // ---------------------------------------------------------------------------
-// GCS persistence helpers (opt-in via QUEUE_GCS_BUCKET env var)
+// GCS persistence helpers
 // ---------------------------------------------------------------------------
 
 const GCS_BUCKET = process.env.QUEUE_GCS_BUCKET;
 const GCS_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543132";
 const GCS_QUEUE_OBJECT = process.env.QUEUE_GCS_OBJECT ?? "queue.json";
 const GCS_HOSPITALS_OBJECT = process.env.HOSPITALS_GCS_OBJECT ?? "hospitals.json";
+
+console.log(`[navigator-approve] QUEUE_GCS_BUCKET=${GCS_BUCKET ?? "(not set — local mode)"}`);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getStorage(): Promise<any> {
@@ -42,6 +44,7 @@ async function getStorage(): Promise<any> {
 }
 
 async function gcsRead(object: string): Promise<string> {
+  if (!GCS_BUCKET) throw new Error("GCS_BUCKET not configured");
   const storage = await getStorage();
   const [contents] = await storage.bucket(GCS_BUCKET).file(object).download() as [Buffer];
   return contents.toString("utf-8");
@@ -49,36 +52,32 @@ async function gcsRead(object: string): Promise<string> {
 
 async function gcsWrite(object: string, content: string): Promise<void> {
   if (!GCS_BUCKET) return;
-  try {
-    const storage = await getStorage();
-    await storage.bucket(GCS_BUCKET).file(object).save(content, { contentType: "application/json" });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[navigator-approve] GCS write failed for ${object}: ${msg}`);
-  }
+  const storage = await getStorage();
+  await storage.bucket(GCS_BUCKET).file(object).save(content, { contentType: "application/json" });
 }
 
-/** Read a file from GCS if bucket is configured, otherwise fall back to local path. */
-async function readWithGcsFallback(localPath: string, gcsObject: string): Promise<string> {
+/**
+ * Read from GCS when bucket is configured, local file otherwise.
+ * When GCS is configured and fails — throws immediately (no silent fallback).
+ * Silent fallback only in local-dev mode (no bucket set).
+ */
+async function readJson(localPath: string, gcsObject: string): Promise<string> {
   if (GCS_BUCKET) {
-    try {
-      return await gcsRead(gcsObject);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[navigator-approve] GCS read failed for ${gcsObject} (${msg}), falling back to local`);
-    }
+    console.log(`[navigator-approve] Reading gs://${GCS_BUCKET}/${gcsObject}`);
+    return gcsRead(gcsObject); // throws on failure — no silent degradation
   }
+  console.log(`[navigator-approve] Reading local ${localPath}`);
   return fs.readFile(localPath, "utf-8");
 }
 
-/** Write to local path and mirror to GCS. */
-async function writeWithGcsMirror(localPath: string, gcsObject: string, content: string): Promise<void> {
-  try {
-    await fs.writeFile(localPath, content, "utf-8");
-  } catch {
-    // Local write may fail in Cloud Run (read-only filesystem outside /tmp) — that's ok
+/** Write to GCS when bucket configured; also attempt local write (best-effort). */
+async function writeJson(localPath: string, gcsObject: string, content: string): Promise<void> {
+  if (GCS_BUCKET) {
+    console.log(`[navigator-approve] Writing gs://${GCS_BUCKET}/${gcsObject}`);
+    await gcsWrite(gcsObject, content); // throws on failure
   }
-  await gcsWrite(gcsObject, content);
+  // Best-effort local write (may fail in Cloud Run — that's fine)
+  await fs.writeFile(localPath, content, "utf-8").catch(() => undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -224,6 +223,7 @@ function draftToEntry(draft: HospitalDraft): object {
     },
     verified_date: draft.verified_date,
     status: "active",
+    national_referral: (draft as any).national_referral === true ? true : undefined,
   };
 }
 
@@ -295,7 +295,7 @@ export class NavigatorApproveService {
     // -----------------------------------------------------------------------
     let queueRaw: string;
     try {
-      queueRaw = await readWithGcsFallback(queuePath, GCS_QUEUE_OBJECT);
+      queueRaw = await readJson(queuePath, GCS_QUEUE_OBJECT);
     } catch (err) {
       throw new ServiceUnavailableException(
         `Cannot load queue: ${(err as Error).message}. Ensure QUEUE_GCS_BUCKET is set or navigator/queue.json is accessible.`
@@ -339,7 +339,7 @@ export class NavigatorApproveService {
     // -----------------------------------------------------------------------
     let hospitalsRaw: string;
     try {
-      hospitalsRaw = await readWithGcsFallback(hospitalsPath, GCS_HOSPITALS_OBJECT);
+      hospitalsRaw = await readJson(hospitalsPath, GCS_HOSPITALS_OBJECT);
     } catch (err) {
       throw new ServiceUnavailableException(
         `Failed to read hospitals.json: ${(err as Error).message}`,
@@ -363,7 +363,7 @@ export class NavigatorApproveService {
     hospitalsData._meta.last_updated = todayIso();
 
     const hospitalsJson = JSON.stringify(hospitalsData, null, 2) + "\n";
-    await writeWithGcsMirror(hospitalsPath, GCS_HOSPITALS_OBJECT, hospitalsJson);
+    await writeJson(hospitalsPath, GCS_HOSPITALS_OBJECT, hospitalsJson);
 
     this.logger.log(
       `Appended ${entries.length} hospital(s) to hospitals.json for batch ${batchId}`,
@@ -384,7 +384,7 @@ export class NavigatorApproveService {
     );
 
     const queueJson = JSON.stringify({ batches: updatedBatches }, null, 2) + "\n";
-    await writeWithGcsMirror(queuePath, GCS_QUEUE_OBJECT, queueJson);
+    await writeJson(queuePath, GCS_QUEUE_OBJECT, queueJson);
 
     this.logger.log(`Batch ${batchId} approved — ${entries.length} hospital(s) added`);
 
