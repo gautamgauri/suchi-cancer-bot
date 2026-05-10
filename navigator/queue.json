@@ -23,8 +23,8 @@
     },
     {
       "id": "national-referral-gov-01",
-      "region": "National Referral — Government (Batch 1)",
-      "status": "email_sent",
+      "region": "National Referral \u2014 Government (Batch 1)",
+      "status": "approved",
       "hospitals": [
         {
           "id": "aiims-new-delhi",
@@ -126,7 +126,7 @@
           "notes": "Largest dedicated cancer centre in Asia; DAE-funded. National apex centre for cancer research and treatment.",
           "tier": "A",
           "navigation_notes": [
-            "Walk-in registration Monday–Friday 7:30 AM at OPD registration counter",
+            "Walk-in registration Monday\u2013Friday 7:30 AM at OPD registration counter",
             "Subsidised canteen and patient dormitory available",
             "CGHS and state insurance accepted"
           ],
@@ -296,12 +296,14 @@
       ],
       "createdAt": "2026-05-09T00:00:00Z",
       "approvalToken": "2e517722c562d76ea676b284d1f3b143b1c7013774cd80b9d92929ef0478356d",
-      "emailSentAt": "2026-05-09T17:58:02.347Z"
+      "emailSentAt": "2026-05-09T17:58:02.347Z",
+      "approvedAt": "2026-05-09T00:00:00Z",
+      "approvedBy": "email_approval"
     },
     {
       "id": "national-referral-gov-02",
-      "region": "National Referral — Government (Batch 2)",
-      "status": "email_sent",
+      "region": "National Referral \u2014 Government (Batch 2)",
+      "status": "approved",
       "hospitals": [
         {
           "id": "aiims-bhubaneswar",
@@ -428,7 +430,7 @@
           "notes": "Apex referral for Bihar and eastern UP. Critical for underserved cancer patients in Gangetic plain.",
           "tier": "A",
           "navigation_notes": [
-            "OPD Monday–Saturday 8 AM; bring prior records",
+            "OPD Monday\u2013Saturday 8 AM; bring prior records",
             "Ayushman Bharat accepted; state Mukhyamantri scheme also covered"
           ],
           "score": 83,
@@ -488,7 +490,7 @@
         },
         {
           "id": "nimhans-bangalore",
-          "name": "National Institute of Mental Health and Neurosciences — Neuro-Oncology",
+          "name": "National Institute of Mental Health and Neurosciences \u2014 Neuro-Oncology",
           "short_name": "NIMHANS Bengaluru",
           "city": "Bengaluru",
           "state": "Karnataka",
@@ -540,12 +542,14 @@
       ],
       "createdAt": "2026-05-09T00:00:00Z",
       "approvalToken": "0273cf78ad4c90125d874ed4a91fa72cd971a716ada0a6d6e7ebb8873630cd35",
-      "emailSentAt": "2026-05-10T10:19:59.053Z"
+      "emailSentAt": "2026-05-10T10:19:59.053Z",
+      "approvedAt": "2026-05-10T10:23:56.074Z",
+      "approvedBy": "email_approval"
     },
     {
       "id": "national-referral-gov-03",
-      "region": "National Referral — Government (Batch 3)",
-      "status": "email_sent",
+      "region": "National Referral \u2014 Government (Batch 3)",
+      "status": "approved",
       "hospitals": [
         {
           "id": "kidwai-memorial-bangalore",
@@ -817,12 +821,14 @@
       ],
       "createdAt": "2026-05-09T00:00:00Z",
       "approvalToken": "661f581c4a6e9fecb355f0c36d8c15cae76f486614bbe2d3ce56b5f31734ce43",
-      "emailSentAt": "2026-05-10T10:20:05.441Z"
+      "emailSentAt": "2026-05-10T10:20:05.441Z",
+      "approvedAt": "2026-05-10T10:24:51.814Z",
+      "approvedBy": "email_approval"
     },
     {
       "id": "national-referral-gov-04",
-      "region": "National Referral — Government (Batch 4)",
-      "status": "email_sent",
+      "region": "National Referral \u2014 Government (Batch 4)",
+      "status": "approved",
       "hospitals": [
         {
           "id": "aiims-raipur",
@@ -858,7 +864,7 @@
           "notes": "Apex referral for Chhattisgarh; growing oncology programme serving tribal belt populations.",
           "tier": "A",
           "navigation_notes": [
-            "OPD 8 AM Monday–Saturday; PMJAY and Dr. Khubchand Baghel scheme accepted",
+            "OPD 8 AM Monday\u2013Saturday; PMJAY and Dr. Khubchand Baghel scheme accepted",
             "Patient accommodation at hospital campus hostel"
           ],
           "score": 80,
@@ -1055,16 +1061,18 @@
       ],
       "createdAt": "2026-05-09T00:00:00Z",
       "approvalToken": "55e068b1e3f8e8142a7a29b6ed00608c840fa1d2298a11e5c60863e0e29c4582",
-      "emailSentAt": "2026-05-10T10:20:10.776Z"
+      "emailSentAt": "2026-05-10T10:20:10.776Z",
+      "approvedAt": "2026-05-10T10:25:25.355Z",
+      "approvedBy": "email_approval"
     },
     {
       "id": "national-referral-gov-05",
-      "region": "National Referral — Government (Batch 5)",
+      "region": "National Referral \u2014 Government (Batch 5)",
       "status": "researched",
       "hospitals": [
         {
           "id": "gauhati-medical-college-guwahati",
-          "name": "Gauhati Medical College and Hospital — Dr. B. Borooah Cancer Institute",
+          "name": "Gauhati Medical College and Hospital \u2014 Dr. B. Borooah Cancer Institute",
           "short_name": "BBCI Guwahati",
           "city": "Guwahati",
           "state": "Assam",
@@ -1263,7 +1271,7 @@
         },
         {
           "id": "kgmu-lucknow",
-          "name": "King George's Medical University — Cancer Research Centre",
+          "name": "King George's Medical University \u2014 Cancer Research Centre",
           "short_name": "KGMU Lucknow",
           "city": "Lucknow",
           "state": "Uttar Pradesh",
@@ -1318,12 +1326,12 @@
     },
     {
       "id": "national-referral-gov-06",
-      "region": "National Referral — Government (Batch 6)",
+      "region": "National Referral \u2014 Government (Batch 6)",
       "status": "researched",
       "hospitals": [
         {
           "id": "pgims-rohtak",
-          "name": "Pt. B.D. Sharma University of Health Sciences — PGIMS Rohtak",
+          "name": "Pt. B.D. Sharma University of Health Sciences \u2014 PGIMS Rohtak",
           "short_name": "PGIMS Rohtak",
           "city": "Rohtak",
           "state": "Haryana",
@@ -1369,7 +1377,7 @@
         },
         {
           "id": "sms-medical-college-jaipur",
-          "name": "Sawai Man Singh Medical College and Hospital — Oncology Department",
+          "name": "Sawai Man Singh Medical College and Hospital \u2014 Oncology Department",
           "short_name": "SMS Hospital Jaipur",
           "city": "Jaipur",
           "state": "Rajasthan",
@@ -1469,7 +1477,7 @@
         },
         {
           "id": "mgh-chennai-govt",
-          "name": "Government Royapettah Hospital — Cancer Institute Wing",
+          "name": "Government Royapettah Hospital \u2014 Cancer Institute Wing",
           "short_name": "Royapettah Cancer Wing Chennai",
           "city": "Chennai",
           "state": "Tamil Nadu",
@@ -1513,7 +1521,7 @@
         },
         {
           "id": "scb-medical-college-cuttack-oncology",
-          "name": "SCB Medical College and Hospital — Regional Cancer Centre",
+          "name": "SCB Medical College and Hospital \u2014 Regional Cancer Centre",
           "short_name": "SCB Medical Cuttack",
           "city": "Cuttack",
           "state": "Odisha",
@@ -1560,7 +1568,7 @@
     },
     {
       "id": "national-referral-gov-07",
-      "region": "National Referral — Government (Batch 7)",
+      "region": "National Referral \u2014 Government (Batch 7)",
       "status": "researched",
       "hospitals": [
         {
@@ -1609,7 +1617,7 @@
         },
         {
           "id": "pt-jnm-medical-college-raipur",
-          "name": "Pt. Jawahar Lal Nehru Memorial Medical College — Cancer Centre",
+          "name": "Pt. Jawahar Lal Nehru Memorial Medical College \u2014 Cancer Centre",
           "short_name": "PJNMMC Raipur",
           "city": "Raipur",
           "state": "Chhattisgarh",
@@ -1698,7 +1706,7 @@
         },
         {
           "id": "jln-hospital-ajmer",
-          "name": "J.L.N. Medical College and Hospital — Cancer Unit",
+          "name": "J.L.N. Medical College and Hospital \u2014 Cancer Unit",
           "short_name": "JLN Hospital Ajmer",
           "city": "Ajmer",
           "state": "Rajasthan",
@@ -1742,7 +1750,7 @@
         },
         {
           "id": "mgm-cancer-institute-trichy",
-          "name": "Government Mahatma Gandhi Memorial Hospital — Cancer Institute",
+          "name": "Government Mahatma Gandhi Memorial Hospital \u2014 Cancer Institute",
           "short_name": "MGM Cancer Institute Trichy",
           "city": "Tiruchirappalli",
           "state": "Tamil Nadu",
@@ -1789,12 +1797,12 @@
     },
     {
       "id": "national-referral-gov-08",
-      "region": "National Referral — Government (Batch 8)",
+      "region": "National Referral \u2014 Government (Batch 8)",
       "status": "researched",
       "hospitals": [
         {
           "id": "nrs-medical-college-kolkata",
-          "name": "Nil Ratan Sircar Medical College and Hospital — Oncology Department",
+          "name": "Nil Ratan Sircar Medical College and Hospital \u2014 Oncology Department",
           "short_name": "NRS Medical Kolkata",
           "city": "Kolkata",
           "state": "West Bengal",
@@ -1926,7 +1934,7 @@
         },
         {
           "id": "government-medical-college-kottayam",
-          "name": "Government Medical College Kottayam — Regional Cancer Centre",
+          "name": "Government Medical College Kottayam \u2014 Regional Cancer Centre",
           "short_name": "GMC Kottayam Cancer",
           "city": "Kottayam",
           "state": "Kerala",
@@ -1970,7 +1978,7 @@
         },
         {
           "id": "svmch-puducherry",
-          "name": "Sri Venkateshwaraa Medical College — Cancer Care Unit",
+          "name": "Sri Venkateshwaraa Medical College \u2014 Cancer Care Unit",
           "short_name": "SVMCH Cancer Puducherry",
           "city": "Puducherry",
           "state": "Puducherry",
@@ -2017,7 +2025,7 @@
     },
     {
       "id": "national-referral-gov-09",
-      "region": "National Referral — Government (Batch 9)",
+      "region": "National Referral \u2014 Government (Batch 9)",
       "status": "researched",
       "hospitals": [
         {
@@ -2118,7 +2126,7 @@
         },
         {
           "id": "govt-stanley-medical-college-chennai",
-          "name": "Government Stanley Medical College and Hospital — Oncology",
+          "name": "Government Stanley Medical College and Hospital \u2014 Oncology",
           "short_name": "Stanley Medical Chennai",
           "city": "Chennai",
           "state": "Tamil Nadu",
@@ -2206,7 +2214,7 @@
         },
         {
           "id": "rm-cancer-research-centre-bangalore",
-          "name": "HCG — M.S. Ramaiah Narayana Cancer Centre (Government Wing)",
+          "name": "HCG \u2014 M.S. Ramaiah Narayana Cancer Centre (Government Wing)",
           "short_name": "MSRNCC Bengaluru Govt Wing",
           "city": "Bengaluru",
           "state": "Karnataka",
@@ -2253,12 +2261,12 @@
     },
     {
       "id": "national-referral-gov-10",
-      "region": "National Referral — Government (Batch 10)",
+      "region": "National Referral \u2014 Government (Batch 10)",
       "status": "researched",
       "hospitals": [
         {
           "id": "govt-medical-college-kozhikode",
-          "name": "Government Medical College Kozhikode — Regional Cancer Centre",
+          "name": "Government Medical College Kozhikode \u2014 Regional Cancer Centre",
           "short_name": "GMC Kozhikode Cancer",
           "city": "Kozhikode",
           "state": "Kerala",
@@ -2302,7 +2310,7 @@
         },
         {
           "id": "mgmch-indore",
-          "name": "Mahatma Gandhi Memorial Medical College and MY Hospital — Cancer Department",
+          "name": "Mahatma Gandhi Memorial Medical College and MY Hospital \u2014 Cancer Department",
           "short_name": "MGMMC Indore",
           "city": "Indore",
           "state": "Madhya Pradesh",
@@ -2390,7 +2398,7 @@
         },
         {
           "id": "rims-imphal",
-          "name": "Regional Institute of Medical Sciences — Cancer Unit",
+          "name": "Regional Institute of Medical Sciences \u2014 Cancer Unit",
           "short_name": "RIMS Imphal",
           "city": "Imphal",
           "state": "Manipur",
@@ -2434,7 +2442,7 @@
         },
         {
           "id": "pgimer-dr-rml-hospital-delhi",
-          "name": "Dr. Ram Manohar Lohia Hospital — Oncology Department",
+          "name": "Dr. Ram Manohar Lohia Hospital \u2014 Oncology Department",
           "short_name": "RML Hospital Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -2467,7 +2475,7 @@
           "tier": "B",
           "navigation_notes": [
             "OPD 8 AM; CGHS, ECHS, and PMJAY accepted; free for economically weak",
-            "Located near Connaught Place — central and accessible by metro"
+            "Located near Connaught Place \u2014 central and accessible by metro"
           ],
           "score": 79,
           "verified_date": "2026-05-09",
@@ -2483,8 +2491,8 @@
     },
     {
       "id": "national-referral-pvt-01",
-      "region": "National Referral — Private (Batch 1)",
-      "status": "email_sent",
+      "region": "National Referral \u2014 Private (Batch 1)",
+      "status": "approved",
       "hospitals": [
         {
           "id": "apollo-cancer-centre-chennai",
@@ -2528,7 +2536,7 @@
               "role": "Surgical Oncology (Head & Neck)"
             }
           ],
-          "notes": "Largest private cancer network in India. Chennai flagship has proton therapy — one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
+          "notes": "Largest private cancer network in India. Chennai flagship has proton therapy \u2014 one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
           "tier": "A",
           "navigation_notes": [
             "Appointment via Apollo 24/7 app or 1860-500-1066",
@@ -2547,7 +2555,7 @@
         },
         {
           "id": "medanta-cancer-institute-gurugram",
-          "name": "Medanta — The Medicity, Cancer Institute",
+          "name": "Medanta \u2014 The Medicity, Cancer Institute",
           "short_name": "Medanta Gurugram",
           "city": "Gurugram",
           "state": "Haryana",
@@ -2604,7 +2612,7 @@
         },
         {
           "id": "fortis-memorial-research-institute-gurugram",
-          "name": "Fortis Memorial Research Institute — Oncology",
+          "name": "Fortis Memorial Research Institute \u2014 Oncology",
           "short_name": "FMRI Gurugram",
           "city": "Gurugram",
           "state": "Haryana",
@@ -2712,7 +2720,7 @@
         },
         {
           "id": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
-          "name": "Kokilaben Dhirubhai Ambani Hospital — Cancer Centre",
+          "name": "Kokilaben Dhirubhai Ambani Hospital \u2014 Cancer Centre",
           "short_name": "KDH Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -2769,12 +2777,14 @@
       ],
       "createdAt": "2026-05-09T00:00:00Z",
       "approvalToken": "85daab744952e83914d4dd4cb8efb7517a1d8738db2eddfccdffac93d972b575",
-      "emailSentAt": "2026-05-10T10:20:16.086Z"
+      "emailSentAt": "2026-05-10T10:20:16.086Z",
+      "approvedAt": "2026-05-10T10:26:37.729Z",
+      "approvedBy": "email_approval"
     },
     {
       "id": "national-referral-pvt-02",
-      "region": "National Referral — Private (Batch 2)",
-      "status": "email_sent",
+      "region": "National Referral \u2014 Private (Batch 2)",
+      "status": "approved",
       "hospitals": [
         {
           "id": "hcg-cancer-centre-bangalore",
@@ -2888,7 +2898,7 @@
         },
         {
           "id": "lilavati-hospital-cancer-mumbai",
-          "name": "Lilavati Hospital and Research Centre — Oncology",
+          "name": "Lilavati Hospital and Research Centre \u2014 Oncology",
           "short_name": "Lilavati Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -2940,7 +2950,7 @@
         },
         {
           "id": "breach-candy-hospital-cancer-mumbai",
-          "name": "Breach Candy Hospital Trust — Oncology",
+          "name": "Breach Candy Hospital Trust \u2014 Oncology",
           "short_name": "Breach Candy Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -2984,7 +2994,7 @@
         },
         {
           "id": "jaslok-hospital-cancer-mumbai",
-          "name": "Jaslok Hospital and Research Centre — Cancer Care",
+          "name": "Jaslok Hospital and Research Centre \u2014 Cancer Care",
           "short_name": "Jaslok Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -3032,11 +3042,13 @@
       ],
       "createdAt": "2026-05-09T00:00:00Z",
       "approvalToken": "27a4b973e697143a790b42a7793abec5bcba72842a67e4018aefb9ef2673fd39",
-      "emailSentAt": "2026-05-10T10:20:22.027Z"
+      "emailSentAt": "2026-05-10T10:20:22.027Z",
+      "approvedAt": "2026-05-10T10:27:31.077Z",
+      "approvedBy": "email_approval"
     },
     {
       "id": "national-referral-pvt-03",
-      "region": "National Referral — Private (Batch 3)",
+      "region": "National Referral \u2014 Private (Batch 3)",
       "status": "researched",
       "hospitals": [
         {
@@ -3096,7 +3108,7 @@
         },
         {
           "id": "yashoda-hospitals-cancer-hyderabad",
-          "name": "Yashoda Hospitals — Comprehensive Cancer Centre, Hyderabad",
+          "name": "Yashoda Hospitals \u2014 Comprehensive Cancer Centre, Hyderabad",
           "short_name": "Yashoda Cancer Hyderabad",
           "city": "Hyderabad",
           "state": "Telangana",
@@ -3199,7 +3211,7 @@
         },
         {
           "id": "fortis-cancer-institute-kolkata",
-          "name": "Fortis Hospital Anandapur — Cancer Care",
+          "name": "Fortis Hospital Anandapur \u2014 Cancer Care",
           "short_name": "Fortis Cancer Kolkata",
           "city": "Kolkata",
           "state": "West Bengal",
@@ -3251,7 +3263,7 @@
         },
         {
           "id": "ruby-hall-clinic-cancer-pune",
-          "name": "Ruby Hall Clinic — Cancer Care, Pune",
+          "name": "Ruby Hall Clinic \u2014 Cancer Care, Pune",
           "short_name": "Ruby Hall Cancer Pune",
           "city": "Pune",
           "state": "Maharashtra",
@@ -3306,12 +3318,12 @@
     },
     {
       "id": "national-referral-pvt-04",
-      "region": "National Referral — Private (Batch 4)",
+      "region": "National Referral \u2014 Private (Batch 4)",
       "status": "researched",
       "hospitals": [
         {
           "id": "fortis-cancer-malar-chennai",
-          "name": "Fortis Malar Hospital — Oncology, Chennai",
+          "name": "Fortis Malar Hospital \u2014 Oncology, Chennai",
           "short_name": "Fortis Malar Cancer Chennai",
           "city": "Chennai",
           "state": "Tamil Nadu",
@@ -3358,7 +3370,7 @@
         },
         {
           "id": "globalhospitals-cancer-hyderabad",
-          "name": "Global Hospitals — Cancer Care, Hyderabad",
+          "name": "Global Hospitals \u2014 Cancer Care, Hyderabad",
           "short_name": "Global Cancer Hyderabad",
           "city": "Hyderabad",
           "state": "Telangana",
@@ -3407,7 +3419,7 @@
         },
         {
           "id": "wockhardt-hospitals-cancer-mumbai",
-          "name": "Wockhardt Hospitals — Cancer Centre, Mumbai",
+          "name": "Wockhardt Hospitals \u2014 Cancer Centre, Mumbai",
           "short_name": "Wockhardt Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -3452,7 +3464,7 @@
         },
         {
           "id": "sir-ganga-ram-hospital-cancer-delhi",
-          "name": "Sir Ganga Ram Hospital — Cancer Centre, New Delhi",
+          "name": "Sir Ganga Ram Hospital \u2014 Cancer Centre, New Delhi",
           "short_name": "SGRH Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -3504,7 +3516,7 @@
         },
         {
           "id": "batra-hospital-cancer-delhi",
-          "name": "Batra Hospital and Medical Research Centre — Oncology",
+          "name": "Batra Hospital and Medical Research Centre \u2014 Oncology",
           "short_name": "Batra Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -3552,12 +3564,12 @@
     },
     {
       "id": "national-referral-pvt-05",
-      "region": "National Referral — Private (Batch 5)",
+      "region": "National Referral \u2014 Private (Batch 5)",
       "status": "researched",
       "hospitals": [
         {
           "id": "manipal-hospital-cancer-delhi",
-          "name": "Manipal Hospitals — Cancer Care, Dwarka, New Delhi",
+          "name": "Manipal Hospitals \u2014 Cancer Care, Dwarka, New Delhi",
           "short_name": "Manipal Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -3606,7 +3618,7 @@
         },
         {
           "id": "indraprastha-apollo-cancer-delhi",
-          "name": "Indraprastha Apollo Hospital — Cancer Centre, New Delhi",
+          "name": "Indraprastha Apollo Hospital \u2014 Cancer Centre, New Delhi",
           "short_name": "Apollo Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -3662,7 +3674,7 @@
         },
         {
           "id": "bgs-gleneagles-cancer-bangalore",
-          "name": "BGS Gleneagles Global Hospitals — Cancer Care, Bengaluru",
+          "name": "BGS Gleneagles Global Hospitals \u2014 Cancer Care, Bengaluru",
           "short_name": "BGS Gleneagles Cancer Bengaluru",
           "city": "Bengaluru",
           "state": "Karnataka",
@@ -3711,7 +3723,7 @@
         },
         {
           "id": "aster-cmi-cancer-bangalore",
-          "name": "Aster CMI Hospital — Comprehensive Cancer Centre, Bengaluru",
+          "name": "Aster CMI Hospital \u2014 Comprehensive Cancer Centre, Bengaluru",
           "short_name": "Aster CMI Cancer Bengaluru",
           "city": "Bengaluru",
           "state": "Karnataka",
@@ -3759,7 +3771,7 @@
         },
         {
           "id": "dharamshila-narayana-cancer-delhi",
-          "name": "Dharamshila Narayana Superspeciality Hospital — Cancer Centre",
+          "name": "Dharamshila Narayana Superspeciality Hospital \u2014 Cancer Centre",
           "short_name": "Dharamshila Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -3815,12 +3827,12 @@
     },
     {
       "id": "national-referral-pvt-06",
-      "region": "National Referral — Private (Batch 6)",
+      "region": "National Referral \u2014 Private (Batch 6)",
       "status": "researched",
       "hospitals": [
         {
           "id": "amri-hospitals-cancer-kolkata",
-          "name": "AMRI Hospitals — Cancer Care, Kolkata",
+          "name": "AMRI Hospitals \u2014 Cancer Care, Kolkata",
           "short_name": "AMRI Cancer Kolkata",
           "city": "Kolkata",
           "state": "West Bengal",
@@ -3867,7 +3879,7 @@
         },
         {
           "id": "medica-cancer-hospital-kolkata",
-          "name": "Medica Superspecialty Hospital — Cancer Institute, Kolkata",
+          "name": "Medica Superspecialty Hospital \u2014 Cancer Institute, Kolkata",
           "short_name": "Medica Cancer Kolkata",
           "city": "Kolkata",
           "state": "West Bengal",
@@ -3963,7 +3975,7 @@
         },
         {
           "id": "sterling-hospital-cancer-ahmedabad",
-          "name": "Sterling Hospital — Cancer Care, Ahmedabad",
+          "name": "Sterling Hospital \u2014 Cancer Care, Ahmedabad",
           "short_name": "Sterling Cancer Ahmedabad",
           "city": "Ahmedabad",
           "state": "Gujarat",
@@ -4008,7 +4020,7 @@
         },
         {
           "id": "care-hospitals-cancer-hyderabad",
-          "name": "CARE Hospitals — Cancer Centre, Hyderabad",
+          "name": "CARE Hospitals \u2014 Cancer Centre, Hyderabad",
           "short_name": "CARE Cancer Hyderabad",
           "city": "Hyderabad",
           "state": "Telangana",
@@ -4038,7 +4050,7 @@
               "role": "Medical Oncology"
             }
           ],
-          "notes": "Established private cancer centre in Hyderabad; Aarogyasri and PMJAY empanelled — important for middle-income Telangana patients. Bone marrow transplant available.",
+          "notes": "Established private cancer centre in Hyderabad; Aarogyasri and PMJAY empanelled \u2014 important for middle-income Telangana patients. Bone marrow transplant available.",
           "tier": "B",
           "navigation_notes": [
             "Appointment via carehospitals.com or 040-30418888",
@@ -4058,7 +4070,7 @@
     },
     {
       "id": "national-referral-pvt-07",
-      "region": "National Referral — Private (Batch 7)",
+      "region": "National Referral \u2014 Private (Batch 7)",
       "status": "researched",
       "hospitals": [
         {
@@ -4112,7 +4124,7 @@
         },
         {
           "id": "blk-max-cancer-delhi",
-          "name": "BLK-Max Super Speciality Hospital — Cancer Centre, Delhi",
+          "name": "BLK-Max Super Speciality Hospital \u2014 Cancer Centre, Delhi",
           "short_name": "BLK-Max Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -4166,7 +4178,7 @@
         },
         {
           "id": "amrita-cancer-centre-kochi",
-          "name": "Amrita Institute of Medical Sciences — Cancer Centre, Kochi",
+          "name": "Amrita Institute of Medical Sciences \u2014 Cancer Centre, Kochi",
           "short_name": "Amrita Cancer Kochi",
           "city": "Kochi",
           "state": "Kerala",
@@ -4221,7 +4233,7 @@
         },
         {
           "id": "aster-medcity-cancer-kochi",
-          "name": "Aster Medcity — Comprehensive Cancer Centre, Kochi",
+          "name": "Aster Medcity \u2014 Comprehensive Cancer Centre, Kochi",
           "short_name": "Aster Medcity Cancer Kochi",
           "city": "Kochi",
           "state": "Kerala",
@@ -4276,7 +4288,7 @@
         },
         {
           "id": "psri-cancer-delhi",
-          "name": "Pushpawati Singhania Hospital and Research Institute — Oncology",
+          "name": "Pushpawati Singhania Hospital and Research Institute \u2014 Oncology",
           "short_name": "PSRI Cancer Delhi",
           "city": "New Delhi",
           "state": "Delhi",
@@ -4325,12 +4337,12 @@
     },
     {
       "id": "national-referral-pvt-08",
-      "region": "National Referral — Private (Batch 8)",
+      "region": "National Referral \u2014 Private (Batch 8)",
       "status": "researched",
       "hospitals": [
         {
           "id": "kamineni-hospitals-cancer-hyderabad",
-          "name": "Kamineni Hospitals — Cancer Care, Hyderabad",
+          "name": "Kamineni Hospitals \u2014 Cancer Care, Hyderabad",
           "short_name": "Kamineni Cancer Hyderabad",
           "city": "Hyderabad",
           "state": "Telangana",
@@ -4375,7 +4387,7 @@
         },
         {
           "id": "apollo-cancer-pune",
-          "name": "Jehangir Hospital Apollo — Cancer Centre, Pune",
+          "name": "Jehangir Hospital Apollo \u2014 Cancer Centre, Pune",
           "short_name": "Jehangir Apollo Cancer Pune",
           "city": "Pune",
           "state": "Maharashtra",
@@ -4422,7 +4434,7 @@
         },
         {
           "id": "rainbow-cancer-care-centre-vijayawada",
-          "name": "Andhra Hospital — Cancer Centre, Vijayawada",
+          "name": "Andhra Hospital \u2014 Cancer Centre, Vijayawada",
           "short_name": "Andhra Hospital Cancer Vijayawada",
           "city": "Vijayawada",
           "state": "Andhra Pradesh",
@@ -4450,7 +4462,7 @@
               "role": "Medical Oncology"
             }
           ],
-          "notes": "Key private cancer centre for Krishna district and surrounding AP corridor. Aarogyasri empanelled — important for middle-income patients who cannot reach SVIMS.",
+          "notes": "Key private cancer centre for Krishna district and surrounding AP corridor. Aarogyasri empanelled \u2014 important for middle-income patients who cannot reach SVIMS.",
           "tier": "C",
           "navigation_notes": [
             "Appointment via 0866-2493300; Aarogyasri (AP) and PMJAY accepted"
@@ -4466,7 +4478,7 @@
         },
         {
           "id": "narayana-cancer-ahmedabad",
-          "name": "Narayana Multispeciality Hospital — Cancer Care, Ahmedabad",
+          "name": "Narayana Multispeciality Hospital \u2014 Cancer Care, Ahmedabad",
           "short_name": "Narayana Cancer Ahmedabad",
           "city": "Ahmedabad",
           "state": "Gujarat",
@@ -4511,7 +4523,7 @@
         },
         {
           "id": "sparsh-hospital-cancer-bangalore",
-          "name": "Sparsh Hospital — Cancer Care, Bengaluru",
+          "name": "Sparsh Hospital \u2014 Cancer Care, Bengaluru",
           "short_name": "Sparsh Cancer Bengaluru",
           "city": "Bengaluru",
           "state": "Karnataka",
@@ -4560,12 +4572,12 @@
     },
     {
       "id": "national-referral-pvt-09",
-      "region": "National Referral — Private (Batch 9)",
+      "region": "National Referral \u2014 Private (Batch 9)",
       "status": "researched",
       "hospitals": [
         {
           "id": "manipal-hospital-cancer-jaipur",
-          "name": "Manipal Hospitals — Cancer Care, Jaipur",
+          "name": "Manipal Hospitals \u2014 Cancer Care, Jaipur",
           "short_name": "Manipal Cancer Jaipur",
           "city": "Jaipur",
           "state": "Rajasthan",
@@ -4612,7 +4624,7 @@
         },
         {
           "id": "fortis-cancer-jaipur",
-          "name": "Fortis Escorts Hospital — Cancer Care, Jaipur",
+          "name": "Fortis Escorts Hospital \u2014 Cancer Care, Jaipur",
           "short_name": "Fortis Cancer Jaipur",
           "city": "Jaipur",
           "state": "Rajasthan",
@@ -4710,7 +4722,7 @@
         },
         {
           "id": "apollo-cancer-bhubaneswar",
-          "name": "Apollo Hospitals — Cancer Care, Bhubaneswar",
+          "name": "Apollo Hospitals \u2014 Cancer Care, Bhubaneswar",
           "short_name": "Apollo Cancer Bhubaneswar",
           "city": "Bhubaneswar",
           "state": "Odisha",
@@ -4757,7 +4769,7 @@
         },
         {
           "id": "manipal-cancer-visakhapatnam",
-          "name": "Manipal Hospitals — Cancer Care, Visakhapatnam",
+          "name": "Manipal Hospitals \u2014 Cancer Care, Visakhapatnam",
           "short_name": "Manipal Cancer Vizag",
           "city": "Visakhapatnam",
           "state": "Andhra Pradesh",
@@ -4805,12 +4817,12 @@
     },
     {
       "id": "national-referral-pvt-10",
-      "region": "National Referral — Private (Batch 10)",
+      "region": "National Referral \u2014 Private (Batch 10)",
       "status": "researched",
       "hospitals": [
         {
           "id": "christian-medical-college-vellore-cancer",
-          "name": "Christian Medical College Vellore — Cancer Institute",
+          "name": "Christian Medical College Vellore \u2014 Cancer Institute",
           "short_name": "CMC Vellore Cancer",
           "city": "Vellore",
           "state": "Tamil Nadu",
@@ -4866,7 +4878,7 @@
         },
         {
           "id": "kasturba-medical-college-cancer-mangalore",
-          "name": "Kasturba Medical College Hospital — Cancer Centre, Mangaluru",
+          "name": "Kasturba Medical College Hospital \u2014 Cancer Centre, Mangaluru",
           "short_name": "KMC Cancer Mangaluru",
           "city": "Mangaluru",
           "state": "Karnataka",
@@ -4914,7 +4926,7 @@
         },
         {
           "id": "hinduja-hospital-cancer-mumbai",
-          "name": "P.D. Hinduja National Hospital — Cancer Care, Mumbai",
+          "name": "P.D. Hinduja National Hospital \u2014 Cancer Care, Mumbai",
           "short_name": "Hinduja Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -4966,7 +4978,7 @@
         },
         {
           "id": "saifee-hospital-cancer-mumbai",
-          "name": "Saifee Hospital — Cancer Care, Mumbai",
+          "name": "Saifee Hospital \u2014 Cancer Care, Mumbai",
           "short_name": "Saifee Cancer Mumbai",
           "city": "Mumbai",
           "state": "Maharashtra",
@@ -5011,7 +5023,7 @@
         },
         {
           "id": "fortis-la-femme-cancer-delhi",
-          "name": "Fortis La Femme — Gynaecologic Oncology, New Delhi",
+          "name": "Fortis La Femme \u2014 Gynaecologic Oncology, New Delhi",
           "short_name": "Fortis La Femme Gyn-Onc Delhi",
           "city": "New Delhi",
           "state": "Delhi",
