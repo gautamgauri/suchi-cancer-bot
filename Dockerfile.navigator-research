@@ -1,7 +1,9 @@
-# Dockerfile for Suchi Navigator Daily Research Job
+# Dockerfile for Suchi Navigator scheduled jobs
 # Runs as a Cloud Run Job triggered by Cloud Scheduler.
-# On each run: picks next pending batch → researches via Claude API →
-# gates through inclusion criteria → emails Gautam + Divya for approval.
+#
+# Scripts (controlled by NAVIGATOR_SCRIPT env var):
+#   daily-researcher.ts  — picks next pending batch, researches via Claude, emails for approval
+#   daily-sender.ts      — picks next researched batch, emails for approval (no Claude call)
 FROM node:20-alpine
 
 WORKDIR /app
@@ -15,9 +17,7 @@ RUN npm ci 2>/dev/null || npm install
 # Copy navigator source
 COPY navigator/ ./
 
-# Copy seed data (queue.json and hospitals.json are overridden at runtime by GCS adapter)
-COPY apps/landing/src/content/hospitals.json ./hospitals.json
-
 ENV NODE_ENV=production
+ENV NAVIGATOR_SCRIPT=daily-researcher.ts
 
-CMD ["npx", "ts-node", "--transpile-only", "daily-researcher.ts"]
+CMD sh -c "npx ts-node --transpile-only ${NAVIGATOR_SCRIPT}"

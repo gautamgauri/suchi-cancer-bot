@@ -1,6 +1,7 @@
 steps:
-  # Build the navigator research job image
+  # Build the shared navigator job image (handles both research and send scripts)
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build'
     args:
       - 'build'
       - '-f'
@@ -11,12 +12,16 @@ steps:
 
   # Push the image
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'push'
+    waitFor: ['build']
     args:
       - 'push'
       - 'gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
 
-  # Deploy as a Cloud Run Job (create or update)
+  # Deploy researcher job (pending → researched → email, uses Claude API)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-researcher'
+    waitFor: ['push']
     entrypoint: gcloud
     args:
       - 'run'
@@ -27,21 +32,41 @@ steps:
       - '--region=us-central1'
       - '--service-account=suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com'
       - '--set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,NAVIGATOR_APPROVAL_SECRET=NAVIGATOR_APPROVAL_SECRET:latest,SMTP_PASS=SMTP_PASS:latest'
-      - '--set-env-vars=QUEUE_GCS_BUCKET=suchi-navigator-state,GOOGLE_CLOUD_PROJECT=gen-lang-client-0202543132'
+      - '--set-env-vars=QUEUE_GCS_BUCKET=suchi-navigator-state,GOOGLE_CLOUD_PROJECT=gen-lang-client-0202543132,NAVIGATOR_SCRIPT=daily-researcher.ts'
       - '--max-retries=1'
       - '--task-timeout=600s'
+      - '--project=gen-lang-client-0202543132'
+
+  # Deploy sender job (researched → email_sent, no Claude call, runs daily at 10am IST)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-sender'
+    waitFor: ['push']
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'deploy'
+      - 'suchi-navigator-sender'
+      - '--image=gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
+      - '--region=us-central1'
+      - '--service-account=suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com'
+      - '--set-secrets=NAVIGATOR_APPROVAL_SECRET=NAVIGATOR_APPROVAL_SECRET:latest,SMTP_PASS=SMTP_PASS:latest'
+      - '--set-env-vars=QUEUE_GCS_BUCKET=suchi-navigator-state,GOOGLE_CLOUD_PROJECT=gen-lang-client-0202543132,NAVIGATOR_SCRIPT=daily-sender.ts'
+      - '--max-retries=1'
+      - '--task-timeout=120s'
       - '--project=gen-lang-client-0202543132'
 
 images:
   - 'gcr.io/gen-lang-client-0202543132/suchi-navigator-research:latest'
 
-# After deploying, set up Cloud Scheduler trigger with:
+# Cloud Scheduler setup (one-time — run these after first deploy):
 #
-#   gcloud scheduler jobs create http suchi-navigator-daily \
+# Daily approval email at 10:00am IST (04:30 UTC):
+#   gcloud scheduler jobs create http suchi-navigator-sender-daily \
 #     --location=us-central1 \
-#     --schedule="0 8 * * *" \
+#     --schedule="30 4 * * *" \
 #     --time-zone="Asia/Kolkata" \
-#     --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/gen-lang-client-0202543132/jobs/suchi-navigator-research:run" \
+#     --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/gen-lang-client-0202543132/jobs/suchi-navigator-sender:run" \
 #     --message-body='{}' \
 #     --oauth-service-account-email=suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com
 #
@@ -50,6 +75,6 @@ images:
 #   gsutil cp navigator/queue.json gs://suchi-navigator-state/queue.json
 #   gsutil cp apps/landing/src/content/hospitals.json gs://suchi-navigator-state/hospitals.json
 #
-# Required Secret Manager secrets (create if not present):
+# Required Secret Manager secrets:
 #   gcloud secrets create ANTHROPIC_API_KEY --data-file=- <<< "<key>"
 #   gcloud secrets create NAVIGATOR_APPROVAL_SECRET --data-file=- <<< "<random-secret>"
