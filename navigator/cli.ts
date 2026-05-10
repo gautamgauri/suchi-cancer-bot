@@ -18,6 +18,7 @@ import {
   updateBatch,
 } from "./queue-manager";
 import { sendBatchEmail } from "./hospital-mailer";
+import { writeQueueJson } from "./gcs-queue";
 import { ResearchTarget, HospitalDraft } from "./types";
 
 const QUEUE_PATH = path.resolve(__dirname, "queue.json");
@@ -148,12 +149,14 @@ async function cmdSend(batchId: string): Promise<void> {
     approvalToken: result.approvalToken,
     emailSentAt: now,
   });
+  const queueContent = JSON.stringify({ batches }, null, 2) + "\n";
   await saveQueue(QUEUE_PATH, batches);
+  await writeQueueJson(QUEUE_PATH, queueContent);
 
   if (result.emailSent) {
     console.log(`\nEmail sent to: gautamgauri@dikshafoundation.org, divya.vats@dikshafoundation.org`);
     console.log(`Batch status updated → email_sent`);
-    console.log(`Approval token saved to queue.json`);
+    console.log(`Approval token saved to queue.json + GCS`);
   } else if (result.emailError) {
     console.log(`\nEmail failed — ${result.emailError}`);
     console.log(`Batch status updated → email_sent (approval token saved, email not delivered)`);
