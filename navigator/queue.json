@@ -301,7 +301,7 @@
     {
       "id": "national-referral-gov-02",
       "region": "National Referral — Government (Batch 2)",
-      "status": "researched",
+      "status": "email_sent",
       "hospitals": [
         {
           "id": "aiims-bhubaneswar",
@@ -538,12 +538,14 @@
           "national_referral": true
         }
       ],
-      "createdAt": "2026-05-09T00:00:00Z"
+      "createdAt": "2026-05-09T00:00:00Z",
+      "approvalToken": "0273cf78ad4c90125d874ed4a91fa72cd971a716ada0a6d6e7ebb8873630cd35",
+      "emailSentAt": "2026-05-10T10:19:59.053Z"
     },
     {
       "id": "national-referral-gov-03",
       "region": "National Referral — Government (Batch 3)",
-      "status": "researched",
+      "status": "email_sent",
       "hospitals": [
         {
           "id": "kidwai-memorial-bangalore",
@@ -813,12 +815,14 @@
           "national_referral": true
         }
       ],
-      "createdAt": "2026-05-09T00:00:00Z"
+      "createdAt": "2026-05-09T00:00:00Z",
+      "approvalToken": "661f581c4a6e9fecb355f0c36d8c15cae76f486614bbe2d3ce56b5f31734ce43",
+      "emailSentAt": "2026-05-10T10:20:05.441Z"
     },
     {
       "id": "national-referral-gov-04",
       "region": "National Referral — Government (Batch 4)",
-      "status": "researched",
+      "status": "email_sent",
       "hospitals": [
         {
           "id": "aiims-raipur",
@@ -1049,7 +1053,9 @@
           "national_referral": true
         }
       ],
-      "createdAt": "2026-05-09T00:00:00Z"
+      "createdAt": "2026-05-09T00:00:00Z",
+      "approvalToken": "55e068b1e3f8e8142a7a29b6ed00608c840fa1d2298a11e5c60863e0e29c4582",
+      "emailSentAt": "2026-05-10T10:20:10.776Z"
     },
     {
       "id": "national-referral-gov-05",
@@ -2478,7 +2484,7 @@
     {
       "id": "national-referral-pvt-01",
       "region": "National Referral — Private (Batch 1)",
-      "status": "researched",
+      "status": "email_sent",
       "hospitals": [
         {
           "id": "apollo-cancer-centre-chennai",
@@ -2761,12 +2767,14 @@
           "national_referral": true
         }
       ],
-      "createdAt": "2026-05-09T00:00:00Z"
+      "createdAt": "2026-05-09T00:00:00Z",
+      "approvalToken": "85daab744952e83914d4dd4cb8efb7517a1d8738db2eddfccdffac93d972b575",
+      "emailSentAt": "2026-05-10T10:20:16.086Z"
     },
     {
       "id": "national-referral-pvt-02",
       "region": "National Referral — Private (Batch 2)",
-      "status": "researched",
+      "status": "email_sent",
       "hospitals": [
         {
           "id": "hcg-cancer-centre-bangalore",
@@ -3022,7 +3030,9 @@
           "national_referral": true
         }
       ],
-      "createdAt": "2026-05-09T00:00:00Z"
+      "createdAt": "2026-05-09T00:00:00Z",
+      "approvalToken": "27a4b973e697143a790b42a7793abec5bcba72842a67e4018aefb9ef2673fd39",
+      "emailSentAt": "2026-05-10T10:20:22.027Z"
     },
     {
       "id": "national-referral-pvt-03",
