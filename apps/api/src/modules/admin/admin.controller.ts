@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Param, Res, UseGuards, Logger } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Query, Param, Body, Res, UseGuards, Logger } from "@nestjs/common";
 import { Response } from "express";
 import { BasicAuthGuard } from "../../common/guards/basic-auth.guard";
 import { SchedulerOidcGuard } from "../../common/guards/scheduler-oidc.guard";
@@ -6,7 +6,8 @@ import { AdminService } from "./admin.service";
 import { DailyReportService } from "../analytics/daily-report.service";
 import { EmailService } from "../email/email.service";
 import { generateMarkdownReport } from "../analytics/report-generator";
-import { NavigatorApproveService } from "./navigator-approve.service";
+import { NavigatorApproveService, HospitalUpdates } from "./navigator-approve.service";
+import { buildReviewHtml } from "./navigator-review.html";
 
 @Controller("admin")
 export class AdminController {
@@ -118,10 +119,57 @@ export class AdminController {
   }
 
   /**
+   * Navigator batch review portal.
+   *
+   * Linked from the review email. Shows all hospitals with inline edit forms.
+   * The reviewer edits individual fields, then clicks Approve All.
+   *
+   * URL: GET /admin/navigator/review/:batchId?token=<hmac>
+   */
+  @Get("navigator/review/:batchId")
+  async reviewNavigatorBatch(
+    @Param("batchId") batchId: string,
+    @Query("token") token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const batch = await this.navigatorApprove.getBatchForReview(batchId, token);
+      res.status(200).send(buildReviewHtml(batch, token));
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      res.status(error.status ?? 500).send(this.buildErrorHtml(batchId, error.message ?? "Unexpected error"));
+    }
+  }
+
+  /**
+   * Save inline edits to a single hospital in a batch.
+   *
+   * Called by the review page JS when the reviewer clicks "Save Changes".
+   *
+   * URL: PATCH /admin/navigator/batch/:batchId/hospital/:hospitalId?token=<hmac>
+   */
+  @Patch("navigator/batch/:batchId/hospital/:hospitalId")
+  async saveHospitalEdit(
+    @Param("batchId") batchId: string,
+    @Param("hospitalId") hospitalId: string,
+    @Query("token") token: string,
+    @Body() body: HospitalUpdates,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      await this.navigatorApprove.updateBatchHospital(batchId, token, hospitalId, body);
+      res.status(200).json({ ok: true });
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      res.status(error.status ?? 500).json({ ok: false, error: error.message ?? "Unexpected error" });
+    }
+  }
+
+  /**
    * Navigator batch approval endpoint.
    *
-   * Triggered by the "Approve All" link in the hospital research review email.
-   * Uses a GET request because the email button is an <a href="..."> link.
+   * Triggered by the "Approve All" button on the review portal (or directly via link).
+   * Uses a GET request because the review page navigates to it via window.location.href.
    *
    * URL: GET /admin/navigator/approve/:batchId?token=<hmac>
    */

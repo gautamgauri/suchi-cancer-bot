@@ -14,8 +14,8 @@ import { ResearchTarget, HospitalDraft } from "./types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const APPROVE_BASE =
-  "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/navigator/approve";
+const REVIEW_BASE =
+  "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/navigator/review";
 
 const REVIEWERS = [
   "gautamgauri@dikshafoundation.org",
@@ -170,8 +170,7 @@ function buildHtmlEmail(
   batch: ResearchTarget,
   approvalToken: string,
 ): string {
-  const approveUrl = `${APPROVE_BASE}/${encodeURIComponent(batch.id)}?token=${approvalToken}`;
-  const requestChangesSubject = encodeURIComponent(`Changes: ${batch.id}`);
+  const reviewUrl = `${REVIEW_BASE}/${encodeURIComponent(batch.id)}?token=${approvalToken}`;
 
   const hospitalCards = batch.hospitals
     .slice(0, 5)
@@ -210,17 +209,13 @@ function buildHtmlEmail(
     <p style="margin:0 0 20px; font-size:15px; color:#333;">
       Review the ${hospitalCount} hospital${hospitalCount !== 1 ? "s" : ""} above, then take an action:
     </p>
-    <a href="${escapeHtml(approveUrl)}"
-       style="background:#188038; color:#fff; padding:14px 32px; border-radius:4px; text-decoration:none; font-size:16px; margin-right:16px; display:inline-block;">
-      Approve All — Add to Directory
-    </a>
-    <a href="mailto:gautamgauri@dikshafoundation.org?subject=${requestChangesSubject}"
-       style="background:#f1f3f4; color:#333; padding:14px 32px; border-radius:4px; text-decoration:none; font-size:16px; display:inline-block; margin-top:8px;">
-      Request Changes
+    <a href="${escapeHtml(reviewUrl)}"
+       style="background:#1a73e8; color:#fff; padding:14px 32px; border-radius:4px; text-decoration:none; font-size:16px; display:inline-block;">
+      Review &amp; Approve →
     </a>
     <p style="margin:20px 0 0; font-size:12px; color:#888;">
-      Approving will mark this batch approved. The API endpoint will then add these hospitals to the directory.<br>
-      This approval link is valid for 7 days.
+      Opens a review page where you can edit individual fields before approving.<br>
+      This link is valid for 7 days.
     </p>
   </div>
 

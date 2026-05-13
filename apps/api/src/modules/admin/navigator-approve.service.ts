@@ -24,6 +24,7 @@ import {
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { Storage } from "@google-cloud/storage";
 
 // ---------------------------------------------------------------------------
 // GCS persistence helpers
@@ -34,25 +35,20 @@ const GCS_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543
 const GCS_QUEUE_OBJECT = process.env.QUEUE_GCS_OBJECT ?? "queue.json";
 const GCS_HOSPITALS_OBJECT = process.env.HOSPITALS_GCS_OBJECT ?? "hospitals.json";
 
-console.log(`[navigator-approve] QUEUE_GCS_BUCKET=${GCS_BUCKET ?? "(not set — local mode)"}`);
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getStorage(): Promise<any> {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-  const { Storage } = require("@google-cloud/storage") as any;
+function getStorage(): Storage {
   return new Storage({ projectId: GCS_PROJECT });
 }
 
 async function gcsRead(object: string): Promise<string> {
   if (!GCS_BUCKET) throw new Error("GCS_BUCKET not configured");
-  const storage = await getStorage();
+  const storage = getStorage();
   const [contents] = await storage.bucket(GCS_BUCKET).file(object).download() as [Buffer];
   return contents.toString("utf-8");
 }
 
 async function gcsWrite(object: string, content: string): Promise<void> {
   if (!GCS_BUCKET) return;
-  const storage = await getStorage();
+  const storage = getStorage();
   await storage.bucket(GCS_BUCKET).file(object).save(content, { contentType: "application/json" });
 }
 
@@ -86,7 +82,7 @@ async function writeJson(localPath: string, gcsObject: string, content: string):
 
 type BatchStatus = "pending" | "researched" | "email_sent" | "approved" | "rejected";
 
-interface HospitalDraft {
+export interface HospitalDraft {
   id: string;
   name: string;
   short_name: string;
@@ -115,7 +111,7 @@ interface HospitalDraft {
   sources: string[];
 }
 
-interface ResearchTarget {
+export interface ResearchTarget {
   id: string;
   region: string;
   status: BatchStatus;
@@ -129,6 +125,29 @@ interface ResearchTarget {
 
 interface QueueFile {
   batches: ResearchTarget[];
+}
+
+export interface HospitalUpdates {
+  name?: string;
+  short_name?: string;
+  type?: string;
+  tier?: "A" | "B" | "C" | "D" | null;
+  score?: number | null;
+  confidence?: "high" | "medium" | "low";
+  notes?: string;
+  cost_tier?: string | null;
+  ncg_member?: boolean | null;
+  pmjay_empanelled?: boolean | null;
+  accreditation?: string[];
+  departments?: string[];
+  navigation_notes?: string[];
+  key_doctors?: Array<{ name: string; role: string }>;
+  sources?: string[];
+  contact?: {
+    phone?: string | null;
+    address?: string | null;
+    website?: string | null;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +259,105 @@ function todayIso(): string {
 export class NavigatorApproveService {
   private readonly logger = new Logger(NavigatorApproveService.name);
 
+  constructor() {
+    this.logger.log(
+      `QUEUE_GCS_BUCKET=${GCS_BUCKET ?? "(not set — local mode)"}`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+
+  private verifyHmac(batchId: string, token: string): void {
+    const secret =
+      process.env.NAVIGATOR_APPROVAL_SECRET || "suchi-nav-dev-secret";
+    const expected = createHmac("sha256", secret).update(batchId).digest("hex");
+    let tokenBuf: Buffer;
+    try {
+      tokenBuf = Buffer.from(token, "hex");
+    } catch {
+      throw new UnauthorizedException("Invalid approval token");
+    }
+    const expectedBuf = Buffer.from(expected, "hex");
+    if (
+      tokenBuf.length !== expectedBuf.length ||
+      !timingSafeEqual(tokenBuf, expectedBuf)
+    ) {
+      throw new UnauthorizedException("Invalid approval token");
+    }
+  }
+
+  private async resolveQueuePath(): Promise<string> {
+    const candidates = [
+      path.resolve(process.cwd(), "navigator/queue.json"),
+      path.resolve(__dirname, "../../../../../navigator/queue.json"),
+      "/tmp/navigator-queue.json",
+    ];
+    return resolveFirstExisting(candidates).catch(() => "/tmp/navigator-queue.json");
+  }
+
+  // -------------------------------------------------------------------------
+  // Public methods
+  // -------------------------------------------------------------------------
+
+  async getBatchForReview(batchId: string, token: string): Promise<ResearchTarget> {
+    this.verifyHmac(batchId, token);
+    const queuePath = await this.resolveQueuePath();
+    const queueRaw = await readJson(queuePath, GCS_QUEUE_OBJECT);
+    const queueData = JSON.parse(queueRaw) as QueueFile;
+    const batch = queueData.batches.find((b) => b.id === batchId) ?? null;
+    if (!batch) throw new NotFoundException(`Batch "${batchId}" not found in queue`);
+    return batch;
+  }
+
+  async updateBatchHospital(
+    batchId: string,
+    token: string,
+    hospitalId: string,
+    updates: HospitalUpdates,
+  ): Promise<void> {
+    this.verifyHmac(batchId, token);
+    const queuePath = await this.resolveQueuePath();
+    const queueRaw = await readJson(queuePath, GCS_QUEUE_OBJECT);
+    const queueData = JSON.parse(queueRaw) as QueueFile;
+
+    const batch = queueData.batches.find((b) => b.id === batchId) ?? null;
+    if (!batch) throw new NotFoundException(`Batch "${batchId}" not found`);
+    if (batch.status === "approved")
+      throw new BadRequestException("Cannot edit an approved batch");
+
+    const hospital = batch.hospitals.find((h) => h.id === hospitalId) ?? null;
+    if (!hospital)
+      throw new NotFoundException(`Hospital "${hospitalId}" not found in batch`);
+
+    const scalarFields = [
+      "name", "short_name", "type", "tier", "score",
+      "confidence", "notes", "cost_tier", "ncg_member", "pmjay_empanelled",
+    ] as const;
+    for (const field of scalarFields) {
+      if (field in updates && updates[field] !== undefined) {
+        (hospital as unknown as Record<string, unknown>)[field] = updates[field];
+      }
+    }
+
+    if (updates.accreditation !== undefined) hospital.accreditation = updates.accreditation;
+    if (updates.departments !== undefined) hospital.departments = updates.departments;
+    if (updates.navigation_notes !== undefined) hospital.navigation_notes = updates.navigation_notes;
+    if (updates.key_doctors !== undefined) hospital.key_doctors = updates.key_doctors;
+    if (updates.sources !== undefined) hospital.sources = updates.sources;
+
+    if (updates.contact) {
+      if (updates.contact.phone !== undefined) hospital.contact.phone = updates.contact.phone;
+      if (updates.contact.address !== undefined) hospital.contact.address = updates.contact.address;
+      if (updates.contact.website !== undefined) hospital.contact.website = updates.contact.website;
+    }
+
+    const queueJson = JSON.stringify(queueData, null, 2) + "\n";
+    await writeJson(queuePath, GCS_QUEUE_OBJECT, queueJson);
+    this.logger.log(`Updated hospital "${hospitalId}" in batch "${batchId}"`);
+  }
+
   async approveNavigatorBatch(
     batchId: string,
     token: string,
@@ -247,26 +365,7 @@ export class NavigatorApproveService {
     // -----------------------------------------------------------------------
     // 1. Verify HMAC token
     // -----------------------------------------------------------------------
-    const secret =
-      process.env.NAVIGATOR_APPROVAL_SECRET || "suchi-nav-dev-secret";
-    const expected = createHmac("sha256", secret).update(batchId).digest("hex");
-
-    let tokenBuf: Buffer;
-    try {
-      tokenBuf = Buffer.from(token, "hex");
-    } catch {
-      throw new UnauthorizedException("Invalid approval token");
-    }
-
-    const expectedBuf = Buffer.from(expected, "hex");
-
-    // Lengths must match before timingSafeEqual or it throws
-    if (
-      tokenBuf.length !== expectedBuf.length ||
-      !timingSafeEqual(tokenBuf, expectedBuf)
-    ) {
-      throw new UnauthorizedException("Invalid approval token");
-    }
+    this.verifyHmac(batchId, token);
 
     // -----------------------------------------------------------------------
     // 2. Resolve local fallback paths (used when GCS is unavailable)
