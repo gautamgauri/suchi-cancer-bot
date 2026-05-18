@@ -44,8 +44,6 @@ kb/
         └── government-schemes.md
 ```
 
-`kb/en/99_local_navigation/hospital-directory.md` is generated from the structured hospital directory at `apps/landing/src/content/hospitals.json` by `scripts/sync-hospital-kb.ts`. See `docs/NAVIGATOR_PIPELINE.md` for the approval-gated curation workflow, GCS runtime state, and API consumption path.
-
 ## Naming Conventions
 
 ### Folder Names
