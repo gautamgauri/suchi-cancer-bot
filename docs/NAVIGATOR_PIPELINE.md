@@ -1,119 +1,171 @@
 # Suchi Navigator Pipeline
 
-Hospital directory curation pipeline for the Suchi Navigator feature. Produces entries in `apps/api/data/hospitals.json`.
+Hospital directory curation pipeline for the Suchi Navigator feature. It turns researched hospital drafts into reviewed entries consumed by chat, the landing site, and the KB navigation markdown.
 
 ## Overview
 
+```text
+pending batch -> research -> researched -> email_sent -> review/edit -> approve -> hospitals.json
 ```
-research → add → send → review portal → edit (optional) → approve → hospitals.json
+
+The workflow is intentionally approval-gated. Drafts can be created manually with the CLI or by a scheduled Cloud Run Job, but entries only become part of the directory after a reviewer opens the signed review link and approves the batch.
+
+## Data Stores
+
+| Store | Purpose | Source code |
+|---|---|---|
+| `navigator/queue.json` | Batch queue for research targets and draft hospitals. | `navigator/queue-manager.ts`, `navigator/cli.ts`, `navigator/daily-researcher.ts`, `navigator/daily-sender.ts` |
+| `apps/landing/src/content/hospitals.json` | Git-tracked seed directory used by the landing app and local API development. | `apps/landing/src/content/hospitals.json` |
+| `apps/api/data/hospitals.json` | API container copy staged at build time from the landing app file. | `cloudbuild.yaml`, `apps/api/Dockerfile`, `apps/api/src/modules/chat/hospital-directory.service.ts` |
+| `gs://$QUEUE_GCS_BUCKET/queue.json` | Production queue state when `QUEUE_GCS_BUCKET` is set. | `navigator/gcs-queue.ts`, `apps/api/src/modules/admin/navigator-approve.service.ts` |
+| `gs://$QUEUE_GCS_BUCKET/hospitals.json` | Production approval target for hospital directory updates when `QUEUE_GCS_BUCKET` is set. | `navigator/gcs-queue.ts`, `apps/api/src/modules/admin/navigator-approve.service.ts` |
+| `kb/en/99_local_navigation/hospital-directory.md` | KB markdown generated from the Git-tracked hospital JSON. | `scripts/sync-hospital-kb.ts` |
+
+`hospital-directory.service.ts` first looks for `data/hospitals.json` in the API container, then falls back to `apps/landing/src/content/hospitals.json` for local development. It does not read GCS directly today. When the admin approval service runs with `QUEUE_GCS_BUCKET`, it reads and writes GCS objects first and fails hard if GCS is unavailable; without the bucket it uses local files.
+
+## Manual Workflow
+
+### 1. Research
+
+```bash
+npx ts-node navigator/cli.ts research "<region>"
 ```
 
-All pipeline state lives in `navigator/queue.json` (mirrored to GCS when `QUEUE_GCS_BUCKET` is set).
+Prints instructions and a JSON template for a hospital researcher. Each draft should include official name, city/state, hospital type, accreditation, departments, cost tier, PMJAY and NCG fields, contact details, doctors, navigation notes, sources, and confidence.
 
----
+### 2. Add Drafts
 
-## Pipeline Steps
+```bash
+npx ts-node navigator/cli.ts add /path/to/batch.json
+```
 
-### 1. Research (`navigator/cli.ts research <region>`)
+Loads `{ "batch_id": "...", "hospitals": [...] }`, enforces a maximum of five hospitals, forces each hospital to `status: "draft"`, and sets the batch to `researched` in local `navigator/queue.json`.
 
-Prints agent instructions + a template JSON for the hospital-researcher agent. The agent collects up to 5 hospitals per batch:
-- Full name, short name, city, state
-- Type, accreditation, departments, cost tier
-- PMJAY empanelment, NCG membership
-- Key doctors, contact details
-- Navigation notes (practical patient tips)
-- Sources, researcher confidence (high / medium / low)
+### 3. Send For Review
 
-Output saved to a JSON file: `{ batch_id, hospitals[] }`.
+```bash
+npx ts-node navigator/cli.ts send <batch-id>
+```
 
-### 2. Add (`navigator/cli.ts add <path>`)
+Generates an HMAC token from `NAVIGATOR_APPROVAL_SECRET` and the `batchId`, sends a review email to the configured reviewers in `navigator/hospital-mailer.ts`, and sets the batch to `email_sent`. The token and timestamp are saved even if SMTP fails. When `QUEUE_GCS_BUCKET` is set, `navigator/gcs-queue.ts` also writes `queue.json` to GCS.
 
-Loads the draft JSON and writes hospitals into the named batch in `queue.json`. Sets batch status → `researched`. Enforces max 5 hospitals per batch.
+`navigator/hospital-mailer.ts` currently hard-codes the production review base URL:
 
-### 3. Send (`navigator/cli.ts send <batch-id>`)
+```text
+https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/navigator/review
+```
 
-Generates an HMAC token (`NAVIGATOR_APPROVAL_SECRET` env var) keyed on `batchId`, sends a review email to `gautamgauri@dikshafoundation.org` and `divya.vats@dikshafoundation.org`, and sets batch status → `email_sent`. Token and timestamp persisted to `queue.json` + GCS.
+If the review portal is deployed under a different host, update that constant or make it env-driven before sending links.
 
-Email contains full hospital data cards plus a single "Review & Approve" button linking to the review portal.
+### 4. Review And Edit
 
-SMTP: `SMTP_PASS` env var first, then Secret Manager (`SMTP_PASS` secret). Falls back gracefully — token is saved even if email fails.
+```http
+GET /v1/admin/navigator/review/:batchId?token=<hmac>
+PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId?token=<hmac>
+```
 
-### 4. Review portal (`GET /v1/admin/navigator/review/:batchId?token=<hmac>`)
+The HTML review page is served by `apps/api/src/modules/admin/admin.controller.ts` and rendered by `navigator-review.html.ts`. Reviewers can edit name, short name, type, tier, score, confidence, accreditation, departments, cost tier, notes, navigation notes, key doctors, phone, address, website, NCG, PMJAY, and sources.
 
-Served as HTML by `admin.controller.ts` → `navigator-review.html.ts`. Shows all hospitals (up to 5) with:
-- Read view: all fields in a table, Sources list, Navigation Notes, Key Doctors
-- "Edit" button per hospital: expands an inline edit form
+Navigator review routes are protected by the signed `token` query parameter, not `BasicAuthGuard`. `navigator-approve.service.ts` verifies the token with `timingSafeEqual`.
 
-**Editable fields:** name, short_name, type, tier, score (0–100), confidence, accreditation (comma-separated), departments (comma-separated), cost_tier, notes, navigation_notes (one per line), key_doctors (one per line: `Name | Role`), phone, address, website.
+### 5. Approve
 
-Edit saves are sent via `PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId?token=<hmac>` and persisted to `queue.json` + GCS immediately. Approving a batch with unsaved edits would use the last-saved state.
+```http
+GET /v1/admin/navigator/approve/:batchId?token=<hmac>
+```
 
-### 5. Approve (`GET /v1/admin/navigator/approve/:batchId?token=<hmac>`)
+Approval requires `email_sent` status. The service:
 
-Triggered by "Approve All" button on the review portal. Batch must be in `email_sent` status:
+1. Verifies the HMAC token.
+2. Loads `queue.json` from GCS when configured, otherwise local files.
+3. Converts each `HospitalDraft` to the full `hospitals.json` schema.
+4. Appends entries to `hospitals.json`, updates `_meta.total_hospitals`, and sets `_meta.last_updated`.
+5. Marks the batch `approved` with `approvedAt` and `approvedBy: "email_approval"`.
 
-1. Verify HMAC token (timing-safe compare)
-2. Load `queue.json` (GCS primary, local fallback; fails hard if GCS configured and unreachable)
-3. Convert each `HospitalDraft` → `hospitals.json` entry (fills in defaults for empty fields)
-4. Append entries to `hospitals.json`, increment `_meta.total_hospitals`, set `_meta.last_updated`
-5. Set batch status → `approved` in `queue.json`
+Approval is idempotent: a second approval of an already-approved batch returns a confirmation without duplicating hospitals.
 
-Returns an HTML confirmation page. Idempotent: re-approving an already-approved batch returns immediately with a note, does not duplicate hospitals.
+## Scheduled Jobs
 
----
+The scheduled automation uses the shared image built by `Dockerfile.navigator-research` and deployed by `cloudbuild.navigator-research.yaml`.
+
+| Job | Script | State transition | Notes |
+|---|---|---|---|
+| `suchi-navigator-research` | `navigator/daily-researcher.ts` | `pending` -> `researched` -> `email_sent` | Calls Claude with `ANTHROPIC_API_KEY`, gates results through inclusion criteria, then sends the review email. |
+| `suchi-navigator-sender` | `navigator/daily-sender.ts` | `researched` -> `email_sent` | Sends the next already-researched batch without a Claude call. |
+
+Both jobs use `QUEUE_GCS_BUCKET=suchi-navigator-state` in the current Cloud Build config. The sender Scheduler example in `cloudbuild.navigator-research.yaml` runs at 10:00am IST (`30 4 * * *` UTC).
+
+## Inclusion Gate And Scoring
+
+`navigator/inclusion-criteria.ts` filters automated research before it can enter review. A draft must pass all three gates:
+
+- At least one core oncology department, such as `medical_oncology`, `surgical_oncology`, `radiation_oncology`, `pediatric_oncology`, or `hemato_oncology`.
+- At least two treatment modalities from the recognized department/modality list.
+- At least one trust signal: recognized accreditation (`NABH`, `NABL`, `NCG_MEMBER`, `TMC_AFFILIATED`, `JCI`, `ISO`), `ncg_member: true`, or a government/AIIMS/ESIC type.
+
+The gate also computes a rough 0-10 score for automatic tier estimation:
+
+- Tier `A`: NCG member, TMC-affiliated, or score >= 7.
+- Tier `B`: score >= 4.
+- Tier `C`: score < 4 after passing all gates.
+
+The published directory metadata still uses a 0-100 editorial scoring rubric in `hospitals.json` for quality, cost, location, PMJAY, risk flags, and future SCCF affiliation. Do not mix the two scores: the 0-10 gate score is for draft triage, while the 0-100 score is the public directory ranking signal used by `hospital-directory.service.ts`.
+
+## Directory Consumption
+
+`apps/api/src/modules/chat/hospital-directory.service.ts` loads the directory once at startup and performs deterministic filtering before LLM generation. Key constraints:
+
+- Tier `D` hospitals are filtered out entirely.
+- National referral centres (`national_referral: true`) are split from regional hospitals and appended only when appropriate.
+- Filters are additive: city/state, cancer type departments, PMJAY, affordability, then score sort and max result limit.
+- If no JSON file is found, the service logs a warning and lets navigation queries fall back to KB markdown.
+- Newly approved GCS entries are not reloaded by chat automatically; the API process loads the staged JSON once at startup.
+
+After changing the Git-tracked hospital JSON, run:
+
+```bash
+npx ts-node scripts/sync-hospital-kb.ts
+```
+
+Use `--dry-run` to preview `kb/en/99_local_navigation/hospital-directory.md` without writing it.
 
 ## Batch States
 
 | Status | Meaning |
 |---|---|
-| `pending` | Batch created in queue.json, research not started |
-| `researched` | Draft hospitals loaded via `add` command |
-| `email_sent` | Review email sent, approval token stored |
-| `approved` | Hospitals merged into hospitals.json |
-| `rejected` | Manually set; not used by automated flow |
-
----
-
-## hospitals.json
-
-Source of truth at `apps/api/data/hospitals.json`. Served by `hospital-directory.service.ts` in the chat module. Mirrored to GCS as `hospitals.json` in the same bucket as `queue.json`.
-
-**Scoring:** 0–100 scale throughout.
-- Quality: TMC/NCG full member=50, AIIMS=40, NABH full=30, Govt tertiary=20, Private=10
-- Cost: Low=30, Medium=20, High=10
-- Location: East India state=10, elsewhere=0
-- PMJAY: Yes=10, No/Unknown=0
-- Risk flag: verified concern=−30
-- SCCF affiliation: +20 reserved (pending conference attendee list)
-
-**Total hospitals as of 2026-05-13:** 83
-
----
+| `pending` | Batch exists in `queue.json`; research has not been added yet. |
+| `researched` | Draft hospitals are attached and ready for email. |
+| `email_sent` | Review email was attempted and an approval token is stored. |
+| `approved` | Hospitals were merged into `hospitals.json`; repeat approvals are no-ops. |
+| `rejected` | Reserved/manual state; not used by the automated flow. |
 
 ## Key Files
 
 | File | Purpose |
 |---|---|
-| `navigator/cli.ts` | CLI entry point (research / add / send / status) |
-| `navigator/hospital-mailer.ts` | Builds + sends HTML review email, generates HMAC token |
-| `navigator/queue-manager.ts` | Load/save/update `queue.json` |
-| `navigator/gcs-queue.ts` | GCS sync for `queue.json` |
-| `navigator/types.ts` | `ResearchTarget`, `HospitalDraft`, `BatchStatus` |
-| `apps/api/src/modules/admin/navigator-approve.service.ts` | Review portal data + PATCH edits + approval logic |
-| `apps/api/src/modules/admin/navigator-review.html.ts` | HTML builder for the review portal page |
-| `apps/api/src/modules/admin/admin.controller.ts` | Routes: `GET /v1/admin/navigator/review/:batchId`, `PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId`, `GET /v1/admin/navigator/approve/:batchId` |
-| `apps/api/data/hospitals.json` | Live hospital directory (83 hospitals) |
-
----
+| `navigator/cli.ts` | Manual `research`, `add`, `send`, and `status` commands. |
+| `navigator/daily-researcher.ts` | Scheduled pending-batch researcher and email sender. |
+| `navigator/daily-sender.ts` | Scheduled email sender for already-researched batches. |
+| `navigator/inclusion-criteria.ts` | Automated hospital eligibility gate and draft tier estimator. |
+| `navigator/hospital-mailer.ts` | HTML review email, reviewer list, review base URL, HMAC token generation. |
+| `navigator/gcs-queue.ts` | GCS/local adapter for queue and hospital JSON used by navigator scripts. |
+| `apps/api/src/modules/admin/navigator-approve.service.ts` | Review data, inline edits, approval logic, and API-side GCS persistence. |
+| `apps/api/src/modules/admin/navigator-review.html.ts` | Inline review portal HTML and client-side edit form. |
+| `apps/api/src/modules/admin/admin.controller.ts` | Review, edit, and approve routes under the global `/v1` prefix. |
+| `apps/api/src/modules/chat/hospital-directory.service.ts` | Runtime hospital search used by chat planning before LLM generation. |
+| `scripts/sync-hospital-kb.ts` | Regenerates the KB hospital markdown from `apps/landing/src/content/hospitals.json`. |
+| `cloudbuild.navigator-research.yaml` | Builds and deploys Navigator Cloud Run Jobs. |
 
 ## Environment Variables
 
 | Variable | Description |
 |---|---|
-| `NAVIGATOR_APPROVAL_SECRET` | HMAC secret for approval tokens (default: `suchi-nav-dev-secret`) |
-| `QUEUE_GCS_BUCKET` | GCS bucket name for queue.json + hospitals.json (if unset, uses local files) |
-| `QUEUE_GCS_OBJECT` | GCS object key for queue (default: `queue.json`) |
-| `HOSPITALS_GCS_OBJECT` | GCS object key for hospital directory (default: `hospitals.json`) |
-| `SMTP_PASS` | Gmail app password for outbound email |
-| `SMTP_HOST` | SMTP host (default: `smtp.gmail.com`) |
-| `SMTP_USER` | SMTP sender (default: `gautamgauri@dikshafoundation.org`) |
+| `NAVIGATOR_APPROVAL_SECRET` | HMAC secret for review and approval tokens. Defaults to `suchi-nav-dev-secret` if unset. |
+| `QUEUE_GCS_BUCKET` | GCS bucket for production `queue.json` and `hospitals.json`. If unset, local files are used. |
+| `QUEUE_GCS_OBJECT` | GCS queue object key. Defaults to `queue.json`. |
+| `HOSPITALS_GCS_OBJECT` | GCS hospital directory object key. Defaults to `hospitals.json`. |
+| `ANTHROPIC_API_KEY` | Required by `daily-researcher.ts` to call Claude. |
+| `NAVIGATOR_SCRIPT` | Selects the script inside the shared job image, such as `daily-researcher.ts` or `daily-sender.ts`. |
+| `SMTP_PASS` | SMTP password for outbound review email. `hospital-mailer.ts` checks the env var first, then Secret Manager. |
+| `SMTP_HOST` | SMTP host. Defaults to `smtp.gmail.com`. |
+| `SMTP_USER` | SMTP sender. Defaults to `gautamgauri@dikshafoundation.org`. |

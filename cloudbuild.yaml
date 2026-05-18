@@ -6,12 +6,12 @@
 # This allows both manual (gcloud builds submit) and trigger-based deployments.
 
 steps:
-  # hospitals.json is committed at apps/api/data/hospitals.json (canonical source).
-  # This step syncs from apps/landing/src/content/ when present (keeps both in sync),
-  # and falls back gracefully when the landing app is excluded from the build tarball.
+  # hospitals.json is committed at apps/landing/src/content/hospitals.json.
+  # This step stages it into apps/api/data/hospitals.json so the API image can
+  # copy it to /app/data/hospitals.json for runtime lookup.
   - name: 'ubuntu'
     id: 'stage-hospitals'
-    args: ['bash', '-c', 'mkdir -p apps/api/data && if [ -f apps/landing/src/content/hospitals.json ]; then cp apps/landing/src/content/hospitals.json apps/api/data/hospitals.json && echo "Synced hospitals.json from landing app"; else echo "hospitals.json already present at apps/api/data/hospitals.json (committed copy)"; fi && ls -la apps/api/data/hospitals.json']
+    args: ['bash', '-c', 'mkdir -p apps/api/data && if [ -f apps/landing/src/content/hospitals.json ]; then cp apps/landing/src/content/hospitals.json apps/api/data/hospitals.json && echo "Staged hospitals.json from landing app"; else echo "hospitals.json missing at apps/landing/src/content/hospitals.json; using existing apps/api/data/hospitals.json if present"; fi && ls -la apps/api/data/hospitals.json']
 
   # Build API Docker image
   - name: 'gcr.io/cloud-builders/docker'

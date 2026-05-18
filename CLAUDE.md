@@ -11,6 +11,7 @@ apps/api/          → NestJS backend (the main codebase)
   src/common/      → Shared utilities, guards, filters
   prisma/          → Schema & migrations (PostgreSQL + pgvector)
 apps/web/          → React + Vite frontend chat UI
+apps/landing/      → Public landing site + Git-tracked hospital directory seed
 eval/              → Evaluation framework (test cases, runner, rubrics)
   cases/           → Test case JSON files by category
   runner/          → Eval execution engine
@@ -18,6 +19,7 @@ eval/              → Evaluation framework (test cases, runner, rubrics)
   autoresearch/    → Autoresearch quality engine (failure miner, patcher, gatekeeper, archivist)
   cli.ts           → Entry point for eval runs
 kb/                → Knowledge base markdown files + manifest
+navigator/         → Hospital directory curation queue, CLI, mailer, and scheduled jobs
 docs/              → Documentation (PRD, specs, policies, deployment)
 scripts/           → Python ingestion pipelines (NCI, YouTube transcripts)
 ```
@@ -36,6 +38,10 @@ cd apps/web && npm run dev          # Start UI on :3000
 
 # Eval
 cd eval && npx ts-node cli.ts       # Run eval suite
+
+# Navigator hospital directory
+npx ts-node navigator/cli.ts status # Show curation queue
+npx ts-node scripts/sync-hospital-kb.ts --dry-run # Preview hospital KB sync
 
 # Database
 cd apps/api && npx prisma generate  # Regenerate Prisma client
@@ -57,6 +63,7 @@ cd apps/api && npx prisma migrate dev  # Run migrations
 - Tests use Jest and live alongside source files as `*.spec.ts`
 - Environment validation in `apps/api/src/config/env.validation.ts`
 - All API endpoints prefixed with `/v1`
+- Navigator pipeline details live in `docs/NAVIGATOR_PIPELINE.md`
 - Safety-critical: never bypass safety module, never return medical advice without KB backing
 
 ## GCP Project
