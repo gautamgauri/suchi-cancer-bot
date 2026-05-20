@@ -160,9 +160,13 @@ Tone: Compassionate, factual, empowering. No fear-mongering. Pan-India audience.
         results[p.key] = { success: false, method: "skipped" };
         return;
       }
+      // Body is ONLY the post text — no headers or footers.
+      // This lets Zapier Email Parser define a single "post_text" field by
+      // selecting the entire body once during template setup.
+      // Subject includes platform so Zapier activity log is easy to scan.
       const ok = await this.email.sendEmail({
         to: p.addr,
-        subject: `[SUCHI] ${title}`,
+        subject: `[SUCHI:${p.key}] ${title}`,
         text: p.copy,
       });
       results[p.key] = { success: ok, method: "zapier", error: ok ? undefined : "email send failed" };
