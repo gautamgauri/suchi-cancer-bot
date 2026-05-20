@@ -20,8 +20,8 @@
         "website": "https://www.kmio.kar.nic.in"
       },
       "key_doctors": [
-        { "name": "Dr. C. Ramachandra", "role": "Director & Head, Surgical Oncology" },
-        { "name": "Dr. Linu Abraham Jacob", "role": "Medical Oncology" }
+        { "name": "Dr. V. Lokesh", "role": "Director" },
+        { "name": "Dr. Linu Abraham Jacob", "role": "Professor & Head, Medical Oncology" }
       ],
       "notes": "Dedicated state cancer institute; one of South India's highest-volume cancer centres. Strong in gynaecologic and head & neck cancers.",
       "tier": "A",
@@ -55,7 +55,7 @@
         "website": "https://cancerinstitutewia.in"
       },
       "key_doctors": [
-        { "name": "Dr. Shirley Sundersingh", "role": "Radiation Oncology" },
+        { "name": "Dr. Shirley Sundersingh", "role": "Pathology / Molecular Oncology" },
         { "name": "Dr. Arvind Krishnamurthy", "role": "Surgical Oncology" }
       ],
       "notes": "Oldest dedicated cancer hospital in India (est. 1952). Strong genetics programme and palliative care.",
@@ -90,7 +90,7 @@
         "website": "https://www.rcctvm.gov.in"
       },
       "key_doctors": [
-        { "name": "Dr. Fiby George Lal", "role": "Director" },
+        { "name": "Dr. Rekha A. Nair", "role": "Director" },
         { "name": "Dr. Arun Peter Mathew", "role": "Surgical Oncology" }
       ],
       "notes": "NCI-designated regional cancer centre; internationally recognised palliative care programme (WHO model). Best palliative access in India.",
@@ -125,8 +125,7 @@
         "website": "https://www.gcri.org.in"
       },
       "key_doctors": [
-        { "name": "Dr. Shilin N. Shukla", "role": "Director" },
-        { "name": "Dr. Prabhash Kumar", "role": "Medical Oncology" }
+        { "name": "Dr. Shashank Pandya", "role": "Director" }
       ],
       "notes": "Apex cancer centre for Gujarat and parts of Rajasthan. High volume; strong in oral and tobacco-related cancers.",
       "tier": "A",
@@ -160,8 +159,7 @@
         "website": "https://cnci.org.in"
       },
       "key_doctors": [
-        { "name": "Dr. Subrata Mandal", "role": "Director" },
-        { "name": "Dr. Debjit Chatterjee", "role": "Medical Oncology" }
+        { "name": "Dr. Jayanta Chakrabarti", "role": "Director & Head, Surgical Oncology" }
       ],
       "notes": "Premier cancer institute for eastern India; NCI-designated. Strong in haematological malignancies and gynaecologic cancers.",
       "tier": "A",

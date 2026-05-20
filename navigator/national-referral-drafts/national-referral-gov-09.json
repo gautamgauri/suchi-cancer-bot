@@ -20,7 +20,7 @@
         "website": "https://www.aiimsmangalagiri.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Veera Venkata Lakshmi", "role": "Medical Oncology" }
+        { "name": "Dr. Abhishek Raghava K S", "role": "Assistant Professor, Medical Oncology" }
       ],
       "notes": "New AIIMS for Andhra Pradesh. Apex referral for Seemandhra region; oncology department operational since 2023.",
       "tier": "B",
@@ -53,8 +53,8 @@
         "website": "https://www.svims.ac.in"
       },
       "key_doctors": [
-        { "name": "Dr. N. Subba Rao", "role": "Medical Oncology" },
-        { "name": "Dr. Sireesha Bala", "role": "Radiation Oncology" }
+        { "name": "Dr. D. Bhargavi", "role": "Associate Professor & HOD In-charge, Medical Oncology" },
+        { "name": "Dr. B.V. Subramanian", "role": "HOD, Radiation Oncology" }
       ],
       "notes": "State apex medical institute for AP; strong oncology programme. Aarogyasri anchor centre. Excellent PET-CT facility.",
       "tier": "A",
@@ -88,7 +88,7 @@
         "website": "https://stanleymedicalcollege.ac.in"
       },
       "key_doctors": [
-        { "name": "Dr. Latha Kannan", "role": "Surgical Oncology" }
+        { "name": "Dr. S. Sivakumari", "role": "Associate Professor & HOD, Surgical Oncology" }
       ],
       "notes": "Key government cancer unit for North Chennai population. CMCHIS anchor; handles high volume of GI and lung cancers.",
       "tier": "C",
@@ -121,9 +121,9 @@
         "website": "https://www.aiimsdeoghar.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Abhishek Singh", "role": "Medical Oncology" }
+        { "name": "Dr. Amiy Arnav", "role": "Associate Professor, Surgical Oncology" }
       ],
-      "notes": "New AIIMS serving Jharkhand and Santhal Parganas tribal belt. Critical apex referral for one of India's most underserved cancer corridors.",
+      "notes": "New AIIMS serving Jharkhand and Santhal Parganas tribal belt. Critical apex referral for one of India's most underserved cancer corridors. No standalone Medical Oncology dept yet; Surgical Oncology and Radiotherapy operational.",
       "tier": "B",
       "navigation_notes": [
         "OPD 8 AM; Ayushman Bharat and Jharkhand Mukhyamantri Swasthya Bima accepted"
@@ -154,7 +154,7 @@
         "website": "https://msramaiah.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Prasad K.S.N.", "role": "Radiation Oncology" }
+        { "name": "Dr. Kirthi Koushik A.S.", "role": "Professor & HOD, Radiation Oncology" }
       ],
       "notes": "Government-affiliated cancer unit under Ramaiah Medical Teaching Hospital; Arogya Karnataka anchor for north Bengaluru catchment.",
       "tier": "C",

@@ -2,11 +2,31 @@
 const botUrl = "https://chat.suchitracancercare.org";
 const base = import.meta.env.BASE_URL;
 const currentPath = Astro.url.pathname;
+
+const isCancerTypes  = currentPath.includes('/cancer-types');
+const isTreatments   = currentPath.includes('/tests-treatment') || currentPath.includes('/living-with-cancer') || currentPath.includes('/symptoms') || currentPath.includes('/resources');
+const isFindCare     = currentPath.includes('/find-care');
+const isWatch        = currentPath.includes('/watch');
+const isHome         = currentPath === base || currentPath === base.slice(0, -1);
+
+const CANCER_TYPES = [
+  { slug: 'breast-cancer',     label: 'Breast Cancer' },
+  { slug: 'cervical-cancer',   label: 'Cervical Cancer' },
+  { slug: 'lung-cancer',       label: 'Lung Cancer' },
+  { slug: 'colorectal-cancer', label: 'Colorectal Cancer' },
+  { slug: 'oral-cancer',       label: 'Oral Cancer' },
+  { slug: 'prostate-cancer',   label: 'Prostate Cancer' },
+  { slug: 'ovarian-cancer',    label: 'Ovarian Cancer' },
+  { slug: 'leukemia',          label: 'Leukemia' },
+  { slug: 'lymphoma',          label: 'Lymphoma' },
+  { slug: 'pediatric-cancers', label: 'Childhood Cancer' },
+];
 ---
 
 <!-- Floating Nav Wrapper -->
 <div class="nav-wrapper">
   <nav class="site-nav" aria-label="Primary navigation">
+
     <!-- Logo -->
     <a href={base} class="nav-logo" aria-label="Suchitra Cancer Care Foundation - Home">
       <span class="nav-logo-mark" aria-hidden="true"></span>
@@ -18,28 +38,73 @@ const currentPath = Astro.url.pathname;
 
     <!-- Desktop Links -->
     <div class="nav-links">
-      <a href={base} class={`nav-link ${currentPath === base || currentPath === base.slice(0, -1) ? 'nav-link--active' : ''}`}>Home</a>
-      <a href={`${base}cancer-types/`} class={`nav-link ${currentPath.includes('/cancer-types') ? 'nav-link--active' : ''}`}>Cancer Types</a>
-      <a href={`${base}symptoms/`} class={`nav-link ${currentPath.includes('/symptoms') ? 'nav-link--active' : ''}`}>Symptoms</a>
-      <a href={`${base}tests-treatment/`} class={`nav-link ${currentPath.includes('/tests-treatment') ? 'nav-link--active' : ''}`}>Tests &amp; Treatment</a>
-      <a href={`${base}living-with-cancer/`} class={`nav-link ${currentPath.includes('/living-with-cancer') ? 'nav-link--active' : ''}`}>Living With Cancer</a>
-      <a href={`${base}find-care/`} class={`nav-link ${currentPath.includes('/find-care') ? 'nav-link--active' : ''}`}>Find Care</a>
-      <a href={`${base}watch/`} class={`nav-link ${currentPath.includes('/watch') ? 'nav-link--active' : ''}`}>Watch</a>
-      <a href={botUrl} target="_blank" rel="noopener" class="nav-link">Ask Suchi</a>
+      <a href={base} class={`nav-link ${isHome ? 'nav-link--active' : ''}`}>Home</a>
+
+      <!-- Cancer Types dropdown -->
+      <div class="nav-item-drop" data-drop="cancer-types">
+        <button class={`nav-link nav-link--drop ${isCancerTypes ? 'nav-link--active' : ''}`}
+                aria-haspopup="true" aria-expanded="false" data-drop-trigger="cancer-types">
+          Cancer Types
+          <svg class="nav-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M1 1l4 4 4-4"/>
+          </svg>
+        </button>
+        <div class="nav-dropdown" id="drop-cancer-types" role="menu" aria-label="Cancer types">
+          <div class="nav-dropdown-grid">
+            {CANCER_TYPES.map(({ slug, label }) => (
+              <a href={`${base}cancer-types/${slug}/`} class="nav-dropdown-item" role="menuitem">{label}</a>
+            ))}
+          </div>
+          <div class="nav-dropdown-footer">
+            <a href={`${base}cancer-types/`} class="nav-dropdown-all">View all cancer types →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Understand Cancer dropdown -->
+      <div class="nav-item-drop" data-drop="understand">
+        <button class={`nav-link nav-link--drop ${isTreatments ? 'nav-link--active' : ''}`}
+                aria-haspopup="true" aria-expanded="false" data-drop-trigger="understand">
+          Understand Cancer
+          <svg class="nav-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M1 1l4 4 4-4"/>
+          </svg>
+        </button>
+        <div class="nav-dropdown nav-dropdown--wide" id="drop-understand" role="menu" aria-label="Understand cancer">
+          <div class="nav-dropdown-cols">
+            <div class="nav-dropdown-col">
+              <p class="nav-dropdown-heading">Symptoms</p>
+              <a href={`${base}symptoms/`} class="nav-dropdown-item" role="menuitem">Warning Signs to Watch</a>
+              <a href={`${base}symptoms/persistent-cough/`} class="nav-dropdown-item" role="menuitem">Persistent Cough</a>
+              <a href={`${base}symptoms/lump-in-breast/`} class="nav-dropdown-item" role="menuitem">Lump in Breast</a>
+              <a href={`${base}symptoms/blood-in-stool/`} class="nav-dropdown-item" role="menuitem">Blood in Stool</a>
+              <a href={`${base}symptoms/`} class="nav-dropdown-all">All symptoms →</a>
+            </div>
+            <div class="nav-dropdown-col">
+              <p class="nav-dropdown-heading">Treatments</p>
+              <a href={`${base}tests-treatment/`} class="nav-dropdown-item" role="menuitem">Tests &amp; Diagnosis</a>
+              <a href={`${base}tests-treatment/treatments/chemotherapy/`} class="nav-dropdown-item" role="menuitem">Chemotherapy</a>
+              <a href={`${base}tests-treatment/`} class="nav-dropdown-all">All treatments →</a>
+            </div>
+            <div class="nav-dropdown-col">
+              <p class="nav-dropdown-heading">Support &amp; Navigation</p>
+              <a href={`${base}living-with-cancer/`} class="nav-dropdown-item" role="menuitem">Living With Cancer</a>
+              <a href={`${base}resources/pmjay-cancer-coverage/`} class="nav-dropdown-item" role="menuitem">PM-JAY Coverage</a>
+              <a href={`${base}resources/cancer-care-in-bihar/`} class="nav-dropdown-item" role="menuitem">Care in Bihar</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <a href={`${base}find-care/`} class={`nav-link ${isFindCare ? 'nav-link--active' : ''}`}>Find Care</a>
+      <a href={`${base}watch/`}     class={`nav-link ${isWatch    ? 'nav-link--active' : ''}`}>Watch</a>
     </div>
 
     <!-- Actions -->
     <div class="nav-actions">
-      <a href={botUrl} target="_blank" rel="noopener" class="nav-cta">
-        Ask Suchi
-      </a>
-      <button
-        class="nav-toggle"
-        id="nav-toggle"
-        aria-label="Toggle menu"
-        aria-expanded="false"
-        aria-controls="mobile-menu"
-      >
+      <a href={botUrl} target="_blank" rel="noopener" class="nav-cta">Ask Suchi</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu"
+              aria-expanded="false" aria-controls="mobile-menu">
         <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
@@ -48,21 +113,67 @@ const currentPath = Astro.url.pathname;
         </svg>
       </button>
     </div>
+
   </nav>
 </div>
 
 <!-- Mobile Menu Panel -->
 <nav class="mobile-menu" id="mobile-menu" aria-hidden="true">
-  <a href={base}>Home</a>
-  <a href={`${base}cancer-types/`}>Cancer Types</a>
-  <a href={`${base}symptoms/`}>Symptoms</a>
-  <a href={`${base}tests-treatment/`}>Tests &amp; Treatment</a>
-  <a href={`${base}living-with-cancer/`}>Living With Cancer</a>
-  <a href={`${base}find-care/`}>Find Care</a>
-  <a href={`${base}watch/`}>Watch</a>
-  <a href={botUrl} target="_blank" rel="noopener" class="mobile-cta">
-    Ask Suchi
-  </a>
+  <a href={base} class="mobile-link">Home</a>
+
+  <!-- Cancer Types section -->
+  <div class="mobile-section">
+    <button class="mobile-section-toggle" aria-expanded="false" aria-controls="mob-cancer-types">
+      Cancer Types
+      <svg class="mobile-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M1 1l4 4 4-4"/>
+      </svg>
+    </button>
+    <div class="mobile-section-body" id="mob-cancer-types" hidden>
+      {CANCER_TYPES.map(({ slug, label }) => (
+        <a href={`${base}cancer-types/${slug}/`} class="mobile-sub-link">{label}</a>
+      ))}
+      <a href={`${base}cancer-types/`} class="mobile-sub-link mobile-sub-link--all">View all →</a>
+    </div>
+  </div>
+
+  <!-- Symptoms section -->
+  <div class="mobile-section">
+    <button class="mobile-section-toggle" aria-expanded="false" aria-controls="mob-symptoms">
+      Symptoms
+      <svg class="mobile-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M1 1l4 4 4-4"/>
+      </svg>
+    </button>
+    <div class="mobile-section-body" id="mob-symptoms" hidden>
+      <a href={`${base}symptoms/`} class="mobile-sub-link">All Warning Signs</a>
+      <a href={`${base}symptoms/persistent-cough/`} class="mobile-sub-link">Persistent Cough</a>
+      <a href={`${base}symptoms/lump-in-breast/`} class="mobile-sub-link">Lump in Breast</a>
+      <a href={`${base}symptoms/blood-in-stool/`} class="mobile-sub-link">Blood in Stool</a>
+      <a href={`${base}symptoms/swollen-lymph-nodes/`} class="mobile-sub-link">Swollen Lymph Nodes</a>
+    </div>
+  </div>
+
+  <!-- Treatments section -->
+  <div class="mobile-section">
+    <button class="mobile-section-toggle" aria-expanded="false" aria-controls="mob-treatments">
+      Treatments &amp; Care
+      <svg class="mobile-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M1 1l4 4 4-4"/>
+      </svg>
+    </button>
+    <div class="mobile-section-body" id="mob-treatments" hidden>
+      <a href={`${base}tests-treatment/`} class="mobile-sub-link">Tests &amp; Diagnosis</a>
+      <a href={`${base}tests-treatment/treatments/chemotherapy/`} class="mobile-sub-link">Chemotherapy</a>
+      <a href={`${base}living-with-cancer/`} class="mobile-sub-link">Living With Cancer</a>
+      <a href={`${base}resources/pmjay-cancer-coverage/`} class="mobile-sub-link">PM-JAY Coverage</a>
+      <a href={`${base}resources/cancer-care-in-bihar/`} class="mobile-sub-link">Care in Bihar</a>
+    </div>
+  </div>
+
+  <a href={`${base}find-care/`} class="mobile-link">Find Care</a>
+  <a href={`${base}watch/`}     class="mobile-link">Watch Videos</a>
+  <a href={botUrl} target="_blank" rel="noopener" class="mobile-cta">Ask Suchi</a>
 </nav>
 
 <!-- Disclaimer Banner -->
@@ -71,8 +182,9 @@ const currentPath = Astro.url.pathname;
 </div>
 
 <script>
+  // ---- Mobile menu toggle ----
   const toggle = document.getElementById('nav-toggle');
-  const menu = document.getElementById('mobile-menu');
+  const menu   = document.getElementById('mobile-menu');
 
   toggle?.addEventListener('click', () => {
     const isOpen = menu?.getAttribute('aria-hidden') === 'false';
@@ -80,7 +192,6 @@ const currentPath = Astro.url.pathname;
     toggle.setAttribute('aria-expanded', String(!isOpen));
   });
 
-  // Close on link click
   menu?.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', () => {
       menu.setAttribute('aria-hidden', 'true');
@@ -88,11 +199,75 @@ const currentPath = Astro.url.pathname;
     });
   });
 
-  // Close on escape key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && menu?.getAttribute('aria-hidden') === 'false') {
-      menu.setAttribute('aria-hidden', 'true');
+    if (e.key === 'Escape') {
+      menu?.setAttribute('aria-hidden', 'true');
       toggle?.setAttribute('aria-expanded', 'false');
+      // also close any open desktop dropdowns
+      document.querySelectorAll('[data-drop-trigger]').forEach((btn) => {
+        btn.setAttribute('aria-expanded', 'false');
+        (btn as HTMLElement).closest('.nav-item-drop')?.removeAttribute('data-open');
+      });
+    }
+  });
+
+  // ---- Mobile accordion sections ----
+  document.querySelectorAll('.mobile-section-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('aria-controls');
+      const body = targetId ? document.getElementById(targetId) : null;
+      if (!body) return;
+      const isOpen = !body.hidden;
+      body.hidden = isOpen;
+      btn.setAttribute('aria-expanded', String(!isOpen));
+    });
+  });
+
+  // ---- Desktop dropdowns ----
+  // Open on hover (mouse) and on click/Enter (keyboard/touch)
+  document.querySelectorAll('.nav-item-drop').forEach((item) => {
+    const trigger = item.querySelector('[data-drop-trigger]') as HTMLElement | null;
+
+    const open = () => {
+      item.setAttribute('data-open', '');
+      trigger?.setAttribute('aria-expanded', 'true');
+    };
+    const close = () => {
+      item.removeAttribute('data-open');
+      trigger?.setAttribute('aria-expanded', 'false');
+    };
+
+    item.addEventListener('mouseenter', open);
+    item.addEventListener('mouseleave', close);
+
+    trigger?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isOpen = item.hasAttribute('data-open');
+      // Close all others first
+      document.querySelectorAll('.nav-item-drop[data-open]').forEach((other) => {
+        if (other !== item) {
+          other.removeAttribute('data-open');
+          other.querySelector('[data-drop-trigger]')?.setAttribute('aria-expanded', 'false');
+        }
+      });
+      isOpen ? close() : open();
+    });
+
+    trigger?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        item.hasAttribute('data-open') ? close() : open();
+      }
+    });
+  });
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('.nav-item-drop')) {
+      document.querySelectorAll('.nav-item-drop[data-open]').forEach((item) => {
+        item.removeAttribute('data-open');
+        item.querySelector('[data-drop-trigger]')?.setAttribute('aria-expanded', 'false');
+      });
     }
   });
 </script>

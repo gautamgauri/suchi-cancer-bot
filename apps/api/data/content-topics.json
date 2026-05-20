@@ -1,0 +1,156 @@
+[
+  {
+    "slug": "radiation-therapy",
+    "title": "Radiation Therapy: What to Expect During Treatment",
+    "contentType": "treatment",
+    "ragQueries": [
+      "radiation therapy how it works treatment",
+      "radiation therapy side effects management",
+      "radiation therapy India cost AIIMS"
+    ],
+    "relatedPages": ["chemotherapy", "cancer-surgery", "managing-side-effects"]
+  },
+  {
+    "slug": "cancer-surgery",
+    "title": "Cancer Surgery: Types, Recovery and What to Expect",
+    "contentType": "treatment",
+    "ragQueries": [
+      "cancer surgery types procedures",
+      "surgery recovery cancer patient",
+      "cancer surgery India hospitals"
+    ],
+    "relatedPages": ["chemotherapy", "radiation-therapy", "managing-side-effects"]
+  },
+  {
+    "slug": "managing-side-effects",
+    "title": "Managing Side Effects During Cancer Treatment",
+    "contentType": "treatment",
+    "ragQueries": [
+      "cancer treatment side effects nausea fatigue hair loss",
+      "managing side effects chemotherapy radiation",
+      "cancer symptom management India"
+    ],
+    "relatedPages": ["chemotherapy", "radiation-therapy", "palliative-care"]
+  },
+  {
+    "slug": "immunotherapy",
+    "title": "Immunotherapy for Cancer: How It Works",
+    "contentType": "treatment",
+    "ragQueries": [
+      "immunotherapy cancer checkpoint inhibitors how it works",
+      "immunotherapy side effects treatment",
+      "immunotherapy India availability cost"
+    ],
+    "relatedPages": ["chemotherapy", "targeted-therapy", "managing-side-effects"]
+  },
+  {
+    "slug": "targeted-therapy",
+    "title": "Targeted Therapy: Precision Treatment for Cancer",
+    "contentType": "treatment",
+    "ragQueries": [
+      "targeted therapy cancer biomarkers",
+      "targeted therapy vs chemotherapy precision oncology",
+      "targeted therapy India access cost"
+    ],
+    "relatedPages": ["chemotherapy", "immunotherapy", "cancer-diagnosis"]
+  },
+  {
+    "slug": "hormone-therapy",
+    "title": "Hormone Therapy for Cancer: What It Is and How It Works",
+    "contentType": "treatment",
+    "ragQueries": [
+      "hormone therapy cancer breast prostate",
+      "hormone therapy side effects",
+      "hormone therapy India access"
+    ],
+    "relatedPages": ["chemotherapy", "targeted-therapy", "breast-cancer"]
+  },
+  {
+    "slug": "stomach-cancer",
+    "title": "Stomach Cancer: Symptoms, Diagnosis and Treatment",
+    "contentType": "cancer-type",
+    "ragQueries": [
+      "stomach gastric cancer symptoms warning signs",
+      "stomach cancer diagnosis treatment",
+      "gastric cancer India risk factors Bihar"
+    ],
+    "relatedPages": ["cancer-surgery", "chemotherapy", "cancer-diagnosis"]
+  },
+  {
+    "slug": "thyroid-cancer",
+    "title": "Thyroid Cancer: Symptoms, Diagnosis and Treatment",
+    "contentType": "cancer-type",
+    "ragQueries": [
+      "thyroid cancer symptoms diagnosis",
+      "thyroid cancer treatment surgery radioactive iodine",
+      "thyroid cancer India"
+    ],
+    "relatedPages": ["cancer-surgery", "cancer-diagnosis", "second-opinion"]
+  },
+  {
+    "slug": "head-neck-cancer",
+    "title": "Head and Neck Cancers: Overview for Patients",
+    "contentType": "cancer-type",
+    "ragQueries": [
+      "head neck cancer symptoms throat larynx",
+      "head neck cancer treatment India",
+      "head neck cancer tobacco risk India Bihar"
+    ],
+    "relatedPages": ["oral-cancer", "radiation-therapy", "cancer-surgery"]
+  },
+  {
+    "slug": "cancer-screening",
+    "title": "Cancer Screening: Early Detection Saves Lives",
+    "contentType": "navigation",
+    "ragQueries": [
+      "cancer screening early detection India",
+      "cancer screening tests mammogram pap smear",
+      "cancer prevention screening Bihar community"
+    ],
+    "relatedPages": ["breast-cancer", "cervical-cancer", "cancer-diagnosis"]
+  },
+  {
+    "slug": "cancer-diagnosis",
+    "title": "How Cancer Is Diagnosed: Tests and What They Mean",
+    "contentType": "navigation",
+    "ragQueries": [
+      "cancer diagnosis tests biopsy imaging",
+      "cancer staging how doctors diagnose",
+      "cancer diagnosis India hospitals cost"
+    ],
+    "relatedPages": ["cancer-screening", "chemotherapy", "second-opinion"]
+  },
+  {
+    "slug": "palliative-care",
+    "title": "Palliative Care: Managing Pain and Improving Quality of Life",
+    "contentType": "navigation",
+    "ragQueries": [
+      "palliative care cancer pain management",
+      "palliative care quality of life cancer patient",
+      "palliative care India access Bihar"
+    ],
+    "relatedPages": ["managing-side-effects", "cancer-surgery", "second-opinion"]
+  },
+  {
+    "slug": "second-opinion",
+    "title": "Getting a Second Opinion for Cancer: Why and How",
+    "contentType": "navigation",
+    "ragQueries": [
+      "second opinion cancer treatment why important",
+      "cancer specialist referral India",
+      "AIIMS cancer second opinion Bihar patient"
+    ],
+    "relatedPages": ["cancer-diagnosis", "cancer-care-in-bihar"]
+  },
+  {
+    "slug": "cancer-nutrition",
+    "title": "Eating Well During Cancer Treatment",
+    "contentType": "navigation",
+    "ragQueries": [
+      "cancer nutrition diet during treatment",
+      "eating well chemotherapy radiation side effects",
+      "cancer patient diet India food"
+    ],
+    "relatedPages": ["managing-side-effects", "chemotherapy", "palliative-care"]
+  }
+]

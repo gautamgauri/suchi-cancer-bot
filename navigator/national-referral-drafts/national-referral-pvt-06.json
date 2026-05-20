@@ -19,9 +19,7 @@
         "address": "P-4 & 5, CIT Scheme LXXII, Gariahat, Kolkata - 700029",
         "website": "https://www.amrihospitals.in/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. Ranajit Mandal", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Established private cancer centre for South Kolkata catchment. Preferred private option for insured patients in West Bengal.",
       "tier": "B",
       "navigation_notes": [
@@ -53,9 +51,7 @@
         "address": "127, Mukundapur, E.M. Bypass, Kolkata - 700099",
         "website": "https://www.medicainstitutions.com/cancer-institute"
       },
-      "key_doctors": [
-        { "name": "Dr. Biswajit Ghosh", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Mid-cost private cancer option in Kolkata; PMJAY empanelled. Important for patients who need private-sector quality without prohibitive cost in West Bengal.",
       "tier": "B",
       "navigation_notes": [
@@ -87,9 +83,7 @@
         "address": "Commerce Six Roads, Navrangpura, Ahmedabad - 380009",
         "website": "https://www.hcgoncology.com/centres/ahmedabad"
       },
-      "key_doctors": [
-        { "name": "Dr. Gaurang Baxi", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "HCG's Gujarat flagship; complements GCRI for private-pay patients in Ahmedabad. Strong oral and tobacco-related cancer programme.",
       "tier": "B",
       "navigation_notes": [
@@ -122,7 +116,7 @@
         "website": "https://www.sterlinghospitals.com/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Purvesh Patel", "role": "Radiation Oncology" }
+        { "name": "Dr. Pooja Nandwani Patel", "role": "Director, Radiation Oncology" }
       ],
       "notes": "Affordable mid-tier private cancer centre in Ahmedabad; MA Yojana and PMJAY empanelled. Good option for middle-income Gujarat patients.",
       "tier": "C",
@@ -155,9 +149,7 @@
         "address": "Exhibition Road, Nampally, Hyderabad - 500001",
         "website": "https://www.carehospitals.com/specialities/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. Srinivas Chakravarthy", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Established private cancer centre in Hyderabad; Aarogyasri and PMJAY empanelled — important for middle-income Telangana patients. Bone marrow transplant available.",
       "tier": "B",
       "navigation_notes": [

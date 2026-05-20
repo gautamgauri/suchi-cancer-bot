@@ -20,7 +20,7 @@
         "website": "https://nrsmc.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Sujata Byari", "role": "Radiotherapy" }
+        { "name": "Prof. Srikrishna Mandal", "role": "Professor, Radiotherapy" }
       ],
       "notes": "Major government hospital in Kolkata for cancer care overflow alongside CNCI. Swasthya Sathi Yojana anchor.",
       "tier": "C",
@@ -53,7 +53,7 @@
         "website": "https://www.aiimsbathinda.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Gurinderbir Singh Sekhon", "role": "Medical Oncology" }
+        { "name": "Dr. Prashant Chhabra", "role": "HOD, Medical Oncology-Haematology" }
       ],
       "notes": "New AIIMS in the cancer belt of Malwa region; addressing high cancer incidence from pesticide exposure. Critical for Punjab.",
       "tier": "A",
@@ -86,7 +86,7 @@
         "website": "https://www.aiimsjammu.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Ashish Gupta", "role": "Surgical Oncology" }
+        { "name": "Dr. Paras Khanna", "role": "Assistant Professor, Surgical Oncology" }
       ],
       "notes": "Serves J&K region; apex referral for UT. PMJAY Sehat anchor for J&K residents.",
       "tier": "B",
@@ -119,7 +119,7 @@
         "website": "https://www.gmckottayam.ac.in"
       },
       "key_doctors": [
-        { "name": "Dr. Bency Paul", "role": "Radiation Oncology" }
+        { "name": "Dr. Suresh Kumar", "role": "Professor & HOD, Radiation Oncology" }
       ],
       "notes": "Regional cancer hub for central Kerala; overflow referral from RCC Thiruvananthapuram. Arogyasree anchor.",
       "tier": "B",
@@ -149,10 +149,10 @@
       "contact": {
         "phone": "0413-2656471",
         "address": "Ariyur, Puducherry - 605102",
-        "website": "https://svmch.ac.in"
+        "website": "https://svmchrc.ac.in"
       },
       "key_doctors": [
-        { "name": "Dr. Ravi Kannan", "role": "Surgical Oncology" }
+        { "name": "Dr. Ravisankar P.", "role": "Assistant Professor, Surgical Oncology" }
       ],
       "notes": "Government cancer unit supporting JIPMER overflow. CMCHIS and PMJAY anchor for Puducherry UT.",
       "tier": "C",

@@ -19,10 +19,7 @@
         "address": "Jubilee Hills, Hyderabad - 500033",
         "website": "https://apollohospitals.com/hyderabad/cancer"
       },
-      "key_doctors": [
-        { "name": "Dr. Raghunadha Rao", "role": "Medical Oncology" },
-        { "name": "Dr. Pavan Kumar Reddy", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Apollo's Hyderabad flagship; JCI-accredited. Strong in haematological malignancies and robotic surgical oncology. Key private referral for Telangana and AP.",
       "tier": "A",
       "navigation_notes": [
@@ -54,9 +51,7 @@
         "address": "Raj Bhavan Road, Somajiguda, Hyderabad - 500082",
         "website": "https://www.yashodahospitals.com/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. T. Subramanya Sharma", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Leading private cancer centre in Hyderabad; Aarogyasri empanelled. Good mid-tier cost option for Telangana patients who can't access government centres.",
       "tier": "A",
       "navigation_notes": [
@@ -88,10 +83,7 @@
         "address": "258/A, Bommasandra Industrial Area, Bengaluru - 560099",
         "website": "https://www.narayanahealth.org/cancer"
       },
-      "key_doctors": [
-        { "name": "Dr. Devi Prasad Shetty", "role": "Founder / Cardiac Surgery" },
-        { "name": "Dr. Somashekhar S.P.", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Narayana Health's model of affordable quality cancer care. Strongest private option for cost-sensitive patients needing tertiary care. PMJAY empanelled.",
       "tier": "A",
       "navigation_notes": [
@@ -123,10 +115,7 @@
         "address": "730, Anandapur, E.M. Bypass, Kolkata - 700107",
         "website": "https://www.fortishealthcare.com/hospitals/fortis-hospital-kolkata"
       },
-      "key_doctors": [
-        { "name": "Dr. Anirban Ghosh", "role": "Medical Oncology" },
-        { "name": "Dr. Sanjit Agarwal", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Premier private cancer referral in Kolkata. Strong in haematology, BMT, and GI oncology. Key referral for patients who need private-sector quality in eastern India.",
       "tier": "A",
       "navigation_notes": [
@@ -159,8 +148,8 @@
         "website": "https://rubyhall.com/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. Prasad Bhagwat", "role": "Surgical Oncology" },
-        { "name": "Dr. Deepak Rao", "role": "Medical Oncology" }
+        { "name": "Dr. Sanjay Deshmukh", "role": "Director, Surgical Oncology" },
+        { "name": "Dr. Minish Jain", "role": "Director, Medical Oncology" }
       ],
       "notes": "Leading private cancer centre for Pune and surrounding Maharashtra; well-regarded surgical oncology programme. Key referral for patients from Western Ghats corridor.",
       "tier": "B",

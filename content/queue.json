@@ -1,0 +1,15 @@
+{
+  "articles": [
+    {
+      "slug": "chemotherapy",
+      "title": "Chemotherapy: What to Expect During Treatment",
+      "contentType": "treatment",
+      "status": "approved",
+      "createdAt": "2026-05-20T09:07:20.871Z",
+      "approvalToken": "9b6a9e7735aa22626a6a213ed60f42a076b988cd75bf0a4658fa27746116d893",
+      "emailSentAt": "2026-05-20T13:23:37.302Z",
+      "approvedAt": "2026-05-20T13:25:43.826Z",
+      "approvedBy": "email_approval"
+    }
+  ]
+}

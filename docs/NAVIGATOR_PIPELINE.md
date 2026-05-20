@@ -5,60 +5,83 @@ Hospital directory curation pipeline for the Suchi Navigator feature. Produces e
 ## Overview
 
 ```
-research → add → send → review portal → edit (optional) → approve → hospitals.json
+Cloud Scheduler (01:30 UTC daily)
+  → POST /v1/admin/hospital-research
+    → NavigatorResearchService
+      → reads next pending batch from GCS queue
+      → calls Gemini (LlmService)
+      → validates through inclusion criteria (3 gates)
+      → updates queue → email_sent
+      → emails Gautam + Divya with review portal link
+        → Divya edits (optional) → Approve All
+          → hospitals merged into hospitals.json
 ```
 
-All pipeline state lives in `navigator/queue.json` (mirrored to GCS when `QUEUE_GCS_BUCKET` is set).
+All pipeline state lives in GCS: `suchi-navigator-state/queue.json` (bucket set via `QUEUE_GCS_BUCKET`).
 
 ---
 
 ## Pipeline Steps
 
-### 1. Research (`navigator/cli.ts research <region>`)
+### 1. Daily Automated Research (Cloud Scheduler)
 
-Prints agent instructions + a template JSON for the hospital-researcher agent. The agent collects up to 5 hospitals per batch:
-- Full name, short name, city, state
-- Type, accreditation, departments, cost tier
-- PMJAY empanelment, NCG membership
-- Key doctors, contact details
-- Navigation notes (practical patient tips)
-- Sources, researcher confidence (high / medium / low)
+**Trigger:** Cloud Scheduler job `suchi-hospital-research-daily` fires daily at **01:30 UTC (7:00 AM IST)**.
 
-Output saved to a JSON file: `{ batch_id, hospitals[] }`.
+**Mechanism:** HTTP POST to `POST /v1/admin/hospital-research` on the `suchi-api` Cloud Run service, secured with `SchedulerOidcGuard` (same pattern as `POST /admin/daily-report`). The OIDC token is issued for the service account `suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com`.
 
-### 2. Add (`navigator/cli.ts add <path>`)
+**Logic** (`apps/api/src/modules/admin/navigator-research.service.ts`):
+1. Reads `queue.json` from GCS
+2. Finds the next batch with status `pending`
+3. Calls Gemini via `LlmService.generate()` with a structured research prompt for the batch's region
+4. Validates each returned hospital through 3 inclusion gates (see below)
+5. Updates the batch in GCS: hospitals saved, status → `email_sent`, approval token stored
+6. Emails Gautam + Divya with a summary table and a "Review & Approve" link
 
-Loads the draft JSON and writes hospitals into the named batch in `queue.json`. Sets batch status → `researched`. Enforces max 5 hospitals per batch.
+If no `pending` batch is found, the job returns `{ status: "no_pending" }` and exits cleanly.
 
-### 3. Send (`navigator/cli.ts send <batch-id>`)
+**Inclusion criteria (all 3 must pass):**
+- At least one core oncology department (medical / surgical / radiation / gyn / pediatric / hemato)
+- 2+ treatment modalities (surgery, chemo, radiation, immunotherapy, BMT, targeted therapy, etc.)
+- At least one trust signal: NABH/NABL/JCI/ISO accreditation, NCG membership, TMC affiliation, or Government/AIIMS institution
 
-Generates an HMAC token (`NAVIGATOR_APPROVAL_SECRET` env var) keyed on `batchId`, sends a review email to `gautamgauri@dikshafoundation.org` and `divya.vats@dikshafoundation.org`, and sets batch status → `email_sent`. Token and timestamp persisted to `queue.json` + GCS.
+Hospitals failing any gate are logged as warnings and dropped. If the entire batch fails, the job returns an error result without advancing the queue.
 
-Email contains full hospital data cards plus a single "Review & Approve" button linking to the review portal.
+### 2. Adding batches to the queue (manual, ad hoc)
 
-SMTP: `SMTP_PASS` env var first, then Secret Manager (`SMTP_PASS` secret). Falls back gracefully — token is saved even if email fails.
+New research regions are added to `queue.json` as `pending` batches either directly (editing GCS) or via the CLI:
 
-### 4. Review portal (`GET /v1/admin/navigator/review/:batchId?token=<hmac>`)
+```bash
+# CLI adds a region stub to queue.json with status pending
+cd navigator && npx ts-node cli.ts add-region "<Region Name>"
+```
 
-Served as HTML by `admin.controller.ts` → `navigator-review.html.ts`. Shows all hospitals (up to 5) with:
-- Read view: all fields in a table, Sources list, Navigation Notes, Key Doctors
-- "Edit" button per hospital: expands an inline edit form
+The CLI (`navigator/cli.ts`) and queue manager (`navigator/queue-manager.ts`) remain available for manual operations and local fallback.
 
-**Editable fields:** name, short_name, type, tier, score (0–100), confidence, accreditation (comma-separated), departments (comma-separated), cost_tier, notes, navigation_notes (one per line), key_doctors (one per line: `Name | Role`), phone, address, website.
+### 3. Review portal
 
-Edit saves are sent via `PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId?token=<hmac>` and persisted to `queue.json` + GCS immediately. Approving a batch with unsaved edits would use the last-saved state.
+**URL:** `GET /v1/admin/navigator/review/:batchId?token=<hmac>`
 
-### 5. Approve (`GET /v1/admin/navigator/approve/:batchId?token=<hmac>`)
+Served as HTML by `admin.controller.ts` → `navigator-review.html.ts`. Shows all hospitals in the batch with:
+- Read view: all fields, sources, navigation notes, key doctors
+- "Edit" button per hospital — expands an inline edit form
 
-Triggered by "Approve All" button on the review portal. Batch must be in `email_sent` status:
+**Editable fields:** name, short_name, type, tier, score (0–100), confidence, accreditation, departments, cost_tier, notes, navigation_notes, key_doctors, phone, address, website.
 
-1. Verify HMAC token (timing-safe compare)
-2. Load `queue.json` (GCS primary, local fallback; fails hard if GCS configured and unreachable)
-3. Convert each `HospitalDraft` → `hospitals.json` entry (fills in defaults for empty fields)
-4. Append entries to `hospitals.json`, increment `_meta.total_hospitals`, set `_meta.last_updated`
-5. Set batch status → `approved` in `queue.json`
+Edits are saved via `PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId?token=<hmac>` and persisted to GCS immediately.
 
-Returns an HTML confirmation page. Idempotent: re-approving an already-approved batch returns immediately with a note, does not duplicate hospitals.
+### 4. Approve
+
+**Trigger:** "Approve All" button on the review portal.
+
+**Route:** `GET /v1/admin/navigator/approve/:batchId?token=<hmac>`
+
+1. Verifies HMAC token (timing-safe compare)
+2. Loads `queue.json` from GCS (fails hard if GCS unreachable)
+3. Converts each `HospitalDraft` → `hospitals.json` entry
+4. Appends to `hospitals.json`, updates `_meta.total_hospitals` and `_meta.last_updated`
+5. Sets batch status → `approved` in `queue.json`
+
+Idempotent: re-approving an already-approved batch returns a note and does not duplicate hospitals.
 
 ---
 
@@ -66,19 +89,21 @@ Returns an HTML confirmation page. Idempotent: re-approving an already-approved 
 
 | Status | Meaning |
 |---|---|
-| `pending` | Batch created in queue.json, research not started |
-| `researched` | Draft hospitals loaded via `add` command |
-| `email_sent` | Review email sent, approval token stored |
+| `pending` | Region queued, research not yet run |
+| `researched` | (Legacy) Draft hospitals loaded via manual `add` CLI command |
+| `email_sent` | Research complete, review email sent, approval token stored |
 | `approved` | Hospitals merged into hospitals.json |
 | `rejected` | Manually set; not used by automated flow |
+
+**Current queue state (2026-05-20):** 3 pending (Jharkhand, West Bengal, Sikkim/Northeast), 11 email_sent (awaiting Divya's approval), 9 approved.
 
 ---
 
 ## hospitals.json
 
-Source of truth at `apps/api/data/hospitals.json`. Served by `hospital-directory.service.ts` in the chat module. Mirrored to GCS as `hospitals.json` in the same bucket as `queue.json`.
+Source of truth at `apps/api/data/hospitals.json`. Served by `hospital-directory.service.ts` in the chat module. Mirrored to GCS in the same bucket as `queue.json`.
 
-**Scoring:** 0–100 scale throughout.
+**Scoring (0–100 scale):**
 - Quality: TMC/NCG full member=50, AIIMS=40, NABH full=30, Govt tertiary=20, Private=10
 - Cost: Low=30, Medium=20, High=10
 - Location: East India state=10, elsewhere=0
@@ -86,7 +111,7 @@ Source of truth at `apps/api/data/hospitals.json`. Served by `hospital-directory
 - Risk flag: verified concern=−30
 - SCCF affiliation: +20 reserved (pending conference attendee list)
 
-**Total hospitals as of 2026-05-13:** 83
+**Total hospitals (2026-05-13):** 83
 
 ---
 
@@ -94,15 +119,15 @@ Source of truth at `apps/api/data/hospitals.json`. Served by `hospital-directory
 
 | File | Purpose |
 |---|---|
-| `navigator/cli.ts` | CLI entry point (research / add / send / status) |
-| `navigator/hospital-mailer.ts` | Builds + sends HTML review email, generates HMAC token |
-| `navigator/queue-manager.ts` | Load/save/update `queue.json` |
-| `navigator/gcs-queue.ts` | GCS sync for `queue.json` |
-| `navigator/types.ts` | `ResearchTarget`, `HospitalDraft`, `BatchStatus` |
-| `apps/api/src/modules/admin/navigator-approve.service.ts` | Review portal data + PATCH edits + approval logic |
+| `apps/api/src/modules/admin/navigator-research.service.ts` | Daily research logic (GCS read → Gemini → validate → GCS write → email) |
+| `apps/api/src/modules/admin/navigator-approve.service.ts` | Review portal data, PATCH edits, approval logic |
 | `apps/api/src/modules/admin/navigator-review.html.ts` | HTML builder for the review portal page |
-| `apps/api/src/modules/admin/admin.controller.ts` | Routes: `GET /v1/admin/navigator/review/:batchId`, `PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId`, `GET /v1/admin/navigator/approve/:batchId` |
+| `apps/api/src/modules/admin/admin.controller.ts` | Routes: `POST /v1/admin/hospital-research`, `GET /v1/admin/navigator/review/:batchId`, `PATCH /v1/admin/navigator/batch/:batchId/hospital/:hospitalId`, `GET /v1/admin/navigator/approve/:batchId` |
 | `apps/api/data/hospitals.json` | Live hospital directory (83 hospitals) |
+| `navigator/cli.ts` | CLI for manual queue operations and local research |
+| `navigator/hospital-mailer.ts` | Standalone email builder (used by CLI) |
+| `navigator/queue-manager.ts` | Load/save/update queue.json |
+| `navigator/daily-researcher.ts` | Original standalone script (Anthropic API). Superseded by `NavigatorResearchService`; kept as local fallback/reference. |
 
 ---
 
@@ -111,9 +136,19 @@ Source of truth at `apps/api/data/hospitals.json`. Served by `hospital-directory
 | Variable | Description |
 |---|---|
 | `NAVIGATOR_APPROVAL_SECRET` | HMAC secret for approval tokens (default: `suchi-nav-dev-secret`) |
-| `QUEUE_GCS_BUCKET` | GCS bucket name for queue.json + hospitals.json (if unset, uses local files) |
+| `QUEUE_GCS_BUCKET` | GCS bucket name for queue.json + hospitals.json (required in prod) |
 | `QUEUE_GCS_OBJECT` | GCS object key for queue (default: `queue.json`) |
 | `HOSPITALS_GCS_OBJECT` | GCS object key for hospital directory (default: `hospitals.json`) |
 | `SMTP_PASS` | Gmail app password for outbound email |
 | `SMTP_HOST` | SMTP host (default: `smtp.gmail.com`) |
 | `SMTP_USER` | SMTP sender (default: `gautamgauri@dikshafoundation.org`) |
+| `DAILY_REPORT_EMAIL` | Primary reviewer email (default: `gautamgauri@dikshafoundation.org`) |
+| `GOOGLE_CLOUD_PROJECT` | GCP project ID (default: `gen-lang-client-0202543132`) |
+
+---
+
+## Manual Steps That Remain
+
+1. **Queue new regions** — add `pending` batches to `queue.json` on GCS whenever a new region should be researched.
+2. **Review and approve batches** — click the review link from the daily email, optionally edit hospital fields inline, then click "Approve All". This is the only human gate before hospitals reach the live directory.
+3. **Monitor** — if a daily run returns `no_pending`, add more regions. If it returns `error`, check Cloud Run logs for the `NavigatorResearchService` logger.

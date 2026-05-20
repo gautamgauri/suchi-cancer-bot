@@ -20,7 +20,7 @@
         "website": "https://apollohospitals.com/kolkata/cancer"
       },
       "key_doctors": [
-        { "name": "Dr. Sanjay Bhattacharyya", "role": "Medical Oncology" }
+        { "name": "Dr. Joydeep Ghosh", "role": "Medical Oncology" }
       ],
       "notes": "Apollo's East India flagship cancer centre; strong in haematological malignancies and BMT. Key private referral for Bangladesh border patients.",
       "tier": "A",
@@ -54,8 +54,7 @@
         "website": "https://www.blkmaxhospital.com/specialities/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Rakesh Chopra", "role": "Medical Oncology / BMT" },
-        { "name": "Dr. Sajjan Rajpurohit", "role": "Medical Oncology" }
+        { "name": "Dr. Sajjan Rajpurohit", "role": "Senior Director, Medical Oncology" }
       ],
       "notes": "One of Delhi's top private cancer centres; known for BMT and complex haematology. CGHS empanelled. Strong international patient base from South Asia.",
       "tier": "A",
@@ -89,8 +88,8 @@
         "website": "https://www.aims.amrita.edu/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Sajith Babu", "role": "Bone Marrow Transplant" },
-        { "name": "Dr. Rajanish Kumar", "role": "Medical Oncology" }
+        { "name": "Dr. Neeraj Sidharthan", "role": "Clinical Professor & Head, Haematology & BMT" },
+        { "name": "Dr. K. Pavithran", "role": "Head, Medical Oncology" }
       ],
       "notes": "JCI-accredited; one of South India's strongest private cancer centres. Known for paediatric oncology and BMT. Kerala Karunya and PMJAY accepted.",
       "tier": "A",
@@ -124,8 +123,7 @@
         "website": "https://www.astermedcity.com/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Sajeev Kumar", "role": "Medical Oncology" },
-        { "name": "Dr. Sanjay Popat", "role": "Thoracic Oncology" }
+        { "name": "Dr. Arun R Warrier", "role": "Medical Oncology" }
       ],
       "notes": "JCI-accredited; Aster's flagship hospital in India. Comprehensive cancer programme with strong international patient services. Key for Gulf diaspora returning for treatment.",
       "tier": "A",
@@ -158,9 +156,7 @@
         "address": "Press Enclave Road, Sheikh Sarai Phase-II, New Delhi - 110017",
         "website": "https://www.psri.in/oncology"
       },
-      "key_doctors": [
-        { "name": "Dr. A.S. Puri", "role": "Gastroenterology & GI Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Specialised private hospital; strong in hepatobiliary and GI oncology. CGHS empanelled. Useful for complex hepatocellular carcinoma cases.",
       "tier": "B",
       "navigation_notes": [

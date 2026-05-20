@@ -1,0 +1,212 @@
+---
+/**
+ * Shared layout for all article slug pages.
+ * Used by:
+ *   [content_type]/[slug].astro
+ *   tests-treatment/treatments/[slug].astro
+ *   tests-treatment/diagnosis-tests/[slug].astro
+ *   tests-treatment/side-effects/[slug].astro
+ */
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from './BaseLayout.astro';
+import VideoCard from '../components/VideoCard.astro';
+import videosData from '../content/videos.json';
+
+interface VideoEntry {
+  youtubeId: string;
+  title: string;
+  slug: string;
+  speaker?: string;
+  cancerTypes: string[];
+  situations: string[];
+  featured?: boolean;
+}
+
+export interface Props {
+  article: CollectionEntry<'articles'>;
+}
+
+// URL segment map — used to build hrefs for related pages.
+const CONTENT_TYPE_TO_URL: Record<string, string> = {
+  cancer_type: 'cancer-types',
+  symptom: 'symptoms',
+  treatment: 'tests-treatment/treatments',
+  test: 'tests-treatment/diagnosis-tests',
+  side_effect: 'tests-treatment/side-effects',
+  journey: 'living-with-cancer',
+  find_care: 'find-care',
+  meta: 'resources',
+  resource: 'resources',
+  navigation: 'resources',
+};
+
+const PROPER_CASING: Record<string, string> = {
+  bihar: 'Bihar', india: 'India', patna: 'Patna', jharkhand: 'Jharkhand',
+  hpv: 'HPV', ct: 'CT', mri: 'MRI', pet: 'PET', ldct: 'LDCT', pmjay: 'PMJAY',
+  sclc: 'SCLC', nsclc: 'NSCLC', egfr: 'EGFR', alk: 'ALK', her2: 'HER2',
+  brca1: 'BRCA1', brca2: 'BRCA2', aiims: 'AIIMS', igims: 'IGIMS', sccf: 'SCCF',
+  tb: 'TB', fnac: 'FNAC', fna: 'FNA', leep: 'LEEP', dcis: 'DCIS',
+};
+
+function slugToReadableTitle(slug: string): string {
+  const tokens = slug.split('-');
+  const cased = tokens.map((token, i) => {
+    const lower = token.toLowerCase();
+    if (PROPER_CASING[lower]) return PROPER_CASING[lower];
+    if (i === 0) return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+    return lower;
+  });
+  return cased.join(' ').replace(/\bx ray\b/gi, 'X-ray').replace(/\bChest x-ray\b/gi, 'Chest X-ray');
+}
+
+const { article } = Astro.props;
+const { Content } = await article.render();
+
+const allArticles = await getCollection('articles');
+const articlesBySlug = new Map(allArticles.map((a) => [a.data.page_id, a]));
+
+type RelatedLink = { slug: string; title: string; href: string | null };
+const related: RelatedLink[] = (article.data.related_pages || []).map((slug) => {
+  const target = articlesBySlug.get(slug);
+  if (!target) {
+    console.warn(`[content] related_pages slug "${slug}" referenced in "${article.data.page_id}" does not resolve to an existing article.`);
+    return { slug, title: slugToReadableTitle(slug), href: null };
+  }
+  const seg = CONTENT_TYPE_TO_URL[target.data.content_type] ?? 'resources';
+  return { slug, title: target.data.title, href: `/${seg}/${target.data.page_id}/` };
+});
+
+const articleCancerTypes = article.data.tags.cancer_types ?? [];
+const articleSituations  = article.data.tags.situations  ?? [];
+const allVideos = (videosData as { videos: VideoEntry[] }).videos;
+
+const relatedVideos: VideoEntry[] = (() => {
+  const matchByCancer = articleCancerTypes.length > 0
+    ? allVideos.filter((v) => v.cancerTypes.some((c) => articleCancerTypes.includes(c as any)))
+    : [];
+  if (matchByCancer.length >= 3) {
+    return matchByCancer.sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false)).slice(0, 3);
+  }
+  const matchBySituation = articleSituations.length > 0
+    ? allVideos.filter((v) => v.situations.some((s) => articleSituations.includes(s as any)) && !matchByCancer.includes(v))
+    : [];
+  return [...matchByCancer, ...matchBySituation]
+    .sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false))
+    .slice(0, 3);
+})();
+
+type SourceGroup = { doc_id: string; source: string; count: number };
+const sourceGroups: SourceGroup[] = (() => {
+  const map = new Map<string, SourceGroup>();
+  for (const chunk of article.data.provenance.source_chunks) {
+    const existing = map.get(chunk.doc_id);
+    if (existing) { existing.count += 1; }
+    else { map.set(chunk.doc_id, { doc_id: chunk.doc_id, source: chunk.source, count: 1 }); }
+  }
+  return Array.from(map.values());
+})();
+---
+
+<BaseLayout title={article.data.title} description={article.data.summary}>
+  <article class="article-page">
+    <div class="article-inner">
+      <h1>{article.data.title}</h1>
+
+      <div class="article-body">
+        <Content />
+      </div>
+
+      {relatedVideos.length > 0 && (
+        <section class="related-videos">
+          <div class="related-videos-header">
+            <h2>Related videos from Suchi OncoTalks</h2>
+            <a href="/watch/" class="related-videos-all">See all videos →</a>
+          </div>
+          <div class="related-videos-grid">
+            {relatedVideos.map((v) => (
+              <VideoCard youtubeId={v.youtubeId} title={v.title} slug={v.slug}
+                speaker={v.speaker} cancerTypes={v.cancerTypes} situations={v.situations} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {related.length > 0 && (
+        <section class="related-pages-footer">
+          <h2>Related pages</h2>
+          <ul>
+            {related.map((r) => (
+              <li>
+                {r.href ? <a href={r.href}>{r.title}</a> : <span class="related-missing">{r.title} (not yet published)</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section class="ask-suchi-cta">
+        <h2>Ask Suchi</h2>
+        <p>Still unsure about something? You can ask Suchi for help with questions about your situation — symptoms, tests, treatment plans, or finding care near you.</p>
+        <a class="ask-suchi-button" href="https://chat.suchitracancercare.org" rel="noopener">Open Suchi chat →</a>
+      </section>
+
+      {sourceGroups.length > 0 && (
+        <details class="article-sources">
+          <summary>Sources</summary>
+          <ul>
+            {sourceGroups.map((g) => (
+              <li>
+                <span class="source-label">{g.source}</span>
+                <code>{g.doc_id}</code>
+                <span class="source-count">({g.count} {g.count === 1 ? 'chunk' : 'chunks'} cited)</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .article-page { padding: 3rem 1rem 4rem; background: var(--color-bg); }
+  .article-inner { max-width: 760px; margin: 0 auto; }
+  .article-page h1 { font-family: var(--font-serif); font-size: var(--text-5xl); line-height: 1.2; color: var(--color-text-dark); margin-bottom: 1.5rem; }
+  .article-body { font-size: 1.0625rem; line-height: 1.7; color: var(--color-text); }
+  .article-body :global(blockquote) { border-left: 4px solid var(--color-accent); background: var(--color-accent-soft); padding: 1rem 1.25rem; margin: 1.5rem 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; color: var(--color-text-warm); }
+  .article-body :global(blockquote p) { margin: 0; max-width: none; }
+  .article-body :global(h2) { font-family: var(--font-serif); font-size: var(--text-3xl); margin-top: 2.25rem; margin-bottom: 0.75rem; color: var(--color-text-dark); }
+  .article-body :global(h3) { font-family: var(--font-serif); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  .article-body :global(p), .article-body :global(ul), .article-body :global(ol) { margin-bottom: 1rem; max-width: none; }
+  .article-body :global(ul), .article-body :global(ol) { padding-left: 1.5rem; }
+  .article-body :global(li) { margin-bottom: 0.375rem; }
+  .article-body :global(a) { color: var(--color-teal-dark); text-decoration: underline; }
+  .article-body :global(a:hover) { color: var(--color-primary-dark); }
+  .article-body :global(strong) { font-weight: 600; color: var(--color-text-dark); }
+  .related-videos { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border); }
+  .related-videos-header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .related-videos-header h2 { font-family: var(--font-serif); font-size: var(--text-2xl); margin: 0; }
+  .related-videos-all { color: var(--color-teal-dark); font-weight: 600; text-decoration: none; font-size: var(--text-sm); }
+  .related-videos-all:hover { text-decoration: underline; }
+  .related-videos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+  .related-pages-footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border); }
+  .related-pages-footer h2 { font-family: var(--font-serif); font-size: var(--text-2xl); margin-bottom: 0.75rem; }
+  .related-pages-footer ul { list-style: none; padding: 0; margin: 0; }
+  .related-pages-footer li { margin-bottom: 0.5rem; }
+  .related-pages-footer a { color: var(--color-teal-dark); text-decoration: none; font-weight: 500; }
+  .related-pages-footer a:hover { text-decoration: underline; }
+  .related-missing { color: var(--color-text-muted); font-style: italic; }
+  .ask-suchi-cta { margin-top: 2.5rem; padding: 1.5rem 1.75rem; background: var(--color-accent-soft); border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+  .ask-suchi-cta h2 { font-family: var(--font-serif); font-size: var(--text-2xl); margin: 0 0 0.5rem; color: var(--color-text-dark); }
+  .ask-suchi-cta p { margin: 0 0 1rem; color: var(--color-text); line-height: 1.55; }
+  .ask-suchi-button { display: inline-block; padding: 0.625rem 1.25rem; background: var(--color-primary); color: #fff; text-decoration: none; border-radius: var(--radius-md); font-weight: 600; transition: background 0.15s ease; }
+  .ask-suchi-button:hover { background: var(--color-primary-dark); }
+  .article-sources { margin-top: 2.5rem; padding: 1rem 1.25rem; background: var(--color-bg-soft); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-sm); }
+  .article-sources summary { cursor: pointer; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--text-xs); }
+  .article-sources ul { list-style: none; padding: 0.75rem 0 0; margin: 0; }
+  .article-sources li { padding: 0.375rem 0; border-bottom: 1px solid var(--color-border-light); display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; }
+  .article-sources li:last-child { border-bottom: none; }
+  .source-label { display: inline-block; padding: 0.125rem 0.5rem; background: var(--color-accent-soft); color: #9a7b14; border-radius: var(--radius-sm); font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .source-count { color: var(--color-text-muted); font-size: var(--text-xs); }
+  .article-sources code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.8125rem; color: var(--color-text); }
+</style>

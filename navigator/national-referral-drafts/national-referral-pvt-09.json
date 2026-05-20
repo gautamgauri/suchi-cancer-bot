@@ -20,7 +20,7 @@
         "website": "https://www.manipalhospitals.com/jaipur/specialties/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Satya Prakash Yadav", "role": "Paediatric Haematology & BMT" }
+        { "name": "Dr. Rahul Sharma", "role": "Paediatric Haematology & BMT" }
       ],
       "notes": "Manipal's Rajasthan flagship; notable for paediatric cancer and BMT. Key private referral for Rajasthan families who need private-sector quality.",
       "tier": "A",
@@ -53,9 +53,7 @@
         "address": "Jawaharlal Nehru Marg, Malviya Nagar, Jaipur - 302017",
         "website": "https://www.fortishealthcare.com/hospitals/fortis-escorts-hospital-jaipur"
       },
-      "key_doctors": [
-        { "name": "Dr. Dinesh Singh Chauhan", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Established private cancer referral for Jaipur; complements Manipal for Rajasthan patients. Strong in GI and breast oncology.",
       "tier": "B",
       "navigation_notes": [
@@ -88,7 +86,7 @@
         "website": "https://actrec.gov.in"
       },
       "key_doctors": [
-        { "name": "Dr. Sudeep Gupta", "role": "Director, TMC" },
+        { "name": "Dr. Sudeep Gupta", "role": "Director, Tata Memorial Centre" },
         { "name": "Dr. Kumar Prabhash", "role": "Medical Oncology" }
       ],
       "notes": "Research arm of Tata Memorial; access to cutting-edge clinical trials. Ideal for patients seeking experimental treatment options under DAE/TMC umbrella.",
@@ -122,9 +120,7 @@
         "address": "Plot No-251, Sainik School Road, Unit-15, Bhubaneswar - 751005",
         "website": "https://apollohospitals.com/bhubaneswar/cancer"
       },
-      "key_doctors": [
-        { "name": "Dr. Prafulla Kumar Mohanty", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Key private cancer referral for Odisha; complements AHPGI and AIIMS Bhubaneswar for patients seeking private-sector care.",
       "tier": "B",
       "navigation_notes": [
@@ -156,9 +152,7 @@
         "address": "Tadepalli, Visakhapatnam - 530002",
         "website": "https://www.manipalhospitals.com/visakhapatnam/specialties/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. Kiran Kumar", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Key private cancer referral for North Andhra Pradesh and Odisha coast. Growing programme; important for Vizag's industrial workers with occupational cancer risk.",
       "tier": "B",
       "navigation_notes": [

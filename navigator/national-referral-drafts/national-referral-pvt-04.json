@@ -19,9 +19,7 @@
         "address": "52, First Main Road, Gandhi Nagar, Adyar, Chennai - 600020",
         "website": "https://www.fortishealthcare.com/hospitals/fortis-malar-hospitals-chennai"
       },
-      "key_doctors": [
-        { "name": "Dr. Arun Parthasarathy", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Private oncology referral for Chennai; located near Cancer Institute WIA in Adyar. Key alternative for insured patients.",
       "tier": "B",
       "navigation_notes": [
@@ -53,9 +51,7 @@
         "address": "6-1-1070/1 to 4, Lakdi Ka Pul, Hyderabad - 500004",
         "website": "https://www.globalhospitalsindia.com/specialities/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. Subramanyeshwar Rao", "role": "Surgical Oncology & Liver Transplant" }
-      ],
+      "key_doctors": [],
       "notes": "JCI-accredited; strong in liver cancer and transplant oncology. Key for hepatobiliary malignancies in the Deccan region.",
       "tier": "A",
       "navigation_notes": [
@@ -87,9 +83,7 @@
         "address": "1877, Dr. Anandrao Nair Road, Mumbai Central, Mumbai - 400011",
         "website": "https://www.wockhardthospitals.com/specialities/oncology"
       },
-      "key_doctors": [
-        { "name": "Dr. Manish Singhal", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Mid-sized private cancer centre; strong in breast and lung oncology. Good option for patients in central Mumbai catchment.",
       "tier": "B",
       "navigation_notes": [
@@ -122,8 +116,7 @@
         "website": "https://www.sgrh.com/departments/cancer-centre"
       },
       "key_doctors": [
-        { "name": "Dr. Ajay Sharma", "role": "Surgical Oncology" },
-        { "name": "Dr. Ramesh Sarin", "role": "Surgical Oncology" }
+        { "name": "Dr. Ajay Sharma", "role": "Professor & Head, Haematology & Stem Cell Transplantation" }
       ],
       "notes": "One of Delhi's most respected private cancer centres; strong in surgical oncology and GI malignancies. CGHS empanelled.",
       "tier": "A",
@@ -157,7 +150,7 @@
         "website": "https://batrahospital.com/departments/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. S.K. Wangnoo", "role": "Medical Oncology" }
+        { "name": "Dr. Nikhil Himthani", "role": "Medical Oncology" }
       ],
       "notes": "Accessible mid-cost private cancer centre in South Delhi; CGHS empanelled. Good for middle-income patients who need private-sector care.",
       "tier": "B",

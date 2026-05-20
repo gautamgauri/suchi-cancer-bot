@@ -55,8 +55,7 @@
         "website": "https://www.manipalhospitals.com/manipal/specialties/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Krishna Sharan", "role": "Radiation Oncology" },
-        { "name": "Dr. Sandeep Nayak", "role": "Surgical Oncology" }
+        { "name": "Dr. Krishna Sharan", "role": "Radiation Oncology" }
       ],
       "notes": "Deemed university hospital; one of the best-balanced cost-to-quality cancer centres in India. Ayushman Bharat empanelled. NCG member.",
       "tier": "A",
@@ -91,8 +90,6 @@
         "website": "https://lilavatihospital.com/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. Sudeep Gupta", "role": "Medical Oncology" },
-        { "name": "Dr. Anil D'Cruz", "role": "Head & Neck Surgical Oncology" }
       ],
       "notes": "Reputed private hospital with strong head & neck and gynaecologic oncology programme. Well-known for complex surgical oncology.",
       "tier": "A",
@@ -126,7 +123,7 @@
         "website": "https://breachcandyhospital.org"
       },
       "key_doctors": [
-        { "name": "Dr. Piyush Ostwal", "role": "Medical Oncology" }
+        { "name": "Dr. Suresh Advani", "role": "Medical Oncology" }
       ],
       "notes": "Historic private hospital; smaller volume but high quality. Preferred by south Mumbai affluent catchment. Strong post-op palliative support.",
       "tier": "B",
@@ -159,7 +156,7 @@
         "website": "https://www.jaslokhospital.net/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. Rajiv Sarin", "role": "Radiation Oncology" }
+        { "name": "Dr. Sharmila Agarwal", "role": "Director, Radiation Oncology" }
       ],
       "notes": "Well-established private hospital with comprehensive oncology. Strong in breast and haematological malignancies. CGHS empanelled.",
       "tier": "B",

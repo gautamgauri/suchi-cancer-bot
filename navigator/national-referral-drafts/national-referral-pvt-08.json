@@ -19,9 +19,7 @@
         "address": "L.B. Nagar, Hyderabad - 500068",
         "website": "https://www.kamineihospitals.com/cancer"
       },
-      "key_doctors": [
-        { "name": "Dr. Kishore Kumar", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Mid-size private cancer unit; Aarogyasri and PMJAY empanelled. Good lower-cost option for patients in South Hyderabad catchment.",
       "tier": "C",
       "navigation_notes": [
@@ -53,9 +51,7 @@
         "address": "32, Sassoon Road, Pune - 411001",
         "website": "https://jehangir.apollohospitals.com/cancer"
       },
-      "key_doctors": [
-        { "name": "Dr. Sujay Susikar", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Apollo affiliate in Pune; strong in breast and GI cancers. Key private-sector referral for Pune and Nashik corridor.",
       "tier": "B",
       "navigation_notes": [
@@ -87,9 +83,7 @@
         "address": "C.B.M. Compound, Maharani Peta, Vijayawada - 520002",
         "website": "https://www.andrahospital.com/oncology"
       },
-      "key_doctors": [
-        { "name": "Dr. Subha Rajan", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Key private cancer centre for Krishna district and surrounding AP corridor. Aarogyasri empanelled — important for middle-income patients who cannot reach SVIMS.",
       "tier": "C",
       "navigation_notes": [
@@ -120,9 +114,7 @@
         "address": "Rakhial Road, Dharampur, Ahmedabad - 380005",
         "website": "https://www.narayanahealth.org/hospitals/ahmedabad"
       },
-      "key_doctors": [
-        { "name": "Dr. Vivek Garg", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Affordable Narayana network cancer unit in Ahmedabad; PMJAY empanelled. Key option for low-income Gujarat patients who cannot access GCRI.",
       "tier": "C",
       "navigation_notes": [
@@ -154,9 +146,7 @@
         "address": "29/P2, Infantry Road, Bengaluru - 560001",
         "website": "https://www.sparsh-hospital.com/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. Prasad Narayanan", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Mid-tier private cancer centre in Bengaluru; Arogya Karnataka and PMJAY empanelled. Good option for lower-income patients who cannot access KMIO or HCG.",
       "tier": "C",
       "navigation_notes": [

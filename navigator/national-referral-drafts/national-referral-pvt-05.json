@@ -20,7 +20,7 @@
         "website": "https://www.manipalhospitals.com/dwarka/specialties/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Jayant Sastri", "role": "Medical Oncology" }
+        { "name": "Dr. Surender Kumar Dabas", "role": "Chairman, Surgical Oncology & Robotic Surgery" }
       ],
       "notes": "Manipal's Delhi flagship oncology centre; growing fast. Good option for West Delhi and Haryana-border patients needing private cancer care.",
       "tier": "B",
@@ -53,10 +53,7 @@
         "address": "Sarita Vihar, Delhi-Mathura Road, New Delhi - 110076",
         "website": "https://apollohospitals.com/new-delhi/cancer"
       },
-      "key_doctors": [
-        { "name": "Dr. Surender Kumar Dabas", "role": "Surgical Oncology" },
-        { "name": "Dr. Meenu Walia", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "JCI-accredited; Apollo's NCR flagship with one of the strongest private-sector tumour boards in India. Key international patient destination.",
       "tier": "A",
       "navigation_notes": [
@@ -88,9 +85,7 @@
         "address": "67, Uttarahalli Road, Kengeri, Bengaluru - 560060",
         "website": "https://www.bgsgleneaglesglobalhospitals.com/cancer-care"
       },
-      "key_doctors": [
-        { "name": "Dr. Nataraj K.S.", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "JCI-accredited international hospital; strong liver transplant oncology programme. Key destination for patients from Sri Lanka and Southeast Asia.",
       "tier": "B",
       "navigation_notes": [
@@ -123,7 +118,7 @@
         "website": "https://www.asterindia.com/hospitals/aster-cmi-hospital/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Suresh Babu", "role": "Medical Oncology" }
+        { "name": "Dr. C.N. Patil", "role": "HOD, Medical Oncology & Haemato-Oncology" }
       ],
       "notes": "Growing Aster network cancer centre in North Bengaluru; strong in gynaecologic oncology. Aster's India flagship for comprehensive cancer care.",
       "tier": "B",
@@ -156,10 +151,7 @@
         "address": "1, Dharamshila Marg, Vasundhara Enclave, New Delhi - 110096",
         "website": "https://www.narayanahealth.org/hospitals/dharamshila"
       },
-      "key_doctors": [
-        { "name": "Dr. Ashok Kumar Vaid", "role": "Medical Oncology / BMT" },
-        { "name": "Dr. Dinesh Pendharkar", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Dedicated cancer hospital in East Delhi; one of the most affordable private-sector options with genuine PMJAY empanelment. Strong BMT programme. Key referral for UP-border patients.",
       "tier": "A",
       "navigation_notes": [

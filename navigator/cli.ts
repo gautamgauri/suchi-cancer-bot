@@ -17,7 +17,7 @@ import {
   pickNextResearched,
   updateBatch,
 } from "./queue-manager";
-import { sendBatchEmail } from "./hospital-mailer";
+import { sendBatchEmail, sendUpdateNotification } from "./hospital-mailer";
 import { writeQueueJson } from "./gcs-queue";
 import { ResearchTarget, HospitalDraft } from "./types";
 
@@ -169,6 +169,34 @@ async function cmdSend(batchId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// notify command
+// ---------------------------------------------------------------------------
+
+async function cmdNotify(): Promise<void> {
+  const batches = await loadQueue(QUEUE_PATH);
+  const pending = batches.filter((b) => b.status === "email_sent");
+
+  if (pending.length === 0) {
+    console.log("No email_sent batches found — nothing to notify.");
+    return;
+  }
+
+  console.log(`Sending update notification for ${pending.length} pending batch(es):`);
+  pending.forEach((b) => console.log(`  - ${b.id} (${b.hospitals.length} hospitals)`));
+
+  const result = await sendUpdateNotification(batches);
+
+  if (result.emailSent) {
+    console.log(`\nNotification sent to: gautamgauri@dikshafoundation.org, divya.vats@dikshafoundation.org`);
+  } else if (result.emailError) {
+    console.error(`\nEmail failed — ${result.emailError}`);
+    process.exit(1);
+  } else {
+    console.log(`\nEmail skipped — SMTP not configured (set SMTP_PASS env var)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // status command
 // ---------------------------------------------------------------------------
 
@@ -294,6 +322,7 @@ async function main(): Promise<void> {
     console.error("  npx ts-node navigator/cli.ts send <batch-id>");
     console.error("  npx ts-node navigator/cli.ts status");
     console.error("  npx ts-node navigator/cli.ts add <batch-json-path>");
+    console.error("  npx ts-node navigator/cli.ts notify");
     process.exit(1);
   }
 
@@ -317,6 +346,11 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       await cmdSend(batchId);
+      break;
+    }
+
+    case "notify": {
+      await cmdNotify();
       break;
     }
 

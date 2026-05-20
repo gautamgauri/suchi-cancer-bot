@@ -19,9 +19,7 @@
         "address": "PGIMS Road, Rohtak - 124001",
         "website": "https://pgims.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Narendra Kumar Rana", "role": "Radiation Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Primary government cancer referral for Haryana; handles large volume of head & neck and cervical cancers.",
       "tier": "B",
       "navigation_notes": [
@@ -53,9 +51,7 @@
         "address": "JLN Marg, Jaipur - 302004",
         "website": "https://smsmc.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Anil Pareek", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Largest government hospital in Rajasthan; oncology wing handles high patient load. Bhamashah Swasthya Bima anchor hospital.",
       "tier": "B",
       "navigation_notes": [
@@ -89,7 +85,7 @@
       },
       "key_doctors": [
         { "name": "Dr. Sanjay Thulkar", "role": "Radiology/Cancer Imaging" },
-        { "name": "Dr. Ritu Gupta", "role": "Medical Oncology / BMT" }
+        { "name": "Dr. Ritu Gupta", "role": "Laboratory Oncology / Hemato-oncology Diagnostics" }
       ],
       "notes": "Dedicated cancer building within AIIMS New Delhi; handles the most complex oncology cases in north India. Apex national referral.",
       "tier": "A",
@@ -122,9 +118,7 @@
         "address": "Royapettah High Road, Royapettah, Chennai - 600014",
         "website": "https://www.grhtamilnadu.in"
       },
-      "key_doctors": [
-        { "name": "Dr. V. Ganesan", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Government tertiary cancer unit for urban Chennai and surrounding districts. Chief Minister's Health Insurance anchor centre.",
       "tier": "B",
       "navigation_notes": [
@@ -155,9 +149,7 @@
         "address": "Dock Road, Manglabag, Cuttack - 753007",
         "website": "https://scbmch.nic.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Sushant Kumar Meher", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Largest government hospital in Odisha; cancer unit handles overflow from AHPGI. Biju Swasthya Kalyan anchor.",
       "tier": "B",
       "navigation_notes": [

@@ -53,9 +53,7 @@
         "address": "Basni Industrial Area Phase-2, Jodhpur - 342005",
         "website": "https://www.aiims.edu/jodhpur"
       },
-      "key_doctors": [
-        { "name": "Dr. Mukesh Kumar Singhal", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Apex referral centre for western Rajasthan and neighbouring Sindh corridor communities.",
       "tier": "A",
       "navigation_notes": [
@@ -87,9 +85,7 @@
         "address": "Phulwarisharif, Patna - 801507",
         "website": "https://www.aiimspatna.org"
       },
-      "key_doctors": [
-        { "name": "Dr. Umesh Kumar Bhadani", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Apex referral for Bihar and eastern UP. Critical for underserved cancer patients in Gangetic plain.",
       "tier": "A",
       "navigation_notes": [
@@ -122,7 +118,7 @@
         "website": "https://www.aiimsrishikesh.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Pawan Kumar", "role": "Medical Oncology" }
+        { "name": "Dr. Uttam Kumar Nath", "role": "Professor & Head, Medical Oncology" }
       ],
       "notes": "Serves Uttarakhand, Himachal Pradesh hill populations and parts of UP. Strong cancer surgery programme.",
       "tier": "A",
@@ -156,8 +152,7 @@
         "website": "https://nimhans.ac.in"
       },
       "key_doctors": [
-        { "name": "Dr. Arun Kumar Ramamurthy", "role": "Neuro-Oncology" },
-        { "name": "Dr. Bhaskara Rao Bhatt", "role": "Neurosurgery Oncology" }
+        { "name": "Dr. Malla Bhaskara Rao", "role": "Professor, Neurosurgery" }
       ],
       "notes": "National apex centre for brain and spinal tumours. Refer all primary CNS malignancies.",
       "tier": "A",

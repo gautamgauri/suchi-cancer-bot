@@ -19,9 +19,7 @@
         "address": "Medical College Road, Kozhikode - 673008",
         "website": "https://www.gmckozhikode.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Abdul Azeez", "role": "Radiation Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Regional cancer centre for Malabar coast; strong in tobacco-related oral cancers. Kerala Karunya health scheme anchor.",
       "tier": "B",
       "navigation_notes": [
@@ -52,9 +50,7 @@
         "address": "Maharani Hospital Road, Indore - 452001",
         "website": "https://mgmindore.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Dinesh Pendharkar", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Major government cancer referral for western MP and Malwa region. Mukhyamantri Swasthya Seva Yojana anchor.",
       "tier": "B",
       "navigation_notes": [
@@ -86,7 +82,7 @@
         "website": "https://www.aiimsrajkot.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Kiran Parmar", "role": "Medical Oncology" }
+        { "name": "Dr. Sweta Soni", "role": "Radiation Oncology" }
       ],
       "notes": "New AIIMS for Saurashtra and Kutch regions; supplements GCRI for Gujarat. Oncology department operational 2024.",
       "tier": "B",
@@ -118,9 +114,7 @@
         "address": "Lamphelpat, Imphal - 795004",
         "website": "https://rims.nic.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Kh. Ratan Singh", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Primary government cancer referral for Manipur and surrounding northeastern states. Critical in context of tobacco and betel-related cancers in region.",
       "tier": "B",
       "navigation_notes": [
@@ -151,9 +145,7 @@
         "address": "Baba Kharak Singh Marg, New Delhi - 110001",
         "website": "https://www.rmlh.nic.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Avinash Kumar", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Central Government hospital in the heart of Delhi; CGHS primary empanelled centre. Key referral for government employees and EWS patients in Delhi.",
       "tier": "B",
       "navigation_notes": [

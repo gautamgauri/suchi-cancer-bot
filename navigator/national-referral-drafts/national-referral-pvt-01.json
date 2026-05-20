@@ -20,8 +20,7 @@
         "website": "https://apollohospitals.com/cancer"
       },
       "key_doctors": [
-        { "name": "Dr. Vijay Anand Reddy", "role": "Radiation Oncology" },
-        { "name": "Dr. Arvind Krishnamurthy", "role": "Surgical Oncology (Head & Neck)" }
+        { "name": "Dr. Srinivas Chilukuri", "role": "Radiation Oncology, Apollo Proton Cancer Centre" }
       ],
       "notes": "Largest private cancer network in India. Chennai flagship has proton therapy — one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
       "tier": "A",
@@ -56,8 +55,8 @@
         "website": "https://www.medanta.org/cancer-institute"
       },
       "key_doctors": [
-        { "name": "Dr. Naresh Trehan", "role": "Chairman & Cardio-thoracic" },
-        { "name": "Dr. Surender Kumar Dabas", "role": "Surgical Oncology" }
+        { "name": "Dr. Naresh Trehan", "role": "Founder Chairman & Managing Director" },
+        { "name": "Dr. Ashok Kumar Vaid", "role": "Chairman, Cancer Institute, Medical Oncology & BMT" }
       ],
       "notes": "Flagship private multi-specialty hospital for NCR; comprehensive cancer institute. Excellent robotic surgery and BMT programme. CGHS empanelled.",
       "tier": "A",
@@ -92,8 +91,7 @@
         "website": "https://www.fortishealthcare.com/hospitals/fortis-memorial-research-institute-gurgaon"
       },
       "key_doctors": [
-        { "name": "Dr. Rahul Bhargava", "role": "Haematology & BMT" },
-        { "name": "Dr. Ashish Goel", "role": "Medical Oncology" }
+        { "name": "Dr. Rahul Bhargava", "role": "Principal Director & Chief, Haematology & BMT" }
       ],
       "notes": "JCI-accredited tertiary cancer centre; one of the top BMT programmes in North India. Leading destination for international patients from South Asia.",
       "tier": "A",
@@ -127,8 +125,7 @@
         "website": "https://www.maxhealthcare.in/specialities/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Harit Chaturvedi", "role": "Head & Neck Surgical Oncology" },
-        { "name": "Dr. Lalit Kumar", "role": "Medical Oncology" }
+        { "name": "Dr. Harit Chaturvedi", "role": "Chairman, Head & Neck Surgical Oncology" }
       ],
       "notes": "Leading private cancer centre in Delhi; known for head & neck oncology and BMT. CGHS empanelled.",
       "tier": "A",
@@ -161,10 +158,7 @@
         "address": "Four Bungalows, Andheri West, Mumbai - 400053",
         "website": "https://www.kokilabenhospital.com/departments/cancercare"
       },
-      "key_doctors": [
-        { "name": "Dr. Shailesh Shrikhande", "role": "GI Surgical Oncology" },
-        { "name": "Dr. Anoop Attam", "role": "Radiation Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "One of Mumbai's premier private cancer centres; proton therapy available. Strong in GI, hepatobiliary, and robotic surgery. JCI-accredited.",
       "tier": "A",
       "navigation_notes": [

@@ -20,8 +20,8 @@
         "website": "https://www.aiims.edu"
       },
       "key_doctors": [
-        { "name": "Dr. Sanjay Sharma", "role": "Head, Medical Oncology" },
-        { "name": "Dr. Seema Mishra", "role": "Head, Palliative Care" }
+        { "name": "Dr. Sameer Bakhshi", "role": "Professor & Head, Medical Oncology" },
+        { "name": "Dr. Seema Mishra", "role": "Professor & Head, Onco-Anaesthesia and Palliative Medicine" }
       ],
       "notes": "Premier national referral centre; one of the highest-volume cancer programmes in India. Apex referral for complex oncology cases nationwide.",
       "tier": "A",
@@ -57,7 +57,7 @@
       },
       "key_doctors": [
         { "name": "Dr. C.S. Pramesh", "role": "Director" },
-        { "name": "Dr. Rajendra Badwe", "role": "Former Director, Surgical Oncology" }
+        { "name": "Dr. Rajendra Badwe", "role": "Emeritus Professor, Surgical Oncology" }
       ],
       "notes": "Largest dedicated cancer centre in Asia; DAE-funded. National apex centre for cancer research and treatment.",
       "tier": "A",
@@ -92,8 +92,8 @@
         "website": "https://pgimer.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Rakesh Kapoor", "role": "Head, Radiotherapy" },
-        { "name": "Dr. Deepak Aggarwal", "role": "Medical Oncology" }
+        { "name": "Dr. Rakesh Kapoor", "role": "Professor & Head, Radiotherapy" },
+        { "name": "Dr. Pankaj Malhotra", "role": "Professor & Head, Medical Oncology-Haematology" }
       ],
       "notes": "Premier institute serving North India and neighbouring states; strong haematology-oncology programme.",
       "tier": "A",
@@ -127,8 +127,7 @@
         "website": "https://www.jipmer.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Raja Sundaram", "role": "Medical Oncology" },
-        { "name": "Dr. Smita Kayal", "role": "Medical Oncology" }
+        { "name": "Dr. Smita Kayal", "role": "Professor (Additional), Medical Oncology" }
       ],
       "notes": "National institute serving South India, particularly Tamil Nadu and Andhra Pradesh. Autonomous under MoHFW.",
       "tier": "A",
@@ -161,9 +160,7 @@
         "address": "Medical College PO, Thiruvananthapuram - 695011",
         "website": "https://sctimst.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Rajesh U.", "role": "Surgical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Autonomous national institute under DST; specialises in complex surgical and cardio-oncology cases.",
       "tier": "A",
       "navigation_notes": [

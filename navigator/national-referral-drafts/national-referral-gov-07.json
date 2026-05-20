@@ -20,7 +20,7 @@
         "website": "https://www.aiimsguwahati.ac.in"
       },
       "key_doctors": [
-        { "name": "Dr. Arup Borkakoty", "role": "Medical Oncology" }
+        { "name": "Dr. Rituparna Chetia", "role": "Associate Professor, Medical Oncology-Haematology" }
       ],
       "notes": "New AIIMS for Northeast; oncology programme scaling rapidly. Complements BBCI in Guwahati.",
       "tier": "B",
@@ -86,7 +86,7 @@
         "website": "https://www.aiimskalyani.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Partha Basu", "role": "Medical Oncology" }
+        { "name": "Dr. Biswabina Ray", "role": "Professor & Head, Medical Oncology" }
       ],
       "notes": "New AIIMS serving West Bengal and north-east India overflow. Oncology unit growing; good cancer screening outreach.",
       "tier": "B",
@@ -118,9 +118,7 @@
         "address": "Nasirabad Road, Ajmer - 305001",
         "website": "https://jlnmcajmer.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Hemant Kumar Pandya", "role": "Radiotherapy" }
-      ],
+      "key_doctors": [],
       "notes": "Major government referral for central Rajasthan; serves Bhilwara, Nagaur, and Pali districts. Chiranjeevi Yojana anchor.",
       "tier": "C",
       "navigation_notes": [
@@ -151,9 +149,7 @@
         "address": "Palpannai, Tiruchirappalli - 620017",
         "website": "https://mgmcri.ac.in"
       },
-      "key_doctors": [
-        { "name": "Dr. P. Shanmugasundaram", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Key government cancer referral for central Tamil Nadu region. Chief Minister's Health Insurance anchor hospital.",
       "tier": "B",
       "navigation_notes": [

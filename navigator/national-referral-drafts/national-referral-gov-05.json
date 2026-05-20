@@ -20,8 +20,9 @@
         "website": "https://www.bbcionline.org"
       },
       "key_doctors": [
-        { "name": "Dr. Manigreeva Krishnatreya", "role": "Director & Surgical Oncology" },
-        { "name": "Dr. Apurba Kumar Kalita", "role": "Medical Oncology" }
+        { "name": "Dr. B.B. Borthakur", "role": "Director & Surgical Oncology" },
+        { "name": "Dr. Apurba Kumar Kalita", "role": "Professor & Head, Radiation Oncology" },
+        { "name": "Dr. Munlima Hazarika", "role": "Medical Oncology" }
       ],
       "notes": "NCI-designated apex cancer institute for Northeast India; handles highest volume in the region.",
       "tier": "A",
@@ -55,7 +56,8 @@
         "website": "https://ahpgi.nic.in"
       },
       "key_doctors": [
-        { "name": "Dr. Lalit Kumar Pattanayak", "role": "Director & Medical Oncology" }
+        { "name": "Dr. Deepak Rautray", "role": "Director" },
+        { "name": "Dr. Diptirani Samanta", "role": "HOD, Medical Oncology" }
       ],
       "notes": "State apex cancer centre for Odisha. High volume in cervical and oral cavity cancers. Biju Swasthya Kalyan Yojana anchor.",
       "tier": "A",
@@ -89,8 +91,7 @@
         "website": "https://www.rgcirc.org"
       },
       "key_doctors": [
-        { "name": "Dr. Vinod Raina", "role": "Medical Oncology" },
-        { "name": "Dr. Ullas Batra", "role": "Medical Oncology" }
+        { "name": "Dr. Ullas Batra", "role": "Co-Director, Medical Oncology" }
       ],
       "notes": "Delhi government-supported institute with advanced technology. Handles complex haematology and robotic surgery. CGHS empanelled.",
       "tier": "A",
@@ -123,9 +124,7 @@
         "address": "Vibhuti Khand, Gomti Nagar, Lucknow - 226010",
         "website": "https://rmlims.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Munna Lal Patel", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "Key UP state referral centre; serves large Hindi-belt population. Strong surgical oncology for GI and breast cancers.",
       "tier": "A",
       "navigation_notes": [
@@ -158,8 +157,8 @@
         "website": "https://kgmu.org"
       },
       "key_doctors": [
-        { "name": "Dr. Narendra Kumar", "role": "Radiation Oncology" },
-        { "name": "Dr. Soniya Nityanand", "role": "Haematology" }
+        { "name": "Dr. Rajeev Gupta", "role": "Professor & Head, Radiation Oncology" },
+        { "name": "Dr. Shailendra Prasad Verma", "role": "Professor & Head, Clinical Haematology" }
       ],
       "notes": "One of India's oldest medical universities; strong haematology and BMT. High volume north Indian referral centre.",
       "tier": "A",

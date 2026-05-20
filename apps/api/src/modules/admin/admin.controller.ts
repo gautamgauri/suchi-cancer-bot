@@ -7,7 +7,10 @@ import { DailyReportService } from "../analytics/daily-report.service";
 import { EmailService } from "../email/email.service";
 import { generateMarkdownReport } from "../analytics/report-generator";
 import { NavigatorApproveService, HospitalUpdates } from "./navigator-approve.service";
+import { NavigatorResearchService } from "./navigator-research.service";
 import { buildReviewHtml } from "./navigator-review.html";
+import { ContentApproveService } from "./content-approve.service";
+import { ContentResearchService } from "./content-research.service";
 
 @Controller("admin")
 export class AdminController {
@@ -18,6 +21,9 @@ export class AdminController {
     private readonly dailyReport: DailyReportService,
     private readonly email: EmailService,
     private readonly navigatorApprove: NavigatorApproveService,
+    private readonly navigatorResearch: NavigatorResearchService,
+    private readonly contentApprove: ContentApproveService,
+    private readonly contentResearch: ContentResearchService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -119,6 +125,32 @@ export class AdminController {
   }
 
   /**
+   * Cloud Scheduler endpoint — drafts one article per day from content-topics.json.
+   * Retrieves KB chunks via RAG, drafts with Gemini, emails reviewers.
+   *
+   * POST /admin/article-research  (OIDC-protected, triggered by Cloud Scheduler)
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("article-research")
+  async triggerArticleResearch() {
+    this.logger.log("Article research triggered by Cloud Scheduler");
+    return this.contentResearch.runResearch();
+  }
+
+  /**
+   * Cloud Scheduler endpoint — runs daily hospital research.
+   * Picks the next pending batch, calls Gemini, validates, emails reviewers.
+   *
+   * POST /admin/hospital-research  (OIDC-protected, triggered by Cloud Scheduler)
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("hospital-research")
+  async triggerHospitalResearch() {
+    this.logger.log("Hospital research triggered by Cloud Scheduler");
+    return this.navigatorResearch.runResearch();
+  }
+
+  /**
    * Navigator batch review portal.
    *
    * Linked from the review email. Shows all hospitals with inline edit forms.
@@ -132,6 +164,12 @@ export class AdminController {
     @Query("token") token: string,
     @Res() res: Response,
   ): Promise<void> {
+    // Allow inline scripts/styles for this self-contained admin portal page.
+    // Helmet's default CSP blocks them globally; override just for this response.
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; img-src 'self' data:;",
+    );
     try {
       const batch = await this.navigatorApprove.getBatchForReview(batchId, token);
       res.status(200).send(buildReviewHtml(batch, token));
@@ -204,6 +242,68 @@ export class AdminController {
       this.logger.error(`Navigator approval failed for batch ${batchId}: ${message}`);
       res.status(status).send(this.buildErrorHtml(batchId, message));
     }
+  }
+
+  /**
+   * Website article approval. Linked from the review email's "Approve" button.
+   * URL: GET /admin/content/approve/:slug?token=<hmac>
+   */
+  @Get("content/approve/:slug")
+  async approveArticle(
+    @Param("slug") slug: string,
+    @Query("token") token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const { title } = await this.contentApprove.approveArticle(slug, token);
+      res.status(200).send(this.buildContentResponseHtml(
+        "✓ Article Approved",
+        `<strong>${slug}</strong> — "${title}" has been approved and will appear on the website after the next deploy.`,
+        "#188038",
+      ));
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      res.status(error.status ?? 500).send(this.buildContentResponseHtml(
+        "✗ Approval Failed",
+        `Could not approve article <strong>${slug}</strong>: ${error.message ?? "Unexpected error"}`,
+        "#d93025",
+      ));
+    }
+  }
+
+  /**
+   * Website article rejection. Linked from the review email's "Reject" button.
+   * URL: GET /admin/content/reject/:slug?token=<hmac>
+   */
+  @Get("content/reject/:slug")
+  async rejectArticle(
+    @Param("slug") slug: string,
+    @Query("token") token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const { title } = await this.contentApprove.rejectArticle(slug, token);
+      res.status(200).send(this.buildContentResponseHtml(
+        "Draft Rejected",
+        `Article <strong>${slug}</strong> — "${title}" has been rejected and will not be published.`,
+        "#e37400",
+      ));
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      res.status(error.status ?? 500).send(this.buildContentResponseHtml(
+        "✗ Rejection Failed",
+        `Could not reject article <strong>${slug}</strong>: ${error.message ?? "Unexpected error"}`,
+        "#d93025",
+      ));
+    }
+  }
+
+  private buildContentResponseHtml(heading: string, body: string, color: string): string {
+    return `<!DOCTYPE html><html><body style="font-family:Arial;max-width:600px;margin:60px auto;text-align:center;">
+<h2 style="color:${color};">${heading}</h2>
+<p style="color:#333;font-size:15px;">${body}</p>
+<p style="color:#999;font-size:12px;margin-top:24px;">You can close this tab.</p>
+</body></html>`;
   }
 
   private buildApprovalHtml(

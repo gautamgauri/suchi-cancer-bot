@@ -20,7 +20,7 @@
         "website": "https://www.aiimsraipur.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Nirdesh Kumar", "role": "Medical Oncology" }
+        { "name": "Dr. Amit Kumar Agrawal", "role": "Assistant Professor, Medical Oncology" }
       ],
       "notes": "Apex referral for Chhattisgarh; growing oncology programme serving tribal belt populations.",
       "tier": "A",
@@ -54,7 +54,7 @@
         "website": "https://www.aiimsnagpur.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Arun Bhatt", "role": "Surgical Oncology" }
+        { "name": "Dr. Shubhada Khanapure", "role": "Associate Professor, Surgical Oncology" }
       ],
       "notes": "Serves Vidarbha region and Central India corridor. Filling a critical gap in central Maharashtra.",
       "tier": "B",
@@ -87,7 +87,7 @@
         "website": "https://www.aiimsbhopal.edu.in"
       },
       "key_doctors": [
-        { "name": "Dr. Rajesh Patidar", "role": "Medical Oncology" }
+        { "name": "Dr. Gaurav Dhingra", "role": "Associate Professor & Head, Medical Oncology" }
       ],
       "notes": "Apex referral for Madhya Pradesh; serves large tribal and rural population. Good linear accelerator facility.",
       "tier": "A",
@@ -120,9 +120,7 @@
         "address": "Bibinagar, Yadadri Bhuvanagiri District, Telangana - 508126",
         "website": "https://www.aiimsbibinagar.edu.in"
       },
-      "key_doctors": [
-        { "name": "Dr. Ramachandra Bhatt", "role": "Medical Oncology" }
-      ],
+      "key_doctors": [],
       "notes": "New AIIMS serving Telangana and parts of AP. Oncology department rapidly scaling.",
       "tier": "B",
       "navigation_notes": [

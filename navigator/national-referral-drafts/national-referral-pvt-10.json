@@ -20,8 +20,7 @@
         "website": "https://www.cmch-vellore.edu/department/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. Vikram Mathews", "role": "Haematology & BMT" },
-        { "name": "Dr. Subramanian Bhanu", "role": "Medical Oncology" }
+        { "name": "Dr. Vikram Mathews", "role": "Professor, Haematology & BMT" }
       ],
       "notes": "One of India's most trusted cancer institutions; cross-subsidised model makes it accessible for low-income patients. Strongest BMT programme in South India. NCG member. PMJAY accepted.",
       "tier": "A",
@@ -56,7 +55,7 @@
         "website": "https://www.manipalhospitals.com/mangalore/specialties/cancer-care"
       },
       "key_doctors": [
-        { "name": "Dr. Prasanna Kumar", "role": "Medical Oncology" }
+        { "name": "Dr. Ananth Pai", "role": "HOD, Medical Oncology" }
       ],
       "notes": "Manipal group's Mangaluru campus cancer unit; strong teaching hospital pedigree. Key for coastal Karnataka and Kerala border patients. PMJAY empanelled.",
       "tier": "B",
@@ -90,8 +89,8 @@
         "website": "https://www.hindujahospital.com/clinical-services/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. Philip Abraham", "role": "GI Oncology" },
-        { "name": "Dr. Geeta Kamath", "role": "Gynaecologic Oncology" }
+        { "name": "Dr. Asha Kapadia", "role": "Medical Oncology" },
+        { "name": "Dr. Sampada Dessai", "role": "Gynaecologic Oncology" }
       ],
       "notes": "Trusted private hospital in Mumbai; strong GI and gynaecologic oncology. CGHS empanelled. Well-regarded second-opinion destination.",
       "tier": "A",
@@ -125,7 +124,7 @@
         "website": "https://www.saifee.hospital/departments/oncology"
       },
       "key_doctors": [
-        { "name": "Dr. Suresh Advani", "role": "Medical Oncology" }
+        { "name": "Dr. Maheboob Basade", "role": "Medical Oncology" }
       ],
       "notes": "Reputed mid-size private cancer centre in South Mumbai; strong in medical oncology and chemotherapy protocols. Well-regarded for second opinions.",
       "tier": "B",
@@ -159,7 +158,7 @@
         "website": "https://www.fortishealthcare.com/hospitals/fortis-la-femme-delhi"
       },
       "key_doctors": [
-        { "name": "Dr. Nita Nair", "role": "Gynaecologic Oncology" }
+        { "name": "Dr. Prerna Lakhwani", "role": "Gynaecologic Oncology" }
       ],
       "notes": "Specialised women's cancer centre; best-in-class gynaecologic oncology in NCR. Unique focus on cervical, ovarian, and uterine cancers. CGHS empanelled.",
       "tier": "A",

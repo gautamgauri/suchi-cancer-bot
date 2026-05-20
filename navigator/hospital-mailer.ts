@@ -15,7 +15,7 @@ import { ResearchTarget, HospitalDraft } from "./types";
 // ---------------------------------------------------------------------------
 
 const REVIEW_BASE =
-  "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/navigator/review";
+  "https://suchi-api-514521785197.us-central1.run.app/v1/admin/navigator/review";
 
 const REVIEWERS = [
   "gautamgauri@dikshafoundation.org",
@@ -36,9 +36,37 @@ export interface MailResult {
 // HMAC token
 // ---------------------------------------------------------------------------
 
-function buildApprovalToken(batchId: string): string {
-  const secret =
-    process.env.NAVIGATOR_APPROVAL_SECRET || "suchi-nav-dev-secret";
+let _approvalSecret: string | null = null;
+
+async function resolveApprovalSecret(): Promise<string> {
+  if (_approvalSecret) return _approvalSecret;
+  if (process.env.NAVIGATOR_APPROVAL_SECRET) {
+    _approvalSecret = process.env.NAVIGATOR_APPROVAL_SECRET;
+    return _approvalSecret;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
+    const client = new SecretManagerServiceClient();
+    const project = process.env.GOOGLE_CLOUD_PROJECT || "gen-lang-client-0202543132";
+    const [version] = await client.accessSecretVersion({
+      name: `projects/${project}/secrets/NAVIGATOR_APPROVAL_SECRET/versions/latest`,
+    });
+    const payload = version.payload?.data;
+    if (payload) {
+      _approvalSecret = (typeof payload === "string" ? payload : Buffer.from(payload as Uint8Array).toString("utf-8")).trim();
+      return _approvalSecret;
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[hospital-mailer] Could not load NAVIGATOR_APPROVAL_SECRET from Secret Manager: ${msg}`);
+  }
+  _approvalSecret = "suchi-nav-dev-secret";
+  return _approvalSecret;
+}
+
+async function buildApprovalToken(batchId: string): Promise<string> {
+  const secret = await resolveApprovalSecret();
   return createHmac("sha256", secret).update(batchId).digest("hex");
 }
 
@@ -267,6 +295,124 @@ async function resolveSmtpPass(): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Send a single consolidated notification email listing all pending batches,
+ * with context that doctor info has been corrected based on reviewer feedback.
+ */
+export async function sendUpdateNotification(
+  batches: ResearchTarget[],
+): Promise<{ emailSent: boolean; emailError?: string }> {
+  const pendingBatches = batches.filter((b) => b.status === "email_sent");
+  if (pendingBatches.length === 0) {
+    console.log("[hospital-mailer] No email_sent batches to notify about.");
+    return { emailSent: false };
+  }
+
+  const totalHospitals = pendingBatches.reduce((sum, b) => sum + b.hospitals.length, 0);
+
+  const batchRows = await Promise.all(pendingBatches.map(async (b) => {
+    const token = await buildApprovalToken(b.id);
+    const reviewUrl = `${REVIEW_BASE}/${encodeURIComponent(b.id)}?token=${token}`;
+    const hospCount = Math.min(b.hospitals.length, 5);
+    return `
+    <tr>
+      <td style="padding:10px 12px; border-bottom:1px solid #e8eaed; font-weight:bold; color:#1a73e8;">
+        <a href="${escapeHtml(reviewUrl)}" style="color:#1a73e8; text-decoration:none;">${escapeHtml(b.id)}</a>
+      </td>
+      <td style="padding:10px 12px; border-bottom:1px solid #e8eaed; color:#555;">${escapeHtml(b.region)}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #e8eaed; color:#555; text-align:center;">${hospCount}</td>
+      <td style="padding:10px 12px; border-bottom:1px solid #e8eaed; text-align:center;">
+        <a href="${escapeHtml(reviewUrl)}"
+           style="background:#1a73e8; color:#fff; padding:6px 16px; border-radius:4px; text-decoration:none; font-size:13px;">
+          Review →
+        </a>
+      </td>
+    </tr>`;
+  }));
+
+  const htmlBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<div style="font-family: Arial, sans-serif; max-width: 720px; margin: 0 auto; background:#f1f3f4; padding:24px;">
+
+  <div style="background:#fff; border-radius:8px; padding:28px; margin-bottom:16px;">
+    <h2 style="margin:0 0 16px; color:#1a73e8;">Suchi Navigator — Doctor Information Updated</h2>
+    <p style="margin:0 0 12px; color:#333; font-size:15px;">
+      Hi Divya,
+    </p>
+    <p style="margin:0 0 12px; color:#333; font-size:15px;">
+      Based on your feedback about incorrect doctor names, we've reviewed and corrected the
+      <strong>key_doctors</strong> field across all pending hospital batches.
+      Names that couldn't be verified against official hospital sources have been replaced
+      with an empty list rather than leaving incorrect data in.
+    </p>
+    <p style="margin:0 0 0; color:#333; font-size:15px;">
+      There are <strong>${pendingBatches.length} batches (${totalHospitals} hospitals)</strong>
+      ready for your review and approval:
+    </p>
+  </div>
+
+  <div style="background:#fff; border-radius:8px; padding:24px; margin-bottom:16px;">
+    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <thead>
+        <tr style="background:#f8f9fa;">
+          <th style="padding:10px 12px; text-align:left; color:#555; font-weight:600; border-bottom:2px solid #e8eaed;">Batch</th>
+          <th style="padding:10px 12px; text-align:left; color:#555; font-weight:600; border-bottom:2px solid #e8eaed;">Region</th>
+          <th style="padding:10px 12px; text-align:center; color:#555; font-weight:600; border-bottom:2px solid #e8eaed;">Hospitals</th>
+          <th style="padding:10px 12px; text-align:center; color:#555; font-weight:600; border-bottom:2px solid #e8eaed;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${batchRows}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="background:#fff; border-radius:8px; padding:20px; text-align:center;">
+    <p style="margin:0; font-size:12px; color:#888;">
+      Each "Review →" link opens the review portal for that batch where you can edit fields before approving.<br>
+      Links are valid for 7 days.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const subject = `[Suchi Navigator] Doctor info updated — ${pendingBatches.length} batches ready for approval`;
+
+  const smtpPass = await resolveSmtpPass();
+  if (!smtpPass) {
+    console.log("[hospital-mailer] SMTP not configured — skipping email send");
+    return { emailSent: false };
+  }
+
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpUser = process.env.SMTP_USER || "gautamgauri@dikshafoundation.org";
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: 587,
+    secure: false,
+    auth: { user: smtpUser, pass: smtpPass },
+  });
+
+  try {
+    await transporter.sendMail({
+      from: `"Suchi Navigator" <${smtpUser}>`,
+      to: REVIEWERS.join(", "),
+      subject,
+      html: htmlBody,
+    });
+    return { emailSent: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[hospital-mailer] SMTP send failed: ${msg}`);
+    return { emailSent: false, emailError: msg };
+  }
+}
+
+/**
  * Send a review email for a research batch (up to 5 hospitals).
  * Returns the approval token regardless of whether the email was sent,
  * so the caller can persist it to queue.json.
@@ -274,7 +420,7 @@ async function resolveSmtpPass(): Promise<string | null> {
 export async function sendBatchEmail(
   batch: ResearchTarget,
 ): Promise<MailResult> {
-  const approvalToken = buildApprovalToken(batch.id);
+  const approvalToken = await buildApprovalToken(batch.id);
   const htmlBody = buildHtmlEmail(batch, approvalToken);
 
   const hospitalCount = Math.min(batch.hospitals.length, 5);
