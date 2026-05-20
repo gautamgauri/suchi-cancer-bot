@@ -43,6 +43,12 @@ export const envSchema = z.object({
   VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000),
   // Review Copilot
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
+  // Social distribution (Zapier Email Parser addresses — optional)
+  SUCHI_SITE_URL: z.string().optional().default("https://suchicancercare.org"),
+  SOCIAL_ZAPIER_FACEBOOK:  z.string().optional(),
+  SOCIAL_ZAPIER_X:         z.string().optional(),
+  SOCIAL_ZAPIER_INSTAGRAM: z.string().optional(),
+  SOCIAL_ZAPIER_LINKEDIN:  z.string().optional(),
   // Observability (Langfuse)
   LANGFUSE_ENABLED: z.coerce.boolean().optional().default(false),
   LANGFUSE_PUBLIC_KEY: z.string().optional(),

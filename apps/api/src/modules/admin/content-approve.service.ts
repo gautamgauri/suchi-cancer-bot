@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Storage } from "@google-cloud/storage";
+import { SocialDistributionService } from "./social-distribution.service";
 
 const GCS_BUCKET  = process.env.QUEUE_GCS_BUCKET;
 const GCS_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543132";
@@ -25,6 +26,8 @@ interface ContentQueue {
 @Injectable()
 export class ContentApproveService {
   private readonly logger = new Logger(ContentApproveService.name);
+
+  constructor(private readonly social: SocialDistributionService) {}
 
   private verifyHmac(slug: string, token: string): void {
     const secret = process.env.CONTENT_APPROVAL_SECRET || "suchi-content-dev-secret";
@@ -68,7 +71,15 @@ export class ContentApproveService {
     entry.approvedBy = "email_approval";
     await this.writeQueue(queue);
 
-    this.logger.log(`Article "${slug}" approved`);
+    this.logger.log(`Article "${slug}" approved — triggering social distribution`);
+
+    // Fire-and-forget: don't block the HTTP response on social posting
+    this.social.distributeArticle(slug, entry.title, entry.contentType).then((result) => {
+      this.logger.log(`Social distribution for "${slug}": ${JSON.stringify(result)}`);
+    }).catch((err) => {
+      this.logger.error(`Social distribution failed for "${slug}"`, err);
+    });
+
     return { title: entry.title };
   }
 
