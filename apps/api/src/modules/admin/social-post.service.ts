@@ -30,7 +30,7 @@ import { EmailService } from "../email/email.service";
 const GCS_BUCKET   = process.env.QUEUE_GCS_BUCKET;
 const GCS_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543132";
 const SITE_URL     = process.env.SUCHI_SITE_URL ?? "https://suchicancercare.org";
-const API_BASE     = "https://suchi-api-514521785197.us-central1.run.app/v1/admin/social";
+const API_BASE     = "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/social";
 
 const CONTENT_TYPE_TO_PATH: Record<string, string> = {
   treatment:   "tests-treatment/treatments",
@@ -360,7 +360,11 @@ REVIEW: {one-sentence description of the specific concern}`,
   // ---------------------------------------------------------------------------
 
   private async sendApprovalEmail(draft: SocialPostDraft): Promise<void> {
-    const reviewer = process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org";
+    const reviewer = [
+      process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org",
+      "divya.vats@dikshafoundation.org",
+      "nisha.kumari@dikshafoundation.org",
+    ].join(", ");
     const { id, title, copy, approvalToken, safetyWarnings = [], articleUrl } = draft;
 
     const approveAll = `${API_BASE}/approve/${id}?token=${approvalToken}`;
@@ -415,7 +419,11 @@ ${buildPostBlock("LinkedIn", copy.linkedin)}
     published: Platform[],
     failed: Platform[],
   ): Promise<void> {
-    const reviewer = process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org";
+    const reviewer = [
+      process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org",
+      "divya.vats@dikshafoundation.org",
+      "nisha.kumari@dikshafoundation.org",
+    ].join(", ");
     const lines = ALL_PLATFORMS.map((p) => {
       const r = results[p];
       if (r.error === "not_requested") return `${p}: skipped`;
@@ -428,6 +436,21 @@ ${buildPostBlock("LinkedIn", copy.linkedin)}
         : `Social posts partially published: "${title}"`,
       text: `Article: ${articleUrl}\n\nPublished: ${published.join(", ") || "none"}\nFailed: ${failed.join(", ") || "none"}\n\n${lines.join("\n")}`,
     });
+  }
+
+  /**
+   * Manual trigger: looks up slug in content-queue.json, then calls generateAndQueue.
+   * Used by POST /admin/social/generate for testing and manual re-generation.
+   */
+  async generateFromSlug(slug: string): Promise<{ id: string; title: string }> {
+    if (!GCS_BUCKET) throw new Error("QUEUE_GCS_BUCKET not configured");
+    const [buf] = await new Storage({ projectId: GCS_PROJECT })
+      .bucket(GCS_BUCKET).file("content-queue.json").download() as [Buffer];
+    const queue = JSON.parse(buf.toString("utf-8")) as { articles: { slug: string; title: string; contentType: string }[] };
+    const entry = (queue.articles ?? []).find((e) => e.slug === slug);
+    if (!entry) throw new NotFoundException(`Slug "${slug}" not found in content-queue`);
+    await this.generateAndQueue(entry.slug, entry.title, entry.contentType);
+    return { id: slug, title: entry.title };
   }
 
   // ---------------------------------------------------------------------------

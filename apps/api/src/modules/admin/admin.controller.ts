@@ -359,6 +359,23 @@ export class AdminController {
     }
   }
 
+  /**
+   * Manual social post generation — for testing and re-generation of old articles.
+   * Looks up the slug in content-queue, generates Gemini copy, runs safety gate,
+   * and sends the approval email to all reviewers.
+   *
+   * POST /admin/social/generate  { "slug": "chemotherapy" }  (basic-auth protected)
+   */
+  @UseGuards(BasicAuthGuard)
+  @Post("social/generate")
+  async generateSocialPost(@Body() body: { slug: string }) {
+    const { slug } = body;
+    if (!slug) return { error: "slug is required" };
+    this.logger.log(`Manual social post generation requested for slug="${slug}"`);
+    const result = await this.socialPost.generateFromSlug(slug);
+    return { ok: true, slug, title: result.title, message: "Approval email sent to reviewers." };
+  }
+
   private buildContentResponseHtml(heading: string, body: string, color: string): string {
     return `<!DOCTYPE html><html><body style="font-family:Arial;max-width:600px;margin:60px auto;text-align:center;">
 <h2 style="color:${color};">${heading}</h2>

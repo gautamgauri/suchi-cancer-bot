@@ -308,6 +308,7 @@ export class ContentResearchService {
     const reviewers = [
       process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org",
       "divya.vats@dikshafoundation.org",
+      "nisha.kumari@dikshafoundation.org",
     ];
     const emailSent = await this.email.sendEmail({
       to: reviewers.join(", "),
