@@ -43,12 +43,17 @@ export const envSchema = z.object({
   VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000),
   // Review Copilot
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
-  // Social distribution (Zapier Email Parser addresses — optional)
-  SUCHI_SITE_URL: z.string().optional().default("https://suchicancercare.org"),
-  SOCIAL_ZAPIER_FACEBOOK:  z.string().optional(),
-  SOCIAL_ZAPIER_X:         z.string().optional(),
-  SOCIAL_ZAPIER_INSTAGRAM: z.string().optional(),
-  SOCIAL_ZAPIER_LINKEDIN:  z.string().optional(),
+  // Social post publishing (all optional — platforms without credentials are silently skipped)
+  SUCHI_SITE_URL:           z.string().optional().default("https://suchicancercare.org"),
+  SOCIAL_APPROVAL_SECRET:   z.string().optional(),
+  // Meta (Facebook + Instagram)
+  META_PAGE_ID:             z.string().optional(),
+  META_PAGE_ACCESS_TOKEN:   z.string().optional(),
+  META_IG_USER_ID:          z.string().optional(),
+  SUCHI_SOCIAL_CARD_URL:    z.string().optional(), // public image URL for Instagram posts
+  // LinkedIn UGC Posts API
+  LINKEDIN_ACCESS_TOKEN:    z.string().optional(), // OAuth 2.0 bearer token, expires in 60 days
+  LINKEDIN_AUTHOR_URN:      z.string().optional(), // e.g. urn:li:organization:12345
   // Observability (Langfuse)
   LANGFUSE_ENABLED: z.coerce.boolean().optional().default(false),
   LANGFUSE_PUBLIC_KEY: z.string().optional(),

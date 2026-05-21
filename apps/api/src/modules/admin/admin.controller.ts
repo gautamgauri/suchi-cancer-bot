@@ -11,6 +11,7 @@ import { NavigatorResearchService } from "./navigator-research.service";
 import { buildReviewHtml } from "./navigator-review.html";
 import { ContentApproveService } from "./content-approve.service";
 import { ContentResearchService } from "./content-research.service";
+import { SocialPostService } from "./social-post.service";
 
 @Controller("admin")
 export class AdminController {
@@ -24,6 +25,7 @@ export class AdminController {
     private readonly navigatorResearch: NavigatorResearchService,
     private readonly contentApprove: ContentApproveService,
     private readonly contentResearch: ContentResearchService,
+    private readonly socialPost: SocialPostService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -293,6 +295,65 @@ export class AdminController {
       res.status(error.status ?? 500).send(this.buildContentResponseHtml(
         "✗ Rejection Failed",
         `Could not reject article <strong>${slug}</strong>: ${error.message ?? "Unexpected error"}`,
+        "#d93025",
+      ));
+    }
+  }
+
+  /**
+   * Social post approval. Linked from the approval email.
+   * Optional ?platforms=facebook,instagram,linkedin narrows which platforms to post to.
+   * URL: GET /admin/social/approve/:id?token=<hmac>[&platforms=facebook]
+   */
+  @Get("social/approve/:id")
+  async approveSocialPost(
+    @Param("id") id: string,
+    @Query("token") token: string,
+    @Query("platforms") platforms: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const { title, published, failed } = await this.socialPost.approvePost(id, token, platforms);
+      const platformLine = published.length > 0
+        ? `Published to: ${published.join(", ")}.${failed.length > 0 ? ` Failed: ${failed.join(", ")}.` : ""}`
+        : "No platforms were published (credentials may not be configured yet).";
+      res.status(200).send(this.buildContentResponseHtml(
+        "Social Post Approved",
+        `"${title}"<br><span style="font-size:13px">${platformLine}</span>`,
+        "#188038",
+      ));
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      res.status(error.status ?? 500).send(this.buildContentResponseHtml(
+        "Approval Failed",
+        error.message ?? "Unexpected error",
+        "#d93025",
+      ));
+    }
+  }
+
+  /**
+   * Social post rejection. Linked from the approval email.
+   * URL: GET /admin/social/reject/:id?token=<hmac>
+   */
+  @Get("social/reject/:id")
+  async rejectSocialPost(
+    @Param("id") id: string,
+    @Query("token") token: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const { title } = await this.socialPost.rejectPost(id, token);
+      res.status(200).send(this.buildContentResponseHtml(
+        "Social Post Rejected",
+        `The social post for "${title}" has been rejected and will not be published.`,
+        "#e37400",
+      ));
+    } catch (err: unknown) {
+      const error = err as { status?: number; message?: string };
+      res.status(error.status ?? 500).send(this.buildContentResponseHtml(
+        "Rejection Failed",
+        error.message ?? "Unexpected error",
         "#d93025",
       ));
     }
