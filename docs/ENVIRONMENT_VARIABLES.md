@@ -27,6 +27,25 @@ Create these as secrets in Google Cloud Secret Manager:
 | `RATE_LIMIT_TTL_SEC` | Rate limit time window | `60` | Seconds |
 | `RATE_LIMIT_REQ_PER_TTL` | Requests per time window | `20` | Max requests |
 
+### Social Publishing Variables
+
+The API social publishing flow is documented in [`SOCIAL_PIPELINE.md`](SOCIAL_PIPELINE.md).
+All platform credentials are optional at process startup; missing credentials make
+that platform return `not_configured` when a reviewer approves a social post.
+
+| Variable | Description | Required For | Notes |
+|----------|-------------|--------------|-------|
+| `QUEUE_GCS_BUCKET` | GCS bucket for `content-queue.json`, `content-drafts/`, and `social-queue.json` | Social queue persistence | Current deploy sets `suchi-navigator-state` |
+| `SUCHI_SITE_URL` | Public site origin used to build article URLs | Correct social links | Defaults to `https://suchicancercare.org` |
+| `SOCIAL_APPROVAL_SECRET` | HMAC secret for social approval/reject links | Dedicated social tokens | Falls back to `CONTENT_APPROVAL_SECRET`, then a dev default |
+| `CONTENT_APPROVAL_SECRET` | HMAC secret for article approval links | Content approval and social fallback | Mounted in current Cloud Build deploy |
+| `META_PAGE_ID` | Facebook page ID | Facebook publishing | Secret mounted by `cloudbuild.yaml` |
+| `META_PAGE_ACCESS_TOKEN` | Meta Graph API page token | Facebook and Instagram publishing | Secret mounted by `cloudbuild.yaml` |
+| `META_IG_USER_ID` | Instagram business user ID | Instagram publishing | Required with `META_PAGE_ACCESS_TOKEN` |
+| `SUCHI_SOCIAL_CARD_URL` | Public image URL for Instagram media containers | Instagram publishing | The same card image is reused for each Instagram post |
+| `LINKEDIN_ACCESS_TOKEN` | LinkedIn OAuth bearer token | LinkedIn publishing | Secret mounted by `cloudbuild.yaml`; rotate before expiry |
+| `LINKEDIN_AUTHOR_URN` | LinkedIn organization/person URN | LinkedIn publishing | Example: `urn:li:organization:12345` |
+
 ### Local Development `.env` File
 
 Create `apps/api/.env` for local development:

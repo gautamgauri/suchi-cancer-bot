@@ -1,9 +1,16 @@
 # Suchi Distribution Pipeline — Spec v0.1
 
-**Status:** Draft
+**Status:** Draft / standalone CLI design
 **Owner:** SCCF / Suchi product
 **Date:** 2026-05-08
-**Related docs:** `CGP_v0.2_SCHEMAS.md` (upstream — generates the articles this pipeline distributes)
+**Related docs:** `CGP_v0.2_SCHEMAS.md` (upstream — generates the articles this pipeline distributes), `SOCIAL_PIPELINE.md` (current production API social publishing flow)
+
+> **Production note:** This document describes the standalone `distribution/`
+> CLI concept and its richer five-channel distribution pack. The current
+> production social flow is implemented in `SocialPostService`, starts after
+> article approval, stores drafts in GCS `social-queue.json`, and publishes
+> directly to Facebook, Instagram, and LinkedIn. Use `SOCIAL_PIPELINE.md` for
+> current operator runbooks, endpoints, and secrets.
 
 ---
 
