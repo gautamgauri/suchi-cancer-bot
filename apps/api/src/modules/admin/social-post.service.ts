@@ -75,7 +75,9 @@ interface SocialPostDraft {
   approvalToken: string;
   createdAt: string;
   approvedAt?: string;
+  approvedBy?: string;
   rejectedAt?: string;
+  rejectedBy?: string;
   publishedAt?: string;
   approvedPlatforms?: Platform[];
   publishResults?: Record<Platform, PlatformResult>;
@@ -88,6 +90,7 @@ export interface ApproveResult {
   title: string;
   published: Platform[];
   failed: Platform[];
+  approvedBy?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,10 +147,10 @@ export class SocialPostService {
   }
 
   /**
-   * Called by GET /admin/social/approve/:id?token=xxx[&platforms=facebook,instagram]
+   * Called by GET /admin/social/approve/:id?token=xxx[&platforms=facebook][&approver=Name]
    * Publishes to the requested platforms (defaults to all).
    */
-  async approvePost(id: string, token: string, platformsParam?: string): Promise<ApproveResult> {
+  async approvePost(id: string, token: string, platformsParam?: string, approver?: string): Promise<ApproveResult> {
     this.verifyToken(id, token);
     const queue = await this.loadQueue();
     const draft = queue.posts.find((p) => p.id === id);
@@ -171,28 +174,32 @@ export class SocialPostService {
     const failed    = targets.filter((p) => !results[p].success);
 
     draft.status = "published";
-    draft.approvedAt   = new Date().toISOString();
-    draft.publishedAt  = new Date().toISOString();
+    draft.approvedAt        = new Date().toISOString();
+    draft.approvedBy        = approver ?? "unknown";
+    draft.publishedAt       = new Date().toISOString();
     draft.approvedPlatforms = targets;
     draft.publishResults    = results;
     await this.saveQueue(queue);
 
-    // Confirmation email (fire-and-forget)
-    this.sendConfirmationEmail(draft.title, draft.articleUrl, results, published, failed).catch(() => undefined);
+    this.logger.log(`Social post ${id} ("${draft.title}") approved by ${draft.approvedBy}`);
 
-    return { title: draft.title, published, failed };
+    // Confirmation email (fire-and-forget)
+    this.sendConfirmationEmail(draft.title, draft.articleUrl, results, published, failed, draft.approvedBy).catch(() => undefined);
+
+    return { title: draft.title, published, failed, approvedBy: draft.approvedBy };
   }
 
-  /** Called by GET /admin/social/reject/:id?token=xxx */
-  async rejectPost(id: string, token: string): Promise<{ title: string }> {
+  /** Called by GET /admin/social/reject/:id?token=xxx[&approver=Name] */
+  async rejectPost(id: string, token: string, approver?: string): Promise<{ title: string }> {
     this.verifyToken(id, token);
     const queue = await this.loadQueue();
     const draft = queue.posts.find((p) => p.id === id);
     if (!draft) throw new NotFoundException(`Social post ${id} not found`);
     draft.status = "rejected";
     draft.rejectedAt = new Date().toISOString();
+    draft.rejectedBy = approver ?? "unknown";
     await this.saveQueue(queue);
-    this.logger.log(`Social post ${id} ("${draft.title}") rejected`);
+    this.logger.log(`Social post ${id} ("${draft.title}") rejected by ${draft.rejectedBy}`);
     return { title: draft.title };
   }
 
@@ -358,18 +365,13 @@ REVIEW: {one-sentence description of the specific concern}`,
   // ---------------------------------------------------------------------------
 
   private async sendApprovalEmail(draft: SocialPostDraft): Promise<void> {
-    const reviewer = [
-      process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org",
-      "divya.vats@dikshafoundation.org",
-      "nisha.kumari@dikshafoundation.org",
-    ].join(", ");
     const { id, title, copy, approvalToken, safetyWarnings = [], articleUrl } = draft;
 
-    const approveAll = `${API_BASE}/approve/${id}?token=${approvalToken}`;
-    const approveFB  = `${API_BASE}/approve/${id}?token=${approvalToken}&platforms=facebook`;
-    const approveIG  = `${API_BASE}/approve/${id}?token=${approvalToken}&platforms=instagram`;
-    const approveLI  = `${API_BASE}/approve/${id}?token=${approvalToken}&platforms=linkedin`;
-    const rejectUrl  = `${API_BASE}/reject/${id}?token=${approvalToken}`;
+    const recipients = [
+      { name: "Gautam", email: process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org" },
+      { name: "Divya",  email: "divya.vats@dikshafoundation.org" },
+      { name: "Nisha",  email: "nisha.kumari@dikshafoundation.org" },
+    ];
 
     const safetyBanner = safetyWarnings.length > 0
       ? `<div style="background:#fff3cd;border-left:4px solid #e37400;padding:12px 16px;margin-bottom:20px;font-size:13px;">
@@ -378,7 +380,16 @@ REVIEW: {one-sentence description of the specific concern}`,
          </div>`
       : "";
 
-    const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:680px;margin:auto;padding:20px">
+    await Promise.all(recipients.map(({ name, email }) => {
+      const a = encodeURIComponent(name);
+      const approveAll = `${API_BASE}/approve/${id}?token=${approvalToken}&approver=${a}`;
+      const approveFB  = `${API_BASE}/approve/${id}?token=${approvalToken}&platforms=facebook&approver=${a}`;
+      const approveIG  = `${API_BASE}/approve/${id}?token=${approvalToken}&platforms=instagram&approver=${a}`;
+      const approveLI  = `${API_BASE}/approve/${id}?token=${approvalToken}&platforms=linkedin&approver=${a}`;
+      const rejectUrl  = `${API_BASE}/reject/${id}?token=${approvalToken}&approver=${a}`;
+      const cc = recipients.filter((r) => r.email !== email).map((r) => r.email).join(", ");
+
+      const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:680px;margin:auto;padding:20px">
 <h2 style="margin-bottom:4px">APPROVAL REQUIRED: Social post</h2>
 <p style="color:#555;margin-top:4px">${escHtml(title)} — <a href="${escHtml(articleUrl)}">${escHtml(articleUrl)}</a></p>
 ${safetyBanner}
@@ -403,11 +414,13 @@ ${buildPostBlock("LinkedIn", copy.linkedin)}
 </p>
 </body></html>`;
 
-    await this.email.sendEmail({
-      to: reviewer,
-      subject: `APPROVAL REQUIRED: Social post — "${title}"`,
-      html,
-    });
+      return this.email.sendEmail({
+        to: email,
+        cc,
+        subject: `APPROVAL REQUIRED: Social post — "${title}"`,
+        html,
+      });
+    }));
   }
 
   private async sendConfirmationEmail(
@@ -416,23 +429,23 @@ ${buildPostBlock("LinkedIn", copy.linkedin)}
     results: Record<Platform, PlatformResult>,
     published: Platform[],
     failed: Platform[],
+    approvedBy?: string,
   ): Promise<void> {
-    const reviewer = [
-      process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org",
-      "divya.vats@dikshafoundation.org",
-      "nisha.kumari@dikshafoundation.org",
-    ].join(", ");
+    const to = process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org";
+    const cc = "divya.vats@dikshafoundation.org, nisha.kumari@dikshafoundation.org";
     const lines = ALL_PLATFORMS.map((p) => {
       const r = results[p];
       if (r.error === "not_requested") return `${p}: skipped`;
       return r.success ? `${p}: published (${r.postId ?? "ok"})` : `${p}: FAILED — ${r.error}`;
     });
+    const approverLine = approvedBy ? `Approved by: ${approvedBy}\n` : "";
     await this.email.sendEmail({
-      to: reviewer,
+      to,
+      cc,
       subject: failed.length === 0
         ? `Social posts published: "${title}"`
         : `Social posts partially published: "${title}"`,
-      text: `Article: ${articleUrl}\n\nPublished: ${published.join(", ") || "none"}\nFailed: ${failed.join(", ") || "none"}\n\n${lines.join("\n")}`,
+      text: `Article: ${articleUrl}\n\n${approverLine}Published: ${published.join(", ") || "none"}\nFailed: ${failed.join(", ") || "none"}\n\n${lines.join("\n")}`,
     });
   }
 

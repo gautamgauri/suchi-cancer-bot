@@ -310,10 +310,11 @@ export class AdminController {
     @Param("id") id: string,
     @Query("token") token: string,
     @Query("platforms") platforms: string | undefined,
+    @Query("approver") approver: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const { title, published, failed } = await this.socialPost.approvePost(id, token, platforms);
+      const { title, published, failed } = await this.socialPost.approvePost(id, token, platforms, approver);
       const platformLine = published.length > 0
         ? `Published to: ${published.join(", ")}.${failed.length > 0 ? ` Failed: ${failed.join(", ")}.` : ""}`
         : "No platforms were published (credentials may not be configured yet).";
@@ -340,10 +341,11 @@ export class AdminController {
   async rejectSocialPost(
     @Param("id") id: string,
     @Query("token") token: string,
+    @Query("approver") approver: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const { title } = await this.socialPost.rejectPost(id, token);
+      const { title } = await this.socialPost.rejectPost(id, token, approver);
       res.status(200).send(this.buildContentResponseHtml(
         "Social Post Rejected",
         `The social post for "${title}" has been rejected and will not be published.`,

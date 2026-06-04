@@ -3,6 +3,7 @@ import * as nodemailer from 'nodemailer';
 
 export interface EmailOptions {
   to: string;
+  cc?: string;
   subject: string;
   text?: string;
   html?: string;
@@ -50,12 +51,14 @@ export class EmailService {
       const info = await this.transporter.sendMail({
         from,
         to: options.to,
+        cc: options.cc,
         subject: options.subject,
         text: options.text,
         html: options.html,
       });
 
-      this.logger.log(`Email sent: ${info.messageId} to ${options.to}`);
+      const ccNote = options.cc ? ` (cc: ${options.cc})` : "";
+      this.logger.log(`Email sent: ${info.messageId} to ${options.to}${ccNote}`);
       return true;
     } catch (error) {
       this.logger.error(`Failed to send email: ${error.message}`, error.stack);
