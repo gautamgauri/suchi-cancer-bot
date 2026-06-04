@@ -98,7 +98,7 @@ Implementation: safety gate returns a `severity` field; `critical` severity prev
 
 ## OD-005 — Article structure: content guide vs. schema doc have different section templates
 
-**Status:** Open  
+**Status:** Partially resolved — `CONTENT_GUIDE.md` declared canonical in `REQUIREMENTS.md` FR-CONTENT-001 (provisional). Remaining action: update `CONTENT_PAGE_SCHEMA.md` to reference `CONTENT_GUIDE.md` rather than defining a separate template, then mark FR-CONTENT-001 non-provisional and close this decision.  
 **Area:** Content
 
 **Current state:**
