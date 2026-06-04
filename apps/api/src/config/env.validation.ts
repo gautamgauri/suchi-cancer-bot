@@ -10,9 +10,10 @@ export const envSchema = z.object({
   DEEPSEEK_BASE_URL: z.string().optional().default("https://api.deepseek.com/v1"),
   DEEPSEEK_MODEL: z.string().optional().default("deepseek-chat"),
   // Gemini via Vertex AI (uses Application Default Credentials, no API key needed)
+  GEMINI_API_KEY: z.string().optional(), // Google AI API key (generativelanguage.googleapis.com)
   GOOGLE_CLOUD_PROJECT: z.string().optional(), // Auto-detected on Cloud Run
   VERTEX_AI_LOCATION: z.string().optional().default("us-central1"),
-  GEMINI_MODEL: z.string().optional().default("gemini-2.0-flash-001"),
+  GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
   EMBEDDING_API_KEY: z.string().min(1).optional(), // For Google embeddings
   EMBEDDING_MODEL: z.string().optional().default("text-embedding-004"),
   PORT: z.coerce.number().optional(),

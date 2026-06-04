@@ -120,7 +120,8 @@ export class LlmService {
   private readonly model: string;
   private readonly timeoutMs: number;
 
-  // Gemini via Vertex AI - used as primary when LLM_PROVIDER=gemini, or as fallback
+  // Gemini via Google AI API (generativelanguage.googleapis.com)
+  private readonly geminiApiKey: string;
   private readonly geminiProject: string;
   private readonly geminiLocation: string;
   private readonly geminiModel: string;
@@ -134,20 +135,21 @@ export class LlmService {
     // Determine LLM provider - Gemini Flash is now default for better latency
     this.provider = (this.configService.get<string>("LLM_PROVIDER") as "deepseek" | "openai" | "gemini") || "gemini";
 
-    // Gemini config (used as primary or fallback)
+    // Gemini config (Google AI API or Vertex AI fallback)
+    this.geminiApiKey = this.configService.get<string>("GEMINI_API_KEY") || "";
     this.geminiProject = this.configService.get<string>("GOOGLE_CLOUD_PROJECT") || "";
     this.geminiLocation = this.configService.get<string>("VERTEX_AI_LOCATION") || "us-central1";
     this.geminiModel = this.configService.get<string>("GEMINI_MODEL") ||
                        this.configService.get<string>("FALLBACK_LLM_MODEL") ||
-                       "gemini-2.0-flash-001";
+                       "gemini-2.5-flash";
 
     if (this.provider === "gemini") {
-      // Primary: Gemini Flash via Vertex AI (fast, cost-effective)
-      if (!this.geminiProject) {
-        throw new Error("GOOGLE_CLOUD_PROJECT is required when LLM_PROVIDER=gemini");
+      if (!this.geminiApiKey && !this.geminiProject) {
+        throw new Error("GEMINI_API_KEY (or GOOGLE_CLOUD_PROJECT for Vertex AI) is required when LLM_PROVIDER=gemini");
       }
       this.model = this.geminiModel;
-      this.logger.log(`LLM Service initialized with Gemini Flash (${this.model}) on Vertex AI`);
+      const apiBackend = this.geminiApiKey ? 'Google AI API' : 'Vertex AI';
+      this.logger.log(`LLM Service initialized with Gemini (${this.model}) via ${apiBackend}`);
       // No OpenAI client needed for Gemini
     } else if (this.provider === "openai") {
       const apiKey = this.configService.get<string>("OPENAI_API_KEY");
@@ -176,7 +178,7 @@ export class LlmService {
     // Fallback enabled for non-Gemini providers (uses Gemini as fallback)
     this.fallbackEnabled = this.provider !== "gemini" &&
                            this.configService.get<string>("LLM_FALLBACK_ENABLED") !== "false" &&
-                           !!this.geminiProject;
+                           !!(this.geminiApiKey || this.geminiProject);
 
     if (this.fallbackEnabled) {
       this.logger.log(`Fallback LLM enabled: Gemini Flash (${this.geminiModel}) on Vertex AI`);
@@ -184,60 +186,51 @@ export class LlmService {
   }
 
   /**
-   * Call fallback LLM (Gemini Flash via Vertex AI)
-   * Used when primary LLM fails with rate limit, timeout, or server error
-   */
-  /**
-   * Call Gemini via Vertex AI - used as primary (when provider=gemini) or fallback
+   * Call Gemini via Google AI API (generativelanguage.googleapis.com).
+   * Used as primary when LLM_PROVIDER=gemini, or as fallback for other providers.
    */
   private async callGeminiLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, isPrimary: boolean = false, traceId?: string): Promise<string | null> {
-    if (!this.geminiProject) {
+    if (!this.geminiApiKey && !this.geminiProject) {
       return null;
     }
 
     try {
-      // Dynamic import to avoid requiring the package if not using Vertex AI
-      const { VertexAI } = await import("@google-cloud/vertexai");
+      const genLabel = isPrimary ? 'gemini_primary' : 'gemini_fallback';
+      const genInput = `[SYSTEM]\n${systemPrompt.substring(0, 500)}\n\n[USER]\n${userPrompt.substring(0, 500)}`;
+      const gen = this.observability.startGenerationById(traceId, genLabel, genInput, this.geminiModel);
 
-      const vertexAI = new VertexAI({
-        project: this.geminiProject,
-        location: this.geminiLocation,
-      });
+      let geminiPromise: Promise<string>;
 
-      const generativeModel = vertexAI.getGenerativeModel({
-        model: this.geminiModel,
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: maxTokens,
-        },
-      });
-
-      // Race the Gemini call against a timeout to prevent indefinite hangs
-      const geminiPromise = generativeModel.generateContent({
-        contents: [
-          { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
-        ],
-      });
+      if (this.geminiApiKey) {
+        // Google AI API (generativelanguage.googleapis.com) — preferred for gen-lang-client projects
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const client = new GoogleGenerativeAI(this.geminiApiKey);
+        const model = client.getGenerativeModel({
+          model: this.geminiModel,
+          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+        });
+        geminiPromise = model.generateContent(`${systemPrompt}\n\n${userPrompt}`)
+          .then(r => r.response.text() || "");
+      } else {
+        // Vertex AI fallback (for projects with Vertex AI access)
+        const { VertexAI } = await import("@google-cloud/vertexai");
+        const vertexAI = new VertexAI({ project: this.geminiProject, location: this.geminiLocation });
+        const model = vertexAI.getGenerativeModel({
+          model: this.geminiModel,
+          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+        });
+        geminiPromise = model.generateContent({
+          contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+        }).then(r => r.response.candidates?.[0]?.content?.parts?.[0]?.text || "");
+      }
 
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
       });
 
-      const genLabel = isPrimary ? 'gemini_primary' : 'gemini_fallback';
-      const genInput = `[SYSTEM]\n${systemPrompt.substring(0, 500)}\n\n[USER]\n${userPrompt.substring(0, 500)}`;
-      const gen = this.observability.startGenerationById(traceId, genLabel, genInput, this.geminiModel);
+      const text = await Promise.race([geminiPromise, timeoutPromise]);
 
-      const result = await Promise.race([geminiPromise, timeoutPromise]);
-
-      const response = result.response;
-      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const usage = response.usageMetadata;
-
-      this.observability.endGeneration(gen, text.substring(0, 1000), {
-        promptTokens: usage?.promptTokenCount,
-        completionTokens: usage?.candidatesTokenCount,
-        totalTokens: usage?.totalTokenCount,
-      });
+      this.observability.endGeneration(gen, text.substring(0, 1000), {});
 
       if (text && !isPrimary) {
         this.fallbackUsedCount++;
