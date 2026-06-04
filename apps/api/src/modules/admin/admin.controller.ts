@@ -217,10 +217,11 @@ export class AdminController {
   async approveNavigatorBatch(
     @Param("batchId") batchId: string,
     @Query("token") token: string,
+    @Query("approver") approver: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const result = await this.navigatorApprove.approveNavigatorBatch(batchId, token);
+      const result = await this.navigatorApprove.approveNavigatorBatch(batchId, token, approver);
 
       if (result.error === "Already approved") {
         res.status(200).send(this.buildApprovalHtml(
@@ -254,10 +255,11 @@ export class AdminController {
   async approveArticle(
     @Param("slug") slug: string,
     @Query("token") token: string,
+    @Query("approver") approver: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const { title } = await this.contentApprove.approveArticle(slug, token);
+      const { title } = await this.contentApprove.approveArticle(slug, token, approver);
       res.status(200).send(this.buildContentResponseHtml(
         "✓ Article Approved",
         `<strong>${slug}</strong> — "${title}" has been approved and will appear on the website after the next deploy.`,
@@ -281,10 +283,11 @@ export class AdminController {
   async rejectArticle(
     @Param("slug") slug: string,
     @Query("token") token: string,
+    @Query("approver") approver: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
     try {
-      const { title } = await this.contentApprove.rejectArticle(slug, token);
+      const { title } = await this.contentApprove.rejectArticle(slug, token, approver);
       res.status(200).send(this.buildContentResponseHtml(
         "Draft Rejected",
         `Article <strong>${slug}</strong> — "${title}" has been rejected and will not be published.`,

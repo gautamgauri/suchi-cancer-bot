@@ -234,9 +234,13 @@ export function buildReviewHtml(batch: ResearchTarget, token: string): string {
   ${cards}
 
   <div class="card" style="text-align:center;">
-    <p style="font-size:15px;color:#333;margin:0 0 20px;">
+    <p style="font-size:15px;color:#333;margin:0 0 16px;">
       Edit any hospital above, then approve the batch to add all ${batch.hospitals.slice(0, 5).length} to the directory.
     </p>
+    <div style="margin:0 auto 20px;max-width:320px;text-align:left;">
+      <label for="approver-name" style="display:block;font-size:12px;color:#555;margin-bottom:4px;">Your name (for audit log)</label>
+      <input id="approver-name" type="text" placeholder="e.g. Gautam" style="width:100%;padding:8px 10px;border:1px solid #dadce0;border-radius:4px;font-size:14px;font-family:Arial,sans-serif;">
+    </div>
     <button class="btn btn-approve" id="approve-btn" onclick="approveAll()">
       Approve All — Add to Directory
     </button>
@@ -330,7 +334,12 @@ export function buildReviewHtml(batch: ResearchTarget, token: string): string {
   }
 
   function approveAll() {
-    const approveUrl = API_BASE + '/admin/navigator/approve/' + BATCH_ID + '?token=' + TOKEN;
+    const nameInput = document.getElementById('approver-name');
+    const approverName = nameInput ? nameInput.value.trim() : '';
+    let approveUrl = API_BASE + '/admin/navigator/approve/' + BATCH_ID + '?token=' + TOKEN;
+    if (approverName) {
+      approveUrl += '&approver=' + encodeURIComponent(approverName);
+    }
     const btn = document.getElementById('approve-btn');
     btn.disabled = true;
     btn.textContent = 'Approving…';

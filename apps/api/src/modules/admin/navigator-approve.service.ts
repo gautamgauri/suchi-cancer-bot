@@ -361,6 +361,7 @@ export class NavigatorApproveService {
   async approveNavigatorBatch(
     batchId: string,
     token: string,
+    approver?: string,
   ): Promise<ApproveResult> {
     // -----------------------------------------------------------------------
     // 1. Verify HMAC token
@@ -477,7 +478,7 @@ export class NavigatorApproveService {
             ...b,
             status: "approved" as BatchStatus,
             approvedAt: new Date().toISOString(),
-            approvedBy: "email_approval",
+            approvedBy: approver ?? "portal_approval",
           }
         : b,
     );
