@@ -216,9 +216,8 @@ Return ONLY a valid JSON object — no markdown fences, no explanation:
 
 Tone: Compassionate, empowering, factual. Pan-India audience. Never state survival rates or definitive medical outcomes.`;
 
-    const raw = await this.llm.generate(
+    const raw = await this.llm.generateRaw(
       "You are a social media writer for an Indian cancer NGO. Output only the requested JSON.",
-      "",
       prompt,
     );
     const cleaned = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
@@ -231,9 +230,8 @@ Tone: Compassionate, empowering, factual. Pan-India audience. Never state surviv
 
   private async runSafetyGate(combinedCopy: string): Promise<string[]> {
     try {
-      const resp = await this.llm.generate(
+      const resp = await this.llm.generateRaw(
         "You are a medical content safety reviewer for a public health NGO.",
-        "",
         `Review this social media copy for potentially harmful medical content.
 
 Flag if it: states definitive survival rates, claims a treatment will cure cancer, advises starting/stopping treatment, makes diagnostic statements, or quotes specific rupee costs.

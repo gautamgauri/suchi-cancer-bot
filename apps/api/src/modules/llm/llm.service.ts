@@ -1149,6 +1149,17 @@ CITATION FORMAT:
   }
 
   /**
+   * Direct Gemini call without the RAG chat wrapper. Use this for structured
+   * output (JSON generation, classification) where the RAG framing would
+   * corrupt the prompt.
+   */
+  async generateRaw(systemPrompt: string, userPrompt: string, maxTokens = 2000): Promise<string> {
+    const result = await this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, true);
+    if (!result) throw new Error("Gemini returned no output");
+    return result;
+  }
+
+  /**
    * Legacy method for backward compatibility
    */
   async generate(systemPrompt: string, context: string, userMessage: string): Promise<string> {
