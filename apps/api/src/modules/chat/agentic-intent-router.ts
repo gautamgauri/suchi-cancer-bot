@@ -92,7 +92,9 @@ const PSYCHOSOCIAL_PATTERNS: RegExp[] = [
   /\b(scared|terrified|anxiety|panic)\b.*\b(cancer|diagnosis|treatment)\b/i,
   /\b(feel|feeling)\s+(so\s+)?(alone|isolated|lonely|lost|helpless)\b/i,
   /\b(need\s+someone|need\s+support|who\s+do\s+i\s+talk)\b/i,
-  /\b(support\s+group|counselor|counselling|therapy|therapist)\b/i,
+  /\b(support\s+group|counselor|counselling|therapist)\b/i,
+  // "therapy" alone matches "radiation therapy", "chemotherapy" etc — require mental health qualifier
+  /\b(talk|psychological|cognitive|CBT|grief|family)\s+therapy\b/i,
   /\bhow\s+do\s+i\s+tell\b.*\b(children|family|kids|spouse)\b/i,
   // Hindi
   /बहुत\s*(डर|डरा|चिंता|तनाव|अकेला)/i,
