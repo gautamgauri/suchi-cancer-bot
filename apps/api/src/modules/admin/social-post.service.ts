@@ -156,6 +156,11 @@ export class SocialPostService {
     const draft = queue.posts.find((p) => p.id === id);
     if (!draft) throw new NotFoundException(`Social post ${id} not found`);
 
+    if (draft.status === "published" || draft.status === "rejected") {
+      this.logger.warn(`Social post ${id} already ${draft.status} (by ${draft.approvedBy ?? draft.rejectedBy ?? "unknown"}) — ignoring duplicate click from ${approver ?? "unknown"}`);
+      return { title: draft.title, published: draft.approvedPlatforms ?? [], failed: [], approvedBy: draft.approvedBy };
+    }
+
     const targets = this.resolvePlatforms(platformsParam);
 
     const results: Record<Platform, PlatformResult> = {
@@ -195,6 +200,12 @@ export class SocialPostService {
     const queue = await this.loadQueue();
     const draft = queue.posts.find((p) => p.id === id);
     if (!draft) throw new NotFoundException(`Social post ${id} not found`);
+
+    if (draft.status === "published" || draft.status === "rejected") {
+      this.logger.warn(`Social post ${id} already ${draft.status} — ignoring duplicate reject from ${approver ?? "unknown"}`);
+      return { title: draft.title };
+    }
+
     draft.status = "rejected";
     draft.rejectedAt = new Date().toISOString();
     draft.rejectedBy = approver ?? "unknown";
