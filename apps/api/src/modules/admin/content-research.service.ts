@@ -291,7 +291,7 @@ export class ContentResearchService {
       slug: topic.slug,
       title: topic.title,
       contentType: topic.contentType,
-      status: "email_sent",
+      status: "sent_for_review",
       createdAt: new Date().toISOString(),
       approvalToken: token,
       emailSentAt: new Date().toISOString(),

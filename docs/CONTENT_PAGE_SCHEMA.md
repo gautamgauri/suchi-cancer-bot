@@ -45,8 +45,10 @@ const CONTENT_TYPES = [
   'journey', 'find_care', 'meta', 'resource',
 ] as const;
 
+// Canonical article lifecycle (FR-CONTENT-012 / OD-002).
+// 'safety_checked' is intentionally omitted — the article pipeline has no discrete safety-gate step.
 const REVIEW_STATUSES = [
-  'ai_draft', 'reviewed', 'published', 'flagged',
+  'ai_draft', 'sent_for_review', 'approved', 'rejected', 'published', 'archived',
 ] as const;
 
 // Cancer-type IDs — must stay in sync with apps/landing/src/content/videos.json's cancerTypes[].
@@ -136,19 +138,9 @@ export const collections = {
 
 ## 4. Required Sections by `content_type`
 
-The body of each article follows a section template determined by `content_type`. Sections are markdown `## H2` headings; their order is fixed. The CGP enforces presence; the eval gate enforces minimum word counts where required.
+**Canonical source:** [`docs/CONTENT_GUIDE.md`](CONTENT_GUIDE.md) — that document defines the required H2 sections, their order, minimum word counts, and Bihar-localisation rules for each `content_type`. This schema document does not duplicate those templates.
 
-| `content_type` | Required H2 sections (in order) |
-|---|---|
-| `cancer_type` | What is it · Common warning signs · Risk factors · When to seek medical attention · How is it diagnosed · Treatment basics · Questions to ask your doctor · When urgent care is needed · Related pages · Ask Suchi |
-| `symptom` | What this symptom can mean · Common non-cancer causes · When you should be concerned · What should you do · What may happen at the clinic · Questions to ask your doctor · When urgent care is needed · Related pages · Ask Suchi |
-| `test` | What this test is · Why it is used · How it is done · What to expect · Understanding results · Questions to ask your doctor · Related pages · Ask Suchi |
-| `treatment` | What this treatment is · Why it is used · How it is given · Common side effects · Important safety signs during treatment · What to ask before starting · Practical preparation tips · Related pages · Ask Suchi |
-| `side_effect` | What it is · Why it happens · Severity levels · When to call your doctor · Self-care · Questions to ask your doctor · Related pages · Ask Suchi |
-| `journey` | The situation · First practical steps · Common questions · India context · When to seek help · Questions to ask your doctor · Related pages · Ask Suchi |
-| `find_care` | Overview · What to check before visiting · Payment options · When urgent care is needed · Questions to ask · Related pages · Ask Suchi |
-| `meta` | Core questions · Treatment-related questions · Day-to-day questions · Reports and planning · Caregiver-specific questions · When urgent help is needed · Related pages · Ask Suchi |
-| `resource` | Varies by sub-type (FAQ list, glossary entries, downloadable references). Schema per sub-type to be added. |
+> **Why CONTENT_GUIDE.md is canonical:** It was written for the Bihar/pan-India patient-first audience and is the document editors, AI prompts, and the eval gate all reference. Maintaining a separate section table here caused drift (OD-005, now closed).
 
 ## 5. Hard Validation Rules
 

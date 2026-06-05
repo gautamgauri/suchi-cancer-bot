@@ -41,14 +41,14 @@ async function cmdAdd(slug: string, contentType: string, draftFilePath: string):
   if (existing) {
     existing.title = title;
     existing.contentType = contentType;
-    existing.status = "draft";
+    existing.status = "ai_draft";
     console.log(`Updated existing queue entry for "${slug}"`);
   } else {
     const entry: ArticleEntry = {
       slug,
       title,
       contentType,
-      status: "draft",
+      status: "ai_draft",
       createdAt: new Date().toISOString(),
     };
     articles.push(entry);
@@ -77,7 +77,7 @@ async function cmdSend(slug: string): Promise<void> {
     process.exit(1);
   }
 
-  if (entry.status === "email_sent") {
+  if (entry.status === "sent_for_review") {
     console.warn(`Warning: "${slug}" was already sent — resending...`);
   }
 
@@ -85,19 +85,19 @@ async function cmdSend(slug: string): Promise<void> {
   const result = await sendArticleReviewEmail(entry, markdown);
 
   entry.approvalToken = result.approvalToken;
-  entry.status = "email_sent";
+  entry.status = "sent_for_review";
   entry.emailSentAt = new Date().toISOString();
   await saveQueue(QUEUE_PATH, articles);
 
   if (result.emailSent) {
     console.log(`\nReview email sent for "${slug}"`);
     console.log(`To: gautamgauri@dikshafoundation.org, divya.vats@dikshafoundation.org`);
-    console.log(`Status → email_sent`);
+    console.log(`Status → sent_for_review`);
   } else if (result.emailError) {
     console.error(`\nEmail failed: ${result.emailError}`);
     process.exit(1);
   } else {
-    console.log(`\nSMTP not configured — email skipped. Status → email_sent (token saved)`);
+    console.log(`\nSMTP not configured — email skipped. Status → sent_for_review (token saved)`);
   }
 }
 
@@ -154,9 +154,11 @@ async function cmdPublish(): Promise<void> {
     const markdown = await downloadDraft(entry.slug);
     const outPath = path.join(ARTICLES_DIR, `${entry.slug}.md`);
     await fs.writeFile(outPath, markdown, "utf-8");
+    entry.status = "published";
     console.log(`Published: ${outPath}`);
   }
 
+  await saveQueue(QUEUE_PATH, articles);
   console.log(`\n${approved.length} article(s) written to ${ARTICLES_DIR}`);
   console.log(`Next: commit and deploy the landing app.`);
 }

@@ -56,7 +56,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 
 | Req ID | Description | Implementation | Verification | Impl. Status | Verif. Status |
 |---|---|---|---|---|---|
-| FR-CONTENT-001 | CONTENT_GUIDE.md 7-section structure (provisional — OD-005) | AI prompt references guide | Manual only | Partial | Manual only |
+| FR-CONTENT-001 | CONTENT_GUIDE.md 7-section structure | AI prompt references guide; `CONTENT_PAGE_SCHEMA.md` section 4 references guide | Manual only | Implemented | Manual only |
 | FR-CONTENT-002 | Articles as markdown with frontmatter | `content/drafts/*.md` | Manual only | Implemented | Manual only |
 | FR-CONTENT-003 | New articles added to content-queue.json | `content/queue-manager.ts` | No test | Implemented | Untested |
 | FR-CONTENT-004 | Review triggered by email with Approve/Reject links | `admin/content-post.service.ts` | Manual only | Implemented | Manual only |
@@ -67,7 +67,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 | FR-CONTENT-009 | Approval endpoints idempotent | **Not implemented** — no duplicate-click guard | — | Missing | — |
 | FR-CONTENT-010 | Publish writes to landing/content | `content/cli.ts publish` (manual CLI) | Manual only | Partial | Manual only |
 | FR-CONTENT-011 | Published articles live after suchi-web deploy | Manual process; no automation (OD-001) | Manual only | Partial | Manual only |
-| FR-CONTENT-012 | Canonical lifecycle terms used consistently | **Not implemented** — lifecycle values inconsistent across queue/frontmatter (OD-002) | — | Missing | — |
+| FR-CONTENT-012 | Canonical lifecycle terms used consistently | `content/types.ts` `ArticleStatus`; `content/cli.ts`; `content-research.service.ts`; `CONTENT_PAGE_SCHEMA.md` `REVIEW_STATUSES` | No test | Implemented | Untested |
 
 ---
 
@@ -159,7 +159,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 |---|---|---|---|---|---|
 | FR-AUDIT-001 | Conversations in PostgreSQL | `conversation` + `message` tables | No test | Implemented | Untested |
 | FR-AUDIT-002 | Safety events in safetyEvent table | `SafetyService` | No test | Implemented | Untested |
-| FR-AUDIT-003 | Article actions with reviewer name + timestamp | **Partial** — timestamp stored; reviewer name missing (OD-006) | — | Partial | Untested |
+| FR-AUDIT-003 | Article actions with reviewer name + timestamp | `content-approve.service.ts` `approvedBy`/`rejectedBy`; `content-research.service.ts` `?approver=` in emails | No test | Implemented | Untested |
 | FR-AUDIT-004 | Social post actions with reviewer name + timestamp | `social-queue.json` `approvedBy`, `approvedAt` | Manual only | Implemented | Manual only |
 | FR-AUDIT-005 | Hospital approvals with reviewer name + timestamp | **Not implemented** (OD-006) | — | Missing | — |
 | FR-AUDIT-006 | GCS queues consistent with API state | Queue updated atomically in service layer | No test | Implemented | Untested |
@@ -173,14 +173,14 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 |---|---|---|---|---|
 | Chat | 19 | 19 | 0 | 0 |
 | Voice | 6 | 6 | 0 | 0 |
-| Content Pipeline | 12 | 7 | 3 | 2 |
+| Content Pipeline | 12 | 10 | 1 | 1 |
 | Hospital Directory | 8 | 5 | 1 | 2 |
 | Social Publishing | 13 | 9 | 0 | 4 |
 | Admin + Review | 4 | 3 | 0 | 0 (1 N/A) |
 | Safety | 7 | 5 | 0 | 1 |
 | Non-Functional | 14 | 11 | 3 | 0 |
-| Audit | 7 | 3 | 1 | 3 |
-| **Total** | **90** | **68** | **8** | **12** |
+| Audit | 7 | 5 | 0 | 2 |
+| **Total** | **90** | **73** | **5** | **10** |
 
 ### Verification coverage (implementation-status ≥ Partial)
 
@@ -203,9 +203,7 @@ Only 5 of 83 implemented/partial requirements have automated tests. This is the 
 | P0 | FR-CONTENT-007 | Content approval captures reviewer name | OD-006 |
 | P0 | FR-HOSP-007 / FR-AUDIT-005 | Hospital approval captures reviewer name | OD-006 |
 | P0 | FR-CONTENT-009 | Content approval endpoint idempotency | — |
-| P1 | FR-SOCIAL-006 | Hide unconfigured platform buttons | OD-008 |
-| P1 | FR-CONTENT-012 | Canonical lifecycle terms applied consistently | OD-002 |
-| P1 | FR-AUDIT-003 | Article audit trail complete | OD-006 |
+| P1 | FR-AUDIT-007 | Draft expiry + reminder emails | OD-007 |
 | P2 | FR-AUDIT-007 | Draft expiry + reminder emails | OD-007 |
 | P2 | FR-CONTENT-010/011 | Automated article publish (daily scheduled) | OD-001 |
 

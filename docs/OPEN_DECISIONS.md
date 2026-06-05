@@ -26,27 +26,19 @@ Review this doc before starting any significant new feature. Mark items **RESOLV
 
 ## OD-002 — Three separate article lifecycles with inconsistent status names
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Content pipeline
 
-**Current state:** Three different status schemas exist in the codebase:
+**Resolution:** Article pipeline aligned to canonical lifecycle in `content/types.ts`, `content/cli.ts`, `apps/api/src/modules/admin/content-research.service.ts`, and `docs/CONTENT_PAGE_SCHEMA.md` (FR-CONTENT-012).
 
-| Location | Status values |
+| Location | Status values (after fix) |
 |---|---|
-| `content-queue.json` (content pipeline) | `pending`, `approved`, `rejected` |
-| Article frontmatter (schema) | `ai_draft`, `reviewed`, `published`, `flagged` |
-| Social queue | `sent_for_approval`, `approved`, `rejected`, `published`, `failed` |
-| Navigator queue | `pending`, `researched`, `email_sent`, `approved`, `rejected` |
+| `content-queue.json` (content pipeline) | `ai_draft`, `sent_for_review`, `approved`, `rejected`, `published`, `archived` |
+| Article frontmatter `review_status` | same canonical set (updated in `CONTENT_PAGE_SCHEMA.md`) |
+| Social queue | `sent_for_approval`, `approved`, `rejected`, `published`, `failed` (unchanged — different object type) |
+| Navigator queue | `pending`, `researched`, `email_sent`, `approved`, `rejected` (unchanged — different object type) |
 
-**Problem:** Docs and code use these interchangeably, causing confusion about which state an article is actually in and what actions are available.
-
-**Recommendation:** Adopt one canonical lifecycle for articles and map each pipeline to it:
-
-```
-ai_draft → safety_checked → sent_for_review → approved | rejected → published | archived
-```
-
-The social post and navigator pipelines can retain their own states since they represent different object types, but the article pipeline should reconcile `content-queue.json` states with frontmatter `review_status`.
+`safety_checked` step omitted from article type — no discrete safety gate in the article pipeline.
 
 ---
 
@@ -98,8 +90,10 @@ Implementation: safety gate returns a `severity` field; `critical` severity prev
 
 ## OD-005 — Article structure: content guide vs. schema doc have different section templates
 
-**Status:** Partially resolved — `CONTENT_GUIDE.md` declared canonical in `REQUIREMENTS.md` FR-CONTENT-001 (provisional). Remaining action: update `CONTENT_PAGE_SCHEMA.md` to reference `CONTENT_GUIDE.md` rather than defining a separate template, then mark FR-CONTENT-001 non-provisional and close this decision.  
+**Status:** Closed (Jun 2026)  
 **Area:** Content
+
+**Resolution:** `CONTENT_PAGE_SCHEMA.md` section 4 now references `CONTENT_GUIDE.md` rather than maintaining a duplicate section template. `FR-CONTENT-001` marked non-provisional in `REQUIREMENTS.md`.
 
 **Current state:**
 
@@ -131,12 +125,10 @@ Implementation: safety gate returns a `severity` field; `critical` severity prev
 
 ## OD-006 — Article approval does not capture reviewer name
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Audit / content pipeline
 
-**Current state:** When an article is approved, `approvedBy` is hardcoded to the string `"email_approval"`. Actual reviewer name is not captured. Social posts do capture the approver name (fixed June 2026). Navigator approvals do not capture reviewer name.
-
-**Recommendation:** Apply the same `?approver=Name` pattern used for social posts to the article and navigator approval emails.
+**Resolution:** `?approver=Name` pattern applied to article approval/rejection emails (`content-research.service.ts`) and to approval endpoints (`content-approve.service.ts`). `approvedBy`/`rejectedBy` now store actual reviewer name. Navigator approvals already captured reviewer name (FR-HOSP-007). See P0 sprint commit.
 
 ---
 
