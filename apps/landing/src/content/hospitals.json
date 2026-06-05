@@ -1,30 +1,30 @@
 {
   "_meta": {
     "version": "v0.2",
-    "last_updated": "2026-05-13",
+    "last_updated": "2026-05-18",
     "total_hospitals": 83,
-    "description": "Suchi Navigator hospital directory. Editable source of truth \u2014 one object per hospital. Sync to Google Sheet later if needed.",
+    "description": "Suchi Navigator hospital directory. Editable source of truth — one object per hospital. Sync to Google Sheet later if needed.",
     "scoring": {
       "quality": "TMC/NCG full member=50, AIIMS=40, NABH full=30, NABH recommended=20, Govt tertiary=20, Private multi-specialty=10",
       "cost": "Low (govt/trust)=30, Medium=20, High=10",
       "location": "East India state=10, elsewhere=0",
       "pmjay": "Yes=10, No/Unknown=0",
-      "sccf_affiliation": "Reserved \u2014 add +20 once conference doctor list obtained from Divya",
+      "sccf_affiliation": "Reserved — add +20 once conference doctor list obtained from Divya",
       "risk_flag": "Verified concern=-30",
       "max_score": 100
     },
     "todo": [
       "Add SCCF affiliation scores once conference attendee list obtained from divya.vats@dikshafoundation.org",
-      "Add Tata Main Hospital Jamshedpur (MTMH) \u2014 Tata Trusts oncology unit, NCG member suspected",
+      "Add Tata Main Hospital Jamshedpur (MTMH) — Tata Trusts oncology unit, NCG member suspected",
       "Add Northeast hospitals: Agartala, Imphal, Shillong cancer centres",
       "Verify PMJAY empanelment status for private hospitals (Paras, Medanta, HCG, Apollo)",
       "Add phone numbers for missing entries (AIIMS Kalyani, Apollo Kolkata, HBCH Varanasi)",
       "Add key_doctors for CNCI, BBCI, RCHRC, AIIMS Bhubaneswar once faculty lists confirmed",
-      "Verify PMJAY status for Odisha hospitals \u2014 Odisha uses BSKY scheme not central PMJAY",
+      "Verify PMJAY status for Odisha hospitals — Odisha uses BSKY scheme not central PMJAY",
       "Promote AIIMS Kalyani from risk_flag once radiation capacity confirmed (LINAC since Feb 2024)"
     ],
     "fields": {
-      "tier": "A=Major comprehensive cancer centre (TMC units, AIIMS, full RCCs); B=Strong regional multispecialty oncology; C=Limited (1-2 services only); D=Internal flag \u2014 avoid for complex care",
+      "tier": "A=Major comprehensive cancer centre (TMC units, AIIMS, full RCCs); B=Strong regional multispecialty oncology; C=Limited (1-2 services only); D=Internal flag — avoid for complex care",
       "cost_ranges": "INR cost estimates: opd_min/max per visit, chemo_day_min/max per day-care session, surgery_package_min/max for major surgery. null = unknown.",
       "logistics": "nearest_railway, nearest_airport (with km distance), lodging_nearby (bool), patient_guesthouse (bool), languages spoken, telemedicine availability",
       "trust_signals": "tumor_board (bool), case_volume_annual (string estimate), academic_affiliation (string)",
@@ -59,7 +59,7 @@
         "address": "Muzaffarpur, Bihar"
       },
       "key_doctors": [],
-      "notes": "Unit of Tata Memorial Centre (TMC) Mumbai \u2014 operates under TMH standards. Closest TMC-network hospital for North Bihar patients. Highly recommended first stop for North Bihar.",
+      "notes": "Unit of Tata Memorial Centre (TMC) Mumbai — operates under TMH standards. Closest TMC-network hospital for North Bihar patients. Highly recommended first stop for North Bihar.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 90,
@@ -101,8 +101,8 @@
       },
       "navigation_notes": [
         "First choice for North Bihar patients (Muzaffarpur, Sitamarhi, Vaishali, Sheohar, Gopalganj)",
-        "TMC standard protocols and staff \u2014 same quality as Tata Memorial Mumbai",
-        "Government rates \u2014 free or near-free for most patients"
+        "TMC standard protocols and staff — same quality as Tata Memorial Mumbai",
+        "Government rates — free or near-free for most patients"
       ]
     },
     {
@@ -138,7 +138,7 @@
       "key_doctors": [
         {
           "name": "Dr. Manisha Singh",
-          "role": "Medical Director & HOD Medical Oncology \u2014 DNB, ESMO certified"
+          "role": "Medical Director & HOD Medical Oncology — DNB, ESMO certified"
         },
         {
           "name": "Dr. Vinita Trivedi",
@@ -146,11 +146,11 @@
         },
         {
           "name": "Dr. Chiranjiva Khandelwal",
-          "role": "HOD Surgical Oncology \u2014 FRCS qualified"
+          "role": "HOD Surgical Oncology — FRCS qualified"
         },
         {
           "name": "Dr. Biswajit Sanyal",
-          "role": "Director Administration \u2014 veteran radiation oncologist"
+          "role": "Director Administration — veteran radiation oncologist"
         }
       ],
       "notes": "Bihar's dedicated super-specialty cancer centre. 618 beds. Free treatment for children under 18. Rs 10,000 grant for low-income adults. Dharmashala (low-cost lodging) available for outstation patients. ~7km from Patna Junction.",
@@ -194,15 +194,15 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Dharmashala on-campus \u2014 affordable lodging for outstation patients",
+        "Dharmashala on-campus — affordable lodging for outstation patients",
         "Free treatment for children under 18",
-        "Rs 10,000 grant for low-income adults \u2014 ask at registration counter",
-        "618 beds \u2014 Bihar's largest dedicated cancer hospital"
+        "Rs 10,000 grant for low-income adults — ask at registration counter",
+        "618 beds — Bihar's largest dedicated cancer hospital"
       ]
     },
     {
       "id": "paras-hmri-patna",
-      "name": "Paras HMRI Hospital \u2014 Paras Cancer Centre",
+      "name": "Paras HMRI Hospital — Paras Cancer Centre",
       "short_name": "Paras HMRI Patna",
       "city": "Patna",
       "state": "Bihar",
@@ -230,26 +230,26 @@
       "key_doctors": [
         {
           "name": "Dr. Abhishek Anand",
-          "role": "Director & HOD Medical Oncology \u2014 DM Medical Oncology, solid tumors, lymphomas, stem cell transplants"
+          "role": "Director & HOD Medical Oncology — DM Medical Oncology, solid tumors, lymphomas, stem cell transplants"
         },
         {
           "name": "Dr. Shekhar Kumar Keshri",
-          "role": "Director & HOD Radiation Oncology \u2014 21+ years, SBRT, SRS"
+          "role": "Director & HOD Radiation Oncology — 21+ years, SBRT, SRS"
         },
         {
           "name": "Dr. Mitali Dandekar Lall",
-          "role": "Chief Consultant & HOD Surgical Oncology \u2014 Head & Neck specialist"
+          "role": "Chief Consultant & HOD Surgical Oncology — Head & Neck specialist"
         },
         {
           "name": "Dr. R. N. Tagore",
-          "role": "Chief Consultant Medical Oncology \u2014 31 years experience"
+          "role": "Chief Consultant Medical Oncology — 31 years experience"
         },
         {
           "name": "Dr. Mosarrat Shaheen",
-          "role": "Consultant Medical Oncology \u2014 Precision Oncology, immunotherapy"
+          "role": "Consultant Medical Oncology — Precision Oncology, immunotherapy"
         }
       ],
-      "notes": "First NABH-accredited hospital in Bihar. Has LINAC, PET-CT, Gamma Camera. Bone marrow transplant for leukemia/lymphoma. High cost \u2014 check PMJAY empanelment before visiting.",
+      "notes": "First NABH-accredited hospital in Bihar. Has LINAC, PET-CT, Gamma Camera. Bone marrow transplant for leukemia/lymphoma. High cost — check PMJAY empanelment before visiting.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 50,
@@ -290,7 +290,7 @@
       },
       "navigation_notes": [
         "First NABH-accredited hospital in Bihar",
-        "Verify PMJAY empanelment before visiting \u2014 private rates are high",
+        "Verify PMJAY empanelment before visiting — private rates are high",
         "Strong for bone marrow transplant (BMT) for leukemia and lymphoma"
       ]
     },
@@ -328,23 +328,23 @@
       "key_doctors": [
         {
           "name": "Dr. Ravi Shankar Singh",
-          "role": "Medical Director & Senior Medical Oncologist \u2014 solid tumors"
+          "role": "Medical Director & Senior Medical Oncologist — solid tumors"
         },
         {
           "name": "Dr. Rajiv Ranjan Prasad",
-          "role": "Director Radiation Oncology \u2014 30+ years, IMRT, IGRT, SRS"
+          "role": "Director Radiation Oncology — 30+ years, IMRT, IGRT, SRS"
         },
         {
           "name": "Dr. Sundeep Kumar",
-          "role": "Associate Director Surgical Oncology \u2014 GI, Gynae, Head & Neck, robotic"
+          "role": "Associate Director Surgical Oncology — GI, Gynae, Head & Neck, robotic"
         },
         {
           "name": "Dr. Amarendra Amar",
-          "role": "Associate Director Medical Oncology \u2014 prostate, breast, immunotherapy"
+          "role": "Associate Director Medical Oncology — prostate, breast, immunotherapy"
         },
         {
           "name": "Dr. Niharika Roy",
-          "role": "Senior Consultant Breast Services \u2014 oncoplastic surgery"
+          "role": "Senior Consultant Breast Services — oncoplastic surgery"
         }
       ],
       "notes": "Largest private hospital in Patna. NABH + NABL. Has Varian Edge radiation machine (first in Eastern India). Da Vinci robotic surgery for oncology. High cost.",
@@ -387,8 +387,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Largest private hospital in Patna \u2014 strong across all oncology sub-specialties",
-        "Varian Edge radiation machine \u2014 first in Eastern India",
+        "Largest private hospital in Patna — strong across all oncology sub-specialties",
+        "Varian Edge radiation machine — first in Eastern India",
         "Da Vinci robotic surgery available for oncology"
       ]
     },
@@ -405,7 +405,7 @@
       ],
       "ncg_member": false,
       "tmc_affiliated": false,
-      "specialization": "Surgical & Medical Oncology \u2014 Robotic Surgery",
+      "specialization": "Surgical & Medical Oncology — Robotic Surgery",
       "departments": [
         "medical_oncology",
         "surgical_oncology",
@@ -433,7 +433,7 @@
           "role": "Consultant Robotic & Thoracic Surgery"
         }
       ],
-      "notes": "450-bed quaternary care. High-volume robotic surgery centre for prostate, kidney, colorectal, gynecologic cancers. Strong for surgical cases \u2014 limited medical oncology compared to Paras/Medanta.",
+      "notes": "450-bed quaternary care. High-volume robotic surgery centre for prostate, kidney, colorectal, gynecologic cancers. Strong for surgical cases — limited medical oncology compared to Paras/Medanta.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 50,
@@ -473,8 +473,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "High-volume robotic surgery centre \u2014 strong for prostate, kidney, colorectal, gynecologic cancers",
-        "Limited medical oncology compared to Paras/Medanta \u2014 best for surgical cases",
+        "High-volume robotic surgery centre — strong for prostate, kidney, colorectal, gynecologic cancers",
+        "Limited medical oncology compared to Paras/Medanta — best for surgical cases",
         "Verify PMJAY empanelment before visiting"
       ]
     },
@@ -508,22 +508,22 @@
       "key_doctors": [
         {
           "name": "Dr. Arvind Kumar",
-          "role": "Founder Director & Senior Medical Oncologist \u2014 first DM Medical Oncology in Bihar, AIIMS Delhi alumnus"
+          "role": "Founder Director & Senior Medical Oncologist — first DM Medical Oncology in Bihar, AIIMS Delhi alumnus"
         },
         {
           "name": "Dr. Rahul Kumar Chaudhary",
-          "role": "Surgical Oncology \u2014 gallbladder cancer specialist, fellowship Japan"
+          "role": "Surgical Oncology — gallbladder cancer specialist, fellowship Japan"
         },
         {
           "name": "Dr. Rayaz Ahmed",
-          "role": "Senior Hematologist \u2014 DM CMC Vellore, bone marrow transplants"
+          "role": "Senior Hematologist — DM CMC Vellore, bone marrow transplants"
         },
         {
           "name": "Dr. Tanveer Abdul Majeed",
-          "role": "Surgical Oncologist \u2014 GI and Thoracic"
+          "role": "Surgical Oncologist — GI and Thoracic"
         }
       ],
-      "notes": "NABH Recommended (Nov 2023). Has NGS genetic testing. Dedicated pain & palliative care clinic. Medium cost \u2014 more affordable than Paras/Medanta for medical oncology cases.",
+      "notes": "NABH Recommended (Nov 2023). Has NGS genetic testing. Dedicated pain & palliative care clinic. Medium cost — more affordable than Paras/Medanta for medical oncology cases.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 40,
@@ -564,7 +564,7 @@
       },
       "navigation_notes": [
         "More affordable than Paras/Medanta for medical oncology",
-        "NGS genetic testing available \u2014 useful for targeted therapy decisions",
+        "NGS genetic testing available — useful for targeted therapy decisions",
         "Dedicated palliative care clinic"
       ]
     },
@@ -596,18 +596,18 @@
       "key_doctors": [
         {
           "name": "Dr. J.K. Singh",
-          "role": "Director & Senior Oncologist \u2014 Padma Shri awardee, 49+ years experience"
+          "role": "Director & Senior Oncologist — Padma Shri awardee, 49+ years experience"
         },
         {
           "name": "Dr. Tanveer Majid",
-          "role": "Surgical Oncologist \u2014 29+ years"
+          "role": "Surgical Oncologist — 29+ years"
         },
         {
           "name": "Dr. Sweta Das",
-          "role": "Medical & Clinical Oncology \u2014 also Clinical Geneticist"
+          "role": "Medical & Clinical Oncology — also Clinical Geneticist"
         }
       ],
-      "notes": "NABH Recommended (Apr 2024). Led by Dr. J.K. Singh \u2014 Padma Shri, one of Bihar's most respected oncologists. Day-care chemo unit with zero drug wastage policy.",
+      "notes": "NABH Recommended (Apr 2024). Led by Dr. J.K. Singh — Padma Shri, one of Bihar's most respected oncologists. Day-care chemo unit with zero drug wastage policy.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 40,
@@ -646,9 +646,9 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Led by Dr. J.K. Singh \u2014 Padma Shri awardee, one of Bihar's most respected oncologists",
-        "Medical and surgical oncology only \u2014 no radiation on site",
-        "Day-care chemo unit \u2014 suitable for outpatient chemotherapy"
+        "Led by Dr. J.K. Singh — Padma Shri awardee, one of Bihar's most respected oncologists",
+        "Medical and surgical oncology only — no radiation on site",
+        "Day-care chemo unit — suitable for outpatient chemotherapy"
       ]
     },
     {
@@ -685,7 +685,7 @@
           "role": "Radiation Oncology"
         }
       ],
-      "notes": "Designated Regional Cancer Centre. Subsidized / free treatment for low-income patients. OPD Mon\u2013Fri 8:30am\u20134:30pm, Sat till noon. Not NABH accredited. Quality variable \u2014 recommended as option when Mahavir/AIIMS Patna is not accessible.",
+      "notes": "Designated Regional Cancer Centre. Subsidized / free treatment for low-income patients. OPD Mon–Fri 8:30am–4:30pm, Sat till noon. Not NABH accredited. Quality variable — recommended as option when Mahavir/AIIMS Patna is not accessible.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 40,
@@ -696,7 +696,7 @@
         "pmjay": 10,
         "risk": -30
       },
-      "risk_flag": "Quality concerns \u2014 use with caution; verify department capacity before referral",
+      "risk_flag": "Quality concerns — use with caution; verify department capacity before referral",
       "verified_date": "2026-04-30",
       "status": "active",
       "tier": "B",
@@ -726,8 +726,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Designated Regional Cancer Centre \u2014 PMJAY accepted",
-        "Quality variable \u2014 use when AIIMS Patna or Mahavir Cancer Sansthan not accessible",
+        "Designated Regional Cancer Centre — PMJAY accepted",
+        "Quality variable — use when AIIMS Patna or Mahavir Cancer Sansthan not accessible",
         "Verify radiation department capacity before referral"
       ]
     },
@@ -744,7 +744,7 @@
       ],
       "ncg_member": false,
       "tmc_affiliated": false,
-      "specialization": "Surgical Oncology \u2014 Uro-Oncology",
+      "specialization": "Surgical Oncology — Uro-Oncology",
       "departments": [
         "surgical_oncology",
         "uro_oncology"
@@ -759,11 +759,11 @@
       "key_doctors": [
         {
           "name": "Dr. Sanjay Singh",
-          "role": "Senior Consultant \u2014 General Surgery & Oncology"
+          "role": "Senior Consultant — General Surgery & Oncology"
         },
         {
           "name": "Dr. Siddharth Jai Singh",
-          "role": "Consultant Urologist \u2014 kidney, bladder, prostate cancers"
+          "role": "Consultant Urologist — kidney, bladder, prostate cancers"
         }
       ],
       "notes": "First NABH-accredited hospital in Bhagalpur. Best option for surgical oncology and uro-oncology for patients in East Bihar (Bhagalpur, Munger, Banka). Refer to Patna/Muzaffarpur for radiation or medical oncology.",
@@ -807,7 +807,7 @@
       },
       "navigation_notes": [
         "Best surgical oncology option for East Bihar (Bhagalpur, Munger, Banka)",
-        "No radiation or medical oncology \u2014 refer to Patna or Muzaffarpur for those needs",
+        "No radiation or medical oncology — refer to Patna or Muzaffarpur for those needs",
         "First NABH-accredited hospital in Bhagalpur"
       ]
     },
@@ -878,8 +878,8 @@
         "academic_affiliation": "Narayana Health"
       },
       "navigation_notes": [
-        "Part of Narayana Health national network \u2014 doctor list needs verification",
-        "NABH Recommended (Feb 2025) \u2014 newer, still establishing reputation"
+        "Part of Narayana Health national network — doctor list needs verification",
+        "NABH Recommended (Feb 2025) — newer, still establishing reputation"
       ]
     },
     {
@@ -912,7 +912,7 @@
           "role": "DM Oncology, ex-Tata Memorial"
         }
       ],
-      "notes": "NABH Accredited. Dr. Rohan Singh trained at Tata Memorial. Limited to medical oncology \u2014 refer surgical cases elsewhere.",
+      "notes": "NABH Accredited. Dr. Rohan Singh trained at Tata Memorial. Limited to medical oncology — refer surgical cases elsewhere.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 40,
@@ -923,7 +923,7 @@
         "pmjay": 0,
         "risk": -20
       },
-      "risk_flag": "Limited departments \u2014 medical oncology only, no radiation or surgical oncology on site",
+      "risk_flag": "Limited departments — medical oncology only, no radiation or surgical oncology on site",
       "verified_date": "2026-04-30",
       "status": "incomplete_departments",
       "tier": "C",
@@ -953,8 +953,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Medical oncology only \u2014 no radiation or surgical oncology on site",
-        "Dr. Rohan Singh trained at Tata Memorial \u2014 good for second opinion on chemo protocol",
+        "Medical oncology only — no radiation or surgical oncology on site",
+        "Dr. Rohan Singh trained at Tata Memorial — good for second opinion on chemo protocol",
         "Refer surgical cases to Paras, Medanta, or Mahavir"
       ]
     },
@@ -971,7 +971,7 @@
       ],
       "ncg_member": false,
       "tmc_affiliated": false,
-      "specialization": "Comprehensive \u2014 North Bengal's only dedicated cancer centre",
+      "specialization": "Comprehensive — North Bengal's only dedicated cancer centre",
       "departments": [
         "medical_oncology",
         "surgical_oncology",
@@ -991,18 +991,18 @@
       "key_doctors": [
         {
           "name": "Dr. Arkoprovo Halder",
-          "role": "Medical Oncology \u2014 DM"
+          "role": "Medical Oncology — DM"
         },
         {
           "name": "Dr. Chinnu Jomi",
-          "role": "Medical Oncology \u2014 DrNB, MRCP (SCE) UK"
+          "role": "Medical Oncology — DrNB, MRCP (SCE) UK"
         },
         {
           "name": "Dr. Nishana Paul",
-          "role": "Radiation Oncology \u2014 DNB"
+          "role": "Radiation Oncology — DNB"
         }
       ],
-      "notes": "North Bengal's only comprehensive dedicated cancer hospital \u2014 formerly Medica Cancer Centre (est. 2014), acquired and rebranded by Manipal Hospitals in 2024. Located 14 km from Siliguri city centre. Halcyon LINAC, VMAT, IMRT, brachytherapy, robotic surgery, 150+ radiation sessions daily. 140+ beds. NABH accredited. Best all-round cancer facility in the Siliguri region for Bihar, Sikkim, and Northeast patients transiting through the Siliguri corridor. High cost \u2014 check insurance coverage before admission.",
+      "notes": "North Bengal's only comprehensive dedicated cancer hospital — formerly Medica Cancer Centre (est. 2014), acquired and rebranded by Manipal Hospitals in 2024. Located 14 km from Siliguri city centre. Halcyon LINAC, VMAT, IMRT, brachytherapy, robotic surgery, 150+ radiation sessions daily. 140+ beds. NABH accredited. Best all-round cancer facility in the Siliguri region for Bihar, Sikkim, and Northeast patients transiting through the Siliguri corridor. High cost — check insurance coverage before admission.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 50,
@@ -1046,7 +1046,7 @@
       "navigation_notes": [
         "North Bengal's only comprehensive dedicated cancer hospital",
         "Accessible from Bihar via NJP station (trains from Patna/Muzaffarpur)",
-        "High cost \u2014 verify insurance before admission",
+        "High cost — verify insurance before admission",
         "Best all-round cancer facility in Siliguri region for Bihar/Sikkim/Northeast patients"
       ]
     },
@@ -1087,30 +1087,30 @@
       "key_doctors": [
         {
           "name": "Dr. Saptarshi Ghosh",
-          "role": "Founder, Radiation Oncology \u2014 MD, FRCR (UK)"
+          "role": "Founder, Radiation Oncology — MD, FRCR (UK)"
         },
         {
           "name": "Dr. Vishal Mukherjee",
-          "role": "Surgical Oncology \u2014 DrNB"
+          "role": "Surgical Oncology — DrNB"
         },
         {
           "name": "Dr. Bramhanand A. Bhangargi",
-          "role": "Surgical Oncology \u2014 DrNB"
+          "role": "Surgical Oncology — DrNB"
         },
         {
           "name": "Dr. Thiruvengadaswamy Kannan",
-          "role": "Medical Oncology \u2014 DM"
+          "role": "Medical Oncology — DM"
         },
         {
           "name": "Dr. Mainak Deb",
-          "role": "Medical Oncology \u2014 DrNB"
+          "role": "Medical Oncology — DrNB"
         },
         {
           "name": "Rajesh Mishra",
-          "role": "Nuclear Medicine \u2014 MD"
+          "role": "Nuclear Medicine — MD"
         }
       ],
-      "notes": "NABH + NABL dedicated cancer hospital near Siliguri (Fulbari area). Halcyon-E LINAC, first GE 3-Ring PET-CT in North Bengal, full surgical and medical oncology team. Strong fellowship-trained doctors. Medium cost positioning. Located near the Fulbari border crossing \u2014 strategically close to Kishanganj, Araria, Purnea, and Katihar in Bihar, making it a practical first-stop for North Bihar patients who cannot travel to Kolkata.",
+      "notes": "NABH + NABL dedicated cancer hospital near Siliguri (Fulbari area). Halcyon-E LINAC, first GE 3-Ring PET-CT in North Bengal, full surgical and medical oncology team. Strong fellowship-trained doctors. Medium cost positioning. Located near the Fulbari border crossing — strategically close to Kishanganj, Araria, Purnea, and Katihar in Bihar, making it a practical first-stop for North Bihar patients who cannot travel to Kolkata.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 60,
@@ -1152,9 +1152,9 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Near Fulbari border \u2014 practical option for Kishanganj, Araria, Purnea, Katihar patients",
-        "First GE 3-Ring PET-CT in North Bengal \u2014 good for staging",
-        "NABH + NABL \u2014 medium cost, more affordable than Manipal Rangapani"
+        "Near Fulbari border — practical option for Kishanganj, Araria, Purnea, Katihar patients",
+        "First GE 3-Ring PET-CT in North Bengal — good for staging",
+        "NABH + NABL — medium cost, more affordable than Manipal Rangapani"
       ]
     },
     {
@@ -1191,7 +1191,7 @@
           "role": "Haemato-Oncology"
         }
       ],
-      "notes": "NABH + NABL accredited 304-bed hospital (NABH received Nov 2024). Located adjacent to NBMCH government medical college. All four oncology branches listed. Surgical oncologist not publicly named \u2014 verify surgical oncology availability before referral. Good medium-cost option in central Siliguri.",
+      "notes": "NABH + NABL accredited 304-bed hospital (NABH received Nov 2024). Located adjacent to NBMCH government medical college. All four oncology branches listed. Surgical oncologist not publicly named — verify surgical oncology availability before referral. Good medium-cost option in central Siliguri.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 60,
@@ -1233,9 +1233,9 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Adjacent to NBMCH government medical college \u2014 central Siliguri location",
+        "Adjacent to NBMCH government medical college — central Siliguri location",
         "Verify surgical oncologist availability before referral",
-        "NABH received Nov 2024 \u2014 relatively newly accredited"
+        "NABH received Nov 2024 — relatively newly accredited"
       ]
     },
     {
@@ -1261,7 +1261,7 @@
         "address": "Sushrutanagar, Siliguri, Darjeeling District, West Bengal - 734012"
       },
       "key_doctors": [],
-      "notes": "The only government radiotherapy unit in all of North Bengal \u2014 Cobalt-60 teletherapy. No LINAC or brachytherapy on site. Medical and surgical oncology as named departments not independently confirmed. Very high patient volume. Low cost. TMC partnership for a 100-bed dedicated cancer hospital was announced but status unconfirmed as of May 2026.",
+      "notes": "The only government radiotherapy unit in all of North Bengal — Cobalt-60 teletherapy. No LINAC or brachytherapy on site. Medical and surgical oncology as named departments not independently confirmed. Very high patient volume. Low cost. TMC partnership for a 100-bed dedicated cancer hospital was announced but status unconfirmed as of May 2026.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 40,
@@ -1272,7 +1272,7 @@
         "pmjay": 0,
         "risk": -20
       },
-      "risk_flag": "Cobalt radiotherapy only \u2014 no LINAC, no brachytherapy. Surgical and medical oncology as formal departments not confirmed. Refer comprehensive oncology cases to Manipal Rangapani or Hope & Heal.",
+      "risk_flag": "Cobalt radiotherapy only — no LINAC, no brachytherapy. Surgical and medical oncology as formal departments not confirmed. Refer comprehensive oncology cases to Manipal Rangapani or Hope & Heal.",
       "verified_date": "2026-05-01",
       "status": "incomplete_departments",
       "tier": "C",
@@ -1303,9 +1303,9 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Only government radiotherapy unit in North Bengal \u2014 Cobalt-60 only",
-        "No LINAC or brachytherapy \u2014 for comprehensive cancer care go to Manipal Rangapani or Hope & Heal",
-        "Very high patient volume \u2014 expect long waiting lists"
+        "Only government radiotherapy unit in North Bengal — Cobalt-60 only",
+        "No LINAC or brachytherapy — for comprehensive cancer care go to Manipal Rangapani or Hope & Heal",
+        "Very high patient volume — expect long waiting lists"
       ]
     },
     {
@@ -1321,7 +1321,7 @@
       ],
       "ncg_member": false,
       "tmc_affiliated": false,
-      "specialization": "Multi-specialty \u2014 oncology not confirmed",
+      "specialization": "Multi-specialty — oncology not confirmed",
       "departments": [],
       "cost_tier": "High",
       "pmjay_empanelled": null,
@@ -1342,7 +1342,7 @@
         "pmjay": 0,
         "risk": -30
       },
-      "risk_flag": "Oncology department NOT confirmed on hospital website \u2014 do not refer cancer patients without calling to verify.",
+      "risk_flag": "Oncology department NOT confirmed on hospital website — do not refer cancer patients without calling to verify.",
       "verified_date": "2026-05-01",
       "status": "incomplete_departments",
       "tier": "D",
@@ -1373,7 +1373,7 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Do not refer cancer patients \u2014 oncology department not confirmed on hospital website",
+        "Do not refer cancer patients — oncology department not confirmed on hospital website",
         "Call to verify before sending any patient"
       ]
     },
@@ -1408,7 +1408,7 @@
         "address": "New Town, Kolkata, West Bengal"
       },
       "key_doctors": [],
-      "notes": "Part of Tata Memorial Centre network. Major referral centre for East India \u2014 serves patients from Bihar, Jharkhand, Odisha, Northeast. More accessible than TMH Mumbai for East India patients. Medium cost.",
+      "notes": "Part of Tata Memorial Centre network. Major referral centre for East India — serves patients from Bihar, Jharkhand, Odisha, Northeast. More accessible than TMH Mumbai for East India patients. Medium cost.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 80,
@@ -1449,9 +1449,9 @@
         "academic_affiliation": "Tata Memorial Centre"
       },
       "navigation_notes": [
-        "Major TMC referral centre for East India \u2014 Bihar, Jharkhand, Odisha, Northeast",
+        "Major TMC referral centre for East India — Bihar, Jharkhand, Odisha, Northeast",
         "More accessible than TMH Mumbai for East India patients",
-        "West Bengal uses Swasthya Sathi \u2014 PMJAY cards from Bihar may need verification"
+        "West Bengal uses Swasthya Sathi — PMJAY cards from Bihar may need verification"
       ]
     },
     {
@@ -1468,7 +1468,7 @@
       ],
       "ncg_member": true,
       "tmc_affiliated": true,
-      "specialization": "Comprehensive \u2014 National Referral",
+      "specialization": "Comprehensive — National Referral",
       "departments": [
         "medical_oncology",
         "surgical_oncology",
@@ -1486,7 +1486,7 @@
         "address": "Dr. Ernest Borges Road, Parel, Mumbai - 400012"
       },
       "key_doctors": [],
-      "notes": "India's premier cancer centre. Government rates \u2014 highly affordable but very high patient volume and long wait times. Best for complex cases, second opinions, rare cancers, and when local treatment capacity is insufficient. Outstation patients need significant logistical planning.",
+      "notes": "India's premier cancer centre. Government rates — highly affordable but very high patient volume and long wait times. Best for complex cases, second opinions, rare cancers, and when local treatment capacity is insufficient. Outstation patients need significant logistical planning.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
@@ -1497,7 +1497,7 @@
         "pmjay": 1,
         "risk": -1
       },
-      "risk_flag": "Long wait times \u2014 not suitable for urgent cases without prior referral coordination",
+      "risk_flag": "Long wait times — not suitable for urgent cases without prior referral coordination",
       "verified_date": "2026-04-30",
       "status": "active",
       "tier": "A",
@@ -1529,9 +1529,9 @@
         "academic_affiliation": "Tata Memorial Centre / Government of India"
       },
       "navigation_notes": [
-        "India's premier cancer centre \u2014 best for complex, rare, and refractory cases",
-        "Very high volume \u2014 plan for 2\u20134 weeks wait for appointments",
-        "Government rates \u2014 highly affordable once registered",
+        "India's premier cancer centre — best for complex, rare, and refractory cases",
+        "Very high volume — plan for 2–4 weeks wait for appointments",
+        "Government rates — highly affordable once registered",
         "Logistical planning essential: train from Patna to Mumbai takes ~30 hours"
       ]
     },
@@ -1548,7 +1548,7 @@
       ],
       "ncg_member": false,
       "tmc_affiliated": false,
-      "specialization": "Comprehensive \u2014 National Referral",
+      "specialization": "Comprehensive — National Referral",
       "departments": [
         "medical_oncology",
         "surgical_oncology",
@@ -1564,7 +1564,7 @@
         "address": "Sri Aurobindo Marg, Ansari Nagar, New Delhi - 110029"
       },
       "key_doctors": [],
-      "notes": "Top government medical institute. Extremely low cost. Very high volume \u2014 expect long waits for appointments. Book via ORS portal. Accessible from Bihar by train (Rajdhani/Shatabdi to Delhi). Strong for second opinions.",
+      "notes": "Top government medical institute. Extremely low cost. Very high volume — expect long waits for appointments. Book via ORS portal. Accessible from Bihar by train (Rajdhani/Shatabdi to Delhi). Strong for second opinions.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
@@ -1604,9 +1604,9 @@
         "academic_affiliation": "Ministry of Health, Government of India"
       },
       "navigation_notes": [
-        "Book via ORS portal (ors.gov.in) \u2014 no walk-in OPD for new patients",
-        "Rajdhani Express from Patna to Delhi \u2014 ~8-9 hours overnight",
-        "Extremely long wait times \u2014 plan significantly in advance",
+        "Book via ORS portal (ors.gov.in) — no walk-in OPD for new patients",
+        "Rajdhani Express from Patna to Delhi — ~8-9 hours overnight",
+        "Extremely long wait times — plan significantly in advance",
         "Best for second opinions and rare cancers"
       ]
     },
@@ -1651,7 +1651,7 @@
           "role": "Radiation Oncology"
         }
       ],
-      "notes": "State government medical institute. Surgical Oncology OPD Mon/Thu; Radiation OPD Mon\u2013Thu. Linear Accelerator installed. Free/subsidized care for state residents. Very high patient volume \u2014 plan for long waits.",
+      "notes": "State government medical institute. Surgical Oncology OPD Mon/Thu; Radiation OPD Mon–Thu. Linear Accelerator installed. Free/subsidized care for state residents. Very high patient volume — plan for long waits.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 70,
@@ -1691,8 +1691,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Surgical OPD Mon/Thu; Radiation OPD Mon\u2013Thu",
-        "Very high patient volume \u2014 plan for long waits",
+        "Surgical OPD Mon/Thu; Radiation OPD Mon–Thu",
+        "Very high patient volume — plan for long waits",
         "Free/subsidized for Jharkhand state residents"
       ]
     },
@@ -1723,7 +1723,7 @@
         "address": "Plot 580, Sukurhutu Road, Kanke, Ranchi - Jharkhand"
       },
       "key_doctors": [],
-      "notes": "Tata Trusts-operated dedicated cancer hospital \u2014 first super-speciality cancer hospital in Jharkhand. Inaugurated May 2023. 82 beds, PET-CT, Linear Accelerator + Brachytherapy, PMJAY accepted. Serves Jharkhand, Bihar, WB, Chhattisgarh, MP. Toll-free: 1800-313-4922.",
+      "notes": "Tata Trusts-operated dedicated cancer hospital — first super-speciality cancer hospital in Jharkhand. Inaugurated May 2023. 82 beds, PET-CT, Linear Accelerator + Brachytherapy, PMJAY accepted. Serves Jharkhand, Bihar, WB, Chhattisgarh, MP. Toll-free: 1800-313-4922.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 70,
@@ -1763,8 +1763,8 @@
         "academic_affiliation": "Tata Trusts / Tata Cancer Care Foundation"
       },
       "navigation_notes": [
-        "First dedicated cancer hospital in Jharkhand \u2014 opened May 2023",
-        "Tata Trusts operated \u2014 subsidized rates; PMJAY accepted",
+        "First dedicated cancer hospital in Jharkhand — opened May 2023",
+        "Tata Trusts operated — subsidized rates; PMJAY accepted",
         "Toll-free helpline: 1800-313-4922",
         "Serves Jharkhand, Bihar, WB, Chhattisgarh, MP patients"
       ]
@@ -1799,7 +1799,7 @@
         "address": "NH-33, Irba, Ranchi, Jharkhand"
       },
       "key_doctors": [],
-      "notes": "Premier private cancer hospital in Jharkhand since 2008. PET-CT, Brachytherapy, full oncology spectrum including Pediatric Oncology. 24/7. High cost \u2014 verify PMJAY/insurance before visiting.",
+      "notes": "Premier private cancer hospital in Jharkhand since 2008. PET-CT, Brachytherapy, full oncology spectrum including Pediatric Oncology. 24/7. High cost — verify PMJAY/insurance before visiting.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 50,
@@ -1840,8 +1840,8 @@
       },
       "navigation_notes": [
         "Premier private cancer hospital in Jharkhand since 2008",
-        "24/7 \u2014 good for urgent cases needing private sector access",
-        "Verify PMJAY/insurance before visiting \u2014 high private rates"
+        "24/7 — good for urgent cases needing private sector access",
+        "Verify PMJAY/insurance before visiting — high private rates"
       ]
     },
     {
@@ -1871,7 +1871,7 @@
         "address": "Devipur, Deoghar, Jharkhand"
       },
       "key_doctors": [],
-      "notes": "Central government AIIMS. Surgical Oncology and Radiation Oncology confirmed. Medical Oncology department ramping up (Senior Resident recruitment 2024). OPD Mon\u2013Fri 8:30am\u20134:30pm, Sat till 2pm. Best option for Santhal Pargana and Jharkhand\u2013WB border patients.",
+      "notes": "Central government AIIMS. Surgical Oncology and Radiation Oncology confirmed. Medical Oncology department ramping up (Senior Resident recruitment 2024). OPD Mon–Fri 8:30am–4:30pm, Sat till 2pm. Best option for Santhal Pargana and Jharkhand–WB border patients.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 90,
@@ -1912,10 +1912,10 @@
         "academic_affiliation": "Ministry of Health, Government of India"
       },
       "navigation_notes": [
-        "Best option for Santhal Pargana and Jharkhand\u2013WB border patients",
-        "OPD Mon\u2013Fri 8:30am\u20134:30pm, Sat till 2pm",
-        "Medical Oncology department expanding \u2014 verify availability before referral",
-        "Deoghar Airport now operational \u2014 direct flights from some cities"
+        "Best option for Santhal Pargana and Jharkhand–WB border patients",
+        "OPD Mon–Fri 8:30am–4:30pm, Sat till 2pm",
+        "Medical Oncology department expanding — verify availability before referral",
+        "Deoghar Airport now operational — direct flights from some cities"
       ]
     },
     {
@@ -1944,8 +1944,17 @@
         "phone": "0671-2304264",
         "address": "Cuttack, Odisha"
       },
-      "key_doctors": [],
-      "notes": "Odisha's primary government cancer referral centre \u2014 one of India's 25 Regional Cancer Centres. 507 beds. ALL hospital services are FREE except cabin charges. NIRAMAYA program provides free anti-cancer drugs. BPL/OSTF patients fully covered. Note: uses Odisha's BSKY state scheme, not central PMJAY \u2014 Bihar patients must check coverage.",
+      "key_doctors": [
+        {
+          "name": "Dr. Deepak Rautray",
+          "role": "Director"
+        },
+        {
+          "name": "Dr. Diptirani Samanta",
+          "role": "HOD, Medical Oncology"
+        }
+      ],
+      "notes": "Odisha's primary government cancer referral centre — one of India's 25 Regional Cancer Centres. 507 beds. ALL hospital services are FREE except cabin charges. NIRAMAYA program provides free anti-cancer drugs. BPL/OSTF patients fully covered. Note: uses Odisha's BSKY state scheme, not central PMJAY — Bihar patients must check coverage.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 60,
@@ -1987,10 +1996,11 @@
       },
       "navigation_notes": [
         "ALL hospital services are FREE except cabin charges",
-        "NIRAMAYA program \u2014 free anti-cancer drugs",
-        "Uses Odisha BSKY scheme \u2014 Bihar PMJAY cards not accepted; self-pay at government rates (very low)",
-        "One of India's 25 Regional Cancer Centres \u2014 507 beds"
-      ]
+        "NIRAMAYA program — free anti-cancer drugs",
+        "Uses Odisha BSKY scheme — Bihar PMJAY cards not accepted; self-pay at government rates (very low)",
+        "One of India's 25 Regional Cancer Centres — 507 beds"
+      ],
+      "national_referral": true
     },
     {
       "id": "hcg-panda-cuttack",
@@ -2024,18 +2034,18 @@
       "key_doctors": [
         {
           "name": "Dr. Jyoti Ranjan Swain",
-          "role": "Surgical Oncology \u2014 MCh"
+          "role": "Surgical Oncology — MCh"
         },
         {
           "name": "Dr. Srigopal Mohanty",
-          "role": "Medical Oncology \u2014 DM"
+          "role": "Medical Oncology — DM"
         },
         {
           "name": "Dr. Prakash Kumar Swain",
-          "role": "Radiation Oncology \u2014 DNB"
+          "role": "Radiation Oncology — DNB"
         }
       ],
-      "notes": "Confirmed NCG member. 130 beds. Elekta Versa HD Linear Accelerator + PET-CT + Brachytherapy + Bone Marrow Transplant. Established 2002 \u2014 experienced team. Private rates \u2014 high cost; check insurance before visiting.",
+      "notes": "Confirmed NCG member. 130 beds. Elekta Versa HD Linear Accelerator + PET-CT + Brachytherapy + Bone Marrow Transplant. Established 2002 — experienced team. Private rates — high cost; check insurance before visiting.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 70,
@@ -2076,9 +2086,9 @@
         "academic_affiliation": "HCG Oncology / National Cancer Grid"
       },
       "navigation_notes": [
-        "Confirmed NCG member \u2014 Elekta Versa HD LINAC + BMT",
-        "Private rates \u2014 high cost; check insurance before visiting",
-        "Established 2002 \u2014 experienced team for Odisha region"
+        "Confirmed NCG member — Elekta Versa HD LINAC + BMT",
+        "Private rates — high cost; check insurance before visiting",
+        "Established 2002 — experienced team for Odisha region"
       ]
     },
     {
@@ -2115,7 +2125,7 @@
         "address": "37 SP Mukherjee Road, Hazra, Kolkata (also New Town, Rajarhat campus)"
       },
       "key_doctors": [],
-      "notes": "Central government cancer institute \u2014 confirmed NCG member, NABH + NABL certified. Two campuses: Hazra (200 beds, original) and New Town Rajarhat (460 beds, 2022, ultramodern with Robotic Surgery + PET-CT + BMT). Free for BPL patients; heavily subsidized for all. Accepts both PMJAY and Swasthya Sathi (WB state scheme). Top referral choice for East India after TMC Kolkata.",
+      "notes": "Central government cancer institute — confirmed NCG member, NABH + NABL certified. Two campuses: Hazra (200 beds, original) and New Town Rajarhat (460 beds, 2022, ultramodern with Robotic Surgery + PET-CT + BMT). Free for BPL patients; heavily subsidized for all. Accepts both PMJAY and Swasthya Sathi (WB state scheme). Top referral choice for East India after TMC Kolkata.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 100,
@@ -2156,8 +2166,8 @@
         "academic_affiliation": "Government of India"
       },
       "navigation_notes": [
-        "Two campuses \u2014 New Town Rajarhat (460 beds, ultramodern) preferred for new patients",
-        "Free for BPL; heavily subsidized for all \u2014 PMJAY and Swasthya Sathi both accepted",
+        "Two campuses — New Town Rajarhat (460 beds, ultramodern) preferred for new patients",
+        "Free for BPL; heavily subsidized for all — PMJAY and Swasthya Sathi both accepted",
         "Top government referral centre after TMC Kolkata for East India"
       ]
     },
@@ -2185,7 +2195,7 @@
         "address": "Kalyani, Nadia District, West Bengal"
       },
       "key_doctors": [],
-      "notes": "Central government AIIMS in Nadia district. Medical Oncology has 12-bed day care chemo ward. Linear Accelerator operational since Feb 2024 \u2014 radiation services are new and still scaling up. Weekly Multidisciplinary Tumour Board. Accessible for lower West Bengal and border patients. Surgical Oncology not yet independently confirmed.",
+      "notes": "Central government AIIMS in Nadia district. Medical Oncology has 12-bed day care chemo ward. Linear Accelerator operational since Feb 2024 — radiation services are new and still scaling up. Weekly Multidisciplinary Tumour Board. Accessible for lower West Bengal and border patients. Surgical Oncology not yet independently confirmed.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 80,
@@ -2196,7 +2206,7 @@
         "pmjay": 10,
         "risk": -10
       },
-      "risk_flag": "Radiation services only started Feb 2024 \u2014 capacity still ramping up",
+      "risk_flag": "Radiation services only started Feb 2024 — capacity still ramping up",
       "verified_date": "2026-04-30",
       "status": "active",
       "tier": "A",
@@ -2228,7 +2238,7 @@
       },
       "navigation_notes": [
         "Weekly Multidisciplinary Tumour Board",
-        "Radiation (LINAC) operational since Feb 2024 \u2014 capacity still ramping up; verify before referral",
+        "Radiation (LINAC) operational since Feb 2024 — capacity still ramping up; verify before referral",
         "Accessible for lower West Bengal and Bihar border patients",
         "Surgical oncology not yet independently confirmed"
       ]
@@ -2265,7 +2275,7 @@
         "address": "Action Area 1D, New Town, Kolkata, West Bengal"
       },
       "key_doctors": [],
-      "notes": "88-bed dedicated cancer hospital. First in Eastern India with Radixact TomoTherapy. da Vinci Robotic Surgery. BMT unit. NABH Digital Health Silver 2024 \u2014 first in Eastern India. High cost \u2014 best for patients with corporate/mediclaim insurance. Note: West Bengal uses Swasthya Sathi, not central PMJAY.",
+      "notes": "88-bed dedicated cancer hospital. First in Eastern India with Radixact TomoTherapy. da Vinci Robotic Surgery. BMT unit. NABH Digital Health Silver 2024 — first in Eastern India. High cost — best for patients with corporate/mediclaim insurance. Note: West Bengal uses Swasthya Sathi, not central PMJAY.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 50,
@@ -2308,7 +2318,7 @@
       "navigation_notes": [
         "First Radixact TomoTherapy in Eastern India",
         "Best for patients with corporate/mediclaim insurance",
-        "West Bengal uses Swasthya Sathi \u2014 PMJAY from Bihar may not be accepted"
+        "West Bengal uses Swasthya Sathi — PMJAY from Bihar may not be accepted"
       ]
     },
     {
@@ -2384,7 +2394,7 @@
         "academic_affiliation": "Jadavpur University"
       },
       "navigation_notes": [
-        "Charitable trust \u2014 mission to serve poor and middle-class patients at affordable cost",
+        "Charitable trust — mission to serve poor and middle-class patients at affordable cost",
         "24 insurance providers accepted",
         "HIPEC/PIPAC surgical procedures and BMT available"
       ]
@@ -2419,7 +2429,7 @@
         "address": "Canal Circular Road, Kolkata, West Bengal"
       },
       "key_doctors": [],
-      "notes": "JCI + NABH accredited \u2014 sole JCI-accredited hospital in Eastern India. Robotic surgery, Radiosurgery (knifeless brain surgery \u2014 first in Eastern India). 325 beds, 33 centres of excellence. Best for patients with international insurance or those seeking JCI-level care. High private rates.",
+      "notes": "JCI + NABH accredited — sole JCI-accredited hospital in Eastern India. Robotic surgery, Radiosurgery (knifeless brain surgery — first in Eastern India). 325 beds, 33 centres of excellence. Best for patients with international insurance or those seeking JCI-level care. High private rates.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 50,
@@ -2460,9 +2470,9 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Sole JCI-accredited hospital in Eastern India \u2014 best for international insurance",
+        "Sole JCI-accredited hospital in Eastern India — best for international insurance",
         "First Radiosurgery (knifeless brain surgery) in Eastern India",
-        "High private rates \u2014 best for patients with comprehensive insurance"
+        "High private rates — best for patients with comprehensive insurance"
       ]
     },
     {
@@ -2491,7 +2501,7 @@
         "address": "Meherpur, Silchar, Assam - 788015"
       },
       "key_doctors": [],
-      "notes": "NCG member, Tata Trusts-supported dedicated cancer hospital (est. 1999) \u2014 one of India's pioneering rural cancer hospitals. Linear Accelerator, brachytherapy, surgical oncology, full palliative care. Free/subsidized for low-income patients; PMJAY accepted. Key referral centre for South Assam, Mizoram, and Manipur border patients who cannot travel to Guwahati.",
+      "notes": "NCG member, Tata Trusts-supported dedicated cancer hospital (est. 1999) — one of India's pioneering rural cancer hospitals. Linear Accelerator, brachytherapy, surgical oncology, full palliative care. Free/subsidized for low-income patients; PMJAY accepted. Key referral centre for South Assam, Mizoram, and Manipur border patients who cannot travel to Guwahati.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 70,
@@ -2502,7 +2512,7 @@
         "pmjay": 10,
         "risk": -30
       },
-      "risk_flag": "Limited capacity \u2014 confirm appointment availability before travel from long distance",
+      "risk_flag": "Limited capacity — confirm appointment availability before travel from long distance",
       "verified_date": "2026-05-01",
       "status": "active",
       "tier": "A",
@@ -2535,9 +2545,9 @@
       },
       "navigation_notes": [
         "Key referral centre for South Assam, Mizoram, and Manipur border patients",
-        "Tata Trusts supported \u2014 free/subsidized for low-income patients",
+        "Tata Trusts supported — free/subsidized for low-income patients",
         "PMJAY accepted",
-        "Confirm appointment availability before long-distance travel \u2014 limited capacity"
+        "Confirm appointment availability before long-distance travel — limited capacity"
       ]
     },
     {
@@ -2568,7 +2578,7 @@
         "address": "Mawdiangdiang, Shillong, Meghalaya - 793018"
       },
       "key_doctors": [],
-      "notes": "Central government autonomous medical institute \u2014 the AIIMS-equivalent for the North East (est. 1987). Department of Radiotherapy handles oncology with LINAC and brachytherapy. Surgical and medical oncology via dedicated faculty. PMJAY accepted; government rates. Serves Meghalaya, Nagaland, Mizoram, and Manipur patients who prefer Shillong over Guwahati.",
+      "notes": "Central government autonomous medical institute — the AIIMS-equivalent for the North East (est. 1987). Department of Radiotherapy handles oncology with LINAC and brachytherapy. Surgical and medical oncology via dedicated faculty. PMJAY accepted; government rates. Serves Meghalaya, Nagaland, Mizoram, and Manipur patients who prefer Shillong over Guwahati.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 80,
@@ -2579,7 +2589,7 @@
         "pmjay": 10,
         "risk": -10
       },
-      "risk_flag": "Not a dedicated cancer centre \u2014 oncology is one department among many; complex cases should go to BBCI Guwahati",
+      "risk_flag": "Not a dedicated cancer centre — oncology is one department among many; complex cases should go to BBCI Guwahati",
       "verified_date": "2026-05-01",
       "status": "active",
       "tier": "A",
@@ -2613,7 +2623,7 @@
       "navigation_notes": [
         "AIIMS-equivalent for Northeast India (est. 1987)",
         "PMJAY accepted; government rates",
-        "Complex cancer cases should go to BBCI Guwahati \u2014 NEIGRIHMS is not a dedicated cancer centre",
+        "Complex cancer cases should go to BBCI Guwahati — NEIGRIHMS is not a dedicated cancer centre",
         "Serves Meghalaya, Nagaland, Mizoram, and Manipur patients"
       ]
     },
@@ -2647,8 +2657,21 @@
         "phone": "0361-2529073",
         "address": "Gopinath Nagar, Guwahati, Assam"
       },
-      "key_doctors": [],
-      "notes": "Unit of Tata Memorial Centre \u2014 confirmed NCG member. Premier government cancer hospital for all 8 Northeast states (serves 45 million people). 311 beds. Full spectrum including BMT/SCT unit. Award-winning PMJAY implementation (ranked 3rd nationally). Established 1973. PG teaching institute. Accessible from Patna by direct train.",
+      "key_doctors": [
+        {
+          "name": "Dr. B.B. Borthakur",
+          "role": "Director & Surgical Oncology"
+        },
+        {
+          "name": "Dr. Apurba Kumar Kalita",
+          "role": "Professor & Head, Radiation Oncology"
+        },
+        {
+          "name": "Dr. Munlima Hazarika",
+          "role": "Medical Oncology"
+        }
+      ],
+      "notes": "Unit of Tata Memorial Centre — confirmed NCG member. Premier government cancer hospital for all 8 Northeast states (serves 45 million people). 311 beds. Full spectrum including BMT/SCT unit. Award-winning PMJAY implementation (ranked 3rd nationally). Established 1973. PG teaching institute. Accessible from Patna by direct train.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 100,
@@ -2691,10 +2714,11 @@
       },
       "navigation_notes": [
         "Premier government cancer hospital for all 8 Northeast states",
-        "TMC unit \u2014 confirmed NCG member, PMJAY award-winning implementation (ranked 3rd nationally)",
+        "TMC unit — confirmed NCG member, PMJAY award-winning implementation (ranked 3rd nationally)",
         "Direct trains from Patna to Guwahati (Avadh Assam Express ~22 hrs)",
         "311 beds; full spectrum including BMT/SCT"
-      ]
+      ],
+      "national_referral": true
     },
     {
       "id": "mpmmcc-varanasi",
@@ -2709,7 +2733,7 @@
       ],
       "ncg_member": true,
       "tmc_affiliated": true,
-      "specialization": "Comprehensive \u2014 Adult Solid Tumours",
+      "specialization": "Comprehensive — Adult Solid Tumours",
       "departments": [
         "medical_oncology",
         "surgical_oncology",
@@ -2732,7 +2756,7 @@
           "role": "Director (also Director of HBCH Varanasi)"
         }
       ],
-      "notes": "TMC unit on BHU campus \u2014 confirmed NCG member, ESMO designated centre. 352 beds, 6 radiation machines treating 350 patients/day (shared with HBCH). Handles adult solid tumours; blood cancers and pediatric cancers go to HBCH Varanasi (9 km away). Free/subsidized treatment, PMJAY accepted. Most accessible TMC for Bihar patients \u2014 3 hrs from Patna by road.",
+      "notes": "TMC unit on BHU campus — confirmed NCG member, ESMO designated centre. 352 beds, 6 radiation machines treating 350 patients/day (shared with HBCH). Handles adult solid tumours; blood cancers and pediatric cancers go to HBCH Varanasi (9 km away). Free/subsidized treatment, PMJAY accepted. Most accessible TMC for Bihar patients — 3 hrs from Patna by road.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
@@ -2773,8 +2797,8 @@
         "academic_affiliation": "Tata Memorial Centre / BHU"
       },
       "navigation_notes": [
-        "Most accessible TMC unit for Bihar patients \u2014 ~3 hours from Patna by road or train",
-        "Handles adult solid tumours \u2014 blood cancers and pediatric go to HBCH Varanasi (9km)",
+        "Most accessible TMC unit for Bihar patients — ~3 hours from Patna by road or train",
+        "Handles adult solid tumours — blood cancers and pediatric go to HBCH Varanasi (9km)",
         "ESMO Designated Centre; PMJAY accepted; free/subsidized treatment",
         "352 beds, 6 radiation machines"
       ]
@@ -2812,7 +2836,7 @@
           "role": "Director (shared with MPMMCC)"
         }
       ],
-      "notes": "TMC unit \u2014 confirmed NCG member. Companion to MPMMCC Varanasi (9 km apart). HBCH handles ALL blood cancers (leukemia, lymphoma) and pediatric cancers; adult solid tumours go to MPMMCC. Bone Marrow Transplant facility. 179 beds. Free/subsidized, PMJAY accepted. Bihar patients with leukemia or childhood cancers should come here, not MPMMCC.",
+      "notes": "TMC unit — confirmed NCG member. Companion to MPMMCC Varanasi (9 km apart). HBCH handles ALL blood cancers (leukemia, lymphoma) and pediatric cancers; adult solid tumours go to MPMMCC. Bone Marrow Transplant facility. 179 beds. Free/subsidized, PMJAY accepted. Bihar patients with leukemia or childhood cancers should come here, not MPMMCC.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 9,
@@ -2853,7 +2877,7 @@
         "academic_affiliation": "Tata Memorial Centre"
       },
       "navigation_notes": [
-        "Bihar patients with leukemia, lymphoma, or childhood cancer should come here \u2014 not MPMMCC",
+        "Bihar patients with leukemia, lymphoma, or childhood cancer should come here — not MPMMCC",
         "Companion to MPMMCC (9km apart, same director)",
         "BMT facility; 179 beds; PMJAY accepted; free/subsidized"
       ]
@@ -2889,10 +2913,10 @@
         },
         {
           "name": "Prof. Shalini Singh",
-          "role": "Radiation Oncology \u2014 Gynae/Neuro/Lung/Brachytherapy"
+          "role": "Radiation Oncology — Gynae/Neuro/Lung/Brachytherapy"
         }
       ],
-      "notes": "State government PG medical institute. Two Linear Accelerators, 32-bed chemo day care, 200+ brachytherapy cases/year. Palliative care clinics with home visits within 25km. ICMR-funded cancer registry. Note: not a dedicated cancer centre \u2014 less specialised than TMC Varanasi for cancer-only cases. Better suited for lower Bihar patients needing Lucknow referral.",
+      "notes": "State government PG medical institute. Two Linear Accelerators, 32-bed chemo day care, 200+ brachytherapy cases/year. Palliative care clinics with home visits within 25km. ICMR-funded cancer registry. Note: not a dedicated cancer centre — less specialised than TMC Varanasi for cancer-only cases. Better suited for lower Bihar patients needing Lucknow referral.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
@@ -2932,14 +2956,14 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Not a dedicated cancer centre \u2014 one oncology department among many",
+        "Not a dedicated cancer centre — one oncology department among many",
         "Palliative care with home visits within 25km radius",
         "Better suited for lower Bihar patients who need Lucknow referral"
       ]
     },
     {
       "id": "kgmu-lucknow",
-      "name": "King George's Medical University \u2014 Cancer Centre",
+      "name": "King George's Medical University — Cancer Centre",
       "short_name": "KGMU Lucknow",
       "city": "Lucknow",
       "state": "Uttar Pradesh",
@@ -2965,8 +2989,17 @@
         "phone": "0522-2257540",
         "address": "Shah Mina Road, Chowk, Lucknow, Uttar Pradesh - 226003"
       },
-      "key_doctors": [],
-      "notes": "One of India's oldest and largest government medical universities (est. 1911). Dedicated cancer centre with full oncology departments \u2014 Medical Oncology, Surgical Oncology, Radiotherapy, Haematology. NABH accredited. PMJAY accepted. Low government rates. Critical referral centre for Bihar patients from western districts (Gopalganj, Saran, Siwan) \u2014 closer than Varanasi.",
+      "key_doctors": [
+        {
+          "name": "Dr. Rajeev Gupta",
+          "role": "Professor & Head, Radiation Oncology"
+        },
+        {
+          "name": "Dr. Shailendra Prasad Verma",
+          "role": "Professor & Head, Clinical Haematology"
+        }
+      ],
+      "notes": "One of India's oldest and largest government medical universities (est. 1911). Dedicated cancer centre with full oncology departments — Medical Oncology, Surgical Oncology, Radiotherapy, Haematology. NABH accredited. PMJAY accepted. Low government rates. Critical referral centre for Bihar patients from western districts (Gopalganj, Saran, Siwan) — closer than Varanasi.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
@@ -3006,10 +3039,11 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Critical referral for Bihar patients from western districts (Gopalganj, Saran, Siwan) \u2014 closer than Varanasi",
+        "Critical referral for Bihar patients from western districts (Gopalganj, Saran, Siwan) — closer than Varanasi",
         "NABH accredited; PMJAY accepted; government rates",
         "One of India's oldest and largest government medical universities (est. 1911)"
-      ]
+      ],
+      "national_referral": true
     },
     {
       "id": "rgci-delhi",
@@ -3042,8 +3076,13 @@
         "phone": "011-47022222",
         "address": "Sir Chotu Ram Marg, Sector 5, Rohini, Delhi - 110085"
       },
-      "key_doctors": [],
-      "notes": "Delhi's premier dedicated cancer hospital \u2014 confirmed NCG member. 400+ beds. Full spectrum: BMT, PET-CT, LINAC, advanced surgical oncology. PMJAY empanelled. High cost for private patients but PMJAY covers significant expenses. Accessible from Patna by Rajdhani Express (8\u20139 hrs) or flight (1 hr). Best cancer-only option in Delhi.",
+      "key_doctors": [
+        {
+          "name": "Dr. Ullas Batra",
+          "role": "Co-Director, Medical Oncology"
+        }
+      ],
+      "notes": "Delhi's premier dedicated cancer hospital — confirmed NCG member. 400+ beds. Full spectrum: BMT, PET-CT, LINAC, advanced surgical oncology. PMJAY empanelled. High cost for private patients but PMJAY covers significant expenses. Accessible from Patna by Rajdhani Express (8–9 hrs) or flight (1 hr). Best cancer-only option in Delhi.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
@@ -3083,15 +3122,16 @@
         "academic_affiliation": "National Cancer Grid"
       },
       "navigation_notes": [
-        "Delhi's premier dedicated cancer hospital \u2014 confirmed NCG member",
-        "PMJAY empanelled \u2014 significant cost relief for eligible patients",
+        "Delhi's premier dedicated cancer hospital — confirmed NCG member",
+        "PMJAY empanelled — significant cost relief for eligible patients",
         "Accessible from Patna by Rajdhani (8-9 hrs) or flight (1 hr)",
         "400+ beds; BMT, PET-CT, advanced surgical oncology"
-      ]
+      ],
+      "national_referral": true
     },
     {
       "id": "sir-ganga-ram-delhi",
-      "name": "Sir Ganga Ram Hospital \u2014 Cancer Centre",
+      "name": "Sir Ganga Ram Hospital — Cancer Centre",
       "short_name": "Sir Ganga Ram Delhi",
       "city": "Delhi",
       "state": "Delhi",
@@ -3119,7 +3159,7 @@
         "address": "Sir Ganga Ram Hospital Marg, Old Rajinder Nagar, Delhi - 110060"
       },
       "key_doctors": [],
-      "notes": "Major trust hospital with 200-bed dedicated cancer centre (expanded 2025). One of the first prominent Delhi hospitals to join PMJAY \u2014 useful for insured patients. High cost at private rates. Call to confirm PMJAY coverage for specific treatment before travel.",
+      "notes": "Major trust hospital with 200-bed dedicated cancer centre (expanded 2025). One of the first prominent Delhi hospitals to join PMJAY — useful for insured patients. High cost at private rates. Call to confirm PMJAY coverage for specific treatment before travel.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
@@ -3160,8 +3200,8 @@
       },
       "navigation_notes": [
         "200-bed dedicated cancer centre (expanded 2025)",
-        "PMJAY empanelled \u2014 call to confirm coverage for specific treatment before travel",
-        "High private rates \u2014 useful for insured patients"
+        "PMJAY empanelled — call to confirm coverage for specific treatment before travel",
+        "High private rates — useful for insured patients"
       ]
     },
     {
@@ -3197,7 +3237,7 @@
         "address": "Sarita Vihar, Delhi Mathura Road, New Delhi - 110076"
       },
       "key_doctors": [],
-      "notes": "JCI + NABH + NABL accredited. Proton therapy centre (one of few in India), Da Vinci robotic surgery. High private rates \u2014 best suited for patients with comprehensive insurance or NRIs. Not PMJAY empanelled.",
+      "notes": "JCI + NABH + NABL accredited. Proton therapy centre (one of few in India), Da Vinci robotic surgery. High private rates — best suited for patients with comprehensive insurance or NRIs. Not PMJAY empanelled.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
@@ -3237,8 +3277,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "JCI + NABH + NABL \u2014 proton therapy, Da Vinci robotic surgery",
-        "Not PMJAY empanelled \u2014 best for patients with comprehensive insurance or NRIs",
+        "JCI + NABH + NABL — proton therapy, Da Vinci robotic surgery",
+        "Not PMJAY empanelled — best for patients with comprehensive insurance or NRIs",
         "High private rates"
       ]
     },
@@ -3273,7 +3313,7 @@
         "address": "Press Enclave Road, Saket, New Delhi - 110017"
       },
       "key_doctors": [],
-      "notes": "Max Super Speciality Hospital Saket \u2014 comprehensive cancer centre. IMRT, IGRT, Stereotactic Radiosurgery (SRS/SBRT). Robotic surgery (Da Vinci). High private rates, no PMJAY. Best for patients with Max Health Insurance or corporate coverage.",
+      "notes": "Max Super Speciality Hospital Saket — comprehensive cancer centre. IMRT, IGRT, Stereotactic Radiosurgery (SRS/SBRT). Robotic surgery (Da Vinci). High private rates, no PMJAY. Best for patients with Max Health Insurance or corporate coverage.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
@@ -3313,7 +3353,7 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "No PMJAY \u2014 best for Max Health Insurance or corporate coverage",
+        "No PMJAY — best for Max Health Insurance or corporate coverage",
         "SRS/SBRT Stereotactic Radiosurgery; Da Vinci robotic surgery",
         "High private rates"
       ]
@@ -3348,7 +3388,7 @@
         "address": "Pusa Road, New Delhi - 110005"
       },
       "key_doctors": [],
-      "notes": "BLK-Max Super Speciality Hospital \u2014 strong in haematological cancers and BMT (largest BMT programme in Delhi). Cyberknife, IMRT, PET-CT. High private rates. Useful for blood cancer patients (leukemia, lymphoma, myeloma) who prefer Delhi over Varanasi.",
+      "notes": "BLK-Max Super Speciality Hospital — strong in haematological cancers and BMT (largest BMT programme in Delhi). Cyberknife, IMRT, PET-CT. High private rates. Useful for blood cancer patients (leukemia, lymphoma, myeloma) who prefer Delhi over Varanasi.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
@@ -3388,14 +3428,14 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Strongest BMT programme in Delhi \u2014 best for blood cancers (leukemia, lymphoma, myeloma)",
+        "Strongest BMT programme in Delhi — best for blood cancers (leukemia, lymphoma, myeloma)",
         "Cyberknife, IMRT, PET-CT",
-        "No PMJAY \u2014 high private rates"
+        "No PMJAY — high private rates"
       ]
     },
     {
       "id": "fortis-fmri-gurugram",
-      "name": "Fortis Memorial Research Institute \u2014 Cancer Centre",
+      "name": "Fortis Memorial Research Institute — Cancer Centre",
       "short_name": "Fortis FMRI Gurugram",
       "city": "Gurugram",
       "state": "Haryana",
@@ -3425,7 +3465,7 @@
         "address": "Sector 44, Gurugram, Haryana - 122002"
       },
       "key_doctors": [],
-      "notes": "JCI + NABH + NABL accredited flagship Fortis hospital near Delhi. Cyberknife radiosurgery, Tomotherapy, robotic surgery. High private rates \u2014 no PMJAY. Suited for patients with comprehensive corporate or international insurance. ~30 min from Delhi airport.",
+      "notes": "JCI + NABH + NABL accredited flagship Fortis hospital near Delhi. Cyberknife radiosurgery, Tomotherapy, robotic surgery. High private rates — no PMJAY. Suited for patients with comprehensive corporate or international insurance. ~30 min from Delhi airport.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
@@ -3465,14 +3505,14 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "JCI + NABH + NABL \u2014 Cyberknife, Tomotherapy, robotic surgery",
-        "No PMJAY \u2014 best for corporate or international insurance",
+        "JCI + NABH + NABL — Cyberknife, Tomotherapy, robotic surgery",
+        "No PMJAY — best for corporate or international insurance",
         "~30 min from Delhi airport; near Delhi for patients transiting"
       ]
     },
     {
       "id": "kokilaben-mumbai",
-      "name": "Kokilaben Dhirubhai Ambani Hospital \u2014 Cancer Centre",
+      "name": "Kokilaben Dhirubhai Ambani Hospital — Cancer Centre",
       "short_name": "Kokilaben Mumbai",
       "city": "Mumbai",
       "state": "Maharashtra",
@@ -3504,10 +3544,10 @@
       "key_doctors": [
         {
           "name": "Dr. Mandar Deshpande",
-          "role": "Head & Neck Surgical Oncology \u2014 internationally trained"
+          "role": "Head & Neck Surgical Oncology — internationally trained"
         }
       ],
-      "notes": "NABH + NABL accredited, ESMO Designated Centre. Cyberknife, Tomotherapy, Da Vinci robotic surgery. PMJAY empanelled \u2014 significant cost relief for eligible patients. Strong for Head & Neck, Breast, GI cancers. Good alternative to TMH when TMH wait times are very long.",
+      "notes": "NABH + NABL accredited, ESMO Designated Centre. Cyberknife, Tomotherapy, Da Vinci robotic surgery. PMJAY empanelled — significant cost relief for eligible patients. Strong for Head & Neck, Breast, GI cancers. Good alternative to TMH when TMH wait times are very long.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
@@ -3548,7 +3588,7 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "ESMO Designated Centre; PMJAY empanelled \u2014 significant cost relief",
+        "ESMO Designated Centre; PMJAY empanelled — significant cost relief",
         "Cyberknife, Tomotherapy, Da Vinci robotic surgery",
         "Good alternative to TMH when TMH wait times are very long",
         "Strong for Head & Neck, Breast, GI cancers"
@@ -3583,7 +3623,7 @@
         "address": "Raja Rammohan Roy Road, Prarthana Samaj, Mumbai - 400004"
       },
       "key_doctors": [],
-      "notes": "Reliance Foundation charitable trust hospital \u2014 set up to provide quality care at subsidized rates for economically weaker patients. NABH + NABL accredited. Charity/subsidized care available for eligible patients. Medium cost for regular patients. Good option for Mumbai referrals when TMH has very long waits.",
+      "notes": "Reliance Foundation charitable trust hospital — set up to provide quality care at subsidized rates for economically weaker patients. NABH + NABL accredited. Charity/subsidized care available for eligible patients. Medium cost for regular patients. Good option for Mumbai referrals when TMH has very long waits.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 5,
@@ -3625,7 +3665,7 @@
         "academic_affiliation": "Reliance Foundation"
       },
       "navigation_notes": [
-        "Charitable trust \u2014 subsidized rates for economically weaker patients",
+        "Charitable trust — subsidized rates for economically weaker patients",
         "Good option for Mumbai referrals when TMH has very long waits",
         "NABH + NABL accredited"
       ]
@@ -3662,7 +3702,7 @@
         "address": "Civil Hospital Campus, Asarwa, Ahmedabad, Gujarat - 380016"
       },
       "key_doctors": [],
-      "notes": "Gujarat's premier government cancer institute \u2014 NABH accredited Regional Cancer Centre. Ranked 2nd best public hospital under PMJAY implementation nationally. 7 Linear Accelerators, PET-CT, comprehensive BMT unit. Free/subsidized for BPL patients; very low cost for all. PMJAY accepted. Bihar patients who have family in Gujarat would benefit from this referral.",
+      "notes": "Gujarat's premier government cancer institute — NABH accredited Regional Cancer Centre. Ranked 2nd best public hospital under PMJAY implementation nationally. 7 Linear Accelerators, PET-CT, comprehensive BMT unit. Free/subsidized for BPL patients; very low cost for all. PMJAY accepted. Bihar patients who have family in Gujarat would benefit from this referral.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
@@ -3711,7 +3751,7 @@
     },
     {
       "id": "cmc-vellore",
-      "name": "Christian Medical College & Hospital \u2014 Cancer Institute",
+      "name": "Christian Medical College & Hospital — Cancer Institute",
       "short_name": "CMC Vellore",
       "city": "Vellore",
       "state": "Tamil Nadu",
@@ -3741,7 +3781,7 @@
         "address": "IDA Scudder Road, Vellore, Tamil Nadu - 632004"
       },
       "key_doctors": [],
-      "notes": "Confirmed NCG member \u2014 one of India's finest hospitals, internationally renowned for complex cancers, rare diagnoses, and BMT. Sliding-scale institutional fees (not PMJAY, but socio-economic assessment for reduced rates). Worth the distance for rare cancers, second opinions, or cases where local hospitals struggle. About 24 hrs from Patna by train (via Chennai/Bangalore). Book via CMC appointment app.",
+      "notes": "Confirmed NCG member — one of India's finest hospitals, internationally renowned for complex cancers, rare diagnoses, and BMT. Sliding-scale institutional fees (not PMJAY, but socio-economic assessment for reduced rates). Worth the distance for rare cancers, second opinions, or cases where local hospitals struggle. About 24 hrs from Patna by train (via Chennai/Bangalore). Book via CMC appointment app.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
@@ -3784,7 +3824,7 @@
       },
       "navigation_notes": [
         "Internationally renowned for complex cancers, rare diagnoses, and BMT",
-        "Sliding-scale fees \u2014 socio-economic assessment for reduced rates (not PMJAY)",
+        "Sliding-scale fees — socio-economic assessment for reduced rates (not PMJAY)",
         "Worth the distance for rare cancers or cases where local hospitals struggle",
         "~24 hrs from Patna by train; book via CMC appointment app"
       ]
@@ -3822,7 +3862,7 @@
         "address": "38 Sardar Patel Road, Guindy, Chennai, Tamil Nadu - 600036"
       },
       "key_doctors": [],
-      "notes": "India's first dedicated cancer hospital (est. 1954) \u2014 confirmed NCG member, NABH + NABL accredited. 700 beds. Full oncology spectrum including BMT and proton therapy. Very affordable trust hospital \u2014 subsidized rates for all patients, free for BPL. PMJAY accepted. Highly respected for Head & Neck, Gynaecological, and Blood cancers.",
+      "notes": "India's first dedicated cancer hospital (est. 1954) — confirmed NCG member, NABH + NABL accredited. 700 beds. Full oncology spectrum including BMT and proton therapy. Very affordable trust hospital — subsidized rates for all patients, free for BPL. PMJAY accepted. Highly respected for Head & Neck, Gynaecological, and Blood cancers.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
@@ -3864,7 +3904,7 @@
         "academic_affiliation": "National Cancer Grid / Women's India Association"
       },
       "navigation_notes": [
-        "India's first dedicated cancer hospital (est. 1954) \u2014 confirmed NCG member",
+        "India's first dedicated cancer hospital (est. 1954) — confirmed NCG member",
         "700 beds; subsidized rates for all, free for BPL; PMJAY accepted",
         "Highly respected for Head & Neck, Gynaecological, and Blood cancers",
         "Proton therapy and BMT available"
@@ -3944,8 +3984,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "JCI + NABH \u2014 proton therapy, Da Vinci robotic surgery",
-        "High private rates \u2014 not PMJAY empanelled",
+        "JCI + NABH — proton therapy, Da Vinci robotic surgery",
+        "High private rates — not PMJAY empanelled",
         "Cancer Institute WIA Chennai nearby offers equivalent care at far lower cost"
       ]
     },
@@ -3981,7 +4021,7 @@
         "address": "Dr. M.H. Marigowda Road, Bangalore, Karnataka - 560029"
       },
       "key_doctors": [],
-      "notes": "Karnataka's premier government Regional Cancer Centre (est. 1973) \u2014 NABH accredited. 863 beds, 7 Linear Accelerators, PET-CT, BMT unit. Very high volume \u2014 1,000+ new patients/month. PMJAY accepted. Government rates (highly affordable). Best option for Bihar patients who have family in Bangalore or South India. Not private \u2014 expect queues.",
+      "notes": "Karnataka's premier government Regional Cancer Centre (est. 1973) — NABH accredited. 863 beds, 7 Linear Accelerators, PET-CT, BMT unit. Very high volume — 1,000+ new patients/month. PMJAY accepted. Government rates (highly affordable). Best option for Bihar patients who have family in Bangalore or South India. Not private — expect queues.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 8,
@@ -4026,7 +4066,7 @@
       "navigation_notes": [
         "Karnataka's premier government Regional Cancer Centre (est. 1973)",
         "863 beds, 7 Linear Accelerators, PET-CT, BMT unit",
-        "PMJAY accepted; government rates \u2014 very affordable",
+        "PMJAY accepted; government rates — very affordable",
         "Best for Bihar patients with family in Bangalore"
       ]
     },
@@ -4063,7 +4103,7 @@
         "address": "8 P Kalinga Rao Road, Sampangiram Nagar, Bangalore, Karnataka - 560027"
       },
       "key_doctors": [],
-      "notes": "HCG's flagship hospital \u2014 largest private oncology network in India. NABH + NABL. Comprehensive: BMT, robotic surgery, proton therapy referral, molecular diagnostics. High private rates. Best for insured patients in Bangalore. If cost is a concern, Kidwai KMIO nearby provides affordable government care.",
+      "notes": "HCG's flagship hospital — largest private oncology network in India. NABH + NABL. Comprehensive: BMT, robotic surgery, proton therapy referral, molecular diagnostics. High private rates. Best for insured patients in Bangalore. If cost is a concern, Kidwai KMIO nearby provides affordable government care.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 4,
@@ -4104,10 +4144,10 @@
         "academic_affiliation": "HCG Oncology"
       },
       "navigation_notes": [
-        "HCG's flagship \u2014 largest private oncology network in India",
+        "HCG's flagship — largest private oncology network in India",
         "BMT, robotic surgery, proton therapy referral, molecular diagnostics",
-        "Not PMJAY \u2014 Kidwai KMIO nearby offers affordable government care",
-        "High private rates \u2014 best for insured patients in Bangalore"
+        "Not PMJAY — Kidwai KMIO nearby offers affordable government care",
+        "High private rates — best for insured patients in Bangalore"
       ]
     },
     {
@@ -4144,7 +4184,7 @@
         "address": "Road No. 10, Banjara Hills, Hyderabad, Telangana - 500034"
       },
       "key_doctors": [],
-      "notes": "ESMO Designated Centre \u2014 NABH + NABL accredited trust hospital. Ranked 2nd best cancer hospital in India (2023 survey). Full oncology spectrum including BMT, PET-CT, Cyberknife, proton therapy referral. PMJAY accepted. Medium cost \u2014 more affordable than private hospitals. Strong reputation for Head & Neck, GI, and Gynaecological cancers.",
+      "notes": "ESMO Designated Centre — NABH + NABL accredited trust hospital. Ranked 2nd best cancer hospital in India (2023 survey). Full oncology spectrum including BMT, PET-CT, Cyberknife, proton therapy referral. PMJAY accepted. Medium cost — more affordable than private hospitals. Strong reputation for Head & Neck, GI, and Gynaecological cancers.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 7,
@@ -4185,8 +4225,8 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "ESMO Designated Centre \u2014 ranked 2nd best cancer hospital in India (2023 survey)",
-        "PMJAY accepted; medium cost \u2014 more affordable than private hospitals",
+        "ESMO Designated Centre — ranked 2nd best cancer hospital in India (2023 survey)",
+        "PMJAY accepted; medium cost — more affordable than private hospitals",
         "Strong for Head & Neck, GI, and Gynaecological cancers",
         "BMT, Cyberknife, proton therapy referral"
       ]
@@ -4219,7 +4259,7 @@
         "address": "Red Hills, Lakdi-Ka-Pool, Hyderabad, Telangana - 500004"
       },
       "key_doctors": [],
-      "notes": "Telangana government Regional Cancer Centre \u2014 one of India's 25 designated RCCs. Large volume: 500+ new patients/week. Linear Accelerators, PET-CT, BMT. Free/subsidized for BPL patients; PMJAY accepted. High patient load \u2014 expect waiting times. Good option for Bihar patients with family in Hyderabad who need affordable government care.",
+      "notes": "Telangana government Regional Cancer Centre — one of India's 25 designated RCCs. Large volume: 500+ new patients/week. Linear Accelerators, PET-CT, BMT. Free/subsidized for BPL patients; PMJAY accepted. High patient load — expect waiting times. Good option for Bihar patients with family in Hyderabad who need affordable government care.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "score": 6,
@@ -4263,7 +4303,7 @@
       "navigation_notes": [
         "One of India's 25 designated Regional Cancer Centres",
         "Free/subsidized for BPL; PMJAY accepted",
-        "Very high patient load \u2014 expect significant waiting times",
+        "Very high patient load — expect significant waiting times",
         "Best for Bihar patients with family in Hyderabad needing affordable government care"
       ]
     },
@@ -4301,12 +4341,12 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Sanjay Sharma",
-          "role": "Head, Medical Oncology"
+          "name": "Dr. Sameer Bakhshi",
+          "role": "Professor & Head, Medical Oncology"
         },
         {
           "name": "Dr. Seema Mishra",
-          "role": "Head, Palliative Care"
+          "role": "Professor & Head, Onco-Anaesthesia and Palliative Medicine"
         }
       ],
       "notes": "Premier national referral centre; one of the highest-volume cancer programmes in India. Apex referral for complex oncology cases nationwide.",
@@ -4393,7 +4433,7 @@
         },
         {
           "name": "Dr. Rajendra Badwe",
-          "role": "Former Director, Surgical Oncology"
+          "role": "Emeritus Professor, Surgical Oncology"
         }
       ],
       "notes": "Largest dedicated cancer centre in Asia; DAE-funded. National apex centre for cancer research and treatment.",
@@ -4423,7 +4463,7 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "Walk-in registration Monday\u2013Friday 7:30 AM at OPD registration counter",
+        "Walk-in registration Monday–Friday 7:30 AM at OPD registration counter",
         "Subsidised canteen and patient dormitory available",
         "CGHS and state insurance accepted"
       ],
@@ -4474,11 +4514,11 @@
       "key_doctors": [
         {
           "name": "Dr. Rakesh Kapoor",
-          "role": "Head, Radiotherapy"
+          "role": "Professor & Head, Radiation Oncology"
         },
         {
-          "name": "Dr. Deepak Aggarwal",
-          "role": "Medical Oncology"
+          "name": "Dr. Pankaj Malhotra",
+          "role": "Professor & Head, Medical Oncology-Haematology"
         }
       ],
       "notes": "Premier institute serving North India and neighbouring states; strong haematology-oncology programme.",
@@ -4555,12 +4595,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Raja Sundaram",
-          "role": "Medical Oncology"
-        },
-        {
           "name": "Dr. Smita Kayal",
-          "role": "Medical Oncology"
+          "role": "Professor, Medical Oncology"
         }
       ],
       "notes": "National institute serving South India, particularly Tamil Nadu and Andhra Pradesh. Autonomous under MoHFW.",
@@ -4634,12 +4670,7 @@
         "address": "Medical College PO, Thiruvananthapuram - 695011",
         "website": "https://sctimst.ac.in"
       },
-      "key_doctors": [
-        {
-          "name": "Dr. Rajesh U.",
-          "role": "Surgical Oncology"
-        }
-      ],
+      "key_doctors": [],
       "notes": "Autonomous national institute under DST; specialises in complex surgical and cardio-oncology cases.",
       "sccf_affiliated": false,
       "sccf_notes": "",
@@ -4785,12 +4816,7 @@
         "address": "Basni Industrial Area Phase-2, Jodhpur - 342005",
         "website": "https://www.aiims.edu/jodhpur"
       },
-      "key_doctors": [
-        {
-          "name": "Dr. Mukesh Kumar Singhal",
-          "role": "Medical Oncology"
-        }
-      ],
+      "key_doctors": [],
       "notes": "Apex referral centre for western Rajasthan and neighbouring Sindh corridor communities.",
       "sccf_affiliated": false,
       "sccf_notes": "",
@@ -4861,12 +4887,7 @@
         "address": "Phulwarisharif, Patna - 801507",
         "website": "https://www.aiimspatna.org"
       },
-      "key_doctors": [
-        {
-          "name": "Dr. Umesh Kumar Bhadani",
-          "role": "Surgical Oncology"
-        }
-      ],
+      "key_doctors": [],
       "notes": "Apex referral for Bihar and eastern UP. Critical for underserved cancer patients in Gangetic plain.",
       "sccf_affiliated": false,
       "sccf_notes": "",
@@ -4894,7 +4915,7 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "OPD Monday\u2013Saturday 8 AM; bring prior records",
+        "OPD Monday–Saturday 8 AM; bring prior records",
         "Ayushman Bharat accepted; state Mukhyamantri scheme also covered"
       ],
       "score": 83,
@@ -4939,8 +4960,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Pawan Kumar",
-          "role": "Medical Oncology"
+          "name": "Dr. Uttam Kumar Nath",
+          "role": "Professor & Head, Medical Oncology"
         }
       ],
       "notes": "Serves Uttarakhand, Himachal Pradesh hill populations and parts of UP. Strong cancer surgery programme.",
@@ -4987,7 +5008,7 @@
     },
     {
       "id": "nimhans-bangalore",
-      "name": "National Institute of Mental Health and Neurosciences \u2014 Neuro-Oncology",
+      "name": "National Institute of Mental Health and Neurosciences — Neuro-Oncology",
       "short_name": "NIMHANS Bengaluru",
       "city": "Bengaluru",
       "state": "Karnataka",
@@ -5016,12 +5037,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Arun Kumar Ramamurthy",
-          "role": "Neuro-Oncology"
-        },
-        {
-          "name": "Dr. Bhaskara Rao Bhatt",
-          "role": "Neurosurgery Oncology"
+          "name": "Dr. Malla Bhaskara Rao",
+          "role": "Professor, Neurosurgery"
         }
       ],
       "notes": "National apex centre for brain and spinal tumours. Refer all primary CNS malignancies.",
@@ -5099,12 +5116,12 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. C. Ramachandra",
-          "role": "Director & Head, Surgical Oncology"
+          "name": "Dr. V. Lokesh",
+          "role": "Director"
         },
         {
           "name": "Dr. Linu Abraham Jacob",
-          "role": "Medical Oncology"
+          "role": "Professor & Head, Medical Oncology"
         }
       ],
       "notes": "Dedicated state cancer institute; one of South India's highest-volume cancer centres. Strong in gynaecologic and head & neck cancers.",
@@ -5183,7 +5200,7 @@
       "key_doctors": [
         {
           "name": "Dr. Shirley Sundersingh",
-          "role": "Radiation Oncology"
+          "role": "Pathology / Molecular Oncology"
         },
         {
           "name": "Dr. Arvind Krishnamurthy",
@@ -5266,7 +5283,7 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Fiby George Lal",
+          "name": "Dr. Rekha A. Nair",
           "role": "Director"
         },
         {
@@ -5349,12 +5366,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Shilin N. Shukla",
+          "name": "Dr. Shashank Pandya",
           "role": "Director"
-        },
-        {
-          "name": "Dr. Prabhash Kumar",
-          "role": "Medical Oncology"
         }
       ],
       "notes": "Apex cancer centre for Gujarat and parts of Rajasthan. High volume; strong in oral and tobacco-related cancers.",
@@ -5432,12 +5445,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Subrata Mandal",
-          "role": "Director"
-        },
-        {
-          "name": "Dr. Debjit Chatterjee",
-          "role": "Medical Oncology"
+          "name": "Dr. Jayanta Chakrabarti",
+          "role": "Director & Head, Surgical Oncology"
         }
       ],
       "notes": "Premier cancer institute for eastern India; NCI-designated. Strong in haematological malignancies and gynaecologic cancers.",
@@ -5512,8 +5521,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Nirdesh Kumar",
-          "role": "Medical Oncology"
+          "name": "Dr. Amit Kumar Agrawal",
+          "role": "Assistant Professor, Medical Oncology"
         }
       ],
       "notes": "Apex referral for Chhattisgarh; growing oncology programme serving tribal belt populations.",
@@ -5543,7 +5552,7 @@
         "academic_affiliation": null
       },
       "navigation_notes": [
-        "OPD 8 AM Monday\u2013Saturday; PMJAY and Dr. Khubchand Baghel scheme accepted",
+        "OPD 8 AM Monday–Saturday; PMJAY and Dr. Khubchand Baghel scheme accepted",
         "Patient accommodation at hospital campus hostel"
       ],
       "score": 80,
@@ -5587,8 +5596,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Arun Bhatt",
-          "role": "Surgical Oncology"
+          "name": "Dr. Shubhada Khanapure",
+          "role": "Associate Professor, Surgical Oncology"
         }
       ],
       "notes": "Serves Vidarbha region and Central India corridor. Filling a critical gap in central Maharashtra.",
@@ -5662,8 +5671,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Rajesh Patidar",
-          "role": "Medical Oncology"
+          "name": "Dr. Gaurav Dhingra",
+          "role": "Associate Professor & Head, Medical Oncology"
         }
       ],
       "notes": "Apex referral for Madhya Pradesh; serves large tribal and rural population. Good linear accelerator facility.",
@@ -5735,12 +5744,7 @@
         "address": "Bibinagar, Yadadri Bhuvanagiri District, Telangana - 508126",
         "website": "https://www.aiimsbibinagar.edu.in"
       },
-      "key_doctors": [
-        {
-          "name": "Dr. Ramachandra Bhatt",
-          "role": "Medical Oncology"
-        }
-      ],
+      "key_doctors": [],
       "notes": "New AIIMS serving Telangana and parts of AP. Oncology department rapidly scaling.",
       "sccf_affiliated": false,
       "sccf_notes": "",
@@ -5897,15 +5901,11 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Vijay Anand Reddy",
-          "role": "Radiation Oncology"
-        },
-        {
-          "name": "Dr. Arvind Krishnamurthy",
-          "role": "Surgical Oncology (Head & Neck)"
+          "name": "Dr. Srinivas Chilukuri",
+          "role": "Radiation Oncology, Apollo Proton Cancer Centre"
         }
       ],
-      "notes": "Largest private cancer network in India. Chennai flagship has proton therapy \u2014 one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
+      "notes": "Largest private cancer network in India. Chennai flagship has proton therapy — one of only two centres in India. JCI-accredited. Comprehensive tumour boards.",
       "sccf_affiliated": false,
       "sccf_notes": "",
       "tier": "A",
@@ -5950,7 +5950,7 @@
     },
     {
       "id": "medanta-cancer-institute-gurugram",
-      "name": "Medanta \u2014 The Medicity, Cancer Institute",
+      "name": "Medanta — The Medicity, Cancer Institute",
       "short_name": "Medanta Gurugram",
       "city": "Gurugram",
       "state": "Haryana",
@@ -5985,11 +5985,11 @@
       "key_doctors": [
         {
           "name": "Dr. Naresh Trehan",
-          "role": "Chairman & Cardio-thoracic"
+          "role": "Founder Chairman & Managing Director"
         },
         {
-          "name": "Dr. Surender Kumar Dabas",
-          "role": "Surgical Oncology"
+          "name": "Dr. Ashok Kumar Vaid",
+          "role": "Chairman, Cancer Institute, Medical Oncology & BMT"
         }
       ],
       "notes": "Flagship private multi-specialty hospital for NCR; comprehensive cancer institute. Excellent robotic surgery and BMT programme. CGHS empanelled.",
@@ -6037,7 +6037,7 @@
     },
     {
       "id": "fortis-memorial-research-institute-gurugram",
-      "name": "Fortis Memorial Research Institute \u2014 Oncology",
+      "name": "Fortis Memorial Research Institute — Oncology",
       "short_name": "FMRI Gurugram",
       "city": "Gurugram",
       "state": "Haryana",
@@ -6070,11 +6070,7 @@
       "key_doctors": [
         {
           "name": "Dr. Rahul Bhargava",
-          "role": "Haematology & BMT"
-        },
-        {
-          "name": "Dr. Ashish Goel",
-          "role": "Medical Oncology"
+          "role": "Principal Director & Chief, Haematology & BMT"
         }
       ],
       "notes": "JCI-accredited tertiary cancer centre; one of the top BMT programmes in North India. Leading destination for international patients from South Asia.",
@@ -6154,11 +6150,7 @@
       "key_doctors": [
         {
           "name": "Dr. Harit Chaturvedi",
-          "role": "Head & Neck Surgical Oncology"
-        },
-        {
-          "name": "Dr. Lalit Kumar",
-          "role": "Medical Oncology"
+          "role": "Chairman, Head & Neck Surgical Oncology"
         }
       ],
       "notes": "Leading private cancer centre in Delhi; known for head & neck oncology and BMT. CGHS empanelled.",
@@ -6205,7 +6197,7 @@
     },
     {
       "id": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
-      "name": "Kokilaben Dhirubhai Ambani Hospital \u2014 Cancer Centre",
+      "name": "Kokilaben Dhirubhai Ambani Hospital — Cancer Centre",
       "short_name": "KDH Cancer Mumbai",
       "city": "Mumbai",
       "state": "Maharashtra",
@@ -6237,16 +6229,7 @@
         "address": "Four Bungalows, Andheri West, Mumbai - 400053",
         "website": "https://www.kokilabenhospital.com/departments/cancercare"
       },
-      "key_doctors": [
-        {
-          "name": "Dr. Shailesh Shrikhande",
-          "role": "GI Surgical Oncology"
-        },
-        {
-          "name": "Dr. Anoop Attam",
-          "role": "Radiation Oncology"
-        }
-      ],
+      "key_doctors": [],
       "notes": "One of Mumbai's premier private cancer centres; proton therapy available. Strong in GI, hepatobiliary, and robotic surgery. JCI-accredited.",
       "sccf_affiliated": false,
       "sccf_notes": "",
@@ -6410,10 +6393,6 @@
         {
           "name": "Dr. Krishna Sharan",
           "role": "Radiation Oncology"
-        },
-        {
-          "name": "Dr. Sandeep Nayak",
-          "role": "Surgical Oncology"
         }
       ],
       "notes": "Deemed university hospital; one of the best-balanced cost-to-quality cancer centres in India. Ayushman Bharat empanelled. NCG member.",
@@ -6461,7 +6440,7 @@
     },
     {
       "id": "lilavati-hospital-cancer-mumbai",
-      "name": "Lilavati Hospital and Research Centre \u2014 Oncology",
+      "name": "Lilavati Hospital and Research Centre — Oncology",
       "short_name": "Lilavati Cancer Mumbai",
       "city": "Mumbai",
       "state": "Maharashtra",
@@ -6489,16 +6468,7 @@
         "address": "A-791, Bandra Reclaimation, Bandra (West), Mumbai - 400050",
         "website": "https://lilavatihospital.com/oncology"
       },
-      "key_doctors": [
-        {
-          "name": "Dr. Sudeep Gupta",
-          "role": "Medical Oncology"
-        },
-        {
-          "name": "Dr. Anil D'Cruz",
-          "role": "Head & Neck Surgical Oncology"
-        }
-      ],
+      "key_doctors": [],
       "notes": "Reputed private hospital with strong head & neck and gynaecologic oncology programme. Well-known for complex surgical oncology.",
       "sccf_affiliated": false,
       "sccf_notes": "",
@@ -6543,7 +6513,7 @@
     },
     {
       "id": "breach-candy-hospital-cancer-mumbai",
-      "name": "Breach Candy Hospital Trust \u2014 Oncology",
+      "name": "Breach Candy Hospital Trust — Oncology",
       "short_name": "Breach Candy Cancer Mumbai",
       "city": "Mumbai",
       "state": "Maharashtra",
@@ -6570,7 +6540,7 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Piyush Ostwal",
+          "name": "Dr. Suresh Advani",
           "role": "Medical Oncology"
         }
       ],
@@ -6617,7 +6587,7 @@
     },
     {
       "id": "jaslok-hospital-cancer-mumbai",
-      "name": "Jaslok Hospital and Research Centre \u2014 Cancer Care",
+      "name": "Jaslok Hospital and Research Centre — Cancer Care",
       "short_name": "Jaslok Cancer Mumbai",
       "city": "Mumbai",
       "state": "Maharashtra",
@@ -6646,8 +6616,8 @@
       },
       "key_doctors": [
         {
-          "name": "Dr. Rajiv Sarin",
-          "role": "Radiation Oncology"
+          "name": "Dr. Sharmila Agarwal",
+          "role": "Director, Radiation Oncology"
         }
       ],
       "notes": "Well-established private hospital with comprehensive oncology. Strong in breast and haematological malignancies. CGHS empanelled.",

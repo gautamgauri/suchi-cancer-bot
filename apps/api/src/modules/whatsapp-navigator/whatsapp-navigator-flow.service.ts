@@ -93,38 +93,23 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
   }
 
   private loadHospitals(): void {
-    // Try multiple candidate paths to handle different working directories
-    // (Jest runs from apps/api/, Cloud Run runs from apps/api/dist/, etc.)
-    const RELATIVE_PATH = "apps/landing/src/content/hospitals.json";
-    const candidates = [
-      // From repo root (most common: Jest cwd = apps/api)
-      path.resolve(process.cwd(), "..", "..", RELATIVE_PATH),
-      // From apps/api (if cwd is set to repo root)
-      path.resolve(process.cwd(), RELATIVE_PATH),
-      // Absolute fallback using __dirname — works in ts-node source runs
-      path.resolve(__dirname, "../../../../../../apps/landing/src/content/hospitals.json"),
-      // dist/ layout: __dirname = apps/api/dist/modules/whatsapp-navigator
-      path.resolve(__dirname, "../../../../../landing/src/content/hospitals.json"),
-    ];
+    // Single canonical path: apps/api/data/hospitals.json is a symlink to
+    // apps/landing/src/content/hospitals.json.
+    //   - Jest: process.cwd() = apps/api/
+    //   - Cloud Run: process.cwd() = /app  (cloudbuild stages the file there)
+    const jsonPath = path.resolve(process.cwd(), "data/hospitals.json");
 
-    for (const jsonPath of candidates) {
-      try {
-        const raw = fs.readFileSync(jsonPath, "utf-8");
-        const parsed = JSON.parse(raw) as { hospitals: Hospital[] };
-        this.hospitals = (parsed.hospitals ?? []).filter(
-          (h) => h.status === "active"
-        );
-        this.logger.log(`Loaded ${this.hospitals.length} active hospitals from ${jsonPath}`);
-        return;
-      } catch {
-        // Try next candidate
-      }
+    try {
+      const raw = fs.readFileSync(jsonPath, "utf-8");
+      const parsed = JSON.parse(raw) as { hospitals: Hospital[] };
+      this.hospitals = (parsed.hospitals ?? []).filter(
+        (h) => h.status === "active"
+      );
+      this.logger.log(`Loaded ${this.hospitals.length} active hospitals from ${jsonPath}`);
+    } catch (err: any) {
+      this.logger.error(`Failed to load hospitals.json from ${jsonPath}: ${err.message}`);
+      this.hospitals = [];
     }
-
-    this.logger.error(
-      `Failed to load hospitals.json. Tried: ${candidates.join(", ")}`
-    );
-    this.hospitals = [];
   }
 
   // ---------------------------------------------------------------------------

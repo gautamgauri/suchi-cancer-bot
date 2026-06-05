@@ -120,56 +120,39 @@ export class HospitalDirectoryService implements OnModuleInit {
   // ─── Lifecycle ────────────────────────────────────────────────
 
   onModuleInit(): void {
-    const candidates = [
-      // Staged by cloudbuild.yaml into the container at build time
-      path.resolve(process.cwd(), "data/hospitals.json"),
-      // Local dev paths
-      path.resolve(process.cwd(), "apps/landing/src/content/hospitals.json"),
-      path.resolve(__dirname, "../../../../../apps/landing/src/content/hospitals.json"),
-      path.resolve(__dirname, "../../../../../../apps/landing/src/content/hospitals.json"),
-    ];
+    // Single canonical path: apps/api/data/hospitals.json is a symlink to
+    // apps/landing/src/content/hospitals.json.
+    //   - Jest: process.cwd() = apps/api/
+    //   - Cloud Run: process.cwd() = /app  (cloudbuild stages the file there)
+    const jsonPath = path.resolve(process.cwd(), "data/hospitals.json");
 
-    for (const candidate of candidates) {
-      try {
-        if (fs.existsSync(candidate)) {
-          const raw = fs.readFileSync(candidate, "utf-8");
-          const parsed = JSON.parse(raw);
-          const allHospitals: (HospitalSearchResult & { national_referral?: boolean })[] =
-            parsed.hospitals ?? [];
-          // Exclude Tier D entirely
-          const active = allHospitals.filter((h) => h.tier !== "D");
-          // Split into regional pool and national referral pool
-          this.nationalHospitals = active
-            .filter((h) => h.national_referral === true)
-            .map((h) => ({ ...h, national_referral: true as const }));
-          this.hospitals = active.filter((h) => h.national_referral !== true);
-          this.logger.log({
-            event: "hospital_directory_loaded",
-            path: candidate,
-            total: allHospitals.length,
-            regional: this.hospitals.length,
-            national: this.nationalHospitals.length,
-            tierDFiltered: allHospitals.length - active.length,
-          });
-          return;
-        }
-      } catch (err: any) {
-        this.logger.warn({
-          event: "hospital_directory_load_attempt_failed",
-          path: candidate,
-          error: err.message,
-        });
-      }
+    try {
+      const raw = fs.readFileSync(jsonPath, "utf-8");
+      const parsed = JSON.parse(raw);
+      const allHospitals: (HospitalSearchResult & { national_referral?: boolean })[] =
+        parsed.hospitals ?? [];
+      const active = allHospitals.filter((h) => h.tier !== "D");
+      this.nationalHospitals = active
+        .filter((h) => h.national_referral === true)
+        .map((h) => ({ ...h, national_referral: true as const }));
+      this.hospitals = active.filter((h) => h.national_referral !== true);
+      this.logger.log({
+        event: "hospital_directory_loaded",
+        path: jsonPath,
+        total: allHospitals.length,
+        regional: this.hospitals.length,
+        national: this.nationalHospitals.length,
+        tierDFiltered: allHospitals.length - active.length,
+      });
+    } catch (err: any) {
+      this.logger.warn({
+        event: "hospital_directory_not_found",
+        path: jsonPath,
+        message: "Hospital directory unavailable — falling back to KB markdown for navigation queries",
+      });
+      this.hospitals = [];
+      this.nationalHospitals = [];
     }
-
-    // Graceful degradation: system falls back to KB markdown
-    this.logger.warn({
-      event: "hospital_directory_not_found",
-      searchedPaths: candidates,
-      message: "Hospital directory unavailable — falling back to KB markdown for navigation queries",
-    });
-    this.hospitals = [];
-    this.nationalHospitals = [];
   }
 
   // ─── Public API ────────────────────────────────────────────────

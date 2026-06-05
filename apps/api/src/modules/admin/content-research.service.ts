@@ -149,9 +149,11 @@ function buildApprovalToken(slug: string): string {
   return createHmac("sha256", secret).update(slug).digest("hex");
 }
 
-function buildReviewEmail(entry: ArticleEntry, token: string, articleMarkdown: string): string {
-  const approveUrl = `${APPROVE_BASE}/${encodeURIComponent(entry.slug)}?token=${token}`;
-  const rejectUrl  = `${REJECT_BASE}/${encodeURIComponent(entry.slug)}?token=${token}`;
+function buildReviewEmail(entry: ArticleEntry, token: string, articleMarkdown: string, reviewerName: string): string {
+  const encodedSlug = encodeURIComponent(entry.slug);
+  const encodedName = encodeURIComponent(reviewerName);
+  const approveUrl = `${APPROVE_BASE}/${encodedSlug}?token=${token}&approver=${encodedName}`;
+  const rejectUrl  = `${REJECT_BASE}/${encodedSlug}?token=${token}&approver=${encodedName}`;
 
   // Show just the first 600 chars of the article body (after frontmatter) as preview
   const bodyStart = articleMarkdown.indexOf("\n---\n", 4);
@@ -304,17 +306,21 @@ export class ContentResearchService {
       return { status: "error", slug: topic.slug, message: `GCS queue write failed: ${String(err)}` };
     }
 
-    // 7. Send review email
-    const reviewers = [
-      process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org",
-      "divya.vats@dikshafoundation.org",
-      "nisha.kumari@dikshafoundation.org",
+    // 7. Send review email — one per reviewer so each link carries the reviewer's name
+    const reviewers: Array<{ email: string; name: string }> = [
+      { email: process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org", name: "Gautam" },
+      { email: "divya.vats@dikshafoundation.org", name: "Divya" },
+      { email: "nisha.kumari@dikshafoundation.org", name: "Nisha" },
     ];
-    const emailSent = await this.email.sendEmail({
-      to: reviewers.join(", "),
-      subject: `Content Review: "${topic.title}"`,
-      html: buildReviewEmail(entry, token, cleanedMarkdown),
-    });
+    let emailSent = false;
+    for (const reviewer of reviewers) {
+      const sent = await this.email.sendEmail({
+        to: reviewer.email,
+        subject: `Content Review: "${topic.title}"`,
+        html: buildReviewEmail(entry, token, cleanedMarkdown, reviewer.name),
+      });
+      if (sent) emailSent = true;
+    }
 
     this.logger.log(`Article "${topic.slug}" drafted — ${chunkMap.size} KB chunks, email: ${emailSent}`);
 
