@@ -439,18 +439,10 @@ REVIEW: {one-sentence description of the specific concern}`,
       // Count configured platforms for "Approve all" button label
       const configuredCount = [fbConfigured, igConfigured, liConfigured].filter(Boolean).length;
 
-      // Platform-specific approve buttons (only for configured platforms)
-      const fbBtn = fbConfigured
-        ? `<a href="${approveFB}"  style="${btnStyle("#1877f2")}">Facebook only</a>`
-        : `<p style="color:#999;font-size:12px;">Facebook not configured (META_PAGE_ID or META_PAGE_ACCESS_TOKEN not set)</p>`;
-
-      const igBtn = igConfigured
-        ? `<a href="${approveIG}"  style="${btnStyle("#c13584")}">Instagram only</a>`
-        : `<p style="color:#999;font-size:12px;">Instagram not configured (META_IG_USER_ID not set)</p>`;
-
-      const liBtn = liConfigured
-        ? `<a href="${approveLI}"  style="${btnStyle("#0077b5")}">LinkedIn only</a>`
-        : `<p style="color:#999;font-size:12px;">LinkedIn not configured (LINKEDIN_ACCESS_TOKEN or LINKEDIN_AUTHOR_URN not set)</p>`;
+      // Platform-specific approve buttons — omit entirely for unconfigured platforms (FR-SOCIAL-006)
+      const fbBtn = fbConfigured ? `<a href="${approveFB}"  style="${btnStyle("#1877f2")}">Facebook only</a>` : "";
+      const igBtn = igConfigured ? `<a href="${approveIG}"  style="${btnStyle("#c13584")}">Instagram only</a>` : "";
+      const liBtn = liConfigured ? `<a href="${approveLI}"  style="${btnStyle("#0077b5")}">LinkedIn only</a>` : "";
 
       // Approve buttons section — omit entirely when hard-blocked
       const approveSection = draft.safetyBlocked
@@ -462,14 +454,19 @@ REVIEW: {one-sentence description of the specific concern}`,
   ${liBtn}
 </div>`;
 
+      // Copy preview blocks — only show configured platforms (FR-SOCIAL-006)
+      const fbBlock = fbConfigured ? buildPostBlock("Facebook", copy.facebook) : "";
+      const igBlock = igConfigured ? buildPostBlock("Instagram", copy.instagram, "Image: branded card configured via SUCHI_SOCIAL_CARD_URL") : "";
+      const liBlock = liConfigured ? buildPostBlock("LinkedIn", copy.linkedin) : "";
+
       const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:680px;margin:auto;padding:20px">
 <h2 style="margin-bottom:4px">APPROVAL REQUIRED: Social post</h2>
 <p style="color:#555;margin-top:4px">${escHtml(title)} — <a href="${escHtml(articleUrl)}">${escHtml(articleUrl)}</a></p>
 ${safetyBanner}
 
-${buildPostBlock("Facebook", copy.facebook)}
-${buildPostBlock("Instagram", copy.instagram, "Image: branded card configured via SUCHI_SOCIAL_CARD_URL")}
-${buildPostBlock("LinkedIn", copy.linkedin)}
+${fbBlock}
+${igBlock}
+${liBlock}
 
 ${approveSection}
 <div style="margin-top:10px">
