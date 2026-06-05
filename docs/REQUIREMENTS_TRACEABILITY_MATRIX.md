@@ -197,27 +197,17 @@ Only 5 of 83 implemented/partial requirements have automated tests. This is the 
 
 ## Missing requirements — priority order
 
-| Priority | Req ID | Description | OD ref |
+| Priority | Req ID | Description | Notes |
 |---|---|---|---|
-| P0 | FR-SOCIAL-013 / FR-SAFETY-006 | Social post critical-severity = hard block (403) | OD-004 |
-| P0 | FR-CONTENT-007 | Content approval captures reviewer name | OD-006 |
-| P0 | FR-HOSP-007 / FR-AUDIT-005 | Hospital approval captures reviewer name | OD-006 |
-| P0 | FR-CONTENT-009 | Content approval endpoint idempotency | — |
-| P1 | FR-AUDIT-007 | Draft expiry + reminder emails | OD-007 |
-| P2 | FR-AUDIT-007 | Draft expiry + reminder emails | OD-007 |
-| P2 | FR-CONTENT-010/011 | Automated article publish (daily scheduled) | OD-001 |
+| P1 | FR-CONTENT-010/011 | Full automated article publish (git push + deploy) | OD-001 partial — notify endpoint implemented, git push deferred |
+| P2 | NFR-PRIV-001 | 90-day PostgreSQL retention job for messages/sessions | See `docs/PRIVACY_RETENTION.md` |
+| P2 | NFR-PRIV-002 | 1-year retention for safety events + feedback | See `docs/PRIVACY_RETENTION.md` |
 
 ## Tests to add — priority order (safety-critical first)
 
+All P0/P1/P2 tests from the original list are now implemented (250 passing). Remaining gaps:
+
 | Priority | Requirement | What to test |
 |---|---|---|
-| P0 | FR-CHAT-003 | Emergency pattern → response in <1s with no DB/LLM calls |
-| P0 | FR-CHAT-005 | `safe_redirect` and `hard_refusal` classifications terminate without LLM |
-| P0 | FR-CHAT-004 | LLM timeout → abstention response (not 500) |
-| P0 | FR-CHAT-009 | Treatment query with <2 sources → abstention |
-| P0 | FR-CHAT-012 | Citation repair fires when LLM cites <2 sources |
-| P1 | FR-CHAT-019 | "radiation therapy" does not classify as PSYCHOSOCIAL |
-| P1 | FR-CHAT-020 | Hindi query → cross-lingual expansion → Hindi response |
-| P1 | FR-SOCIAL-013 | Critical-severity post → 403 from approval endpoint |
-| P1 | FR-SAFETY-002 | Emergency path runs before any async call |
-| P2 | FR-VOICE-004 | TTS output contains no `[1]`/`[2]` or markdown |
+| P2 | FR-AUDIT-007 | Draft expiry service: articles archived at 30d, reminded at 48h |
+| P2 | FR-CONTENT-010 | notify-publish endpoint returns correct approved slugs |

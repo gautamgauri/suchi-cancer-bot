@@ -8,19 +8,17 @@ Review this doc before starting any significant new feature. Mark items **RESOLV
 
 ## OD-001 — Article publish step is manual, not automated
 
-**Status:** Open  
+**Status:** Partially resolved (Jun 2026)  
 **Area:** Content pipeline
 
-**Current state:** Clicking "Approve" in the article email only sets `status: approved` in `content-queue.json` on GCS. Nothing else happens. A human must then run `npx ts-node content/cli.ts publish`, commit the output to git, and deploy `suchi-web` to make the article live.
+**Current state:** A daily Cloud Scheduler job calls `POST /v1/admin/content/notify-publish`, which checks for approved articles and emails the team with instructions. Full automation (git push + suchi-web deploy from the API) is deferred because it requires Cloud Build API permissions and git push access from within Cloud Run.
 
-**Problem:** The reviewer guide says "the website picks it up on the next deploy" — implying automation. There is no automation. If no one runs the publish command, approved articles never reach the website. There is no notification, no deadline, no scheduled job.
+**Interim workflow (implemented):**
+1. Cloud Scheduler fires daily → `POST /v1/admin/content/notify-publish`
+2. API finds `status: approved` articles → emails Gautam + Divya with the list
+3. Human runs `npx ts-node content/cli.ts publish` → commits → Cloud Build deploys suchi-web
 
-**Options:**
-1. Automate: API approval triggers a Cloud Build job that runs publish + deploys `suchi-web`
-2. Scheduled: a daily Cloud Scheduler job runs publish + deploys
-3. Document as manual: make the manual step explicit and assign ownership
-
-**Recommendation:** Option 2 (daily scheduled publish). Keeps deployment predictable, avoids partial deploys if multiple articles are approved the same day.
+**Remaining work (OD-001 not fully closed):** Full automation via Cloud Build API trigger from the approval endpoint. Blocked on: Cloud Build permissions for `suchi-api` service account + git push credentials. Revisit when the content pipeline volume justifies the complexity (currently 1–2 articles/month).
 
 ---
 
@@ -44,23 +42,19 @@ Review this doc before starting any significant new feature. Mark items **RESOLV
 
 ## OD-003 — Citation rendering: visible to users or auditor-only?
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Chat + content
 
-**Current state:** Three different behaviours exist and none is documented as canonical:
+**Decision:** Citations serve different purposes in different outputs. The canonical rule:
 
-| Context | Current behaviour |
-|---|---|
-| Chat responses | LLM generates `[1]`, `[2]` markers; citation repair ensures minimum 2 citations; voice channel strips them |
-| Article content | Frontmatter requires `[citation:doc_id:chunk_id]` inline markers for provenance |
-| Content guide | States "citation markers should not appear in body text — citations are for auditors, not readers" |
+| Context | Rule | Implementation |
+|---|---|---|
+| Chat (web) | `[citation:docId:chunkId]` markers in API response are consumed by the frontend and rendered as a collapsible "Sources" section below the response — **never shown inline in prose** | `CitationService.extractCitations()` + frontend renderer |
+| Chat (voice) | All citation markers and source blocks stripped before TTS | `stripForVoice()` in `voice-output-stripper.ts` |
+| Articles (website) | `[citation:...]` in markdown is for provenance auditing only — **never rendered on the public website** | Astro content collection ignores unknown markdown tokens |
+| Articles (audit) | `provenance.source_chunks` in YAML frontmatter is the authoritative audit trail | `CONTENT_PAGE_SCHEMA.md` schema |
 
-**Problem:** These are actually for different outputs (real-time chat vs. authored articles), but the distinction is not documented anywhere, creating confusion about what the rule is.
-
-**Recommendation:** Document explicitly:
-- Chat: `[1]` markers in API response are consumed by the frontend and rendered as a collapsible sources section — never shown inline in prose
-- Articles: `[citation:...]` in markdown frontmatter/body is for provenance auditing; never rendered on the public website
-- Voice: all citation markers stripped before TTS
+**Why:** "Citations are for auditors, not users" applies to article prose. Chat citations are different — they ground real-time responses and the frontend renders them as a trust signal without cluttering the prose.
 
 ---
 
@@ -163,28 +157,26 @@ Implementation: safety gate returns a `severity` field; `critical` severity prev
 
 ## OD-009 — Admin endpoints protected only by HTTP Basic Auth
 
-**Status:** Open  
+**Status:** Closed — accepted limitation (Jun 2026)  
 **Area:** Security
 
-**Current state:** All `/v1/admin/*` endpoints use HTTP Basic Auth (`ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS`). Approval endpoints (`/approve/:id`, `/reject/:id`) use HMAC token only, no Basic Auth — which is correct for one-click email links. But the generate, research, and review endpoints require only Basic Auth.
+**Decision:** HTTP Basic Auth over HTTPS is accepted for the current team size (3–4 people, internal only). The auth model is:
 
-**Problem:** Basic Auth over HTTPS is acceptable for low-risk internal tools. For a health-information service with real patient-adjacent data (conversation logs, hospital details), this should be reviewed before the team grows beyond 3–4 people.
+| Endpoint type | Auth | Rationale |
+|---|---|---|
+| Admin generate/research/review | Basic Auth (`ADMIN_BASIC_USER` / `ADMIN_BASIC_PASS`) | Internal team only; credentials in Secret Manager |
+| Approval/rejection links | HMAC token in URL (`?token=...`) | Single-use email links; no session required |
+| Scheduler jobs | OIDC token (`SchedulerOidcGuard`) | Service account only; no human interaction |
 
-**Recommendation:** Document the current auth model as an accepted limitation with a review trigger (e.g., "re-evaluate when external contractors access admin endpoints").
+**Review trigger:** Re-evaluate when (a) external contractors need admin access, or (b) the team grows beyond 6 people. At that point, migrate to Google Identity-Aware Proxy (IAP) or OAuth2 with role-based access.
+
+**See also:** `FR-ADMIN-004` in `REQUIREMENTS.md`.
 
 ---
 
 ## OD-010 — Hospital eligibility criteria not formally defined
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Navigator pipeline
 
-**Current state:** The research agent targets "NCG members, AIIMS, NABH-accredited with oncology" but there is no formal document defining what qualifies a hospital for the Suchi directory.
-
-**Problem:** Different research runs may apply different standards. Reviewers don't have a clear checklist.
-
-**Recommendation:** Define formal hospital eligibility criteria in `docs/NAVIGATOR_PIPELINE.md`:
-- Minimum: dedicated oncology department + at least one of: medical oncology, surgical oncology, radiation oncology
-- Preferred: NCG member, NABH accredited, PM-JAY empanelled
-- Required fields: name, city, address, phone, speciality, government/private, `last_verified` date
-- Disqualifying: no oncology department, only palliative/hospice, not contactable for verification
+**Resolution:** Formal eligibility criteria, required fields, and disqualifying conditions documented in `docs/NAVIGATOR_PIPELINE.md` under "Inclusion criteria". Three hard gates: oncology department, 2+ modalities, trust signal. Required fields include name/city/address/phone/departments/type/last_verified. Disqualifying conditions listed explicitly.

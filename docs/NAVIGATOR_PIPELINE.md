@@ -39,10 +39,31 @@ All pipeline state lives in GCS: `suchi-navigator-state/queue.json` (bucket set 
 
 If no `pending` batch is found, the job returns `{ status: "no_pending" }` and exits cleanly.
 
-**Inclusion criteria (all 3 must pass):**
-- At least one core oncology department (medical / surgical / radiation / gyn / pediatric / hemato)
-- 2+ treatment modalities (surgery, chemo, radiation, immunotherapy, BMT, targeted therapy, etc.)
-- At least one trust signal: NABH/NABL/JCI/ISO accreditation, NCG membership, TMC affiliation, or Government/AIIMS institution
+**Inclusion criteria (all 3 must pass)** — OD-010 closed Jun 2026:
+
+| Gate | Requirement | Examples that qualify |
+|---|---|---|
+| 1. Oncology department | At least one dedicated oncology department | Medical oncology, surgical oncology, radiation oncology, gynae-oncology, paediatric oncology, haemato-oncology |
+| 2. Treatment modalities | 2 or more active treatment modalities | Surgery, chemotherapy, radiation, immunotherapy, BMT, targeted therapy, hormone therapy |
+| 3. Trust signal | At least one verifiable trust signal | NABH/NABL/JCI/ISO accreditation, NCG membership, TMC/AIIMS affiliation, government tertiary hospital |
+
+**Required fields** — a hospital entry without these is incomplete and must be flagged in review:
+
+| Field | Why required |
+|---|---|
+| `name` | Identity |
+| `city` + `state` | Location for patient routing |
+| `address` | Patient can find the facility |
+| `phone` | Patient can call to verify/book |
+| `departments` (≥1) | Confirms oncology capability |
+| `type` (`government`/`private`/`trust`) | Cost guidance for patients |
+| `last_verified` | Staleness tracking |
+
+**Disqualifying conditions** (hospital is excluded regardless of trust signals):
+- No oncology department — only palliative care or general surgery
+- Purely hospice / end-of-life care facility
+- Unable to be contacted for verification (phone disconnected, no web presence)
+- Closed or relocated without updated contact details
 
 Hospitals failing any gate are logged as warnings and dropped. If the entire batch fails, the job returns an error result without advancing the queue.
 
