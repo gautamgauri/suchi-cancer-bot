@@ -332,4 +332,46 @@ export class ContentResearchService {
       emailSent,
     };
   }
+
+  /**
+   * FR-CONTENT-010: Notify the team when approved articles are waiting to be published.
+   * Full automation (git push + suchi-web deploy) is deferred until Cloud Build git
+   * push permissions are configured (OD-001). This method is the interim solution.
+   */
+  async notifyApprovedArticles(): Promise<{ notified: boolean; count: number; slugs: string[] }> {
+    let raw: string;
+    try {
+      raw = await gcsRead("content-queue.json");
+    } catch {
+      return { notified: false, count: 0, slugs: [] };
+    }
+
+    const queue = JSON.parse(raw) as { articles: ArticleEntry[] };
+    const approved = (queue.articles ?? []).filter((a) => a.status === "approved");
+
+    if (approved.length === 0) {
+      this.logger.log("notify-publish: no approved articles pending");
+      return { notified: false, count: 0, slugs: [] };
+    }
+
+    const slugList = approved.map((a) => `<li><strong>${a.slug}</strong> — ${a.title}</li>`).join("\n");
+    const to = process.env.DAILY_REPORT_EMAIL ?? "gautamgauri@dikshafoundation.org";
+
+    await this.email.sendEmail({
+      to,
+      subject: `ACTION REQUIRED: ${approved.length} approved article(s) pending publish`,
+      html: `<p>${approved.length} article(s) have been approved and are ready to publish to the website:</p>
+<ul>${slugList}</ul>
+<p>To publish:</p>
+<ol>
+  <li>Run <code>npx ts-node content/cli.ts publish</code> from the repo root</li>
+  <li>Commit and push the changes to main</li>
+  <li>Cloud Build will deploy suchi-web automatically</li>
+</ol>
+<p style="color:#999;font-size:12px;">Suchi Content Pipeline — automated publish reminder (FR-CONTENT-010)</p>`,
+    });
+
+    this.logger.log(`notify-publish: sent email for ${approved.length} approved article(s): ${approved.map((a) => a.slug).join(", ")}`);
+    return { notified: true, count: approved.length, slugs: approved.map((a) => a.slug) };
+  }
 }

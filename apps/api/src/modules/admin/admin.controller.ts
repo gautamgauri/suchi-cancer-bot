@@ -12,6 +12,7 @@ import { buildReviewHtml } from "./navigator-review.html";
 import { ContentApproveService } from "./content-approve.service";
 import { ContentResearchService } from "./content-research.service";
 import { SocialPostService } from "./social-post.service";
+import { DraftExpiryService } from "./draft-expiry.service";
 
 @Controller("admin")
 export class AdminController {
@@ -26,6 +27,7 @@ export class AdminController {
     private readonly contentApprove: ContentApproveService,
     private readonly contentResearch: ContentResearchService,
     private readonly socialPost: SocialPostService,
+    private readonly draftExpiry: DraftExpiryService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -417,6 +419,32 @@ ${noteHtml}
 <p style="color:#555;font-size:13px;">${message}</p>
 <p style="color:#999;font-size:12px;">Please contact the team if this was unexpected.</p>
 </body></html>`;
+  }
+
+  /**
+   * FR-CONTENT-010/011: Notify team of approved-but-unpublished articles (FR-CONTENT-010).
+   * Full automation (git push + deploy) is deferred (OD-001).
+   * URL: POST /v1/admin/content/notify-publish (SchedulerOidcGuard — call daily)
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("content/notify-publish")
+  async notifyPublish() {
+    const result = await this.contentResearch.notifyApprovedArticles();
+    return result;
+  }
+
+  /**
+   * FR-AUDIT-007: Run draft expiry — archive stale articles, expire stale social posts,
+   * send reminders. Called daily by Cloud Scheduler.
+   * URL: POST /v1/admin/housekeeping/run-expiry
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("housekeeping/run-expiry")
+  async runDraftExpiry() {
+    this.logger.log("Draft expiry job triggered");
+    const result = await this.draftExpiry.runExpiry();
+    this.logger.log(`Expiry run complete: articles archived=${result.articles.archived.length} reminded=${result.articles.reminded.length}; social expired=${result.social.expired.length} reminded=${result.social.reminded.length}`);
+    return { ok: true, ...result };
   }
 
   private parseDateRange(date?: string): { from: Date; to: Date; dateStr: string } {
