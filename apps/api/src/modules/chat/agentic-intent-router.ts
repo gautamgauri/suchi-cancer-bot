@@ -110,9 +110,10 @@ const ADMIN_PATTERNS: RegExp[] = [
   // Logistics — English
   /\b(opd|outpatient)\s*(timing|time|hours|schedule)\b/i,
   /\b(appointment|registration)\s*(book|schedule|how|process)\b/i,
-  /\b(which\s+floor|where\s+is|location\s+of)\s*(oncology|chemo|radiation|cancer)\b/i,
+  /\b(book|schedule)\s+(an?\s+)?(appointment|registration)\b/i,
+  /\b(which\s+floor|where\s+is|location\s+of)\b.*\b(oncology|chemo|radiation|cancer)\b/i,
   /\b(visiting\s+hours|parking|canteen|cafeteria)\b/i,
-  /\b(documents?|papers?)\s+(need|required|bring|carry)\b/i,
+  /\b(documents?|papers?)\b.*\b(need|required|bring|carry)\b/i,
   /\b(referral|transfer)\s+(letter|process|how)\b/i,
   // Hindi
   /ओपीडी\s*(का\s*)?(समय|टाइम|कब)/i,
@@ -131,7 +132,7 @@ const NAVIGATION_PATTERNS: RegExp[] = [
   /\b(where|how)\s+(should|can|do)\s+(we|i)\s+(go|get\s+treated)\b/i,
   /\b(biopsy|report)\s*(aaya|aya|came|received)\b.*\b(aage|next|kya)\b/i,
   /\b(second\s+opinion|another\s+doctor)\b/i,
-  /\b(prepare|preparation)\s+(for|before)\s+(visit|appointment|chemo|surgery|radiation)\b/i,
+  /\b(prepare|preparation)\s+(for|before)\b.*\b(visit|appointment|chemo|surgery|radiation)\b/i,
   /\b(what\s+to)\s+(expect|bring|prepare)\s+(for|at|before)\b/i,
   /\b(caregiver|caregiving|taking\s+care)\b/i,
   // Hospital search with location

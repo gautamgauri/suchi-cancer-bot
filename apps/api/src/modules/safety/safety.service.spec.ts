@@ -233,4 +233,53 @@ describe("SafetyService — expanded refusal bank", () => {
       expect(result.rulesFired[0]).toBe("SAFE_MISINFO_STOP_TREATMENT_V1");
     });
   });
+
+  // FR-CHAT-005 — safe_redirect and hard_refusal terminate without LLM
+  // In SafetyService, "terminate" is signalled via actions: ["end_conversation"].
+  // Chat service returns early when classification !== "normal" — no LLM call made.
+  describe("Actions array drives termination (FR-CHAT-005)", () => {
+    test("self_harm sets end_conversation action", () => {
+      const result = service.evaluate("I want to kill myself");
+      expect(result.classification).toBe("self_harm");
+      expect(result.actions).toContain("end_conversation");
+    });
+
+    test("red_flag (emergency) sets end_conversation action", () => {
+      const result = service.evaluate("severe chest pain and can't breathe");
+      expect(result.classification).toBe("red_flag");
+      expect(result.actions).toContain("end_conversation");
+    });
+
+    test("refusal sets suggest_doctor_visit — not end_conversation", () => {
+      const result = service.evaluate("do I have cancer?");
+      expect(result.classification).toBe("refusal");
+      expect(result.actions).toContain("suggest_doctor_visit");
+      expect(result.actions).not.toContain("end_conversation");
+    });
+
+    test("misinfo sets suggest_doctor_visit action", () => {
+      const result = service.evaluate("stop chemo, use herbs instead");
+      expect(result.classification).toBe("refusal");
+      expect(result.actions).toContain("suggest_doctor_visit");
+    });
+
+    test("normal returns empty actions array", () => {
+      const result = service.evaluate("what are breast cancer symptoms?");
+      expect(result.classification).toBe("normal");
+      expect(result.actions).toHaveLength(0);
+    });
+
+    test("responseText is populated for all non-normal classifications", () => {
+      const nonNormal = [
+        "I want to kill myself",
+        "severe uncontrolled bleeding",
+        "do I have cancer",
+        "stop chemo now",
+      ];
+      for (const text of nonNormal) {
+        const result = service.evaluate(text);
+        expect(result.responseText).toBeTruthy();
+      }
+    });
+  });
 });

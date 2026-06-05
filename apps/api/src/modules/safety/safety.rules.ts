@@ -59,7 +59,7 @@ export const EMERGENCY_PATTERNS = [
   /can'?t breathe/i,
   /faint(ed|ing)/i,
   /coughing\s+(up\s+)?blood/i,
-  /blood\s+in\s+(stool|urine|vomit)/i,
+  /blood\s+in\s+(?:his|her|my|the|their|your\s+)?(stool|urine|vomit)/i,
   /seizure/i,
   /unconscious/i,
   /collapsed/i,
@@ -105,7 +105,7 @@ export const DIAGNOSIS_PATTERNS = [
 // ─── Dosage patterns (expanded with more clinical terms) ─────────────
 export const DOSAGE_PATTERNS = [
   // Dosage units and prescription language
-  /\bmg\b/i,
+  /\d+\s*mg\b/i,
   /\bml\b.*\b(take|dose|inject|drink)/i,
   /dose/i,
   /how much .* take/i,
@@ -192,6 +192,7 @@ export const TREATMENT_CHOICE_PATTERNS = [
 export const PROGNOSIS_PATTERNS = [
   /how\s+long\s+(do\s+i|will\s+i|does)\s+(have|live|survive)/i,
   /survival\s+rate\s+(for\s+)?my/i,
+  /my\s+survival\s+rate/i,
   /am\s+i\s+going\s+to\s+die/i,
   /will\s+i\s+(die|survive|make\s+it)/i,
   /what\s+(are|is)\s+my\s+(chances|odds|prognosis)/i,
@@ -209,13 +210,17 @@ export const PROGNOSIS_PATTERNS = [
 
 // ─── Alternative-only misinformation patterns (NEW) ──────────────────
 export const ALTERNATIVE_ONLY_PATTERNS = [
-  /\b(turmeric|haldi|neem|tulsi|giloy|ashwagandha)\s+(cure|treat|kill)\s+cancer\b/i,
+  /\b(turmeric|haldi|neem|tulsi|giloy|ashwagandha)\s+(can\s+)?(cure|treat|kill)\s+cancer\b/i,
   /\bcancer\s+cure\s+(home|natural|herbal|ayurvedic)\s+remed/i,
   /\b(alkaline|keto|fasting)\s+(diet\s+)?(cure|treat|kill)\s+cancer\b/i,
-  /\b(juice|detox|cleanse)\s+(cure|treat|kill)\s+cancer\b/i,
+  /\b(juice|detox|cleanse)\s+(to\s+)?(cure|treat|kill)\s+cancer\b/i,
+  /\b(juice\s+cleanse|detox\s+cleanse)\b.*\bcancer\b/i,
   /\bwhy\s+(not|won'?t)\s+(doctors|hospitals)\s+tell\b.*\b(cure|natural)\b/i,
-  /\bconspiracy\b.*\bcancer\s+cure\b/i,
+  /\bconspiracy\b.*\bcancer\s*(cure)?\b/i,
+  /\bcancer\s+(cure\s+)?conspiracy\b/i,
   // Hindi
   /हल्दी\s*(से)?\s*कैंसर\s*(ठीक|ख़त्म)/i,
   /देसी\s*(इलाज|नुस्खा|दवा)\s*(से)?\s*कैंसर/i,
+  // Hinglish
+  /\bhaldi\s+(se\s+)?cancer\s+(thik|theek|khatam)\b/i,
 ];

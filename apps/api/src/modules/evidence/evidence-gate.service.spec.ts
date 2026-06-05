@@ -98,7 +98,7 @@ describe("EvidenceGateService - weak evidence regression tests", () => {
     ];
     const userText = "What are common symptoms of breast cancer? Just asking generally.";
 
-    const result = await service.validateEvidence(weakChunks, "general", userText, userText, "INFORMATIONAL_GENERAL", {
+    const result = await service.validateEvidence(weakChunks, "general", userText, undefined, {
       hasGenerallyAsking: true
     });
 
@@ -128,7 +128,7 @@ describe("EvidenceGateService - weak evidence regression tests", () => {
     ];
     const userText = "What are treatment options? Just asking generally.";
 
-    const result = await service.validateEvidence(veryWeakChunks, "treatment", userText, userText, "INFORMATIONAL_GENERAL", {
+    const result = await service.validateEvidence(veryWeakChunks, "treatment", userText, undefined, {
       hasGenerallyAsking: true
     });
 
@@ -167,7 +167,7 @@ describe("EvidenceGateService - weak evidence regression tests", () => {
     const noChunks: EvidenceChunk[] = [];
     const userText = "What are symptoms? Just asking generally.";
 
-    const result = await service.validateEvidence(noChunks, "general", userText, userText, "INFORMATIONAL_GENERAL", {
+    const result = await service.validateEvidence(noChunks, "general", userText, undefined, {
       hasGenerallyAsking: true
     });
 
@@ -255,6 +255,58 @@ describe("EvidenceGateService - hybrid score dilution fix", () => {
     expect(result.shouldAbstain).toBe(false);
     expect(result.confidence).toBe("high");
     expect(result.quality).toBe("strong");
+  });
+});
+
+// FR-CHAT-009 — treatment query with < 2 sources should abstain
+// (treatment requires minPassages=2, minSources=2 from trusted-sources.config)
+describe("EvidenceGateService — treatment evidence threshold (FR-CHAT-009)", () => {
+  let service: EvidenceGateService;
+
+  beforeEach(() => {
+    service = new EvidenceGateService({} as any);
+  });
+
+  function makeChunk(docId: string, chunkId: string, isTrustedSource: boolean, vecSim = 0.2): EvidenceChunk {
+    return {
+      chunkId,
+      docId,
+      content: "some content",
+      document: {
+        title: "Test doc",
+        sourceType: isTrustedSource ? "02_nci_core" : "unknown_blog",
+        source: isTrustedSource ? "NCI" : "Blog",
+        citation: null,
+        isTrustedSource,
+      },
+      similarity: vecSim,
+      vecSim,
+      lexSim: 0,
+    };
+  }
+
+  test("treatment query with 0 chunks → shouldAbstain", async () => {
+    const result = await service.validateEvidence([], "treatment", "what are treatment options for breast cancer");
+    expect(result.shouldAbstain).toBe(true);
+    expect(result.status).toBe("insufficient");
+    expect(result.reason).toBe("no_evidence");
+  });
+
+  test("treatment query with 1 untrusted chunk (low similarity) → shouldAbstain", async () => {
+    const chunks = [makeChunk("doc1", "chunk1", false, 0.2)];
+    const result = await service.validateEvidence(chunks, "treatment", "best treatment for lung cancer");
+    expect(result.shouldAbstain).toBe(true);
+    expect(result.status).toBe("insufficient");
+  });
+
+  test("treatment query with 2+ trusted chunks (strong similarity) → does NOT abstain", async () => {
+    const chunks = [
+      makeChunk("doc1", "chunk1", true, 0.85),
+      makeChunk("doc2", "chunk2", true, 0.80),
+    ];
+    const result = await service.validateEvidence(chunks, "treatment", "treatment for breast cancer");
+    expect(result.shouldAbstain).toBe(false);
+    expect(result.status).toBe("ok");
   });
 });
 
