@@ -167,9 +167,44 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 
 ---
 
+## Phase 2 Requirements — Traceability
+
+All Phase 2 requirements are **Not Started** unless noted. Implementation phase TBD.
+
+| Req ID | Description | Implementation | Verif. | Impl. Status |
+|---|---|---|---|---|
+| FR-ROLE-001 | Community Member user class | — | — | Not Started |
+| FR-ROLE-002 | Field Worker session flag | — | — | Not Started |
+| FR-ROLE-003 | Medical Reviewer role in content pipeline | — | — | Not Started |
+| FR-ROLE-004 | Program Reviewer role + review queue access | — | — | Not Started |
+| FR-JOURNEY-001 | Newly diagnosed patient journey (eval) | — | — | Not Started |
+| FR-JOURNEY-002 | Caregiver reading a report (eval) | — | — | Not Started |
+| FR-JOURNEY-003 | Person worried about symptoms (eval) | — | — | Not Started |
+| FR-JOURNEY-004 | Treatment preparation (eval) | — | — | Not Started |
+| FR-JOURNEY-005 | Caregiver stress + crisis escalation (eval) | — | — | Not Started |
+| FR-JOURNEY-006 | Emergency / red-flag (eval) | — | — | Not Started |
+| FR-RISK-001 | Category A content — internal review gate | — | — | Not Started |
+| FR-RISK-002 | Category B content — Medical Reviewer sign-off | — | — | Not Started |
+| FR-RISK-003 | Category C content — strict Medical Reviewer + monitoring | — | — | Not Started |
+| FR-KB-101 | KB entry: reviewer_name, review_status, risk_category, version fields | — | — | Not Started |
+| FR-REVIEW-001 | Human review flagging for 10 trigger conditions | — | — | Not Started |
+| FR-REVIEW-002 | `GET /v1/admin/review-queue` endpoint | — | — | Not Started |
+| FR-REVIEW-003 | Review outcome persistence (reviewed/escalated/no-action) | — | — | Not Started |
+| FR-ANALYTICS-001 | Top N query topics per time period | — | — | Not Started |
+| FR-ANALYTICS-002 | Content gaps report from abstention events | — | — | Not Started |
+| FR-ANALYTICS-003 | Language mix reporting | — | — | Not Started |
+| FR-ANALYTICS-004 | Escalation counts by safety event type | Partial — daily report has counts | Manual only | Partial |
+| FR-ANALYTICS-005 | Anonymised analytics export (no session IDs or raw text) | — | — | Not Started |
+| FR-LEARN-001 | Monthly Learning Note — scheduled generation + email | — | — | Not Started |
+| NFR-MAINTAIN-001 | Version-controlled LLM prompts in repo | — | — | Not Started |
+| NFR-INTEROP-001 | Google Sheets / Docs export for Learning Note + gap report | — | — | Not Started |
+| NFR-LANG-001 | Language launch gate (Medical Reviewer + 20 reviewed KB entries) | — | — | Not Started |
+
+---
+
 ## Coverage Summary
 
-| Category | Total Reqs | Implemented | Partial | Missing |
+| Category | Total Reqs | Implemented | Partial | Missing / Not Started |
 |---|---|---|---|---|
 | Chat | 19 | 19 | 0 | 0 |
 | Voice | 6 | 6 | 0 | 0 |
@@ -180,7 +215,9 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 | Safety | 7 | 5 | 0 | 1 |
 | Non-Functional | 14 | 11 | 3 | 0 |
 | Audit | 7 | 5 | 0 | 2 |
-| **Total** | **90** | **73** | **5** | **10** |
+| **Phase 1 Total** | **90** | **73** | **5** | **10** |
+| **Phase 2 (Annexure 1)** | **26** | **0** | **1** | **25** |
+| **Grand Total** | **116** | **73** | **6** | **35** |
 
 ### Verification coverage (implementation-status ≥ Partial)
 

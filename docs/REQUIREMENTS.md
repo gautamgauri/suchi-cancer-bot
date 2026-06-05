@@ -1,12 +1,15 @@
 # Suchi Requirements Specification
 
-**Version:** 1.1  
-**Date:** 2026-06-04  
-**Status:** Draft Baseline — Under Validation
+**Version:** 2.0  
+**Date:** 2026-06-05  
+**Status:** Active — Phase 1 implemented; Phase 2 planned
 
 This is the canonical requirements document for the Suchi Cancer Bot. Every subsequent feature, bug fix, or architectural change should be traceable to an entry here. Cross-referenced by `REQUIREMENTS_TRACEABILITY_MATRIX.md`.
 
 Open implementation questions are logged in `OPEN_DECISIONS.md`.
+
+**Phase 1** (§1–14): Requirements implemented or in progress as of Jun 2026.  
+**Phase 2** (§15): Requirements derived from `REQUIREMENTS_ANNEXURE_1.md` — governance, user roles, KB metadata, analytics, learning loop. Not yet implemented.
 
 ---
 
@@ -26,6 +29,7 @@ Open implementation questions are logged in `OPEN_DECISIONS.md`.
 12. [Acceptance Criteria](#12-acceptance-criteria)
 13. [Out of Scope](#13-out-of-scope)
 14. [Open Decisions](#14-open-decisions)
+15. [Phase 2 Requirements](#15-phase-2-requirements)
 
 ---
 
@@ -464,3 +468,93 @@ Active unresolved decisions that may affect requirements implementation. Full de
 | OD-008 | Social pipeline | Inactive platform buttons shown in email | FR-SOCIAL-006 |
 | OD-009 | Security | Admin endpoints protected by Basic Auth only | FR-ADMIN-004 |
 | OD-010 | Hospital directory | Hospital eligibility criteria not formally defined | FR-HOSP-001 |
+
+---
+
+## 15. Phase 2 Requirements
+
+Requirements derived from `REQUIREMENTS_ANNEXURE_1.md` (Annexure 1: Human-in-the-Loop AI Systems). All items are **Not Started** unless noted. Use the same traceability and implementation pattern as Phase 1.
+
+> **Pattern for future phases:** When a new requirements document arrives, run a gap analysis against this file, then append a new numbered section (§16, §17, …) using the same FR-*/NFR-* format. Each requirement gets a row in `REQUIREMENTS_TRACEABILITY_MATRIX.md` with `Not Started` status.
+
+---
+
+### 15.1 Extended User Roles
+
+**FR-ROLE-001** Suchi MUST treat **Community Members** (awareness-seekers with no personal diagnosis) as a distinct user class from Patients/Caregivers. Community Member responses should favour general awareness over personal navigation guidance.
+
+**FR-ROLE-002** Suchi MUST support **Field Workers / Volunteers** — SCCF staff or volunteers who use Suchi to explain information to patients on their behalf. Field worker sessions should be identifiable (via a session flag) for analytics.
+
+**FR-ROLE-003** A **Medical Reviewer** role MUST exist in the content pipeline. Medical Reviewer approval is required before any Category B or C content (§15.3) is deployed to the knowledge base.
+
+**FR-ROLE-004** A **Program Reviewer** role MUST exist. Program Reviewers can view the human-review queue (§15.4), mark cases as reviewed, and add notes. Access via the admin panel with Basic Auth.
+
+---
+
+### 15.2 User Journey Specifications
+
+The six priority user journeys from Annexure 1 §8.4 are the canonical acceptance scenarios for Suchi. Each MUST be verifiable via the eval suite.
+
+**FR-JOURNEY-001 — Newly Diagnosed Patient:** Response reassures calmly, does not recommend a treatment plan, suggests ≥3 questions to ask the oncologist, and offers a next-step resource.
+
+**FR-JOURNEY-002 — Caregiver Reading a Report:** Response explains terms at a general level, explicitly states that the report must be interpreted by a doctor, and helps prepare questions. Must NOT provide a definitive interpretation.
+
+**FR-JOURNEY-003 — Person Worried About Symptoms:** Response never uses "you may have cancer" language, explains that symptoms can have many causes, and encourages timely medical consultation.
+
+**FR-JOURNEY-004 — Treatment Preparation:** Response explains what to generally expect for the named treatment, suggests preparation questions, and defers to the treating team's advice.
+
+**FR-JOURNEY-005 — Caregiver Stress:** Response uses empathetic language, normalises caregiver burden, and escalates to crisis resources if self-harm language is detected.
+
+**FR-JOURNEY-006 — Emergency / Red Flag:** Response advises immediate medical attention, provides India emergency numbers (108/112), and marks the session for human review.
+
+---
+
+### 15.3 Knowledge Base Content Risk Classification
+
+**FR-RISK-001 — Category A (Low-Risk Awareness):** Content covering general awareness, myths, prevention, screening basics, and glossary terms. Requires internal review before publication. Periodic medical review.
+
+**FR-RISK-002 — Category B (Medium-Risk Treatment Explanation):** Content covering chemotherapy, radiation, surgery, side effects, staging, biopsy, and palliative care. Requires Medical Reviewer sign-off before deployment to the KB.
+
+**FR-RISK-003 — Category C (High-Risk Guidance):** Content covering symptoms, emergencies, report interpretation, treatment decisions, side-effect severity, and distress responses. Requires strict Medical Reviewer approval, escalation logic in the chat pipeline, and continuous monitoring post-deployment.
+
+**FR-KB-101 — KB Entry Metadata:** Each knowledge-base document MUST carry the following fields: `reviewer_name`, `review_status` (`pending`/`reviewed`/`approved`), `risk_category` (A/B/C), `approved_usage_scope`, `version`. These fields extend the existing `KbDocument` schema.
+
+---
+
+### 15.4 Human Review Queue
+
+**FR-REVIEW-001 — Review Flagging:** The following conversation types MUST be flagged for human review: symptom-related queries, report-interpretation requests, side-effect severity questions, mental distress, complaints about doctors or hospitals, requests for treatment decision-making, and any response where the safety gate fires.
+
+**FR-REVIEW-002 — Review Queue Endpoint:** A `GET /v1/admin/review-queue` endpoint MUST return all sessions flagged since a given date, with classification reason and session ID. Accessible to Program Reviewer role.
+
+**FR-REVIEW-003 — Review Outcome Logging:** When a Program Reviewer marks a flagged session as reviewed (via `PATCH /v1/admin/review-queue/:id`), the outcome (reviewed / escalated / no-action) and reviewer name MUST be persisted.
+
+---
+
+### 15.5 Analytics and Content Gaps
+
+**FR-ANALYTICS-001 — Topic Frequency:** The system MUST track and expose the top N most common query topics per time period. Derived from conversation metadata, not raw text.
+
+**FR-ANALYTICS-002 — Content Gap Detection:** Queries that trigger abstention (evidence gate failed, no KB match) MUST be aggregated and surfaced as a "content gaps" report. Available via `GET /v1/admin/analytics/content-gaps`.
+
+**FR-ANALYTICS-003 — Language Mix:** The system MUST report the distribution of input languages (English / Hindi / Hinglish) per time period.
+
+**FR-ANALYTICS-004 — Escalation Counts:** Safety event counts by type (emergency fast path, self-harm, refusal, red flag) MUST be included in the daily report.
+
+**FR-ANALYTICS-005 — Anonymised Export:** All analytics exports MUST be anonymised — no session IDs, no user text, no location linked to an individual — before use in fundraising, reporting, or the monthly Learning Note.
+
+---
+
+### 15.6 Monthly Learning Note
+
+**FR-LEARN-001 — Learning Note Generation:** A scheduled job MUST produce a monthly SCCF Learning Note covering: (1) top query categories, (2) content gaps, (3) risk/distress pattern counts, (4) new resources needed, (5) aggregate interaction numbers. Output as a structured JSON + markdown report, emailed to SCCF leadership. No raw user text or session IDs in the output.
+
+---
+
+### 15.7 Non-Functional Requirements (Phase 2)
+
+**NFR-MAINTAIN-001 — Version-Controlled Prompts:** All LLM system prompts MUST be stored as versioned files in the repository (not hardcoded in service files). Prompt changes MUST be traceable via git history.
+
+**NFR-INTEROP-001 — Google Workspace Export:** The monthly Learning Note and content-gap report MUST be exportable to Google Sheets or Google Docs format (CSV or markdown respectively) for use by non-technical SCCF staff.
+
+**NFR-LANG-001 — Language Launch Gate:** No new language (e.g., Bengali, Odia) MUST be deployed to production unless: (a) a Medical Reviewer capable of reviewing content in that language is available, and (b) at least 20 KB entries in that language have been reviewed and approved.
