@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { parseArticle } from "./parser";
-import { loadQueue } from "./queue-manager";
+import { loadQueue, saveQueue, updateEntry } from "./queue-manager";
 import { generatePack, GeneratedPack, ChannelName } from "./generator";
 import { checkSafety, SafetyReport } from "./safety-checker";
 import { checkEthics, EthicsReport } from "./ethics-checker";
@@ -10,6 +10,8 @@ import { writePack } from "./pack-writer";
 import { scoreHooks, HookReport } from "./hook-scorer";
 import { scoreEditorial, EditorialReport } from "./editorial-scorer";
 import { applyEditorialGate, EDITORIAL_THRESHOLD } from "./quality-gate";
+import { postPack, PostResult } from "./social-poster";
+import { sendPackEmail } from "./pack-mailer";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const QUEUE_PATH = path.resolve(__dirname, "queue.json");
@@ -200,7 +202,7 @@ function printHookReport(report: HookReport): void {
   console.log(`\nAverage hook score: ${report.averageScore}/100`);
 }
 
-async function cmdGenerate(articleArg: string): Promise<void> {
+async function cmdGenerate(articleArg: string, noEmail = false): Promise<void> {
   // Accept absolute path or path relative to repo root
   const articlePath = path.isAbsolute(articleArg)
     ? articleArg
@@ -263,16 +265,13 @@ async function cmdGenerate(articleArg: string): Promise<void> {
     console.log(`[quality-gate] ✓ All channels ≥${EDITORIAL_THRESHOLD} — sending for review`);
   }
 
-  // Save pack JSON (with safety report + approval token) and send review email
   const writeResult = await writePack(finalPack, safetyReport, PACKS_DIR);
-
   console.log(`\nPack saved → ${writeResult.packPath}`);
-  if (writeResult.emailSent) {
-    console.log(`Email sent → gautamgauri@dikshafoundation.org, divya.vats@dikshafoundation.org`);
-  } else if (writeResult.emailError) {
-    console.log(`Email failed — ${writeResult.emailError}`);
+
+  if (!noEmail) {
+    await cmdSend(article.slug);
   } else {
-    console.log(`Email skipped — SMTP not configured (set SMTP_PASS env var or configure Secret Manager)`);
+    console.log("Email skipped (--no-email)");
   }
 }
 
@@ -312,6 +311,102 @@ async function cmdSchema(packArg: string): Promise<void> {
   printSchemaReport(report);
 }
 
+async function cmdSend(slug: string): Promise<void> {
+  const entries = await loadQueue(QUEUE_PATH);
+  const entry = entries.find((e) => e.slug === slug);
+  if (!entry) {
+    console.error(`Error: slug "${slug}" not found in queue`);
+    process.exit(1);
+  }
+
+  // Support both exact and date-suffixed filenames
+  let packPath = path.join(PACKS_DIR, `${slug}.json`);
+  try {
+    await fs.access(packPath);
+  } catch {
+    const files = await fs.readdir(PACKS_DIR).catch(() => [] as string[]);
+    const match = files.find((f) => f.startsWith(slug) && f.endsWith(".json"));
+    if (!match) {
+      console.error(`Error: pack JSON not found for slug "${slug}" in ${PACKS_DIR}`);
+      process.exit(1);
+    }
+    packPath = path.join(PACKS_DIR, match);
+  }
+
+  const raw = await fs.readFile(packPath, "utf-8");
+  const pack = JSON.parse(raw) as GeneratedPack;
+
+  console.log(`Sending review email for: ${slug}`);
+  const result = await sendPackEmail(entry, pack);
+
+  if (result.emailSent) {
+    console.log(`Email sent to reviewers (token: ${result.approvalToken.substring(0, 8)}…)`);
+  } else if (result.emailError) {
+    console.warn(`Email failed — ${result.emailError}`);
+  } else {
+    console.log("Email skipped — SMTP not configured");
+  }
+
+  const updated = updateEntry(entries, slug, { status: "email_sent" });
+  await saveQueue(QUEUE_PATH, updated);
+  console.log(`Queue updated: ${slug} → email_sent`);
+}
+
+async function cmdPost(packArg: string, platformsArg?: string): Promise<void> {
+  const packPath = path.isAbsolute(packArg)
+    ? packArg
+    : path.resolve(process.cwd(), packArg);
+
+  const raw = await fs.readFile(packPath, "utf-8");
+  const pack = JSON.parse(raw) as GeneratedPack;
+
+  console.log(`Posting: ${packPath}`);
+  console.log(`Pack: ${pack.articleSlug} (generated ${pack.generatedAt})`);
+
+  // Parse optional --platforms flag value
+  const platforms = platformsArg
+    ? platformsArg.split(",").map((p) => p.trim())
+    : undefined;
+
+  if (platforms) {
+    console.log(`Platforms: ${platforms.join(", ")}`);
+  }
+
+  const results: PostResult[] = await postPack(pack, platforms);
+
+  console.log("\n=== Post Results ===");
+  let allSuccess = true;
+  for (const r of results) {
+    if (r.success) {
+      console.log(`[${r.platform}] SUCCESS`);
+    } else {
+      console.log(`[${r.platform}] FAILED — ${r.error ?? "unknown error"}`);
+      allSuccess = false;
+    }
+  }
+
+  if (results.length === 0) {
+    console.log("No platforms were posted to.");
+    return;
+  }
+
+  if (allSuccess) {
+    console.log("\nAll platforms posted successfully.");
+
+    // Update queue.json: mark the article as "posted"
+    const entries = await loadQueue(QUEUE_PATH);
+    const updated = updateEntry(entries, pack.articleSlug, {
+      status: "posted",
+      processedAt: new Date().toISOString(),
+    });
+    await saveQueue(QUEUE_PATH, updated);
+    console.log(`Queue updated: ${pack.articleSlug} → posted`);
+  } else {
+    console.log("\nSome platforms failed — queue.json not updated.");
+    process.exitCode = 1;
+  }
+}
+
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
 
@@ -322,13 +417,19 @@ async function main(): Promise<void> {
     );
     console.error("  npx ts-node distribution/cli.ts queue");
     console.error(
-      "  npx ts-node distribution/cli.ts generate <article-path>"
+      "  npx ts-node distribution/cli.ts generate [--no-email] <article-path>"
+    );
+    console.error(
+      "  npx ts-node distribution/cli.ts send <slug>"
     );
     console.error(
       "  npx ts-node distribution/cli.ts check <pack-json-path>"
     );
     console.error(
       "  npx ts-node distribution/cli.ts schema <pack-json-path>"
+    );
+    console.error(
+      "  npx ts-node distribution/cli.ts post <pack-json-path> [--platforms instagram,twitter,linkedin]"
     );
     process.exit(1);
   }
@@ -359,7 +460,18 @@ async function main(): Promise<void> {
         );
         process.exit(1);
       }
-      await cmdGenerate(articleArg);
+      const noEmail = args.includes("--no-email");
+      await cmdGenerate(articleArg, noEmail);
+      break;
+    }
+    case "send": {
+      const slug = args[0];
+      if (!slug) {
+        console.error("Error: slug required");
+        console.error("  npx ts-node distribution/cli.ts send <slug>");
+        process.exit(1);
+      }
+      await cmdSend(slug);
       break;
     }
     case "check": {
@@ -384,6 +496,24 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       await cmdSchema(packArg);
+      break;
+    }
+    case "post": {
+      const packArg = args[0];
+      if (!packArg) {
+        console.error("Error: pack JSON path required");
+        console.error(
+          "  npx ts-node distribution/cli.ts post <pack-json-path> [--platforms instagram,twitter,linkedin]"
+        );
+        process.exit(1);
+      }
+      // Parse optional --platforms flag
+      let platformsValue: string | undefined;
+      const platformsFlagIdx = args.indexOf("--platforms");
+      if (platformsFlagIdx !== -1 && args[platformsFlagIdx + 1]) {
+        platformsValue = args[platformsFlagIdx + 1];
+      }
+      await cmdPost(packArg, platformsValue);
       break;
     }
     default:
