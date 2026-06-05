@@ -13,6 +13,7 @@ import { ContentApproveService } from "./content-approve.service";
 import { ContentResearchService } from "./content-research.service";
 import { SocialPostService } from "./social-post.service";
 import { DraftExpiryService } from "./draft-expiry.service";
+import { RetentionService } from "./retention.service";
 
 @Controller("admin")
 export class AdminController {
@@ -28,6 +29,7 @@ export class AdminController {
     private readonly contentResearch: ContentResearchService,
     private readonly socialPost: SocialPostService,
     private readonly draftExpiry: DraftExpiryService,
+    private readonly retention: RetentionService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -431,6 +433,19 @@ ${noteHtml}
   async notifyPublish() {
     const result = await this.contentResearch.notifyApprovedArticles();
     return result;
+  }
+
+  /**
+   * NFR-PRIV-001: Delete conversation data older than 90 days.
+   * Eval sessions are excluded. Call weekly via Cloud Scheduler.
+   * URL: POST /v1/admin/housekeeping/run-retention
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("housekeeping/run-retention")
+  async runRetention() {
+    this.logger.log("Retention job triggered");
+    const result = await this.retention.runRetention();
+    return { ok: true, ...result };
   }
 
   /**

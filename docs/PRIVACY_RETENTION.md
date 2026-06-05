@@ -45,9 +45,9 @@
 | Article drafts (GCS) | Until published or archived | Content pipeline operational data |
 
 **Implementation status:**
-- 90-day message/session deletion: **not yet implemented** — needs a scheduled job or GCS TTL equivalent on PostgreSQL
-- TTS GCS lifecycle rule: **not yet configured** — add a 7-day Object Lifecycle policy on `suchi-tts-audio`
-- Safety event 1-year retention: **not yet implemented**
+- 90-day message/session deletion: **implemented** — `RetentionService` + `POST /v1/admin/housekeeping/run-retention`; schedule weekly via Cloud Scheduler
+- TTS GCS lifecycle rule: **implemented** — 7-day delete lifecycle rule applied to `suchi-tts-audio` bucket (Jun 2026)
+- Safety event / feedback 1-year retention: **not yet implemented**
 
 ---
 
@@ -90,7 +90,8 @@ If an identified user (e.g., via future WhatsApp integration with phone number) 
 
 | Item | Priority | Owner |
 |---|---|---|
-| PostgreSQL 90-day retention job (messages + sessions) | P1 | Gautam |
-| GCS lifecycle rule for TTS audio bucket (7-day delete) | P1 | Gautam |
+| PostgreSQL 90-day retention job (messages + sessions) | ~~P1~~ **Done** | — |
+| GCS lifecycle rule for TTS audio bucket (7-day delete) | ~~P1~~ **Done** | — |
+| Cloud Scheduler job for run-retention (weekly) | P1 | Gautam — add job at console.cloud.google.com |
 | PostgreSQL 1-year retention for safety events + feedback | P2 | Gautam |
 | Log redaction for phone/Aadhaar patterns | P3 | Gautam |
