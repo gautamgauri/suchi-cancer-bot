@@ -8,12 +8,21 @@ import { SuchiAvatar } from "./SuchiAvatar";
 import { LoadingIndicator } from "./LoadingIndicator";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { WelcomeMessage } from "./WelcomeMessage";
-import { apiService, ChatResponse } from "../services/api";
+import { apiService, ChatResponse, UserRole } from "../services/api";
 
 interface ChatInterfaceProps {
-  sessionId: string;
+  sessionId: string | null;
   onStartOver: () => void;
+  onRoleSelected?: (role: UserRole) => void;
+  sessionCreating?: boolean;
 }
+
+const ROLE_OPTIONS: Array<{ label: string; role: UserRole }> = [
+  { label: "I'm a patient or caregiver", role: "patient_caregiver" },
+  { label: "I want general awareness", role: "community_member" },
+  { label: "I'm an SCCF field worker", role: "field_worker" },
+  { label: "Prefer not to say", role: "unknown" },
+];
 
 const SUGGESTED_PROMPTS = [
   "What are common cancer symptoms?",
@@ -22,12 +31,15 @@ const SUGGESTED_PROMPTS = [
   "How can I support a loved one with cancer?"
 ];
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStartOver }) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStartOver, onRoleSelected, sessionCreating }) => {
+  const showRolePicker = !sessionId && !!onRoleSelected;
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
-      text: "Hi! I'm Suchi — your cancer navigation assistant. I can help you understand cancer information, find resources, and prepare for doctor visits. How can I help you today?",
+      text: showRolePicker
+        ? "Hi! I'm Suchi — your cancer navigation assistant. Before we begin, could you tell me a bit about yourself?"
+        : "Hi! I'm Suchi — your cancer navigation assistant. I can help you understand cancer information, find resources, and prepare for doctor visits. How can I help you today?",
       timestamp: new Date(),
     },
   ]);
@@ -49,6 +61,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!sessionId) return;
     // Check session state to coordinate with backend greeting flow
     const checkSessionState = async () => {
       try {
@@ -86,7 +99,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   }, [messages]);
 
   const handleSend = async (text: string) => {
-    if (conversationEnded) return;
+    if (conversationEnded || !sessionId) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -173,7 +186,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
 
     try {
       await apiService.submitFeedback({
-        sessionId,
+        sessionId: sessionId!,
         messageId: lastMessageId,
         rating,
         reason,
@@ -291,14 +304,38 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
         />
       )}
 
-      {messages.length <= 1 && (
+      {showRolePicker && (
+        <div style={styles.rolePicker}>
+          {sessionCreating ? (
+            <div style={styles.rolePickerLoading}>Setting up your session…</div>
+          ) : (
+            ROLE_OPTIONS.map(({ label, role }) => (
+              <button
+                key={role}
+                onClick={() => onRoleSelected!(role)}
+                style={styles.roleButton}
+              >
+                {label}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {!showRolePicker && messages.length <= 1 && (
         <SuggestedPrompts prompts={SUGGESTED_PROMPTS} onSelect={handlePromptSelect} />
       )}
 
       <MessageInput
         onSend={handleSend}
-        disabled={loading || conversationEnded}
-        placeholder={conversationEnded ? "Conversation ended. Please start over." : "Type your message..."}
+        disabled={loading || conversationEnded || showRolePicker}
+        placeholder={
+          showRolePicker
+            ? "Please select one of the options above…"
+            : conversationEnded
+            ? "Conversation ended. Please start over."
+            : "Type your message..."
+        }
       />
 
       {showFeedbackModal && (
@@ -470,6 +507,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     color: "var(--color-text)",
     transition: "var(--transition-base)"
+  },
+  rolePicker: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    padding: "12px 16px",
+    borderTop: "1px solid var(--color-border)",
+  },
+  roleButton: {
+    padding: "10px 16px",
+    fontSize: "14px",
+    backgroundColor: "var(--color-primary, #1a73e8)",
+    color: "#fff",
+    border: "none",
+    borderRadius: "var(--radius-md)",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    transition: "opacity 0.15s",
+  },
+  rolePickerLoading: {
+    fontSize: "14px",
+    color: "var(--color-muted-foreground)",
+    textAlign: "center" as const,
+    padding: "8px",
   },
   sourcesDisclosureOverlay: {
     position: "fixed",
