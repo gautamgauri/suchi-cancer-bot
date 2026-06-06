@@ -14,6 +14,9 @@ import { ContentResearchService } from "./content-research.service";
 import { SocialPostService } from "./social-post.service";
 import { DraftExpiryService } from "./draft-expiry.service";
 import { RetentionService } from "./retention.service";
+import { ReviewQueueService } from "./review-queue.service";
+import { AnalyticsAdminService } from "./analytics-admin.service";
+import { LearningNoteService } from "./learning-note.service";
 
 @Controller("admin")
 export class AdminController {
@@ -30,6 +33,9 @@ export class AdminController {
     private readonly socialPost: SocialPostService,
     private readonly draftExpiry: DraftExpiryService,
     private readonly retention: RetentionService,
+    private readonly reviewQueue: ReviewQueueService,
+    private readonly analyticsAdmin: AnalyticsAdminService,
+    private readonly learningNote: LearningNoteService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -460,6 +466,60 @@ ${noteHtml}
     const result = await this.draftExpiry.runExpiry();
     this.logger.log(`Expiry run complete: articles archived=${result.articles.archived.length} reminded=${result.articles.reminded.length}; social expired=${result.social.expired.length} reminded=${result.social.reminded.length}`);
     return { ok: true, ...result };
+  }
+
+  // ─── Review Queue (FR-REVIEW-002/003) ─────────────────────────────────────
+
+  @UseGuards(BasicAuthGuard)
+  @Get("review-queue")
+  async getReviewQueue(@Query("since") since?: string) {
+    return this.reviewQueue.listQueue(since);
+  }
+
+  @UseGuards(BasicAuthGuard)
+  @Patch("review-queue/:id")
+  async markReviewed(
+    @Param("id") sessionId: string,
+    @Body() body: { outcome: string; reviewerName?: string },
+  ) {
+    return this.reviewQueue.markReviewed(sessionId, body.outcome, body.reviewerName);
+  }
+
+  @UseGuards(SchedulerOidcGuard)
+  @Post("review-queue/send-digest")
+  async sendReviewDigest() {
+    this.logger.log("Weekly review digest triggered");
+    const result = await this.reviewQueue.sendWeeklyDigest();
+    return { ok: true, ...result };
+  }
+
+  // ─── Analytics (FR-ANALYTICS-001/002/003) ─────────────────────────────────
+
+  @UseGuards(BasicAuthGuard)
+  @Get("analytics/topics")
+  async getTopics(@Query("since") since?: string, @Query("limit") limit?: string) {
+    return this.analyticsAdmin.getTopics(since, limit ? parseInt(limit, 10) : 20);
+  }
+
+  @UseGuards(BasicAuthGuard)
+  @Get("analytics/content-gaps")
+  async getContentGaps(@Query("since") since?: string) {
+    return this.analyticsAdmin.getContentGaps(since);
+  }
+
+  @UseGuards(BasicAuthGuard)
+  @Get("analytics/languages")
+  async getLanguages(@Query("since") since?: string) {
+    return this.analyticsAdmin.getLanguages(since);
+  }
+
+  // ─── Learning Note (FR-LEARN-001) — first Monday of each month ───────────
+
+  @UseGuards(SchedulerOidcGuard)
+  @Post("learning-note/generate")
+  async generateLearningNote(@Query("month") month?: string) {
+    this.logger.log(`Learning note generation triggered (month=${month ?? "previous"})`);
+    return this.learningNote.generateAndSend(month);
   }
 
   private parseDateRange(date?: string): { from: Date; to: Date; dateStr: string } {
