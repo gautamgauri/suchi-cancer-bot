@@ -69,6 +69,19 @@ model Message {
   reviewRecord ReviewRecord?
 }
 
+// WhatsApp conversational channel (§16 / FR-WA-008): persistent phone→session
+// mapping. Must live in the DB, not process memory — the API runs multiple
+// Cloud Run instances and scales to zero, so an in-memory map loses context.
+model WhatsAppContact {
+  waId         String   @id // WhatsApp sender id / phone in E.164 (e.g. "919876543210")
+  sessionId    String // current Suchi session for this contact
+  locale       String? // detected + cached input locale ("en" | "hi")
+  lastActiveAt DateTime // last inbound message time; drives session rollover (FR-WA-009)
+  createdAt    DateTime @default(now())
+
+  @@index([lastActiveAt])
+}
+
 model Feedback {
   id        String   @id @default(uuid())
   sessionId String

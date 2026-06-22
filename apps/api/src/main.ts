@@ -5,7 +5,9 @@ import helmet from "helmet";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  // rawBody: true exposes req.rawBody (Buffer) for WhatsApp webhook
+  // X-Hub-Signature-256 HMAC verification (§16 / FR-WA-005).
+  const app = await NestFactory.create(AppModule, { cors: true, rawBody: true });
   app.use(helmet());
   app.setGlobalPrefix("v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));

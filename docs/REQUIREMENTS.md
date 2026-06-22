@@ -1,8 +1,8 @@
 # Suchi Requirements Specification
 
-**Version:** 2.0  
-**Date:** 2026-06-05  
-**Status:** Active — Phase 1 implemented; Phase 2 planned
+**Version:** 2.1  
+**Date:** 2026-06-22  
+**Status:** Active — Phase 1 implemented; Phase 2 planned; §16 (WhatsApp conversational channel) planned
 
 This is the canonical requirements document for the Suchi Cancer Bot. Every subsequent feature, bug fix, or architectural change should be traceable to an entry here. Cross-referenced by `REQUIREMENTS_TRACEABILITY_MATRIX.md`.
 
@@ -30,6 +30,7 @@ Open implementation questions are logged in `OPEN_DECISIONS.md`.
 13. [Out of Scope](#13-out-of-scope)
 14. [Open Decisions](#14-open-decisions)
 15. [Phase 2 Requirements](#15-phase-2-requirements)
+16. [Functional Requirements — WhatsApp Conversational Channel](#16-functional-requirements--whatsapp-conversational-channel)
 
 ---
 
@@ -46,7 +47,8 @@ Suchi is a cancer information assistant operated by the Suchitra Cancer Care Fou
 | Web chat | `POST /v1/chat` | Active |
 | Voice (REST) | `POST /v1/voice/query` | Active |
 | Voice (WebSocket) | `WS /v1/voice-ws` | Opt-in (`VOICE_WS_ENABLED`) |
-| WhatsApp | Navigator flow via Meta webhook | Active |
+| WhatsApp (Navigator) | Hospital-navigator flow via Meta webhook (`/v1/whatsapp-navigator/webhook`) | Active (legacy) |
+| WhatsApp (Conversational) | Full chat pipeline via Meta Cloud API (`/v1/whatsapp/webhook`) — see §16 | Planned |
 
 ### 1.2 Languages
 
@@ -558,3 +560,59 @@ The six priority user journeys from Annexure 1 §8.4 are the canonical acceptanc
 **NFR-INTEROP-001 — Google Workspace Export:** The monthly Learning Note and content-gap report MUST be exportable to Google Sheets or Google Docs format (CSV or markdown respectively) for use by non-technical SCCF staff.
 
 **NFR-LANG-001 — Language Launch Gate:** No new language (e.g., Bengali, Odia) MUST be deployed to production unless: (a) a Medical Reviewer capable of reviewing content in that language is available, and (b) at least 20 KB entries in that language have been reviewed and approved.
+
+---
+
+## 16. Functional Requirements — WhatsApp Conversational Channel
+
+A full conversational delivery channel that brings the complete Suchi chat experience to WhatsApp via the **Meta WhatsApp Cloud API**. Unlike the legacy WhatsApp Navigator (a standalone hospital-finding state machine at `/v1/whatsapp-navigator/webhook`), this channel routes every inbound message through the same `ChatService.handle()` pipeline used by web and voice — inheriting all safety, RAG, citation, and abstention guarantees. Hospital-finding queries are served by the pipeline's existing navigate mode, so the legacy Navigator is **not extended** by this work.
+
+> **Status:** Planned. Provider integration (Meta Business setup, WABA, phone number, system-user token) is tracked as a prerequisite operations task (GitHub issue, assigned to Ananya). Code and infra are tracked against the FR-WA-* requirements below.
+
+### 16.1 Channel and Provider
+
+**FR-WA-001** Inbound WhatsApp messages MUST be processed through the existing `ChatService.handle()` pipeline with `channel: "whatsapp"`. The channel MUST NOT implement a parallel response pipeline; all safety (§9), evidence-gate, and citation rules apply unchanged.
+
+**FR-WA-002** The channel MUST integrate directly with the **Meta WhatsApp Cloud API** (`graph.facebook.com`). No third-party BSP (Business Solution Provider) is used.
+
+**FR-WA-003** The channel MUST be implemented as a dedicated `whatsapp` module (controller + service), separate from the legacy `whatsapp-navigator` module. Hospital-finding intent MUST be handled by the chat pipeline's navigate mode, not by routing into the legacy Navigator.
+
+### 16.2 Webhook
+
+**FR-WA-004** `GET /v1/whatsapp/webhook` MUST implement the Meta verification handshake: when `hub.verify_token` matches the configured `WHATSAPP_VERIFY_TOKEN`, the endpoint MUST echo `hub.challenge` with HTTP 200; otherwise it MUST return 403.
+
+**FR-WA-005** `POST /v1/whatsapp/webhook` MUST verify the `X-Hub-Signature-256` header (HMAC-SHA256 of the raw request body using `META_APP_SECRET`) before processing. Requests with a missing or invalid signature MUST be rejected with 403 and MUST NOT trigger pipeline processing. (Closes the unauthenticated-webhook gap noted for the legacy Navigator in `DEPLOY_PREFLIGHT.md`.)
+
+**FR-WA-006** The webhook MUST acknowledge inbound events with HTTP 200 **immediately** (within Meta's timeout window) and process the message **asynchronously**. The chat reply MUST be delivered via an outbound Cloud API call (FR-WA-010), never in the webhook HTTP response.
+
+**FR-WA-007** The webhook MUST be idempotent: each inbound message MUST be de-duplicated by its WhatsApp message id (`wamid`) so that Meta webhook retries do not produce duplicate replies. Delivery/read `statuses` events MUST be ignored.
+
+### 16.3 Session and State
+
+**FR-WA-008** A persistent phone-to-session mapping MUST be maintained in the database (e.g., a `WhatsAppContact` model keyed by `waId`), NOT in process memory — the service runs multiple Cloud Run instances and scales to zero. The mapping MUST persist `sessionId`, `locale`, and `lastActiveAt`.
+
+**FR-WA-009** A WhatsApp contact MUST reuse its existing Suchi session while active and MUST be assigned a fresh session (via `SessionsService.create({ channel: "whatsapp" })`) once inactive beyond a defined window (default 24 hours), so each new conversation starts with clean context.
+
+### 16.4 Outbound and Formatting
+
+**FR-WA-010** Replies MUST be sent via `POST https://graph.facebook.com/v{version}/{META_WABA_PHONE_NUMBER_ID}/messages` authenticated with `META_WABA_TOKEN` (a system-user token holding the `whatsapp_business_messaging` scope — distinct from the Facebook page token `META_PAGE_ACCESS_TOKEN`).
+
+**FR-WA-011** Outbound text MUST be formatted for WhatsApp: markdown emphasis converted to WhatsApp syntax (`*bold*`, `_italic_`), citation markers stripped (consistent with FR-CHAT citation policy — citations are never shown to end users), and messages exceeding the 4096-character limit split into multiple messages.
+
+**FR-WA-012** Input language MUST be detected from the message text (reusing the existing cross-lingual handling) and cached per contact in `WhatsAppContact.locale`; replies MUST be generated in the detected language.
+
+### 16.5 Messaging Window and Configuration
+
+**FR-WA-013** The channel is **reactive only** — it MUST only send messages in reply to a user-initiated inbound message, which always falls inside Meta's 24-hour customer-service window. Pre-approved message templates and proactive/outbound-initiated messaging are therefore NOT required for v1 and are out of scope.
+
+**FR-WA-014** The channel MUST be cleanly disabled when its credentials are absent: `META_WABA_PHONE_NUMBER_ID`, `META_WABA_TOKEN`, `META_APP_SECRET`, and `WHATSAPP_VERIFY_TOKEN` MUST all be optional env vars (validated in `env.validation.ts`), and the webhook MUST fail safe (no outbound attempt) when unconfigured.
+
+### 16.6 Privacy
+
+**FR-WA-015** WhatsApp phone numbers are PII. Per `PRIVACY_RETENTION.md`, the system MUST support locating and deleting all records for a given phone number on request, and stored `waId` values MUST be covered by the standard retention policy.
+
+### 16.7 Out of Scope (v1 — deferred to a later phase)
+
+- **Inbound voice notes** — transcription via the existing STT pipeline is a natural Phase 2 extension.
+- **Interactive list / button menus** — replies are plain text in v1.
+- **Proactive / template-initiated messaging** — see FR-WA-013.

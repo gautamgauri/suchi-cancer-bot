@@ -55,6 +55,14 @@ export const envSchema = z.object({
   // LinkedIn UGC Posts API
   LINKEDIN_ACCESS_TOKEN:    z.string().optional(), // OAuth 2.0 bearer token, expires in 60 days
   LINKEDIN_AUTHOR_URN:      z.string().optional(), // e.g. urn:li:organization:12345
+  // WhatsApp conversational channel — Meta Cloud API (§16 / FR-WA-014).
+  // All optional: when any are missing the channel fails safe (no outbound send).
+  META_WABA_PHONE_NUMBER_ID: z.string().optional(), // numeric phone number id from the WABA
+  META_WABA_TOKEN:           z.string().optional(), // system-user token w/ whatsapp_business_messaging scope (NOT the FB page token)
+  META_APP_SECRET:           z.string().optional(), // for X-Hub-Signature-256 webhook verification
+  WHATSAPP_VERIFY_TOKEN:     z.string().optional(), // arbitrary secret echoed in the GET verification handshake
+  WHATSAPP_GRAPH_VERSION:    z.string().optional().default("v21.0"), // Graph API version (matches social-post.service)
+  WHATSAPP_SESSION_TTL_HOURS: z.coerce.number().optional().default(24), // inactivity window before a fresh session (FR-WA-009)
   // Observability (Langfuse)
   LANGFUSE_ENABLED: z.coerce.boolean().optional().default(false),
   LANGFUSE_PUBLIC_KEY: z.string().optional(),
