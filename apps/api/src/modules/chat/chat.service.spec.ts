@@ -308,8 +308,10 @@ If a new lump persists for 2–4 weeks, or there are nipple/skin changes, book a
     // 6. Response has 2+ citations with title+url
     expect(r3.citations?.length).toBeGreaterThanOrEqual(2);
     if (r3.citations) {
+      // The chat response intentionally omits the internal `citationText` field;
+      // reconstruct the marker before enriching (same convention as citation.service.spec.ts).
       const enriched = await citationService.enrichCitations(
-        r3.citations,
+        r3.citations.map((c) => ({ ...c, citationText: `[citation:${c.docId}:${c.chunkId}]` })),
         []
       );
       enriched.forEach((c) => {
