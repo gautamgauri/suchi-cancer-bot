@@ -3,7 +3,12 @@
 // auto-links bare URLs. The chat pipeline emits GitHub-flavoured markdown, so
 // we translate, then split on the 4096-char message-body limit.
 
-export const WA_MAX_LEN = 4096;
+// FR-9: configurable safe per-message threshold (well under WhatsApp's 4096 hard
+// cap) and a max number of outbound messages for one answer.
+export const WA_MAX_LEN = 3200;
+export const WA_MAX_MESSAGES = 3;
+// Appended to the last message when content is truncated to the message cap.
+const CONTINUATION_NOTE = "(Reply *continue* / *aur* to see the rest.)";
 
 /** Translate markdown emphasis/links/headings/bullets to WhatsApp-friendly text. */
 export function toWhatsAppMarkdown(input: string): string {
@@ -31,40 +36,93 @@ export function toWhatsAppMarkdown(input: string): string {
   return t.trim();
 }
 
-/** Split text into WhatsApp-sized chunks, preferring paragraph then word boundaries. */
-export function splitForWhatsApp(text: string, maxLen = WA_MAX_LEN): string[] {
+/**
+ * Hard-wrap a single over-long line (rare) without breaking mid-word: prefer
+ * sentence boundaries, then spaces. Used only when one line exceeds maxLen.
+ */
+function wrapLongLine(line: string, maxLen: number): string[] {
+  const out: string[] = [];
+  let rest = line;
+  while (rest.length > maxLen) {
+    // Prefer the last sentence end (., ।, !, ?) within the limit.
+    const window = rest.slice(0, maxLen);
+    let cut = Math.max(
+      window.lastIndexOf("। "),
+      window.lastIndexOf(". "),
+      window.lastIndexOf("! "),
+      window.lastIndexOf("? "),
+    );
+    if (cut > 0) cut += 1; // keep the punctuation with the first part
+    else cut = window.lastIndexOf(" "); // fall back to a word boundary
+    if (cut <= 0) cut = maxLen; // last resort: hard cut
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut);
+  }
+  if (rest.trim()) out.push(rest.trim());
+  return out;
+}
+
+/**
+ * Split into WhatsApp messages (FR-9). Packing is LINE-ATOMIC: a line — a
+ * sentence, a safety warning, a helpline instruction, or a numbered action — is
+ * never split across two messages (only a pathologically long single line is
+ * hard-wrapped, on sentence/word boundaries). Blank lines are preferred break
+ * points so paragraphs stay together.
+ */
+export function splitForWhatsApp(
+  text: string,
+  maxLen = WA_MAX_LEN,
+  maxMessages = WA_MAX_MESSAGES,
+): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
-  if (trimmed.length <= maxLen) return [trimmed];
 
-  const chunks: string[] = [];
+  // Expand any over-long single line into wrapped pieces; everything else stays
+  // atomic. Keep blank lines as paragraph separators.
+  const units: string[] = [];
+  for (const line of trimmed.split("\n")) {
+    if (line.length > maxLen) units.push(...wrapLongLine(line, maxLen));
+    else units.push(line);
+  }
+
+  const messages: string[] = [];
   let cur = "";
   const flush = () => {
-    if (cur.trim()) chunks.push(cur.trim());
+    const t = cur.replace(/\n{3,}/g, "\n\n").trim();
+    if (t) messages.push(t);
     cur = "";
   };
-
-  for (const para of trimmed.split(/\n\n/)) {
-    if (para.length > maxLen) {
-      // Paragraph itself too long — hard-split on word boundaries.
+  for (const unit of units) {
+    const candidate = cur ? `${cur}\n${unit}` : unit;
+    if (candidate.length > maxLen && cur) {
       flush();
-      let rest = para;
-      while (rest.length > maxLen) {
-        let cut = rest.lastIndexOf(" ", maxLen);
-        if (cut <= 0) cut = maxLen; // no space found — split mid-word as last resort
-        chunks.push(rest.slice(0, cut).trim());
-        rest = rest.slice(cut);
-      }
-      cur = rest.trim();
-    } else if (cur && cur.length + 2 + para.length > maxLen) {
-      flush();
-      cur = para;
+      cur = unit;
     } else {
-      cur = cur ? `${cur}\n\n${para}` : para;
+      cur = candidate;
     }
   }
   flush();
-  return chunks;
+
+  if (messages.length <= maxMessages) return messages;
+
+  // Truncate to the message cap and invite the user to continue. Make room for
+  // the note within the last kept message — trim whole trailing lines first
+  // (keeps atomic units intact), then fall back to a word boundary if the last
+  // message is a single long line.
+  const kept = messages.slice(0, maxMessages);
+  const note = `\n\n${CONTINUATION_NOTE}`;
+  const room = maxLen - note.length;
+  let last = kept[maxMessages - 1];
+  while (last.length > room && last.includes("\n")) {
+    last = last.slice(0, last.lastIndexOf("\n")).trimEnd();
+  }
+  if (last.length > room) {
+    let cut = last.lastIndexOf(" ", room);
+    if (cut <= 0) cut = room;
+    last = last.slice(0, cut).trimEnd();
+  }
+  kept[maxMessages - 1] = `${last}${note}`;
+  return kept;
 }
 
 /** Convenience: translate + split in one call. */
