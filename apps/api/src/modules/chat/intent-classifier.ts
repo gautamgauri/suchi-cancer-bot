@@ -360,12 +360,26 @@ export class IntentClassifier {
       };
     }
 
+    // Cancer keyword pattern
+    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning|breast|lung|colon|leukemia|melanoma)\b/i;
+
+    // Personal self-identification framing: the user is asking whether THEY
+    // (might) have cancer — "do I have…", "if I have…", "how do I know if I
+    // have…", "identify if I have…". This is a personal health concern, so route
+    // to PERSONAL_SYMPTOMS (calm, non-diagnostic answer + clinician escalation),
+    // NOT UNCLEAR_REQUEST. A frightened, ordinary question must never feel blocked.
+    const personalIdentifyPattern = /\b(do i have|if i have|whether i have|how do i know if i|identify if i)\b/i;
+    if (personalIdentifyPattern.test(lowerText) && cancerKeywordPattern.test(lowerText)) {
+      return {
+        intent: "PERSONAL_SYMPTOMS",
+        confidence: "medium"
+      };
+    }
+
     // Explicit check for "how to identify" questions - gate by personal signals
     // Identify general pattern: how to identify, signs of, indicators of, how to detect, etc.
     const identifyGeneralPattern = /\b(how to identify|how do you identify|how can you identify|ways to identify|signs of|indicators of|how to detect|how can you tell|how to know)\b/i;
-    // Cancer keyword pattern
-    const cancerKeywordPattern = /\b(cancer|lymphoma|tumou?r|symptom|sign|warning|breast|lung|colon|leukemia|melanoma)\b/i;
-    
+
     // Check if this is an identify question with cancer keywords
     if (identifyGeneralPattern.test(lowerText) && cancerKeywordPattern.test(lowerText)) {
       // Gate by personal signals
