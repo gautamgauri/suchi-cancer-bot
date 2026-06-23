@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { LlmService } from "../llm/llm.service";
 import { EMPATHY_ANALYZER_PROMPT } from "../llm/prompts";
+import { normalizeForMatch } from "../safety/text-normalizer";
 
 export type EmotionalTone = "anxious" | "calm" | "urgent" | "sad" | "neutral";
 
@@ -32,6 +33,9 @@ export class EmpathyDetector {
     /\b(what if it's cancer|could this be cancer|am I dying)\b/i,
     /\b(waiting for results|waiting to hear|don't know what to expect)\b/i,
     /\b(my mind is racing|can't stop worrying|so anxious)\b/i,
+    // Hindi / Romanized anxiety
+    /\b(dar lagta|darr lagta|ghabrahat|ghabra|chinta|chintit|pareshan)\b/i,
+    /(डर लगता|डर रहा|घबराहट|घबरा|चिंता|चिंतित|परेशान)/,
   ];
 
   private static readonly URGENT_PATTERNS = [
@@ -42,6 +46,9 @@ export class EmpathyDetector {
     /\b(just found out|just diagnosed|just told me)\b/i,
     /\b(doctor said|oncologist said|results came back)\b/i,
     /\b(starting treatment|surgery scheduled|chemo starts)\b/i,
+    // Hindi / Romanized urgency
+    /\b(turant|abhi|jaldi|emergency|gambhir)\b/i,
+    /(तुरंत|अभी|जल्दी|आपातकाल|गंभीर)/,
   ];
 
   private static readonly SAD_PATTERNS = [
@@ -53,6 +60,9 @@ export class EmpathyDetector {
     /\b(why me|why us|not fair|so hard)\b/i,
     /\b(don't know how to|feeling helpless|feeling lost)\b/i,
     /\b(crying|tears|grief|mourning|miss)\b/i,
+    // Hindi / Romanized sadness / grief
+    /\b(udaas|dukhi|gham|gum|nirash|asahay|ro raha|ro rahi)\b/i,
+    /(उदास|दुखी|दुःखी|ग़म|निराश|असहाय|रो रह[ाी])/,
   ];
 
   private static readonly CALM_PATTERNS = [
@@ -77,14 +87,22 @@ export class EmpathyDetector {
     /\b(can't go on|don't want to live|better off dead|harm myself)\b/i,
     /\b(ending my life|give up on life|nothing to live for)\b/i,
     /\b(want to hurt myself|self[- ]?harm|cut myself)\b/i,
+    /\b(hurt|harm|harming|hurting|injure)\s+myself\b/i,
     /\bjust want the pain to stop\b/i,
     /\bwant to end everything\b/i,
+    // Hindi / Romanized self-harm + suicidal ideation
+    /\b(khud ?ko|apne ?aap ?ko)\s+(maar|nuksan|khatam)/i,
+    /\b(marna chahta|marna chahti|jeena nahi chahta|jeena nahi chahti)\b/i,
+    /(खुद को|अपने आप को)\s*(मार|नुकसान|ख़त्म|खत्म)/,
+    /(मरना चाहता|मरना चाहती|जीना नहीं चाहता|जीना नहीं चाहती)/,
   ];
 
   // Mental health support patterns (non-crisis)
   // Includes cancer-specific emotional distress: treatment fatigue, family guilt, hopelessness
   private static readonly MENTAL_HEALTH_PATTERNS = [
     /\b(depressed|depression|feeling hopeless|feel alone|so isolated)\b/i,
+    /\bhopeless(ness)?\b/i,
+    /\bcan'?t cope\b/i,
     /\b(can't cope anymore|overwhelmed|breaking down|falling apart)\b/i,
     /\b(need someone to talk to|need support|need help emotionally)\b/i,
     /\b(therapist|counselor|counselling|mental health)\b/i,
@@ -159,7 +177,7 @@ export class EmpathyDetector {
    * Hybrid approach: rule-based first, LLM fallback for ambiguous cases
    */
   async detectEmotionalTone(userText: string): Promise<EmotionalToneResult> {
-    const textLower = userText.toLowerCase().trim();
+    const textLower = normalizeForMatch(userText).toLowerCase();
 
     // Rule-based detection first
     const ruleBasedResult = this.detectWithRules(textLower);
@@ -173,7 +191,7 @@ export class EmpathyDetector {
    * Returns crisis flag for immediate intervention, or support category for resources
    */
   detectMentalHealthNeed(userText: string): MentalHealthNeedResult {
-    const text = userText.toLowerCase().trim();
+    const text = normalizeForMatch(userText).toLowerCase();
     const matchedKeywords: string[] = [];
 
     // Check crisis patterns first (highest priority)
@@ -284,9 +302,10 @@ export class EmpathyDetector {
       maxMatches = Math.max(maxMatches, 1);
     }
 
-    // Calculate confidence based on number of matches
-    // 1 match = 0.5, 2+ matches = 0.7+, 3+ matches = 0.9+
-    const confidence = maxMatches === 0 ? 0.3 : Math.min(0.3 + maxMatches * 0.2, 0.95);
+    // Calculate confidence based on number of matches. A single clear signal
+    // should read as a real (>0.5) detection, not borderline.
+    // 1 match = 0.6, 2 = 0.8, 3+ = 0.95 (capped).
+    const confidence = maxMatches === 0 ? 0.3 : Math.min(0.4 + maxMatches * 0.2, 0.95);
 
     return {
       tone,

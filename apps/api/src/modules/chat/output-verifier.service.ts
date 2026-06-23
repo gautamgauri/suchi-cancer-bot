@@ -21,6 +21,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { VerifyCheck } from "./execution-planner.service";
 import { hasDisclaimer } from "../safety/disclaimer-engine";
+import { normalizeForMatch } from "../safety/text-normalizer";
 
 // ─── Interfaces ────────────────────────────────────────────────
 
@@ -53,8 +54,14 @@ const DIAGNOSIS_PATTERNS = [
   /\bbased on (your|the) (symptoms|report|results),?\s*(you|it|this)\s*(have|is|appears|seems|suggests)\b/i,
   /\bI can confirm\b/i,
   /\bmy diagnosis is\b/i,
-  /\bआपको (कैंसर|ट्यूमर) है\b/i,
-  /\bयह (कैंसर|ट्यूमर) है\b/i,
+  // Hindi — NO \b: JavaScript word boundaries only recognize ASCII [A-Za-z0-9_],
+  // so a \b adjacent to Devanagari never matches and silently disables the rule.
+  /(आपको|तुम्हें|आपके|इन्हें) (कैंसर|ट्यूमर|कार्सिनोमा) है/,
+  /यह (कैंसर|ट्यूमर|कार्सिनोमा) (ही )?है/,
+  /(जांच|रिपोर्ट|टेस्ट) (के अनुसार|से (पता चलता है|लगता है)).{0,20}(कैंसर|ट्यूमर) है/,
+  // Romanized Hindi
+  /\b(aapko|aapke|tumhe|tumhein|inhe)\s+(cancer|tumor|kainsar|kainser)\s+hai\b/i,
+  /\byeh\s+(cancer|tumor|kainsar)\s+(hi\s+)?hai\b/i,
 ];
 
 // Prognosis patterns (response MUST NOT contain these)
@@ -64,7 +71,11 @@ const PROGNOSIS_PATTERNS = [
   /\b\d+[-%]\s*(chance|probability|likelihood)\s*(of|to)\s*(surviv|cur|remission|death)/i,
   /\byour (chances|odds) (of|are)\b/i,
   /\byou (will|won't) (recover|survive|beat this)/i,
-  /\bआप (बच|ठीक हो|मर) (जाएंगे|सकते)/i,
+  // Hindi — NO \b (see DIAGNOSIS_PATTERNS note)
+  /(आप|तुम) (बच|ठीक हो|ठीक|मर) (जाएंगे|जाओगे|जाएँगे|सकते|जाएगा|जाओगी)/,
+  /(आप|तुम) (ज़रूर|जरूर|पक्का|निश्चित) (ठीक|बच|जीवित)/,
+  // Romanized Hindi
+  /\b(aap|tum)\s+(theek|thik|bach)\s+(ho\s+)?(jaaoge|jaayenge|jaoge|jayenge|jaenge|jaaogi)\b/i,
 ];
 
 // Dosage patterns (response MUST NOT contain these)
@@ -85,7 +96,14 @@ const INAPPROPRIATE_TONE_PATTERNS = [
   /\b(be positive|think positive|stay positive|good vibes)\b/i,
   /\bGod'?s?\s+(will|plan|way)\b/i,
   /\beverything happens for a reason\b/i,
-  /\bचिंता मत कर(ो|ना|ें)\b/i,
+  // Hindi — NO \b (see DIAGNOSIS_PATTERNS note)
+  /चिंता मत (करो|करना|करें|कीजिए|कर)/,
+  /घबरा(ओ|ना|इए|इये)? मत/,
+  /परेशान मत (हो|होइए|होना|हों)/,
+  /(सब|सब कुछ) ठीक (हो जाएगा|हो जायेगा|है)/,
+  // Romanized Hindi
+  /\b(chinta|tension|fikar|pareshan)\s+mat\s+kar(o|na|en|iye)?\b/i,
+  /\b(sab|sab kuch)\s+(theek|thik)\s+(ho jayega|ho jaega|hai)\b/i,
 ];
 
 // Medical content indicators (to determine if citations are needed)
@@ -95,6 +113,19 @@ const MEDICAL_CONTENT_PATTERNS = [
   /\b(symptom|diagnosis|treatment|prognosis|staging|screening)\b/i,
   /\b(कैंसर|ट्यूमर|बायोप्सी|कीमो|रेडिएशन|सर्जरी)\b/i,
 ];
+
+// The bot's own self-description mentions "cancer" but makes no medical claim,
+// so it must NOT trip the medical-content → disclaimer/citation requirement.
+const SELF_REFERENCE_PATTERNS = [
+  /cancer\s+(care|information|support)\s+(navigation\s+)?(assistant|navigator|bot|helpline|companion)/gi,
+  /(?:I am|I'?m)\s+suchi\b/gi,
+];
+
+function stripSelfReference(text: string): string {
+  let t = text;
+  for (const p of SELF_REFERENCE_PATTERNS) t = t.replace(p, " ");
+  return t;
+}
 
 // ─── Service ───────────────────────────────────────────────────
 
@@ -205,8 +236,9 @@ export class OutputVerifierService {
     content: string,
     violations: PolicyViolation[]
   ): void {
+    const text = normalizeForMatch(content);
     for (const pattern of DIAGNOSIS_PATTERNS) {
-      const match = content.match(pattern);
+      const match = text.match(pattern);
       if (match) {
         violations.push({
           check: "no_diagnosis",
@@ -223,8 +255,9 @@ export class OutputVerifierService {
     content: string,
     violations: PolicyViolation[]
   ): void {
+    const text = normalizeForMatch(content);
     for (const pattern of PROGNOSIS_PATTERNS) {
-      const match = content.match(pattern);
+      const match = text.match(pattern);
       if (match) {
         violations.push({
           check: "no_prognosis",
@@ -241,8 +274,9 @@ export class OutputVerifierService {
     content: string,
     violations: PolicyViolation[]
   ): void {
+    const text = normalizeForMatch(content);
     for (const pattern of DOSAGE_PATTERNS) {
-      const match = content.match(pattern);
+      const match = text.match(pattern);
       if (match) {
         violations.push({
           check: "no_dosage",
@@ -259,8 +293,11 @@ export class OutputVerifierService {
     content: string,
     violations: PolicyViolation[]
   ): { fixed: boolean; content: string } {
-    // Check if content has medical information that needs a disclaimer
-    const hasMedical = MEDICAL_CONTENT_PATTERNS.some((p) => p.test(content));
+    // Check if content has medical information that needs a disclaimer.
+    // Strip the bot's self-description first so "cancer care navigation
+    // assistant" in a greeting is not mistaken for a medical claim.
+    const matchable = stripSelfReference(normalizeForMatch(content));
+    const hasMedical = MEDICAL_CONTENT_PATTERNS.some((p) => p.test(matchable));
     if (!hasMedical) {
       return { fixed: false, content };
     }
@@ -297,8 +334,9 @@ export class OutputVerifierService {
     evidenceChunks: EvidenceChunk[],
     violations: PolicyViolation[]
   ): void {
-    // Only check if content has medical information
-    const hasMedical = MEDICAL_CONTENT_PATTERNS.some((p) => p.test(content));
+    // Only check if content has medical information (ignore bot self-description)
+    const matchable = stripSelfReference(normalizeForMatch(content));
+    const hasMedical = MEDICAL_CONTENT_PATTERNS.some((p) => p.test(matchable));
     if (!hasMedical) return;
 
     // Check for citation markers
@@ -319,8 +357,9 @@ export class OutputVerifierService {
     content: string,
     violations: PolicyViolation[]
   ): void {
+    const text = normalizeForMatch(content);
     for (const pattern of INAPPROPRIATE_TONE_PATTERNS) {
-      const match = content.match(pattern);
+      const match = text.match(pattern);
       if (match) {
         violations.push({
           check: "appropriate_tone",

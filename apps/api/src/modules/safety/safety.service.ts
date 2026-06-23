@@ -12,11 +12,14 @@ import {
   ALTERNATIVE_ONLY_PATTERNS,
 } from "./safety.rules";
 import { SafetyResult, TEMPLATES } from "./safety.templates";
+import { normalizeForMatch } from "./text-normalizer";
 
 @Injectable()
 export class SafetyService {
   evaluate(userText: string): SafetyResult {
-    const t = userText.trim();
+    // Normalize before matching so a guardrail fires regardless of invisible
+    // characters, smart quotes, or spacing variants (Cluster C principle).
+    const t = normalizeForMatch(userText);
     // Priority order matters: most critical first
     if (SELF_HARM_PATTERNS.some((re) => re.test(t))) return TEMPLATES.selfHarm();
     if (EMERGENCY_PATTERNS.some((re) => re.test(t))) return TEMPLATES.emergency(RULES.EMERGENCY);
