@@ -157,9 +157,14 @@ export class CrossLingualService {
     const translatedTerms: string[] = [];
     const parallelQueries: string[] = [query]; // Always include original
 
-    if (language === "en") {
-      // English query — no translation needed for English KB
-      // (English is the primary KB language)
+    // Short-circuit ONLY for pure English (no Devanagari at all). A query that
+    // classifies "en" by ratio but still contains Devanagari medical terms
+    // (e.g. "treatment for स्तन cancer stage 2") must still be translated for the
+    // English KB — the Devanagari nouns are the highest-value retrieval terms.
+    // We keep detectedLanguage as classified; only the translation runs.
+    const hasDevanagari = /[ऀ-ॿ]/.test(query);
+    if (language === "en" && !hasDevanagari) {
+      // Pure English — no translation needed for the English-primary KB.
       return {
         original: query,
         parallelQueries: [query],

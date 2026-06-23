@@ -137,8 +137,21 @@ describe("CrossLingualService", () => {
       const result = service.generateParallelQueries(
         "What is cancer treatment in Hindi कैंसर"
       );
-      // Mostly English → should still translate the Hindi terms
-      expect(result.detectedLanguage).toBe("en"); // Mostly English
+      // Mostly English → classified "en"...
+      expect(result.detectedLanguage).toBe("en");
+      // ...but the Devanagari term is STILL translated for KB retrieval (a low
+      // Devanagari ratio must not skip translation — regression guard).
+      expect(result.translatedTerms).toContain("cancer");
+    });
+
+    test("low-Devanagari mixed query still translates its Devanagari term", () => {
+      const result = service.generateParallelQueries(
+        "I want some information about कैंसर treatment options please"
+      );
+      expect(result.detectedLanguage).toBe("en"); // ~10% Devanagari by ratio
+      expect(result.translatedTerms).toContain("cancer");
+      // The translated variant is offered as a parallel query for retrieval.
+      expect(result.parallelQueries.length).toBeGreaterThan(1);
     });
   });
 });
