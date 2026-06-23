@@ -21,18 +21,33 @@ describe("StructuredOutputTemplates", () => {
         expect(result).toBe(BIOPSY_NEXT_STEPS);
       });
 
-      // `next_steps` alone is intentionally too broad to route to the biopsy
-      // template (it matches generic "what should I do" on symptom queries), so
-      // it only routes WITH explicit biopsy/report context. This reflects the
-      // documented behavior in selectOutputTemplate() (commit e6436aa).
-      test("signal: next_steps + biopsy context", () => {
-        const result = selectOutputTemplate("NAVIGATION", ["next_steps"], "biopsy done, what to do next");
-        expect(result).toBe(BIOPSY_NEXT_STEPS);
+      // ── Biopsy routing contract (acceptance cases) ──
+      // At this boundary, the "report_received" signal represents reliable
+      // ACTIVE biopsy context (the upstream sets it from the current message or
+      // recent session context, NOT from a stale/unrelated historical mention).
+
+      // "What next?" alone → generic next-steps, never the biopsy template.
+      test('"what next?" alone does NOT route to biopsy', () => {
+        expect(selectOutputTemplate("NAVIGATION", ["next_steps"], "what next?")).not.toBe(BIOPSY_NEXT_STEPS);
       });
 
-      test("signal: next_steps alone does NOT route to biopsy", () => {
-        const result = selectOutputTemplate("NAVIGATION", ["next_steps"], "what to do next");
-        expect(result).not.toBe(BIOPSY_NEXT_STEPS);
+      // Biopsy context in the current message → biopsy template.
+      test('"Biopsy ho gayi, ab kya?" → biopsy template', () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "Biopsy ho gayi, ab kya?")).toBe(BIOPSY_NEXT_STEPS);
+      });
+
+      // Prior turn established biopsy (active session context → report_received) +
+      // current "what next?" → biopsy template.
+      test('active biopsy session context + "what next?" → biopsy template', () => {
+        expect(
+          selectOutputTemplate("NAVIGATION", ["report_received", "next_steps"], "what next?"),
+        ).toBe(BIOPSY_NEXT_STEPS);
+      });
+
+      // Stale/unrelated historical biopsy → upstream does NOT set report_received,
+      // so a bare "what next?" must NOT auto-route to biopsy.
+      test("stale biopsy history (no active signal) does NOT route to biopsy", () => {
+        expect(selectOutputTemplate("NAVIGATION", ["next_steps"], "what next?")).not.toBe(BIOPSY_NEXT_STEPS);
       });
 
       test("keyword: biopsy in text", () => {

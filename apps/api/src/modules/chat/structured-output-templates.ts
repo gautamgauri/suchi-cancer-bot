@@ -503,10 +503,17 @@ export function selectOutputTemplate(
   const biopsyContext =
     /\b(biopsy|report|pathology|diagnosed|result)\b/i.test(lowerText) ||
     /(बायोप्सी|रिपोर्ट|पैथोलॉजी)/.test(lowerText);
+  // Route to biopsy ONLY with real biopsy context — either:
+  //  • report_received signal (the upstream sets this from the current message
+  //    OR reliable *active* session context; it must NOT set it for a stale,
+  //    unrelated historical biopsy mention), or
+  //  • next_steps + an in-message biopsy keyword, or
+  //  • an explicit "biopsy report/done" phrase in the message.
+  // "next_steps" / "what next?" ALONE never routes here (too broad).
   if (
     signals.includes("report_received") ||
     (signals.includes("next_steps") && biopsyContext) ||
-    /\bbiopsy\s+(report|result|says?|shows?)\b/i.test(lowerText) ||
+    /\bbiopsy\s+(report|result|says?|shows?|ho\s*gay[ai]|hui|done|complete[d]?)\b/i.test(lowerText) ||
     /बायोप्सी\s*(रिपोर्ट|रिज़ल्ट|रिजल्ट|आई|आ\s*गई|हो\s*गई)/.test(lowerText)
   ) {
     return BIOPSY_NEXT_STEPS;
