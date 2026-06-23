@@ -13,6 +13,8 @@
  * the rule, not left to the model to guess.
  */
 
+import { SYMPTOM_SOFT_REDIRECT_PROMPT } from "../../llm/prompts";
+
 export type ResponseLanguage = "en" | "hi" | "hinglish" | "unknown";
 
 // Common Romanized-Hindi / Hinglish markers (Latin script). Intentionally broad
@@ -60,4 +62,14 @@ export function responseLanguageDirective(lang: ResponseLanguage): string {
     default:
       return "LANGUAGE: Reply in simple English, and warmly invite the user to continue in Hindi or English, whichever they prefer.";
   }
+}
+
+/**
+ * Build the exact symptom-soft-redirect system prompt the chat pipeline sends to
+ * the LLM: the base prompt followed by the language directive computed from the
+ * user's own message. Centralised so the classification→prompt link is testable.
+ */
+export function buildSymptomSoftRedirectPrompt(userText: string): string {
+  const directive = responseLanguageDirective(selectResponseLanguage(userText));
+  return `${SYMPTOM_SOFT_REDIRECT_PROMPT}\n\n${directive}`;
 }

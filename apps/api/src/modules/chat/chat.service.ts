@@ -41,8 +41,7 @@ import { ReviewContext } from "../review/review-checks";
 import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
-import { SYMPTOM_SOFT_REDIRECT_PROMPT } from "../llm/prompts";
-import { selectResponseLanguage, responseLanguageDirective } from "./utils/response-language";
+import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
 
 @Injectable()
 export class ChatService {
@@ -2398,9 +2397,8 @@ export class ChatService {
       let responseText: string;
       try {
         // Reply in the user's dominant language (English / Hindi / Hinglish).
-        const langDirective = responseLanguageDirective(selectResponseLanguage(dto.userText));
         responseText = await this.llmWithDeadline(requestDeadlineMs, "symptom-soft-redirect", () =>
-          this.llm.generate(`${SYMPTOM_SOFT_REDIRECT_PROMPT}\n\n${langDirective}`, "", dto.userText),
+          this.llm.generate(buildSymptomSoftRedirectPrompt(dto.userText), "", dto.userText),
           signal
         );
         if (!responseText) throw new Error("empty");
