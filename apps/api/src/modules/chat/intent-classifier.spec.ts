@@ -15,6 +15,9 @@ describe("IntentClassifier - identify questions", () => {
 
   const mockEvidenceChunks: EvidenceChunk[] = [];
   const mockGateResult: EvidenceGateResult = {
+    status: "ok",
+    approvedChunks: [],
+    reasonCode: null,
     shouldAbstain: false,
     confidence: "medium",
     quality: "weak"
@@ -53,15 +56,18 @@ describe("IntentClassifier - identify questions", () => {
     expect(result.confidence).toBe("medium");
   });
 
-  test("signs of lymphoma -> INFORMATIONAL_GENERAL", () => {
+  test("signs of lymphoma -> INFORMATIONAL_SYMPTOMS", () => {
+    // A general symptom-listing question ("signs of X") is more precisely
+    // INFORMATIONAL_SYMPTOMS than INFORMATIONAL_GENERAL — it asks specifically
+    // about symptoms/signs, not a broad overview.
     const result = classifier.classify(
       "signs of lymphoma",
       mockEvidenceChunks,
       mockGateResult,
       "normal"
     );
-    expect(result.intent).toBe("INFORMATIONAL_GENERAL");
-    expect(result.confidence).toBe("medium");
+    expect(result.intent).toBe("INFORMATIONAL_SYMPTOMS");
+    expect(result.confidence).toBe("high");
   });
 
   test("how do I know if I have cancer -> PERSONAL_SYMPTOMS", () => {
