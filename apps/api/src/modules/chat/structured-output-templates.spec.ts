@@ -21,9 +21,18 @@ describe("StructuredOutputTemplates", () => {
         expect(result).toBe(BIOPSY_NEXT_STEPS);
       });
 
-      test("signal: next_steps", () => {
-        const result = selectOutputTemplate("NAVIGATION", ["next_steps"], "what to do next");
+      // `next_steps` alone is intentionally too broad to route to the biopsy
+      // template (it matches generic "what should I do" on symptom queries), so
+      // it only routes WITH explicit biopsy/report context. This reflects the
+      // documented behavior in selectOutputTemplate() (commit e6436aa).
+      test("signal: next_steps + biopsy context", () => {
+        const result = selectOutputTemplate("NAVIGATION", ["next_steps"], "biopsy done, what to do next");
         expect(result).toBe(BIOPSY_NEXT_STEPS);
+      });
+
+      test("signal: next_steps alone does NOT route to biopsy", () => {
+        const result = selectOutputTemplate("NAVIGATION", ["next_steps"], "what to do next");
+        expect(result).not.toBe(BIOPSY_NEXT_STEPS);
       });
 
       test("keyword: biopsy in text", () => {

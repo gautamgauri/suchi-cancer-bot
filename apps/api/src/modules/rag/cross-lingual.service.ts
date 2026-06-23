@@ -29,8 +29,9 @@ export interface CrossLingualResult {
 // ─── Hindi → English medical dictionary ──────────────────────────
 
 const HI_EN_DICTIONARY: Array<[RegExp, string]> = [
-  // Cancer types
-  [/कैंसर/g, "cancer"],
+  // Cancer types — specific (multi-word) types MUST come before the generic
+  // /कैंसर/, otherwise "स्तन कैंसर" gets the bare word replaced first and
+  // "breast cancer" never forms (longest-match-first ordering).
   [/स्तन\s*कैंसर/g, "breast cancer"],
   [/फेफड़े?\s*(का|के|की)?\s*कैंसर/g, "lung cancer"],
   [/गर्भाशय\s*(का|के|की)?\s*कैंसर/g, "cervical cancer"],
@@ -41,6 +42,7 @@ const HI_EN_DICTIONARY: Array<[RegExp, string]> = [
   [/गुर्दे?\s*(का|के|की)?\s*कैंसर/g, "kidney cancer"],
   [/प्रोस्टेट\s*कैंसर/g, "prostate cancer"],
   [/ब्रेन\s*(ट्यूमर|कैंसर)/g, "brain cancer"],
+  [/कैंसर/g, "cancer"],
 
   // Symptoms
   [/लक्षण/g, "symptoms"],
@@ -252,7 +254,10 @@ export class CrossLingualService {
     const devanagariRatio = devanagariCount / total;
 
     if (devanagariRatio > 0.6) return "hi";
-    if (devanagariRatio > 0.1) return "mixed";
+    // Threshold of 0.2 (not 0.1): a lone Hindi word inside an otherwise English
+    // sentence (e.g. "...in Hindi कैंसर") should read as English, while a
+    // genuinely code-mixed query (~40%+ Devanagari) reads as mixed.
+    if (devanagariRatio > 0.2) return "mixed";
 
     // Check for Romanized Hindi (Hinglish) — all Latin script but Hindi words
     const hinglishMarkers = /\b(mujhe|jaankari|jankari|baare\s*mein|bare\s*me|batao|bataiye|chahiye|kaise|kya\s*hai|ilaaj|dawai|gaanth|bukhar|saans|lakshan|janch|aage\s*kya|paise|sarkari|kharcha)\b/gi;

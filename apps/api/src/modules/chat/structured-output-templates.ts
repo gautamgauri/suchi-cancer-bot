@@ -12,6 +12,8 @@
  * Zero LLM cost: templates are deterministic structures.
  */
 
+import { normalizeForMatch } from "../safety/text-normalizer";
+
 // ─── Template Definitions ─────────────────────────────────────
 
 export interface OutputSection {
@@ -491,28 +493,40 @@ export function selectOutputTemplate(
   signals: string[],
   userText: string
 ): OutputTemplate | null {
-  const lowerText = userText.toLowerCase();
+  // NFC + invisible-char/whitespace normalization, then lowercase. Note: ASCII
+  // terms keep \b boundaries; Devanagari terms must NOT use \b — JavaScript word
+  // boundaries only recognize ASCII, so \b adjacent to Devanagari never matches.
+  const lowerText = normalizeForMatch(userText).toLowerCase();
 
-  // Biopsy-related queries — require explicit biopsy/report context
-  // "next_steps" alone is too broad (matches "what should I do" on symptom queries)
+  // Biopsy-related queries — require explicit biopsy/report context.
+  // "next_steps" alone is too broad (matches "what should I do" on symptom queries).
+  const biopsyContext =
+    /\b(biopsy|report|pathology|diagnosed|result)\b/i.test(lowerText) ||
+    /(बायोप्सी|रिपोर्ट|पैथोलॉजी)/.test(lowerText);
   if (
     signals.includes("report_received") ||
-    (signals.includes("next_steps") && /\b(biopsy|report|pathology|diagnosed|result|रिपोर्ट|बायोप्सी)\b/i.test(lowerText)) ||
-    /\b(biopsy|बायोप्सी)\s+(report|result|says?|shows?)\b/i.test(lowerText)
+    (signals.includes("next_steps") && biopsyContext) ||
+    /\bbiopsy\s+(report|result|says?|shows?)\b/i.test(lowerText) ||
+    /बायोप्सी\s*(रिपोर्ट|रिज़ल्ट|रिजल्ट|आई|आ\s*गई|हो\s*गई)/.test(lowerText)
   ) {
     return BIOPSY_NEXT_STEPS;
   }
 
   // Chemo preparation
-  if (
-    /\b(chemo|chemotherapy|कीमो|कीमोथेरेपी)\b/i.test(lowerText) &&
-    /\b(prepare|preparation|ready|day|what to|kya|kaise|तैयारी)\b/i.test(lowerText)
-  ) {
+  const isChemo = /\b(chemo|chemotherapy)\b/i.test(lowerText) || /कीमो/.test(lowerText);
+  const isPrep =
+    /\b(prepare|preparation|ready|day|what to|kya|kaise)\b/i.test(lowerText) ||
+    /तैयारी/.test(lowerText);
+  if (isChemo && isPrep) {
     return CHEMO_DAY_PREP;
   }
 
   // Second opinion
-  if (/\b(second opinion|दूसरी राय|dusri raay)\b/i.test(lowerText)) {
+  if (
+    /\bsecond opinion\b/i.test(lowerText) ||
+    /\bdusri\s*raay\b/i.test(lowerText) ||
+    /दूसरी\s*राय/.test(lowerText)
+  ) {
     return SECOND_OPINION_PREP;
   }
 
@@ -520,7 +534,8 @@ export function selectOutputTemplate(
   if (
     category === "SCHEMES" ||
     signals.includes("budget_concern") ||
-    /\b(ayushman|scheme|योजना|आयुष्मान|card|कार्ड|paisa|पैसा)\b/i.test(lowerText)
+    /\b(ayushman|scheme|card|paisa)\b/i.test(lowerText) ||
+    /(योजना|आयुष्मान|कार्ड|पैसा)/.test(lowerText)
   ) {
     return SCHEME_APPLICATION_CHECKLIST;
   }
