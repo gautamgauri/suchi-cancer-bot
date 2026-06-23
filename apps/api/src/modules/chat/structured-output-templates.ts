@@ -488,6 +488,26 @@ export const TEMPLATE_REGISTRY: Record<string, OutputTemplate> = {
  * Select the best template based on agentic category + detected signals.
  * Returns null if no structured template matches (falls back to existing flow).
  */
+/**
+ * Select a structured output template for an agentic scenario, or null.
+ *
+ * ── ACTIVE BIOPSY CONTEXT (biopsy router boundary) ──
+ * The biopsy template is used ONLY when biopsy/report context is *active*,
+ * defined as exactly one of:
+ *   1. the CURRENT user message references a biopsy/report — a keyword or phrase
+ *      such as "biopsy report", "biopsy ho gayi", "बायोप्सी रिपोर्ट"; OR
+ *   2. the CURRENT care thread is about a biopsy/report — surfaced by the caller
+ *      as the `report_received` signal (e.g. the immediately prior turn).
+ *
+ * It is explicitly NOT active for:
+ *   - a bare "what next?" / `next_steps` with no biopsy context; or
+ *   - a vague, unrelated biopsy mention from earlier history. Recency / thread
+ *     relevance is the CALLER's responsibility: the caller MUST NOT set
+ *     `report_received` for a stale historical mention.
+ *
+ * Executable boundary: structured-output-templates.spec.ts →
+ * "ACTIVE biopsy context — boundary definition".
+ */
 export function selectOutputTemplate(
   category: string,
   signals: string[],
