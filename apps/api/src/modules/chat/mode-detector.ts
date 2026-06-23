@@ -107,6 +107,13 @@ export class ModeDetector {
       /मदर|फादर|माँ|मम्मी|पापा|पिता|पत्नी|बच्चा|बेटा|बेटी|भाई|बहन/,
       // Hindi personal symptom framing (चल रहा है=is ongoing, हो रहा=is happening, हो गया=has happened)
       /चल रहा|हो रहा|हो गया|करवानी|करवाना|लगता है|बोला/,
+      // Romanized Hindi personal pronouns (mujhe/mujhko=to me, mera/meri/mere=my,
+      // hamare/humein=our/us). "main"(=I) deliberately excluded — collides with English "main".
+      /\b(mujhe|mujhko|mujhse|mera|meri|mere|hamaa?re|hamaa?ri|humein|hume)\b/i,
+      // Romanized Hindi family references in possessive framing ("meri maa", "mere papa")
+      /\b(meri|mere|mera)\s+(maa|mummy|mata|papa|pitaji|patni|pati|beta|beti|bhai|behen|bahan)\b/i,
+      // Romanized Hindi symptom framing ("ho raha hai"=is happening, "ho gaya"=has happened)
+      /\bho\s+rah(a|i)\b|\bho\s+gay(a|i)\b|\bchal\s+rah(a|i)\b/i,
     ];
 
     // Check for Navigate Mode patterns
@@ -153,6 +160,9 @@ export class ModeDetector {
       // Hindi strong personal signals
       /मुझे\s+(दर्द|सूजन|खून|बुखार|थकान|गांठ)/,
       /मेरा\s+(रिपोर्ट|टेस्ट|इलाज|डॉक्टर)/,
+      // Romanized Hindi strong personal signals ("mujhe ... dard hai" = I have pain)
+      /\b(mujhe|mujhko)\b.*\b(dard|takl(ee|i)f|suj(a|aa)n|soojan|g(aa?)nth|gilti|khoon|khun|bukhar|khaa?nsi|ulti|kamz?ori|kamjori|thakaa?n|pareshani|problem)\b/i,
+      /\b(mera|meri|mere)\s+(report|test|ilaa?j|doctor|daktar)\b/i,
     ];
     return strongSignals.some(pattern => pattern.test(text));
   }

@@ -58,6 +58,43 @@ describe("ModeDetector - identify questions", () => {
       expect(ModeDetector.hasPersonalDiagnosisSignal("general information")).toBe(false);
     });
   });
+
+  // Romanized Hindi / Hinglish — recovered WIP. Personal-concern wording in Latin
+  // script must read as Navigate (personal) just like its Devanagari equivalent.
+  describe("detectMode — Romanized Hindi / Hinglish", () => {
+    test("personal pronoun: 'mujhe dard ho raha hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("mujhe dard ho raha hai")).toBe("navigate");
+    });
+
+    test("possessive: 'meri report aayi hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("meri report aayi hai")).toBe("navigate");
+    });
+
+    test("family framing: 'mere papa ko cancer hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("mere papa ko cancer hai")).toBe("navigate");
+    });
+
+    test("symptom framing without pronoun: 'pet mein dard ho raha hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("pet mein dard ho raha hai")).toBe("navigate");
+    });
+
+    test("spacing variant: 'mujhe   gaanth   hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("mujhe   gaanth   hai")).toBe("navigate");
+    });
+
+    test("mixed English-Hindi: 'mujhe lump feel ho raha hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("mujhe lump feel ho raha hai")).toBe("navigate");
+    });
+
+    test("typo variant: 'mujhko khansi or bukhar hai' -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("mujhko khansi or bukhar hai")).toBe("navigate");
+    });
+
+    test("general Hinglish question (no personal framing) -> EXPLAIN", () => {
+      // "what are the symptoms of cancer" in Hinglish, no mujhe/mera/family
+      expect(ModeDetector.detectMode("cancer ke lakshan kya hote hain")).toBe("explain");
+    });
+  });
 });
 
 
