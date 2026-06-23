@@ -109,10 +109,10 @@ const SIGNALS: Signal[] = [
   {
     name: "report_received",
     patterns: [
-      /\b(biopsy|report|result)\s*(aaya|aya|came|received|milaa?|aai|mil\s*gaya)\b/i,
+      /\b(biopsy|report|result)\s+(aa\s*gaya|aa\s*gayi|aa\s*gai|aaya|aya|aai|came|received|mil\s*gaya|mil\s*gayi|milaa?)\b/i,
       /\b(got|have|received)\s+(my|the|a)\s+(biopsy|report|test\s*result|scan\s*result)/i,
-      /बायोप्सी\s*(रिपोर्ट)?\s*(आया|आई|मिला)/i,
-      /रिपोर्ट\s*(आ\s*गई|मिल\s*गई|आई)/i,
+      /बायोप्सी\s*(रिपोर्ट)?\s*(आया|आई|मिला|आ\s*गई|आ\s*गया)/i,
+      /रिपोर्ट\s*(आ\s*गई|आ\s*गया|मिल\s*गई|आई)/i,
     ],
     retrieval: {
       intent: "checklist",

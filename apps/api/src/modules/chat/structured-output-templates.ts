@@ -12,6 +12,8 @@
  * Zero LLM cost: templates are deterministic structures.
  */
 
+import { normalizeForMatch } from "../safety/text-normalizer";
+
 // ─── Template Definitions ─────────────────────────────────────
 
 export interface OutputSection {
@@ -486,33 +488,72 @@ export const TEMPLATE_REGISTRY: Record<string, OutputTemplate> = {
  * Select the best template based on agentic category + detected signals.
  * Returns null if no structured template matches (falls back to existing flow).
  */
+/**
+ * Select a structured output template for an agentic scenario, or null.
+ *
+ * ── ACTIVE BIOPSY CONTEXT (biopsy router boundary) ──
+ * The biopsy template is used ONLY when biopsy/report context is *active*,
+ * defined as exactly one of:
+ *   1. the CURRENT user message references a biopsy/report — a keyword or phrase
+ *      such as "biopsy report", "biopsy ho gayi", "बायोप्सी रिपोर्ट"; OR
+ *   2. the CURRENT care thread is about a biopsy/report — surfaced by the caller
+ *      as the `report_received` signal (e.g. the immediately prior turn).
+ *
+ * It is explicitly NOT active for:
+ *   - a bare "what next?" / `next_steps` with no biopsy context; or
+ *   - a vague, unrelated biopsy mention from earlier history. Recency / thread
+ *     relevance is the CALLER's responsibility: the caller MUST NOT set
+ *     `report_received` for a stale historical mention.
+ *
+ * Executable boundary: structured-output-templates.spec.ts →
+ * "ACTIVE biopsy context — boundary definition".
+ */
 export function selectOutputTemplate(
   category: string,
   signals: string[],
   userText: string
 ): OutputTemplate | null {
-  const lowerText = userText.toLowerCase();
+  // NFC + invisible-char/whitespace normalization, then lowercase. Note: ASCII
+  // terms keep \b boundaries; Devanagari terms must NOT use \b — JavaScript word
+  // boundaries only recognize ASCII, so \b adjacent to Devanagari never matches.
+  const lowerText = normalizeForMatch(userText).toLowerCase();
 
-  // Biopsy-related queries — require explicit biopsy/report context
-  // "next_steps" alone is too broad (matches "what should I do" on symptom queries)
+  // Biopsy-related queries — require explicit biopsy/report context.
+  // "next_steps" alone is too broad (matches "what should I do" on symptom queries).
+  const biopsyContext =
+    /\b(biopsy|report|pathology|diagnosed|result)\b/i.test(lowerText) ||
+    /(बायोप्सी|रिपोर्ट|पैथोलॉजी)/.test(lowerText);
+  // Route to biopsy ONLY with real biopsy context — either:
+  //  • report_received signal (the upstream sets this from the current message
+  //    OR reliable *active* session context; it must NOT set it for a stale,
+  //    unrelated historical biopsy mention), or
+  //  • next_steps + an in-message biopsy keyword, or
+  //  • an explicit "biopsy report/done" phrase in the message.
+  // "next_steps" / "what next?" ALONE never routes here (too broad).
   if (
     signals.includes("report_received") ||
-    (signals.includes("next_steps") && /\b(biopsy|report|pathology|diagnosed|result|रिपोर्ट|बायोप्सी)\b/i.test(lowerText)) ||
-    /\b(biopsy|बायोप्सी)\s+(report|result|says?|shows?)\b/i.test(lowerText)
+    (signals.includes("next_steps") && biopsyContext) ||
+    /\bbiopsy\s+(report|result|says?|shows?|ho\s*gay[ai]|hui|done|complete[d]?)\b/i.test(lowerText) ||
+    /बायोप्सी\s*(रिपोर्ट|रिज़ल्ट|रिजल्ट|आई|आ\s*गई|हो\s*गई)/.test(lowerText)
   ) {
     return BIOPSY_NEXT_STEPS;
   }
 
   // Chemo preparation
-  if (
-    /\b(chemo|chemotherapy|कीमो|कीमोथेरेपी)\b/i.test(lowerText) &&
-    /\b(prepare|preparation|ready|day|what to|kya|kaise|तैयारी)\b/i.test(lowerText)
-  ) {
+  const isChemo = /\b(chemo|chemotherapy)\b/i.test(lowerText) || /कीमो/.test(lowerText);
+  const isPrep =
+    /\b(prepare|preparation|ready|day|what to|kya|kaise)\b/i.test(lowerText) ||
+    /तैयारी/.test(lowerText);
+  if (isChemo && isPrep) {
     return CHEMO_DAY_PREP;
   }
 
   // Second opinion
-  if (/\b(second opinion|दूसरी राय|dusri raay)\b/i.test(lowerText)) {
+  if (
+    /\bsecond opinion\b/i.test(lowerText) ||
+    /\bdusri\s*raay\b/i.test(lowerText) ||
+    /दूसरी\s*राय/.test(lowerText)
+  ) {
     return SECOND_OPINION_PREP;
   }
 
@@ -520,7 +561,8 @@ export function selectOutputTemplate(
   if (
     category === "SCHEMES" ||
     signals.includes("budget_concern") ||
-    /\b(ayushman|scheme|योजना|आयुष्मान|card|कार्ड|paisa|पैसा)\b/i.test(lowerText)
+    /\b(ayushman|scheme|card|paisa)\b/i.test(lowerText) ||
+    /(योजना|आयुष्मान|कार्ड|पैसा)/.test(lowerText)
   ) {
     return SCHEME_APPLICATION_CHECKLIST;
   }

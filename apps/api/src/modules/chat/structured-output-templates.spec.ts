@@ -21,9 +21,38 @@ describe("StructuredOutputTemplates", () => {
         expect(result).toBe(BIOPSY_NEXT_STEPS);
       });
 
-      test("signal: next_steps", () => {
-        const result = selectOutputTemplate("NAVIGATION", ["next_steps"], "what to do next");
-        expect(result).toBe(BIOPSY_NEXT_STEPS);
+      // ── ACTIVE biopsy context — boundary definition ──
+      // Defines exactly what counts as "active" biopsy context for the router.
+      // Mirrors the JSDoc on selectOutputTemplate(). At this boundary the
+      // `report_received` signal == reliable active context, which the caller
+      // sets from the current message or current care thread — NEVER from a
+      // stale, unrelated historical mention.
+      describe("ACTIVE biopsy context — boundary definition", () => {
+        // (1) Current message references a biopsy/report → active.
+        test('current message biopsy phrase → active ("Biopsy ho gayi, ab kya?")', () => {
+          expect(selectOutputTemplate("NAVIGATION", [], "Biopsy ho gayi, ab kya?")).toBe(BIOPSY_NEXT_STEPS);
+        });
+
+        // (2) Current care thread is about a biopsy (caller sets report_received)
+        //     + a bare "what next?" → active.
+        test('active care thread (report_received) + "what next?" → active', () => {
+          expect(
+            selectOutputTemplate("NAVIGATION", ["report_received", "next_steps"], "what next?"),
+          ).toBe(BIOPSY_NEXT_STEPS);
+        });
+
+        // NOT active: bare "what next?" with no biopsy context.
+        test('"what next?" alone → NOT active', () => {
+          expect(selectOutputTemplate("NAVIGATION", ["next_steps"], "what next?")).not.toBe(BIOPSY_NEXT_STEPS);
+        });
+
+        // NOT active: stale/unrelated history → caller does not set
+        // report_received, so a generic message must not auto-route to biopsy.
+        test("stale history (no active signal) → NOT active", () => {
+          expect(selectOutputTemplate("NAVIGATION", [], "what should I eat this week?")).not.toBe(
+            BIOPSY_NEXT_STEPS,
+          );
+        });
       });
 
       test("keyword: biopsy in text", () => {
