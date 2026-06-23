@@ -1,10 +1,11 @@
 import { ExecutionPlannerService, PlanStep, RetrievalStep, VerifyStep } from "./execution-planner.service";
+import { HospitalDirectoryService } from "./hospital-directory.service";
 
 describe("ExecutionPlannerService", () => {
   let planner: ExecutionPlannerService;
 
   beforeEach(() => {
-    planner = new ExecutionPlannerService();
+    planner = new ExecutionPlannerService(new HospitalDirectoryService());
   });
 
   // Helper to extract steps of a given type
