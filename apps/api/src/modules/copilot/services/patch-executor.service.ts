@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RagService } from '../../rag/rag.service';
 import { LlmService } from '../../llm/llm.service';
 import type { PatchPlan, PatchAction } from '../copilot.types';
+import { DEFINITIONAL_EXPLAIN_PROMPT } from '../../llm/prompts';
 
 const DISCLAIMER_TEXT = `\n\n**Disclaimer:** This information is for educational purposes only and is not a substitute for professional medical advice. Please consult your doctor or healthcare provider for personalized guidance.`;
 
@@ -128,7 +129,7 @@ export class PatchExecutorService {
     try {
       const chunks = await this.rag.retrieveWithMetadata(query, 6);
       const context = chunks.map((c) => c.content).join('\n\n');
-      const systemPrompt = 'You are a cancer information assistant. Answer based ONLY on the provided references. Include a medical disclaimer.';
+      const systemPrompt = DEFINITIONAL_EXPLAIN_PROMPT;
       const response = await this.llm.generate(systemPrompt, context, query);
       return response;
     } catch (err) {

@@ -5,7 +5,8 @@ export type QueueStatus =
   | "generated"
   | "email_sent"
   | "approved"
-  | "changes_requested";
+  | "changes_requested"
+  | "posted";
 
 export interface QueueEntry {
   slug: string;

@@ -6,6 +6,11 @@ import { NavigatorResearchService } from "./navigator-research.service";
 import { ContentApproveService } from "./content-approve.service";
 import { ContentResearchService } from "./content-research.service";
 import { SocialPostService } from "./social-post.service";
+import { DraftExpiryService } from "./draft-expiry.service";
+import { RetentionService } from "./retention.service";
+import { ReviewQueueService } from "./review-queue.service";
+import { AnalyticsAdminService } from "./analytics-admin.service";
+import { LearningNoteService } from "./learning-note.service";
 import { AnalyticsModule } from "../analytics/analytics.module";
 import { EmailModule } from "../email/email.module";
 import { LlmModule } from "../llm/llm.module";
@@ -14,6 +19,6 @@ import { RagModule } from "../rag/rag.module";
 @Module({
   imports: [AnalyticsModule, EmailModule, LlmModule, RagModule],
   controllers: [AdminController],
-  providers: [AdminService, NavigatorApproveService, NavigatorResearchService, ContentApproveService, ContentResearchService, SocialPostService],
+  providers: [AdminService, NavigatorApproveService, NavigatorResearchService, ContentApproveService, ContentResearchService, SocialPostService, DraftExpiryService, RetentionService, ReviewQueueService, AnalyticsAdminService, LearningNoteService],
 })
 export class AdminModule {}

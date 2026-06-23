@@ -41,6 +41,7 @@ import { ReviewContext } from "../review/review-checks";
 import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
+import { SYMPTOM_SOFT_REDIRECT_PROMPT } from "../llm/prompts";
 
 @Injectable()
 export class ChatService {
@@ -573,6 +574,7 @@ export class ChatService {
           detail: mentalHealthNeed.keywords.join(","),
         },
       });
+      this.flagSessionForReview(dto.sessionId, "distress").catch(() => {});
 
       this.analytics.emit("mental_health_crisis_detected", {
         keywords: mentalHealthNeed.keywords,
@@ -2381,144 +2383,44 @@ export class ChatService {
       };
     }
 
-    // Navigate Mode: Template structure + RAG if available
+    // FR-REVIEW-001: flag INFORMATIONAL_SYMPTOMS sessions for human review (async, non-blocking)
+    if (intentResult.intent === "INFORMATIONAL_SYMPTOMS") {
+      this.flagSessionForReview(dto.sessionId, "symptom_query").catch(() => {});
+    }
+
+    // Navigate Mode: FR-JOURNEY-003 soft redirect for PERSONAL_SYMPTOMS — no RAG, no diagnostic content
     if (mode === "navigate" && intentResult.intent === "PERSONAL_SYMPTOMS") {
-      // Use navigateModeFrame for structure
-      let responseText = ResponseTemplates.navigateModeFrame(dto.userText);
-      
-      // If we have RAG chunks, generate a full navigate-mode response with evidence
-      if (evidenceChunks.length > 0) {
-        try {
-          // Generate full navigate-mode response from RAG (not just brief context)
-          const navCancerTypeForLLM = detectCancerType(dto.userText, sessionCancerType);
-          const ragContext = await this.llmWithDeadline(requestDeadlineMs, "navigate-mode-rag", () =>
-            this.llm.generateWithCitations(
-              "navigate",
-              "",
-              dto.userText,
-              evidenceChunks,
-              false,
-              { hasGenerallyAsking, cancerType: navCancerTypeForLLM, emotionalState, intent: intentResult.intent, patientState },
-              undefined,
-              obsTrace?.id
-            ),
-            signal
-          );
-          // Source-level deduplication: if the LLM response already contains
-          // "What to do next" (from the prompt contract), skip appending the
-          // template to avoid duplicate sections. Use LLM response directly.
-          if (hasSection(ragContext, "What to do next")) {
-            responseText = ragContext;
-          } else {
-            responseText = ragContext + "\n\n" + responseText;
-          }
+      // FR-REVIEW-001: flag for human review
+      this.flagSessionForReview(dto.sessionId, "symptom_query").catch(() => {});
 
-          // Validate response for ungrounded medical entities
-          const validationResult = this.responseValidator.validate(responseText, evidenceChunks);
-          if (validationResult.shouldAbstain) {
-            this.logger.warn(
-              `Navigate mode response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
-            );
-            // Remove ungrounded context and use template only
-            responseText = ResponseTemplates.navigateModeFrame(dto.userText);
-          }
-        } catch (navLlmError: any) {
-          this.logger.error(`Navigate mode LLM call failed: ${navLlmError.message} — using template-only response`);
-          responseText = ResponseTemplates.navigateModeFrame(dto.userText);
-        }
+      // Generate empathetic soft redirect without any KB symptom content
+      let responseText: string;
+      try {
+        responseText = await this.llmWithDeadline(requestDeadlineMs, "symptom-soft-redirect", () =>
+          this.llm.generate(SYMPTOM_SOFT_REDIRECT_PROMPT, "", dto.userText),
+          signal
+        );
+        if (!responseText) throw new Error("empty");
+      } catch {
+        responseText = ResponseTemplates.navigateModeFrame(dto.userText);
       }
 
-      // Inject essential cancer-type terms for navigate mode too
-      const navCancerType = detectCancerType(dto.userText, sessionCancerType);
-      responseText = this.injectEssentialTermsIfMissing(responseText, navCancerType, queryType || 'symptoms');
+      if (dto.channel === 'voice') responseText = stripForVoice(responseText);
 
-      // Clinical keyword enforcement — patient-state-aware mandatory term checks
-      responseText = this.clinicalKeywordEnforcer.enforce(responseText, navCancerType, patientState);
-
-      // Apply response formatting rules
-      // For navigate mode, determine if this is a multi-step interaction
-      const recentAssistantMessages = await this.prisma.message.findMany({
-        where: {
-          sessionId: dto.sessionId,
-          role: "assistant"
-        },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-        select: { text: true }
-      });
-      const isMultiStepInteraction = recentAssistantMessages.some(m => m.text.includes("?"));
-      const hasResolvedAnswer = evidenceChunks.length > 0; // Navigate mode has answer if RAG chunks available
-      
-      responseText = ResponseFormatter.formatResponse(responseText, "navigate", hasResolvedAnswer, isMultiStepInteraction);
-
-      // Safety-net deduplication: remove any duplicate headers, bullets, or near-duplicate paragraphs
-      responseText = deduplicateResponse(responseText);
-
-      // Voice channel: strip markdown and shorten for TTS delivery
-      if (dto.channel === 'voice') {
-        responseText = stripForVoice(responseText);
-      }
-
-      // Extract citations from response text if RAG chunks were used
-      let citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }> = [];
-      let navigateOrphanCount = 0;
-      if (evidenceChunks.length > 0) {
-        const navigateExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
-        citations = navigateExtractionResult.citations;
-        navigateOrphanCount = navigateExtractionResult.orphanCount;
-
-        // Citation repair (consolidated) - always run to ensure >= 2 citations
-        ({ responseText, citations } = this.repairCitationsIfNeeded(
-          citations, responseText, evidenceChunks, dto.sessionId,
-          { intent: intentResult.intent, path: 'navigate_mode' },
-          navigateExtractionResult.orphanCitations
-        ));
-        navigateOrphanCount = 0; // Reset after repair — orphans were stripped
-      }
-
-      // Persist message + citations (consolidated) — uses persistAssistantMessage
-      // to ensure disclaimer engine, citation marker injection, and review copilot run
       const assistant = await this.persistAssistantMessage(
-        dto.sessionId,
-        responseText,
-        citations,
-        evidenceChunks,
-        {
-          safetyClassification: "normal",
-          latencyMs: Date.now() - started,
-          kbDocIds: evidenceChunks.length > 0 ? kbDocIds : [],
-          evidenceQuality: gateResult.quality,
-          evidenceGatePassed: !gateResult.shouldAbstain
-        }
+        dto.sessionId, responseText, [], [],
+        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false }
       );
-
-      await this.analytics.emit("navigate_mode_response", {
-        intent: intentResult.intent,
-        queryType,
-        mode,
-        citationCount: citations.length
-      }, dto.sessionId);
+      await this.analytics.emit("symptom_soft_redirect", { intent: intentResult.intent }, dto.sessionId);
 
       return {
         sessionId: dto.sessionId,
         messageId: assistant.id,
         responseText: assistant.text,
         safety: { classification: "normal" as const, actions: [] },
-        citations: citations.map(c => ({
-          docId: c.docId,
-          chunkId: c.chunkId,
-          position: c.position
-        })),
-        citationConfidence: citations.length > 0 ? "GREEN" : undefined,
-        retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
-          docId: chunk.docId,
-          chunkId: chunk.chunkId,
-          sourceType: chunk.document.sourceType,
-          isTrustedSource: chunk.document.isTrustedSource,
-          similarity: chunk.similarity,
-          vecSim: (chunk as any).vecSim,
-          lexSim: (chunk as any).lexSim
-        }))
+        citations: [],
+        citationConfidence: undefined,
+        retrievedChunks: []
       };
     }
 
@@ -2969,6 +2871,18 @@ export class ChatService {
    * Detect if response contains medical content requiring citations
    * Used for runtime citation enforcement
    */
+  // FR-REVIEW-001/003: Flag a session for human review queue (async, non-blocking)
+  private async flagSessionForReview(sessionId: string, reason: string): Promise<void> {
+    try {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: { reviewFlagged: true, reviewFlagReason: reason },
+      });
+    } catch (err: any) {
+      this.logger.warn(`flagSessionForReview failed for ${sessionId}: ${err.message}`);
+    }
+  }
+
   private isMedicalContent(text: string, intent: string): boolean {
     // Intent-based detection (primary)
     const medicalIntents = [

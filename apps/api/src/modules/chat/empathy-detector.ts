@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { LlmService } from "../llm/llm.service";
+import { EMPATHY_ANALYZER_PROMPT } from "../llm/prompts";
 
 export type EmotionalTone = "anxious" | "calm" | "urgent" | "sad" | "neutral";
 
@@ -316,14 +317,7 @@ export class EmpathyDetector {
       throw new Error("LLM service not available");
     }
 
-    const systemPrompt = `You are analyzing the emotional tone of user messages. Return ONLY a JSON object with this exact structure:
-{
-  "tone": "anxious" | "calm" | "urgent" | "sad" | "neutral",
-  "confidence": 0.0-1.0,
-  "keywords": ["keyword1", "keyword2"]
-}
-
-Return only the JSON object, no other text.`;
+    const systemPrompt = EMPATHY_ANALYZER_PROMPT;
 
     const userPrompt = `Analyze the emotional tone of this user message:
 

@@ -5,4 +5,5 @@ export class CreateSessionDto {
   @IsOptional() @IsString() userType?: string;
   @IsOptional() @IsString() @IsIn(["general", "patient", "caregiver", "post_diagnosis"]) userContext?: string;
   @IsOptional() @IsString() cancerType?: string;
+  @IsOptional() @IsString() @IsIn(["patient_caregiver", "community_member", "field_worker", "unknown"]) userRole?: string;
 }

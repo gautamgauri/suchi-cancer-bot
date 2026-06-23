@@ -9,10 +9,13 @@ const api = axios.create({
   }
 });
 
+export type UserRole = "patient_caregiver" | "community_member" | "field_worker" | "unknown";
+
 export interface CreateSessionRequest {
   channel: "web" | "app" | "whatsapp";
   locale?: string;
   userType?: string;
+  userRole?: UserRole;
 }
 
 export interface CreateSessionResponse {

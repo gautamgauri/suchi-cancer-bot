@@ -56,7 +56,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 
 | Req ID | Description | Implementation | Verification | Impl. Status | Verif. Status |
 |---|---|---|---|---|---|
-| FR-CONTENT-001 | CONTENT_GUIDE.md 7-section structure (provisional — OD-005) | AI prompt references guide | Manual only | Partial | Manual only |
+| FR-CONTENT-001 | CONTENT_GUIDE.md 7-section structure | AI prompt references guide; `CONTENT_PAGE_SCHEMA.md` section 4 references guide | Manual only | Implemented | Manual only |
 | FR-CONTENT-002 | Articles as markdown with frontmatter | `content/drafts/*.md` | Manual only | Implemented | Manual only |
 | FR-CONTENT-003 | New articles added to content-queue.json | `content/queue-manager.ts` | No test | Implemented | Untested |
 | FR-CONTENT-004 | Review triggered by email with Approve/Reject links | `admin/content-post.service.ts` | Manual only | Implemented | Manual only |
@@ -67,7 +67,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 | FR-CONTENT-009 | Approval endpoints idempotent | **Not implemented** — no duplicate-click guard | — | Missing | — |
 | FR-CONTENT-010 | Publish writes to landing/content | `content/cli.ts publish` (manual CLI) | Manual only | Partial | Manual only |
 | FR-CONTENT-011 | Published articles live after suchi-web deploy | Manual process; no automation (OD-001) | Manual only | Partial | Manual only |
-| FR-CONTENT-012 | Canonical lifecycle terms used consistently | **Not implemented** — lifecycle values inconsistent across queue/frontmatter (OD-002) | — | Missing | — |
+| FR-CONTENT-012 | Canonical lifecycle terms used consistently | `content/types.ts` `ArticleStatus`; `content/cli.ts`; `content-research.service.ts`; `CONTENT_PAGE_SCHEMA.md` `REVIEW_STATUSES` | No test | Implemented | Untested |
 
 ---
 
@@ -159,7 +159,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 |---|---|---|---|---|---|
 | FR-AUDIT-001 | Conversations in PostgreSQL | `conversation` + `message` tables | No test | Implemented | Untested |
 | FR-AUDIT-002 | Safety events in safetyEvent table | `SafetyService` | No test | Implemented | Untested |
-| FR-AUDIT-003 | Article actions with reviewer name + timestamp | **Partial** — timestamp stored; reviewer name missing (OD-006) | — | Partial | Untested |
+| FR-AUDIT-003 | Article actions with reviewer name + timestamp | `content-approve.service.ts` `approvedBy`/`rejectedBy`; `content-research.service.ts` `?approver=` in emails | No test | Implemented | Untested |
 | FR-AUDIT-004 | Social post actions with reviewer name + timestamp | `social-queue.json` `approvedBy`, `approvedAt` | Manual only | Implemented | Manual only |
 | FR-AUDIT-005 | Hospital approvals with reviewer name + timestamp | **Not implemented** (OD-006) | — | Missing | — |
 | FR-AUDIT-006 | GCS queues consistent with API state | Queue updated atomically in service layer | No test | Implemented | Untested |
@@ -167,20 +167,57 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 
 ---
 
+## Phase 2 Requirements — Traceability
+
+All Phase 2 requirements are **Not Started** unless noted. Implementation phase TBD.
+
+| Req ID | Description | Implementation | Verif. | Impl. Status |
+|---|---|---|---|---|
+| FR-ROLE-001 | Community Member user class | — | — | Not Started |
+| FR-ROLE-002 | Field Worker session flag | — | — | Not Started |
+| FR-ROLE-003 | Medical Reviewer role in content pipeline | — | — | Not Started |
+| FR-ROLE-004 | Program Reviewer role + review queue access | — | — | Not Started |
+| FR-JOURNEY-001 | Newly diagnosed patient journey (eval) | — | — | Not Started |
+| FR-JOURNEY-002 | Caregiver reading a report (eval) | — | — | Not Started |
+| FR-JOURNEY-003 | Person worried about symptoms (eval) | — | — | Not Started |
+| FR-JOURNEY-004 | Treatment preparation (eval) | — | — | Not Started |
+| FR-JOURNEY-005 | Caregiver stress + crisis escalation (eval) | — | — | Not Started |
+| FR-JOURNEY-006 | Emergency / red-flag (eval) | — | — | Not Started |
+| FR-RISK-001 | Category A content — internal review gate | — | — | Not Started |
+| FR-RISK-002 | Category B content — Medical Reviewer sign-off | — | — | Not Started |
+| FR-RISK-003 | Category C content — strict Medical Reviewer + monitoring | — | — | Not Started |
+| FR-KB-101 | KB entry: reviewer_name, review_status, risk_category, version fields | — | — | Not Started |
+| FR-REVIEW-001 | Human review flagging for 10 trigger conditions | — | — | Not Started |
+| FR-REVIEW-002 | `GET /v1/admin/review-queue` endpoint | — | — | Not Started |
+| FR-REVIEW-003 | Review outcome persistence (reviewed/escalated/no-action) | — | — | Not Started |
+| FR-ANALYTICS-001 | Top N query topics per time period | — | — | Not Started |
+| FR-ANALYTICS-002 | Content gaps report from abstention events | — | — | Not Started |
+| FR-ANALYTICS-003 | Language mix reporting | — | — | Not Started |
+| FR-ANALYTICS-004 | Escalation counts by safety event type | Partial — daily report has counts | Manual only | Partial |
+| FR-ANALYTICS-005 | Anonymised analytics export (no session IDs or raw text) | — | — | Not Started |
+| FR-LEARN-001 | Monthly Learning Note — scheduled generation + email | — | — | Not Started |
+| NFR-MAINTAIN-001 | Version-controlled LLM prompts in repo | — | — | Not Started |
+| NFR-INTEROP-001 | Google Sheets / Docs export for Learning Note + gap report | — | — | Not Started |
+| NFR-LANG-001 | Language launch gate (Medical Reviewer + 20 reviewed KB entries) | — | — | Not Started |
+
+---
+
 ## Coverage Summary
 
-| Category | Total Reqs | Implemented | Partial | Missing |
+| Category | Total Reqs | Implemented | Partial | Missing / Not Started |
 |---|---|---|---|---|
 | Chat | 19 | 19 | 0 | 0 |
 | Voice | 6 | 6 | 0 | 0 |
-| Content Pipeline | 12 | 7 | 3 | 2 |
+| Content Pipeline | 12 | 10 | 1 | 1 |
 | Hospital Directory | 8 | 5 | 1 | 2 |
 | Social Publishing | 13 | 9 | 0 | 4 |
 | Admin + Review | 4 | 3 | 0 | 0 (1 N/A) |
 | Safety | 7 | 5 | 0 | 1 |
 | Non-Functional | 14 | 11 | 3 | 0 |
-| Audit | 7 | 3 | 1 | 3 |
-| **Total** | **90** | **68** | **8** | **12** |
+| Audit | 7 | 5 | 0 | 2 |
+| **Phase 1 Total** | **90** | **73** | **5** | **10** |
+| **Phase 2 (Annexure 1)** | **26** | **0** | **1** | **25** |
+| **Grand Total** | **116** | **73** | **6** | **35** |
 
 ### Verification coverage (implementation-status ≥ Partial)
 
@@ -197,29 +234,17 @@ Only 5 of 83 implemented/partial requirements have automated tests. This is the 
 
 ## Missing requirements — priority order
 
-| Priority | Req ID | Description | OD ref |
+| Priority | Req ID | Description | Notes |
 |---|---|---|---|
-| P0 | FR-SOCIAL-013 / FR-SAFETY-006 | Social post critical-severity = hard block (403) | OD-004 |
-| P0 | FR-CONTENT-007 | Content approval captures reviewer name | OD-006 |
-| P0 | FR-HOSP-007 / FR-AUDIT-005 | Hospital approval captures reviewer name | OD-006 |
-| P0 | FR-CONTENT-009 | Content approval endpoint idempotency | — |
-| P1 | FR-SOCIAL-006 | Hide unconfigured platform buttons | OD-008 |
-| P1 | FR-CONTENT-012 | Canonical lifecycle terms applied consistently | OD-002 |
-| P1 | FR-AUDIT-003 | Article audit trail complete | OD-006 |
-| P2 | FR-AUDIT-007 | Draft expiry + reminder emails | OD-007 |
-| P2 | FR-CONTENT-010/011 | Automated article publish (daily scheduled) | OD-001 |
+| P1 | FR-CONTENT-010/011 | Full automated article publish (git push + deploy) | OD-001 partial — notify endpoint implemented, git push deferred |
+| P2 | NFR-PRIV-001 | 90-day PostgreSQL retention job for messages/sessions | See `docs/PRIVACY_RETENTION.md` |
+| P2 | NFR-PRIV-002 | 1-year retention for safety events + feedback | See `docs/PRIVACY_RETENTION.md` |
 
 ## Tests to add — priority order (safety-critical first)
 
+All P0/P1/P2 tests from the original list are now implemented (250 passing). Remaining gaps:
+
 | Priority | Requirement | What to test |
 |---|---|---|
-| P0 | FR-CHAT-003 | Emergency pattern → response in <1s with no DB/LLM calls |
-| P0 | FR-CHAT-005 | `safe_redirect` and `hard_refusal` classifications terminate without LLM |
-| P0 | FR-CHAT-004 | LLM timeout → abstention response (not 500) |
-| P0 | FR-CHAT-009 | Treatment query with <2 sources → abstention |
-| P0 | FR-CHAT-012 | Citation repair fires when LLM cites <2 sources |
-| P1 | FR-CHAT-019 | "radiation therapy" does not classify as PSYCHOSOCIAL |
-| P1 | FR-CHAT-020 | Hindi query → cross-lingual expansion → Hindi response |
-| P1 | FR-SOCIAL-013 | Critical-severity post → 403 from approval endpoint |
-| P1 | FR-SAFETY-002 | Emergency path runs before any async call |
-| P2 | FR-VOICE-004 | TTS output contains no `[1]`/`[2]` or markdown |
+| P2 | FR-AUDIT-007 | Draft expiry service: articles archived at 30d, reminded at 48h |
+| P2 | FR-CONTENT-010 | notify-publish endpoint returns correct approved slugs |

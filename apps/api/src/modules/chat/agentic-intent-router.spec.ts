@@ -204,4 +204,32 @@ describe("AgenticIntentRouter", () => {
       expect(result!.category).toBe("PSYCHOSOCIAL");
     });
   });
+
+  // FR-CHAT-019 — medical therapy phrases must NOT fire PSYCHOSOCIAL fast-path
+  describe("classifyFastPath — therapy false-positive guard (FR-CHAT-019)", () => {
+    const medicalTherapyCases = [
+      "what are the side effects of radiation therapy",
+      "how does radiation therapy work",
+      "tell me about targeted therapy for breast cancer",
+      "chemotherapy vs radiation therapy",
+      "immunotherapy options for lung cancer",
+      "what is hormone therapy for prostate cancer",
+      "I just finished radiation therapy, what next",
+      "therapy",
+    ];
+
+    test.each(medicalTherapyCases)("medical therapy phrase does NOT classify as PSYCHOSOCIAL: %s", (text) => {
+      const result = classifyFastPath(text);
+      expect(result?.category).not.toBe("PSYCHOSOCIAL");
+    });
+
+    test.each([
+      "I need talk therapy for my anxiety about cancer",
+      "cognitive therapy for depression after diagnosis",
+      "grief therapy after losing my mother to cancer",
+    ])("mental health qualifier DOES classify as PSYCHOSOCIAL: %s", (text) => {
+      const result = classifyFastPath(text);
+      expect(result?.category).toBe("PSYCHOSOCIAL");
+    });
+  });
 });

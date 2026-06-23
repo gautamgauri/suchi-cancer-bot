@@ -115,6 +115,13 @@ playwright-report/
 # Duplicate assets
 apps/landing/public/assets/hero.jpg
 
+# Navigator pipeline state (live operational data — not source)
+navigator/queue.json
+
+# Distribution pipeline state and generated packs
+distribution/queue.json
+distribution/packs/
+
 
 
 

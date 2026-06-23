@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { ConsentGate } from "./components/ConsentGate";
 import { ChatInterface } from "./components/ChatInterface";
-import { apiService } from "./services/api";
+import { apiService, UserRole } from "./services/api";
 
 export function ChatApp() {
   const [hasConsented, setHasConsented] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     const consented = sessionStorage.getItem("suchi_consented");
@@ -19,13 +20,14 @@ export function ChatApp() {
     }
   }, []);
 
-  const createSession = async () => {
+  const createSession = async (userRole: UserRole = "unknown") => {
     try {
       setError(null);
       setLoading(true);
       const response = await apiService.createSession({
         channel: "web",
         locale: "en",
+        userRole,
       });
       setSessionId(response.sessionId);
       setLoading(false);
@@ -46,13 +48,19 @@ export function ChatApp() {
   const handleConsent = () => {
     sessionStorage.setItem("suchi_consented", "true");
     setHasConsented(true);
-    createSession();
+    setLoading(false);
+  };
+
+  const handleRoleSelected = (role: UserRole) => {
+    setPendingRole(role);
+    createSession(role);
   };
 
   const handleStartOver = () => {
     sessionStorage.removeItem("suchi_consented");
     setHasConsented(false);
     setSessionId(null);
+    setPendingRole(null);
     setLoading(true);
     setTimeout(() => setLoading(false), 100);
   };
@@ -65,9 +73,16 @@ export function ChatApp() {
     );
   }
 
-  if (!hasConsented || !sessionId) {
+  if (!hasConsented) {
     return <ConsentGate onAccept={handleConsent} error={error ?? undefined} />;
   }
 
-  return <ChatInterface sessionId={sessionId} onStartOver={handleStartOver} />;
+  return (
+    <ChatInterface
+      sessionId={sessionId}
+      onStartOver={handleStartOver}
+      onRoleSelected={!sessionId ? handleRoleSelected : undefined}
+      sessionCreating={!sessionId && pendingRole !== null}
+    />
+  );
 }

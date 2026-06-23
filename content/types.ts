@@ -1,4 +1,10 @@
-export type ArticleStatus = "draft" | "email_sent" | "approved" | "rejected";
+export type ArticleStatus =
+  | "ai_draft"
+  | "sent_for_review"
+  | "approved"
+  | "rejected"
+  | "published"
+  | "archived";
 
 export interface ArticleEntry {
   slug: string;

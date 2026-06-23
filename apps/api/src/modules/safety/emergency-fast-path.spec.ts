@@ -151,4 +151,28 @@ describe("EmergencyFastPath", () => {
       expect(_testExports.URGENT_PATTERNS.length).toBeGreaterThanOrEqual(10);
     });
   });
+
+  // FR-CHAT-003 / NFR-PERF-002 — each call < 1ms (sub-1ms budget)
+  describe("Per-call timing < 1ms (FR-CHAT-003)", () => {
+    test("non-emergency completes in < 1ms", () => {
+      const start = performance.now();
+      evaluateEmergencyFastPath("what are the side effects of chemotherapy");
+      expect(performance.now() - start).toBeLessThan(1);
+    });
+
+    test("emergency match completes in < 1ms", () => {
+      const start = performance.now();
+      evaluateEmergencyFastPath("severe chest pain spreading to left arm");
+      expect(performance.now() - start).toBeLessThan(1);
+    });
+  });
+
+  // FR-SAFETY-002 — function is synchronous; no DB or LLM calls possible
+  describe("Synchronous guarantee — no async calls (FR-SAFETY-002)", () => {
+    test("return value is not a Promise", () => {
+      const result = evaluateEmergencyFastPath("uncontrolled bleeding");
+      // A Promise has a .then method; a plain object does not
+      expect(typeof (result as any).then).toBe("undefined");
+    });
+  });
 });

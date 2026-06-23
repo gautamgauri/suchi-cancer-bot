@@ -22,7 +22,8 @@
       "mcp__claude_ai_Google_Drive__list_recent_files",
       "mcp__plugin_slack_slack__slack_search_public_and_private",
       "mcp__plugin_slack_slack__slack_search_channels",
-      "mcp__claude_ai_Gmail__search_threads"
+      "mcp__claude_ai_Gmail__search_threads",
+      "Skill(schedule)"
     ]
   }
 }

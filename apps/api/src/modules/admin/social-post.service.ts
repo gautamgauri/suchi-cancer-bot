@@ -16,7 +16,7 @@
  * GCS queue: social-queue.json (same bucket as content-queue.json)
  */
 
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, UnauthorizedException, ForbiddenException } from "@nestjs/common";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { Storage } from "@google-cloud/storage";
 import matter from "gray-matter";
@@ -26,6 +26,19 @@ import { EmailService } from "../email/email.service";
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Hard-block safety patterns (FR-SOCIAL-013)
+// Posts matching any of these cannot be approved.
+// ---------------------------------------------------------------------------
+
+const HARD_BLOCK_PATTERNS: RegExp[] = [
+  /diagno|you (may|might|could) have|indicates cancer/i,
+  /cure|guaranteed?|will (definitely|certainly) (work|help|treat)/i,
+  /stop (your|the|chemo|treatment|radiation)|don'?t take|instead of (chemo|radiation|surgery)/i,
+  /\d+%\s*(survival|die|death|fatal)/i,
+  /₹\s*\d|rs\.?\s*\d{3,}|inr\s*\d/i,
+];
 
 const GCS_BUCKET   = process.env.QUEUE_GCS_BUCKET;
 const GCS_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543132";
@@ -82,6 +95,7 @@ interface SocialPostDraft {
   approvedPlatforms?: Platform[];
   publishResults?: Record<Platform, PlatformResult>;
   safetyWarnings?: string[];
+  safetyBlocked?: boolean;
 }
 
 interface SocialQueue { posts: SocialPostDraft[] }
@@ -123,6 +137,7 @@ export class SocialPostService {
     }
 
     const warnings = await this.runSafetyGate(Object.values(copy).join(" "));
+    const safetyBlocked = HARD_BLOCK_PATTERNS.some(re => warnings.some(w => re.test(w)));
     const id = randomUUID();
 
     const draft: SocialPostDraft = {
@@ -136,6 +151,7 @@ export class SocialPostService {
       approvalToken: this.buildToken(id),
       createdAt: new Date().toISOString(),
       safetyWarnings: warnings,
+      safetyBlocked,
     };
 
     const queue = await this.loadQueue();
@@ -159,6 +175,12 @@ export class SocialPostService {
     if (draft.status === "published" || draft.status === "rejected") {
       this.logger.warn(`Social post ${id} already ${draft.status} (by ${draft.approvedBy ?? draft.rejectedBy ?? "unknown"}) — ignoring duplicate click from ${approver ?? "unknown"}`);
       return { title: draft.title, published: draft.approvedPlatforms ?? [], failed: [], approvedBy: draft.approvedBy };
+    }
+
+    if (draft.safetyBlocked) {
+      throw new ForbiddenException(
+        `Post "${draft.title}" contains hard-block safety violations and cannot be approved. Review the safety warnings and regenerate.`,
+      );
     }
 
     const targets = this.resolvePlatforms(platformsParam);
@@ -384,12 +406,26 @@ REVIEW: {one-sentence description of the specific concern}`,
       { name: "Nisha",  email: "nisha.kumari@dikshafoundation.org" },
     ];
 
-    const safetyBanner = safetyWarnings.length > 0
-      ? `<div style="background:#fff3cd;border-left:4px solid #e37400;padding:12px 16px;margin-bottom:20px;font-size:13px;">
+    // Determine which platforms are configured (FR-SOCIAL-006)
+    const fbConfigured = !!(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN);
+    const igConfigured = !!process.env.META_IG_USER_ID;
+    const liConfigured = !!(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_AUTHOR_URN);
+
+    // Safety banner — red hard-block if safetyBlocked, yellow advisory otherwise
+    let safetyBanner: string;
+    if (draft.safetyBlocked) {
+      safetyBanner = `<div style="background:#fee2e2;border:1px solid #dc2626;padding:10px;margin:10px 0;border-radius:4px;">
+  <strong style="color:#dc2626;">&#9940; HARD BLOCK — This post cannot be approved.</strong><br>
+  Safety review flagged hard-block violations: ${escHtml(safetyWarnings.join("; ") ?? "unknown")}
+</div>`;
+    } else if (safetyWarnings.length > 0) {
+      safetyBanner = `<div style="background:#fff3cd;border-left:4px solid #e37400;padding:12px 16px;margin-bottom:20px;font-size:13px;">
            <strong>Safety review flagged:</strong> ${escHtml(safetyWarnings.join("; "))}
            <br>Review the copy carefully before approving.
-         </div>`
-      : "";
+         </div>`;
+    } else {
+      safetyBanner = "";
+    }
 
     await Promise.all(recipients.map(({ name, email }) => {
       const a = encodeURIComponent(name);
@@ -400,28 +436,46 @@ REVIEW: {one-sentence description of the specific concern}`,
       const rejectUrl  = `${API_BASE}/reject/${id}?token=${approvalToken}&approver=${a}`;
       const cc = recipients.filter((r) => r.email !== email).map((r) => r.email).join(", ");
 
+      // Count configured platforms for "Approve all" button label
+      const configuredCount = [fbConfigured, igConfigured, liConfigured].filter(Boolean).length;
+
+      // Platform-specific approve buttons — omit entirely for unconfigured platforms (FR-SOCIAL-006)
+      const fbBtn = fbConfigured ? `<a href="${approveFB}"  style="${btnStyle("#1877f2")}">Facebook only</a>` : "";
+      const igBtn = igConfigured ? `<a href="${approveIG}"  style="${btnStyle("#c13584")}">Instagram only</a>` : "";
+      const liBtn = liConfigured ? `<a href="${approveLI}"  style="${btnStyle("#0077b5")}">LinkedIn only</a>` : "";
+
+      // Approve buttons section — omit entirely when hard-blocked
+      const approveSection = draft.safetyBlocked
+        ? ""
+        : `<div style="margin-top:28px;line-height:2.2">
+  ${configuredCount > 1 ? `<a href="${approveAll}" style="${btnStyle("#188038")}">Approve all (${configuredCount} platforms)</a>` : ""}
+  ${fbBtn}
+  ${igBtn}
+  ${liBtn}
+</div>`;
+
+      // Copy preview blocks — only show configured platforms (FR-SOCIAL-006)
+      const fbBlock = fbConfigured ? buildPostBlock("Facebook", copy.facebook) : "";
+      const igBlock = igConfigured ? buildPostBlock("Instagram", copy.instagram, "Image: branded card configured via SUCHI_SOCIAL_CARD_URL") : "";
+      const liBlock = liConfigured ? buildPostBlock("LinkedIn", copy.linkedin) : "";
+
       const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:680px;margin:auto;padding:20px">
 <h2 style="margin-bottom:4px">APPROVAL REQUIRED: Social post</h2>
 <p style="color:#555;margin-top:4px">${escHtml(title)} — <a href="${escHtml(articleUrl)}">${escHtml(articleUrl)}</a></p>
 ${safetyBanner}
 
-${buildPostBlock("Facebook", copy.facebook)}
-${buildPostBlock("Instagram", copy.instagram, "Image: branded card configured via SUCHI_SOCIAL_CARD_URL")}
-${buildPostBlock("LinkedIn", copy.linkedin)}
+${fbBlock}
+${igBlock}
+${liBlock}
 
-<div style="margin-top:28px;line-height:2.2">
-  <a href="${approveAll}" style="${btnStyle("#188038")}">Approve all three</a>
-  <a href="${approveFB}"  style="${btnStyle("#1877f2")}">Facebook only</a>
-  <a href="${approveIG}"  style="${btnStyle("#c13584")}">Instagram only</a>
-  <a href="${approveLI}"  style="${btnStyle("#0077b5")}">LinkedIn only</a>
-</div>
+${approveSection}
 <div style="margin-top:10px">
   <a href="${rejectUrl}" style="${btnStyle("#d93025")}">Reject — do not post</a>
 </div>
 
 <p style="color:#999;font-size:11px;margin-top:32px">
   Suchi Content Pipeline &middot; Social posts publish immediately on click.
-  Platforms without credentials configured (META_PAGE_ID, LINKEDIN_ACCESS_TOKEN, etc.) are silently skipped.
+  Only platforms with credentials configured are shown above.
 </p>
 </body></html>`;
 

@@ -7,7 +7,7 @@ argument-hint: "<topic description>"
 
 Create a new KB article and register it in the manifest. The user's topic is: $ARGUMENTS
 
-## Step 1: Ask for Category
+## Step 1: Ask for Category and Risk Category
 
 Ask the user to pick a category using AskUserQuestion:
 
@@ -17,6 +17,16 @@ Ask the user to pick a category using AskUserQuestion:
 | `02_nci_core` | NCI authoritative definitions | `NCI (Adapted)` | `public_domain` |
 | `05_india_ncg` | India-specific oncology guidance | `NCG India (Adapted)` | `open_access` |
 | `99_local_navigation` | Local navigation & resources | `SCCF Navigation Guidance` | `sccf_owned` |
+
+Also ask the user to pick a **risk category** (FR-KB-101):
+
+| Category | When to use |
+|----------|-------------|
+| `A` — Low-Risk Awareness | General awareness, myths, prevention, screening basics, glossary terms |
+| `B` — Medium-Risk Treatment Explanation | Chemotherapy, radiation, surgery, side effects, staging, biopsy, palliative care |
+| `C` — High-Risk Guidance | Symptoms, emergencies, report interpretation, treatment decisions, side-effect severity, crisis |
+
+Default to `A` if unsure. Category B and C entries require a `reviewerName` before being marked `approved`.
 
 ## Step 2: Generate identifiers
 
@@ -51,6 +61,10 @@ title: "{title}"
 version: "v1"
 status: "active"
 source: "{source}"
+reviewStatus: "pending"
+riskCategory: "{A|B|C}"
+reviewerName: ""
+approvedUsageScope: "general"
 ---
 
 ## Overview
@@ -95,7 +109,11 @@ Read `kb/manifest.json`, parse the JSON, and append a new entry to the `docs` ar
   "cancerTypes": ["<inferred from topic, or 'general'>"],
   "tags": ["<tag1>", "<tag2>", "<tag3>"],
   "url": null,
-  "citation": "<citation>"
+  "citation": "<citation>",
+  "reviewerName": null,
+  "reviewStatus": "pending",
+  "riskCategory": "<A|B|C>",
+  "approvedUsageScope": "general"
 }
 ```
 

@@ -4,6 +4,7 @@ import { EmpathyDetector, EmotionalTone } from "./empathy-detector";
 import { detectCancerType } from "./utils/cancer-type-detector";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { LlmService } from "../llm/llm.service";
+import { GREETING_CONTEXT_PROMPT } from "../llm/prompts";
 
 export type UserContext = "general" | "patient" | "caregiver" | "post_diagnosis";
 
@@ -133,20 +134,7 @@ export class GreetingFlowService {
       throw new Error("LLM service not available");
     }
 
-    const systemPrompt = `You are analyzing user messages to determine their context. Return ONLY a JSON object with this exact structure:
-{
-  "context": "general" | "patient" | "caregiver" | "post_diagnosis" | null,
-  "cancerType": "breast" | "lung" | "prostate" | etc. | null,
-  "confidence": 0.0-1.0
-}
-
-Context definitions:
-- "general": User is seeking general/educational information, not personal
-- "patient": User is describing their own symptoms or concerns
-- "caregiver": User is supporting someone else (mentions "my father", "my mother", etc.)
-- "post_diagnosis": User mentions diagnosis, reports, treatment, staging
-
-Return only the JSON object, no other text.`;
+    const systemPrompt = GREETING_CONTEXT_PROMPT;
 
     const userPrompt = `Analyze this user message and extract context and cancer type:
 

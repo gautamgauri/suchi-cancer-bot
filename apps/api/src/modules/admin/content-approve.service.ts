@@ -16,6 +16,7 @@ interface ArticleEntry {
   approvedAt?: string;
   approvedBy?: string;
   rejectedAt?: string;
+  rejectedBy?: string;
   approvalToken?: string;
 }
 
@@ -55,20 +56,22 @@ export class ContentApproveService {
     );
   }
 
-  async approveArticle(slug: string, token: string): Promise<{ title: string }> {
+  async approveArticle(slug: string, token: string, approver?: string): Promise<{ title: string }> {
     this.verifyHmac(slug, token);
     const queue = await this.readQueue();
     const entry = queue.articles.find((a) => a.slug === slug);
     if (!entry) throw new NotFoundException(`Article "${slug}" not found`);
 
-    if (entry.status === "approved") {
-      this.logger.log(`Article "${slug}" already approved`);
-      return { title: entry.title };
+    if (entry.status === "approved" || entry.status === "rejected") {
+      this.logger.warn(
+        `Article "${slug}" already ${entry.status} (by ${entry.approvedBy ?? entry.rejectedBy ?? "unknown"}) — ignoring duplicate click from ${approver ?? "unknown"}`
+      );
+      return { title: entry.title ?? slug };
     }
 
     entry.status = "approved";
     entry.approvedAt = new Date().toISOString();
-    entry.approvedBy = "email_approval";
+    entry.approvedBy = approver ?? "email_approval";
     await this.writeQueue(queue);
 
     this.logger.log(`Article "${slug}" approved — triggering social distribution`);
@@ -81,17 +84,25 @@ export class ContentApproveService {
     return { title: entry.title };
   }
 
-  async rejectArticle(slug: string, token: string): Promise<{ title: string }> {
+  async rejectArticle(slug: string, token: string, approver?: string): Promise<{ title: string }> {
     this.verifyHmac(slug, token);
     const queue = await this.readQueue();
     const entry = queue.articles.find((a) => a.slug === slug);
     if (!entry) throw new NotFoundException(`Article "${slug}" not found`);
 
+    if (entry.status === "rejected" || entry.status === "approved") {
+      this.logger.warn(
+        `Article "${slug}" already ${entry.status} — ignoring duplicate rejection from ${approver ?? "unknown"}`
+      );
+      return { title: entry.title ?? slug };
+    }
+
     entry.status = "rejected";
     entry.rejectedAt = new Date().toISOString();
+    entry.rejectedBy = approver ?? "email_rejection";
     await this.writeQueue(queue);
 
-    this.logger.log(`Article "${slug}" rejected`);
+    this.logger.log(`Article "${slug}" rejected by ${entry.rejectedBy}`);
     return { title: entry.title };
   }
 }

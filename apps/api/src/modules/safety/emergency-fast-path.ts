@@ -27,7 +27,7 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
   [/\bbleeding\s+(won'?t|doesn'?t|does not|will not)\s+stop/i, "bleeding_wont_stop_en"],
   [/\bvomiting\s+blood\b/i, "vomiting_blood_en"],
   [/\bcoughing\s+(up\s+)?blood\b/i, "coughing_blood_en"],
-  [/\bblood\s+in\s+(stool|urine|vomit)\b/i, "blood_in_body_fluid_en"],
+  [/\bblood\s+in\s+(?:(?:his|her|my|the|their|your)\s+)?(stool|urine|vomit)\b/i, "blood_in_body_fluid_en"],
 
   // English — breathing
   [/\b(can'?t|cannot|unable to|difficulty|trouble|struggling to)\s+breathe?\b/i, "cant_breathe_en"],
@@ -62,8 +62,10 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
   [/दम\s*घुट\s*रह/i, "choking_hi"],
 
   // Hindi — cardiac/pain
-  [/छाती\s*(में)?\s*(बहुत|ज़्यादा|तेज)\s*दर्द/i, "severe_chest_pain_hi"],
-  [/सीने\s*(में)?\s*(बहुत|ज़्यादा|तेज)\s*दर्द/i, "severe_chest_pain_hi_2"],
+  [/छाती\s*(में)?\s*(बहुत\s*)?(ज़्यादा|तेज)\s*दर्द/i, "severe_chest_pain_hi"],
+  [/छाती\s*(में)?\s*बहुत\s+तेज\s*दर्द/i, "severe_chest_pain_hi_combo"],
+  [/सीने\s*(में)?\s*(बहुत\s*)?(ज़्यादा|तेज)\s*दर्द/i, "severe_chest_pain_hi_2"],
+  [/सीने\s*(में)?\s*बहुत\s+तेज\s*दर्द/i, "severe_chest_pain_hi_2_combo"],
 
   // Hindi — consciousness
   [/बेहोश\s*(हो\s*गय|हो\s*रह)/i, "unconscious_hi"],
@@ -77,7 +79,8 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
   [/\b(khoon|khun)\s*(ruk|band)\s*nahi/i, "bleeding_not_stopping_hinglish"],
   [/\bsaans?\s*nahi\s*(aa|le)\s*raha/i, "cant_breathe_hinglish"],
   [/\bbehosh\b/i, "unconscious_hinglish"],
-  [/\bseene?\s*(mein|me)\s*(bahut|zyada|tez)\s*(dard|pain)/i, "chest_pain_hinglish"],
+  [/\bseene?\s*(mein|me)\s*(bahut|zyada)?\s*(zyada|tez)\s*(dard|pain)/i, "chest_pain_hinglish"],
+  [/\bseene?\s*(mein|me)\s*bahut\s+tez\s*(dard|pain)/i, "chest_pain_hinglish_combo"],
 
   // Explicit emergency keywords
   [/\b(108|112)\s*(call|bula|phone)/i, "emergency_number_request"],

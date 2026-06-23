@@ -1,9 +1,12 @@
 import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import { ArticleEntry, ContentQueue } from "./types";
 
 const GCS_BUCKET = process.env.QUEUE_GCS_BUCKET;
 const GCS_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543132";
 const GCS_QUEUE_OBJECT = "content-queue.json";
+
+const LOCAL_DRAFTS_DIR = path.resolve(__dirname, "drafts");
 
 async function gcsDownload(object: string): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
@@ -45,11 +48,17 @@ export async function saveQueue(localPath: string, articles: ArticleEntry[]): Pr
 }
 
 export async function uploadDraft(slug: string, markdown: string): Promise<void> {
-  if (!GCS_BUCKET) throw new Error("QUEUE_GCS_BUCKET not set — cannot upload draft");
-  await gcsUpload(`content-drafts/${slug}.md`, markdown, "text/markdown");
+  if (GCS_BUCKET) {
+    await gcsUpload(`content-drafts/${slug}.md`, markdown, "text/markdown");
+    return;
+  }
+  await fs.mkdir(LOCAL_DRAFTS_DIR, { recursive: true });
+  await fs.writeFile(path.join(LOCAL_DRAFTS_DIR, `${slug}.md`), markdown, "utf-8");
 }
 
 export async function downloadDraft(slug: string): Promise<string> {
-  if (!GCS_BUCKET) throw new Error("QUEUE_GCS_BUCKET not set");
-  return gcsDownload(`content-drafts/${slug}.md`);
+  if (GCS_BUCKET) {
+    return gcsDownload(`content-drafts/${slug}.md`);
+  }
+  return fs.readFile(path.join(LOCAL_DRAFTS_DIR, `${slug}.md`), "utf-8");
 }

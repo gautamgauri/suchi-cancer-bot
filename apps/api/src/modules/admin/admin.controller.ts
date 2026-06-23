@@ -12,6 +12,11 @@ import { buildReviewHtml } from "./navigator-review.html";
 import { ContentApproveService } from "./content-approve.service";
 import { ContentResearchService } from "./content-research.service";
 import { SocialPostService } from "./social-post.service";
+import { DraftExpiryService } from "./draft-expiry.service";
+import { RetentionService } from "./retention.service";
+import { ReviewQueueService } from "./review-queue.service";
+import { AnalyticsAdminService } from "./analytics-admin.service";
+import { LearningNoteService } from "./learning-note.service";
 
 @Controller("admin")
 export class AdminController {
@@ -26,6 +31,11 @@ export class AdminController {
     private readonly contentApprove: ContentApproveService,
     private readonly contentResearch: ContentResearchService,
     private readonly socialPost: SocialPostService,
+    private readonly draftExpiry: DraftExpiryService,
+    private readonly retention: RetentionService,
+    private readonly reviewQueue: ReviewQueueService,
+    private readonly analyticsAdmin: AnalyticsAdminService,
+    private readonly learningNote: LearningNoteService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -417,6 +427,99 @@ ${noteHtml}
 <p style="color:#555;font-size:13px;">${message}</p>
 <p style="color:#999;font-size:12px;">Please contact the team if this was unexpected.</p>
 </body></html>`;
+  }
+
+  /**
+   * FR-CONTENT-010/011: Notify team of approved-but-unpublished articles (FR-CONTENT-010).
+   * Full automation (git push + deploy) is deferred (OD-001).
+   * URL: POST /v1/admin/content/notify-publish (SchedulerOidcGuard — call daily)
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("content/notify-publish")
+  async notifyPublish() {
+    const result = await this.contentResearch.notifyApprovedArticles();
+    return result;
+  }
+
+  /**
+   * NFR-PRIV-001: Delete conversation data older than 90 days.
+   * Eval sessions are excluded. Call weekly via Cloud Scheduler.
+   * URL: POST /v1/admin/housekeeping/run-retention
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("housekeeping/run-retention")
+  async runRetention() {
+    this.logger.log("Retention job triggered");
+    const result = await this.retention.runRetention();
+    return { ok: true, ...result };
+  }
+
+  /**
+   * FR-AUDIT-007: Run draft expiry — archive stale articles, expire stale social posts,
+   * send reminders. Called daily by Cloud Scheduler.
+   * URL: POST /v1/admin/housekeeping/run-expiry
+   */
+  @UseGuards(SchedulerOidcGuard)
+  @Post("housekeeping/run-expiry")
+  async runDraftExpiry() {
+    this.logger.log("Draft expiry job triggered");
+    const result = await this.draftExpiry.runExpiry();
+    this.logger.log(`Expiry run complete: articles archived=${result.articles.archived.length} reminded=${result.articles.reminded.length}; social expired=${result.social.expired.length} reminded=${result.social.reminded.length}`);
+    return { ok: true, ...result };
+  }
+
+  // ─── Review Queue (FR-REVIEW-002/003) ─────────────────────────────────────
+
+  @UseGuards(BasicAuthGuard)
+  @Get("review-queue")
+  async getReviewQueue(@Query("since") since?: string) {
+    return this.reviewQueue.listQueue(since);
+  }
+
+  @UseGuards(BasicAuthGuard)
+  @Patch("review-queue/:id")
+  async markReviewed(
+    @Param("id") sessionId: string,
+    @Body() body: { outcome: string; reviewerName?: string },
+  ) {
+    return this.reviewQueue.markReviewed(sessionId, body.outcome, body.reviewerName);
+  }
+
+  @UseGuards(SchedulerOidcGuard)
+  @Post("review-queue/send-digest")
+  async sendReviewDigest() {
+    this.logger.log("Weekly review digest triggered");
+    const result = await this.reviewQueue.sendWeeklyDigest();
+    return { ok: true, ...result };
+  }
+
+  // ─── Analytics (FR-ANALYTICS-001/002/003) ─────────────────────────────────
+
+  @UseGuards(BasicAuthGuard)
+  @Get("analytics/topics")
+  async getTopics(@Query("since") since?: string, @Query("limit") limit?: string) {
+    return this.analyticsAdmin.getTopics(since, limit ? parseInt(limit, 10) : 20);
+  }
+
+  @UseGuards(BasicAuthGuard)
+  @Get("analytics/content-gaps")
+  async getContentGaps(@Query("since") since?: string) {
+    return this.analyticsAdmin.getContentGaps(since);
+  }
+
+  @UseGuards(BasicAuthGuard)
+  @Get("analytics/languages")
+  async getLanguages(@Query("since") since?: string) {
+    return this.analyticsAdmin.getLanguages(since);
+  }
+
+  // ─── Learning Note (FR-LEARN-001) — first Monday of each month ───────────
+
+  @UseGuards(SchedulerOidcGuard)
+  @Post("learning-note/generate")
+  async generateLearningNote(@Query("month") month?: string) {
+    this.logger.log(`Learning note generation triggered (month=${month ?? "previous"})`);
+    return this.learningNote.generateAndSend(month);
   }
 
   private parseDateRange(date?: string): { from: Date; to: Date; dateStr: string } {

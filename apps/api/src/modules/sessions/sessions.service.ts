@@ -20,9 +20,10 @@ export class SessionsService {
       // Try with all fields including geo and isEval using raw SQL
       // This avoids Prisma schema validation issues when columns don't exist in DB
       const result = await this.prisma.$queryRaw<Array<{ id: string; createdAt: Date }>>`
-        INSERT INTO "Session" (id, "createdAt", channel, locale, "userType", status, city, region, country, "isEval")
+        INSERT INTO "Session" (id, "createdAt", channel, locale, "userType", status, city, region, country, "isEval", "userRole")
         VALUES (gen_random_uuid(), NOW(), ${dto.channel}, ${dto.locale || null}, ${dto.userType || null}, 'active',
-                ${geoData?.city || null}, ${geoData?.region || null}, ${geoData?.country || null}, ${isEval})
+                ${geoData?.city || null}, ${geoData?.region || null}, ${geoData?.country || null}, ${isEval},
+                ${dto.userRole || 'unknown'})
         RETURNING id, "createdAt"
       `;
       s = { id: result[0].id, createdAt: result[0].createdAt };

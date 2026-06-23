@@ -28,6 +28,16 @@ model Session {
   // Eval/test traffic marker
   isEval  Boolean @default(false) // True if session is from automated eval/test
 
+  // Phase 2: user role (self-declared via inline prompt)
+  userRole String @default("unknown") // patient_caregiver | community_member | field_worker | unknown
+
+  // Phase 2: human review flagging (FR-REVIEW-001/003)
+  reviewFlagged    Boolean   @default(false)
+  reviewFlagReason String?   // symptom_query | report_interpretation | safety_gate_fired | distress | doctor_complaint | treatment_decision
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  reviewOutcome    String?   // reviewed | escalated | no-action
+
   messages          Message[]
   feedback          Feedback[]
   safetyEvents      SafetyEvent[]
@@ -118,6 +128,12 @@ model KbDocument {
   publisher       String?
   jurisdiction    String?
   retrievedDate   DateTime?
+
+  // Phase 2: FR-KB-101 metadata
+  reviewerName        String?
+  reviewStatus        String  @default("pending") // pending | reviewed | approved
+  riskCategory        String? // A | B | C
+  approvedUsageScope  String?
 
   chunks KbChunk[]
 
