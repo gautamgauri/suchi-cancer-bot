@@ -166,6 +166,32 @@ describe("WhatsAppService", () => {
       await svc.processInbound([{ wamid: "w9", from: "9199", text: "hi" }]);
       expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
     });
+
+    it("self-heals a deleted session: re-mints and retries once", async () => {
+      // Active contact pointing at a session row that no longer exists.
+      prisma.whatsAppContact.findUnique.mockResolvedValueOnce({
+        waId: "9199",
+        sessionId: "sess-gone",
+        lastActiveAt: new Date(),
+      });
+      chat.handle
+        .mockRejectedValueOnce(new Error("Invalid sessionId"))
+        .mockResolvedValueOnce({ responseText: "Recovered." });
+
+      await svc.processInbound([{ wamid: "heal1", from: "9199", text: "hi" }]);
+
+      expect(chat.handle).toHaveBeenCalledTimes(2);
+      expect(chat.handle).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: "sess-new" }));
+      expect(sessions.create).toHaveBeenCalled();
+      expect(svc.sendText).toHaveBeenCalledWith("9199", "Recovered.");
+    });
+
+    it("does not retry on a non-session error (single fallback)", async () => {
+      chat.handle.mockRejectedValue(new Error("boom"));
+      await svc.processInbound([{ wamid: "noretry", from: "9199", text: "hi" }]);
+      expect(chat.handle).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+    });
   });
 
   describe("resolveSession", () => {

@@ -98,13 +98,22 @@ export class WhatsAppService {
 
       try {
         const locale = detectLocale(msg.text);
-        const sessionId = await this.resolveSession(msg.from, locale);
-        const result = await this.chat.handle({
-          sessionId,
-          channel: "whatsapp",
-          locale,
-          userText: msg.text,
-        } as any);
+        let sessionId = await this.resolveSession(msg.from, locale);
+        let result;
+        try {
+          result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text } as any);
+        } catch (err: any) {
+          // Self-heal a stale/deleted session (the stored sessionId no longer
+          // exists in the DB) — mint a fresh session and retry ONCE. Without
+          // this the contact is wedged on the fallback reply until the TTL.
+          if (isInvalidSessionError(err)) {
+            this.logger.warn(`Stale session ${sessionId} for WhatsApp contact — re-minting and retrying`);
+            sessionId = await this.resolveSession(msg.from, locale, true);
+            result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text } as any);
+          } else {
+            throw err;
+          }
+        }
         await this.sendText(msg.from, result.responseText);
       } catch (err: any) {
         this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
@@ -113,18 +122,24 @@ export class WhatsAppService {
     }
   }
 
-  /** Reuse the active session for a contact, or mint a fresh one past the inactivity window (FR-WA-009). */
-  async resolveSession(waId: string, locale: string): Promise<string> {
+  /**
+   * Reuse the active session for a contact, or mint a fresh one past the
+   * inactivity window (FR-WA-009). Pass `forceNew` to always mint — used to
+   * self-heal when the stored session has been deleted from the DB.
+   */
+  async resolveSession(waId: string, locale: string, forceNew = false): Promise<string> {
     const ttlMs = (Number(process.env.WHATSAPP_SESSION_TTL_HOURS) || 24) * 3_600_000;
     const now = new Date();
 
-    const existing = await this.prisma.whatsAppContact.findUnique({ where: { waId } });
-    if (existing && now.getTime() - existing.lastActiveAt.getTime() < ttlMs) {
-      await this.prisma.whatsAppContact.update({
-        where: { waId },
-        data: { lastActiveAt: now, locale },
-      });
-      return existing.sessionId;
+    if (!forceNew) {
+      const existing = await this.prisma.whatsAppContact.findUnique({ where: { waId } });
+      if (existing && now.getTime() - existing.lastActiveAt.getTime() < ttlMs) {
+        await this.prisma.whatsAppContact.update({
+          where: { waId },
+          data: { lastActiveAt: now, locale },
+        });
+        return existing.sessionId;
+      }
     }
 
     const session = await this.sessions.create({ channel: "whatsapp", locale });
@@ -186,6 +201,15 @@ export class WhatsAppService {
       if (evicted) this.seenWamids.delete(evicted);
     }
   }
+}
+
+/**
+ * True when ChatService rejected the inbound because the stored sessionId no
+ * longer maps to a Session row (`throw new BadRequestException("Invalid
+ * sessionId")` in chat.service). Drives the one-shot re-mint in processInbound.
+ */
+function isInvalidSessionError(err: any): boolean {
+  return /invalid\s*sessionid/i.test(err?.message ?? "");
 }
 
 /** Pull plain text out of a message, supporting text + interactive replies (button/list). */
