@@ -25,6 +25,16 @@ export class ResponseTemplates {
     chunks: EvidenceChunk[],
     queryType?: string
   ): string {
+    // Guard: if generation produced nothing (empty/undefined), never frame a
+    // literal "undefined" or a hollow, content-free answer — return a safe,
+    // useful recovery message instead. A user-facing response containing
+    // "undefined" must never reach a patient.
+    if (!ragContent || !ragContent.trim() || ragContent.trim() === "undefined") {
+      return "I'm sorry — I couldn't put together a complete answer for that just now. " +
+        "Could you tell me a bit more — for example, the specific cancer type, symptom, or " +
+        "kind of help you're looking for? If this is urgent, please contact a doctor or call 112 (emergency) or 108 (ambulance).";
+    }
+
     const lowerText = userText.toLowerCase();
     let response = "";
 
