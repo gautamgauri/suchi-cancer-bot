@@ -202,6 +202,30 @@ All Phase 2 requirements are **Not Started** unless noted. Implementation phase 
 
 ---
 
+## WhatsApp Conversational Channel — Traceability (§16)
+
+Full conversational channel over the Meta WhatsApp Cloud API, routing all inbound traffic through `ChatService.handle({channel:"whatsapp"})`. Code landed on branch `feat/whatsapp-channel`; live operation is gated on the Meta provisioning task (GitHub issue #29, assigned to Ananya).
+
+| Req ID | Description | Implementation | Verification | Impl. Status | Verif. Status |
+|---|---|---|---|---|---|
+| FR-WA-001 | Inbound routed through existing `ChatService.handle()` w/ `channel:"whatsapp"` | `whatsapp/whatsapp.service.ts` `processInbound()` | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-002 | Direct Meta WhatsApp Cloud API (no BSP) | `whatsapp.service.ts` `sendText()` (`graph.facebook.com`) | Live creds pending (issue #29) | Implemented | Untested |
+| FR-WA-003 | Dedicated `whatsapp` module, separate from legacy navigator | `whatsapp/whatsapp.module.ts` | `nest build` | Implemented | Manual only |
+| FR-WA-004 | GET verification handshake echoes `hub.challenge` | `whatsapp.controller.ts` `verify()`; `verifyHandshake()` | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-005 | POST `X-Hub-Signature-256` HMAC verification, reject on mismatch | `verifySignature()`; controller `receive()` | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-006 | ACK 200 immediately; process async; reply out-of-band | `whatsapp.controller.ts` `receive()` (fire-and-forget) | `whatsapp.service.spec.ts` | Implemented | Partial |
+| FR-WA-007 | Idempotent on `wamid`; ignore `statuses` events | `parseInbound()`; `alreadySeen()`/`markSeen()` | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-008 | Persistent phone→session mapping in DB (not memory) | `WhatsAppContact` model; `resolveSession()` | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-009 | Reuse active session; fresh session past inactivity window | `resolveSession()` (`WHATSAPP_SESSION_TTL_HOURS`) | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-010 | Outbound via Graph API `/{phoneNumberId}/messages` w/ WABA token | `sendText()` | Live creds pending (issue #29) | Implemented | Untested |
+| FR-WA-011 | WhatsApp formatting: markdown→WA, strip citations, 4096 split | `whatsapp-format.ts` | `whatsapp-format.spec.ts` | Implemented | Tested |
+| FR-WA-012 | Detect + cache input locale per contact | `detectLocale()`; `WhatsAppContact.locale` | `whatsapp-format.spec.ts` | Implemented | Tested |
+| FR-WA-013 | Reactive-only; no templates / proactive in v1 | By design — no outbound-initiated path exists | — | Implemented | N/A |
+| FR-WA-014 | Cleanly disabled when creds absent (all env vars optional) | `env.validation.ts`; `isConfigured()`; `sendText()` guard | `whatsapp.service.spec.ts` | Implemented | Tested |
+| FR-WA-015 | Phone-number PII covered by retention/deletion policy | `WhatsAppContact` (deletion-by-`waId`); `PRIVACY_RETENTION.md` | No deletion job yet | Partial | Untested |
+
+---
+
 ## Coverage Summary
 
 | Category | Total Reqs | Implemented | Partial | Missing / Not Started |
@@ -217,7 +241,8 @@ All Phase 2 requirements are **Not Started** unless noted. Implementation phase 
 | Audit | 7 | 5 | 0 | 2 |
 | **Phase 1 Total** | **90** | **73** | **5** | **10** |
 | **Phase 2 (Annexure 1)** | **26** | **0** | **1** | **25** |
-| **Grand Total** | **116** | **73** | **6** | **35** |
+| WhatsApp Conversational (§16) | 15 | 14 | 1 | 0 |
+| **Grand Total** | **131** | **87** | **7** | **35** |
 
 ### Verification coverage (implementation-status ≥ Partial)
 
