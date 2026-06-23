@@ -22,13 +22,29 @@ const INVISIBLE_CHARS = /[​‌‍⁠﻿­‎‏]/g;
 const SMART_SINGLE = /[‘’‚‛′]/g; // ' ' ‚ ‛ ′
 const SMART_DOUBLE = /[“”„‟″]/g; // " " „ ‟ ″
 
+// Common Romanized medical-term spellings -> canonical English, so a guardrail
+// or matcher keyed on the standard term also catches the WhatsApp transliteration
+// (FR-1). Conservative: only unambiguous medical variants, matched whole-word.
+const ROMANIZED_MEDICAL: Array<[RegExp, string]> = [
+  [/\b(kainsar|kainser|kaincer|cainsar|kainsr)\b/gi, "cancer"],
+  [/\b(keemo|kimo|kemo)\b/gi, "chemo"],
+  [/\b(baipsi|bayopsi|biopsi|baayopsi)\b/gi, "biopsy"],
+  [/\b(radiyeshan|rediyeshan|redieshan|radieshan)\b/gi, "radiation"],
+  [/\b(tyumar|tumer|tumar)\b/gi, "tumor"],
+];
+
 export function normalizeForMatch(text: string | null | undefined): string {
   if (!text) return "";
-  return text
+  let t = text
     .normalize("NFC") // canonical composition (Devanagari combining marks, etc.)
     .replace(INVISIBLE_CHARS, "")
     .replace(SMART_SINGLE, "'")
     .replace(SMART_DOUBLE, '"')
-    .replace(/\s+/g, " ") // collapse all whitespace (incl. newlines + NBSP) to a single space
-    .trim();
+    // Collapse 3+ repeated letters (Devanagari or Latin) — WhatsApp emphasis
+    // typing like "dardddd" / "naheeee" — to a single letter. Legitimate doubles
+    // ("maa", "gaanth") are 2 chars and untouched; digits are left alone so
+    // phone/helpline numbers survive.
+    .replace(/([A-Za-zऀ-ॿ])\1{2,}/g, "$1");
+  for (const [re, canonical] of ROMANIZED_MEDICAL) t = t.replace(re, canonical);
+  return t.replace(/\s+/g, " ").trim();
 }
