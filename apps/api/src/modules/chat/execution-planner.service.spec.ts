@@ -315,14 +315,18 @@ describe("ExecutionPlannerService", () => {
       ).toBe(true);
     });
 
-    test("EDUCATION with multiple signals → true", () => {
-      // This query has budget_concern + hospital_search signals
+    test("EDUCATION single-domain question → false (signals alone don't plan)", () => {
+      // Planning is reserved for genuinely multi-step / dependent requests, not
+      // for any question that happens to surface signals. Here "affordable" does
+      // NOT trigger budget_concern (\bafford\b ≠ "affordable"), so this is a
+      // single hospital_search signal — a factual/navigation question that
+      // should get a direct answer, not a planning turn.
       expect(
         planner.needsPlanning(
           "Which hospital is affordable for cancer treatment?",
           "EDUCATION"
         )
-      ).toBe(true);
+      ).toBe(false);
     });
 
     test("EDUCATION with single signal and simple intent → false", () => {

@@ -212,12 +212,26 @@ export class StructuredExtractorService {
    * Generate match tokens for response checking
    * Handles variations like "CT scan", "CT", "ct_scan"
    */
+  // Generic words shared across many entities ("CT scan", "PET scan", "blood
+  // test", …). They must NOT become standalone match tokens, or one entity's
+  // generic word matches a different entity in the response (e.g. "scan" from
+  // "PET scan" matching "CT scan"). The distinctive part (ct, pet, mri, cat,
+  // mammogram) and the full phrase are kept.
+  private static readonly GENERIC_MATCH_TOKENS = new Set([
+    "scan", "scans", "scanning", "test", "tests", "testing", "imaging",
+    "exam", "examination", "study", "studies", "marker", "markers",
+    "screen", "screening", "level", "levels", "count", "panel", "copies",
+  ]);
+
   private generateMatchTokens(text: string): string[] {
     const normalized = this.normalizeForMatching(text);
     const tokens = [normalized];
 
-    // Add individual words if multi-word
-    const words = normalized.split(/\s+/).filter(w => w.length > 2);
+    // Add individual words if multi-word — but skip generic shared words so
+    // distinct entities don't cross-match on words like "scan"/"test".
+    const words = normalized
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !StructuredExtractorService.GENERIC_MATCH_TOKENS.has(w));
     if (words.length > 1) {
       tokens.push(...words);
     }
@@ -438,6 +452,15 @@ export class StructuredExtractorService {
    */
   formatForPrompt(extraction: StructuredInfo): string {
     const sections: string[] = [];
+
+    // No substantive extracted facts → no checklist at all. Generic suggested
+    // questions on their own add prompt noise without grounding, so we emit an
+    // empty checklist block rather than a contentless one (intentional contract).
+    const hasFacts =
+      extraction.diagnosticTests.length > 0 ||
+      extraction.warningSigns.length > 0 ||
+      (extraction.timeline !== null && !!extraction.timeline.evidence);
+    if (!hasFacts) return "";
 
     if (extraction.diagnosticTests.length > 0) {
       sections.push("DIAGNOSTIC TESTS FOUND IN SOURCES (cover these in your response):");

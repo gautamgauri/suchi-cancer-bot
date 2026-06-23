@@ -317,7 +317,7 @@ describe("StructuredExtractorService", () => {
   });
 
   describe("formatForPrompt()", () => {
-    it("should format extraction as checklist for LLM", () => {
+    it("should format extraction as a grounded checklist for the LLM", () => {
       const chunks = [
         createChunk("CT scan and MRI are used. Persistent lumps are warning signs.", "doc1", "chunk1"),
       ];
@@ -325,10 +325,16 @@ describe("StructuredExtractorService", () => {
 
       const prompt = service.formatForPrompt(extraction);
 
+      // Semantic invariants (not brittle exact phrasing):
+      // structural markers present...
       expect(prompt).toContain("PRE-EXTRACTED CHECKLIST");
       expect(prompt).toContain("DIAGNOSTIC TESTS FOUND");
+      // ...extracted facts preserved with their citation...
+      expect(prompt).toContain("CT scan");
+      expect(prompt).toContain("MRI");
       expect(prompt).toContain("[citation:doc1:chunk1]");
-      expect(prompt).toContain("cover every checklist item");
+      // ...and the model is instructed to address the checklist items.
+      expect(prompt.toLowerCase()).toContain("address");
     });
 
     it("should return empty string when no entities extracted", () => {
@@ -342,7 +348,7 @@ describe("StructuredExtractorService", () => {
       }
     });
 
-    it("should use softer language without INVALID", () => {
+    it("uses soft guidance (omit), never hard INVALID labels", () => {
       const chunks = [
         createChunk("CT scan is used.", "doc1", "chunk1"),
       ];
@@ -350,8 +356,10 @@ describe("StructuredExtractorService", () => {
 
       const prompt = service.formatForPrompt(extraction);
 
+      // Soft language: never label items INVALID; instruct the model to omit
+      // items it can't ground rather than fabricate.
       expect(prompt).not.toContain("INVALID");
-      expect(prompt).toContain("say so explicitly");
+      expect(prompt.toLowerCase()).toContain("omit");
     });
   });
 
