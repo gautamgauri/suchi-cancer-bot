@@ -471,6 +471,13 @@ export class IntentClassifier {
       /लक्षण|संकेत|दर्द|सूजन|खून|बुखार|थकान|वजन|खांसी|सांस|उल्टी|गांठ|कमज़ोरी/,
       // Hinglish symptom terms (प्रॉब्लम=problem, तकलीफ=trouble, बीमारी=illness)
       /प्रॉब्लम|तकलीफ|बीमारी|परेशानी|सिंपटम्स/,
+      // Romanized Hindi symptom terms (dard=pain, takleef=trouble, sujan=swelling,
+      // gaanth/gilti=lump, khoon=blood, bukhar=fever, khansi=cough, ulti=vomiting,
+      // kamzori=weakness, thakan=fatigue, pareshani=trouble, bimari=illness)
+      /\b(dard|takl(ee|i)f|suj(a|aa)n|soojan|g(aa?)nth|gilti|khoon|khun|bukhar|khaa?nsi|ulti|kamz?ori|kamjori|thakaa?n|pareshani|bimaa?ri)\b/i,
+      // Romanized body part + "mein/me" pain framing ("pet mein dard" = stomach pain)
+      // Requires the location framing so the English word "pet" alone never matches
+      /\b(pet|seene|chhati|gale|sir|kamar|munh|muh)\s+(mein|me|may)\b/i,
     ];
     return symptomPatterns.some(pattern => pattern.test(text));
   }
