@@ -60,25 +60,12 @@ Review this doc before starting any significant new feature. Mark items **RESOLV
 
 ## OD-004 — Safety banner on social posts is advisory, not a hard block
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Social post pipeline / safety
 
-**Current state:** The social post safety gate flags content with a yellow banner in the approval email. The reviewer guide states: "This is not a hard block — you can still approve."
+**Resolution:** Hard-block categories are enforced in `admin/social-post.service.ts`. Generated copy is matched against `HARD_BLOCK_PATTERNS`; any match sets `safetyBlocked: true` on the draft, and `approvePost()` throws (cannot publish) regardless of reviewer action. The approval email also omits the approve buttons entirely when a post is hard-blocked. Soft warnings (e.g. missing "consult doctor" line) remain advisory banners. Implements FR-SOCIAL-013 / FR-SAFETY-006.
 
-**Problem:** For a health-information service, some social post content should never be approved regardless of reviewer discretion. Currently, a reviewer could click Approve on a post that claims a treatment will cure cancer.
-
-**Recommendation:** Define hard-block categories that prevent approval regardless of reviewer action:
-
-| Category | Action |
-|---|---|
-| Diagnosis language ("you may have cancer") | Hard block |
-| Cure/guarantee language | Hard block |
-| Stop treatment / self-medication advice | Hard block |
-| Survival rate claim without context | Hard block |
-| Specific cost claims without source | Hard block |
-| Missing "consult doctor" line | Warn only (soft) |
-
-Implementation: safety gate returns a `severity` field; `critical` severity prevents the approval endpoint from publishing (returns 403).
+**Follow-up (test gap):** the hard-block path has no dedicated spec yet — see traceability matrix "Tests to add" (P1).
 
 ---
 
@@ -128,30 +115,28 @@ Implementation: safety gate returns a `severity` field; `critical` severity prev
 
 ## OD-007 — Pending drafts have no expiry
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Content + social pipelines
 
-**Current state:** Articles, social posts, and navigator batches remain in `sent_for_review` / `sent_for_approval` indefinitely. There is no staleness detection, no reminder, and no automatic expiry.
-
-**Problem:** Stale drafts accumulate. A social post about a newly published article that was never approved becomes misleading if approved weeks later.
-
-**Recommendation:**
-- Social posts: expire after 7 days; send a reminder at day 3
-- Article drafts: send a reminder after 48h; expire after 30 days
+**Resolution:** Implemented in `admin/draft-expiry.service.ts`, invoked by `POST /v1/admin/housekeeping/run-expiry` (SchedulerOidcGuard, daily Cloud Scheduler job):
+- Articles in `sent_for_review` > 48h → one-time reminder email
+- Social posts in `sent_for_approval` > 3d → one-time reminder; > 7d → expire (status → rejected, reason "expired")
 - Navigator batches: no expiry (hospital data is not time-sensitive in the same way)
+
+Implements FR-AUDIT-007.
+
+**Follow-up (test gap):** expiry/reminder timing has no dedicated spec yet — see traceability matrix "Tests to add" (P2).
 
 ---
 
 ## OD-008 — Social post platform buttons shown even when platform is not configured
 
-**Status:** Open  
+**Status:** Closed (Jun 2026)  
 **Area:** Social post pipeline / UX
 
-**Current state:** The approval email shows "Instagram only" and "LinkedIn only" buttons even when those platforms are not configured. Clicking them returns `not_configured` and the reviewer gets a confirmation email saying "Failed: instagram, linkedin."
+**Resolution:** The approval email in `admin/social-post.service.ts` is generated dynamically from per-platform configuration checks (`fbConfigured` / `igConfigured` / `liConfigured`). Buttons for unconfigured platforms are omitted entirely, and the "Approve all" label reflects the configured count. Implements FR-SOCIAL-006.
 
-**Problem:** Creates confusion and support burden. Reviewers don't know whether the failure is expected or a bug.
-
-**Recommendation:** Generate the approval email dynamically based on which platforms are configured. If `META_IG_USER_ID` is not set, omit the Instagram button and add a note: "Instagram not yet configured (see issue #28)."
+**Follow-up (test gap):** the platform-omission logic has no dedicated spec yet — see traceability matrix "Tests to add" (P2).
 
 ---
 
