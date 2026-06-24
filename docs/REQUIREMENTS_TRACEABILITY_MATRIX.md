@@ -17,7 +17,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 |---|---|---|---|---|---|
 | FR-CHAT-001 | 9-phase pipeline, no phase skipped | `chat/chat.service.ts` `handle()` | `chat.service.spec.ts` | Implemented | Partial |
 | FR-CHAT-003 | Emergency fast path <1ms | `evaluateEmergencyFastPath()` | No test | Implemented | Untested |
-| FR-CHAT-004 | LLM failure → abstention | `AbstentionService`; catch in `LlmService` | `abstention.service.spec.ts` (safe-template path) | Implemented | Partial |
+| FR-CHAT-004 | LLM failure → abstention | `AbstentionService`; catch in `LlmService` | `llm.service.spec.ts` (provider-failure → safe fallback, never throws) + `abstention.service.spec.ts` | Implemented | Tested |
 | FR-CHAT-005 | Safety gate before RAG/LLM; `safe_redirect`/`hard_refusal` terminate | Phase 2; `SafetyService.evaluate()` | No test | Implemented | Untested |
 | FR-CHAT-006 | Safety events persisted | `safetyEvent` table; `SafetyService` | No test | Implemented | Untested |
 | FR-CHAT-007 | Auto-refuse diagnosis/prescription | `SafetyService` + LLM system prompt | No test | Implemented | Untested |
@@ -95,7 +95,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 | FR-SOCIAL-003 | Safety gate before approval email; severity in email | `social-post.service.ts` safety check | Manual only | Implemented | Manual only |
 | FR-SOCIAL-004 | Approval email with copy + safety banner | `sendApprovalEmail()` | Manual only | Implemented | Manual only |
 | FR-SOCIAL-005 | 3 individual emails with others in CC | `sendApprovalEmail()` (Gautam/Divya/Nisha) | Manual only | Implemented | Manual only |
-| FR-SOCIAL-006 | Only configured platforms shown in email | `social-post.service.ts` `fbConfigured`/`igConfigured`/`liConfigured` — unconfigured platform buttons omitted (OD-008 closed) | No test | Implemented | Untested |
+| FR-SOCIAL-006 | Only configured platforms shown in email | `social-post.service.ts` `fbConfigured`/`igConfigured`/`liConfigured` — unconfigured platform buttons omitted (OD-008 closed) | `social-post.service.spec.ts` | Implemented | Tested |
 | FR-SOCIAL-007 | First-click-wins idempotency | `approvePost()` status guard | `social-post.service.spec.ts` | Implemented | Tested |
 | FR-SOCIAL-008 | `approvedBy` captures reviewer name | `?approver=` param; stored in queue | Manual only | Implemented | Manual only |
 | FR-SOCIAL-009 | Approval triggers immediate publish | `approvePost()` → `publishPost()` | Manual only | Implemented | Manual only |
@@ -163,7 +163,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 | FR-AUDIT-004 | Social post actions with reviewer name + timestamp | `social-queue.json` `approvedBy`, `approvedAt` | Manual only | Implemented | Manual only |
 | FR-AUDIT-005 | Hospital approvals with reviewer name + timestamp | `navigator-approve.service.ts` `approver` → `approvedBy` + `approvedAt` | `navigator-approve.service.spec.ts` | Implemented | Tested |
 | FR-AUDIT-006 | GCS queues consistent with API state | Queue updated atomically in service layer | No test | Implemented | Untested |
-| FR-AUDIT-007 | Draft expiry + reminder emails | `draft-expiry.service.ts` — article reminder @48h; social reminder @3d, expire @7d; `POST /v1/admin/housekeeping/run-expiry` (OD-007 closed) | No test | Implemented | Untested |
+| FR-AUDIT-007 | Draft expiry + reminder emails | `draft-expiry.service.ts` — article reminder @48h; social reminder @3d, expire @7d; `POST /v1/admin/housekeeping/run-expiry` (OD-007 closed) | `draft-expiry.service.spec.ts` | Implemented | Tested |
 
 ---
 
@@ -250,11 +250,11 @@ Phase 1 is feature-complete: 0 requirements Missing. The 6 Partial items are the
 
 ### Verification coverage
 
-The automated suite is the source of truth, not this column: **802 tests across 36 suites, all passing; `nest build` clean** (run `cd apps/api && npx jest`). The per-row Verification column flags which requirements have a *dedicated* spec and is a lower bound — much pipeline behaviour is covered indirectly by `chat.service.spec.ts` and the safety/RAG suites.
+The automated suite is the source of truth, not this column: **819 tests across 39 suites, all passing; `nest build` clean** (run `cd apps/api && npx jest`). The per-row Verification column flags which requirements have a *dedicated* spec and is a lower bound — much pipeline behaviour is covered indirectly by `chat.service.spec.ts` and the safety/RAG suites.
 
-Areas with direct automated coverage: chat pipeline, safety (incl. Hindi/Hinglish regression), RAG/cross-lingual, citations, evidence gate, abstention (safe-template fallback), social-post hard-block gate, WhatsApp (channel + formatting), voice-ws, hospital directory, content approval, navigator approval.
+Areas with direct automated coverage: chat pipeline, safety (incl. Hindi/Hinglish regression), RAG/cross-lingual, citations, evidence gate, abstention (safe-template fallback), LLM-failure fallback (`llm.service`), social-post hard-block gate + platform omission, draft expiry, retention, WhatsApp (channel + formatting), voice-ws, hospital directory, content approval, navigator approval.
 
-Implemented-but-spec-less surfaces (remaining gaps): `llm.service` (retry/timeout paths), `social-post.service` platform omission FR-SOCIAL-006, `draft-expiry.service` (FR-AUDIT-007), `retention.service` (NFR-PRIV-001/002).
+Implemented-but-spec-less surfaces (remaining minor gaps): `llm.service` provider-specific retry/backoff for the OpenAI-compatible path (dead in prod — Gemini-only), `NFR-AVAIL-002` DB-unavailable → abstention at the chat level.
 
 ---
 
@@ -270,15 +270,16 @@ NFR-PRIV-001/002 (90-day retention) are now **implemented** via `retention.servi
 
 ## Tests to add — priority order (safety-critical first)
 
-The suite is at 802 passing. The two P1 safety-critical specs are now done:
-- ✅ FR-CHAT-004 / NFR-AVAIL-001 — `abstention.service.spec.ts` (safe-template fallback, no medical content, urgency routing)
-- ✅ FR-SOCIAL-013 / FR-SAFETY-006 — `social-post.service.spec.ts` (`approvePost()` throws when `safetyBlocked`, idempotency, guards)
+The suite is at 819 passing. The P1 and P2 spec gaps identified in the Jun 2026 hardening pass are now closed:
 
-Remaining (P2):
+- ✅ FR-CHAT-004 / NFR-AVAIL-001 — `abstention.service.spec.ts` (safe-template, no medical content, urgency routing) + `llm.service.spec.ts` (provider failure → safe fallback, never throws)
+- ✅ FR-SOCIAL-013 / FR-SAFETY-006 — `social-post.service.spec.ts` (`approvePost()` throws when `safetyBlocked`, idempotency, guards)
+- ✅ FR-SOCIAL-006 — `social-post.service.spec.ts` (unconfigured platform buttons omitted)
+- ✅ FR-AUDIT-007 — `draft-expiry.service.spec.ts` (article reminder/archive, social reminder/expire, reminder-once)
+- ✅ NFR-PRIV-001/002 — `retention.service.spec.ts` (>90d deletion, isEval preserved, FK-safe order, batch pagination)
+
+Remaining (low priority):
 
 | Priority | Requirement | What to test |
 |---|---|---|
-| P2 | FR-SOCIAL-006 | Approval email omits buttons for unconfigured platforms |
-| P2 | FR-AUDIT-007 | Draft expiry: social expires at 7d, reminders at 48h/3d |
-| P2 | NFR-PRIV-001/002 | `retention.service` deletes >90d data, preserves `isEval` sessions |
-| P2 | FR-CHAT-004 (full) | `chat.service` — LLM throw mid-pipeline routes to abstention, not 500 |
+| P3 | NFR-AVAIL-002 | `chat.service` — DB unavailable mid-pipeline degrades to abstention, not 500 (integration-level) |

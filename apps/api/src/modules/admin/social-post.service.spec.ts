@@ -58,7 +58,8 @@ describe("SocialPostService — safety gate", () => {
   let validToken: string;
 
   const llmStub = {} as never;
-  const emailStub = { send: jest.fn() } as never;
+  const sendEmail = jest.fn().mockResolvedValue(undefined);
+  const emailStub = { sendEmail } as never;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -131,6 +132,79 @@ describe("SocialPostService — safety gate", () => {
       const draft = makeDraft({ safetyBlocked: true });
       stubQueue(draft);
       await expect(service.approvePost(ID, validToken)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ── Configured-platform omission (FR-SOCIAL-006, OD-008) ────────────────────
+
+  describe("sendApprovalEmail — platform button omission", () => {
+    const PLATFORM_ENV = [
+      "META_PAGE_ID",
+      "META_PAGE_ACCESS_TOKEN",
+      "META_IG_USER_ID",
+      "LINKEDIN_ACCESS_TOKEN",
+      "LINKEDIN_AUTHOR_URN",
+    ];
+    let saved: Record<string, string | undefined>;
+
+    beforeEach(() => {
+      saved = {};
+      for (const k of PLATFORM_ENV) {
+        saved[k] = process.env[k];
+        delete process.env[k];
+      }
+    });
+
+    afterEach(() => {
+      for (const k of PLATFORM_ENV) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+    });
+
+    async function firstEmailHtml(draft: Draft): Promise<string> {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (service as any).sendApprovalEmail(draft);
+      return sendEmail.mock.calls[0][0].html as string;
+    }
+
+    it("shows only the Facebook button when only Facebook is configured", async () => {
+      process.env.META_PAGE_ID = "page-1";
+      process.env.META_PAGE_ACCESS_TOKEN = "tok-1";
+
+      const html = await firstEmailHtml(makeDraft());
+
+      expect(html).toContain("Facebook only");
+      expect(html).not.toContain("Instagram only");
+      expect(html).not.toContain("LinkedIn only");
+      // Single platform → no "Approve all" button
+      expect(html).not.toContain("Approve all");
+    });
+
+    it("shows all buttons and an 'Approve all (3 platforms)' button when all are configured", async () => {
+      process.env.META_PAGE_ID = "page-1";
+      process.env.META_PAGE_ACCESS_TOKEN = "tok-1";
+      process.env.META_IG_USER_ID = "ig-1";
+      process.env.LINKEDIN_ACCESS_TOKEN = "li-tok";
+      process.env.LINKEDIN_AUTHOR_URN = "urn:li:person:1";
+
+      const html = await firstEmailHtml(makeDraft());
+
+      expect(html).toContain("Facebook only");
+      expect(html).toContain("Instagram only");
+      expect(html).toContain("LinkedIn only");
+      expect(html).toContain("Approve all (3 platforms)");
+    });
+
+    it("omits all approve buttons and shows a HARD BLOCK banner for a blocked draft", async () => {
+      process.env.META_PAGE_ID = "page-1";
+      process.env.META_PAGE_ACCESS_TOKEN = "tok-1";
+
+      const html = await firstEmailHtml(makeDraft({ safetyBlocked: true, safetyWarnings: ["cure claim"] }));
+
+      expect(html).toContain("HARD BLOCK");
+      expect(html).not.toContain("Facebook only");
+      expect(html).not.toContain("Approve all");
     });
   });
 
