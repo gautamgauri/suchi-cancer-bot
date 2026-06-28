@@ -47,6 +47,7 @@ export const envSchema = z.object({
   // Social post publishing (all optional — platforms without credentials are silently skipped)
   SUCHI_SITE_URL:           z.string().optional().default("https://suchicancercare.org"),
   SOCIAL_APPROVAL_SECRET:   z.string().optional(),
+  DISTRIBUTION_APPROVAL_SECRET: z.string().optional(), // HMAC key for one-click distribution approve/reject links
   // Meta (Facebook + Instagram)
   META_PAGE_ID:             z.string().optional(),
   META_PAGE_ACCESS_TOKEN:   z.string().optional(),
