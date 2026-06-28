@@ -2,7 +2,9 @@ import { Controller, Get, Param, Query, Res, Logger } from "@nestjs/common";
 import { Response } from "express";
 import { DistributionApproveService } from "./distribution-approve.service";
 
-@Controller("v1/distribution")
+// NOTE: the app sets a global `v1` prefix (main.ts), so this must NOT repeat it —
+// otherwise routes serve at /v1/v1/distribution and the email approval links 404.
+@Controller("distribution")
 export class DistributionController {
   private readonly logger = new Logger(DistributionController.name);
 
