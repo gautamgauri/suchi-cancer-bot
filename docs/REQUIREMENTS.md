@@ -47,7 +47,7 @@ Suchi is a cancer information assistant operated by the Suchitra Cancer Care Fou
 | Web chat | `POST /v1/chat` | Active |
 | Voice (REST) | `POST /v1/voice/query` | Active |
 | Voice (WebSocket) | `WS /v1/voice-ws` | Opt-in (`VOICE_WS_ENABLED`) |
-| WhatsApp (Navigator) | Hospital-navigator flow via Meta webhook (`/v1/whatsapp-navigator/webhook`) | Active (legacy) |
+| WhatsApp (Navigator) | Hospital-navigator state machine at `/v1/whatsapp-navigator/webhook` — custom JSON endpoint (`{phone, message}`), **not** a Meta webhook (no `hub.challenge` handshake, no `X-Hub-Signature-256`, no WABA creds) | Dormant (legacy) — no inbound traffic; superseded by §16 |
 | WhatsApp (Conversational) | Full chat pipeline via Meta Cloud API (`/v1/whatsapp/webhook`) — see §16 | Planned |
 
 ### 1.2 Languages
