@@ -59,6 +59,16 @@ cd apps/api && npx prisma migrate dev  # Run migrations
 - All API endpoints prefixed with `/v1`
 - Safety-critical: never bypass safety module, never return medical advice without KB backing
 
+## Git safety (mandatory preflight)
+
+Before ANY destructive git command — `reset --hard`, `clean -f/-fd`, `checkout`/`restore` that discards changes, `branch -D`, `stash drop`, force-push — you MUST:
+
+1. Run `git status --short`.
+2. If there are uncommitted/untracked changes, **preserve them first** — commit to a temporary/WIP branch, `git stash`, or save a patch (`git diff > /tmp/wip.patch`).
+3. Only then run the destructive command.
+
+Never run a destructive git command on a dirty working tree without preserving the work first. (Rule added after an uncommitted-WIP loss from an unguarded `git reset --hard`.)
+
 ## GCP Project
 
 - Project: `gen-lang-client-0202543132`
