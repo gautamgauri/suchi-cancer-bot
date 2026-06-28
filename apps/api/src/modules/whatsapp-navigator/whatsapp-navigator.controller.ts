@@ -23,7 +23,10 @@ interface WebhookResponseDto {
 
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-@Controller("v1/whatsapp-navigator")
+// NOTE: the app sets a global `v1` prefix (main.ts), so this must NOT repeat it —
+// otherwise routes serve at /v1/v1/whatsapp-navigator and diverge from the
+// documented path /v1/whatsapp-navigator/webhook.
+@Controller("whatsapp-navigator")
 export class WhatsAppNavigatorController {
   private readonly logger = new Logger(WhatsAppNavigatorController.name);
 
