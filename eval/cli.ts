@@ -214,6 +214,31 @@ program
       await reportGenerator.exportToFile(report, outputPath);
       console.log(`\n✅ Final report saved to: ${outputPath}`);
 
+      // Emit structured per-case records + failure-cluster report (issue #48)
+      try {
+        const { recordsFromReport, recordsPathFor, writeRecords } = await import(
+          "./runner/case-record"
+        );
+        const { generateClusterReport, writeClusterReport } = await import(
+          "./runner/failure-cluster-report"
+        );
+
+        const casesById = new Map(testCases.map((tc) => [tc.id, tc]));
+        const records = recordsFromReport(report, casesById, options.cases);
+        const recordsPath = recordsPathFor(outputPath);
+        await writeRecords(records, recordsPath);
+        console.log(`✅ Per-case records saved to: ${recordsPath}`);
+
+        const clusterReport = generateClusterReport(records);
+        const { jsonPath, mdPath } = await writeClusterReport(
+          clusterReport,
+          outputPath.replace(/\.json$/i, "") + ".clusters.json"
+        );
+        console.log(`✅ Failure-cluster report saved to: ${jsonPath} and ${mdPath}`);
+      } catch (recordError: any) {
+        console.error(`⚠️ Failed to write per-case records: ${recordError.message}`);
+      }
+
       // Print summary if requested
       if (options.summary) {
         console.log("\n" + reportGenerator.generateSummaryText(report));
@@ -342,6 +367,84 @@ program
           console.log(JSON.stringify(report, null, 2));
         }
       }
+    } catch (error: any) {
+      console.error("Error:", error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("cluster-report")
+  .description(
+    "Generate a failure-cluster report (retrieval-miss, citation-fabricated, citation-missing, ...) for weekly review from eval reports or per-case records"
+  )
+  .option("--report <paths...>", "Eval report JSON file(s) to analyze")
+  .option("--records <paths...>", "Per-case records JSON file(s) (from a run's *.records.json)")
+  .option("--cases <paths...>", "Test case YAML file(s) used to enrich report-derived records")
+  .option("--output <path>", "Output base path (writes .json and .md)", "reports/failure-clusters.json")
+  .action(async (options) => {
+    try {
+      const { recordsFromReport } = await import("./runner/case-record");
+      const { generateClusterReport, writeClusterReport, clusterReportToMarkdown } =
+        await import("./runner/failure-cluster-report");
+      const { Evaluator } = await import("./runner/evaluator");
+
+      if (!options.report && !options.records) {
+        console.error("Provide --report and/or --records input files.");
+        process.exit(1);
+      }
+
+      // Load case metadata for enrichment
+      const casesById = new Map();
+      for (const casesPath of options.cases || []) {
+        const resolved = path.isAbsolute(casesPath)
+          ? casesPath
+          : path.resolve(process.cwd(), casesPath);
+        const cases = await Evaluator.loadTestCases(resolved);
+        for (const tc of cases) casesById.set(tc.id, tc);
+      }
+
+      const allRecords: any[] = [];
+      for (const recordsPath of options.records || []) {
+        const resolved = path.isAbsolute(recordsPath)
+          ? recordsPath
+          : path.resolve(process.cwd(), recordsPath);
+        allRecords.push(...JSON.parse(await fs.readFile(resolved, "utf-8")));
+      }
+      for (const reportPath of options.report || []) {
+        const resolved = path.isAbsolute(reportPath)
+          ? reportPath
+          : path.resolve(process.cwd(), reportPath);
+        const report = JSON.parse(await fs.readFile(resolved, "utf-8"));
+        allRecords.push(...recordsFromReport(report, casesById, reportPath));
+      }
+
+      const clusterReport = generateClusterReport(allRecords);
+      const outputPath = path.isAbsolute(options.output)
+        ? options.output
+        : path.resolve(process.cwd(), options.output);
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      const { jsonPath, mdPath } = await writeClusterReport(clusterReport, outputPath);
+
+      console.log(clusterReportToMarkdown(clusterReport));
+      console.log(`\n✅ Cluster report saved to: ${jsonPath} and ${mdPath}`);
+    } catch (error: any) {
+      console.error("Error:", error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("verify-cases")
+  .description(
+    "Verify the test-case manifest: fails loudly if any eval case disappeared without an explicit tombstone entry"
+  )
+  .option("--update", "Regenerate the manifest (removals still require tombstones)")
+  .action(async (options) => {
+    try {
+      const { runCli } = await import("./scripts/case-manifest");
+      const code = runCli(options.update ? ["update"] : ["check"]);
+      if (code !== 0) process.exit(code);
     } catch (error: any) {
       console.error("Error:", error.message);
       process.exit(1);

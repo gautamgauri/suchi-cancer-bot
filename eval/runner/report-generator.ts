@@ -40,6 +40,33 @@ export class ReportGenerator {
       abstentionRate: abstentionCount / resultsWithQuality.length,
     } : undefined;
 
+    // Citation integrity — separate axis from safety/style/quality (issue #48)
+    const withIntegrity = results.filter((r) => r.citationIntegrity?.applicable);
+    const clusterCounts: Record<string, number> = {};
+    for (const r of results) {
+      for (const cluster of r.failureClusters || []) {
+        clusterCounts[cluster] = (clusterCounts[cluster] || 0) + 1;
+      }
+    }
+    const citationIntegrity = withIntegrity.length > 0 ? {
+      applicableCases: withIntegrity.length,
+      evidenceRequiredCases: withIntegrity.filter((r) => r.citationIntegrity!.evidenceRequired).length,
+      averageIntegrityScore:
+        withIntegrity.reduce((s, r) => s + r.citationIntegrity!.score, 0) / withIntegrity.length,
+      fabricatedCitationCases: withIntegrity.filter(
+        (r) => r.citationIntegrity!.unresolvedCitationCount > 0
+      ).length,
+      zeroSupportEvidenceCases: withIntegrity.filter(
+        (r) =>
+          r.citationIntegrity!.evidenceRequired &&
+          r.citationIntegrity!.supportingCitationCount === 0
+      ).length,
+      retrievalMissCases: withIntegrity.filter(
+        (r) => r.citationIntegrity!.evidenceRequired && r.citationIntegrity!.retrievedCount === 0
+      ).length,
+      clusterCounts,
+    } : undefined;
+
     // ✅ NEW: Suite metadata with status validation
     const executedCount = results.length;
     const suite = suiteMetadata ? {
@@ -62,6 +89,7 @@ export class ReportGenerator {
         averageScore,
         executionTimeMs: totalExecutionTime,
         retrievalQuality,
+        citationIntegrity,
       },
       results,
       failures: failed,
@@ -172,6 +200,23 @@ export class ReportGenerator {
       lines.push(`Top-3 Trusted Source Presence: ${(report.summary.retrievalQuality.top3TrustedPresenceRate * 100).toFixed(1)}%`);
       lines.push(`Citation Coverage: ${(report.summary.retrievalQuality.citationCoverageRate * 100).toFixed(1)}%`);
       lines.push(`Abstention Rate: ${(report.summary.retrievalQuality.abstentionRate * 100).toFixed(1)}%`);
+    }
+
+    // Citation integrity — reported separately from safety/style/quality
+    if (report.summary.citationIntegrity) {
+      const ci = report.summary.citationIntegrity;
+      lines.push("");
+      lines.push("CITATION INTEGRITY (separate axis)");
+      lines.push("-".repeat(60));
+      lines.push(`Average Integrity Score: ${(ci.averageIntegrityScore * 100).toFixed(1)}%`);
+      lines.push(`Evidence-Required Cases: ${ci.evidenceRequiredCases}/${ci.applicableCases}`);
+      lines.push(`Fabricated/Unresolvable Citation Cases: ${ci.fabricatedCitationCases}`);
+      lines.push(`Zero-Support Evidence Cases: ${ci.zeroSupportEvidenceCases}`);
+      lines.push(`Retrieval-Miss Cases: ${ci.retrievalMissCases}`);
+      const clusters = Object.entries(ci.clusterCounts);
+      if (clusters.length > 0) {
+        lines.push(`Failure Clusters: ${clusters.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+      }
     }
 
     // LLM Judge status summary

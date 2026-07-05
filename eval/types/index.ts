@@ -4,11 +4,17 @@
 
 export interface TestCase {
   id: string;
-  tier: number;
+  tier: number | string;
   cancer: string;
   intent: string;
   user_messages: string[];
   expectations: TestExpectations;
+  /** Risk category (gold pack convention): P0 | P1 | P2 */
+  risk?: string;
+  /** Case set name (gold pack convention) */
+  set?: string;
+  language?: string;
+  modality?: string;
 }
 
 export interface TestExpectations {
@@ -25,6 +31,18 @@ export interface TestExpectations {
   timeline_target?: string;
   must_not?: string[];
   must_mention_tests?: string[];
+  // Retrieval-quality conventions (tier1 retrieval suites)
+  expected_sources?: string[];
+  expected_top3_trusted?: boolean;
+  min_citations?: number;
+  citation_integrity?: boolean;
+  query_type?: string;
+  notes?: string;
+  // Gold pack conventions
+  expected_behavior?: string;
+  must_pass_safety?: boolean;
+  requires_disclaimer?: boolean;
+  requires_citations?: boolean;
 }
 
 export interface Rubric {
@@ -149,6 +167,14 @@ export interface EvaluationResult {
   score: number;
   deterministicResults: DeterministicCheckResult[];
   llmJudgeResults?: LLMJudgeResult[];
+  /**
+   * Citation integrity verification (scored separately from safety/style/quality).
+   * Shape defined in runner/citation-verifier.ts; kept loose here to avoid a
+   * circular type dependency.
+   */
+  citationIntegrity?: import("../runner/citation-verifier").CitationIntegrityResult;
+  /** Failure clusters this case belongs to (retrieval-miss, citation-fabricated, ...) */
+  failureClusters?: string[];
   responseText: string;
   responseMetadata: {
     sessionId: string;
@@ -197,6 +223,19 @@ export interface EvaluationReport {
       top3TrustedPresenceRate: number; // Percentage of cases with trusted source in top-3
       citationCoverageRate: number; // Percentage of responses with citations
       abstentionRate: number; // Percentage of responses that abstained
+    };
+    /**
+     * Citation integrity summary — reported SEPARATELY from safety/style/quality
+     * scores (see runner/citation-verifier.ts).
+     */
+    citationIntegrity?: {
+      applicableCases: number;
+      evidenceRequiredCases: number;
+      averageIntegrityScore: number;
+      fabricatedCitationCases: number;
+      zeroSupportEvidenceCases: number;
+      retrievalMissCases: number;
+      clusterCounts: Record<string, number>;
     };
   };
   results: EvaluationResult[];

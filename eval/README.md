@@ -15,6 +15,36 @@ npx ts-node cli.ts run \
   --output reports/zero-citation-regression.json \
   --summary
 ```
+
+## Citation Integrity & Regression Discipline (issue #48)
+
+Every `run` now also emits, alongside the report:
+- `<output>.records.json` — one structured record per case: test ID, intent,
+  risk category, expected concepts, retrieved source IDs + ranks, response
+  claims requiring support, cited source IDs with resolution
+  (retrieved/approved/unresolved), and machine-readable missing/invalid-citation
+  reasons (`runner/case-record.ts`).
+- `<output>.clusters.json` / `.md` — failure-cluster report for weekly review
+  (retrieval-miss, citation-fabricated, citation-missing, citation-format,
+  citation-confidence, safety, quality, execution-error).
+
+The citation integrity verifier (`runner/citation-verifier.ts`) scores citation
+quality on its own axis (rules CIT-1..CIT-7, `summary.citationIntegrity`),
+separate from safety/style/quality. Evidence-required cases cannot pass with
+zero supporting citations (required `citation_evidence_support` check).
+Citations may only resolve to retrieved chunks or the explicit allow-list in
+`config/approved-citation-sources.json`; anything else is flagged as fabricated.
+
+Other commands:
+```bash
+npx ts-node cli.ts cluster-report --report reports/tier1-report.json --cases cases/tier1/retrieval_quality.yaml   # weekly review
+npm run cases:check    # disappearance guard: fails if any case vanished without a tombstone in cases/case-manifest.json
+npm run cases:update   # regenerate manifest (removals require --tombstone <id> --reason "...")
+npm test               # unit tests (verifier, records, manifest guard) — no live API needed
+```
+
+Confirmed P0 incidents become permanent fixtures in `cases/regression/`
+(see `cases/regression/README.md` for the convention).
 # Suchi Bot Evaluation Framework
 
 Comprehensive evaluation framework for testing Suchi Cancer Bot responses across 20 cancer types and 5 interaction modes (100 test cases total).

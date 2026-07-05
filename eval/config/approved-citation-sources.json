@@ -1,0 +1,5 @@
+{
+  "description": "Explicit allow-list of sources a response may cite even when they do not appear in retrievedChunks (e.g. curated navigation documents injected outside the RAG path). Any citation that resolves to neither a retrieved chunk nor this list is flagged as fabricated/unresolvable by the citation integrity verifier (CIT-1/CIT-2). Keep this list empty unless a source is deliberately citable without retrieval — additions should be reviewed like policy changes.",
+  "approvedDocIds": [],
+  "approvedDocIdPrefixes": []
+}

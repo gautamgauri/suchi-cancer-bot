@@ -1,0 +1,33 @@
+# P0 REGRESSION FIXTURE — zero citations despite successful retrieval (stomach)
+#
+# Incident:  2026-03-26 tier1-report-v4.json, case RQ-STOMACH-01.
+# Signature: 6 chunks retrieved, 0 citations, abstentionReason =
+#            "citation_validation_failed", citationConfidence = RED — the
+#            citation contract breach family also captured (for colorectal /
+#            cervical) in cases/tier1/zero_citation_regression.yaml.
+# Pass criteria (hard):
+#   - retrievedChunksCount >= 1
+#   - >= 2 supporting citations (min_citations); zero citations with retrieval
+#     fails citation_evidence_support and clusters as "citation-missing"
+#
+# No patient data: query is synthetic, taken from the eval suite itself.
+
+cases:
+  - id: REG-P0-20260326-STOMACH-ZERO-CITATION-01
+    tier: 1
+    cancer: stomach
+    intent: INFORMATIONAL_GENERAL
+    risk: P0
+    user_messages: ["What are common symptoms of stomach cancer? Just asking generally."]
+    expectations:
+      max_clarifying_questions: 2
+      required_sections:
+        - disclaimer
+      disclaimer_required: true
+      must_not: ["definitive diagnosis"]
+      expected_top3_trusted: true
+      min_citations: 2
+      citation_integrity: true
+      expected_sources: ["02_nci_core"]
+      query_type: "symptoms"
+      notes: "Regression fixture for the 2026-03-26 P0: retrieval succeeded (6 chunks) but the response carried 0 citations and abstained with citation_validation_failed."
