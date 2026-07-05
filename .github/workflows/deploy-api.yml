@@ -1,117 +1,51 @@
-name: Deploy API to Cloud Run
+# API build verification — this workflow does NOT deploy.
+#
+# Cloud Build (cloudbuild.yaml) is the SINGLE deployment authority for
+# suchi-api. Deploys are a human decision, run manually:
+#     gcloud builds submit --config cloudbuild.yaml .
+# (then promote the new revision to traffic — see docs/OPERATIONS_RUNBOOK.md).
+#
+# History: this workflow used to auto-deploy on push to main with its own
+# copy of the Cloud Run env/secret config. Because --set-env-vars/--set-secrets
+# REPLACE the full set (no merge), its stale copy wiped production config on
+# 2026-06-28 (see PR #51). It now only verifies that the API image builds and
+# that the two Cloud Build pipelines carry identical runtime config.
+name: API build verification
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'kb/**'
+      - 'cloudbuild.yaml'
+      - 'cloudbuild.gated.yaml'
+      - 'scripts/check_deploy_config_parity.py'
+      - '.github/workflows/deploy-api.yml'
   push:
     branches: [main]
     paths:
       - 'apps/api/**'
       - 'kb/**'
+      - 'cloudbuild.yaml'
+      - 'cloudbuild.gated.yaml'
+      - 'scripts/check_deploy_config_parity.py'
       - '.github/workflows/deploy-api.yml'
 
-env:
-  PROJECT_ID: gen-lang-client-0202543132
-  REGION: us-central1
-  REGISTRY: us-central1-docker.pkg.dev/gen-lang-client-0202543132/suchi-images
-  SERVICE: suchi-api
-  CLOUDSQL_INSTANCE: gen-lang-client-0202543132:us-central1:suchi-db
-
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+      - name: Check deploy pipeline config parity
+        run: python3 scripts/check_deploy_config_parity.py
 
-      - uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Build image
+      - name: Build API image (verification only, not pushed)
         run: |
           docker build \
-            -t $REGISTRY/$SERVICE:${{ github.sha }} \
-            -t $REGISTRY/$SERVICE:latest \
+            -t suchi-api:verify-${{ github.sha }} \
             -f apps/api/Dockerfile \
             apps/api
-
-      - name: Push image
-        run: docker push --all-tags $REGISTRY/$SERVICE
-
-      - name: Run database migrations
-        continue-on-error: true
-        run: |
-          gcloud run jobs deploy suchi-migrate \
-            --image $REGISTRY/$SERVICE:${{ github.sha }} \
-            --region $REGION \
-            --command "npx" \
-            --args "prisma,migrate,deploy" \
-            --set-cloudsql-instances $CLOUDSQL_INSTANCE \
-            --set-secrets "DATABASE_URL=database-url:latest" \
-            --set-env-vars "NODE_ENV=production" \
-            --max-retries 0 \
-            --task-timeout 120s \
-            --quiet
-
-          gcloud run jobs execute suchi-migrate \
-            --region $REGION \
-            --wait \
-            --quiet
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy $SERVICE \
-            --image $REGISTRY/$SERVICE:${{ github.sha }} \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated \
-            --memory 512Mi \
-            --cpu 1 \
-            --timeout 600 \
-            --min-instances 0 \
-            --max-instances 10 \
-            --port 8080 \
-            --add-cloudsql-instances $CLOUDSQL_INSTANCE \
-            --set-env-vars "\
-          NODE_ENV=production,\
-          GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},\
-          EMBEDDING_MODEL=gemini-embedding-001,\
-          RATE_LIMIT_TTL_SEC=60,\
-          RATE_LIMIT_REQ_PER_TTL=20,\
-          LLM_PROVIDER=gemini,\
-          LLM_TIMEOUT_MS=25000,\
-          GCS_BUCKET_TTS=suchi-tts-audio,\
-          SCHEDULER_OIDC_AUDIENCE=https://suchi-api-lxiveognla-uc.a.run.app,\
-          SCHEDULER_SA_EMAIL=suchi-scheduler@${{ env.PROJECT_ID }}.iam.gserviceaccount.com,\
-          DAILY_REPORT_EMAIL=gautamgauri@dikshafoundation.org,\
-          SMTP_HOST=smtp.gmail.com,\
-          SMTP_PORT=587,\
-          SMTP_USER=gautamgauri@dikshafoundation.org" \
-            --set-secrets "\
-          DATABASE_URL=database-url:latest,\
-          DEEPSEEK_API_KEY=deepseek-api-key:latest,\
-          EMBEDDING_API_KEY=embedding-api-key:latest,\
-          ADMIN_BASIC_USER=admin-basic-user:latest,\
-          ADMIN_BASIC_PASS=admin-basic-pass:latest,\
-          SMTP_PASS=SMTP_PASS:latest"
-
-      - name: Verify deployment
-        run: |
-          URL=$(gcloud run services describe $SERVICE --region $REGION --format 'value(status.url)')
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/v1/health" || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "Health check passed: $URL/v1/health"
-              exit 0
-            fi
-            echo "Attempt $i: HTTP $STATUS, retrying in 10s..."
-            sleep 10
-          done
-          echo "Health check failed after 5 attempts"
-          exit 1
