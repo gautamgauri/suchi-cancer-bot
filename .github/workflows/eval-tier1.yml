@@ -49,6 +49,12 @@ jobs:
         working-directory: eval
         run: npm run build
 
+      - name: Verify case manifest (disappearance guard)
+        working-directory: eval
+        # Hard-fails if any eval case was removed without an explicit tombstone
+        # entry in cases/case-manifest.json (issue #48).
+        run: npx ts-node scripts/case-manifest.ts check
+
       - name: Create reports directory
         working-directory: eval
         run: mkdir -p reports
@@ -109,6 +115,7 @@ jobs:
           path: |
             eval/reports/tier1-report.json
             eval/reports/tier1-*.json
+            eval/reports/tier1-*.md
           retention-days: 30
           if-no-files-found: warn
 

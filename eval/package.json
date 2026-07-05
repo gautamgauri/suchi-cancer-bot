@@ -8,6 +8,9 @@
   },
   "scripts": {
     "build": "tsc",
+    "test": "jest",
+    "cases:check": "ts-node scripts/case-manifest.ts check",
+    "cases:update": "ts-node scripts/case-manifest.ts update",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "typecheck": "tsc --noEmit",
@@ -46,6 +49,7 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
+    "jest": "^30.4.2",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"

@@ -1,0 +1,36 @@
+# P0 REGRESSION FIXTURE — total retrieval miss on symptomatic lung query
+#
+# Incident:  2026-07-05 nightly "Eval Tier1 - Retrieval Quality" run 28731647092
+#            (failing nightly since at least 2026-06-28). Case RQ-LUNG-02.
+# Signature: retrievedChunks = 0, citations = 0, citationConfidence = RED for a
+#            medical (SYMPTOMATIC_PATIENT) query. Because retrievedChunks == 0,
+#            the legacy citation_contract check never fired — the miss was only
+#            visible via citations_present. The citation integrity verifier now
+#            fails this via CIT-5 (retrieval_present) / citation_evidence_support
+#            and clusters it as "retrieval-miss".
+# Pass criteria (hard):
+#   - retrievedChunksCount >= 1 (retrieval must not miss for this query)
+#   - >= 2 supporting citations (min_citations)
+#   - citationConfidence != RED
+#
+# No patient data: query is synthetic, taken from the eval suite itself.
+
+cases:
+  - id: REG-P0-20260705-LUNG-RETRIEVAL-MISS-01
+    tier: 1
+    cancer: lung
+    intent: SYMPTOMATIC_PATIENT
+    risk: P0
+    user_messages: ["I've had a persistent cough for 8 weeks. What should I do?"]
+    expectations:
+      max_clarifying_questions: 2
+      required_sections:
+        - disclaimer
+      disclaimer_required: true
+      must_not: ["definitive diagnosis"]
+      expected_top3_trusted: true
+      min_citations: 2
+      citation_integrity: true
+      expected_sources: ["02_nci_core"]
+      query_type: "symptoms"
+      notes: "Regression fixture for the 2026-07-05 P0: retrieval returned 0 chunks for this query; response must be KB-grounded with >= 2 citations."

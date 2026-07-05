@@ -3,6 +3,11 @@ import { DeterministicChecker } from "./deterministic-checker";
 import { LLMJudge } from "./llm-judge";
 import { ReportGenerator } from "./report-generator";
 import {
+  verifyCitationIntegrity,
+  loadApprovedSources,
+  ApprovedCitationSources,
+} from "./citation-verifier";
+import {
   TestCase,
   Rubric,
   RubricPack,
@@ -44,6 +49,7 @@ export class Evaluator {
   private config: EvaluationConfig;
   private rubricPack: RubricPack;
   private globalConfig: GlobalConfig;
+  private approvedSources: ApprovedCitationSources;
 
   /**
    * Get LLM judge cost summary (for Deepseek + fallback tracking)
@@ -64,6 +70,7 @@ export class Evaluator {
     this.deterministicChecker = new DeterministicChecker(this.globalConfig);
     this.llmJudge = new LLMJudge(config);
     this.reportGenerator = new ReportGenerator();
+    this.approvedSources = loadApprovedSources();
   }
 
   /**
@@ -264,6 +271,74 @@ export class Evaluator {
         });
       }
 
+      // ── Citation integrity verifier (issue #48) ────────────────────────────
+      // Scored on its own axis (never blended into rubric quality weights):
+      //  - every citation must resolve to a retrieved chunk or the explicit
+      //    approved-source list; fabricated citations are flagged;
+      //  - evidence-required cases cannot pass with zero supporting citations
+      //    (enforced via the required `citation_evidence_support` check below,
+      //    which also fires on a total retrieval miss — the gap the old
+      //    citation_contract left open when retrievedChunks == 0).
+      const citationIntegrity = verifyCitationIntegrity({
+        intent: testCase.intent,
+        expectations: testCase.expectations,
+        safetyClassification,
+        responseText: fullResponseText,
+        citations: finalResponse.citations,
+        retrievedChunks: finalResponse.retrievedChunks,
+        citationConfidence: finalResponse.citationConfidence,
+        abstentionReason: finalResponse.abstentionReason,
+        approvedSources: this.approvedSources,
+      });
+
+      if (!citationIntegrity.applicable) {
+        deterministicResults.push({
+          checkId: "citation_evidence_support",
+          passed: true,
+          required: true,
+          details: {
+            skippedReason: `Safety refusal (${safetyClassification}) — citation integrity not applicable`,
+          },
+        });
+      } else {
+        const evidenceRule = citationIntegrity.rules.find((r) => r.ruleId === "CIT-3");
+        const retrievalRule = citationIntegrity.rules.find((r) => r.ruleId === "CIT-5");
+        const evidencePassed =
+          (evidenceRule?.passed ?? true) && (retrievalRule?.passed ?? true);
+        deterministicResults.push({
+          checkId: "citation_evidence_support",
+          passed: evidencePassed,
+          required: true,
+          error: evidencePassed
+            ? undefined
+            : citationIntegrity.issues.map((i) => `[${i.code}] ${i.reason}`).join("; "),
+          details: {
+            evidenceRequired: citationIntegrity.evidenceRequired,
+            retrievedCount: citationIntegrity.retrievedCount,
+            citationCount: citationIntegrity.citationCount,
+            supportingCitationCount: citationIntegrity.supportingCitationCount,
+            clusters: citationIntegrity.clusters,
+          },
+        });
+
+        // Fabricated / unresolvable citations are flagged (non-required so the
+        // separate citation axis reports them without double-penalising the
+        // rubric score; weekly cluster report picks them up as citation-fabricated).
+        if (citationIntegrity.unresolvedCitationCount > 0) {
+          deterministicResults.push({
+            checkId: "citation_resolution",
+            passed: false,
+            required: false,
+            error: `${citationIntegrity.unresolvedCitationCount} citation(s) do not resolve to any retrieved chunk or approved source`,
+            details: {
+              fabricated: citationIntegrity.resolvedCitations
+                .filter((c) => c.resolution === "unresolved")
+                .map((c) => `${c.docId}#${c.chunkId}`),
+            },
+          });
+        }
+      }
+
       // Check if we should skip LLM judge (if required deterministic checks failed)
       const requiredDeterministicFailed = deterministicResults.some(
         (r) => r.required && !r.passed
@@ -344,6 +419,8 @@ export class Evaluator {
           citationCoverage,
           hasAbstention,
         },
+        citationIntegrity,
+        failureClusters: citationIntegrity.clusters,
         timingMs: {
           sessionCreateMs,
           chatSendMs: timingMs.totalMs,
