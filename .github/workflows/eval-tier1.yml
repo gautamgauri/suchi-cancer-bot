@@ -1,5 +1,31 @@
 name: Eval Tier1 - Retrieval Quality
 
+# Status model (issue #47) — three independently reported outcomes:
+#   1. Evaluation outcome  -> the ONLY thing that decides the job's CI conclusion
+#                             (enforced by the final "Enforce evaluation status" step).
+#   2. Report/artifact     -> shown in the job summary; upload failure emits a
+#                             warning annotation but does not fail CI.
+#   3. Notification (email)-> runs with continue-on-error; a delivery failure is a
+#                             DEGRADED OPERATION (warning + summary line), never a
+#                             CI failure. A true eval failure fails CI regardless
+#                             of whether the email was delivered.
+#
+# Simulating the notification-failure regression (run 28731647092, SMTP 535):
+#   - Locally:   cd eval && npm run test:ci
+#                (eval/ci/eval-status.test.js contains the regression test:
+#                 "eval passed + email delivery failed => CI still passes")
+#   - In CI:     trigger workflow_dispatch with an invalid SMTP_PASSWORD secret (or
+#                revoke the app password). Expected statuses:
+#                  * eval passes  -> job GREEN, summary shows
+#                    "Notification: degraded: notification failed" + warning annotation
+#                  * eval fails   -> job RED with "Evaluation failed" error annotation,
+#                    regardless of email delivery outcome
+#                  * no report    -> job RED with "Eval infrastructure error" annotation
+#
+# Log hygiene: SMTP secrets are auto-masked by Actions; the recipient address is
+# additionally masked via ::add-mask:: before any step that could echo it, and the
+# helper script (eval/ci/eval-status.js) never handles recipients or credentials.
+
 on:
   # Manual trigger
   workflow_dispatch:
@@ -8,12 +34,12 @@ on:
         description: 'API Base URL (optional, defaults to live service)'
         required: false
         default: 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
-  
+
   # Nightly schedule (runs at 2 AM UTC)
   schedule:
     - cron: '0 2 * * *'
-  
-  # On PRs touching RAG/evidence modules (non-blocking initially)
+
+  # On PRs touching RAG/evidence modules
   pull_request:
     paths:
       - 'apps/api/src/modules/rag/**'
@@ -22,15 +48,23 @@ on:
       - 'apps/api/src/config/trusted-sources.config.ts'
       - 'eval/cases/tier1/**'
       - 'eval/**/*.ts'
-    # Non-blocking: continue-on-error is set on the eval step
+      - 'eval/ci/**'
+      - '.github/workflows/eval-tier1.yml'
+
+env:
+  # Notification recipient. Kept in one place; masked from logs at job start.
+  EVAL_NOTIFY_TO: gautamgauri@dikshafoundation.org
 
 jobs:
   eval-tier1:
     name: Run Tier1 Retrieval Quality Eval
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    
+
     steps:
+      - name: Redact notification recipient from logs
+        run: echo "::add-mask::$EVAL_NOTIFY_TO"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -48,6 +82,10 @@ jobs:
       - name: Build eval package
         working-directory: eval
         run: npm run build
+
+      - name: Test CI status helper
+        working-directory: eval
+        run: npm run test:ci
 
       - name: Verify case manifest (disappearance guard)
         working-directory: eval
@@ -68,6 +106,8 @@ jobs:
           curl -f "$API_URL/health" || echo "Warning: Health check failed, but continuing..."
         continue-on-error: true
 
+      # continue-on-error so the reporting/notification steps below always run;
+      # the true evaluation outcome is enforced by the final step of this job.
       - name: Run Tier1 Eval
         working-directory: eval
         env:
@@ -78,164 +118,85 @@ jobs:
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132' }}
         run: |
           npm run eval:tier1
-        continue-on-error: true  # Non-blocking until Pass 2/3 verified
+        continue-on-error: true
         id: eval-run
 
-      - name: Generate summary
+      # Machine-readable outcome + metrics (schema in eval/ci/eval-status.js).
+      # Distinguishes: passed | failed (true eval failure) | infra_error (no usable report).
+      - name: Build eval-result.json
+        id: eval-result
+        if: always()
         working-directory: eval
-        if: always()
         run: |
-          if [ -f "reports/tier1-report.json" ]; then
-            echo "## Tier1 Eval Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            node -e "
-              const fs = require('fs');
-              const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
-              const q = report.summary.retrievalQuality || {};
-              console.log('### Retrieval Quality Metrics');
-              console.log('');
-              console.log(\`- **Top-3 Trusted Source Presence:** \${(q.top3TrustedPresenceRate * 100).toFixed(1)}%\`);
-              console.log(\`- **Citation Coverage:** \${(q.citationCoverageRate * 100).toFixed(1)}%\`);
-              console.log(\`- **Abstention Rate:** \${(q.abstentionRate * 100).toFixed(1)}%\`);
-              console.log('');
-              console.log(\`- **Total Cases:** \${report.summary.total}\`);
-              console.log(\`- **Passed:** \${report.summary.passed}\`);
-              console.log(\`- **Failed:** \${report.summary.failed}\`);
-              console.log(\`- **Average Score:** \${(report.summary.averageScore * 100).toFixed(1)}%\`);
-            " >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ No report file found" >> $GITHUB_STEP_SUMMARY
-          fi
+          node ci/eval-status.js result \
+            --report reports/tier1-report.json \
+            --eval-outcome "${{ steps.eval-run.outcome }}" \
+            --output reports/eval-result.json
 
+      # Includes the per-case structured records (*.records.json) and the
+      # failure-cluster report emitted by the run (issue #48).
       - name: Upload eval report
+        id: upload-report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: tier1-eval-report-${{ github.run_number }}
           path: |
-            eval/reports/tier1-report.json
-            eval/reports/tier1-*.json
-            eval/reports/tier1-*.md
+            eval/reports/*.json
+            eval/reports/*.md
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Check eval results
+      - name: Write job summary (eval result, metrics, artifact status)
         if: always()
+        working-directory: eval
         run: |
-          if [ "${{ steps.eval-run.outcome }}" != "success" ]; then
-            echo "⚠️ Eval run completed with errors (non-blocking mode)"
-            echo "Review the report artifact to identify issues"
-            exit 0  # Don't fail the workflow in non-blocking mode
-          fi
-          
-          # Check if report exists and has reasonable metrics
-          if [ -f "eval/reports/tier1-report.json" ]; then
-            node -e "
-              const fs = require('fs');
-              const report = JSON.parse(fs.readFileSync('eval/reports/tier1-report.json', 'utf8'));
-              const q = report.summary.retrievalQuality || {};
-              
-              // Count improved cases (top3TrustedPresence === true)
-              const improved = report.results.filter(r => r.retrievalQuality?.top3TrustedPresence).length;
-              
-              console.log('Improved cases:', improved);
-              console.log('Top-3 Trusted Rate:', (q.top3TrustedPresenceRate * 100).toFixed(1) + '%');
-              console.log('Citation Coverage:', (q.citationCoverageRate * 100).toFixed(1) + '%');
-              
-              // Warn if metrics are below expectations (but don't fail in non-blocking mode)
-              if (improved < 3) {
-                console.warn('⚠️ WARNING: Less than 3 cases showing improved top-3 relevance');
-              }
-              if (q.citationCoverageRate < 0.90) {
-                console.warn('⚠️ WARNING: Citation coverage below 90%');
-              }
-              if (q.abstentionRate > 0.10) {
-                console.warn('⚠️ WARNING: Abstention rate above 10%');
-              }
-            "
+          node ci/eval-status.js summary \
+            --result reports/eval-result.json \
+            --artifact-outcome "${{ steps.upload-report.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.upload-report.outcome }}" = "failure" ]; then
+            echo "::warning title=Artifact upload failed::Report artifact upload failed (reporting issue, not an eval failure)."
           fi
 
       - name: Generate email report
         id: email-report
-        if: always()
+        if: always() && steps.eval-result.outputs.should_notify == 'true'
         working-directory: eval
-        run: |
-          if [ -f "reports/tier1-report.json" ]; then
-            node -e "
-              const fs = require('fs');
-              const report = JSON.parse(fs.readFileSync('reports/tier1-report.json', 'utf8'));
-              const s = report.summary;
-              const q = s.retrievalQuality || {};
+        run: node ci/eval-status.js email --report reports/tier1-report.json --out-dir .
 
-              // Get failed cases (up to 5 with details)
-              const failed = report.results.filter(r => !r.passed).slice(0, 5);
-
-              let body = '# Suchi Daily Eval Report\\n\\n';
-              body += '## Summary\\n';
-              body += '| Metric | Value |\\n|--------|-------|\\n';
-              body += '| Total Tests | ' + s.total + ' |\\n';
-              body += '| Passed | ' + s.passed + ' (' + ((s.passed/s.total)*100).toFixed(1) + '%) |\\n';
-              body += '| Failed | ' + s.failed + ' |\\n';
-              body += '| Average Score | ' + (s.averageScore * 100).toFixed(1) + '% |\\n';
-              body += '| Trusted Source Rate | ' + (q.top3TrustedPresenceRate * 100).toFixed(1) + '% |\\n';
-              body += '| Citation Coverage | ' + (q.citationCoverageRate * 100).toFixed(1) + '% |\\n\\n';
-
-              if (failed.length > 0) {
-                body += '## Failed Cases (Top 5)\\n\\n';
-                failed.forEach((r, i) => {
-                  body += '### ' + (i+1) + '. ' + r.testCaseId + ' (Score: ' + (r.score*100).toFixed(1) + '%)\\n';
-
-                  // Deterministic failures
-                  const detFail = (r.deterministicResults || []).filter(c => !c.passed);
-                  if (detFail.length > 0) {
-                    body += '**Deterministic:** ' + detFail.map(c => c.checkId).join(', ') + '\\n';
-                  }
-
-                  // LLM failures
-                  const llmFail = (r.llmJudgeResults || []).filter(c => !c.passed && !c.skipped);
-                  if (llmFail.length > 0) {
-                    body += '**LLM Judge:** ' + llmFail.map(c => c.checkId + (c.count !== null ? ' ('+c.count+')' : '')).join(', ') + '\\n';
-                  }
-                  body += '\\n';
-                });
-
-                if (s.failed > 5) {
-                  body += '_...and ' + (s.failed - 5) + ' more failures. See full report in GitHub Actions._\\n';
-                }
-              } else {
-                body += '## All tests passed! ✅\\n';
-              }
-
-              body += '\\n---\\n';
-              body += 'View full report: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\\n';
-
-              // Output for email
-              const subject = s.failed > 0
-                ? 'Suchi Eval: ' + s.failed + ' failures (' + (s.averageScore*100).toFixed(0) + '% avg)'
-                : 'Suchi Eval: All ' + s.total + ' tests passed ✅';
-
-              fs.writeFileSync('email-subject.txt', subject);
-              fs.writeFileSync('email-body.md', body);
-
-              // Set outputs
-              console.log('should_send=' + (s.failed > 0 ? 'true' : 'false'));
-            " > /tmp/email-output.txt
-
-            echo "should_send=$(cat /tmp/email-output.txt | grep should_send | cut -d= -f2)" >> $GITHUB_OUTPUT
-          else
-            echo "should_send=false" >> $GITHUB_OUTPUT
-          fi
-
+      # continue-on-error: a delivery failure must never fail the workflow (issue #47).
+      # Its outcome is reported by the "Report notification status" step below.
       - name: Send email notification
-        if: always() && steps.email-report.outputs.should_send == 'true'
+        id: send-email
+        if: always() && steps.eval-result.outputs.should_notify == 'true'
+        continue-on-error: true
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
           server_port: ${{ secrets.SMTP_PORT }}
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: ${{ steps.email-report.outputs.email_subject || 'Suchi Daily Eval Report' }}
-          to: gautamgauri@dikshafoundation.org
+          subject: ${{ steps.eval-result.outputs.email_subject || 'Suchi Daily Eval Report' }}
+          to: ${{ env.EVAL_NOTIFY_TO }}
           from: ${{ secrets.SMTP_USERNAME }}
           body: file://eval/email-body.md
           convert_markdown: true
+
+      - name: Report notification status
+        if: always()
+        working-directory: eval
+        run: |
+          node ci/eval-status.js notify-status \
+            --send-outcome "${{ steps.send-email.outcome }}" \
+            --should-notify "${{ steps.eval-result.outputs.should_notify }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.send-email.outcome }}" = "failure" ]; then
+            echo "::warning title=Notification degraded::Email delivery failed. This is a degraded operation only — the evaluation status is unaffected."
+          fi
+
+      # The single source of truth for the job's CI conclusion:
+      # exit 0 only when the evaluation itself passed.
+      - name: Enforce evaluation status
+        if: always()
+        working-directory: eval
+        run: node ci/eval-status.js check --result reports/eval-result.json
