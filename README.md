@@ -1,9 +1,9 @@
-# Suchi Phase 1 Pack
+# Suchi Cancer Bot
 
 Suchi (Suchitra Cancer Bot) - A cancer information assistant with safety guardrails, KB-backed responses, and feedback collection.
 
 ## Contents
-- `apps/api` - NestJS + Prisma backend with Google Gemini LLM integration
+- `apps/api` - NestJS + Prisma backend with provider-configurable LLM integration
 - `apps/web` - React + Vite frontend chat UI
 - `kb` - Knowledge base files and manifest
 - `docs` - PRD, technical spec, and KB structure documentation
@@ -11,7 +11,11 @@ Suchi (Suchitra Cancer Bot) - A cancer information assistant with safety guardra
 ## Prerequisites
 - Node.js 18+ and npm
 - PostgreSQL database
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- Basic auth credentials for admin routes (`ADMIN_BASIC_USER`, `ADMIN_BASIC_PASS`)
+- LLM provider access:
+  - `LLM_PROVIDER=gemini` (default): Google Cloud ADC + `GOOGLE_CLOUD_PROJECT`
+  - `LLM_PROVIDER=openai`: `OPENAI_API_KEY`
+  - `LLM_PROVIDER=deepseek`: `DEEPSEEK_API_KEY`
 
 ## Backend Setup
 
@@ -30,12 +34,18 @@ Suchi (Suchitra Cancer Bot) - A cancer information assistant with safety guardra
    DATABASE_URL=postgresql://user:password@localhost:5432/suchi_db
    ADMIN_BASIC_USER=admin
    ADMIN_BASIC_PASS=your_secure_password
-   GEMINI_API_KEY=your_gemini_api_key_here
+   LLM_PROVIDER=gemini
+   GOOGLE_CLOUD_PROJECT=your_gcp_project_id
+   VERTEX_AI_LOCATION=us-central1
+   GEMINI_MODEL=gemini-2.0-flash-001
+   EMBEDDING_API_KEY=your_embedding_api_key
+   REVIEW_COPILOT_MODE=off
    PORT=3001
    NODE_ENV=development
    RATE_LIMIT_TTL_SEC=60
    RATE_LIMIT_REQ_PER_TTL=20
    ```
+   For non-Gemini providers, set `LLM_PROVIDER` and the matching key (`OPENAI_API_KEY` or `DEEPSEEK_API_KEY`).
 
 4. Generate Prisma client:
    ```bash
@@ -96,6 +106,12 @@ The web UI will be available at `http://localhost:3000`
 ### Admin Endpoints (Basic Auth)
 - `GET /v1/admin/conversations` - List conversations with optional filters
 - `GET /v1/admin/metrics` - Get analytics metrics
+- `GET /v1/review/records` - List review records with filters
+- `GET /v1/review/queue` - List flagged records pending human review
+- `PATCH /v1/review/queue/:id` - Submit human review decision
+- `GET /v1/review/metrics` - Review verdict and latency metrics
+- `GET /v1/review/policies` - List review policies
+- `PATCH /v1/review/policies/:id` - Update review policy state/config
 
 ## Features
 
@@ -104,10 +120,11 @@ The web UI will be available at `http://localhost:3000`
 - Self-harm detection with crisis support guidance
 - Refusal to diagnose or prescribe medications
 - Misinformation detection (e.g., stopping treatment)
+- Review Copilot second-pass checks (hard block, soft repair, ambiguous flag) configurable via `REVIEW_COPILOT_MODE`
 
 ### Chat Features
 - KB-backed responses using Vector RAG (pgvector semantic search)
-- Google Gemini Pro for response generation
+- Provider-configurable response generation (Gemini default; OpenAI/DeepSeek supported)
 - Suggested prompts for new users
 - Feedback collection (thumbs up/down)
 - Session management
@@ -217,4 +234,5 @@ The script provides clear pass/fail indicators:
 - Health check endpoint available at `/v1/health`
 - All API endpoints are prefixed with `/v1`
 - Frontend uses sessionStorage to persist consent state
-- Vector embeddings require `EMBEDDING_API_KEY` (can use `GEMINI_API_KEY`)
+- Vector embeddings use `EMBEDDING_API_KEY`
+- Review Copilot operational guide: [`docs/REVIEW_COPILOT_RUNBOOK.md`](docs/REVIEW_COPILOT_RUNBOOK.md)
