@@ -36,11 +36,11 @@ export const TEMPLATES = {
   refusal(ruleId: string): SafetyResult {
     let responseText = "I can't diagnose cancer or recommend medication doses. I can help with typical next steps, questions to ask your doctor, and warning signs that need urgent care.";
 
-    if (ruleId === "SAFE_REFUSAL_REPORT_INTERPRETATION") {
+    if (ruleId === "SAFE_REFUSAL_REPORT_INTERPRETATION_V1") {
       responseText = "I can't interpret medical reports, scans, or test results. Please share these with your doctor who can explain what they mean in the context of your specific situation. I can help you prepare questions to ask your doctor about your results.";
-    } else if (ruleId === "SAFE_REFUSAL_TREATMENT_CHOICE") {
+    } else if (ruleId === "SAFE_REFUSAL_TREATMENT_CHOICE_V1") {
       responseText = "I can't recommend specific treatments or medications for individual cases. Treatment decisions should be made with your oncology team based on your specific diagnosis, stage, and other factors. I can help you understand general treatment options and prepare questions to discuss with your doctor.";
-    } else if (ruleId === "SAFE_REFUSAL_DOSAGE") {
+    } else if (ruleId === "SAFE_REFUSAL_DOSAGE_V1") {
       responseText = "I can't provide medication dosing information or instructions on when/how to take medications. Please follow your doctor's prescribed dosage and timing. If you have questions about your medication, contact your healthcare provider or pharmacist.";
     } else if (ruleId === "SAFE_REFUSAL_PROGNOSIS_V1") {
       responseText = "I can't predict survival outcomes or life expectancy. Prognosis depends on many individual factors that only your oncology team can evaluate. I can help you prepare questions about your treatment plan and what to expect during your cancer journey.";
