@@ -138,16 +138,16 @@ by this handoff review.
   `embeddings.service` contract test (768-dim, model name pinned to
   `EMBEDDING_MODEL`).
 
-### P1-6. WhatsApp PII retention job missing (FR-WA-015, partial)
+### P1-6. WhatsApp PII retention job missing (FR-WA-015, partial) — RESOLVED
 
 - **What:** `WhatsAppContact` stores phone→session mappings
   (`apps/api/prisma/migrations/20260622000000_add_whatsapp_contact`,
-  `schema.prisma`), but the retention/deletion job required by FR-WA-015 is
+  `schema.prisma`), but the retention/deletion job required by FR-WA-015 was
   marked missing/untested in `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md`;
   housekeeping endpoints exist (`POST /v1/admin/housekeeping/run-retention`)
-  but don't cover WhatsApp contacts.
-- **Impact:** privacy commitment in `docs/PRIVACY_RETENTION.md` not met for
-  the WhatsApp channel.
+  but didn't cover WhatsApp contacts.
+- **Resolution:** Implemented purging of WhatsApp contact mappings in `retention.service.ts` (deleting contacts where `lastActiveAt` or `sessionId` is older than 90 days) and verified with automated test suite in `retention.service.spec.ts`.
+- **Impact:** privacy commitment in `docs/PRIVACY_RETENTION.md` fully met.
 
 ---
 

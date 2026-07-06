@@ -59,7 +59,7 @@ Maps each requirement from `REQUIREMENTS.md` to its implementation location and 
 | FR-CONTENT-001 | CONTENT_GUIDE.md 7-section structure | AI prompt references guide; `CONTENT_PAGE_SCHEMA.md` section 4 references guide | Manual only | Implemented | Manual only |
 | FR-CONTENT-002 | Articles as markdown with frontmatter | `content/drafts/*.md` | Manual only | Implemented | Manual only |
 | FR-CONTENT-003 | New articles added to content-queue.json | `content/queue-manager.ts` | No test | Implemented | Untested |
-| FR-CONTENT-004 | Review triggered by email with Approve/Reject links | `admin/content-post.service.ts` | Manual only | Implemented | Manual only |
+| FR-CONTENT-004 | Review triggered by email with Approve/Reject links | `admin/content-research.service.ts` | Manual only | Implemented | Manual only |
 | FR-CONTENT-005 | Approval is HMAC one-click | `/v1/admin/content/approve/:id` | No test | Implemented | Untested |
 | FR-CONTENT-006 | Approval updates GCS `status: "approved"` + timestamp | `queue-manager.ts` `updateStatus()` | No test | Implemented | Untested |
 | FR-CONTENT-007 | `approvedBy` captures reviewer name (not "email_approval") | `content-approve.service.ts` `approver` param; falls back to `"email_approval"` only when absent (OD-006 closed) | `content-approve.service.spec.ts` | Implemented | Tested |
@@ -187,15 +187,15 @@ All Phase 2 requirements are **Not Started** unless noted. Implementation phase 
 | FR-RISK-002 | Category B content — Medical Reviewer sign-off | — | — | Not Started |
 | FR-RISK-003 | Category C content — strict Medical Reviewer + monitoring | — | — | Not Started |
 | FR-KB-101 | KB entry: reviewer_name, review_status, risk_category, version fields | — | — | Not Started |
-| FR-REVIEW-001 | Human review flagging for 10 trigger conditions | — | — | Not Started |
-| FR-REVIEW-002 | `GET /v1/admin/review-queue` endpoint | — | — | Not Started |
-| FR-REVIEW-003 | Review outcome persistence (reviewed/escalated/no-action) | — | — | Not Started |
-| FR-ANALYTICS-001 | Top N query topics per time period | — | — | Not Started |
-| FR-ANALYTICS-002 | Content gaps report from abstention events | — | — | Not Started |
-| FR-ANALYTICS-003 | Language mix reporting | — | — | Not Started |
+| FR-REVIEW-001 | Human review flagging for 10 trigger conditions | `chat.service.ts` | Manual only | Implemented | Manual only |
+| FR-REVIEW-002 | `GET /v1/admin/review-queue` endpoint | `review-queue.service.ts` & `AdminController` | Manual only | Implemented | Manual only |
+| FR-REVIEW-003 | Review outcome persistence (reviewed/escalated/no-action) | `review-queue.service.ts` & `AdminController` | Manual only | Implemented | Manual only |
+| FR-ANALYTICS-001 | Top N query topics per time period | `analytics-admin.service.ts` & `AdminController` | Manual only | Implemented | Manual only |
+| FR-ANALYTICS-002 | Content gaps report from abstention events | `analytics-admin.service.ts` & `AdminController` | Manual only | Implemented | Manual only |
+| FR-ANALYTICS-003 | Language mix reporting | `analytics-admin.service.ts` & `AdminController` | Manual only | Implemented | Manual only |
 | FR-ANALYTICS-004 | Escalation counts by safety event type | Partial — daily report has counts | Manual only | Partial |
 | FR-ANALYTICS-005 | Anonymised analytics export (no session IDs or raw text) | — | — | Not Started |
-| FR-LEARN-001 | Monthly Learning Note — scheduled generation + email | — | — | Not Started |
+| FR-LEARN-001 | Monthly Learning Note — scheduled generation + email | `learning-note.service.ts` | Manual only | Implemented | Manual only |
 | NFR-MAINTAIN-001 | Version-controlled LLM prompts in repo | — | — | Not Started |
 | NFR-INTEROP-001 | Google Sheets / Docs export for Learning Note + gap report | — | — | Not Started |
 | NFR-LANG-001 | Language launch gate (Medical Reviewer + 20 reviewed KB entries) | — | — | Not Started |
@@ -222,7 +222,7 @@ Full conversational channel over the Meta WhatsApp Cloud API, routing all inboun
 | FR-WA-012 | Detect + cache input locale per contact | `detectLocale()`; `WhatsAppContact.locale` | `whatsapp-format.spec.ts` | Implemented | Tested |
 | FR-WA-013 | Reactive-only; no templates / proactive in v1 | By design — no outbound-initiated path exists | — | Implemented | N/A |
 | FR-WA-014 | Cleanly disabled when creds absent (all env vars optional) | `env.validation.ts`; `isConfigured()`; `sendText()` guard | `whatsapp.service.spec.ts` | Implemented | Tested |
-| FR-WA-015 | Phone-number PII covered by retention/deletion policy | `WhatsAppContact` (deletion-by-`waId`); `PRIVACY_RETENTION.md` | No deletion job yet | Partial | Untested |
+| FR-WA-015 | Phone-number PII covered by retention/deletion policy | `WhatsAppContact` (deletion-by-`sessionId` and `lastActiveAt`); `retention.service.ts` | `retention.service.spec.ts` | Implemented | Tested |
 
 ---
 
@@ -242,11 +242,11 @@ _Last reconciled against code: 2026-06-24 (verified against the source tree, not
 | Non-Functional | 14 | 11 | 3 | 0 |
 | Audit | 7 | 7 | 0 | 0 |
 | **Phase 1 Total** | **90** | **83** | **6** | **0** |
-| **Phase 2 (Annexure 1)** | **26** | **0** | **1** | **25** |
-| WhatsApp Conversational (§16) | 15 | 14 | 1 | 0 |
-| **Grand Total** | **131** | **97** | **8** | **25** |
+| **Phase 2 (Annexure 1)** | **26** | **7** | **1** | **18** |
+| WhatsApp Conversational (§16) | 15 | 15 | 0 | 0 |
+| **Grand Total** | **131** | **105** | **7** | **18** |
 
-Phase 1 is feature-complete: 0 requirements Missing. The 6 Partial items are the deferred content-publish automation (FR-CONTENT-010/011, OD-001) and three perf NFRs verified only by manual/Langfuse spot-checks. The 25 Not Started are Phase 2 (Annexure 1), deferred by design while the quality engine is the priority.
+Phase 1 is feature-complete: 0 requirements Missing. The 6 Partial items are the deferred content-publish automation (FR-CONTENT-010/011, OD-001) and three perf NFRs verified only by manual/Langfuse spot-checks. The 18 Not Started are Phase 2 (Annexure 1), deferred by design while the quality engine is the priority.
 
 ### Verification coverage
 
@@ -266,7 +266,7 @@ Implemented-but-spec-less surfaces (remaining minor gaps): `llm.service` provide
 | External | FR-WA-002/010 | WhatsApp live send | Code complete; blocked on Meta provisioning (issue #29, Ananya) |
 | Deferred | Phase 2 (Annexure 1) | Roles, journeys, analytics, Learning Note | Not started by design — quality engine is the current priority |
 
-NFR-PRIV-001/002 (90-day retention) are now **implemented** via `retention.service.ts` — see `docs/PRIVACY_RETENTION.md`.
+NFR-PRIV-001/002 (90-day retention) and FR-WA-015 (WhatsApp contact retention) are now **implemented** via `retention.service.ts` — see `docs/PRIVACY_RETENTION.md`.
 
 ## Tests to add — priority order (safety-critical first)
 

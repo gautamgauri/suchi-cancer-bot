@@ -25,6 +25,7 @@ export interface RetentionResult {
   feedback: number;
   safetyEvents: number;
   voiceInteractions: number;
+  whatsAppContacts: number;
 }
 
 @Injectable()
@@ -34,82 +35,109 @@ export class RetentionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async runRetention(now = new Date()): Promise<RetentionResult> {
-    const cutoff = new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    this.logger.log(`Retention job starting — cutoff: ${cutoff.toISOString()}`);
+    const cutoff90 = new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const cutoff365 = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    this.logger.log(`Retention job starting — cutoff90: ${cutoff90.toISOString()}, cutoff365: ${cutoff365.toISOString()}`);
 
     const totals: RetentionResult = {
-      cutoff: cutoff.toISOString(),
+      cutoff: cutoff90.toISOString(),
       sessions: 0,
       messages: 0,
       feedback: 0,
       safetyEvents: 0,
       voiceInteractions: 0,
+      whatsAppContacts: 0,
     };
 
-    // Fetch eligible session IDs in batches
-    let offset = 0;
+    // ─── Phase 1: 90-Day Retention (Messages, Voice, WhatsApp) ───────────────
+    let offset90 = 0;
     while (true) {
       const batch = await this.prisma.session.findMany({
         where: {
-          createdAt: { lt: cutoff },
+          createdAt: { lt: cutoff90 },
           isEval: false,
         },
         select: { id: true },
         take: BATCH_SIZE,
-        skip: offset,
+        skip: offset90,
         orderBy: { createdAt: "asc" },
       });
 
       if (batch.length === 0) break;
       const ids = batch.map((s) => s.id);
 
-      await this.deleteBatch(ids, totals);
-      offset += batch.length;
+      // Delete messages
+      const { count: msgCount } = await this.prisma.message.deleteMany({
+        where: { sessionId: { in: ids } },
+      });
+      totals.messages += msgCount;
 
-      // If we got fewer than BATCH_SIZE, we're done
+      // Delete voice interactions
+      const { count: viCount } = await this.prisma.voiceInteraction.deleteMany({
+        where: { sessionId: { in: ids } },
+      });
+      totals.voiceInteractions += viCount;
+
+      // Delete WhatsApp contacts linked to these sessions
+      const { count: waCount } = await this.prisma.whatsAppContact.deleteMany({
+        where: { sessionId: { in: ids } },
+      });
+      totals.whatsAppContacts += waCount;
+
+      offset90 += batch.length;
+      if (batch.length < BATCH_SIZE) break;
+    }
+
+    // Purge any other inactive WhatsApp contacts older than 90 days (orphan fallback)
+    const { count: waOrphanCount } = await this.prisma.whatsAppContact.deleteMany({
+      where: { lastActiveAt: { lt: cutoff90 } },
+    });
+    totals.whatsAppContacts += waOrphanCount;
+
+    // ─── Phase 2: 365-Day Retention (Feedback, Safety Events, Sessions) ──────
+    let offset365 = 0;
+    while (true) {
+      const batch = await this.prisma.session.findMany({
+        where: {
+          createdAt: { lt: cutoff365 },
+          isEval: false,
+        },
+        select: { id: true },
+        take: BATCH_SIZE,
+        skip: offset365,
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (batch.length === 0) break;
+      const ids = batch.map((s) => s.id);
+
+      // Delete feedback
+      const { count: fbCount } = await this.prisma.feedback.deleteMany({
+        where: { sessionId: { in: ids } },
+      });
+      totals.feedback += fbCount;
+
+      // Delete safety events
+      const { count: seCount } = await this.prisma.safetyEvent.deleteMany({
+        where: { sessionId: { in: ids } },
+      });
+      totals.safetyEvents += seCount;
+
+      // Delete sessions
+      const { count: sCount } = await this.prisma.session.deleteMany({
+        where: { id: { in: ids } },
+      });
+      totals.sessions += sCount;
+
+      offset365 += batch.length;
       if (batch.length < BATCH_SIZE) break;
     }
 
     this.logger.log(
       `Retention complete — sessions=${totals.sessions} messages=${totals.messages} ` +
-      `feedback=${totals.feedback} safetyEvents=${totals.safetyEvents} voice=${totals.voiceInteractions}`
+      `feedback=${totals.feedback} safetyEvents=${totals.safetyEvents} voice=${totals.voiceInteractions} ` +
+      `whatsapp=${totals.whatsAppContacts}`
     );
     return totals;
-  }
-
-  private async deleteBatch(sessionIds: string[], totals: RetentionResult): Promise<void> {
-    // Step 1: Delete messages — cascades to MessageCitation and ReviewRecord
-    const { count: msgCount } = await this.prisma.message.deleteMany({
-      where: { sessionId: { in: sessionIds } },
-    });
-    totals.messages += msgCount;
-
-    // Step 2: Delete feedback (messageId is now null after message deletion)
-    const { count: fbCount } = await this.prisma.feedback.deleteMany({
-      where: { sessionId: { in: sessionIds } },
-    });
-    totals.feedback += fbCount;
-
-    // Step 3: Delete safety events
-    const { count: seCount } = await this.prisma.safetyEvent.deleteMany({
-      where: { sessionId: { in: sessionIds } },
-    });
-    totals.safetyEvents += seCount;
-
-    // Step 4: Delete voice interactions
-    const { count: viCount } = await this.prisma.voiceInteraction.deleteMany({
-      where: { sessionId: { in: sessionIds } },
-    });
-    totals.voiceInteractions += viCount;
-
-    // Step 5: Delete sessions — DB nulls AnalyticsEvent.sessionId (optional FK)
-    const { count: sCount } = await this.prisma.session.deleteMany({
-      where: { id: { in: sessionIds } },
-    });
-    totals.sessions += sCount;
-
-    this.logger.log(
-      `Batch deleted: sessions=${sCount} messages=${msgCount} fb=${fbCount} se=${seCount} vi=${viCount}`
-    );
   }
 }

@@ -230,4 +230,55 @@ describe("NavigatorApproveService", () => {
     expect(entry.score).toBe(minimalDraft.score);
     expect(entry.tier).toBe(minimalDraft.tier);
   });
+
+  it("deduplicates hospitals based on clean name, city, state, or phone", async () => {
+    mockFs.access.mockResolvedValue(undefined);
+
+    // Mock existing hospitals: has one hospital with same name/city/state
+    // and another with same phone.
+    const existingHospitals = {
+      _meta: { total_hospitals: 2, last_updated: "2026-01-01" },
+      hospitals: [
+        {
+          id: "existing-001",
+          name: "Test Cancer Centre", // same clean name
+          city: "Patna",
+          state: "Bihar",
+          contact: { phone: "000" }
+        },
+        {
+          id: "existing-002",
+          name: "Other Hospital",
+          city: "Ranchi",
+          state: "Jharkhand",
+          contact: { phone: "0612-000000" } // same clean phone
+        }
+      ],
+    };
+
+    mockFs.readFile.mockImplementation((filePath, _encoding) => {
+      const p = filePath as string;
+      if (p.includes("queue")) return Promise.resolve(makeQueue("email_sent"));
+      return Promise.resolve(JSON.stringify(existingHospitals));
+    });
+
+    mockFs.writeFile.mockResolvedValue(undefined);
+
+    const result = await service.approveNavigatorBatch(BATCH_ID, makeToken(BATCH_ID));
+
+    // The draft has: name: "Test Cancer Centre", city: "Patna", state: "Bihar", contact.phone: "0612-000000".
+    // This draft matches both existing-001 (by clean name+city+state) and existing-002 (by phone).
+    // So it should be skipped as duplicate.
+    expect(result.hospitalsAdded).toBe(0);
+    expect(result.hospitalNames).toEqual([]);
+    
+    // Total hospitals should remain 2.
+    const writeCalls = mockFs.writeFile.mock.calls;
+    const hospitalsWrite = writeCalls.find((c) =>
+      (c[0] as string).includes("hospitals")
+    );
+    const written = JSON.parse(hospitalsWrite![1] as string);
+    expect(written.hospitals).toHaveLength(2);
+    expect(written._meta.total_hospitals).toBe(2);
+  });
 });

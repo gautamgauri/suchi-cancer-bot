@@ -455,18 +455,41 @@ export class NavigatorApproveService {
       );
     }
 
+    let addedCount = 0;
+    const addedNames: string[] = [];
+
     for (const entry of entries) {
-      hospitalsData.hospitals.push(entry);
+      const isDuplicate = hospitalsData.hospitals.some((existing: any) => {
+        const cleanName = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const nameMatch = cleanName(existing.name) === cleanName((entry as any).name);
+        const cityMatch = existing.city?.toLowerCase().trim() === (entry as any).city?.toLowerCase().trim();
+        const stateMatch = existing.state?.toLowerCase().trim() === (entry as any).state?.toLowerCase().trim();
+        
+        const existingPhone = existing.contact?.phone?.replace(/[^0-9]/g, "");
+        const entryPhone = (entry as any).contact?.phone?.replace(/[^0-9]/g, "");
+        const phoneMatch = !!existingPhone && !!entryPhone && existingPhone === entryPhone;
+
+        return (nameMatch && cityMatch && stateMatch) || phoneMatch;
+      });
+
+      if (!isDuplicate) {
+        hospitalsData.hospitals.push(entry);
+        addedCount++;
+        addedNames.push((entry as any).name);
+      } else {
+        this.logger.log(`Skipping duplicate hospital: ${(entry as any).name} in ${(entry as any).city}`);
+      }
     }
+
     hospitalsData._meta.total_hospitals =
-      (hospitalsData._meta.total_hospitals ?? 0) + entries.length;
+      (hospitalsData._meta.total_hospitals ?? 0) + addedCount;
     hospitalsData._meta.last_updated = todayIso();
 
     const hospitalsJson = JSON.stringify(hospitalsData, null, 2) + "\n";
     await writeJson(hospitalsPath, GCS_HOSPITALS_OBJECT, hospitalsJson);
 
     this.logger.log(
-      `Appended ${entries.length} hospital(s) to hospitals.json for batch ${batchId}`,
+      `Appended ${addedCount} hospital(s) to hospitals.json for batch ${batchId}`,
     );
 
     // -----------------------------------------------------------------------
@@ -486,13 +509,13 @@ export class NavigatorApproveService {
     const queueJson = JSON.stringify({ batches: updatedBatches }, null, 2) + "\n";
     await writeJson(queuePath, GCS_QUEUE_OBJECT, queueJson);
 
-    this.logger.log(`Batch ${batchId} approved — ${entries.length} hospital(s) added`);
+    this.logger.log(`Batch ${batchId} approved — ${addedCount} hospital(s) added`);
 
     return {
       approved: true,
       batchId,
-      hospitalsAdded: entries.length,
-      hospitalNames,
+      hospitalsAdded: addedCount,
+      hospitalNames: addedNames,
     };
   }
 }

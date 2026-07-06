@@ -30,7 +30,7 @@ export interface WriteResult {
 // ---------------------------------------------------------------------------
 
 const APPROVE_BASE =
-  "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/distribution/approve";
+  "https://suchi-api-lxiveognla-uc.a.run.app/v1/distribution/approve";
 
 const REVIEWERS = [
   "gautamgauri@dikshafoundation.org",
@@ -159,15 +159,6 @@ function buildHtmlEmail(
     </a>
   </div>
 
-  <div style="background:#e8f0fe; padding:16px; border-radius:4px; margin-top:24px;">
-    <p style="margin:0 0 8px; font-weight:bold;">⚡ Automate your posting</p>
-    <p style="margin:0 0 12px; color:#555;">Right now, approved posts are emailed to you for manual copy-paste. Connect Buffer to schedule posts automatically on approval.</p>
-    <a href="https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/distribution/setup"
-       style="background:#1a73e8; color:#fff; padding:10px 20px; border-radius:4px; text-decoration:none;">
-      Connect Buffer →
-    </a>
-    <p style="margin:8px 0 0; font-size:12px; color:#888;">Setup takes 2 minutes. This prompt disappears once Buffer is connected.</p>
-  </div>
 
 </div>
 </body>
