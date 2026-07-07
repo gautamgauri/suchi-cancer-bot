@@ -3,8 +3,8 @@
 How to set up, test, deploy, monitor, and roll back Suchi. Part of the
 reliability handoff pack (issue #46). Deployment internals live in
 `docs/DEPLOYMENT.md`, `docs/GATED_DEPLOYMENT.md`, `docs/GCP_DEPLOYMENT.md`;
-preflight checklist in `docs/DEPLOY_PREFLIGHT.md`; gated-pipeline known issues
-in `docs/cloudbuild-gated-issues.md`. This runbook is the operational index.
+gated-pipeline known issues in `docs/cloudbuild-gated-issues.md`. This runbook
+is the operational index.
 
 ## 1. Local setup
 
@@ -83,11 +83,11 @@ Safety-relevant regression suites worth knowing by name:
 
 | Workflow | Trigger | What it does | Failure semantics |
 |---|---|---|---|
-| `deploy-api.yml` ("Deploy API to Cloud Run") | push to `main` touching `apps/api/**`, `kb/**`, or itself; manual | Build image → push → run `suchi-migrate` Cloud Run Job (`continue-on-error: true`, line 48) → `gcloud run deploy suchi-api` → health check `GET /v1/health` ×5 | Fails only on deploy or health-check failure; a failed migration does NOT block deploy. **Warning:** its env/secret list is stale relative to `cloudbuild.yaml` — see P0-1 in `docs/RELIABILITY_BACKLOG.md` before letting it run. No tests are run before deploying. |
+| `deploy-api.yml` ("API build verification") | PR or push to `main` touching `apps/api/**`, `kb/**`, `cloudbuild*.yaml`, or itself | Run configuration parity check (`scripts/check_deploy_config_parity.py`) → Build candidate Docker image locally to verify it builds (does not push or deploy) | Fails on configuration mismatch or docker build failure. Does not perform deployments or database migrations. |
 | `deploy-web.yml` | push to `main` touching `apps/web/**`; manual | Build web image (API URL baked in) → deploy `suchi-web` → HTTP 200 check | Fails on deploy/health failure |
 | `deploy-landing.yml` | push touching `apps/landing/**`; manual | Astro build → GitHub Pages | Standard |
 | `e2e-tests.yml` ("Web Tests") | PR/push touching `apps/web/**`; manual | Vitest unit tests + Playwright (`@smoke` against dev server, or full suite against a provided `base_url`) | Blocking for web PRs |
-| `eval-tier1.yml` ("Eval Tier1 - Retrieval Quality") | nightly 02:00 UTC; PRs touching rag/evidence/citations/eval paths; manual | Runs `npm run eval:tier1` against the live API, uploads `tier1-eval-report-<run>` artifact (30-day retention), emails a report when failures > 0 | Eval step itself is `continue-on-error` (line 75). The workflow's red/green currently reflects **email delivery**, not eval outcome — see §5 and issue #47. |
+| `eval-tier1.yml` ("Eval Tier1 - Retrieval Quality") | nightly 02:00 UTC; PRs touching rag/evidence/citations/eval paths; manual | Runs `npm run eval:tier1` against live API, uploads `tier1-eval-report-<run>` artifact, emails report when failures > 0 | Job outcome reflects the evaluation result (enforced by "Enforce evaluation status" step). Email delivery uses `continue-on-error` and is a warning annotation only (no job failure). |
 
 There is **no CI job that runs the API jest suite**; run it locally before
 merging (tracked as P1-4 in `docs/RELIABILITY_BACKLOG.md`).
@@ -123,9 +123,7 @@ Rules that apply to **any** deploy path:
 1. `--set-env-vars`/`--set-secrets` REPLACE the whole Cloud Run config. Adding
    an env var means editing `apps/api/src/config/env.validation.ts` **and**
    both cloudbuild files (and `deploy-api.yml` if it stays enabled).
-2. Run the preflight checklist in `docs/DEPLOY_PREFLIGHT.md` (build green,
-   tests green, `prisma migrate status` clean, no doubled route prefixes,
-   health 200).
+2. Verify local checks pass: run configuration parity check (`python scripts/check_deploy_config_parity.py`), ensure tests pass, `prisma migrate status` is clean, no doubled route prefixes, and the health check responds with 200. Refer to `docs/DEPLOYMENT.md` for details.
 3. Deploys are a human decision; agents open PRs only (see `AGENTS.md`).
 
 ## 5. Production health checks
@@ -150,12 +148,7 @@ gh run list --workflow eval-tier1.yml --limit 5
 gh run download <run-id> -n tier1-eval-report-<n>   # tier1-report.json has summary + per-case results
 ```
 
-Interpreting the Tier1 workflow: a red run does **not** necessarily mean the
-eval failed. Open the run and check which step failed — since 2026-06-24 every
-nightly failure has been the "Send email notification" step (SMTP 535
-BadCredentials) while all eval steps passed (verified on runs 28731647092,
-28424590294, 28079102548). The real eval result is in the run's step summary
-and the report artifact. Fix tracked in issue #47.
+Interpreting the Tier1 workflow: the overall CI status (red/green) directly reflects the evaluation outcome (passed, failed, or infrastructure error). Email delivery failures are marked as warning annotations and do not affect the final green/red run status. The run summary also shows details of the evaluation.
 
 Other signals:
 

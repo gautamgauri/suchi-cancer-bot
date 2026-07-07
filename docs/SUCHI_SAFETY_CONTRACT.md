@@ -166,7 +166,7 @@ Example:
 2. **Every Claim Must Cite:** If a claim cannot be cited, it must not be included
 3. **Multiple Citations Allowed:** A claim can cite multiple sources if appropriate
 4. **Validation Required:** All citations are validated against retrieved chunks
-5. **Rejection on Failure:** Responses without valid citations are rejected
+5. **Repair, then Rejection:** Invalid or missing citation markers are first repaired deterministically from the retrieved chunks; the response is rejected only if it still fails validation after repair
 
 ## Abstention Criteria
 
@@ -223,7 +223,7 @@ After LLM generates response:
 2. Validate against retrieved chunks
 3. Check citation format
 4. Verify no uncited claims
-5. Reject if validation fails (retry once, then abstain)
+5. Repair, re-validate, fall back only if still invalid: orphan or fabricated citation markers are repaired deterministically from the top-ranked retrieved chunks (`repairCitationsIfNeeded` in `chat.service.ts`); if the response still fails validation after repair, it is discarded and replaced with a `SafeFallbackResponse` (no medical content, navigation guidance only)
 
 ### Source Verification
 

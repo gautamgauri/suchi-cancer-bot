@@ -85,7 +85,7 @@ Store all sensitive configuration in Secret Manager:
 PROJECT_ID=$(gcloud config get-value project)
 
 # Gemini API Key (get from https://makersuite.google.com/app/apikey)
-echo -n "your_gemini_api_key_here" | gcloud secrets create gemini-api-key \
+echo -n "your_gemini_api_key_here" | gcloud secrets create GEMINI_API_KEY \
     --data-file=- \
     --replication-policy="automatic"
 
@@ -251,6 +251,8 @@ gcloud builds submit --config=cloudbuild.yaml \
 
 ### 5.1 Deploy API Service
 
+> **Warning:** the command below is the *initial bootstrap* deploy only. Production carries ~20 env vars and 15 secrets (see `cloudbuild.yaml`, the source of truth). `--set-env-vars`/`--set-secrets` REPLACE the full config, so running this against an existing service will strip production configuration. For any redeploy, use `gcloud builds submit --config cloudbuild.yaml`.
+
 ```bash
 # Get connection name
 CONNECTION_NAME=$(gcloud sql instances describe suchi-db --format="value(connectionName)")
@@ -268,7 +270,7 @@ gcloud run deploy suchi-api \
     --port 8080 \
     --add-cloudsql-instances $CONNECTION_NAME \
     --set-env-vars "PORT=8080,NODE_ENV=production,EMBEDDING_MODEL=text-embedding-004,RATE_LIMIT_TTL_SEC=60,RATE_LIMIT_REQ_PER_TTL=20" \
-    --set-secrets "DATABASE_URL=database-url:latest,GEMINI_API_KEY=gemini-api-key:latest,EMBEDDING_API_KEY=embedding-api-key:latest,ADMIN_BASIC_USER=admin-basic-user:latest,ADMIN_BASIC_PASS=admin-basic-pass:latest" \
+    --set-secrets "DATABASE_URL=database-url:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,EMBEDDING_API_KEY=embedding-api-key:latest,ADMIN_BASIC_USER=admin-basic-user:latest,ADMIN_BASIC_PASS=admin-basic-pass:latest" \
     --service-account $PROJECT_NUMBER-compute@developer.gserviceaccount.com
 
 # Save the API URL
@@ -407,7 +409,7 @@ gcloud run jobs create suchi-kb-ingest \
     --image us-central1-docker.pkg.dev/$PROJECT_ID/suchi-images/suchi-api:latest \
     --region us-central1 \
     --add-cloudsql-instances $CONNECTION_NAME \
-    --set-secrets "DATABASE_URL=database-url:latest,GEMINI_API_KEY=gemini-api-key:latest,EMBEDDING_API_KEY=embedding-api-key:latest" \
+    --set-secrets "DATABASE_URL=database-url:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,EMBEDDING_API_KEY=embedding-api-key:latest" \
     --set-env-vars "EMBEDDING_MODEL=text-embedding-004" \
     --command "sh" \
     --args "-c,npm run kb:ingest" \

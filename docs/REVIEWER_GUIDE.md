@@ -77,8 +77,10 @@ After the post publishes, everyone receives a confirmation email showing:
 - Which failed (with error reason)
 - Who approved it (the name of whoever clicked first)
 
-### Safety warnings
-If the safety reviewer flagged anything, a yellow banner appears at the top of the approval email. This is not a hard block — you can still approve. It means: read the copy carefully before clicking.
+### Safety Warnings and Hard Blocks
+If the safety gate flags any content, what you see depends on the severity:
+- **Yellow Warning Banner:** Appears if the content has potential issues but doesn't violate hard safety rules. This is not a hard block — you can still approve it. Read the copy carefully before clicking.
+- **Red "HARD BLOCK" Banner:** Appears if the copy contains critical safety violations (such as diagnosis language, cure guarantees, stop-treatment advice, raw survival stats without context, or specific drug pricing). In this case, **all Approve buttons are removed** from the email. Clicking any approval link will return a 403 Forbidden error.
 
 ---
 
@@ -115,7 +117,8 @@ Check the Cloud Run logs or ask Gautam to verify. The confirmation email is fire
 Yes — the approval links work in any browser. Clicking the link in Gmail on mobile works the same as on desktop.
 
 **The safety banner appeared. Should I still approve?**
-Read the flagged content carefully. The safety gate flags things like survival rate claims, "will cure" language, or treatment cost figures. If the copy is fine, approve normally. If it's genuinely problematic, click Reject and re-generate (ask Gautam to trigger a new draft).
+- If it is a **yellow warning banner**, read the flagged content carefully. If the copy is medically safe, you can approve normally. If not, click Reject.
+- If it is a **red "HARD BLOCK" banner**, you cannot approve the post. The Approve buttons will be hidden, and the system will block any approval requests. You must click Reject and either edit the source article to fix the violations or ask Gautam to trigger a new draft.
 
 **Two of us clicked Approve at the same time — was it published twice?**
 No. The service is idempotent: once a post is marked as published, all subsequent approval clicks are ignored and logged as warnings.

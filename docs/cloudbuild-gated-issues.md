@@ -1,8 +1,8 @@
 # cloudbuild.gated.yaml — Known Issues
 
-> **Status (Feb 2026)**: Issues 4 and 5 resolved by removing the eval gate entirely.
-> Issues 6 resolved by switching check-schema-local to `prisma validate`.
-> MIG updated to `sccf_document_index`. See git history for the old eval-based version.
+> **Status (Feb 2026)**: Old issues related to the evaluation gate (openai-api-key secret and build timeout) were resolved by removing the eval gate entirely.
+> Issue 4 (check-schema-local validation) was resolved by switching to `prisma validate`.
+> MIG updated to `20260606000000_phase2_user_role_review_kb_metadata`.
 
 
 ## Summary
@@ -24,11 +24,11 @@ is relative to the Cloud Build workspace root, which is the directory you run
 
 **Submit commands**:
 ```bash
-# Simple deploy (no eval gate) — from suchi_repo/
+# Simple deploy — from suchi_repo/
 cd /home/gauta/suchi_repo
 gcloud builds submit . --config=cloudbuild.yaml --project=gen-lang-client-0202543132
 
-# Gated deploy (with eval gate) — from suchi_repo/
+# Gated deploy — from suchi_repo/
 cd /home/gauta/suchi_repo
 gcloud builds submit . --config=cloudbuild.gated.yaml --project=gen-lang-client-0202543132
 ```
@@ -39,12 +39,12 @@ gcloud builds submit . --config=cloudbuild.gated.yaml --project=gen-lang-client-
 
 **What**: The `update-migrate-job-image` step always sets:
 ```
-MIG=20250101000000_add_greeting_context_to_session
+MIG=20260606000000_phase2_user_role_review_kb_metadata
 ```
 
 **Why it matters**: `migrate-with-repair.sh` uses `MIG` in its fallback/repair path:
 if `prisma migrate deploy` fails, it tries to mark that specific migration as resolved.
-If the failing migration is actually a *new* one (e.g. `sccf_document_index`), the repair
+If the failing migration is actually a *new* one, the repair
 step will mark the wrong migration as applied and the new one will stay broken.
 
 **When it's harmless**: If `prisma migrate deploy` succeeds normally (the happy path),
@@ -71,81 +71,14 @@ include a representative column/table from the new migration.
 
 ---
 
-## Issue 4 — openai-api-key secret must exist in Secret Manager
+## Issue 4 (Resolved) — check-schema-local formats but doesn't validate
 
-**What**: `eval-tier1` step has:
-```yaml
-secretEnv: ['DEEPSEEK_API_KEY', 'OPENAI_API_KEY']
-```
-And `availableSecrets` references `openai-api-key:latest`.
+**What**: The `check-schema-local` step originally ran `npx prisma format` which reformatted the schema file but did NOT fail on semantic errors (e.g. referencing a non-existent model, invalid field types).
 
-**Why it matters**: Cloud Build fails the step if any referenced secret version doesn't
-exist — even if the env var is never read. If `openai-api-key` secret was never created in
-Secret Manager (it's optional for Suchi which defaults to Gemini/DeepSeek), the entire
-eval step fails immediately.
-
-**Check**:
-```bash
-gcloud secrets versions access latest --secret=openai-api-key --project=gen-lang-client-0202543132
-```
-
-**Fix**: Either create a placeholder secret (`echo -n "placeholder" | gcloud secrets create openai-api-key --data-file=-`),
-or remove `OPENAI_API_KEY` from `secretEnv` and `availableSecrets` in the gated yaml.
-
----
-
-## Issue 5 — Build timeout too tight for the full pipeline
-
-**What**: Overall build timeout is `1800s` (30 min). The `eval-tier1` step alone has a
-`1200s` (20 min) timeout.
-
-**Typical timing**:
-- Build + push Docker images: ~8–12 min
-- Migrate job: ~1–2 min
-- Deploy candidate: ~1 min
-- Healthcheck (up to 5 min per retry loop): ~1–3 min
-- Eval tier1: up to 20 min
-- Promote + build/deploy web: ~5 min
-
-**Total worst case**: ~41 min > 30 min timeout → build killed before web is deployed.
-
-**Fix**: Increase `timeout` to `2700s` (45 min) or parallelize web build with eval
-(web build doesn't depend on eval result — it can run while eval is running).
-
----
-
-## Issue 6 — check-schema-local formats but doesn't validate
-
-**What**: The `check-schema-local` step runs `npx prisma format` and exits 0.
-
-**Why it matters**: `prisma format` reformats the schema file — it does NOT fail on
-semantic errors (e.g. referencing a non-existent model, invalid field types). The step
-is labelled "schema validation" but only catches the most basic parse failures.
-
-**Fix (optional)**: Replace with `npx prisma validate` which does actual semantic
-validation without needing a DB connection.
+**Resolution**: This step was updated in `cloudbuild.gated.yaml` to run `npx prisma@5.22.0 validate` which performs semantic validation.
 
 ---
 
 ## Running a migration without the gated pipeline
 
-If you need to apply a new migration (e.g. `sccf_document_index`) without a full gated
-deploy, use Cloud SQL proxy locally:
-
-```bash
-# Terminal 1 — start proxy
-cloud-sql-proxy gen-lang-client-0202543132:us-central1:suchi-db \
-  --credentials-file ~/.config/gcloud/legacy_credentials/suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com/adc.json \
-  --port 5432
-
-# Terminal 2 — run migration
-cd /home/gauta/suchi_repo/apps/api
-DATABASE_URL="postgresql://postgres:<PASSWORD>@localhost:5432/suchi?schema=public" \
-  npx prisma migrate dev --name sccf_document_index
-```
-
-Password is in GCP Secret Manager:
-```bash
-gcloud secrets versions access latest --secret=database-url --project=gen-lang-client-0202543132
-```
-(The full `DATABASE_URL` is stored as a secret — extract just the password from it.)
+If you need to apply a new migration without a full gated deploy, follow the manual production database migration procedure described in `docs/OPERATIONS_RUNBOOK.md` ("Production DB access (migrations, debugging)"). Do not run `prisma migrate dev` directly against the production database, as it will fail due to lack of shadow-database permissions.

@@ -8,48 +8,49 @@ kb/
 ├── manifest.goldstack.example.json  # Example manifest with full metadata
 │
 └── en/                              # English content (add hi/, te/, etc. for other languages)
+    ├── 01_basics/                  # General cancer awareness (Phase 1 legacy)
     ├── 01_suchi_oncotalks/         # SCCF-owned Onco Talks transcripts
     │   ├── chemo-experiences.md
     │   ├── patient-stories.md
     │   └── ...
     │
     ├── 02_nci_core/                # NCI PDQ, Cancer.gov pages, dictionaries, thesaurus
-    │   ├── breast-cancer-treatment-pdq.md
-    │   ├── cancer-basics.md
-    │   ├── glossary.md
+    │   ├── coping/
+    │   ├── treatment/
+    │   ├── cancer-types/
+    │   ├── pdq/
     │   └── ...
     │
-    ├── 03_who_public_health/       # WHO public health guidance
-    │   ├── cancer-prevention.md
-    │   ├── screening-guidelines.md
-    │   └── ...
+    ├── 02_symptoms-next-steps/     # Symptoms and next steps (Phase 1 legacy)
     │
-    ├── 04_iarc_stats/              # IARC/GLOBOCAN statistics and prevention
-    │   ├── india-breast-cancer-incidence.md
-    │   ├── global-cancer-statistics.md
-    │   └── ...
+    ├── 03_who_public_health/       # [PLANNED, NEVER CREATED] WHO public health guidance
+    │
+    ├── 04_iarc_stats/              # [PLANNED, NEVER CREATED] IARC/GLOBOCAN statistics and prevention
     │
     ├── 05_india_ncg/               # National Cancer Grid (India context, ND-aware)
     │   ├── treatment-guidelines.md
     │   ├── india-specific-protocols.md
     │   └── ...
     │
-    ├── 06_pmc_selective/           # PMC open-access articles (selective, high-quality)
-    │   ├── immunotherapy-recent-advances.md
-    │   └── ...
+    ├── 06_caregiver/               # Caregiver support (Phase 1 legacy)
     │
-    └── 99_local_navigation/        # Local resources (helplines, hospitals, schemes)
-        ├── india-helplines.md
-        ├── hospital-directory.md
-        └── government-schemes.md
+    ├── 06_pmc_selective/           # [PLANNED, NEVER CREATED] PMC open-access articles (selective, high-quality)
+    │
+    ├── 99_local_navigation/        # Local resources (helplines, hospitals, schemes, pricing)
+    │   ├── india-helplines.md
+    │   ├── hospital-directory.md
+    │   ├── government-schemes.md
+    │   └── cancer-treatment-costs-india.md
+    │
+    └── website/                    # Exported website article drafts
 ```
 
 ## Naming Conventions
 
 ### Folder Names
 - Use numbered prefixes (01_, 02_, etc.) for consistent ordering
-- Use descriptive names: `01_suchi_oncotalks`, not `01_stuff`
 - Use lowercase with underscores
+- Special legacy folders (e.g. `website`, `02_symptoms-next-steps`) are retained for compatibility
 
 ### File Names
 - Use kebab-case: `breast-cancer-treatment.md`
@@ -61,27 +62,22 @@ kb/
 - Example: `kb_en_nci_pdq_breast_cancer_treatment_v1`
 - Keep IDs consistent across versions
 
-## Current vs. Proposed Structure
+## Folder Reference
 
-### Current Structure (Phase 1)
-```
-kb/en/
-  01_basics/
-  02_symptoms-next-steps/
-  06_caregiver/
-```
+### Existing Folders
+- `01_basics`: General cancer definitions and concepts.
+- `01_suchi_oncotalks`: transcripts of SCCF-owned talks.
+- `02_nci_core`: NCI content structured into `coping/`, `treatment/`, `cancer-types/`, and `pdq/`.
+- `02_symptoms-next-steps`: Symptoms and clinical guidelines.
+- `05_india_ncg`: National Cancer Grid guidelines adapted for Indian oncology.
+- `06_caregiver`: Educational material for cancer patient caregivers.
+- `99_local_navigation`: India-specific helpline contacts, hospital lists, and schemes.
+- `website`: Exported website article drafts.
 
-### Gold Stack Structure (Proposed)
-```
-kb/en/
-  01_suchi_oncotalks/      # NEW: SCCF-owned content
-  02_nci_core/             # NEW: NCI authoritative content
-  03_who_public_health/    # NEW: WHO guidance
-  04_iarc_stats/           # NEW: Statistics
-  05_india_ncg/            # NEW: India context
-  06_pmc_selective/        # NEW: Research articles
-  99_local_navigation/     # NEW: Local resources
-```
+### Planned Folders (Never Created)
+- `03_who_public_health`
+- `04_iarc_stats`
+- `06_pmc_selective`
 
 ## Migration Path
 

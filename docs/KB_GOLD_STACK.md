@@ -10,13 +10,17 @@ The Gold Stack organizes knowledge sources to prevent "citation smoothie" - keep
 kb/
   manifest.json                    # Central manifest with metadata
   en/                              # English content (add hi/, te/, etc. for other languages)
+    01_basics/                    # General cancer awareness (Phase 1 legacy)
     01_suchi_oncotalks/           # SCCF-owned Onco Talks transcripts
-    02_nci_core/                  # NCI PDQ, Cancer.gov pages, dictionaries, thesaurus
-    03_who_public_health/         # WHO public health guidance
-    04_iarc_stats/                # IARC/GLOBOCAN statistics and prevention
+    02_nci_core/                  # NCI PDQ, Cancer.gov pages, dictionaries, thesaurus (coping/, treatment/, cancer-types/, pdq/)
+    02_symptoms-next-steps/       # Symptoms and clinical guidelines (Phase 1 legacy)
+    03_who_public_health/         # [PLANNED, NEVER CREATED] WHO public health guidance
+    04_iarc_stats/                # [PLANNED, NEVER CREATED] IARC/GLOBOCAN statistics and prevention
     05_india_ncg/                 # National Cancer Grid (India context, ND-aware)
-    06_pmc_selective/             # PMC open-access articles (selective, high-quality)
-    99_local_navigation/          # Local resources (helplines, hospitals, schemes)
+    06_caregiver/                 # Caregiver support (Phase 1 legacy)
+    06_pmc_selective/             # [PLANNED, NEVER CREATED] PMC open-access articles (selective, high-quality)
+    99_local_navigation/          # Local resources (helplines, hospitals, schemes, pricing)
+    website/                      # Exported website article drafts
 ```
 
 ## Source Priority & Use Cases
@@ -32,17 +36,17 @@ kb/
 - **Use**: Standard definitions, treatment protocols, evidence-based info
 - **License**: Public domain (US government)
 - **Update Frequency**: Quarterly review
-- **Includes**: PDQ summaries, Cancer.gov pages, NCI dictionaries/thesaurus
+- **Includes**: PDQ summaries, Cancer.gov pages, NCI dictionaries/thesaurus (coping/, treatment/, cancer-types/, pdq/ subdirs)
 
 ### 03_who_public_health
 - **Priority**: High (global standards)
-- **Use**: Prevention, screening guidelines, global statistics
+- **Use**: [PLANNED, NEVER CREATED] Prevention, screening guidelines, global statistics
 - **License**: CC BY-NC-SA (check specific pages)
 - **Update Frequency**: Annual review
 
 ### 04_iarc_stats
 - **Priority**: Medium (reference)
-- **Use**: Cancer statistics, incidence rates, prevention data
+- **Use**: [PLANNED, NEVER CREATED] Cancer statistics, incidence rates, prevention data
 - **License**: IARC usage terms (typically permissive)
 - **Update Frequency**: As new GLOBOCAN releases
 
@@ -55,14 +59,14 @@ kb/
 
 ### 06_pmc_selective
 - **Priority**: Medium (depth when needed)
-- **Use**: Deep dives on specific topics, latest research
+- **Use**: [PLANNED, NEVER CREATED] Deep dives on specific topics, latest research
 - **License**: Open access articles only
 - **Update Frequency**: Selective addition, review before inclusion
 - **Criteria**: Peer-reviewed, open access, high impact, relevance to patient questions
 
 ### 99_local_navigation
 - **Priority**: High (practical resources)
-- **Use**: Helplines, hospital directories, government schemes, support groups
+- **Use**: Helplines, hospital directories, government schemes, pricing information
 - **License**: Public information / compiled from public sources
 - **Update Frequency**: Monthly review
 

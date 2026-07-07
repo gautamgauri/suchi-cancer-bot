@@ -10,7 +10,7 @@
 **Medical information MUST be grounded in knowledge base evidence with stored citations.**
 
 If Suchi provides medical information, it must:
-1. Use **2–5 citations** pointing to KbChunk/KbDocument
+1. Use **at least 2 citations (typically 2–5)** pointing to KbChunk/KbDocument
 2. Be grounded **only in retrieved evidence**
 3. Have **passed evidence gate validation**
 
@@ -132,6 +132,7 @@ You may also find general information at:
 - **NO_RESULTS:** "This topic may require more specialized medical knowledge than I currently have access to."
 - **LOW_TRUST:** "I can only provide information from verified medical sources, and I don't have sufficient trusted sources for this query."
 - **INSUFFICIENT_CITATIONS:** "I couldn't verify the information with reliable source citations."
+- **LOW_SCORE:** "The information I found doesn't meet my confidence threshold for medical guidance."
 
 ---
 
@@ -222,7 +223,7 @@ All blocking decisions must be logged with structured data:
 ## Compliance & Audit
 
 ### For Auditors
-- All medical responses have 2-5 citations linking to KbChunk/KbDocument
+- All medical responses have at least 2 citations linking to KbChunk/KbDocument
 - All citations are verifiable in database (MessageCitation table)
 - All abstention decisions logged with reason codes
 - SafeFallbackResponse never contains medical advice
