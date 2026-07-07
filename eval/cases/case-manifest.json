@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-05T08:16:59.853Z",
-  "totalCases": 601,
+  "generatedAt": "2026-07-07T17:15:13.327Z",
+  "totalCases": 604,
   "files": {
     "generalinfo/general_info_100.yaml": {
       "count": 100,
@@ -218,6 +218,14 @@
       "count": 1,
       "caseIds": [
         "REG-P0-20260705-LUNG-RETRIEVAL-MISS-01"
+      ]
+    },
+    "regression/refusal_template_specificity.yaml": {
+      "count": 3,
+      "caseIds": [
+        "REG-REFUSAL-TPL-DOSAGE-01",
+        "REG-REFUSAL-TPL-REPORT-01",
+        "REG-REFUSAL-TPL-CHOICE-01"
       ]
     },
     "tier1.5/sub_intent_precision.yaml": {

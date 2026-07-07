@@ -50,6 +50,8 @@ export interface RetrievedSourceRecord {
 
 export interface CaseEvaluationRecord {
   schemaVersion: number;
+  /** Judge identity used for the run (provider + model), when known. */
+  judge?: { provider: string; model: string };
   runId: string;
   timestamp: string;
   testId: string;
@@ -207,6 +209,8 @@ export interface BuildRecordOptions {
   timestamp?: string;
   suiteFile?: string;
   approvedSources?: ApprovedCitationSources;
+  /** LLM judge identity for reproducibility (provider + resolved model). */
+  judge?: { provider: string; model: string };
 }
 
 export function buildCaseRecord(
@@ -269,6 +273,7 @@ export function buildCaseRecord(
 
   return {
     schemaVersion: CASE_RECORD_SCHEMA_VERSION,
+    judge: options.judge,
     runId: options.runId,
     timestamp: options.timestamp ?? new Date().toISOString(),
     testId: result.testCaseId,
@@ -346,6 +351,17 @@ export function recordsFromReport(
       timestamp: report.timestamp,
       suiteFile,
       approvedSources,
+      judge: report.config?.llmProvider
+        ? {
+            provider: report.config.llmProvider,
+            model:
+              report.config.llmProvider === "vertex_ai"
+                ? report.config.vertexAiConfig?.model ?? "unknown"
+                : report.config.llmProvider === "deepseek"
+                  ? report.config.deepseekConfig?.model ?? "unknown"
+                  : report.config.openAiConfig?.model ?? "unknown",
+          }
+        : undefined,
     })
   );
 }
