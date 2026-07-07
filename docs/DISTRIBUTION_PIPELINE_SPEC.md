@@ -78,8 +78,20 @@ Reviewer clicks "Approve" link:
   - Sets pack status to "approved" in GCS
            │
            ▼
-Next run of daily-publisher posts approved packs to platforms
+Next run of daily-publisher posts approved packs to platforms (Instagram, Twitter, and LinkedIn via native APIs)
 ```
+
+### Editorial Quality Gate & Regenerate-on-Fail Loop
+Before a pack is written to GCS, each generated channel variant is evaluated by the [Editorial Quality Scorer](file:///c:/Users/gauta/suchi_repo/distribution/editorial-scorer.ts) on a 100-point scale across five core Suchi Editorial Principles:
+1. **Human-First**: Avoids starting with a clinical definition; opens with a human observation.
+2. **India-Grounded**: Focuses on local habits, regional tobacco types (e.g. gutka, khaini), or PM-JAY/Ayushman Bharat.
+3. **Practical**: Provides clear, actionable timeframes and next steps.
+4. **Calm Urgency**: Promotes swift action without causing alarm; balances urgent facts with reassuring guidance.
+5. **Clinically Humble**: Uses uncertainty terms (e.g. "may", "often") and avoids diagnosing.
+
+- **Threshold**: The minimum passing score is **75/100**.
+- **Automated Feedback Loop**: If a channel scores below 75/100, the pipeline dynamically builds targeted corrective feedback and invokes Gemini to regenerate the content (preserving what worked and repairing only the flagged dimensions).
+- **Retries**: The loop attempts up to **2 retries** per channel. If the score is still below 75 after retries, the variant is flagged in the logs but included in the pack anyway so the human reviewer can inspect the scores and make a final call.
 
 ### Verification Endpoints
 - **Approve**: `GET /v1/distribution/approve/:slug?token=<hmac>`
