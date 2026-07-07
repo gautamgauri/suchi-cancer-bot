@@ -64,15 +64,27 @@ This deploys directly without eval gate (use for emergency fixes or when eval is
 
 ### Required Secrets
 
-Ensure these secrets exist in Google Cloud Secret Manager. These secrets are used by the API service itself:
+Ensure these secrets exist in Google Cloud Secret Manager. The table below is the exact `--set-secrets` mapping deployed by both `cloudbuild.yaml` and `cloudbuild.gated.yaml` (the two files carry identical mappings — keep them in sync; `scripts/check_deploy_config_parity.py` enforces this in CI). Note that env var names and Secret Manager IDs differ for some entries.
 
-- `database-url` - PostgreSQL connection string
-- `gemini-api-key` - Gemini API key
-- `embedding-api-key` - Embedding API key
-- `admin-basic-user` - Basic auth username
-- `admin-basic-pass` - Basic auth password
-- `SMTP_PASS` - SMTP password for sending emails
-- `NAVIGATOR_APPROVAL_SECRET`, `CONTENT_APPROVAL_SECRET`, `SOCIAL_APPROVAL_SECRET`, `DISTRIBUTION_APPROVAL_SECRET` - Secrets used to sign approval links
+| Env var (runtime) | Secret Manager ID | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `database-url` | PostgreSQL connection string |
+| `GEMINI_API_KEY` | `GEMINI_API_KEY` | Gemini API key |
+| `DEEPSEEK_API_KEY` | `deepseek-api-key` | DeepSeek API key (legacy LLM provider plumbing; prod is 100% Gemini) |
+| `EMBEDDING_API_KEY` | `embedding-api-key` | Embedding API key |
+| `ADMIN_BASIC_USER` | `admin-basic-user` | Basic auth username |
+| `ADMIN_BASIC_PASS` | `admin-basic-pass` | Basic auth password |
+| `SMTP_PASS` | `SMTP_PASS` | SMTP password for sending emails |
+| `LANGFUSE_PUBLIC_KEY` | `langfuse-public-key` | Langfuse observability |
+| `LANGFUSE_SECRET_KEY` | `langfuse-secret-key` | Langfuse observability |
+| `NAVIGATOR_APPROVAL_SECRET` | `NAVIGATOR_APPROVAL_SECRET` | Signs navigator approval links |
+| `CONTENT_APPROVAL_SECRET` | `CONTENT_APPROVAL_SECRET` | Signs content approval links |
+| `DISTRIBUTION_APPROVAL_SECRET` | `DISTRIBUTION_APPROVAL_SECRET` | Signs distribution approval links |
+| `META_PAGE_ACCESS_TOKEN` | `META_PAGE_ACCESS_TOKEN` | Meta Graph API (Facebook + Instagram) |
+| `META_PAGE_ID` | `META_PAGE_ID` | Facebook page ID |
+| `META_IG_USER_ID` | `META_IG_USER_ID` | Instagram business user ID |
+
+`SOCIAL_APPROVAL_SECRET` is intentionally **not** mounted: the social pipeline falls back to `CONTENT_APPROVAL_SECRET` for signing approval links (`social-post.service.ts`, `buildToken()`).
 
 **Verification:**
 ```bash

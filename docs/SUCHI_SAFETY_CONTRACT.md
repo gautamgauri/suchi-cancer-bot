@@ -56,7 +56,6 @@ Suchi provides information on:
    - How to find healthcare providers
    - Resources for cancer patients and families
 
-<!-- PENDING SCCF MEDICAL/POLICY REVIEW -->
 ### Hard "NO" Areas (Auto-Refuse)
 
 Suchi will **automatically refuse** and route users appropriately for:
@@ -66,54 +65,37 @@ Suchi will **automatically refuse** and route users appropriately for:
    - "Is this cancer?"
    - "Can you diagnose me?"
    - "What stage is my cancer?"
-   - Enforced by `REFUSAL_DIAGNOSIS` rule.
 
 2. **Interpreting Reports/Scans/Labs**
    - "What does my scan show?"
    - "Interpret my test results"
    - "Explain my lab report"
    - "What does this mean?" (referring to medical reports)
-   - Enforced by `REFUSAL_REPORT_INTERPRETATION` rule.
 
 3. **Individual Treatment Choice**
    - "Which treatment should I take?"
    - "Which chemo is best for me?"
    - "What drug should I take?"
    - "Recommend a treatment for me"
-   - Enforced by `REFUSAL_TREATMENT_CHOICE` rule.
 
 4. **Prescription Dosing**
    - "How much should I take?"
    - "What dose?"
    - "When should I take it?"
    - "How many times a day?"
-   - Enforced by `REFUSAL_DOSAGE` rule.
 
 5. **Emergency Symptoms**
    - Severe symptoms (chest pain, difficulty breathing, uncontrolled bleeding)
    - Immediate escalation to urgent care guidance
-   - Enforced by `EMERGENCY` fast-path rules and urgency patterns.
-
-6. **Misinformation & Alternative Cure Claims**
-   - Stopping prescribed treatments ("can I stop chemo?") -> Enforced by `MISINFO_STOP_TREATMENT`.
-   - Curing cancer with alternative remedies alone -> Enforced by `MISINFO_ALTERNATIVE_ONLY`.
-
-7. **Prognosis Predictions**
-   - Life expectancy or survival outcome predictions -> Enforced by `REFUSAL_PROGNOSIS`.
-
-8. **Self-Harm and Mental Crisis**
-   - Self-harm queries route to a separate mental health crisis helpline template -> Enforced by `SELF_HARM` rules.
 
 ## Evidence Requirements
 
-<!-- PENDING SCCF MEDICAL/POLICY REVIEW -->
 ### Minimum Evidence Thresholds by Query Type
 
 | Query Type | Min Passages | Min Sources | Rationale |
 |------------|--------------|-------------|-----------|
 | Treatment | 2 | 2 | Treatment info requires multiple authoritative sources |
 | Side Effects | 2 | 1 | Side effects can come from single authoritative source |
-| Symptoms | 2 | 1 | Symptoms info should be from authoritative source |
 | Prevention | 1 | 1 | Prevention info is generally well-established |
 | Screening | 2 | 1 | Screening guidelines should be authoritative |
 | Caregiver | 1 | 1 | General guidance needs basic coverage |
@@ -184,20 +166,26 @@ Example:
 2. **Every Claim Must Cite:** If a claim cannot be cited, it must not be included
 3. **Multiple Citations Allowed:** A claim can cite multiple sources if appropriate
 4. **Validation Required:** All citations are validated against retrieved chunks
-5. **Rejection on Failure:** Responses without valid citations are rejected
+5. **Repair, then Rejection:** Invalid or missing citation markers are first repaired deterministically from the retrieved chunks; the response is rejected only if it still fails validation after repair
 
-<!-- PENDING SCCF MEDICAL/POLICY REVIEW -->
 ## Abstention Criteria
 
-Suchi will abstain (say "I don't know") when evidence thresholds are not met, except under the **"Safe + Useful" policy** implemented in the evidence gate (`evidence-gate.service.ts`):
+Suchi will abstain (say "I don't know") when:
 
-1. **Threshold Relaxation:** If any Tier-1 source (high priority, e.g., `01_suchi_oncotalks`, `02_nci_core`, `05_india_ncg`) is present in retrieved chunks, the evidence threshold is relaxed to `minPassages: 1` and `minSources: 1` to prioritize providing educational content.
-2. **Bypass for General/Identify Queries:** If the user query is classified as a general informational query (non-personal "generally asking" or "how to identify" cancer signs/symptoms) and at least some evidence is present, the system bypasses abstention to offer educational support.
-3. **Hard-NO and Very Weak Block:** Hard blocks/abstention still apply for:
-   - Untrusted sources (`LOW_TRUST` reason code).
-   - Extremely low similarity matches (`LOW_SCORE` reason code with average similarity < 0.3) where no Tier-1 sources are present.
+1. **No Evidence:** No relevant chunks found in knowledge base
+2. **Insufficient Passages:** Fewer than minimum required passages for query type
+3. **Insufficient Sources:** Fewer than minimum required sources for query type
+4. **Untrusted Sources:** Only untrusted sources found
+5. **Outdated Content:** Content exceeds maximum age for topic
+6. **Citation Validation Failed:** LLM response lacks valid citations
 
-When abstaining, Suchi returns a safe fallback response (navigational + clinician referral only).
+### Abstention Messages
+
+Abstention messages:
+- Acknowledge the limitation clearly
+- Explain why (insufficient/reliable information)
+- Provide safe next steps (consult healthcare provider)
+- Offer alternatives when appropriate (helplines, resources)
 
 ## Response Quality Levels
 
@@ -228,7 +216,6 @@ Before generating any response:
 4. Check recency requirements
 5. Detect conflicts
 
-<!-- PENDING SCCF MEDICAL/POLICY REVIEW -->
 ### Citation Validation
 
 After LLM generates response:
@@ -236,7 +223,7 @@ After LLM generates response:
 2. Validate against retrieved chunks
 3. Check citation format
 4. Verify no uncited claims
-5. Repair/Fallback on Failure: If fewer than 2 citations are generated but RAG chunks are available, citation repair deterministically attaches citations from the top-ranked chunks. If validation still fails or hallucinated citations are detected, the response is discarded and replaced with a `SafeFallbackResponse` (no medical content, navigation only).
+5. Repair, re-validate, fall back only if still invalid: orphan or fabricated citation markers are repaired deterministically from the top-ranked retrieved chunks (`repairCitationsIfNeeded` in `chat.service.ts`); if the response still fails validation after repair, it is discarded and replaced with a `SafeFallbackResponse` (no medical content, navigation guidance only)
 
 ### Source Verification
 
