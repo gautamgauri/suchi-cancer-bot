@@ -39,8 +39,8 @@
 | Data | Retention period | Rationale |
 |---|---|---|
 | Conversation messages | **90 days** | Sufficient for quality review; minimises patient-adjacent data at rest |
-| Session metadata | **90 days** | Linked to message retention |
-| Voice transcripts | **90 days** | Purged along with conversation metadata |
+| Session metadata | **1 year** | Retained with feedback and safety events to respect database foreign key constraints; conversation message content is purged at 90 days |
+| Voice transcripts | **90 days** | Purged along with conversation messages |
 | WhatsApp contacts | **90 days** | Purged when inactive for 90 days to protect phone number privacy |
 | Safety events | **1 year** | Required for audit; safety events are not message content |
 | Feedback | **1 year** | Used for quality improvement |
@@ -49,7 +49,7 @@
 | Article drafts (GCS) | Until published or archived | Content pipeline operational data |
 
 **Implementation status:**
-- 90-day message/session deletion: **implemented** — `RetentionService` + `POST /v1/admin/housekeeping/run-retention`; schedule weekly via Cloud Scheduler
+- 90-day message/voice/WhatsApp deletion and 1-year session metadata/feedback/safety deletion: **implemented** — `RetentionService` + `POST /v1/admin/housekeeping/run-retention`; schedule weekly via Cloud Scheduler
 - TTS GCS lifecycle rule: **implemented** — 7-day delete lifecycle rule applied to `suchi-tts-audio` bucket (Jun 2026)
 - Safety event / feedback 1-year retention: **implemented** (with message content purged at 90 days)
 - WhatsApp contact purging: **implemented** (purged after 90 days of inactivity)

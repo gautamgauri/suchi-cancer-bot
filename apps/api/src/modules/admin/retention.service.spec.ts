@@ -71,7 +71,7 @@ describe("RetentionService", () => {
     expect(result.feedback).toBe(1);
     expect(result.safetyEvents).toBe(2);
     expect(result.voiceInteractions).toBe(0);
-    expect(result.whatsAppContacts).toBe(8); // 4 from batches + 4 from orphan fallback
+    expect(result.whatsAppContacts).toBe(4); // from the lastActiveAt fallback query only
 
     // Sessions are deleted last (after their child rows) to respect FKs.
     const sessionDeleteOrder = prisma.session.deleteMany.mock.invocationCallOrder[0];

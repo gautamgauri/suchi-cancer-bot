@@ -78,24 +78,17 @@ export class RetentionService {
       });
       totals.voiceInteractions += viCount;
 
-      // Delete WhatsApp contacts linked to these sessions
-      const { count: waCount } = await this.prisma.whatsAppContact.deleteMany({
-        where: { sessionId: { in: ids } },
-      });
-      totals.whatsAppContacts += waCount;
-
       offset90 += batch.length;
       if (batch.length < BATCH_SIZE) break;
     }
 
-    // Purge any other inactive WhatsApp contacts older than 90 days (orphan fallback)
+    // Purge inactive WhatsApp contacts older than 90 days to protect phone number privacy
     const { count: waOrphanCount } = await this.prisma.whatsAppContact.deleteMany({
       where: { lastActiveAt: { lt: cutoff90 } },
     });
     totals.whatsAppContacts += waOrphanCount;
 
     // ─── Phase 2: 365-Day Retention (Feedback, Safety Events, Sessions) ──────
-    let offset365 = 0;
     while (true) {
       const batch = await this.prisma.session.findMany({
         where: {
@@ -104,7 +97,6 @@ export class RetentionService {
         },
         select: { id: true },
         take: BATCH_SIZE,
-        skip: offset365,
         orderBy: { createdAt: "asc" },
       });
 
@@ -129,7 +121,6 @@ export class RetentionService {
       });
       totals.sessions += sCount;
 
-      offset365 += batch.length;
       if (batch.length < BATCH_SIZE) break;
     }
 

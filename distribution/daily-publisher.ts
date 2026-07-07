@@ -157,6 +157,7 @@ async function main(): Promise<void> {
     }
 
     try {
+      const result = await postPack(pack);
       const successfulPosts = result.filter((r) => r.success).length;
       console.log(`[daily-publisher] ${entry.slug} — posted ${successfulPosts} channel(s)`);
 
