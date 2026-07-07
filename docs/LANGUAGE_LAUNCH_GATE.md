@@ -67,7 +67,7 @@ Before production deployment, the founder/program lead must confirm:
 | Odia (`or`) | Not started | — | 0 |
 | Nepali (`ne`) | Not started | — | 0 |
 
-> **Current Code-Level Support Note:** Although the roadmap prioritizes Bengali, Odia, and Nepali as the next launch languages, the codebase already contains native support for **Bhojpuri (`bh`)** and **Maithili (`mai`)** within the safety disclaimer engine (`disclaimer-engine.ts`) and the emergency fast-path triggers (`emergency-fast-path.ts`). Once medical reviewers are assigned and the 20+ KB entries are written/approved in Bhojpuri or Maithili, these languages can be launched using the existing code foundations.
+> **Current Code-Level Support Note:** Although the roadmap prioritizes Bengali, Odia, and Nepali as the next launch languages, the codebase already contains native support for **Bhojpuri (`bh`)** and **Maithili (`mai`)** within the safety disclaimer engine (`disclaimer-engine.ts`); the emergency fast path (`emergency-fast-path.ts`) additionally covers Bhojpuri (but not Maithili). Once medical reviewers are assigned and the 20+ KB entries are written/approved in Bhojpuri or Maithili, these languages can be launched using the existing code foundations.
 
 ---
 

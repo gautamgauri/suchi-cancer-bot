@@ -164,7 +164,7 @@ The system uses **two independent classification layers**. These are not the sam
 
 **FR-VOICE-002** STT MUST use Google Cloud Speech-to-Text v2 with phrase adaptation enabled (`STT_VERSION=v2`). Default language: `hi-IN`. Minimum confidence threshold: 0.6.
 
-**FR-VOICE-003** Transcribed text MUST pass through the same 9-phase chat pipeline as text input.
+**FR-VOICE-003** Transcribed text MUST pass through the same agentic chat pipeline (Phases 0 to 3) as text input.
 
 **FR-VOICE-004** TTS MUST strip markdown headers, bullet points, and citation markers before synthesis. Output must read as natural speech.
 
