@@ -110,10 +110,12 @@ If you have existing KB content without embeddings:
 - Embeddings are 768-dimensional vectors (text-embedding-004)
 - Stored in PostgreSQL as `vector(768)` type
 
-### Vector Search
-- User query is converted to an embedding
-- Cosine similarity search finds most relevant chunks
-- Falls back to keyword search if no embeddings exist
+### Retrieval Path (Hybrid Search)
+- User query is converted to an embedding.
+- **Primary Retrieval:** Hybrid search combines pgvector cosine similarity search with PostgreSQL Full Text Search (FTS) using lexical match weights. Enforced by `hybridSearchWithMetadata()` in `rag.service.ts` (added in migration `20260120163141_add_fts_to_kbchunk`).
+- **Secondary Fallbacks:**
+  1. Vector-only similarity search (when FTS yields no results).
+  2. Keyword/FTS-only search (if embeddings are not yet generated or embedding service is down).
 
 ### Performance
 - HNSW index provides fast similarity search (< 100ms for 10K chunks)
