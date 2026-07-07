@@ -94,7 +94,7 @@ not be changed without medical review:
    sub-millisecond, returns an escalation response immediately and logs a
    `SafetyEvent`. Never reaches the LLM.
 3. **Safety classification** — `SafetyService.evaluate()` over normalized text
-   (`normalizeForMatch()`), producing `normal | amber_flag | red_flag` +
+   (`normalizeForMatch()`), producing `normal | refusal | red_flag | self_harm` +
    fired rules.
 4. **Urgency detection** — `AbstentionService.hasUrgencyIndicators()`; urgent
    but non-emergency queries get a template response with optional
