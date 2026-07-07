@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-20
 **Owner:** SCCF Engineering
-**Status:** Implemented (active in production; operational runbook at [docs/REVIEW_COPILOT_RUNBOOK.md](file:///c:/Users/gauta/suchi_repo/docs/REVIEW_COPILOT_RUNBOOK.md))
+**Status:** Implemented (active in production; operational runbook at [docs/REVIEW_COPILOT_RUNBOOK.md](./REVIEW_COPILOT_RUNBOOK.md))
 
 For implementation and operations details of the current codepath, see `docs/REVIEW_COPILOT_RUNBOOK.md`.
 
