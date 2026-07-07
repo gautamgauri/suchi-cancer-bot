@@ -5,6 +5,8 @@
 **Owner:** SCCF Engineering
 **Status:** Draft (not yet implemented; autoresearch quality engine is the active quality loop as of Mar 2026)
 
+For implementation and operations details of the current codepath, see `docs/REVIEW_COPILOT_RUNBOOK.md`.
+
 ---
 
 ## 1. Purpose
