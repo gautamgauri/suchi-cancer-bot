@@ -64,40 +64,15 @@ This deploys directly without eval gate (use for emergency fixes or when eval is
 
 ### Required Secrets
 
-Ensure these secrets exist in Google Cloud Secret Manager:
-
-#### Eval Framework Secrets (Required for Gated Build)
-
-1. **deepseek-api-key** (or openai-api-key)
-   - Used by the LLM judge in eval framework
-   - **Creation command:**
-     ```bash
-     echo -n "your-deepseek-api-key" | gcloud secrets create deepseek-api-key --data-file=-
-     ```
-   - **Or update existing:**
-     ```bash
-     echo -n "your-deepseek-api-key" | gcloud secrets versions add deepseek-api-key --data-file=-
-     ```
-   - **Verify:**
-     ```bash
-     gcloud secrets versions access latest --secret=deepseek-api-key
-     ```
-
-2. **openai-api-key** (optional, if using OpenAI instead of Deepseek)
-   - **Creation command:**
-     ```bash
-     echo -n "your-openai-api-key" | gcloud secrets create openai-api-key --data-file=-
-     ```
-
-#### Standard API Secrets (Already Configured)
-
-These secrets are used by the API service itself:
+Ensure these secrets exist in Google Cloud Secret Manager. These secrets are used by the API service itself:
 
 - `database-url` - PostgreSQL connection string
-- `openai-api-key` - OpenAI API key for embeddings/LLM
-- `embedding-api-key` - Embedding API key (if separate)
+- `gemini-api-key` - Gemini API key
+- `embedding-api-key` - Embedding API key
 - `admin-basic-user` - Basic auth username
 - `admin-basic-pass` - Basic auth password
+- `SMTP_PASS` - SMTP password for sending emails
+- `NAVIGATOR_APPROVAL_SECRET`, `CONTENT_APPROVAL_SECRET`, `SOCIAL_APPROVAL_SECRET`, `DISTRIBUTION_APPROVAL_SECRET` - Secrets used to sign approval links
 
 **Verification:**
 ```bash
@@ -105,7 +80,7 @@ These secrets are used by the API service itself:
 gcloud secrets list
 
 # Verify a specific secret exists
-gcloud secrets describe deepseek-api-key
+gcloud secrets describe database-url
 ```
 
 **Troubleshooting Missing Secrets:**
@@ -114,24 +89,22 @@ If the build fails with "secret not found" errors:
 
 1. Check which secret is missing:
    ```bash
-   gcloud secrets list | grep -E "deepseek|openai"
+   gcloud secrets list
    ```
 
-2. Create the missing secret using commands above
-
-3. Verify the secret is accessible:
+2. Create the missing secret or verify the secret is accessible:
    ```bash
-   gcloud secrets versions access latest --secret=deepseek-api-key
+   gcloud secrets versions access latest --secret=database-url
    ```
 
-4. Ensure the Cloud Build service account has access:
+3. Ensure the Cloud Build service account has access:
    ```bash
    # Get the Cloud Build service account email
    PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
    CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
    
    # Grant secret accessor role
-   gcloud secrets add-iam-policy-binding deepseek-api-key \
+   gcloud secrets add-iam-policy-binding database-url \
      --member="serviceAccount:${CLOUD_BUILD_SA}" \
      --role="roles/secretmanager.secretAccessor"
    ```
@@ -147,17 +120,6 @@ The gated build uses the same substitution variables as the original:
 - `_CLOUDSQL_CONNECTION_NAME`: `gen-lang-client-0202543132:us-central1:suchi-db`
 - `_API_URL`: `https://suchi-api-lxiveognla-uc.a.run.app/v1`
 
-## Eval Expectations (NCI-only Corpus)
-
-Since your corpus is NCI-only, the eval gate expects:
-
-- **Top-3 Trusted Source Presence:** Near 100% (all NCI)
-- **Citation Coverage:** Near 100%
-- **Abstention Rate:** Low (<10%) for informational queries
-- **Improved Cases:** At least 3 cases showing improved top-3 relevance
-
-If these metrics fail, the build stops and traffic doesn't shift.
-
 ## Troubleshooting
 
 ### Candidate Revision Never Becomes Healthy
@@ -172,31 +134,14 @@ If these metrics fail, the build stops and traffic doesn't shift.
 - Network/routing issues
 
 **Solutions:**
-- Increase health check retries (currently 30 attempts, 5s apart = 2.5 minutes)
-- Verify health endpoint is `/health` (not `/v1/health`)
+- Increase health check retries (currently 60 attempts, 5s apart = 5 minutes)
+- Verify health endpoint is `/v1/health` (not `/health`)
 - Check Cloud Run service logs
-
-### Eval Fails
-
-**Symptoms:**
-- Build fails at `eval-tier1` step
-- Report shows metrics below thresholds
-
-**Possible Causes:**
-- Retrieval quality regression
-- Citation integrity issues
-- Abstention rate increase
-
-**Solutions:**
-- Review eval report artifact in Cloud Build logs
-- Check for code changes that might affect retrieval
-- Verify NCI source metadata is correct
-- Fix issues and re-run build
 
 ### Traffic Doesn't Shift
 
 **Symptoms:**
-- Eval passes but traffic stays on previous revision
+- Candidate revision is healthy but traffic stays on previous revision
 
 **Possible Causes:**
 - `promote-candidate` step failed silently
@@ -208,14 +153,12 @@ If these metrics fail, the build stops and traffic doesn't shift.
 
 ## Manual Override
 
-If you need to deploy without eval (e.g., emergency fix):
+If you need to bypass the gated candidate/promote pipeline (e.g. for emergency fixes):
 
 1. Use original `cloudbuild.yaml`:
    ```bash
    gcloud builds submit --config=cloudbuild.yaml
    ```
-
-2. Or temporarily disable eval step in `cloudbuild.gated.yaml` by commenting it out
 
 ## Integration with CI/CD
 
@@ -249,29 +192,6 @@ If you prefer GitHub Actions, you can trigger Cloud Build from Actions:
 View build logs in Cloud Console:
 - Go to Cloud Build → History
 - Click on build to see step-by-step logs
-- Check `eval-tier1` step for eval results
-
-### Eval Report Artifacts
-
-Eval reports are automatically uploaded as Cloud Build artifacts:
-
-1. **Access via Cloud Console:**
-   - Go to Cloud Build → History → Click on build
-   - Click "Artifacts" tab
-   - Download `tier1-report.json` and `tier1-summary.txt`
-
-2. **Access via gsutil:**
-   ```bash
-   # List artifacts for a build
-   gsutil ls gs://${PROJECT_ID}_cloudbuild/${BUILD_ID}/eval-reports/
-   
-   # Download reports
-   gsutil cp gs://${PROJECT_ID}_cloudbuild/${BUILD_ID}/eval-reports/* ./eval-reports/
-   ```
-
-3. **Summary is also printed to build logs:**
-   - Check the `generate-eval-summary` step output
-   - Includes metrics and improved case count
 
 ### Cloud Run Revisions
 
@@ -382,155 +302,11 @@ curl -v "${REVISION_URL}/v1/health"
    - Check if revision has 0% traffic (expected for candidate)
    - Test revision URL manually
 
-### 3. Eval Timeout
-
-**Symptoms:**
-- Build fails at `eval-tier1` step
-- Logs show: `Error: Timeout of 1800000ms exceeded`
-- Eval step times out after 30 minutes
-
-**Root Cause:**
-- LLM provider (Deepseek/OpenAI) is slow or unresponsive
-- Too many test cases (should be ~15 for tier1)
-- Network issues between Cloud Build and LLM provider
-- Per-case retries exhausting timeout
-
-**Diagnostic Commands:**
-```bash
-# Check eval report (if partial)
-cd eval
-cat reports/tier1-report.json | jq '.summary'
-
-# Test LLM provider connectivity
-curl -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
-  https://api.deepseek.com/v1/models
-
-# Check eval case count
-cat cases/tier1/retrieval_quality.yaml | grep -c "^- id:"
-```
-
-**Fix:**
-1. **If LLM provider is slow:**
-   - Increase eval step timeout in `cloudbuild.gated.yaml`:
-     ```yaml
-     timeout: '3600s'  # 60 minutes
-     ```
-   - Or reduce test cases temporarily
-
-2. **If too many cases:**
-   - Verify tier1 has ~15 cases (not 100+)
-   - Consider splitting into smaller batches
-
-3. **If network issues:**
-   - Check LLM provider status
-   - Verify API keys are valid
-   - Retry the build
-
-4. **Add per-case timeout:**
-   - Already handled by eval framework (60s per case)
-   - Verify `EVAL_TIMEOUT_MS` is reasonable
-
-### 4. Citation Coverage Drop
-
-**Symptoms:**
-- Build fails at `nci-dominance-gate` or eval shows low citation coverage
-- Logs show: `Citation Coverage: 75%` (below 90% threshold)
-- Eval report shows many cases with missing citations
-
-**Root Cause:**
-- Orphan citation filtering too aggressive
-- Citation extraction bug
-- LLM not generating citations correctly
-- Retrieved chunks not being cited
-
-**Diagnostic Commands:**
-```bash
-# Check eval report for citation details
-cd eval
-cat reports/tier1-report.json | jq '.results[] | select(.retrievalQuality.citationCoverage < 1.0) | {id: .testCaseId, coverage: .retrievalQuality.citationCoverage}'
-
-# Check for citation integrity warnings in API logs
-gcloud logging read "resource.type=cloud_run_revision AND textPayload=~'CITATION_INTEGRITY'" \
-  --limit=20
-```
-
-**Fix:**
-1. **If orphan filtering is too aggressive:**
-   - Check `apps/api/src/modules/citations/citation.service.ts`
-   - Review `[CITATION_INTEGRITY]` warnings in logs
-   - Verify citation-to-chunk mapping logic
-   - Adjust filtering threshold if needed
-
-2. **If citations aren't being generated:**
-   - Check LLM prompt includes citation instructions
-   - Verify retrieved chunks are passed to LLM
-   - Review citation extraction regex patterns
-
-3. **If retrieved chunks aren't being cited:**
-   - Verify `retrievedChunks` are included in API response
-   - Check that LLM has access to chunk metadata
-   - Review evidence coupling logic
-
-### 5. Trusted Presence Drop (NCI Dominance Gate Failure)
-
-**Symptoms:**
-- Build fails at `nci-dominance-gate` step
-- Logs show: `❌ BUILD FAILED: NCI Dominance Gate`
-- `Top-3 Trusted Presence Rate: 75%` (below 90% threshold)
-
-**Root Cause:**
-- Reranking not working correctly
-- Source metadata misclassified (non-NCI marked as trusted)
-- Non-NCI sources in corpus (unexpected)
-- Retrieval pulling from wrong sources
-
-**Diagnostic Commands:**
-```bash
-# Check eval report for source types
-cd eval
-cat reports/tier1-report.json | jq '.results[] | .retrievalQuality.top3SourceTypes'
-
-# Check source metadata in database
-gcloud sql connect suchi-db --user=postgres
-# Then: SELECT DISTINCT "sourceType", "isTrustedSource" FROM "Document" LIMIT 20;
-
-# Check reranking logs (if RAG_TRACE_RERANK enabled)
-gcloud logging read "resource.type=cloud_run_revision AND textPayload=~'RERANK'" \
-  --limit=20
-```
-
-**Fix:**
-1. **If reranking not working:**
-   - Verify `rerankByTrustedSource` is being called
-   - Check `apps/api/src/modules/rag/rag.service.ts`
-   - Enable `RAG_TRACE_RERANK=true` and review logs
-   - Verify trusted source config is correct
-
-2. **If source metadata is wrong:**
-   - Check `apps/api/src/config/trusted-sources.config.ts`
-   - Verify NCI sources are marked as trusted
-   - Review source type classification logic
-   - Fix metadata and re-ingest if needed
-
-3. **If non-NCI sources in corpus:**
-   - This shouldn't happen for NCI-only corpus
-   - Check KB ingestion logs
-   - Verify only NCI sources are being ingested
-   - Clean up any non-NCI sources
-
-4. **Temporary workaround (not recommended):**
-   - Lower threshold in `cloudbuild.gated.yaml`:
-     ```javascript
-     const threshold = 0.85; // Lower from 0.90
-     ```
-   - **Only do this if you understand why trusted presence dropped**
-
 ## Next Steps
 
 1. **Test the gated build** on a feature branch
-2. **Verify eval passes** with your current code
-3. **Set up Cloud Build trigger** to use gated build on `main`
-4. **Monitor first few deployments** to ensure smooth operation
+2. **Set up Cloud Build trigger** to use gated build on `main`
+3. **Monitor first few deployments** to ensure smooth operation
 
 ## Rollback Plan
 
