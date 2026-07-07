@@ -68,7 +68,7 @@ Rule-based classifier covering:
 - Self-harm language
 - Off-topic requests (political, financial, unrelated medical)
 
-Classifications: `normal`, `yellow_flag`, `red_flag`. Anything other than `normal` returns a safety response and ends the request. Events are persisted to `safetyEvent` table.
+Classifications: `normal`, `refusal`, `red_flag`, `self_harm`. Anything other than `normal` returns a safety response and ends the request. Events are persisted to `safetyEvent` table.
 
 ### Phase 2.5 — Urgency Detection
 **Service:** `AbstentionService.hasUrgencyIndicators()` + early RAG
@@ -151,7 +151,7 @@ Calls Gemini via `@google/generative-ai` (Google AI API). 45s request budget wit
 | Request budget | 45s total | Cloud Run request timeout is 55s |
 | Min LLM budget | 15s | Prevents stacking multiple LLM calls near deadline |
 | Urgent path LLM deadline | 15s hard | Fast fallback to template if LLM is slow |
-| RAG chunks (normal) | Up to 8 | Balances context richness vs. prompt length |
+| RAG chunks (normal) | Up to 6 | Balances context richness vs. prompt length |
 | RAG chunks (urgent early) | 6 | Lower cap; time is critical |
 | Session cache TTL | 60s | Avoids repeated DB round-trips within a conversation turn |
 
