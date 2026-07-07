@@ -76,7 +76,7 @@ Suchi is a cancer information assistant operated by the Suchitra Cancer Care Fou
 
 ### 3.1 Request Processing
 
-**FR-CHAT-001** Every user message MUST pass through the fixed 9-phase pipeline in `ChatService.handle()`. No phase may be skipped except by its own exit condition.
+**FR-CHAT-001** Every user message MUST pass through the fixed agentic pipeline phases (Phases 0 to 3) in `ChatService.handle()`. No phase may be skipped except by its own exit condition.
 
 **FR-CHAT-003** Emergency queries (cardiac arrest, suicidal ideation, severe acute distress) MUST return a response in under 1 second via the rule-based fast path. No async calls may precede this check.
 
@@ -375,7 +375,7 @@ These requirements supersede any conflicting guidance in other documents.
 
 ### 10.5 Observability
 
-**NFR-OBS-001** Every chat request MUST be traced via `ObservabilityService` (Langfuse). Each of the 9 phases MUST be traceable.
+**NFR-OBS-001** Every chat request MUST be traced via `ObservabilityService` (Langfuse). Each of the pipeline phases MUST be traceable.
 
 **NFR-OBS-002** LLM call duration, token count, and success/failure MUST be recorded for each request.
 
