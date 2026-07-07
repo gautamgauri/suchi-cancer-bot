@@ -3,7 +3,9 @@
 **Version:** 1.0
 **Date:** 2026-03-20
 **Owner:** SCCF Engineering
-**Status:** Draft (not yet implemented; autoresearch quality engine is the active quality loop as of Mar 2026)
+**Status:** Implemented in code. Disabled by default in production (`REVIEW_COPILOT_MODE=off`; not set in the canonical deploy config) pending an explicit rollout decision and operational monitoring. Operational runbook: [docs/REVIEW_COPILOT_RUNBOOK.md](./REVIEW_COPILOT_RUNBOOK.md)
+
+For implementation and operations details of the current codepath, see `docs/REVIEW_COPILOT_RUNBOOK.md`.
 
 ---
 

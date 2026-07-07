@@ -100,12 +100,20 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
     const jsonPath = path.resolve(process.cwd(), "data/hospitals.json");
 
     try {
-      const raw = fs.readFileSync(jsonPath, "utf-8");
+      let raw = fs.readFileSync(jsonPath, "utf-8").trim();
+
+      // Handle Windows Git pseudo-symlinks if Git didn't create a real symlink
+      if (raw.startsWith("..") && !raw.includes("\n")) {
+        const absoluteTarget = path.resolve(path.dirname(jsonPath), raw);
+        this.logger.log(`Detected pseudo-symlink for hospitals.json. Resolving to target: ${absoluteTarget}`);
+        raw = fs.readFileSync(absoluteTarget, "utf-8");
+      }
+
       const parsed = JSON.parse(raw) as { hospitals: Hospital[] };
       this.hospitals = (parsed.hospitals ?? []).filter(
         (h) => h.status === "active"
       );
-      this.logger.log(`Loaded ${this.hospitals.length} active hospitals from ${jsonPath}`);
+      this.logger.log(`Loaded ${this.hospitals.length} active hospitals`);
     } catch (err: any) {
       this.logger.error(`Failed to load hospitals.json from ${jsonPath}: ${err.message}`);
       this.hospitals = [];

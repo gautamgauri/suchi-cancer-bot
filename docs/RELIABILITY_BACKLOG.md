@@ -12,78 +12,31 @@ by this handoff review.
 
 ## P0 — fix before relying on anything else
 
-### P0-1. `deploy-api.yml` silently strips production env/secrets on every merge (new)
+### P0-1. `deploy-api.yml` silently strips production env/secrets on every merge — RESOLVED (PR #51)
 
-- **What:** `.github/workflows/deploy-api.yml:81-102` deploys `suchi-api` with
-  a stale config: 6 secrets / 14 env vars vs the 15 secrets / ~20 env vars in
-  `cloudbuild.yaml:90-93` (missing `GEMINI_API_KEY`, `META_PAGE_ACCESS_TOKEN`,
-  `META_PAGE_ID`, `META_IG_USER_ID`, `NAVIGATOR_APPROVAL_SECRET`,
-  `CONTENT_APPROVAL_SECRET`, `DISTRIBUTION_APPROVAL_SECRET`,
-  `langfuse-public-key`, `langfuse-secret-key`, `LANGFUSE_ENABLED/HOST`,
-  `QUEUE_GCS_BUCKET`, `SUCHI_SITE_URL`, `SUCHI_SOCIAL_CARD_URL`; and
-  `LLM_TIMEOUT_MS=25000` vs `45000`). `gcloud run deploy --set-env-vars/
-  --set-secrets` REPLACES the entire config, and this workflow auto-runs on
-  any `main` push touching `apps/api/**` or `kb/**` — it ran successfully
-  three times on 2026-06-28 (runs 28331131428, 28332667342, 28333372955),
-  *after* the reconciliation of the two cloudbuild files (commit `1f39a31`).
-- **Impact:** silently disables Instagram/Facebook posting, all HMAC approval
-  links (distribution/content/navigator — i.e. the feature shipped in PR #43
-  may be dead in prod), Langfuse tracing, and the GCS queue. Identical failure
-  mode to the June 2026 Meta-secrets incident.
-- **First step:** verify live config —
-  `gcloud run services describe suchi-api --region us-central1 --format json`
-  (env names only). Then either delete the deploy step from `deploy-api.yml`
-  (keeping build+test), or reconcile it byte-for-byte with `cloudbuild.yaml`
-  and add a CI check that diffs the three env/secret lists.
-- **Test gap:** nothing compares pipeline env lists; no post-deploy smoke test
-  exercises an approval link or social config
-  (`apps/api/src/modules/admin/social-post.service.ts` reads the vars lazily,
-  so boot succeeds and `/v1/health` stays green — health checks DB only,
-  `apps/api/src/modules/health/health.service.ts:10-27`).
+- **What:** `.github/workflows/deploy-api.yml:81-102` deployed `suchi-api` with a stale config.
+- **Resolution:** Removed the GitHub Actions deploy step entirely. `deploy-api.yml` now only verifies the API builds and runs `scripts/check_deploy_config_parity.py`, leaving `cloudbuild.yaml` as the sole deployment authority.
+- **Impact:** Eliminates silent configuration drops on merge.
 
-### P0-2. Nightly Tier1 canary red for 12+ nights; status measures email, not eval (tracked: issue #47)
+### P0-2. Nightly Tier1 canary red for 12+ nights; status measures email, not eval — RESOLVED (PR #49)
 
 - **What:** every scheduled "Eval Tier1 - Retrieval Quality" run since
   2026-06-24 is red only because the "Send email notification" step fails with
   SMTP `535-5.7.8 BadCredentials` (verified runs 28731647092, 28424590294,
   28079102548). The eval itself passes its steps; the true result (21 cases,
   20 pass) is buried in the artifact.
-- **Impact:** the only automated retrieval-quality signal is
-  uninterpretable at a glance; a genuine clinical-retrieval regression would
-  look identical to the SMTP failure. Alert fatigue guarantees reds get
-  ignored.
-- **Code paths:** `.github/workflows/eval-tier1.yml:222-234` (email step),
-  `:75` (`continue-on-error` on the eval step — so a hard eval crash also
-  cannot fail the workflow), `:115-122` ("Check eval results" always exits 0).
-  Also a concrete bug: line 230 reads
-  `steps.email-report.outputs.email_subject`, but the report step only writes
-  `should_send` to `$GITHUB_OUTPUT` (line 217), so the subject silently falls
-  back to the default.
-- **Fix shape:** per issue #47 — separate eval outcome / report generation /
-  notification into distinct signals, write `eval-result.json`, mark
-  notification failure as degraded-not-failed, and rotate the SMTP app
-  password (Secret names `SMTP_USERNAME`/`SMTP_PASSWORD` in GitHub secrets).
+- **Resolution:** Separated eval outcome from notification delivery. Evaluation outcomes now compile to `eval-result.json` which Gates the CI check status, and email delivery runs with `continue-on-error` (emitting a warning warning instead of failing the build).
+- **Impact:** CI status reflects evaluation results, not notification infrastructure success.
 
 ---
 
 ## P1 — high value, do next
 
-### P1-1. Standing citation failure `RQ-LUNG-02` + no citation-integrity verifier (tracked: issue #48)
+### P1-1. Standing citation failure `RQ-LUNG-02` + no citation-integrity verifier — RESOLVED (PR #52)
 
-- **What:** `RQ-LUNG-02` in `eval/cases/tier1/retrieval_quality.yaml` fails
-  deterministic checks `citations_present` and
-  `citation_confidence_acceptable` with per-case `citationCoverage: 0`
-  (artifact `tier1-eval-report-184`, run 28731647092). One evidence-required
-  case produces zero supporting citations in production.
-- **Code paths:** retrieval `apps/api/src/modules/rag/rag.service.ts`
-  (`retrieveWithMetadata()`), gate
-  `apps/api/src/modules/evidence/` (`evaluateEvidenceGate()`), extraction
-  `apps/api/src/modules/citations/`; checks in
-  `eval/runner/deterministic-checker.ts`.
-- **Test gap:** exactly what issue #48 specifies — no citation-integrity
-  verifier (fabricated/unresolvable citations, zero-citation evidence-required
-  cases), no failure clustering, no rule that eval cases can't disappear
-  silently.
+- **What:** `RQ-LUNG-02` failed checks due to lack of citation-integrity verification.
+- **Resolution:** Added a dedicated citation integrity verifier, per-case records, failure clustering, and a case disappearance guard to the eval framework.
+- **Impact:** Prevents ungrounded medical claims and citation coverage issues.
 
 ### P1-2. Safety-critical pipeline behaviors are untested (new; gaps enumerated in `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md`)
 
@@ -138,16 +91,16 @@ by this handoff review.
   `embeddings.service` contract test (768-dim, model name pinned to
   `EMBEDDING_MODEL`).
 
-### P1-6. WhatsApp PII retention job missing (FR-WA-015, partial)
+### P1-6. WhatsApp PII retention job missing (FR-WA-015, partial) — RESOLVED
 
 - **What:** `WhatsAppContact` stores phone→session mappings
   (`apps/api/prisma/migrations/20260622000000_add_whatsapp_contact`,
-  `schema.prisma`), but the retention/deletion job required by FR-WA-015 is
+  `schema.prisma`), but the retention/deletion job required by FR-WA-015 was
   marked missing/untested in `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md`;
   housekeeping endpoints exist (`POST /v1/admin/housekeeping/run-retention`)
-  but don't cover WhatsApp contacts.
-- **Impact:** privacy commitment in `docs/PRIVACY_RETENTION.md` not met for
-  the WhatsApp channel.
+  but didn't cover WhatsApp contacts.
+- **Resolution:** Implemented purging of WhatsApp contact mappings in `retention.service.ts` (deleting contacts where `lastActiveAt` or `sessionId` is older than 90 days) and verified with automated test suite in `retention.service.spec.ts`.
+- **Impact:** privacy commitment in `docs/PRIVACY_RETENTION.md` fully met.
 
 ---
 

@@ -158,7 +158,8 @@ async function main(): Promise<void> {
 
     try {
       const result = await postPack(pack);
-      console.log(`[daily-publisher] ${entry.slug} — posted ${result.channelsPosted} channel(s)`);
+      const successfulPosts = result.filter((r) => r.success).length;
+      console.log(`[daily-publisher] ${entry.slug} — posted ${successfulPosts} channel(s)`);
 
       const idx = updatedEntries.findIndex((e) => e.slug === entry.slug);
       if (idx !== -1) {
