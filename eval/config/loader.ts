@@ -68,7 +68,7 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
     project: process.env.GOOGLE_CLOUD_PROJECT || config.vertexAiConfig?.project || "",
     location: process.env.VERTEX_AI_LOCATION || config.vertexAiConfig?.location || "us-central1",
     // Use Gemini Flash for fallback (cheap: $0.075/1M input, $0.30/1M output)
-    model: process.env.VERTEX_AI_MODEL || config.vertexAiConfig?.model || "gemini-2.0-flash-001",
+    model: process.env.VERTEX_AI_MODEL || config.vertexAiConfig?.model || "gemini-2.5-flash",
   };
 
   // OpenAI config
