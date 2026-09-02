@@ -1,68 +1,95 @@
 import { test, expect } from '@playwright/test';
+import {
+  CONSENT_STORAGE_KEY,
+  START_CHATTING,
+  acceptConsent,
+  assistantMessages,
+  enterChat,
+  stubSessionApi,
+  waitForAssistantReply,
+} from './helpers';
 
-// Helper to pass through consent gate
-async function acceptConsent(page: import('@playwright/test').Page) {
-  // Check if consent gate is visible
-  const consentCheckbox = page.locator('input[type="checkbox"]');
-  if (await consentCheckbox.isVisible({ timeout: 3000 }).catch(() => false)) {
-    // Check the "I understand and accept" checkbox
-    await consentCheckbox.check();
-    // Click "Continue to Chat" button
-    await page.locator('button:has-text("Continue to Chat")').click();
-    // Wait for chat interface to load
-    await page.waitForSelector('textarea', { timeout: 10000 });
-  }
-}
-
-// Consent Gate tests - verify disclaimer flow works
+/**
+ * The shipped consent gate (src/components/ConsentGate.tsx) is a single
+ * "Start chatting →" button — no checkbox, no separate emergency/disclaimer
+ * headings. Consent is stored in sessionStorage under `suchi_consented`
+ * (src/ChatApp.tsx), so a fresh Playwright context always sees the gate.
+ */
 test.describe('Consent Gate @smoke', () => {
   test('shows consent gate on first visit', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Should see Welcome to Suchi
-    await expect(page.getByText('Welcome to Suchi')).toBeVisible();
-    // Should see emergency warning
-    await expect(page.getByText('Emergency Warning')).toBeVisible();
-    // Should see disclaimer
-    await expect(page.getByText('Important Disclaimer')).toBeVisible();
+    await expect(page.getByRole('heading', { name: "Namaste! I'm Suchi" })).toBeVisible();
+    await expect(page.getByText('Your cancer information companion')).toBeVisible();
+    await expect(page.getByText('I can help you:')).toBeVisible();
+    await expect(
+      page.getByText(/Suchi provides general health information, not medical diagnosis/i),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: START_CHATTING })).toBeVisible();
+
+    // The gate must not have leaked chat UI behind it.
+    await expect(page.locator('textarea')).toHaveCount(0);
   });
 
-  test('continue button is disabled until checkbox is checked', async ({ page }) => {
+  test('start button is immediately actionable (gate has no checkbox)', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const continueButton = page.locator('button:has-text("Continue to Chat")');
-    await expect(continueButton).toBeDisabled();
+    // The old gate gated its button on a checkbox. The shipped gate has none,
+    // so the button must be enabled on arrival.
+    await expect(page.locator('input[type="checkbox"]')).toHaveCount(0);
 
-    // Check the checkbox
-    await page.locator('input[type="checkbox"]').check();
+    const startButton = page.getByRole('button', { name: START_CHATTING });
+    await expect(startButton).toBeEnabled();
 
-    // Button should now be enabled
-    await expect(continueButton).toBeEnabled();
+    await startButton.click();
+    await expect(page.locator('textarea')).toBeVisible();
   });
 
-  test('clicking continue shows chat interface', async ({ page }) => {
+  test('clicking start chatting shows chat interface', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Accept consent
-    await page.locator('input[type="checkbox"]').check();
-    await page.locator('button:has-text("Continue to Chat")').click();
+    await page.getByRole('button', { name: START_CHATTING }).click();
 
-    // Should now see chat interface (textarea)
+    // Chat shell: header, message log and the message input.
     await expect(page.locator('textarea')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('[role="log"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: START_CHATTING })).toHaveCount(0);
+  });
+
+  test('gate also guards a deep link (/chat)', async ({ page }) => {
+    await page.goto('/chat');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('button', { name: START_CHATTING })).toBeVisible();
+    await acceptConsent(page);
+    await expect(page.locator('textarea')).toBeVisible();
+  });
+
+  test('returning visitor with stored consent skips the gate', async ({ page }) => {
+    // A returning visit re-creates the session on load, so the session API has
+    // to answer for the gate to stay dismissed.
+    await stubSessionApi(page);
+    await page.addInitScript((key) => {
+      sessionStorage.setItem(key, 'true');
+    }, CONSENT_STORAGE_KEY);
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('textarea')).toBeVisible();
+    await expect(page.getByRole('button', { name: START_CHATTING })).toHaveCount(0);
   });
 });
 
 // Fast tests - no LLM dependency, run in CI
 test.describe('UI Smoke Tests @smoke', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Wait for app to hydrate
-    await page.waitForLoadState('networkidle');
-    // Pass through consent gate
-    await acceptConsent(page);
+    // stubSession: the message input stays disabled until a session exists,
+    // so UI-only assertions need session creation to succeed without a backend.
+    await enterChat(page);
   });
 
   test('loads app and shows input', async ({ page }) => {
@@ -79,20 +106,24 @@ test.describe('UI Smoke Tests @smoke', () => {
   });
 
   test('send button is disabled when input is empty', async ({ page }) => {
-    const sendButton = page.locator('button:has-text("Send")');
+    const sendButton = page.getByRole('button', { name: 'Send message' });
     await expect(sendButton).toBeDisabled();
   });
 
   test('send button is enabled when input has text', async ({ page }) => {
     const input = page.locator('textarea');
     await input.fill('Hello');
-    const sendButton = page.locator('button:has-text("Send")');
+    const sendButton = page.getByRole('button', { name: 'Send message' });
     await expect(sendButton).toBeEnabled();
   });
 
   test('message input has proper aria labels', async ({ page }) => {
     const input = page.locator('textarea');
     await expect(input).toHaveAttribute('aria-label', 'Message input');
+    await expect(page.getByRole('button', { name: 'Send message' })).toHaveAttribute(
+      'aria-label',
+      'Send message',
+    );
   });
 
   test('chat messages area has proper role', async ({ page }) => {
@@ -101,20 +132,24 @@ test.describe('UI Smoke Tests @smoke', () => {
   });
 });
 
-// Full tests - require LLM responses, run manually or with longer timeout
+/**
+ * Full tests - require a real chat response from the API. They deliberately do
+ * NOT stub sessions, so they exercise the deployed stack in CI
+ * (E2E_BASE_URL). Locally they fail at the API boundary: session creation is
+ * the first call that needs a backend.
+ */
 test.describe('Full Chat Flow @full', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await acceptConsent(page);
+    await enterChat(page, { stubSession: false });
   });
 
   test('can send message and receive response', async ({ page }) => {
+    const baseline = await assistantMessages(page).count();
+
     const input = page.locator('textarea');
     await input.fill('What are the symptoms of breast cancer?');
 
-    const sendButton = page.locator('button:has-text("Send")');
-    await sendButton.click();
+    await page.getByRole('button', { name: 'Send message' }).click();
 
     // Input should be cleared after sending
     await expect(input).toHaveValue('');
@@ -122,77 +157,64 @@ test.describe('Full Chat Flow @full', () => {
     // Should show user message
     await expect(page.getByText('What are the symptoms of breast cancer?')).toBeVisible();
 
-    // Wait for assistant response (may take time due to LLM)
-    const loading = page.locator('[role="status"]');
-    if (await loading.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await expect(loading).toBeHidden({ timeout: 60000 });
-    }
-
-    // Should have assistant response
-    await expect(page.locator('[aria-label*="assistant"]').first()).toBeVisible({ timeout: 60000 });
+    await waitForAssistantReply(page, baseline);
   });
 
   test('response includes citations', async ({ page }) => {
+    const baseline = await assistantMessages(page).count();
+
     const input = page.locator('textarea');
     await input.fill('What are the treatment options for lung cancer?');
+    await page.getByRole('button', { name: 'Send message' }).click();
 
-    await page.locator('button:has-text("Send")').click();
-
-    // Wait for response
-    await expect(page.locator('[aria-label*="assistant"]').first()).toBeVisible({ timeout: 60000 });
+    await waitForAssistantReply(page, baseline);
 
     // Should have citations (use .first() since there may be multiple [1] citations)
-    await expect(page.getByText(/\[1\]/).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/\[1\]/).first()).toBeVisible();
   });
 
   test('shows sources section after response', async ({ page }) => {
+    const baseline = await assistantMessages(page).count();
+
     const input = page.locator('textarea');
     await input.fill('What is chemotherapy?');
+    await page.getByRole('button', { name: 'Send message' }).click();
 
-    await page.locator('button:has-text("Send")').click();
-
-    // Wait for response with sources
-    await expect(page.getByText(/Sources/i)).toBeVisible({ timeout: 60000 });
+    await waitForAssistantReply(page, baseline);
+    await expect(page.getByText(/Sources/i).first()).toBeVisible();
   });
 });
 
 test.describe('Error Handling @smoke', () => {
   test('shows error message on network failure', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await acceptConsent(page);
-
-    // Block chat API requests AFTER consent to simulate network failure on message send
-    // Match any URL ending in /chat (the API endpoint for sending messages)
-    await page.route('**/chat', route => route.abort());
+    // Session creation is stubbed so the input is usable; only the chat call
+    // is broken, which is the failure this test is about.
+    await enterChat(page);
+    await page.route('**/chat', (route) => route.abort());
 
     const input = page.locator('textarea');
     await input.fill('Test message');
+    await page.getByRole('button', { name: 'Send message' }).click();
 
-    await page.locator('button:has-text("Send")').click();
-
-    // Should show error
     await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 10000 });
   });
 });
 
 test.describe('Keyboard Navigation @smoke', () => {
   test('can navigate with keyboard', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await acceptConsent(page);
+    await enterChat(page);
 
-    // Focus the textarea directly
     const input = page.locator('textarea');
     await input.focus();
+    await expect(input).toBeFocused();
 
-    // Type message
-    await input.type('Hello Suchi');
+    await input.pressSequentially('Hello Suchi');
 
     // Press Enter to send (without Shift)
     await page.keyboard.press('Enter');
 
-    // Message should be sent (appears in chat)
-    await expect(page.getByText('Hello Suchi')).toBeVisible({ timeout: 5000 });
+    // Message should be sent (appears in chat) and the input cleared.
+    await expect(page.getByText('Hello Suchi')).toBeVisible({ timeout: 10000 });
+    await expect(input).toHaveValue('');
   });
 });
