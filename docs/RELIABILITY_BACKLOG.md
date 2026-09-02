@@ -102,6 +102,45 @@ by this handoff review.
 - **Resolution:** Implemented purging of WhatsApp contact mappings in `retention.service.ts` (deleting contacts where `lastActiveAt` or `sessionId` is older than 90 days) and verified with automated test suite in `retention.service.spec.ts`.
 - **Impact:** privacy commitment in `docs/PRIVACY_RETENTION.md` fully met.
 
+### P1-7. Consent gate no longer shows an emergency warning — NEEDS SCCF REVIEW (new)
+
+- **What:** the shipped consent gate
+  (`apps/web/src/components/ConsentGate.tsx`) renders a greeting, a
+  capabilities list and one general disclaimer ("Suchi provides general health
+  information, not medical diagnosis. Always consult your doctor…"). It has
+  **no emergency-warning block**. The earlier gate did: the pre-existing e2e
+  suite asserted a visible "Emergency Warning" section alongside "Important
+  Disclaimer" (`apps/web/e2e/chat-flow.spec.ts` before this change), which is
+  the only surviving record of that copy. The redesign dropped it, and because
+  the tests were already red for unrelated reasons nothing flagged the loss.
+- **Impact:** a first-time web user is no longer told, before their first
+  message, what to do in an emergency. The runtime escalation path is intact
+  (`apps/api/src/modules/safety/`, emergency fast path) — this is about the
+  up-front warning, not the response-time behavior.
+- **Why an agent must not fix it:** escalation wording is clinical policy.
+  AGENTS.md §1.3 puts escalation copy behind SCCF human/medical review, so the
+  e2e suite now asserts the copy that actually ships rather than copy an agent
+  invented.
+- **Decision needed:** was dropping the emergency warning intentional (e.g.
+  moved into the in-chat safety banner) or a regression? If it should return,
+  SCCF must supply the exact wording; the e2e assertion can then be restored in
+  `apps/web/e2e/chat-flow.spec.ts` ("shows consent gate on first visit").
+
+### P1-8. `@ux` and `@full` e2e tests run nowhere (new)
+
+- **What:** `.github/workflows/e2e-tests.yml` runs `npx playwright test --grep
+  @smoke` against a manually supplied `E2E_BASE_URL`. Everything tagged `@full`
+  (real chat responses, citations, sources) or `@ux`-only (TTS Listen button,
+  sources disclosure modal, sources footer) is therefore never executed by CI,
+  and cannot run locally because `apps/web` has no local API. This change
+  re-tagged the two suites that became hermetic (voice input, loading states)
+  as `@ux @smoke` so they do get CI coverage; the rest still need a run against
+  a deployed API.
+- **Impact:** the answer-shaped assertions — citations render, SOURCES footer
+  renders, Listen button appears — have no automated enforcement anywhere.
+- **Fix shape:** either schedule the workflow against staging with `--grep
+  "@smoke|@full|@ux"`, or add a compose/stub API target for `apps/web` e2e.
+
 ---
 
 ## P2 — track and schedule
@@ -313,16 +352,19 @@ more, and should be decided together with QA0904-1.
    agents must not touch credentials.
 3. P1-1/issue #48: any change to retrieval sources or citation rules for
    RQ-LUNG-02 needs SCCF medical review before merge.
-4. P2-6: LinkedIn — rotate token or drop the integration.
-5. QA0904-1: approve Hindi/Hinglish red-flag keyword coverage for the
+4. P1-7: the consent gate dropped its emergency-warning block. Intentional or
+   regression? If it must come back, SCCF supplies the exact wording — agents
+   must not author escalation copy (AGENTS.md §1.3).
+5. P2-6: LinkedIn — rotate token or drop the integration.
+6. QA0904-1: approve Hindi/Hinglish red-flag keyword coverage for the
    headache + vision-change cluster (and decide whether
    `hasUrgencyIndicators` should exist in Devanagari at all). Safety keyword
    list — medical review required.
-6. QA0904-3: approve pinning reply language in the Explain-Mode prompt, and
+7. QA0904-3: approve pinning reply language in the Explain-Mode prompt, and
    approve routing the detected locale into `appendDisclaimer` so the existing
    Hindi disclaimer is actually used. Prompt + safety wording.
-7. QA0904-4: decide whether the KB carries an approved "biopsy does not spread
+8. QA0904-4: decide whether the KB carries an approved "biopsy does not spread
    cancer" answer, and whether myth-correction gets its own intent.
-8. QA0904-5: re-measure after the truncation fix ships; then rule on whether
+9. QA0904-5: re-measure after the truncation fix ships; then rule on whether
    the answer policy needs an explicit "exact/prognosis request → abstain"
    branch.
