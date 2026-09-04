@@ -113,6 +113,33 @@ Do NOT ask more clarifying questions if the user has indicated general intent (e
 `;
 }
 
+/**
+ * Gemini 2.5 models are *thinking* models: the reasoning tokens they generate
+ * before the visible answer are charged against `maxOutputTokens`. With no
+ * `thinkingConfig`, the dynamic thinking budget grows to fill the whole
+ * allowance, the answer starts with only a handful of tokens left, and
+ * generation stops at `finishReason: "MAX_TOKENS"` — mid-sentence, often in the
+ * middle of a `[citation:...]` marker. The SDK does not treat MAX_TOKENS as a
+ * bad finish reason, so `response.text()` hands back the fragment silently.
+ *
+ * Pinning an explicit thinking budget and adding it on top of the caller's
+ * token allowance keeps `maxTokens` meaning what callers assume it means: the
+ * budget for the *answer*.
+ */
+const GEMINI_THINKING_BUDGET_TOKENS = 512;
+
+/** finishReason Gemini reports when generation was cut off at the token cap. */
+const GEMINI_FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
+
+/** Upper bound for the single retry after a truncated generation. */
+const GEMINI_TRUNCATION_RETRY_CEILING_TOKENS = 4000;
+
+/** What one Gemini generation attempt yields, before truncation is judged. */
+interface GeminiAttempt {
+  text: string;
+  finishReason: string | null;
+}
+
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
@@ -200,36 +227,36 @@ export class LlmService {
       const genInput = `[SYSTEM]\n${systemPrompt.substring(0, 500)}\n\n[USER]\n${userPrompt.substring(0, 500)}`;
       const gen = this.observability.startGenerationById(traceId, genLabel, genInput, this.geminiModel);
 
-      let geminiPromise: Promise<string>;
+      let attempt = await this.generateGeminiOnce(systemPrompt, userPrompt, maxTokens);
 
-      if (this.geminiApiKey) {
-        // Google AI API (generativelanguage.googleapis.com) — preferred for gen-lang-client projects
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const client = new GoogleGenerativeAI(this.geminiApiKey);
-        const model = client.getGenerativeModel({
-          model: this.geminiModel,
-          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+      // A truncated answer must never reach a patient: it stops mid-sentence and
+      // drops the safety framing the prompt contract puts at the end. Retry once
+      // with a bigger allowance, then give up so the caller's fallback/abstention
+      // path takes over.
+      if (attempt.finishReason === GEMINI_FINISH_REASON_MAX_TOKENS) {
+        const retryTokens = Math.min(maxTokens * 2, GEMINI_TRUNCATION_RETRY_CEILING_TOKENS);
+        this.logger.warn({
+          event: 'gemini_output_truncated',
+          message: `Gemini stopped at MAX_TOKENS after ${attempt.text.length} chars — retrying with ${retryTokens} answer tokens`,
+          maxTokens,
+          retryTokens,
+          isPrimary,
         });
-        geminiPromise = model.generateContent(`${systemPrompt}\n\n${userPrompt}`)
-          .then(r => r.response.text() || "");
-      } else {
-        // Vertex AI fallback (for projects with Vertex AI access)
-        const { VertexAI } = await import("@google-cloud/vertexai");
-        const vertexAI = new VertexAI({ project: this.geminiProject, location: this.geminiLocation });
-        const model = vertexAI.getGenerativeModel({
-          model: this.geminiModel,
-          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
-        });
-        geminiPromise = model.generateContent({
-          contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-        }).then(r => r.response.candidates?.[0]?.content?.parts?.[0]?.text || "");
+        attempt = await this.generateGeminiOnce(systemPrompt, userPrompt, retryTokens);
+
+        if (attempt.finishReason === GEMINI_FINISH_REASON_MAX_TOKENS) {
+          this.logger.error({
+            event: 'gemini_output_truncated_after_retry',
+            message: 'Gemini output still truncated after retry — discarding partial answer',
+            retryTokens,
+            isPrimary,
+          });
+          this.observability.endGeneration(gen, '', {});
+          return null;
+        }
       }
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
-      });
-
-      const text = await Promise.race([geminiPromise, timeoutPromise]);
+      const text = attempt.text;
 
       this.observability.endGeneration(gen, text.substring(0, 1000), {});
 
@@ -247,6 +274,75 @@ export class LlmService {
         this.logger.error(`Gemini LLM ${label} failed: ${error.message}`);
       }
       return null;
+    }
+  }
+
+  /**
+   * One Gemini generation, returning the text *and* why generation stopped.
+   *
+   * `maxAnswerTokens` is the budget for the visible answer; the thinking budget
+   * is added on top so reasoning tokens cannot eat into it
+   * (see GEMINI_THINKING_BUDGET_TOKENS).
+   */
+  private async generateGeminiOnce(
+    systemPrompt: string,
+    userPrompt: string,
+    maxAnswerTokens: number,
+  ): Promise<GeminiAttempt> {
+    // `thinkingConfig` is newer than the pinned SDK's GenerationConfig type but
+    // is forwarded verbatim to the v1beta REST body, so widen the type here.
+    const generationConfig = {
+      temperature: 0.3,
+      maxOutputTokens: maxAnswerTokens + GEMINI_THINKING_BUDGET_TOKENS,
+      thinkingConfig: { thinkingBudget: GEMINI_THINKING_BUDGET_TOKENS },
+    } as Record<string, unknown>;
+
+    let geminiPromise: Promise<GeminiAttempt>;
+
+    if (this.geminiApiKey) {
+      // Google AI API (generativelanguage.googleapis.com) — preferred for gen-lang-client projects
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const client = new GoogleGenerativeAI(this.geminiApiKey);
+      const model = client.getGenerativeModel({
+        model: this.geminiModel,
+        generationConfig: generationConfig as never,
+      });
+      geminiPromise = model.generateContent(`${systemPrompt}\n\n${userPrompt}`).then(r => ({
+        text: r.response.text() || "",
+        finishReason: r.response.candidates?.[0]?.finishReason ?? null,
+      }));
+    } else {
+      // Vertex AI fallback (for projects with Vertex AI access)
+      const { VertexAI } = await import("@google-cloud/vertexai");
+      const vertexAI = new VertexAI({ project: this.geminiProject, location: this.geminiLocation });
+      const model = vertexAI.getGenerativeModel({
+        model: this.geminiModel,
+        generationConfig: generationConfig as never,
+      });
+      geminiPromise = model
+        .generateContent({
+          contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+        })
+        .then(r => {
+          const candidate = r.response.candidates?.[0];
+          return {
+            // Join every text part: a multi-part candidate holds the answer in
+            // sequence, so reading parts[0] alone silently truncates it.
+            text: (candidate?.content?.parts ?? []).map(p => p.text ?? "").join(""),
+            finishReason: candidate?.finishReason ?? null,
+          };
+        });
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
+    });
+
+    try {
+      return await Promise.race([geminiPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
     }
   }
 
