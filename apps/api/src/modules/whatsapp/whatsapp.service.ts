@@ -6,18 +6,29 @@ import { SessionsService } from "../sessions/sessions.service";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
-const SEEN_CACHE_CAP = 1000;
 const FALLBACK_REPLY =
   "Sorry, something went wrong on our side. Please try sending your message again.";
+
+/** Ledger row marker in `AnalyticsEvent.eventName` (see `claimInbound`). */
+export const INBOUND_LEDGER_EVENT = "whatsapp_inbound";
+
+/**
+ * Deterministic primary key for a wamid's ledger row. Because it is the table's
+ * PRIMARY KEY, the INSERT itself is the atomic cross-instance de-dup check
+ * (FR-WA-007) — no read-then-write race between Cloud Run instances.
+ */
+export function inboundLedgerId(wamid: string): string {
+  return `wa-inbound:${wamid}`;
+}
+
+/** Postgres/Prisma unique-constraint violation — i.e. "another instance already claimed this". */
+function isUniqueViolation(err: any): boolean {
+  return err?.code === "P2002" || err?.code === "23505";
+}
 
 @Injectable()
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
-
-  // In-memory de-dup of recently handled message ids (FR-WA-007). Meta retries
-  // a webhook until it gets a 200; retries usually hit the same instance.
-  private readonly seenWamids = new Set<string>();
-  private readonly seenOrder: string[] = [];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -85,23 +96,110 @@ export class WhatsAppService {
   }
 
   // ---------------------------------------------------------------------------
+  // Durable claim (runs BEFORE the webhook ACK)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Durably record each verified inbound message *before* the webhook is
+   * acknowledged, and claim it for this instance.
+   *
+   * Both properties come from one INSERT into the `AnalyticsEvent` ledger keyed
+   * by `inboundLedgerId(wamid)`:
+   *
+   * 1. **Durability (P1):** once the row is committed the message is on disk, so
+   *    an instance that dies mid-pipeline leaves an auditable `status:"received"`
+   *    row instead of losing the message silently. If the write fails we do *not*
+   *    ack, so Meta retries rather than dropping the message.
+   * 2. **Cross-instance de-dup (P2 / FR-WA-007):** the PK makes the insert the
+   *    atomic uniqueness check. A Meta retry routed to any of the N instances
+   *    (or arriving after a restart) loses the race and is skipped, so
+   *    ChatService is invoked at most once per wamid.
+   *
+   * Never throws: the caller needs the claimed subset even when a later message
+   * in the batch fails, so the failure is returned instead.
+   */
+  async claimInbound(
+    messages: InboundMessage[],
+  ): Promise<{ claimed: InboundMessage[]; failure?: Error }> {
+    const claimed: InboundMessage[] = [];
+    for (const msg of messages) {
+      try {
+        await this.prisma.analyticsEvent.create({
+          data: {
+            id: inboundLedgerId(msg.wamid),
+            eventName: INBOUND_LEDGER_EVENT,
+            // Metadata only — no message text and no phone number. This table is
+            // outside the 90-day message purge (docs/PRIVACY_RETENTION.md).
+            payload: {
+              wamid: msg.wamid,
+              status: "received",
+              receivedAt: new Date().toISOString(),
+              textLength: msg.text.length,
+            },
+          },
+        });
+        claimed.push(msg);
+      } catch (err: any) {
+        if (isUniqueViolation(err)) {
+          this.logger.debug(`Duplicate WhatsApp message ${msg.wamid} ignored (already claimed)`);
+          continue;
+        }
+        this.logger.error(
+          `Failed to durably record WhatsApp message ${msg.wamid}: ${err?.message}`,
+          err?.stack,
+        );
+        return { claimed, failure: err instanceof Error ? err : new Error(String(err)) };
+      }
+    }
+    return { claimed };
+  }
+
+  /** Close out a ledger row. Best-effort: a bookkeeping failure must not affect the reply. */
+  private async markLedger(wamid: string, status: "processed" | "failed", error?: string): Promise<void> {
+    try {
+      const existing = await this.prisma.analyticsEvent.findUnique({
+        where: { id: inboundLedgerId(wamid) },
+      });
+      await this.prisma.analyticsEvent.update({
+        where: { id: inboundLedgerId(wamid) },
+        data: {
+          payload: {
+            ...((existing?.payload as Record<string, unknown> | null) ?? {}),
+            status,
+            completedAt: new Date().toISOString(),
+            // Error class/message only — never the user's text.
+            ...(error ? { error: error.slice(0, 200) } : {}),
+          },
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`Could not update WhatsApp ledger for ${wamid}: ${err?.message}`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Processing (async — never blocks the webhook ACK, FR-WA-006)
   // ---------------------------------------------------------------------------
 
+  /** Claim then process. Convenience wrapper; the webhook calls the two halves separately. */
   async processInbound(messages: InboundMessage[]): Promise<void> {
-    for (const msg of messages) {
-      if (this.alreadySeen(msg.wamid)) {
-        this.logger.debug(`Duplicate WhatsApp message ${msg.wamid} ignored`);
-        continue;
-      }
-      this.markSeen(msg.wamid);
+    const { claimed } = await this.claimInbound(messages);
+    await this.processClaimed(claimed);
+  }
 
+  /**
+   * Run already-claimed messages through the full chat pipeline. Every message
+   * still goes through `ChatService.handle({channel:"whatsapp"})` — safety,
+   * evidence-gate and citation rules are unchanged (FR-WA-001).
+   */
+  async processClaimed(messages: InboundMessage[]): Promise<void> {
+    for (const msg of messages) {
       try {
         const locale = detectLocale(msg.text);
         let sessionId = await this.resolveSession(msg.from, locale);
         let result;
         try {
-          result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text } as any);
+          result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
         } catch (err: any) {
           // Self-heal a stale/deleted session (the stored sessionId no longer
           // exists in the DB) — mint a fresh session and retry ONCE. Without
@@ -109,14 +207,16 @@ export class WhatsAppService {
           if (isInvalidSessionError(err)) {
             this.logger.warn(`Stale session ${sessionId} for WhatsApp contact — re-minting and retrying`);
             sessionId = await this.resolveSession(msg.from, locale, true);
-            result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text } as any);
+            result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
           } else {
             throw err;
           }
         }
         await this.sendText(msg.from, result.responseText);
+        await this.markLedger(msg.wamid, "processed");
       } catch (err: any) {
         this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
+        await this.markLedger(msg.wamid, "failed", err?.message);
         await this.sendText(msg.from, FALLBACK_REPLY).catch(() => undefined);
       }
     }
@@ -182,23 +282,6 @@ export class WhatsAppService {
         this.logger.error(`WhatsApp send failed (${res.status}): ${errText.slice(0, 200)}`);
         return; // stop sending further parts on failure
       }
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // De-dup cache
-  // ---------------------------------------------------------------------------
-
-  private alreadySeen(wamid: string): boolean {
-    return this.seenWamids.has(wamid);
-  }
-
-  private markSeen(wamid: string): void {
-    this.seenWamids.add(wamid);
-    this.seenOrder.push(wamid);
-    if (this.seenOrder.length > SEEN_CACHE_CAP) {
-      const evicted = this.seenOrder.shift();
-      if (evicted) this.seenWamids.delete(evicted);
     }
   }
 }
