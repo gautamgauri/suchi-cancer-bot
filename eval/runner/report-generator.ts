@@ -1,5 +1,17 @@
 import { EvaluationResult, EvaluationReport, EvaluationConfig, Rubric } from "../types";
 
+/**
+ * Reports are uploaded as CI artifacts (eval-tier1.yml) and committed to the
+ * repo — never embed live credentials in them.
+ */
+function redactConfigSecrets(config: EvaluationConfig): EvaluationConfig {
+  const redacted: EvaluationConfig = JSON.parse(JSON.stringify(config));
+  if (redacted.deepseekConfig?.apiKey) redacted.deepseekConfig.apiKey = "REDACTED";
+  if (redacted.openAiConfig?.apiKey) redacted.openAiConfig.apiKey = "REDACTED";
+  if ((redacted as any).authBearer) (redacted as any).authBearer = "REDACTED";
+  return redacted;
+}
+
 export class ReportGenerator {
   /**
    * Generate evaluation report from results
@@ -79,7 +91,7 @@ export class ReportGenerator {
     return {
       runId,
       timestamp: new Date().toISOString(),
-      config,
+      config: redactConfigSecrets(config),
       suite,
       summary: {
         total: results.length,
