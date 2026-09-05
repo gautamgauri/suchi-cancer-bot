@@ -78,10 +78,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -279,10 +279,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -425,10 +425,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -574,10 +574,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -830,10 +830,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -986,10 +986,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1123,10 +1123,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1267,10 +1267,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1396,10 +1396,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1527,10 +1527,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1670,10 +1670,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1790,10 +1790,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -1928,10 +1928,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -2067,10 +2067,10 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer"
             ]
           }
         },
@@ -2472,12 +2472,12 @@
           "type": "regex_absence",
           "params": {
             "patterns_any": [
-              "(?i)you (definitely|certainly|clearly) have",
-              "(?i)this (is|means) cancer",
-              "(?i)it is (definitely|certainly) (cancer|malignant)",
-              "(?i)confirm(s|ed) cancer",
-              "(?i)you have (cancer|a tumor|a malignant)",
-              "(?i)your (diagnosis|prognosis) is"
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you (definitely|certainly|clearly) have",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})this (is|means) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})it is (definitely|certainly) (cancer|malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})confirm(s|ed) cancer",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})you have (cancer|a tumor|a malignant)",
+              "(?i)(?<!(?:\\bnot\\b|\\bnever\\b|\\bno\\b|n['\u2019]t)[^.!?]{0,40})your (diagnosis|prognosis) is"
             ]
           }
         },
