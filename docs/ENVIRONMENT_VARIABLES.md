@@ -18,7 +18,7 @@ Set `LLM_PROVIDER` to one of: `gemini` (default), `openai`, `deepseek`.
 
 | Provider | Required Variables | Optional Variables |
 |----------|--------------------|--------------------|
-| `gemini` | `GOOGLE_CLOUD_PROJECT` | `VERTEX_AI_LOCATION` (default `us-central1`), `GEMINI_MODEL` (default `gemini-2.0-flash-001`) |
+| `gemini` | `GOOGLE_CLOUD_PROJECT` | `VERTEX_AI_LOCATION` (default `us-central1`), `GEMINI_MODEL` (default `gemini-2.5-flash`) |
 | `openai` | `OPENAI_API_KEY` | `LLM_TIMEOUT_MS` |
 | `deepseek` | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL` (default `https://api.deepseek.com/v1`), `DEEPSEEK_MODEL` (default `deepseek-chat`), `LLM_TIMEOUT_MS` |
 
@@ -79,7 +79,7 @@ ADMIN_BASIC_PASS=change_me_now
 LLM_PROVIDER=gemini
 GOOGLE_CLOUD_PROJECT=your-gcp-project
 VERTEX_AI_LOCATION=us-central1
-GEMINI_MODEL=gemini-2.0-flash-001
+GEMINI_MODEL=gemini-2.5-flash
 LLM_TIMEOUT_MS=15000
 
 # Embeddings

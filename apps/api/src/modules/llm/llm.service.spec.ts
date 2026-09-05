@@ -214,3 +214,140 @@ describe("LlmService — truncated Gemini output must never reach the user", () 
     expect(generateContent).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * Regression for the retry-budget escape found reviewing PR #73: every Gemini
+ * attempt used to start a fresh LLM_TIMEOUT_MS timer. With >3 chunks a single
+ * turn could therefore run four attempts — two truncation attempts, then two
+ * more after generateWithCitations() recursed with reduced context — for up to
+ * 4x LLM_TIMEOUT_MS against ChatService's 45s turn budget, leaving orphaned
+ * calls running after the user had already been served a timeout.
+ */
+describe("LlmService — all Gemini attempts share one absolute deadline", () => {
+  const TRUNCATED = "Screening for oral cancer means looking for cancer [citation:";
+  const COMPLETE = "Screening looks for cancer before symptoms appear [citation:doc-0:chunk-0].";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function serviceWithTimeout(timeoutMs: number) {
+    return new LlmService(
+      makeConfig({ LLM_TIMEOUT_MS: timeoutMs as never }) as never,
+      makeObservability() as never,
+    );
+  }
+
+  it("caps a >3-chunk turn at three attempts on one budget, not four on fresh timers", async () => {
+    const service = serviceWithTimeout(20000);
+    // Every attempt truncates, so the pipeline exhausts each retry path it has.
+    generateContent.mockResolvedValue(geminiResult(TRUNCATED, "MAX_TOKENS"));
+
+    const start = Date.now();
+    const out = await service.generateWithCitations(
+      "explain",
+      "",
+      "what is oral cancer screening",
+      makeChunks(5) as never,
+    );
+    const elapsed = Date.now() - start;
+
+    // First attempt + truncation retry + one reduced-context attempt, then the
+    // turn's allowance is spent. Never the old four-on-fresh-timers.
+    expect(generateContent).toHaveBeenCalledTimes(3);
+    // The whole turn fits one budget; attempts are slices, never 20s each.
+    expect(elapsed).toBeLessThan(20000);
+    // The user still gets the safe abstention, never the fragment.
+    expect(out).not.toContain("[citation:");
+    expect(out).toContain("1800-22-1951");
+  });
+
+  it("skips the truncation retry when too little budget remains", async () => {
+    // 9s total budget: the first attempt is allowed (>= 8s floor), but once it
+    // has burned time the retry no longer fits and must not be started.
+    const service = serviceWithTimeout(9000);
+    generateContent.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(geminiResult(TRUNCATED, "MAX_TOKENS")), 1500)),
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const out = await (service as any).callGeminiLLM("system", "user", 1200, true);
+
+    expect(out).toBeNull();
+    expect(generateContent).toHaveBeenCalledTimes(1); // no retry attempted
+  });
+
+  it("does not start any attempt once the turn deadline has passed", async () => {
+    const service = serviceWithTimeout(20000);
+    generateContent.mockResolvedValue(geminiResult(COMPLETE, "STOP"));
+
+    const spentClock = { deadlineAt: Date.now() - 1, attemptsLeft: 3 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const out = await (service as any).callGeminiLLM("system", "user", 1200, true, undefined, spentClock);
+
+    expect(out).toBeNull();
+    expect(generateContent).not.toHaveBeenCalled();
+  });
+
+  it("does not start any attempt once the turn attempt cap is spent", async () => {
+    const service = serviceWithTimeout(20000);
+    generateContent.mockResolvedValue(geminiResult(COMPLETE, "STOP"));
+
+    // Plenty of wall clock left, but the turn has already used its generations.
+    const spentAttempts = { deadlineAt: Date.now() + 20000, attemptsLeft: 0 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const out = await (service as any).callGeminiLLM("system", "user", 1200, true, undefined, spentAttempts);
+
+    expect(out).toBeNull();
+    expect(generateContent).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression: thinkingConfig is a 400 on non-thinking models. README.md and
+ * docs/ENVIRONMENT_VARIABLES.md documented gemini-2.0-flash-001, so an operator
+ * following the docs would have turned every generation into an abstention.
+ */
+describe("LlmService — thinkingConfig is gated by model support", () => {
+  const COMPLETE = "Screening looks for cancer before symptoms appear [citation:doc-0:chunk-0].";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    generateContent.mockResolvedValue(geminiResult(COMPLETE, "STOP"));
+  });
+
+  function configFor(model: string) {
+    return new LlmService(makeConfig({ GEMINI_MODEL: model }) as never, makeObservability() as never);
+  }
+
+  async function generationConfigFor(model: string) {
+    const service = configFor(model);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (service as any).callGeminiLLM("system", "user", 1200, true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (getGenerativeModel.mock.calls[0] as any)[0].generationConfig;
+  }
+
+  it("sends a thinking budget on a thinking model (gemini-2.5-flash)", async () => {
+    const config = await generationConfigFor("gemini-2.5-flash");
+
+    expect(config.thinkingConfig?.thinkingBudget).toEqual(expect.any(Number));
+    // Thinking tokens are added on top so they cannot eat the answer.
+    expect(config.maxOutputTokens).toBe(1200 + config.thinkingConfig.thinkingBudget);
+  });
+
+  it("omits thinkingConfig on the documented non-thinking model (gemini-2.0-flash-001)", async () => {
+    const config = await generationConfigFor("gemini-2.0-flash-001");
+
+    expect(config.thinkingConfig).toBeUndefined();
+    // The whole allowance goes to the answer — no padding for absent thinking.
+    expect(config.maxOutputTokens).toBe(1200);
+  });
+
+  it("still generates normally on a non-thinking model", async () => {
+    const service = configFor("gemini-2.0-flash-001");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(await (service as any).callGeminiLLM("system", "user", 1200, true)).toBe(COMPLETE);
+  });
+});
