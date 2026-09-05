@@ -18,25 +18,16 @@
 # a behavioral regression could reach a manual Cloud Build deploy unchallenged.
 name: API build verification
 
+# Deliberately NOT path-filtered. Both jobs below are required status checks on
+# main, and GitHub blocks a PR forever on "Expected - waiting for status" when a
+# required check is filtered out of that PR. A docs- or eval-only PR would never
+# become mergeable. The whole workflow runs in about a minute, so it runs on
+# everything rather than being conditionally skipped.
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - 'apps/api/**'
-      - 'kb/**'
-      - 'cloudbuild.yaml'
-      - 'cloudbuild.gated.yaml'
-      - 'scripts/check_deploy_config_parity.py'
-      - '.github/workflows/deploy-api.yml'
   push:
     branches: [main]
-    paths:
-      - 'apps/api/**'
-      - 'kb/**'
-      - 'cloudbuild.yaml'
-      - 'cloudbuild.gated.yaml'
-      - 'scripts/check_deploy_config_parity.py'
-      - '.github/workflows/deploy-api.yml'
 
 jobs:
   test:
