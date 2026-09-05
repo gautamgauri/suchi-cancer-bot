@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
+    "test": "jest",
+    "test:ci": "jest --ci --runInBand",
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
