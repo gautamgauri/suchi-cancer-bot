@@ -113,6 +113,67 @@ Do NOT ask more clarifying questions if the user has indicated general intent (e
 `;
 }
 
+/**
+ * Gemini 2.5 models are *thinking* models: the reasoning tokens they generate
+ * before the visible answer are charged against `maxOutputTokens`. With no
+ * `thinkingConfig`, the dynamic thinking budget grows to fill the whole
+ * allowance, the answer starts with only a handful of tokens left, and
+ * generation stops at `finishReason: "MAX_TOKENS"` — mid-sentence, often in the
+ * middle of a `[citation:...]` marker. The SDK does not treat MAX_TOKENS as a
+ * bad finish reason, so `response.text()` hands back the fragment silently.
+ *
+ * Pinning an explicit thinking budget and adding it on top of the caller's
+ * token allowance keeps `maxTokens` meaning what callers assume it means: the
+ * budget for the *answer*.
+ */
+const GEMINI_THINKING_BUDGET_TOKENS = 512;
+
+/** finishReason Gemini reports when generation was cut off at the token cap. */
+const GEMINI_FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
+
+/** Upper bound for the single retry after a truncated generation. */
+const GEMINI_TRUNCATION_RETRY_CEILING_TOKENS = 4000;
+
+/**
+ * Models that accept `thinkingConfig`. Sending it to a non-thinking model
+ * (e.g. gemini-2.0-flash-001) is a 400 from the API, which would turn every
+ * generation into a fallback/abstention — so the config is gated, not assumed.
+ */
+const GEMINI_THINKING_MODEL_PATTERN = /^gemini-(2\.5|3)|thinking/i;
+
+/**
+ * Below this, a fresh attempt cannot realistically finish, so starting one only
+ * burns the tail of the request budget and orphans a call that keeps running
+ * after the caller has already given up.
+ */
+const GEMINI_MIN_ATTEMPT_BUDGET_MS = 8000;
+
+/**
+ * Total Gemini generations allowed per turn, across every retry path: the first
+ * attempt, the truncation retry, and the reduced-context retry. Two independent
+ * retry policies used to compose into four calls on a turn that was failing
+ * anyway, so they are consolidated into this one allowance.
+ */
+const GEMINI_MAX_ATTEMPTS_PER_TURN = 3;
+
+/**
+ * One turn's shared generation allowance. Threaded through every retry path so
+ * the paths draw down a single wall-clock and attempt budget instead of each
+ * starting a fresh LLM_TIMEOUT_MS timer of its own.
+ */
+interface GenerationBudget {
+  /** Absolute epoch-ms deadline for the whole turn. */
+  deadlineAt: number;
+  /** Generations still allowed in this turn. */
+  attemptsLeft: number;
+}
+
+/** What one Gemini generation attempt yields, before truncation is judged. */
+interface GeminiAttempt {
+  text: string;
+  finishReason: string | null;
+}
+
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
@@ -126,6 +187,7 @@ export class LlmService {
   private readonly geminiProject: string;
   private readonly geminiLocation: string;
   private readonly geminiModel: string;
+  private readonly geminiSupportsThinking: boolean;
   private readonly fallbackEnabled: boolean;
   private fallbackUsedCount: number = 0;
 
@@ -143,6 +205,7 @@ export class LlmService {
     this.geminiModel = this.configService.get<string>("GEMINI_MODEL") ||
                        this.configService.get<string>("FALLBACK_LLM_MODEL") ||
                        "gemini-2.5-flash";
+    this.geminiSupportsThinking = GEMINI_THINKING_MODEL_PATTERN.test(this.geminiModel);
 
     if (this.provider === "gemini") {
       if (!this.geminiApiKey && !this.geminiProject) {
@@ -186,50 +249,105 @@ export class LlmService {
     }
   }
 
+  /** A fresh per-turn allowance: LLM_TIMEOUT_MS of wall clock, capped attempts. */
+  private newGenerationBudget(): GenerationBudget {
+    return {
+      deadlineAt: Date.now() + this.timeoutMs,
+      attemptsLeft: GEMINI_MAX_ATTEMPTS_PER_TURN,
+    };
+  }
+
   /**
    * Call Gemini via Google AI API (generativelanguage.googleapis.com).
    * Used as primary when LLM_PROVIDER=gemini, or as fallback for other providers.
+   *
+   * `budget` is the turn's shared wall-clock and attempt allowance, drawn down
+   * by every attempt this call makes including the truncation retry. Callers
+   * that fan out into more than one generation (generateWithCitations'
+   * reduced-context retry) pass their own budget down so the whole chain stays
+   * inside it, instead of each path claiming a fresh LLM_TIMEOUT_MS and its own
+   * retry count. Omitted means "this call is the whole turn".
    */
-  private async callGeminiLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, isPrimary: boolean = false, traceId?: string): Promise<string | null> {
+  private async callGeminiLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, isPrimary: boolean = false, traceId?: string, budget?: GenerationBudget): Promise<string | null> {
     if (!this.geminiApiKey && !this.geminiProject) {
       return null;
     }
+
+    const turn = budget ?? this.newGenerationBudget();
+    const remaining = () => turn.deadlineAt - Date.now();
+
+    /** Time this attempt may take, or null when the turn has no room left. */
+    const claimAttempt = (): number | null => {
+      const slice = Math.min(this.timeoutMs, remaining());
+      if (turn.attemptsLeft <= 0 || slice < GEMINI_MIN_ATTEMPT_BUDGET_MS) {
+        return null;
+      }
+      turn.attemptsLeft--;
+      return slice;
+    };
 
     try {
       const genLabel = isPrimary ? 'gemini_primary' : 'gemini_fallback';
       const genInput = `[SYSTEM]\n${systemPrompt.substring(0, 500)}\n\n[USER]\n${userPrompt.substring(0, 500)}`;
       const gen = this.observability.startGenerationById(traceId, genLabel, genInput, this.geminiModel);
 
-      let geminiPromise: Promise<string>;
-
-      if (this.geminiApiKey) {
-        // Google AI API (generativelanguage.googleapis.com) — preferred for gen-lang-client projects
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const client = new GoogleGenerativeAI(this.geminiApiKey);
-        const model = client.getGenerativeModel({
-          model: this.geminiModel,
-          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+      const firstBudget = claimAttempt();
+      if (firstBudget === null) {
+        this.logger.warn({
+          event: 'gemini_budget_exhausted',
+          message: `Generation budget spent (${remaining()}ms, ${turn.attemptsLeft} attempts left) — not starting a Gemini call`,
+          isPrimary,
         });
-        geminiPromise = model.generateContent(`${systemPrompt}\n\n${userPrompt}`)
-          .then(r => r.response.text() || "");
-      } else {
-        // Vertex AI fallback (for projects with Vertex AI access)
-        const { VertexAI } = await import("@google-cloud/vertexai");
-        const vertexAI = new VertexAI({ project: this.geminiProject, location: this.geminiLocation });
-        const model = vertexAI.getGenerativeModel({
-          model: this.geminiModel,
-          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
-        });
-        geminiPromise = model.generateContent({
-          contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-        }).then(r => r.response.candidates?.[0]?.content?.parts?.[0]?.text || "");
+        this.observability.endGeneration(gen, '', {});
+        return null;
       }
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), this.timeoutMs);
-      });
+      let attempt = await this.generateGeminiOnce(systemPrompt, userPrompt, maxTokens, firstBudget);
 
-      const text = await Promise.race([geminiPromise, timeoutPromise]);
+      // A truncated answer must never reach a patient: it stops mid-sentence and
+      // drops the safety framing the prompt contract puts at the end. Retry once
+      // with a bigger allowance, then give up so the caller's fallback/abstention
+      // path takes over.
+      if (attempt.finishReason === GEMINI_FINISH_REASON_MAX_TOKENS) {
+        // The retry has to fit in what is left of the shared budget. Starting it
+        // anyway would return past the caller's timeout and keep running in the
+        // background after the user has already been served an error.
+        const retryBudget = claimAttempt();
+        if (retryBudget === null) {
+          this.logger.error({
+            event: 'gemini_truncation_retry_skipped',
+            message: `Gemini stopped at MAX_TOKENS but the turn budget is spent (${remaining()}ms, ${turn.attemptsLeft} attempts left) — discarding partial answer without retrying`,
+            maxTokens,
+            isPrimary,
+          });
+          this.observability.endGeneration(gen, '', {});
+          return null;
+        }
+
+        const retryTokens = Math.min(maxTokens * 2, GEMINI_TRUNCATION_RETRY_CEILING_TOKENS);
+        this.logger.warn({
+          event: 'gemini_output_truncated',
+          message: `Gemini stopped at MAX_TOKENS after ${attempt.text.length} chars — retrying with ${retryTokens} answer tokens`,
+          maxTokens,
+          retryTokens,
+          retryBudgetMs: retryBudget,
+          isPrimary,
+        });
+        attempt = await this.generateGeminiOnce(systemPrompt, userPrompt, retryTokens, retryBudget);
+
+        if (attempt.finishReason === GEMINI_FINISH_REASON_MAX_TOKENS) {
+          this.logger.error({
+            event: 'gemini_output_truncated_after_retry',
+            message: 'Gemini output still truncated after retry — discarding partial answer',
+            retryTokens,
+            isPrimary,
+          });
+          this.observability.endGeneration(gen, '', {});
+          return null;
+        }
+      }
+
+      const text = attempt.text;
 
       this.observability.endGeneration(gen, text.substring(0, 1000), {});
 
@@ -242,7 +360,7 @@ export class LlmService {
     } catch (error: any) {
       const label = isPrimary ? '(primary)' : '(fallback)';
       if (error.message === 'GEMINI_TIMEOUT') {
-        this.logger.warn(`Gemini LLM ${label} timed out after ${this.timeoutMs}ms`);
+        this.logger.warn(`Gemini LLM ${label} timed out with ${remaining()}ms left of the generation budget`);
       } else {
         this.logger.error(`Gemini LLM ${label} failed: ${error.message}`);
       }
@@ -251,14 +369,93 @@ export class LlmService {
   }
 
   /**
+   * One Gemini generation, returning the text *and* why generation stopped.
+   *
+   * `maxAnswerTokens` is the budget for the visible answer; on a thinking model
+   * the thinking budget is added on top so reasoning tokens cannot eat into it
+   * (see GEMINI_THINKING_BUDGET_TOKENS).
+   *
+   * `timeoutMs` is this attempt's slice of the caller's absolute deadline, not
+   * a fresh full LLM_TIMEOUT_MS — see callGeminiLLM().
+   */
+  private async generateGeminiOnce(
+    systemPrompt: string,
+    userPrompt: string,
+    maxAnswerTokens: number,
+    timeoutMs: number,
+  ): Promise<GeminiAttempt> {
+    // `thinkingConfig` is newer than the pinned SDK's GenerationConfig type but
+    // is forwarded verbatim to the v1beta REST body, so widen the type here.
+    // Only thinking-capable models accept it (GEMINI_THINKING_MODEL_PATTERN);
+    // for the rest the answer gets the whole allowance and no thinking config.
+    const generationConfig = {
+      temperature: 0.3,
+      maxOutputTokens: this.geminiSupportsThinking
+        ? maxAnswerTokens + GEMINI_THINKING_BUDGET_TOKENS
+        : maxAnswerTokens,
+      ...(this.geminiSupportsThinking
+        ? { thinkingConfig: { thinkingBudget: GEMINI_THINKING_BUDGET_TOKENS } }
+        : {}),
+    } as Record<string, unknown>;
+
+    let geminiPromise: Promise<GeminiAttempt>;
+
+    if (this.geminiApiKey) {
+      // Google AI API (generativelanguage.googleapis.com) — preferred for gen-lang-client projects
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const client = new GoogleGenerativeAI(this.geminiApiKey);
+      const model = client.getGenerativeModel({
+        model: this.geminiModel,
+        generationConfig: generationConfig as never,
+      });
+      geminiPromise = model.generateContent(`${systemPrompt}\n\n${userPrompt}`).then(r => ({
+        text: r.response.text() || "",
+        finishReason: r.response.candidates?.[0]?.finishReason ?? null,
+      }));
+    } else {
+      // Vertex AI fallback (for projects with Vertex AI access)
+      const { VertexAI } = await import("@google-cloud/vertexai");
+      const vertexAI = new VertexAI({ project: this.geminiProject, location: this.geminiLocation });
+      const model = vertexAI.getGenerativeModel({
+        model: this.geminiModel,
+        generationConfig: generationConfig as never,
+      });
+      geminiPromise = model
+        .generateContent({
+          contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+        })
+        .then(r => {
+          const candidate = r.response.candidates?.[0];
+          return {
+            // Join every text part: a multi-part candidate holds the answer in
+            // sequence, so reading parts[0] alone silently truncates it.
+            text: (candidate?.content?.parts ?? []).map(p => p.text ?? "").join(""),
+            finishReason: candidate?.finishReason ?? null,
+          };
+        });
+    }
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), timeoutMs);
+    });
+
+    try {
+      return await Promise.race([geminiPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+  }
+
+  /**
    * Call fallback LLM (Gemini Flash via Vertex AI)
    * Used when primary LLM fails with rate limit, timeout, or server error
    */
-  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, traceId?: string): Promise<string | null> {
+  private async callFallbackLLM(systemPrompt: string, userPrompt: string, maxTokens: number = 3000, traceId?: string, budget?: GenerationBudget): Promise<string | null> {
     if (!this.fallbackEnabled) {
       return null;
     }
-    return this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, false, traceId);
+    return this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, false, traceId, budget);
   }
 
   /**
@@ -782,8 +979,14 @@ VOICE CHANNEL RULES (this response will be read aloud by TTS):
     isIdentifyQuestion: boolean = false,
     conversationContext?: { hasGenerallyAsking?: boolean; cancerType?: string | null; emotionalState?: string; checklist?: string; intent?: string; patientState?: PatientState; channel?: string },
     isTimeoutRetry: boolean = false,
-    traceId?: string
+    traceId?: string,
+    budget?: GenerationBudget
   ): Promise<string> {
+    // One allowance for the whole turn — the first attempt, its truncation
+    // retry, and the reduced-context retry below all draw from it. Without this
+    // each of those four possible Gemini calls claimed a fresh LLM_TIMEOUT_MS
+    // (45s in production) against a 45s ChatService turn budget.
+    const turn = budget ?? this.newGenerationBudget();
     // Resolve mode to actual prompt
     let actualSystemPrompt: string;
     if (systemPrompt === "explain") {
@@ -850,14 +1053,19 @@ CITATION FORMAT:
       // Use Gemini directly if provider is "gemini"
       if (this.provider === "gemini") {
         const maxTokens = isIdentifyQuestion ? 2000 : 1200;
-        const result = await this.callGeminiLLM(actualSystemPrompt, citationInstructions, maxTokens, true, traceId);
+        const result = await this.callGeminiLLM(actualSystemPrompt, citationInstructions, maxTokens, true, traceId, turn);
         if (result) {
           return result;
         }
 
-        // First failure: retry with reduced context (top 3 chunks) if not already retrying
-        if (!isTimeoutRetry && chunks.length > 3) {
-          this.logger.warn(`Gemini primary call failed — retrying with reduced context (3 chunks)`);
+        // First failure: retry with reduced context (top 3 chunks) if not already
+        // retrying, and only while the turn's shared allowance still has room for
+        // a real attempt — otherwise abstain now rather than answer past the
+        // caller's timeout or spend a fourth generation on a failing turn.
+        const msLeft = turn.deadlineAt - Date.now();
+        const canRetry = turn.attemptsLeft > 0 && msLeft >= GEMINI_MIN_ATTEMPT_BUDGET_MS;
+        if (!isTimeoutRetry && chunks.length > 3 && canRetry) {
+          this.logger.warn(`Gemini primary call failed — retrying with reduced context (3 chunks), ${msLeft}ms and ${turn.attemptsLeft} attempts left`);
           const reducedChunks = chunks.slice(0, 3);
           return this.generateWithCitations(
             systemPrompt,
@@ -866,7 +1074,9 @@ CITATION FORMAT:
             reducedChunks,
             isIdentifyQuestion,
             conversationContext,
-            true // Mark as retry
+            true, // Mark as retry
+            traceId,
+            turn
           );
         }
 
@@ -921,9 +1131,13 @@ CITATION FORMAT:
           
           // Handle timeout or abort errors with smart retry
           if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('aborted')) {
-            if (!isTimeoutRetry && chunks.length > 3) {
+            // Same turn allowance as the Gemini path: the reduced-context retry
+            // and the Gemini fallback below both draw from it, so a provider
+            // switch cannot reintroduce per-attempt timers.
+            if (!isTimeoutRetry && chunks.length > 3 && turn.attemptsLeft > 0 &&
+                turn.deadlineAt - Date.now() >= GEMINI_MIN_ATTEMPT_BUDGET_MS) {
               // First timeout: retry with reduced context (top 3 chunks only)
-              this.logger.warn(`LLM generation timeout after ${this.timeoutMs}ms - retrying with reduced context (3 chunks)`);
+              this.logger.warn(`LLM generation timeout - retrying with reduced context (3 chunks)`);
               const reducedChunks = chunks.slice(0, 3);
               return this.generateWithCitations(
                 systemPrompt,
@@ -932,12 +1146,14 @@ CITATION FORMAT:
                 reducedChunks,
                 isIdentifyQuestion,
                 conversationContext,
-                true // Mark as retry
+                true, // Mark as retry
+                traceId,
+                turn
               );
             }
             // Second timeout or already minimal context: try Gemini fallback before abstention
             this.logger.warn(`LLM generation timeout after retry - trying Gemini fallback...`);
-            const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId);
+            const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId, turn);
             if (fallbackResult) {
               this.logger.log(`Gemini fallback succeeded after Deepseek timeout`);
               return fallbackResult;
@@ -959,7 +1175,7 @@ CITATION FORMAT:
 
           // Non-retryable error or last attempt - try fallback
           this.logger.warn(`Primary LLM failed after ${attempt + 1} attempts: ${error.message}, trying fallback...`);
-          const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId);
+          const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId, turn);
           if (fallbackResult) {
             return fallbackResult;
           }
@@ -972,7 +1188,7 @@ CITATION FORMAT:
       this.logger.error(`LLM generation failed after ${maxRetries + 1} attempts: ${lastError?.message}`);
 
       // Try fallback before giving up
-      const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId);
+      const fallbackResult = await this.callFallbackLLM(actualSystemPrompt, citationInstructions, isIdentifyQuestion ? 3500 : 3000, traceId, turn);
       if (fallbackResult) {
         return fallbackResult;
       }
@@ -984,7 +1200,7 @@ CITATION FORMAT:
       // Try fallback as last resort
       // We need to rebuild the prompt here since we're outside the try block
       const fallbackPrompt = `Answer the user's question based on medical information. Be helpful and cite sources when available.\n\nUser question: ${this.sanitizeUserInput(userMessage)}`;
-      const fallbackResult = await this.callFallbackLLM(systemPrompt === "explain" ? this.getExplainModePrompt() : this.getNavigateModePrompt(), fallbackPrompt);
+      const fallbackResult = await this.callFallbackLLM(systemPrompt === "explain" ? this.getExplainModePrompt() : this.getNavigateModePrompt(), fallbackPrompt, undefined, undefined, turn);
       if (fallbackResult) {
         return fallbackResult;
       }

@@ -37,7 +37,7 @@ Suchi (Suchitra Cancer Bot) - A cancer information assistant with safety guardra
    LLM_PROVIDER=gemini
    GOOGLE_CLOUD_PROJECT=your_gcp_project_id
    VERTEX_AI_LOCATION=us-central1
-   GEMINI_MODEL=gemini-2.0-flash-001
+   GEMINI_MODEL=gemini-2.5-flash
    EMBEDDING_API_KEY=your_embedding_api_key
    REVIEW_COPILOT_MODE=off
    PORT=3001
