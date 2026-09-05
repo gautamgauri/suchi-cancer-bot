@@ -535,3 +535,87 @@ more, and should be decided together with QA0904-1.
    assert — including red-flag ones — so this is an eval-owner + SCCF call,
    not an agent fix. Pinned by `eval/scripts/case-schema.test.ts` so the list
    cannot grow silently.
+
+## Open operational decisions — 2026-09-05
+
+These are not code changes. Each one needs a person to choose, and none of
+them can be settled by an agent. Written in plain language deliberately.
+
+### OPS-1 (SECURITY, do this first). Rotate the DeepSeek API key
+
+**What happened:** the eval nightly uploads its report as a downloadable file,
+and the report used to contain the DeepSeek API key in plain text
+(`eval/runner/report-generator.ts` wrote the raw config;
+`.github/workflows/eval-tier1.yml:142-151` uploads it with 30-day retention).
+The key may also still be sitting in plain text in a local untracked
+`eval/report.json`. It is not in any git-tracked file.
+
+**Why it matters:** anyone who could download those artifacts could read the key.
+
+**Ordering — the blocker is now cleared.** This item was written when the
+redaction fix was unmerged, so it said to wait. The redaction half of PR #59
+merged on 2026-09-09 as **PR #101** ("fix(eval): redact credentials from
+generated reports, with tests"), so new reports no longer carry the key.
+Remaining steps, in order: **rotate the key**, then **delete the artifacts from
+the retention window that pre-date #101**, then clean up any local
+`eval/report.json`.
+
+**Decision:** who does the rotation (credential owner — agents must not touch
+credentials), and confirm the pre-#101 artifacts get purged rather than aged out.
+
+### OPS-2 (COST). Two always-on databases dominate the bill
+
+Measured 2026-09-05: `/v1/chat` served **808 requests in 30 days**, of which
+**697 (86%) were the eval runner** and only about **10 were real people**. All
+Gemini usage across chat and the eval judge comes to roughly **$6/month**.
+
+Meanwhile two Cloud SQL instances run 24/7 on the same billing account:
+
+| instance | tier | rough cost |
+|---|---|---|
+| `diksha-db` | `db-custom-1-3840` (1 vCPU, 3.75 GB) | ~$50/month |
+| `suchi-db` | `db-f1-micro` | ~$8/month |
+
+**Decision:** whether to right-size or schedule `diksha-db`. This is worth
+roughly 20x more than any LLM provider change. Note the cost figures are
+calculated from machine specs and public rates, not read off an invoice —
+there is no BigQuery billing export configured, so exact numbers need the
+billing console.
+
+### OPS-3 (COST). DeepSeek migration — recommend closing it
+
+Investigated because DeepSeek looked cheaper. It is cheaper per token, but:
+
+- the whole LLM bill is ~$6/month, so the saving is ~$2/month
+- `deepseek-chat`, the model this repo defaults to, was **retired 2026-07-24**
+- the DeepSeek code path is a pre-hardening fork: no truncation detection, no
+  shared request deadline, no Langfuse tracing, no tests. The truncated-reply
+  bug fixed in #73 would return, unmitigated, on the patient-facing path.
+
+`gemini-2.5-flash-lite` is cheaper than DeepSeek and needs only an env var
+change on the already-hardened path. In a 21-case A/B against prod it also
+scored *better* than the current `gemini-2.5-flash` (10/21 vs 6/21 pass,
+87.4% vs 83.9% average) — though that is a single run per arm and LLM output
+varies, so it is suggestive, not conclusive.
+
+**Decision:** close the DeepSeek migration? And separately, is a proper
+multi-run A/B on the full 604-case manifest worth doing before switching the
+production model to flash-lite?
+
+### OPS-4 (CLEANUP). Delete the flash-lite test revision
+
+`suchi-api-00459-puw` is deployed at 0% traffic with
+`GEMINI_MODEL=gemini-2.5-flash-lite`, reachable at its `flashlite` tag URL. It
+was created for the A/B above and costs nothing idle.
+
+**Decision:** delete it, or keep it for a fuller model comparison first.
+
+### OPS-5. Required status checks — is the current set right?
+
+`main` is now protected, requiring `API unit tests` and `Build + config parity`.
+`enforce_admins` is **false**, so the repo owner can still override in an
+emergency.
+
+**Decision:** should the eval workflow ever become a required check? Right now
+it must not be — it has failed every scheduled run since 2026-06-06. Revisit
+once the eval rescope (#78) settles.
