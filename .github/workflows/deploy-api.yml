@@ -8,8 +8,14 @@
 # History: this workflow used to auto-deploy on push to main with its own
 # copy of the Cloud Run env/secret config. Because --set-env-vars/--set-secrets
 # REPLACE the full set (no merge), its stale copy wiped production config on
-# 2026-06-28 (see PR #51). It now only verifies that the API image builds and
-# that the two Cloud Build pipelines carry identical runtime config.
+# 2026-06-28 (see PR #51). It now verifies that the API unit suite passes, that
+# the image builds, and that the two Cloud Build pipelines carry identical
+# runtime config.
+#
+# The `test` job below is the repo's only automated gate on API behavior. Before
+# it existed the apps/api Jest suite ran in no workflow at all: the specs were
+# written and passing locally, but nothing enforced them on a PR or on main, so
+# a behavioral regression could reach a manual Cloud Build deploy unchallenged.
 name: API build verification
 
 on:
@@ -33,7 +39,37 @@ on:
       - '.github/workflows/deploy-api.yml'
 
 jobs:
+  test:
+    name: API unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: npm ci
+
+      # The Prisma client is generated, not committed, and prisma.service.ts
+      # imports it — ts-jest cannot compile the suite without this. Reads the
+      # schema only; no database connection is involved.
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: npx prisma generate
+
+      - name: Run Jest
+        working-directory: apps/api
+        run: npm run test:ci
+
   verify:
+    name: Build + config parity
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
