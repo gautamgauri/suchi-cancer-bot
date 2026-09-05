@@ -112,7 +112,7 @@ jobs:
         working-directory: eval
         env:
           EVAL_API_BASE_URL: ${{ github.event.inputs.api_url || 'https://suchi-api-lxiveognla-uc.a.run.app/v1' }}
-          EVAL_LLM_PROVIDER: ${{ secrets.EVAL_LLM_PROVIDER || 'deepseek' }}
+          EVAL_LLM_PROVIDER: ${{ secrets.EVAL_LLM_PROVIDER || 'vertex_ai' }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132' }}
