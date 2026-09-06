@@ -85,26 +85,32 @@ test.describe('UX Ticket: Sources Disclosure Modal @ux', () => {
   });
 });
 
-test.describe('UX Ticket: Sources Footer Styling @ux', () => {
-  // Both assertions describe the *content* of a real answer — API-dependent.
+/**
+ * Was "UX Ticket: Sources Footer Styling" (issue #71.1). Both of its specs were
+ * wrong about the shipped surface:
+ *
+ *  - 'citation markers appear in response' expected `[n]` in the answer.
+ *    `ChatController.send()` strips `[citation:…]`, `[n]` and the raw
+ *    `**Sources:**` block before the response leaves the API, so no marker can
+ *    reach the browser. It could never pass.
+ *  - 'sources section appears with proper styling' expected a `/SOURCES/i`
+ *    footer. There is no per-answer sources footer in the app. The assertion
+ *    nevertheless PASSED for the wrong reason: the case-insensitive match also
+ *    hits the "About Our Sources" disclosure modal and the WelcomeMessage line
+ *    "Find trusted sources and resources". A green test naming a component that
+ *    does not exist is worse than a red one.
+ *
+ * The shipped surface is: clean prose in the answer, provenance disclosed once
+ * via the "About Our Sources" modal (asserted above), audit trail in the JSON.
+ */
+test.describe('UX Ticket: Answer text carries no citation furniture @ux', () => {
   test.beforeEach(async ({ page }) => {
     await enterChat(page, { path: '/chat', stubSession: false });
   });
 
-  test('sources section appears with proper styling', async ({ page }) => {
-    const baseline = await assistantMessages(page).count();
-
-    const input = page.locator('textarea');
-    await input.fill('What is chemotherapy used for?');
-    await page.getByRole('button', { name: 'Send message' }).click();
-
-    await waitForAssistantReply(page, baseline);
-
-    const sourcesSection = page.getByText(/SOURCES/i);
-    await expect(sourcesSection.first()).toBeVisible();
-  });
-
-  test('citation markers appear in response', async ({ page }) => {
+  test('no citation markers or sources footer are rendered in the answer', async ({
+    page,
+  }) => {
     const baseline = await assistantMessages(page).count();
 
     const input = page.locator('textarea');
@@ -113,8 +119,13 @@ test.describe('UX Ticket: Sources Footer Styling @ux', () => {
 
     await waitForAssistantReply(page, baseline);
 
-    const citation = page.getByText(/\[\d+\]/);
-    await expect(citation.first()).toBeVisible();
+    const rendered = await assistantMessages(page).last().innerText();
+    expect(rendered).not.toMatch(/\[citation:/);
+    expect(rendered).not.toMatch(/\[\d{1,3}\]/);
+    expect(rendered).not.toMatch(/\*\*Sources:\*\*/);
+    // Scoped to the answer bubble, so the "About Our Sources" modal and the
+    // welcome copy cannot make this pass or fail by accident.
+    expect(rendered).not.toMatch(/^\s*sources\b/im);
   });
 });
 
