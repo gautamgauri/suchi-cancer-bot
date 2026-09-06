@@ -160,28 +160,53 @@ test.describe('Full Chat Flow @full', () => {
     await waitForAssistantReply(page, baseline);
   });
 
-  test('response includes citations', async ({ page }) => {
+  /**
+   * Replaces two specs that could never pass (issue #71.1):
+   *
+   *   test('response includes citations')          → expected [1] in the answer
+   *   test('shows sources section after response') → expected /Sources/i
+   *
+   * `ChatController.send()` strips `[citation:…]`, leftover `[n]` refs and the
+   * raw `**Sources:**` block from `responseText` before it leaves the API
+   * (apps/api/src/modules/chat/chat.controller.ts), deliberately — citations are
+   * for auditors, not users (#54). No marker survives to the browser, so those
+   * assertions were fiction against any real service.
+   *
+   * The shipped contract has two halves, and this asserts both: the user sees
+   * clean prose, AND the audit trail still arrives in the structured payload.
+   * Asserting only the first half would pass if citations stopped being
+   * produced at all.
+   */
+  test('answer reaches the browser clean, with the audit trail still in the payload', async ({
+    page,
+  }) => {
     const baseline = await assistantMessages(page).count();
+
+    const chatResponse = page.waitForResponse(
+      (r) => r.url().includes('/chat') && r.request().method() === 'POST',
+    );
 
     const input = page.locator('textarea');
     await input.fill('What are the treatment options for lung cancer?');
     await page.getByRole('button', { name: 'Send message' }).click();
 
+    const payload = await (await chatResponse).json();
+
+    // Half 1 — the API must not emit markers in the user-facing text.
+    expect(payload.responseText).not.toMatch(/\[citation:/);
+    expect(payload.responseText).not.toMatch(/\[\d{1,3}\]/);
+    expect(payload.responseText).not.toMatch(/\*\*Sources:\*\*/);
+
+    // Half 2 — provenance is still returned for auditing. A grounded answer
+    // must cite; if this array empties out, citation auditing has silently died.
+    expect(Array.isArray(payload.citations)).toBe(true);
+    expect(payload.citations.length).toBeGreaterThan(0);
+
+    // And the rendered message agrees with the payload.
     await waitForAssistantReply(page, baseline);
-
-    // Should have citations (use .first() since there may be multiple [1] citations)
-    await expect(page.getByText(/\[1\]/).first()).toBeVisible();
-  });
-
-  test('shows sources section after response', async ({ page }) => {
-    const baseline = await assistantMessages(page).count();
-
-    const input = page.locator('textarea');
-    await input.fill('What is chemotherapy?');
-    await page.getByRole('button', { name: 'Send message' }).click();
-
-    await waitForAssistantReply(page, baseline);
-    await expect(page.getByText(/Sources/i).first()).toBeVisible();
+    const rendered = await assistantMessages(page).last().innerText();
+    expect(rendered).not.toMatch(/\[citation:/);
+    expect(rendered).not.toMatch(/\[\d{1,3}\]/);
   });
 });
 

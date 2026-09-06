@@ -179,6 +179,76 @@ by this handoff review.
   `E2E_BASE_URL` to the deployed `suchi-web` URL. No new grep expression is
   needed; the un-grepped step already covers all three tags.
 
+### P1-9. The client-side citation renderer is unreachable code, and one modal's copy contradicts the shipped behaviour (issue #71.1)
+
+- **What:** `ChatController.send()`
+  (`apps/api/src/modules/chat/chat.controller.ts`) strips `[citation:…]`
+  markers, leftover `[n]` refs and the raw `**Sources:**` block from
+  `responseText` before the response leaves the API — deliberately, per #54
+  ("citations are for auditors, not users"). Consequences:
+  - `apps/web/src/utils/citationParser.ts` matches
+    `/\[citation:([^:]+):([^\]]+)\]/g` against the already-stripped text, so
+    `parseCitations()` always returns `[]`. `MessageList.tsx` therefore never
+    renders a `<Citation>` chip, and the chip's `✓ Trusted` tooltip
+    (`Citation.tsx`) can never appear. That whole path is shipped dead code.
+    Its unit tests (`citationParser.test.ts`, `Citation.test.tsx`) pass because
+    they feed synthetic marked-up text — they test the parser, not its
+    reachability, so they are not wrong, just not evidence that the feature
+    works.
+  - The one-time disclosure modal in `ChatInterface.tsx:364` tells users
+    "**Each response includes citations so you can verify the information.**"
+    Users cannot: no marker or source list reaches the browser. This is
+    user-facing copy that is factually untrue of the shipped product.
+- **Resolved in this change:** the *tests* now assert the shipped contract.
+  `apps/api/src/modules/chat/chat.controller.spec.ts` is new and pins it at the
+  boundary where it is enforced (and runs in CI on every PR, unlike `@full`
+  e2e — see P1-8); the two e2e specs that asserted the opposite were replaced.
+- **Not resolved — needs a product decision:** delete the dead client-side
+  citation renderer, or restore a user-visible provenance affordance and
+  update #54. Either way the disclosure-modal copy must be corrected or the
+  behaviour made to match it. Agents should not rewrite this copy unilaterally.
+
+### P1-10. `eval/cases/tier1/phase2_journeys.yaml` counts as coverage but no runner can execute it (issue #71.3, #70)
+
+- **What:** the file uses a bespoke schema — `userText`, `expectedBehavior`,
+  `mustContain`, `mustNotContain`, `mustMatch`, `softRedirect`, `rubric` — that
+  nothing in the repository reads.
+  `grep -rl 'mustMatch\|expectedBehavior\|softRedirect'` returns that one file
+  and nothing else. It cannot run for two independent reasons:
+  1. `runner/evaluator.ts` calls
+     `executeConversation(sessionId, testCase.user_messages, "web")`; these
+     cases have no `user_messages`, so the run throws before any HTTP call.
+  2. `rubrics/rubrics.v1.json` defines neither `PERSONAL_SYMPTOMS` nor
+     `EMERGENCY`, and `getRubric()` throws on an unknown intent. (`EMERGENCY`
+     is not even an `IntentType` in
+     `apps/api/src/modules/chat/intent-classifier.ts` — the red-flag path is
+     the safety module, not an intent.)
+- **Impact:** its 9 case IDs are counted by the case-manifest guard, so the
+  headline **601 cases overstates executable coverage by 9 (592 runnable)**.
+  Nine user-journey behaviours — newly diagnosed, caregiver reading a report,
+  symptom worry, caregiver crisis escalation, emergency red flags — read as
+  covered and are not tested at all. This is also why #70's false negative
+  survived: nothing ever executed the regex.
+- **Guarded in this change:** `eval/scripts/case-schema.test.ts` classifies
+  every case file by runner lane (`gold` / `voice` / `voice-e2e` / orphan),
+  fails if a **new** file arrives in a schema no runner reads, fails if a
+  quarantined file is quietly ported (stale-entry check), and pins the
+  601/9/592 split so the coverage headline cannot silently re-inflate.
+- **`mode:` — recorded decision (was the open question in #71.3):** the
+  `mode: navigate|explain` key is descriptive only, not a request field, and
+  that is correct as-is. `runner/api-client.ts` posts
+  `{sessionId, channel, userText}`; `ChatDto` declares no `mode`; `main.ts`
+  runs `ValidationPipe({ forbidNonWhitelisted: true })`, so a request carrying
+  `mode` would be rejected with 400. The API derives it from the text itself via
+  `ModeDetector.detectMode(userText)`. So the eval does **not** exercise a
+  request shape a browser cannot produce — the field simply never left the YAML.
+  Mode stays server-derived; the keys document intent for a human reader.
+- **Fix shape (not done here):** port the 9 cases to the canonical
+  `user_messages` + `expectations` schema and add `PERSONAL_SYMPTOMS` /
+  red-flag rubrics, or remove the file with a manifest tombstone. Porting means
+  choosing the pass criteria for symptom-worry and emergency journeys, which is
+  a medical-review question (AGENTS.md §1.3), not an agent decision.
+
 ---
 
 ## P2 — track and schedule
@@ -408,3 +478,15 @@ more, and should be decided together with QA0904-1.
 9. QA0904-5: re-measure after the truncation fix ships; then rule on whether
    the answer policy needs an explicit "exact/prognosis request → abstain"
    branch.
+10. P1-9: citations. Either delete the unreachable client-side citation
+   renderer (`citationParser.ts`, `Citation.tsx` and its `✓ Trusted` tooltip)
+   and keep #54's policy, or restore a user-visible provenance affordance and
+   amend #54. Separately, the "About Our Sources" modal currently promises
+   users that "each response includes citations so you can verify the
+   information", which the shipped behaviour does not deliver — product owner
+   supplies the corrected wording.
+11. P1-10: the 9 `phase2_journeys.yaml` journey cases. Port to the canonical
+   schema (which requires deciding the pass criteria for symptom-worry and
+   emergency journeys — SCCF medical review per AGENTS.md §1.3) or retire the
+   file with a manifest tombstone. Until then, quote executable coverage as
+   592, not 601.
