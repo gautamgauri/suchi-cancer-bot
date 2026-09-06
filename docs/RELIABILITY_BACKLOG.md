@@ -102,6 +102,83 @@ by this handoff review.
 - **Resolution:** Implemented purging of WhatsApp contact mappings in `retention.service.ts` (deleting contacts where `lastActiveAt` or `sessionId` is older than 90 days) and verified with automated test suite in `retention.service.spec.ts`.
 - **Impact:** privacy commitment in `docs/PRIVACY_RETENTION.md` fully met.
 
+### P1-7. Consent gate dropped the Phase-1 emergency warning — NEEDS SCCF REVIEW (new)
+
+- **What:** the shipped consent gate
+  (`apps/web/src/components/ConsentGate.tsx`) renders a Namaste greeting, a
+  capabilities list and one general disclaimer ("Suchi provides general health
+  information, not medical diagnosis. Always consult your doctor…"). It has
+  **no emergency-warning block**. The earlier gate did. This is established by
+  implementation history and a design artifact, not inferred from the stale
+  e2e assertion:
+  - from `6d37c4d` (2026-03-10) to `6e5a958` (2026-04-03),
+    `ConsentGate.tsx` rendered a `⚠️ Emergency Warning` box reading "If you
+    are experiencing a medical emergency, please contact local emergency
+    services immediately. Do not rely on this chat for urgent medical
+    decisions."
+  - `6e5a958` — "feat(web): warm welcome screen — Namaste greeting, not
+    warnings" — deleted that box (along with the "Important Disclaimer" list
+    and the accept checkbox) in a 127-line-deletion UX rewrite of the file.
+  - both commits are on `origin/main`'s first-parent history, and
+    `.github/workflows/deploy-web.yml` auto-deploys `apps/web/**` pushes to
+    main, so the warning-bearing gate was live for ~3.5 weeks. (Established
+    from main + auto-deploy config, not from a Cloud Run serving-revision
+    audit.)
+  - `docs/archive/PHASE1_PRD.md:22` lists "Consent gate + emergency warning"
+    as a Phase-1 Key UX requirement, so the warning was specified, not
+    incidental.
+- **What is *not* established:** that this was an accident. The commit message
+  ("not warnings") makes the removal a deliberate design choice. What is
+  missing is any record that dropping pre-chat emergency copy was weighed
+  against the PRD requirement — no design doc, ADR or review note mentions it,
+  and the e2e assertion that would have surfaced the change was already red for
+  unrelated reasons.
+- **Impact:** a first-time web user is no longer told, before their first
+  message, what to do in an emergency. The runtime escalation path is intact
+  (`apps/api/src/modules/safety/`, emergency fast path) — this is about the
+  up-front warning, not the response-time behavior.
+- **Why an agent must not fix it:** escalation wording is clinical policy.
+  AGENTS.md §1.3 puts escalation copy behind SCCF human/medical review, so the
+  e2e suite now asserts the copy that actually ships rather than copy an agent
+  invented.
+- **Decision needed:** the redesign traded the emergency warning for a warmer
+  first screen without a recorded safety review, and the current gate
+  contradicts `docs/archive/PHASE1_PRD.md:22`. SCCF decides whether the
+  warning-free gate is acceptable (e.g. the in-chat safety banner is deemed
+  sufficient) or the warning returns. If it returns, SCCF supplies the exact
+  wording; the e2e assertion can then be restored in
+  `apps/web/e2e/chat-flow.spec.ts` ("shows consent gate on first visit").
+
+### P1-8. `@ux` and `@full` e2e tests run only on manual dispatch with a `base_url` (new)
+
+- **What:** `.github/workflows/e2e-tests.yml` has two mutually exclusive e2e
+  steps:
+  - `:67-72` — `if: github.event.inputs.base_url != ''` → `npm run test:e2e`
+    (`playwright test` with **no `--grep`**) and `E2E_BASE_URL` set to the
+    supplied URL. This does run the whole suite, `@full` and `@ux` included.
+  - `:74-79` — `if: github.event.inputs.base_url == ''` → `npx playwright test
+    --grep @smoke` against a Playwright-managed local Vite server
+    (`playwright.config.ts` `webServer`) pointed at the deployed API through
+    `VITE_API_URL`.
+
+  The first step fires only on `workflow_dispatch` with a URL typed by hand.
+  `github.event.inputs` is empty on the `push` and `pull_request` triggers
+  (`:10-17`), so every automatic run takes the `@smoke` path, and no schedule
+  or post-deploy job supplies a `base_url`. Everything tagged `@full` (real
+  chat responses, citations, sources) or `@ux`-only (TTS Listen button, sources
+  disclosure modal, sources footer) therefore runs only when a human
+  remembers to dispatch the workflow with a URL.
+- **Impact:** the answer-shaped assertions — citations render, SOURCES footer
+  renders, Listen button appears — cannot fail a PR or a merge to main. They
+  are reachable, but nothing automatic reaches them.
+- **Also in this change:** the two suites that became hermetic (voice input,
+  loading states) were re-tagged `@ux @smoke` so they run on the automatic
+  path.
+- **Fix shape:** give the existing deployed-URL path an automatic trigger —
+  a scheduled run, or a post-`deploy-web.yml` job, that sets `base_url`/
+  `E2E_BASE_URL` to the deployed `suchi-web` URL. No new grep expression is
+  needed; the un-grepped step already covers all three tags.
+
 ---
 
 ## P2 — track and schedule
@@ -313,16 +390,21 @@ more, and should be decided together with QA0904-1.
    agents must not touch credentials.
 3. P1-1/issue #48: any change to retrieval sources or citation rules for
    RQ-LUNG-02 needs SCCF medical review before merge.
-4. P2-6: LinkedIn — rotate token or drop the integration.
-5. QA0904-1: approve Hindi/Hinglish red-flag keyword coverage for the
+4. P1-7: `6e5a958` deliberately removed the consent gate's emergency-warning
+   block, which `docs/archive/PHASE1_PRD.md:22` had specified. No safety review
+   of that trade-off is on record. SCCF decides: is the warning-free gate
+   acceptable, or must the warning return? If it returns, SCCF supplies the
+   exact wording — agents must not author escalation copy (AGENTS.md §1.3).
+5. P2-6: LinkedIn — rotate token or drop the integration.
+6. QA0904-1: approve Hindi/Hinglish red-flag keyword coverage for the
    headache + vision-change cluster (and decide whether
    `hasUrgencyIndicators` should exist in Devanagari at all). Safety keyword
    list — medical review required.
-6. QA0904-3: approve pinning reply language in the Explain-Mode prompt, and
+7. QA0904-3: approve pinning reply language in the Explain-Mode prompt, and
    approve routing the detected locale into `appendDisclaimer` so the existing
    Hindi disclaimer is actually used. Prompt + safety wording.
-7. QA0904-4: decide whether the KB carries an approved "biopsy does not spread
+8. QA0904-4: decide whether the KB carries an approved "biopsy does not spread
    cancer" answer, and whether myth-correction gets its own intent.
-8. QA0904-5: re-measure after the truncation fix ships; then rule on whether
+9. QA0904-5: re-measure after the truncation fix ships; then rule on whether
    the answer policy needs an explicit "exact/prognosis request → abstain"
    branch.
