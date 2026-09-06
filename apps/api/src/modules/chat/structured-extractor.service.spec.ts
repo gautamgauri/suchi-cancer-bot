@@ -314,6 +314,61 @@ describe("StructuredExtractorService", () => {
       const bulletCount = (fallback.match(/^- /gm) || []).length;
       expect(bulletCount).toBeLessThanOrEqual(5);
     });
+
+    // ── Regression: issue #69 ────────────────────────────────────
+    // Fallback blocks were prefixed with a single "\n". A single newline is not
+    // a block boundary in markdown — it renders as a space — so the first
+    // heading was welded onto the last sentence of the generated answer:
+    // "…and then selecting a therapy Additional tests your doctor may recommend:".
+    it("starts with a blank line so it cannot splice onto the caller's prose (#69)", () => {
+      const chunks = [
+        createChunk("MRI and mammogram are diagnostic tests.", "doc1", "chunk2"),
+      ];
+      const extraction = service.extract(chunks);
+
+      const missing = {
+        diagnosticTests: extraction.diagnosticTests.slice(0, 2),
+        warningSigns: [],
+        timelineMissing: false,
+      };
+
+      const fallback = service.generateFallbackContent(missing, extraction);
+
+      expect(fallback.startsWith("\n\n")).toBe(true);
+      expect(fallback.startsWith("\n\n\n")).toBe(false);
+
+      const prose =
+        "The process generally involves confirming the diagnosis, evaluating the stage, and then selecting a therapy.";
+      const spliced = prose + fallback;
+
+      // The heading must begin its own markdown block, never continue the sentence.
+      // A space or a lone newline before it both render as the same paragraph.
+      expect(spliced).not.toMatch(/therapy\.[ \t]*\n?[ \t]*\*\*Additional tests/);
+      expect(spliced).toContain("therapy.\n\n**Additional tests");
+    });
+
+    it("separates each fallback block with a blank line (#69)", () => {
+      const chunks = [
+        createChunk(
+          "MRI and mammogram are diagnostic tests. Watch for a lump or mass in the breast.",
+          "doc1",
+          "chunk2"
+        ),
+      ];
+      const extraction = service.extract(chunks);
+
+      const missing = {
+        diagnosticTests: extraction.diagnosticTests.slice(0, 2),
+        warningSigns: extraction.warningSigns.slice(0, 2),
+        timelineMissing: false,
+      };
+
+      const fallback = service.generateFallbackContent(missing, extraction);
+
+      expect(fallback).toContain("\n\n**Additional warning signs to be aware of:**");
+      // Bullets inside a block stay on consecutive lines (a markdown list).
+      expect(fallback).toMatch(/\*\*Additional tests your doctor may recommend:\*\*\n- /);
+    });
   });
 
   describe("formatForPrompt()", () => {

@@ -413,14 +413,35 @@ export class PlanExecutorService {
   /**
    * Format evidence chunks as readable content for template sections.
    * Extracts key information and formats with citations.
+   *
+   * Chunks whose summary is textually identical to one already emitted are
+   * dropped. Retrieval dedupes by chunkId, which does NOT catch two distinct
+   * chunk rows carrying the same text (e.g. stale chunk rows left behind by an
+   * earlier ingest run) — those reached the reader as the same sentence printed
+   * twice in a row. See issue #67.
    */
   private formatChunksAsContent(chunks: EvidenceChunk[]): string {
     if (chunks.length === 0) return "";
 
     const lines: string[] = [];
+    const seenSummaries = new Set<string>();
     for (const chunk of chunks) {
       // Extract a clean summary from the chunk content
       const summary = this.extractSummary(chunk.content);
+      if (!summary) continue;
+
+      const fingerprint = summary.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      if (seenSummaries.has(fingerprint)) {
+        this.logger.debug({
+          event: "duplicate_chunk_summary_skipped",
+          chunkId: chunk.chunkId,
+          docId: chunk.docId,
+          summary: summary.substring(0, 80),
+        });
+        continue;
+      }
+      seenSummaries.add(fingerprint);
+
       const citation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
       lines.push(`- ${summary} ${citation}`);
     }
@@ -430,29 +451,51 @@ export class PlanExecutorService {
 
   /**
    * Extract a clean summary from chunk content (first ~100 chars of meaningful text).
+   *
+   * A chunk usually opens with its markdown heading. Stripping the heading markers
+   * along with the newline that followed them ran the heading straight into the
+   * body ("Chemotherapy can cause side effects Chemotherapy not only kills…"), so
+   * the heading is separated out and re-attached with a colon. See issue #67.
    */
   private extractSummary(content: string): string {
-    // Remove markdown formatting, extra whitespace
-    const clean = content
-      .replace(/#+\s*/g, "")
-      .replace(/\*\*/g, "")
-      .replace(/\n+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    // Strip heading markers and bold, but keep the line structure so a heading
+    // stays a distinct line rather than colliding with the paragraph beneath it.
+    const lines = content
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map((line) => line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, "").replace(/\s+/g, " ").trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length === 0) return "";
+
+    // A short opening line with no terminal punctuation is a heading, not prose.
+    const looksLikeHeading =
+      lines.length > 1 && lines[0].length <= 100 && !/[.!?:]$/.test(lines[0]);
+    const heading = looksLikeHeading ? lines[0] : null;
+    const body = (looksLikeHeading ? lines.slice(1) : lines).join(" ").replace(/\s+/g, " ").trim();
+
+    const prefix = heading ? `${heading}: ` : "";
+    const summary = this.firstSentenceOrTruncate(body);
+    return summary ? `${prefix}${summary}` : heading || "";
+  }
+
+  /** First sentence of `text`, or a word-boundary truncation when there is none. */
+  private firstSentenceOrTruncate(text: string): string {
+    if (!text) return "";
 
     // Take first sentence or first 150 chars
-    const firstSentenceMatch = clean.match(/^[^.!?]+[.!?]/);
+    const firstSentenceMatch = text.match(/^[^.!?]+[.!?]/);
     if (firstSentenceMatch && firstSentenceMatch[0].length <= 200) {
       return firstSentenceMatch[0].trim();
     }
 
     // Truncate at word boundary
-    if (clean.length > 150) {
-      const truncated = clean.substring(0, 150);
+    if (text.length > 150) {
+      const truncated = text.substring(0, 150);
       const lastSpace = truncated.lastIndexOf(" ");
       return truncated.substring(0, lastSpace > 80 ? lastSpace : 150) + "...";
     }
 
-    return clean;
+    return text;
   }
 }

@@ -415,35 +415,48 @@ export class StructuredExtractorService {
   }
 
   /**
-   * Generate fallback content to fill gaps in LLM response
+   * Generate fallback content to fill gaps in LLM response.
+   *
+   * The returned string is a set of self-contained markdown BLOCKS, separated by
+   * blank lines, and prefixed with a blank line so it can never be spliced onto
+   * the tail of the caller's prose. A single "\n" is not a block boundary in
+   * markdown — it renders as a space — so a leading "\n**Additional tests…**"
+   * was being welded onto the last sentence of the generated answer
+   * ("…and then selecting a therapy Additional tests your doctor may
+   * recommend:"). See issue #69.
    */
   generateFallbackContent(missing: MissingItems, extraction: StructuredInfo): string {
-    const sections: string[] = [];
+    const blocks: string[] = [];
 
     if (missing.diagnosticTests.length > 0) {
-      sections.push("\n**Additional tests your doctor may recommend:**");
+      const lines = ["**Additional tests your doctor may recommend:**"];
       for (const test of missing.diagnosticTests.slice(0, 5)) {
         const ev = test.evidence[0];
-        sections.push(`- ${test.label} [citation:${ev.docId}:${ev.chunkId}]`);
+        lines.push(`- ${test.label} [citation:${ev.docId}:${ev.chunkId}]`);
       }
+      blocks.push(lines.join("\n"));
     }
 
     if (missing.warningSigns.length > 0) {
-      sections.push("\n**Additional warning signs to be aware of:**");
+      const lines = ["**Additional warning signs to be aware of:**"];
       for (const sign of missing.warningSigns.slice(0, 5)) {
         const ev = sign.evidence[0];
-        sections.push(`- ${sign.label} [citation:${ev.docId}:${ev.chunkId}]`);
+        lines.push(`- ${sign.label} [citation:${ev.docId}:${ev.chunkId}]`);
       }
+      blocks.push(lines.join("\n"));
     }
 
     if (missing.timelineMissing && extraction.timeline !== null && extraction.timeline.evidence) {
       const ev = extraction.timeline.evidence;
-      sections.push(
-        `\n**When to seek care:** ${extraction.timeline.rawMatch} [citation:${ev.docId}:${ev.chunkId}]`
+      blocks.push(
+        `**When to seek care:** ${extraction.timeline.rawMatch} [citation:${ev.docId}:${ev.chunkId}]`
       );
     }
 
-    return sections.join("\n");
+    if (blocks.length === 0) return "";
+
+    // Leading blank line guarantees a markdown block boundary at the splice point.
+    return "\n\n" + blocks.join("\n\n");
   }
 
   /**

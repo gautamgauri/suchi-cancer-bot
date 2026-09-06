@@ -386,6 +386,18 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
       ));
     }
   }
+
+  // Prune stale chunks: chunk IDs are deterministic (`docId::chunk::<index>`), so a
+  // re-ingest overwrites indices 0..n-1 but leaves behind every row from a previous
+  // run that had MORE chunks (doc shortened, or a different --maxChunkChars). Those
+  // orphans keep the old text and stay retrievable, which surfaces as the same
+  // sentence appearing twice in an answer. See issue #67.
+  const pruned = await withRetry(() => prisma.kbChunk.deleteMany({
+    where: { docId: doc.id, chunkIndex: { gte: chunks.length } }
+  }));
+  if (pruned.count > 0) {
+    console.log(`  🧹 Pruned ${pruned.count} stale chunk(s) from ${doc.id} (now ${chunks.length} chunks)`);
+  }
 }
 
 async function main() {
