@@ -86,6 +86,50 @@ describe('citationParser', () => {
       const result = removeCitationMarkers('');
       expect(result).toBe('');
     });
+
+    // Issue #68 — the strip used to require a closing bracket, so a generation
+    // that stopped mid-marker leaked a raw KB identifier to the reader.
+    it('removes an unterminated marker at end of text', () => {
+      const text =
+        'Biomarker tests might be effective [citation:kb_en_nci_types_breast_diagnosis_breast_cancer_biomarker_tests_v1:kb_';
+      const result = removeCitationMarkers(text);
+
+      expect(result).not.toContain('citation');
+      expect(result).not.toContain('kb_en_nci_types_breast_diagnosis');
+      expect(result).toBe('Biomarker tests might be effective ');
+    });
+
+    it('removes a marker truncated inside the "[citation:" prefix', () => {
+      expect(removeCitationMarkers('Some grounded fact [cita')).toBe('Some grounded fact ');
+      expect(removeCitationMarkers('Some grounded fact [citation:')).toBe('Some grounded fact ');
+    });
+
+    it('does not swallow prose that follows an unterminated marker mid-text', () => {
+      const text = 'First claim [citation:doc1 then the answer continues [citation:doc2:chunk2] to the end.';
+      const result = removeCitationMarkers(text);
+
+      expect(result).not.toContain('citation:');
+      expect(result).toContain('then the answer continues');
+      expect(result).toBe('First claim  then the answer continues  to the end.');
+    });
+
+    it('leaves legitimate bracketed prose alone', () => {
+      const text = 'Call 112 (or 108 in some states) for an ambulance [1].';
+      expect(removeCitationMarkers(text)).toBe(text);
+    });
+
+    it('leaves Devanagari text and its punctuation intact', () => {
+      const text = 'अपने डॉक्टर, नर्स या अस्पताल के स्टाफ से बात करें।';
+      expect(removeCitationMarkers(text)).toBe(text);
+    });
+
+    it('removes a marker truncated mid-id in a Hindi answer', () => {
+      const text = 'संक्रमण का खतरा बढ़ सकता है [citation:kb_hi_chemo_v1:kb_';
+      const result = removeCitationMarkers(text);
+
+      expect(result).not.toContain('kb_hi_chemo_v1');
+      expect(result).toBe('संक्रमण का खतरा बढ़ सकता है ');
+    });
   });
 
   describe('splitTextWithCitations', () => {
@@ -152,6 +196,44 @@ describe('citationParser', () => {
       expect(result).toHaveLength(2);
       expect(result[0].type).toBe('citation');
       expect(result[1].type).toBe('citation');
+    });
+
+    // Issue #68 — an unterminated marker is not a parsed citation, so it used
+    // to fall through into a plain-text part and get rendered verbatim.
+    it('never renders an unterminated marker as text', () => {
+      const text = 'Grounded claim [citation:d1:c1] and then [citation:kb_en_nci_screening_v1:kb_';
+      const parts = splitTextWithCitations(text);
+
+      const rendered = parts
+        .filter((p) => p.type === 'text')
+        .map((p) => p.content)
+        .join('');
+
+      expect(rendered).not.toContain('citation');
+      expect(rendered).not.toContain('kb_en_nci_screening_v1');
+      expect(rendered).toContain('and then');
+    });
+
+    it('never renders a truncated "[citation:" prefix as text', () => {
+      const parts = splitTextWithCitations('Grounded claim [citation:d1:c1] tail [citat');
+      const rendered = parts
+        .filter((p) => p.type === 'text')
+        .map((p) => p.content)
+        .join('');
+
+      expect(rendered).not.toContain('[citat');
+      expect(rendered).toContain('tail');
+    });
+
+    it('keeps a truncated Hindi answer readable', () => {
+      const parts = splitTextWithCitations('संक्रमण का खतरा बढ़ सकता है [citation:kb_hi_chemo_v1:kb_');
+      const rendered = parts
+        .filter((p) => p.type === 'text')
+        .map((p) => p.content)
+        .join('');
+
+      expect(rendered).not.toContain('kb_hi_chemo_v1');
+      expect(rendered).toContain('संक्रमण का खतरा बढ़ सकता है');
     });
   });
 

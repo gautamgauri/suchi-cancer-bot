@@ -1,6 +1,37 @@
 import { CitationData } from "../components/Citation";
 
-const CITATION_PATTERN = /\[citation:([^:]+):([^\]]+)\]/g;
+/**
+ * A COMPLETE `[citation:docId:chunkId]` marker.
+ *
+ * The id groups exclude `[`, `]` and newlines. A real marker never contains
+ * them, and excluding `[` means this pattern cannot start on an *unterminated*
+ * marker and run forward into a later complete one, swallowing the legitimate
+ * prose in between.
+ */
+const CITATION_PATTERN = /\[citation:([^:[\]\n]+):([^[\]\n]+)\]/g;
+
+/**
+ * Citation debris that must never be rendered (issue #68).
+ *
+ * The server already strips markers before display, but the client must fail
+ * closed too: when a generation stops *inside* a marker there is no closing
+ * bracket, `CITATION_PATTERN` does not match, and the raw knowledge-base
+ * identifier would otherwise fall through `splitTextWithCitations` into a
+ * plain-text part and be rendered verbatim.
+ *
+ * Three alternatives, in order:
+ *   1. a complete marker,
+ *   2. an UNTERMINATED marker — content restricted to the characters real
+ *      document/chunk ids use, so the strip stops at the first space and can
+ *      never eat prose that follows a malformed marker mid-text,
+ *   3. a marker truncated inside the literal `[citation:` prefix itself
+ *      (e.g. a trailing `[cita`), anchored to end-of-text.
+ *
+ * Stripping is the safe direction: a citation the reader was never meant to
+ * see costs nothing when removed.
+ */
+const CITATION_DEBRIS_PATTERN =
+  /\[citation:[^[\]\n]*\]|\[citation:[A-Za-z0-9_.:-]*|\[c(?:i(?:t(?:a(?:t(?:i(?:o(?:n)?)?)?)?)?)?)?$/g;
 
 export interface ParsedCitation {
   citationText: string;
@@ -30,10 +61,12 @@ export function parseCitations(text: string): ParsedCitation[] {
 }
 
 /**
- * Remove citation markers from text for display
+ * Remove citation markers from text for display.
+ *
+ * Removes unterminated/truncated markers too — see CITATION_DEBRIS_PATTERN.
  */
 export function removeCitationMarkers(text: string): string {
-  return text.replace(CITATION_PATTERN, "");
+  return text.replace(CITATION_DEBRIS_PATTERN, "");
 }
 
 /**
@@ -53,7 +86,9 @@ export function splitTextWithCitations(text: string): TextPart[] {
   citations.forEach((citation) => {
     // Add text before citation
     if (citation.position > lastIndex) {
-      const textContent = text.substring(lastIndex, citation.position);
+      // Scrub debris: an unterminated marker is not a parsed citation, so
+      // without this it would be rendered verbatim as plain text (#68).
+      const textContent = removeCitationMarkers(text.substring(lastIndex, citation.position));
       if (textContent) {
         parts.push({ type: "text", content: textContent });
       }
@@ -71,7 +106,7 @@ export function splitTextWithCitations(text: string): TextPart[] {
 
   // Add remaining text
   if (lastIndex < text.length) {
-    const remainingText = text.substring(lastIndex);
+    const remainingText = removeCitationMarkers(text.substring(lastIndex));
     if (remainingText) {
       parts.push({ type: "text", content: remainingText });
     }
@@ -79,7 +114,7 @@ export function splitTextWithCitations(text: string): TextPart[] {
 
   // If no citations, return whole text as single part
   if (parts.length === 0) {
-    parts.push({ type: "text", content: text });
+    parts.push({ type: "text", content: removeCitationMarkers(text) });
   }
 
   return parts;
