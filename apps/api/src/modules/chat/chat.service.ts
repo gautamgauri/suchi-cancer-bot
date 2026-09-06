@@ -1921,7 +1921,9 @@ export class ChatService {
           for (const pattern of insertionPatterns) {
             const match = responseText.match(pattern);
             if (match && match.index !== undefined) {
-              responseText = responseText.slice(0, match.index) + fallbackContent + responseText.slice(match.index);
+              // fallbackContent already starts with a blank line (markdown block
+              // boundary); trimEnd keeps us from stacking 3+ newlines. See #69.
+              responseText = responseText.slice(0, match.index).trimEnd() + fallbackContent + responseText.slice(match.index);
               inserted = true;
               break;
             }
@@ -1929,7 +1931,7 @@ export class ChatService {
 
           // Fallback: append at end if no pattern matches
           if (!inserted) {
-            responseText = responseText + fallbackContent;
+            responseText = responseText.trimEnd() + fallbackContent;
           }
         }
       }
@@ -2781,10 +2783,10 @@ export class ChatService {
     for (const pattern of insertionPatterns) {
       const match = responseText.match(pattern);
       if (match && match.index !== undefined) {
-        return responseText.slice(0, match.index) + fallbackContent + responseText.slice(match.index);
+        return responseText.slice(0, match.index).trimEnd() + fallbackContent + responseText.slice(match.index);
       }
     }
-    return responseText + fallbackContent;
+    return responseText.trimEnd() + fallbackContent;
   }
 
   /**
