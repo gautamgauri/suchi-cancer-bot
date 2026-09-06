@@ -1,6 +1,7 @@
 /**
  * Ops Center collector — emits the four Suchi figures the Bodh AI Ops scorecard
- * cannot currently produce (GitHub issues #61, #62, #63, #64).
+ * cannot currently produce (GitHub issues #61, #62, #63, #64), plus the KB
+ * duplicate-row guard from issue #86.
  *
  * Usage:
  *   cd apps/api && npm run ops:metrics            # human-readable + JSON block
@@ -50,7 +51,7 @@ async function collectDbMetrics(prisma: PrismaClient, now: Date) {
   const since7d = new Date(now.getTime() - 7 * DAY_MS);
   const since30d = new Date(now.getTime() - 30 * DAY_MS);
 
-  const [sessions7d, waContacts7d, unreviewed, safetyTotal, safetyByType] = await Promise.all([
+  const [sessions7d, waContacts7d, unreviewed, safetyTotal, safetyByType, kbRows] = await Promise.all([
     prisma.session.count({ where: { createdAt: { gte: since7d }, isEval: false } }),
     prisma.whatsAppContact.count({ where: { lastActiveAt: { gte: since7d } } }),
     prisma.session.count({ where: { reviewFlagged: true, reviewedAt: null, isEval: false } }),
@@ -60,9 +61,24 @@ async function collectDbMetrics(prisma: PrismaClient, now: Date) {
       where: { createdAt: { gte: since30d }, session: { isEval: false } },
       _count: { _all: true },
     }),
+    // #86 — duplicate KB chunk rows (same query as OpsMetricsService.kbIndexIntegrity).
+    prisma.$queryRaw<
+      Array<{ total_rows: number; non_deterministic_id_rows: number; duplicate_position_rows: number }>
+    >`
+      SELECT
+        count(*)::int AS total_rows,
+        (count(*) FILTER (WHERE id NOT LIKE '%::chunk::%'))::int AS non_deterministic_id_rows,
+        (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
+      FROM "KbChunk"
+    `,
   ]);
 
+  const kb = kbRows[0] ?? { total_rows: 0, non_deterministic_id_rows: 0, duplicate_position_rows: 0 };
+
   return {
+    kbTotalRows: Number(kb.total_rows),
+    kbDuplicateRows: Number(kb.duplicate_position_rows),
+    kbNonDeterministicIdRows: Number(kb.non_deterministic_id_rows),
     sessions7d,
     waContacts7d,
     unreviewed,
@@ -152,6 +168,15 @@ async function main() {
     };
   }
 
+  if (db) {
+    entries.kb_duplicate_rows = {
+      value: db.kbDuplicateRows,
+      as_of: asOf,
+      source: `Suchi DB: KbChunk rows beyond the first per (docId, chunkIndex); ${db.kbNonDeterministicIdRows} rows with a non-deterministic id, ${db.kbTotalRows} rows total. Healthy = 0 (issue #86)`,
+      by,
+    };
+  }
+
   const tier1 = collectTier1Status();
   if (tier1) {
     entries.tier1_eval_status = {
@@ -172,6 +197,7 @@ async function main() {
       "review_queue_size",
       "tier1_eval_status",
       "safety_events_30d",
+      "kb_duplicate_rows",
     ],
     ...entries,
   };
@@ -185,10 +211,14 @@ async function main() {
       console.error(`  review_queue_size   ${db.unreviewed} unreviewed`);
       console.error(`  safety_events_30d   ${db.safetyTotal}`);
       for (const t of db.safetyByType) console.error(`                        ${t.type}: ${t.count}`);
+      console.error(
+        `  kb_duplicate_rows   ${db.kbDuplicateRows}${db.kbDuplicateRows === 0 && db.kbNonDeterministicIdRows === 0 ? " (healthy)" : ` — UNHEALTHY, ${db.kbNonDeterministicIdRows} legacy-id rows of ${db.kbTotalRows}; see issue #86`}`,
+      );
     } else {
       console.error("  active_users_7d     unavailable (no DB)");
       console.error("  review_queue_size   unavailable (no DB)");
       console.error("  safety_events_30d   unavailable (no DB)");
+      console.error("  kb_duplicate_rows   unavailable (no DB)");
     }
     console.error(`  tier1_eval_status   ${tier1 ? tier1.value : "unavailable (gh unreachable)"}`);
     console.error("=".repeat(60));
