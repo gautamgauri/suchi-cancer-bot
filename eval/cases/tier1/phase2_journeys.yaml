@@ -1,5 +1,38 @@
 # FR-JOURNEY-001 through FR-JOURNEY-006 — Phase 2 User Journey Eval Cases
-# Run against current pipeline to baseline, then patch prompts for failures.
+#
+# ⚠️ NOT EXECUTED BY ANY RUNNER (issue #71). Read this before trusting a green
+# eval report that counts these 9 cases.
+#
+# This file uses a bespoke schema — `userText`, `expectedBehavior`, `mustContain`,
+# `mustNotContain`, `mustMatch`, `softRedirect`, `rubric` — that NOTHING in the
+# repository reads. `grep -rl 'mustMatch|expectedBehavior|softRedirect'` returns
+# this file and nothing else. Concretely, it cannot run today because:
+#
+#   1. Schema. `runner/evaluator.ts` calls
+#      `executeConversation(sessionId, testCase.user_messages, "web")`; these
+#      cases have no `user_messages`, so the run throws before any HTTP call.
+#   2. Rubrics. `rubrics/rubrics.v1.json` has no `PERSONAL_SYMPTOMS` and no
+#      `EMERGENCY` rubric, and `getRubric()` throws when an intent is unknown.
+#      (`EMERGENCY` is not even an `IntentType` in the API — see
+#      `apps/api/src/modules/chat/intent-classifier.ts`; the API's red-flag path
+#      is the safety module, not an intent.)
+#
+# Its 9 case IDs are nonetheless counted by the case-manifest guard, so the
+# headline "601 cases" overstates executable coverage by 9. The lane
+# classification is pinned by `eval/scripts/case-schema.test.ts`, which fails if
+# any NEW case file arrives with a schema no runner reads.
+#
+# The `mode:` key below (navigate/explain) is descriptive only — it is NOT a
+# request field. `runner/api-client.ts` posts `{sessionId, channel, userText}`,
+# `ChatDto` (apps/api/src/modules/chat/dto.ts) declares no `mode`, and
+# `main.ts` runs `ValidationPipe({ forbidNonWhitelisted: true })`, so sending
+# one would be rejected with a 400. The API derives the mode itself, from the
+# text, via `ModeDetector.detectMode(userText)`. Recorded decision, per #71.3:
+# mode stays server-derived; these keys document intent for a human reader.
+#
+# Expectations here are kept accurate (see #70) so that whoever ports this file
+# to the canonical schema inherits assertions that are true of the shipped
+# product rather than assertions that were never run.
 
 cases:
 
@@ -70,7 +103,17 @@ cases:
         - "this is cancer"
         - "oral cancer symptoms"
       mustMatch:
-        - pattern: "(?i)(many cause|several cause|different cause|not always|not necessarily)"
+        # Asserts the "a symptom has more than one possible cause" reassurance.
+        # Requires BOTH a multiplicity quantifier AND a cause/reason noun (or an
+        # explicit "not always/not necessarily" hedge) — so it still fails on a
+        # definitive attribution ("this is oral cancer") or on a bare
+        # "see a doctor" with no reassurance. Pinned by
+        # eval/cases/journey-patterns.test.ts (positive AND negative fixtures).
+        # Was: "(?i)(many cause|several cause|different cause|not always|not necessarily)",
+        # which assumed the noun sits immediately after the quantifier and so
+        # scored the correct live answer "Many things can cause a persistent
+        # sore..." as a miss (issue #70).
+        - pattern: '(?i)((many|several|different|various|numerous|multiple|a number of)\s+(\w+\s+){0,2}(causes?|reasons?|explanations?|possibilities)|(many|several|various|numerous|multiple|different)\s+(\w+\s+){0,2}(things|conditions|factors|issues|problems)\s+(can|could|may|might)\s+cause|caused\s+by\s+(many|several|various|numerous|multiple|different|a number of)|not always|not necessarily)'
           description: "Explains symptoms can have many causes"
         - pattern: "(?i)(see a doctor|consult|medical|visit)"
           description: "Encourages timely medical consultation"
