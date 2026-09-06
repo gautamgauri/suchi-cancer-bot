@@ -4,6 +4,7 @@ import { BasicAuthGuard } from "../../common/guards/basic-auth.guard";
 import { SchedulerOidcGuard } from "../../common/guards/scheduler-oidc.guard";
 import { AdminService } from "./admin.service";
 import { DailyReportService } from "../analytics/daily-report.service";
+import { OpsMetricsService } from "../analytics/ops-metrics.service";
 import { EmailService } from "../email/email.service";
 import { generateMarkdownReport } from "../analytics/report-generator";
 import { NavigatorApproveService, HospitalUpdates } from "./navigator-approve.service";
@@ -36,6 +37,7 @@ export class AdminController {
     private readonly reviewQueue: ReviewQueueService,
     private readonly analyticsAdmin: AnalyticsAdminService,
     private readonly learningNote: LearningNoteService,
+    private readonly opsMetrics: OpsMetricsService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -511,6 +513,16 @@ ${noteHtml}
   @Get("analytics/languages")
   async getLanguages(@Query("since") since?: string) {
     return this.analyticsAdmin.getLanguages(since);
+  }
+
+  // ─── Ops Center metrics (issues #61 active users / #62 review queue / #64 safety events) ───
+  // Read-only aggregate counts for the Bodh AI Ops scorecard. Anonymised: counts
+  // and safety-event types only, never message text or contact identifiers.
+
+  @UseGuards(BasicAuthGuard)
+  @Get("ops-metrics")
+  async getOpsMetrics() {
+    return this.opsMetrics.collect();
   }
 
   // ─── Learning Note (FR-LEARN-001) — first Monday of each month ───────────

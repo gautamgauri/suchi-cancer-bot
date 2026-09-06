@@ -11,6 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "ops:metrics": "ts-node src/scripts/ops-metrics.ts",
     "kb:dry": "ts-node src/scripts/ingest-kb.ts --dryRun",
     "kb:ingest": "ts-node src/scripts/ingest-kb.ts --resume",
     "kb:ingest:fresh": "ts-node src/scripts/ingest-kb.ts --wipeChunks --confirmWipe",
