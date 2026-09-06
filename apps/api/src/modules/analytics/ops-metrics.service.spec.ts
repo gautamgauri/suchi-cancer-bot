@@ -1,6 +1,7 @@
 /**
  * Unit tests for OpsMetricsService — Ops Center collectors for issues
- * #61 (active_users_7d), #62 (review_queue_size), #64 (safety_events_30d).
+ * #61 (active_users_7d), #62 (review_queue_size), #64 (safety_events_30d),
+ * and the #86 KB duplicate-row guard (kbIndexIntegrity).
  *
  * Contract:
  *  - every query excludes eval traffic (Session.isEval = false)
@@ -26,6 +27,7 @@ interface Counts {
   flaggedTotal?: number;
   safetyTotal?: number;
   safetyByType?: Array<{ type: string; _count: { _all: number } }>;
+  kb?: { total_rows: number; non_deterministic_id_rows: number; duplicate_position_rows: number };
 }
 
 function makePrisma(c: Counts = {}) {
@@ -46,6 +48,11 @@ function makePrisma(c: Counts = {}) {
       count: jest.fn().mockResolvedValue(c.safetyTotal ?? 0),
       groupBy: jest.fn().mockResolvedValue(c.safetyByType ?? []),
     },
+    // #86 — the single-row aggregate over KbChunk. Prisma hands back what the
+    // SQL casts to int; the healthy shape is all zeros except total_rows.
+    $queryRaw: jest.fn().mockResolvedValue([
+      c.kb ?? { total_rows: 0, non_deterministic_id_rows: 0, duplicate_position_rows: 0 },
+    ]),
   };
 }
 
@@ -168,6 +175,53 @@ describe("OpsMetricsService", () => {
     expect(m.activeUsers7d.basis.distinctWhatsappContacts).toBe(2);
   });
 
+  it("reports KB duplicate rows and flags the index unhealthy (#86)", async () => {
+    // The exact production state measured on 2026-09-06.
+    const { service, prisma } = makeService({
+      kb: { total_rows: 73802, non_deterministic_id_rows: 25065, duplicate_position_rows: 25065 },
+    });
+
+    const m = await service.collect(NOW);
+
+    expect(m.kbIndexIntegrity.value).toBe(25065);
+    expect(m.kbIndexIntegrity.basis).toEqual({ totalRows: 73802, nonDeterministicIdRows: 25065 });
+    expect(m.kbIndexIntegrity.healthy).toBe(false);
+    expect(m.kbIndexIntegrity.caveat).toMatch(/docId::chunk::N/);
+    // A single aggregate query, no per-row fetch and no content hashing.
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const sql = String(prisma.$queryRaw.mock.calls[0][0]);
+    expect(sql).toMatch(/FROM "KbChunk"/);
+    expect(sql).not.toMatch(/md5|content\b/);
+  });
+
+  it("marks the KB index healthy only when both duplicate signals are zero (#86)", async () => {
+    const clean = await makeService({
+      kb: { total_rows: 48737, non_deterministic_id_rows: 0, duplicate_position_rows: 0 },
+    }).service.collect(NOW);
+    expect(clean.kbIndexIntegrity.healthy).toBe(true);
+    expect(clean.kbIndexIntegrity.value).toBe(0);
+
+    // A stray legacy-id row with no positional twin is still unhealthy: the next
+    // ingest cannot upsert over it, so it is a duplicate waiting to happen.
+    const legacyId = await makeService({
+      kb: { total_rows: 48738, non_deterministic_id_rows: 1, duplicate_position_rows: 0 },
+    }).service.collect(NOW);
+    expect(legacyId.kbIndexIntegrity.healthy).toBe(false);
+  });
+
+  it("coerces bigint aggregates to numbers (#86)", async () => {
+    const { service } = makeService({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      kb: { total_rows: BigInt(10) as any, non_deterministic_id_rows: BigInt(2) as any, duplicate_position_rows: BigInt(2) as any },
+    });
+
+    const m = await service.collect(NOW);
+
+    expect(m.kbIndexIntegrity.value).toBe(2);
+    expect(m.kbIndexIntegrity.basis.totalRows).toBe(10);
+    expect(typeof m.kbIndexIntegrity.value).toBe("number");
+  });
+
   it("is read-only — exposes no write methods to Prisma", async () => {
     const prisma = makePrisma();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,8 +229,10 @@ describe("OpsMetricsService", () => {
 
     await service.collect(NOW);
 
-    // The mock defines only count/groupBy; any write attempt would throw.
+    // The mock defines only count/groupBy/$queryRaw; any write attempt would throw.
     expect(Object.keys(prisma.session)).toEqual(["count"]);
     expect(Object.keys(prisma.safetyEvent).sort()).toEqual(["count", "groupBy"]);
+    // And the one raw query is a SELECT, not $executeRaw.
+    expect(String(prisma.$queryRaw.mock.calls[0][0]).trim()).toMatch(/^SELECT/);
   });
 });
