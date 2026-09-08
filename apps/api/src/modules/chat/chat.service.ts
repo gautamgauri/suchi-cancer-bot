@@ -913,10 +913,17 @@ export class ChatService {
       throw new Error("LLM generation timeout: request aborted before RAG");
     }
 
-    // Budget check before RAG retrieval — if we've already burned too much time, return template response
+    // Budget check before RAG retrieval — if we've already burned too much time, return template response.
+    //
+    // This branch is a *technical* timeout, not a clinical finding: any urgency in
+    // the text was already handled by the emergency fast-path, the safety
+    // classifier and the urgency guard above, all of which return before here. So
+    // the fallback must be the technical-failure template (A3) and never the S2
+    // urgent-escalation template — issue #94, where a user who typed "Hii" was
+    // told to seek emergency care because a slow turn landed on this branch.
     if (Date.now() > requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
       this.logger.warn(`Request budget exhausted before RAG retrieval (${Date.now() - started}ms elapsed) — returning template response`);
-      const templateFallback = ResponseTemplates.S2({
+      const templateFallback = ResponseTemplates.A3({
         isFirstMessage,
         userText: dto.userText,
         locale: session.locale || dto.locale,

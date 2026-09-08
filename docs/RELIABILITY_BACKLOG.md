@@ -249,6 +249,33 @@ by this handoff review.
   choosing the pass criteria for symptom-worry and emergency journeys, which is
   a medical-review question (AGENTS.md §1.3), not an agent decision.
 
+### P1-11. Follow-ups left open by the issue #94 fix (new)
+
+The false-positive S2 escalation on a greeting is fixed: the pre-RAG timeout
+fallback now returns `A3` instead of the urgent-escalation template. Related
+weaknesses found while investigating, deliberately *not* changed here:
+
+- **WhatsApp turn latency is ~25–33s.** In the 2026-09-06 burst every reply
+  took 25s+, which is what put a turn within reach of the 30s pre-RAG budget
+  guard (`chat.service.ts` `MIN_BUDGET_FOR_LLM_MS`). Serialising a contact's
+  inbound messages removes the *amplification* but not the base latency — that
+  serialisation is a separate follow-up PR, and a per-phase latency budget is
+  still needed before wider WhatsApp rollout.
+- **`GreetingDetector` accepts only exact `hi`/`hello`/`hey`**
+  (`apps/api/src/modules/chat/greeting-detector.ts:7-16`), so a one-character
+  typo ("Hii") drops the message into the full RAG+LLM pipeline. Cheap to widen,
+  but it changes response routing for real traffic, so it wants its own change
+  with eval coverage rather than riding along on a P0 fix.
+- **`chat.controller.ts:52-58`'s timeout body mentions 112/108.** Unlike the S2
+  template it is conditional ("if you're experiencing severe symptoms"), so it
+  is not the same defect — but it is escalation copy inside a *technical*
+  failure path, and rewording it is an SCCF call (AGENTS.md §1.3).
+- **WhatsApp burst concurrency is handled separately.** The 2026-09-06 incident
+  also exposed unbounded concurrent turns per contact and a read-then-write
+  race in `resolveSession` that minted four sessions for one new contact's
+  burst. Both are fixed in the follow-up serialisation PR, not here — this PR
+  is kept to the safety-relevant template correction.
+
 ---
 
 ## P2 — track and schedule
