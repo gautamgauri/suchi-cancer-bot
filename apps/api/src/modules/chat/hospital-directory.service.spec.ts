@@ -368,6 +368,87 @@ describe("HospitalDirectoryService", () => {
     });
   });
 
+  describe("Geographic fallback chain (issue #95)", () => {
+    it("returns city matches only when the requested city has hospitals", () => {
+      const results = svc.searchHospitals({
+        city: "Patna",
+        state: "Bihar",
+        includeNational: false,
+      });
+      expect(results.length).toBe(2);
+      expect(results.every((h) => h.city === "Patna")).toBe(true);
+    });
+
+    it("falls back to the state pool when the requested city has no hospital", () => {
+      // "Darbhanga" matches no fixture city — previously this returned [].
+      const results = svc.searchHospitals({
+        city: "Darbhanga",
+        state: "Bihar",
+        includeNational: false,
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((h) => h.state === "Bihar")).toBe(true);
+    });
+
+    it("recovers the state from the city name when the caller passes no state", () => {
+      // Darbhanga is a canonical Bihar city in the location-detector table, so a
+      // city-only lookup must still land in the Bihar pool.
+      const results = svc.searchHospitals({
+        city: "Darbhanga",
+        includeNational: false,
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((h) => h.state === "Bihar")).toBe(true);
+    });
+
+    it("falls back to adjacent states when the requested state has no hospital", () => {
+      // Jharkhand has no fixture hospital; its adjacency list includes Bihar.
+      const results = svc.searchHospitals({
+        city: "Ranchi",
+        state: "Jharkhand",
+        includeNational: false,
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((h) => h.state === "Bihar")).toBe(true);
+    });
+
+    it("retains the full regional pool when nothing matches geographically", () => {
+      const results = svc.searchHospitals({
+        city: "Nowhere",
+        state: "Nowhereland",
+        includeNational: false,
+      });
+      expect(results.length).toBeGreaterThan(0);
+    });
+
+    it("still applies clinical and affordability filters on a fallback candidate set", () => {
+      // Fallback widens the candidate SET; it must not bypass the other filters.
+      const results = svc.searchHospitals({
+        city: "Darbhanga",
+        state: "Bihar",
+        cancerType: "oral",
+        includeNational: false,
+      });
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach((h) => {
+        const matchesDept = h.departments.some((d) =>
+          ["head_and_neck", "surgical_oncology", "radiation_oncology"].includes(d)
+        );
+        expect(matchesDept).toBe(true);
+      });
+    });
+
+    it("preserves score-descending order on a fallback candidate set", () => {
+      const results = svc.searchHospitals({
+        city: "Darbhanga",
+        state: "Bihar",
+        includeNational: false,
+      });
+      const scores = results.map((h) => h.score);
+      expect(scores).toEqual([...scores].sort((a, b) => b - a));
+    });
+  });
+
   describe("maxResults limiting", () => {
     it("respects maxResults cap", () => {
       const results = svc.searchHospitals({
@@ -387,5 +468,121 @@ describe("HospitalDirectoryService", () => {
       // h-regional-a (score 90) should come before h-regional-b (score 70)
       expect(results[0].id).toBe("h-regional-a");
     });
+  });
+});
+
+// ─── Regression: North Bihar against the real directory (issue #95) ────────
+//
+// These run against the shipped `data/hospitals.json` rather than the inline
+// fixture, because the bug was a property of the real data distribution: Bihar
+// has active oncology centres in only three cities (Patna, Muzaffarpur,
+// Bhagalpur), so the city filter's missing empty-result fallback silently
+// zeroed out every other district. A Darbhanga patient got no directory rows at
+// all and was pointed at Patna, while HBCH&RC Muzaffarpur — a Tata Memorial
+// Centre unit and the highest-scoring hospital in Bihar — was never surfaced.
+//
+// No facility data is asserted here beyond identity, city and ordering: the
+// point is the candidate SET, not any claim about services.
+describe("HospitalDirectoryService — North Bihar candidate set (real directory)", () => {
+  const HBCH = "homi-bhabha-cancer-hospital-muzaffarpur";
+
+  /** Bihar districts with no hospital of their own — all previously returned []. */
+  const NORTH_BIHAR_CITIES = ["Darbhanga", "Samastipur", "Purnia", "Motihari"];
+
+  let svc: HospitalDirectoryService;
+
+  beforeAll(() => {
+    svc = new HospitalDirectoryService();
+    svc.onModuleInit();
+  });
+
+  it("loads the shipped hospital directory", () => {
+    expect(svc.isLoaded()).toBe(true);
+  });
+
+  it.each(NORTH_BIHAR_CITIES)(
+    "returns a non-empty candidate set for %s",
+    (city) => {
+      const results = svc.searchHospitals({
+        city,
+        state: "Bihar",
+        maxResults: 3,
+        includeNational: false,
+      });
+      expect(results.length).toBeGreaterThan(0);
+    }
+  );
+
+  it.each(NORTH_BIHAR_CITIES)(
+    "ranks HBCH&RC Muzaffarpur first for %s",
+    (city) => {
+      const results = svc.searchHospitals({
+        city,
+        state: "Bihar",
+        maxResults: 3,
+        includeNational: false,
+      });
+      expect(results[0].id).toBe(HBCH);
+    }
+  );
+
+  it("ranks HBCH&RC Muzaffarpur first for a city-only Darbhanga lookup", () => {
+    const results = svc.searchHospitals({
+      city: "Darbhanga",
+      maxResults: 3,
+      includeNational: false,
+    });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].id).toBe(HBCH);
+  });
+
+  it("still offers Patna centres as alternatives for Darbhanga, after Muzaffarpur", () => {
+    const results = svc.searchHospitals({
+      city: "Darbhanga",
+      state: "Bihar",
+      maxResults: 3,
+      includeNational: false,
+    });
+    expect(results.map((h) => h.id)).toContain(HBCH);
+    expect(results.slice(1).some((h) => h.city === "Patna")).toBe(true);
+  });
+
+  it("keeps clinical need in the loop: a Darbhanga query filtered by cancer type only returns hospitals with a matching department", () => {
+    const results = svc.searchHospitals({
+      city: "Darbhanga",
+      state: "Bihar",
+      cancerType: "oral",
+      maxResults: 3,
+      includeNational: false,
+    });
+    expect(results.length).toBeGreaterThan(0);
+    results.forEach((h) => {
+      const matchesDept = h.departments.some((d) =>
+        ["head_and_neck", "surgical_oncology", "radiation_oncology"].includes(d)
+      );
+      expect(matchesDept).toBe(true);
+    });
+  });
+
+  it("does not widen a city that does have hospitals of its own", () => {
+    const results = svc.searchHospitals({
+      city: "Muzaffarpur",
+      state: "Bihar",
+      maxResults: 5,
+      includeNational: false,
+    });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((h) => h.city === "Muzaffarpur")).toBe(true);
+  });
+
+  it("orders the Darbhanga candidate set by directory score, not by proximity", () => {
+    const results = svc.searchHospitals({
+      city: "Darbhanga",
+      state: "Bihar",
+      maxResults: 5,
+      includeNational: false,
+    });
+    const scores = results.map((h) => h.score);
+    expect(scores).toEqual([...scores].sort((a, b) => b - a));
   });
 });

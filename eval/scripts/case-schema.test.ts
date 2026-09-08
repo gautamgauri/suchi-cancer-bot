@@ -72,7 +72,7 @@ describe("eval case files are claimed by a runner lane", () => {
     // execute". If any number moves, this test forces the change to be
     // acknowledged instead of quietly re-inflating the coverage headline.
     //
-    // 601 present / 572 executable / 29 blocked, in two kinds:
+    // 603 present / 574 executable / 29 blocked, in two kinds:
     //   - 9  orphan-schema   — tier1/phase2_journeys.yaml (issue #89)
     //   - 20 missing-rubric  — gold-lane cases naming an intent
     //                          rubrics.v1.json does not define, so
@@ -80,14 +80,18 @@ describe("eval case files are claimed by a runner lane", () => {
     //     Found while fixing #89; NOT fixed here, because both candidate fixes
     //     (adding rubrics, or re-pointing a case at a different intent) change
     //     what those cases assert — SCCF review, per AGENTS.md §1.3.
+    //
+    // 2026-09-08: +2 (HN-DARBHANGA-01/02, issue #95) in the runnable gold lane,
+    // so total 601→603 and executable 572→574; the blocker counts are unchanged
+    // because both new cases reuse an intent that rubrics.v1.json defines.
     expect({
       total: summary.total,
       runnable: summary.executable,
       unrunnable: summary.unexecutable,
       blockers: summary.blockers,
     }).toEqual({
-      total: 601,
-      runnable: 572,
+      total: 603,
+      runnable: 574,
       unrunnable: 29,
       blockers: { "orphan-schema": 9, "missing-rubric": 20 },
     });

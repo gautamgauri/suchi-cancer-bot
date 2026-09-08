@@ -143,6 +143,28 @@ function matchCity(word: string): { entry: CityEntry; confidence: number } | nul
 }
 
 /**
+ * Resolve the state a known city belongs to, using the same canonical
+ * INDIAN_CITIES table `detectLocation` uses (canonical names + aliases).
+ *
+ * Exists so callers that only carry a city string (e.g. a hospital-directory
+ * lookup) can still widen to the correct state pool instead of losing the
+ * geography entirely. No new geography is introduced here — it reads the table
+ * that already backs detection.
+ *
+ * @returns canonical state name, or null when the city is not in the table
+ */
+export function resolveStateForCity(city: string | null | undefined): string | null {
+  if (!city || city.trim().length === 0) return null;
+  const lower = city.trim().toLowerCase();
+  for (const entry of INDIAN_CITIES) {
+    if (entry.canonical.toLowerCase() === lower || entry.aliases.includes(lower)) {
+      return entry.state;
+    }
+  }
+  return null;
+}
+
+/**
  * Detect location (Indian city) from text transcript.
  * @param text - The transcribed text to analyze
  * @returns LocationResult if a city is detected, null otherwise
