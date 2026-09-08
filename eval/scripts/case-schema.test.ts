@@ -72,7 +72,7 @@ describe("eval case files are claimed by a runner lane", () => {
     // execute". If any number moves, this test forces the change to be
     // acknowledged instead of quietly re-inflating the coverage headline.
     //
-    // 601 present / 572 executable / 29 blocked, in two kinds:
+    // 604 present / 575 executable / 29 blocked, in two kinds:
     //   - 9  orphan-schema   — tier1/phase2_journeys.yaml (issue #89)
     //   - 20 missing-rubric  — gold-lane cases naming an intent
     //                          rubrics.v1.json does not define, so
@@ -86,8 +86,8 @@ describe("eval case files are claimed by a runner lane", () => {
       unrunnable: summary.unexecutable,
       blockers: summary.blockers,
     }).toEqual({
-      total: 601,
-      runnable: 572,
+      total: 604,
+      runnable: 575,
       unrunnable: 29,
       blockers: { "orphan-schema": 9, "missing-rubric": 20 },
     });
