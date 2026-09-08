@@ -9,6 +9,8 @@ import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/
 import { QueryTypeClassifier } from "./query-type.classifier";
 import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer-topics";
 import { PatientState } from "../chat/patient-state.service";
+import { KB_FTS_SEARCH_SQL, isFtsSchemaError } from "./kb-fts.sql";
+import { KbFtsHealthService } from "./kb-fts-health.service";
 
 @Injectable()
 export class RagService {
@@ -19,7 +21,8 @@ export class RagService {
     private readonly embeddings: EmbeddingsService,
     private readonly synonyms: SynonymService,
     private readonly queryExpander: QueryExpanderService,
-    private readonly reranker: RerankerService
+    private readonly reranker: RerankerService,
+    private readonly ftsHealth: KbFtsHealthService
   ) {}
 
   /**
@@ -662,14 +665,19 @@ export class RagService {
   /**
    * Full-text search using Postgres tsvector
    * Returns chunks with lexical ranking scores normalized 0-1
+   *
+   * The SQL lives in `kb-fts.sql.ts` so that the boot probe and the regression
+   * test exercise the same statement (issue #92 — this query referenced a
+   * generated column that a migration had dropped, and the failure was
+   * indistinguishable from "no lexical matches" for three months).
    */
   private async fullTextSearchWithMetadata(
-    query: string, 
+    query: string,
     topK: number
   ): Promise<EvidenceChunk[]> {
     try {
       // Use websearch_to_tsquery for better query parsing (handles phrases, AND/OR, etc.)
-      const results = await this.prisma.$queryRaw<Array<{
+      const results = await this.prisma.$queryRawUnsafe<Array<{
         id: string;
         docId: string;
         content: string;
@@ -681,27 +689,9 @@ export class RagService {
         citation: string | null;
         lastReviewed: Date | null;
         isTrustedSource: boolean;
-      }>>`
-        SELECT 
-          c.id,
-          c."docId",
-          c.content,
-          ts_rank_cd(c.content_tsv, query) AS "lexRank",
-          d.title,
-          d.url,
-          d."sourceType",
-          d.source,
-          d.citation,
-          d."lastReviewed",
-          d."isTrustedSource"
-        FROM "KbChunk" c
-        INNER JOIN "KbDocument" d ON c."docId" = d.id,
-        websearch_to_tsquery('simple', ${query}) query
-        WHERE d.status = 'active'
-          AND c.content_tsv @@ query
-        ORDER BY ts_rank_cd(c.content_tsv, query) DESC
-        LIMIT ${topK * 2}
-      `;
+      }>>(KB_FTS_SEARCH_SQL, query, topK * 2);
+
+      this.ftsHealth.recordQuerySuccess();
 
       if (results.length === 0) {
         return [];
@@ -726,7 +716,16 @@ export class RagService {
         }
       }));
     } catch (error) {
-      this.logger.error(`Full-text search error: ${error.message}`, error.stack);
+      // Per-query resilience is kept — one bad lexical query must not take down
+      // chat — but the two failure modes are no longer indistinguishable.
+      if (isFtsSchemaError(error)) {
+        // Permanent until a migration runs: escalated (error level, dedicated
+        // event) and reported on /v1/health + /v1/health/retrieval.
+        this.ftsHealth.recordSchemaFailure(error);
+      } else {
+        this.ftsHealth.recordQueryFailure(error);
+        this.logger.error(`Full-text search error: ${error.message}`, error.stack);
+      }
       return [];
     }
   }
@@ -859,6 +858,9 @@ export class RagService {
       ftsCount: ftsChunks.length,
       mergedCount: chunkMap.size,
       hybridWeights: { wVec, wLex, queryTokens: queryTokens.length },
+      // Issue #92: `ftsCount: 0` used to be ambiguous — no lexical matches, or no
+      // lexical arm at all? This makes every retrieval log line say which.
+      lexicalArm: this.ftsHealth.getHealth().status,
       crossEncoderEnabled: this.reranker.isEnabled(),
       top3TrustedCount: top3Trusted,
       topScore: reranked[0]?.similarity || 0,

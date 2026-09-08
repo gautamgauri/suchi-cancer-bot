@@ -53,6 +53,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@nestjs/cli": "^10.4.0",
     "@nestjs/testing": "^10.4.22",
     "@types/geoip-lite": "^1.4.4",

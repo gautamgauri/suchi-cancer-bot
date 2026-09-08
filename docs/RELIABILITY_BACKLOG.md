@@ -331,6 +331,32 @@ rotate or remove the code path.
 post the placeholder until the real card is uploaded and the env updated in
 **both** cloudbuild files (and `deploy-api.yml` per P0-1).
 
+### P2-8. Hybrid weights are not renormalized when one retrieval arm returns nothing (new; surfaced fixing issue #92)
+
+`hybridSearchWithMetadata()` in `apps/api/src/modules/rag/rag.service.ts`
+scores `wVec * vecSim + wLex * lexSim` with fixed weights (0.80/0.20 for
+queries ≤6 tokens, 0.55/0.45 above). When the lexical arm contributes nothing
+— whether because FTS is broken (that was #92) or simply because no chunk
+matches the tsquery — every candidate's score is scaled down by `wLex`, which
+pushes borderline evidence under the `EvidenceGateService` thresholds and can
+turn a good answer into an abstention. Renormalizing (`wVec / (wVec + wLex)`
+when one arm is empty) would remove that coupling.
+
+Deliberately **not** changed while fixing #92: it moves evidence-gate outcomes,
+which is safety-adjacent (AGENTS.md §1.3) and needs its own before/after Tier1
+eval rather than riding along on a schema restore.
+
+### P2-9. Other silent `catch → return []` paths in retrieval (new; the #92 failure shape)
+
+#92 hid for three months because a raw query against a dropped column failed
+inside `catch { logger.error(...); return []; }`, which is indistinguishable
+from "no matches". `KbFtsHealthService` now separates the two for the FTS arm,
+but the same shape still exists elsewhere in
+`apps/api/src/modules/rag/rag.service.ts` (`vectorSearchWithMetadata`,
+`keywordSearchWithMetadata`, and the `.catch(() => [])` wrappers in
+`hybridSearchWithMetadata`) and in other modules. Worth a sweep: any retrieval
+arm whose empty result can mean "broken" should say which.
+
 ---
 
 ## Live-QA findings — production run 2026-09-04/05
