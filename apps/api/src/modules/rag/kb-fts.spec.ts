@@ -99,12 +99,16 @@ function baselineDdlFromSchema(): string {
 
 async function buildDatabase(
   proc: PgliteProcess,
-  options: { simulateFreshDbPush?: boolean } = {}
+  options: { simulateFreshDbPush?: boolean; leaveUnrepaired?: boolean } = {}
 ): Promise<PgliteDatabase> {
   const db = await proc.createDatabase();
   await db.exec(baselineDdlFromSchema());
 
-  if (options.simulateFreshDbPush) {
+  if (options.leaveUnrepaired) {
+    // A `db push` database with the restore migration NOT yet applied: Prisma's
+    // plain `content_tsv tsvector` placeholder, always NULL, never generated.
+    // The lexical query runs clean against it and returns nothing.
+  } else if (options.simulateFreshDbPush) {
     // A `db push`/`migrate diff` database is baselined at the datamodel, so it keeps
     // Prisma's plain `content_tsv tsvector` placeholder and only *new* migrations run.
     const restore = ftsMigrationsInOrder().find((m) => m.name === RESTORE_MIGRATION);
@@ -339,6 +343,92 @@ describe("KB full-text search (issue #92)", () => {
 
       const events = errorSpy.mock.calls.map((call) => call[0]?.event);
       expect(events).toContain("kb_fts_unavailable");
+    });
+  });
+
+  describe("when content_tsv is present but not generated (always NULL)", () => {
+    // The masking case: the column exists, so the query executes and throws
+    // nothing — it just returns zero rows forever. Query success must never be
+    // read as proof that the schema is healthy.
+    let unrepaired: PgliteDatabase;
+
+    beforeAll(async () => {
+      unrepaired = await buildDatabase(proc, { leaveUnrepaired: true });
+    });
+
+    afterAll(async () => {
+      await unrepaired?.close();
+    });
+
+    it("executes the shipped query without error and returns nothing", async () => {
+      const probe = (await unrepaired.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+      expect(probe.columnPresent).toBe(true);
+      expect(probe.columnGenerated).toBe(false);
+
+      const rows = await unrepaired.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
+      expect(rows).toHaveLength(0);
+    });
+
+    it("probes as 'unavailable' even though the column exists", async () => {
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(unrepaired.asPrisma());
+        const result = await health.probe();
+
+        expect(result.status).toBe("unavailable");
+        expect(health.isUnavailable()).toBe(true);
+      } finally {
+        jest.restoreAllMocks();
+      }
+    });
+
+    it("does NOT clear the unavailable verdict when a query merely succeeds", async () => {
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(unrepaired.asPrisma());
+        await health.probe();
+        expect(health.isUnavailable()).toBe(true);
+
+        // A real retrieval call through RagService: the query succeeds, so the
+        // service records a success. Before the re-probe fix this flipped the
+        // sub-status straight to "ok" and reported a dead arm as healthy.
+        const rag = ragServiceOn(unrepaired, health);
+        const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+        expect(chunks).toHaveLength(0);
+
+        // Give the throttled, fire-and-forget re-probe time to land.
+        await new Promise((resolve) => setTimeout(resolve, 400));
+
+        expect(health.getHealth().status).toBe("unavailable");
+        expect(health.isUnavailable()).toBe(true);
+      } finally {
+        jest.restoreAllMocks();
+      }
+    });
+
+    it("does clear the verdict once the schema is actually repaired", async () => {
+      // The recovery path must still work — the fix defers to the probe, it
+      // does not pin the verdict permanently.
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(db.asPrisma());
+        (health as any).set("unavailable", "forced stale verdict for test");
+        expect(health.isUnavailable()).toBe(true);
+
+        const rag = ragServiceOn(db, health);
+        await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+
+        const deadline = Date.now() + 3000;
+        while (health.getHealth().status !== "ok" && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        expect(health.getHealth().status).toBe("ok");
+      } finally {
+        jest.restoreAllMocks();
+      }
     });
   });
 

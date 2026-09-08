@@ -54,6 +54,11 @@ const LOG_THROTTLE_MS = 60_000;
 export class KbFtsHealthService implements OnModuleInit {
   private readonly logger = new Logger(KbFtsHealthService.name);
 
+  /** Minimum gap between re-probes triggered by query success. */
+  private static readonly REPROBE_THROTTLE_MS = 30_000;
+
+  private reprobeInFlight = false;
+  private lastReprobeAt = 0;
   private status: KbFtsStatus = "unknown";
   private detail = "not probed yet";
   private checkedAt: string | null = null;
@@ -192,15 +197,52 @@ export class KbFtsHealthService implements OnModuleInit {
     }
   }
 
-  /** A lexical query completed. Clears a stale `unavailable` verdict. */
+  /**
+   * A lexical query completed without throwing.
+   *
+   * Execution success is NOT evidence that the schema is repaired. A plain,
+   * non-generated `content_tsv` column — what `prisma migrate diff` emits, and
+   * precisely what the restore migration exists to repair — satisfies this
+   * query, returns zero rows, and throws nothing. Clearing an `unavailable`
+   * verdict on that basis would report a dead lexical arm as healthy, which is
+   * the exact masking this service exists to prevent.
+   *
+   * So a success never sets `ok` directly. It only schedules a re-probe, which
+   * checks `attgenerated` and the generation expression and is the sole
+   * authority on the verdict. Throttled and never awaited, so the retrieval
+   * path is not slowed.
+   */
   recordQuerySuccess(): void {
-    if (this.status === "unavailable" || this.status === "unknown") {
-      this.set("ok", "lexical query executed successfully");
-      this.logger.log({
-        event: "kb_fts_recovered",
-        message: "Lexical retrieval arm is answering again",
-      });
+    // Hot path: nothing to reconsider unless we are currently carrying a
+    // negative or unproven verdict.
+    if (this.status !== "unavailable" && this.status !== "unknown") return;
+
+    const now = Date.now();
+    if (
+      this.reprobeInFlight ||
+      now - this.lastReprobeAt < KbFtsHealthService.REPROBE_THROTTLE_MS
+    ) {
+      return;
     }
+
+    this.reprobeInFlight = true;
+    this.lastReprobeAt = now;
+
+    void this.probe()
+      .then((health) => {
+        if (health.status === "ok") {
+          this.logger.log({
+            event: "kb_fts_recovered",
+            message: "Lexical retrieval arm is answering again — schema re-probe confirms it",
+          });
+        }
+      })
+      .catch(() => {
+        // probe() sets and logs its own verdict on failure; nothing to add.
+      })
+      .finally(() => {
+        this.reprobeInFlight = false;
+      });
   }
 
   getHealth(): KbFtsHealth {
