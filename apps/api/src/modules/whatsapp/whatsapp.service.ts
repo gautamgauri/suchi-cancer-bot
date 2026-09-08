@@ -30,6 +30,25 @@ function isUniqueViolation(err: any): boolean {
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
 
+  /**
+   * One promise chain per contact, so a burst of messages from the same person
+   * is processed strictly one at a time (issue #94).
+   *
+   * Each webhook POST kicks off its own fire-and-forget `processClaimed`, so
+   * without this a user tapping out four quick messages puts four full chat
+   * turns for one session in flight simultaneously. That is not merely slow:
+   * the turns interleave on shared session state (greeting step, emotional
+   * state, `WhatsAppContact.sessionId`) and pile onto the same Prisma pool,
+   * which is what pushed a turn past `ChatService`'s 30s pre-RAG budget on
+   * 2026-09-06.
+   *
+   * Instance-local by design — Cloud Run can route a burst to several
+   * instances, so this bounds the common case (one contact, one instance)
+   * rather than guaranteeing global ordering. The wamid ledger, not this map,
+   * is what guarantees at-most-once processing.
+   */
+  private readonly contactQueues = new Map<string, Promise<void>>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly chat: ChatService,
@@ -193,32 +212,57 @@ export class WhatsAppService {
    * evidence-gate and citation rules are unchanged (FR-WA-001).
    */
   async processClaimed(messages: InboundMessage[]): Promise<void> {
-    for (const msg of messages) {
+    // Same contact → strictly sequential; different contacts → still parallel.
+    await Promise.all(messages.map((msg) => this.enqueueForContact(msg)));
+  }
+
+  /**
+   * Append one message to its contact's queue and return a promise for its
+   * completion. Ordering follows the order of the batch, because the chain is
+   * extended synchronously here.
+   */
+  private enqueueForContact(msg: InboundMessage): Promise<void> {
+    const previous = this.contactQueues.get(msg.from) ?? Promise.resolve();
+    // `processOne` never rejects, but chain defensively either way so one
+    // failure cannot wedge every later message from the same contact.
+    const next = previous.then(
+      () => this.processOne(msg),
+      () => this.processOne(msg),
+    );
+    this.contactQueues.set(msg.from, next);
+    void next.finally(() => {
+      // Drop the entry once this is the tail, so the map cannot grow unbounded.
+      if (this.contactQueues.get(msg.from) === next) this.contactQueues.delete(msg.from);
+    });
+    return next;
+  }
+
+  /** Run one already-claimed message through the chat pipeline. Never throws. */
+  private async processOne(msg: InboundMessage): Promise<void> {
+    try {
+      const locale = detectLocale(msg.text);
+      let sessionId = await this.resolveSession(msg.from, locale);
+      let result;
       try {
-        const locale = detectLocale(msg.text);
-        let sessionId = await this.resolveSession(msg.from, locale);
-        let result;
-        try {
-          result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
-        } catch (err: any) {
-          // Self-heal a stale/deleted session (the stored sessionId no longer
-          // exists in the DB) — mint a fresh session and retry ONCE. Without
-          // this the contact is wedged on the fallback reply until the TTL.
-          if (isInvalidSessionError(err)) {
-            this.logger.warn(`Stale session ${sessionId} for WhatsApp contact — re-minting and retrying`);
-            sessionId = await this.resolveSession(msg.from, locale, true);
-            result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
-          } else {
-            throw err;
-          }
-        }
-        await this.sendText(msg.from, result.responseText);
-        await this.markLedger(msg.wamid, "processed");
+        result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
       } catch (err: any) {
-        this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
-        await this.markLedger(msg.wamid, "failed", err?.message);
-        await this.sendText(msg.from, FALLBACK_REPLY).catch(() => undefined);
+        // Self-heal a stale/deleted session (the stored sessionId no longer
+        // exists in the DB) — mint a fresh session and retry ONCE. Without
+        // this the contact is wedged on the fallback reply until the TTL.
+        if (isInvalidSessionError(err)) {
+          this.logger.warn(`Stale session ${sessionId} for WhatsApp contact — re-minting and retrying`);
+          sessionId = await this.resolveSession(msg.from, locale, true);
+          result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
+        } else {
+          throw err;
+        }
       }
+      await this.sendText(msg.from, result.responseText);
+      await this.markLedger(msg.wamid, "processed");
+    } catch (err: any) {
+      this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
+      await this.markLedger(msg.wamid, "failed", err?.message);
+      await this.sendText(msg.from, FALLBACK_REPLY).catch(() => undefined);
     }
   }
 
