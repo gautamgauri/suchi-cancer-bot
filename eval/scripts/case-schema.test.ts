@@ -127,9 +127,9 @@ describe("eval case files are claimed by a runner lane", () => {
     // execute". If either number moves, this test forces the change to be
     // acknowledged instead of quietly re-inflating the coverage headline.
     expect({ total, unrunnable, runnable: total - unrunnable }).toEqual({
-      total: 601,
+      total: 604,
       unrunnable: 9,
-      runnable: 592,
+      runnable: 595,
     });
   });
 });
