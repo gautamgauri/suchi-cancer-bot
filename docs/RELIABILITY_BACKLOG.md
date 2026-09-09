@@ -516,4 +516,22 @@ more, and should be decided together with QA0904-1.
    schema (which requires deciding the pass criteria for symptom-worry and
    emergency journeys — SCCF medical review per AGENTS.md §1.3) or retire the
    file with a manifest tombstone. Until then, quote executable coverage as
-   592, not 601.
+   572, not 601 — see item 12; the case manifest now reports the figure
+   directly (`npm --prefix eval run cases:check`, issue #89).
+12. P1-11 (found 2026-09-09 while fixing #89): **20 gold-lane eval cases name
+   an intent `rubrics/rubrics.v1.json` does not define**, so
+   `Evaluator.getRubric` returns null and the run throws before scoring —
+   the same blocker as the journeys, in files that otherwise look runnable.
+   Verified against the shipped rubric pack: `RED_FLAGS_URGENT` → null,
+   `RED_FLAG_URGENT` → found. The unmapped intents are `RED_FLAGS_URGENT`
+   (10 cases, `generalinfo/general_info_100.yaml`), `NAVIGATION` (3),
+   `EMOTIONAL_SUPPORT` (3), `SIDE_EFFECTS_GENERAL` (2), `OUT_OF_SCOPE` (2),
+   across `gold/language_voice.yaml`, `gold/retrieval_grounding.yaml` and
+   `gold/ux_completeness.yaml`. Note the rubric lookup is **not**
+   canonicalised, although the `--intent` filter is
+   (`eval/utils/canonicalize.ts`), so a plural is a different intent.
+   Decision needed: add the missing rubrics, canonicalise the lookup, or
+   re-point the cases at existing intents. All three change what those cases
+   assert — including red-flag ones — so this is an eval-owner + SCCF call,
+   not an agent fix. Pinned by `eval/scripts/case-schema.test.ts` so the list
+   cannot grow silently.

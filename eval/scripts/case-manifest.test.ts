@@ -12,6 +12,7 @@ import {
   updateManifest,
   runCli,
 } from "./case-manifest";
+import { scanLanes, summariseExecutability } from "./case-lanes";
 
 let tmpDir: string;
 
@@ -180,5 +181,186 @@ describe("runCli", () => {
       ])
     ).toBe(0);
     expect(runCli(["check", "--cases-dir", tmpDir])).toBe(0);
+  });
+});
+
+/**
+ * Issue #89 — the manifest counted every case it could PARSE, which is not the
+ * same as every case a runner can EXECUTE. `tier1/phase2_journeys.yaml` is 9
+ * cases in a schema no runner reads, and the headline said 601.
+ *
+ * A file is "orphan" when it has none of `user_messages` / `voice_input` /
+ * `expectedTranscript` — the three shapes the runners consume.
+ */
+describe("executability tracking (#89)", () => {
+  /** Same shape as phase2_journeys.yaml: no field any runner reads. */
+  const ORPHAN_SUITE = `cases:
+  - id: CASE-ORPHAN-01
+    userText: "a question"
+    expectedBehavior:
+      mustContain: ["doctor"]
+  - id: CASE-ORPHAN-02
+    userText: "another question"
+    expectedBehavior:
+      mustContain: ["doctor"]
+`;
+
+  function writeOrphanSuite() {
+    fs.writeFileSync(path.join(tmpDir, "tier1", "orphan_suite.yaml"), ORPHAN_SUITE);
+  }
+
+  it("classifies runnable and orphan suites, and counts them apart", () => {
+    writeOrphanSuite();
+    const lanes = scanLanes(tmpDir);
+
+    expect(lanes["tier1/suite_a.yaml"]).toEqual({
+      count: 2,
+      lanes: ["gold"],
+      executableCases: 2,
+      executable: true,
+    });
+    expect(lanes["tier1/orphan_suite.yaml"]).toEqual({
+      count: 2,
+      lanes: ["orphan"],
+      executableCases: 0,
+      blockers: { "orphan-schema": 2 },
+      executable: false,
+    });
+
+    expect(summariseExecutability(lanes)).toEqual({
+      total: 5,
+      executable: 3,
+      unexecutable: 2,
+      blockers: { "orphan-schema": 2 },
+      unexecutableFiles: ["tier1/orphan_suite.yaml"],
+    });
+  });
+
+  it("counts a gold case whose intent has no rubric as NOT executable", () => {
+    // `Evaluator.getRubric` is a plain lookup and throws when the intent is
+    // absent, so a readable schema alone is not enough to make a case run.
+    // The rubric lookup is not canonicalised, so RED_FLAGS_URGENT (plural) is
+    // a different, undefined intent from RED_FLAG_URGENT.
+    const rubricIntents = new Set(["INFORMATIONAL_GENERAL"]);
+    const lanes = scanLanes(tmpDir, rubricIntents);
+
+    expect(lanes["tier1/suite_a.yaml"].executableCases).toBe(2); // both INFORMATIONAL_GENERAL
+    expect(lanes["suite_b.yaml"]).toMatchObject({
+      count: 1,
+      lanes: ["gold"], // schema is fine …
+      executableCases: 0, // … but RED_FLAG_URGENT has no rubric here
+      blockers: { "missing-rubric": 1 },
+      executable: false,
+    });
+
+    const summary = summariseExecutability(lanes);
+    expect(summary.executable).toBe(2);
+    expect(summary.blockers).toEqual({ "missing-rubric": 1 });
+  });
+
+  it("counts a file with a mix of blocked and runnable cases per case, not per file", () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "tier1", "suite_a.yaml"),
+      SUITE_A + `  - id: CASE-A-03
+    tier: 1
+    cancer: oral
+    intent: NO_SUCH_INTENT
+    user_messages: ["q4"]
+    expectations: {}
+`,
+    );
+    const lanes = scanLanes(tmpDir, new Set(["INFORMATIONAL_GENERAL", "RED_FLAG_URGENT"]));
+
+    // The file is not executable as a whole, but 2 of its 3 cases still are —
+    // marking all 3 unexecutable would understate coverage as badly as the old
+    // count overstated it.
+    expect(lanes["tier1/suite_a.yaml"]).toMatchObject({
+      count: 3,
+      executableCases: 2,
+      executable: false,
+      blockers: { "missing-rubric": 1 },
+    });
+    expect(summariseExecutability(lanes).executable).toBe(3);
+  });
+
+  it("records both counts in the manifest, not just the present count", () => {
+    writeOrphanSuite();
+    const manifest = buildManifest(scanCases(tmpDir), [], scanLanes(tmpDir));
+
+    expect(manifest.version).toBe(2);
+    expect(manifest.totalCases).toBe(5);
+    expect(manifest.executableCases).toBe(3);
+    expect(manifest.unexecutableCases).toBe(2);
+    expect(manifest.files["tier1/orphan_suite.yaml"].executable).toBe(false);
+    expect(manifest.files["tier1/suite_a.yaml"].executable).toBe(true);
+  });
+
+  it("fails the check when a suite silently stops being executable", () => {
+    // The regression this guard exists for: a suite is edited into a schema no
+    // runner reads. Case IDs all still present, so every pre-#89 check passes
+    // and the headline count does not move — while real coverage drops.
+    const scanned = scanCases(tmpDir);
+    const manifest = buildManifest(scanned, [], scanLanes(tmpDir));
+    expect(manifest.executableCases).toBe(3);
+
+    fs.writeFileSync(
+      path.join(tmpDir, "tier1", "suite_a.yaml"),
+      SUITE_A.replace(/user_messages: \["q\d"\]/g, 'userText: "q"'),
+    );
+
+    const after = checkManifest(manifest, scanCases(tmpDir), scanLanes(tmpDir));
+
+    expect(after.ok).toBe(false);
+    expect(after.errors.join("\n")).toMatch(/changed executability/);
+    expect(after.errors.join("\n")).toMatch(/Executable case count changed/);
+  });
+
+  it("fails the check when an orphan suite is ported, so the gain is recorded", () => {
+    writeOrphanSuite();
+    const manifest = buildManifest(scanCases(tmpDir), [], scanLanes(tmpDir));
+
+    // The port that issue #89 asks for, once SCCF has approved the criteria.
+    fs.writeFileSync(
+      path.join(tmpDir, "tier1", "orphan_suite.yaml"),
+      ORPHAN_SUITE.replace(/userText: "([^"]+)"/g, 'user_messages: ["$1"]'),
+    );
+
+    const after = checkManifest(manifest, scanCases(tmpDir), scanLanes(tmpDir));
+
+    expect(after.ok).toBe(false);
+    expect(after.executableCases).toBe(5);
+  });
+
+  it("warns, without failing, that a known-orphan file is not coverage", () => {
+    writeOrphanSuite();
+    const lanes = scanLanes(tmpDir);
+    const manifest = buildManifest(scanCases(tmpDir), [], lanes);
+
+    const result = checkManifest(manifest, scanCases(tmpDir), lanes);
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings.join("\n")).toMatch(
+      /"tier1\/orphan_suite\.yaml": 2 of 2 cases are counted but cannot be executed \(2 orphan-schema\)/,
+    );
+  });
+
+  it("warns when a pre-#89 manifest cannot say how many cases run", () => {
+    const scanned = scanCases(tmpDir);
+    const v1 = buildManifest(scanned); // no lanes — the old shape
+    expect(v1.version).toBe(1);
+    expect(v1.executableCases).toBeUndefined();
+
+    const result = checkManifest(v1, scanned, scanLanes(tmpDir));
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings.join("\n")).toMatch(/predates executability tracking/);
+  });
+
+  it("keeps working for callers that pass no lanes at all", () => {
+    const scanned = scanCases(tmpDir);
+    const result = checkManifest(buildManifest(scanned), scanned);
+
+    expect(result.ok).toBe(true);
+    expect(result.executableCases).toBeUndefined();
   });
 });

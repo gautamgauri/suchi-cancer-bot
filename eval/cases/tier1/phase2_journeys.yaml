@@ -17,10 +17,17 @@
 #      `apps/api/src/modules/chat/intent-classifier.ts`; the API's red-flag path
 #      is the safety module, not an intent.)
 #
-# Its 9 case IDs are nonetheless counted by the case-manifest guard, so the
-# headline "601 cases" overstates executable coverage by 9. The lane
-# classification is pinned by `eval/scripts/case-schema.test.ts`, which fails if
-# any NEW case file arrives with a schema no runner reads.
+# Its 9 case IDs are nonetheless PRESENT in the suite, so a headline of "601
+# cases" overstates executable coverage. Since issue #89 the case manifest
+# reports both numbers — 601 present, 572 executable — and marks this file
+# `"executable": false` with the reason, so the 9 can no longer read as
+# coverage. (The other 20 blocked cases are a separate defect: gold-lane cases
+# naming an intent `rubrics.v1.json` does not define. See
+# docs/RELIABILITY_BACKLOG.md item 12.) The lane classification lives in
+# `eval/scripts/case-lanes.ts` and is pinned by
+# `eval/scripts/case-schema.test.ts`, which fails if any NEW case file arrives
+# with a schema no runner reads, and if this file is ported without the
+# quarantine entry being cleared.
 #
 # The `mode:` key below (navigate/explain) is descriptive only — it is NOT a
 # request field. `runner/api-client.ts` posts `{sessionId, channel, userText}`,

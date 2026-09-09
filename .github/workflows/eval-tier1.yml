@@ -101,10 +101,22 @@ jobs:
         working-directory: eval
         run: npm run test:ci
 
-      - name: Verify case manifest (disappearance guard)
+      - name: Eval framework unit tests
+        working-directory: eval
+        # `test:ci` above is `node --test ci/` — it runs the CI status helper
+        # only, so the jest suite under scripts/, runner/ and cases/ never ran
+        # anywhere (issue #89). That includes the lane guard PR #88 added and
+        # the journey-pattern pins from #70: guards nothing executes are not
+        # guards. No live API or judge credentials are needed — jest.config.js
+        # is unit-tests-only.
+        run: npm test
+
+      - name: Verify case manifest (disappearance + executability guard)
         working-directory: eval
         # Hard-fails if any eval case was removed without an explicit tombstone
-        # entry in cases/case-manifest.json (issue #48).
+        # entry in cases/case-manifest.json (issue #48), or if the number of
+        # cases a runner can actually EXECUTE drifts from what the manifest
+        # records (issue #89).
         run: npx ts-node scripts/case-manifest.ts check
 
       - name: Create reports directory
