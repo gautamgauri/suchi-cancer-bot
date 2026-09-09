@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "generatedAt": "2026-07-05T08:16:59.853Z",
+  "version": 2,
+  "generatedAt": "2026-09-09T17:00:50.463Z",
   "totalCases": 601,
   "files": {
     "generalinfo/general_info_100.yaml": {
@@ -106,7 +106,15 @@
         "GI-PANCREAS-08",
         "GI-PANCREAS-09",
         "GI-PANCREAS-10"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 90,
+      "blockers": {
+        "missing-rubric": 10
+      },
+      "executable": false
     },
     "gold/core_safety.yaml": {
       "count": 15,
@@ -126,7 +134,12 @@
         "GOLD-SAFETY-13",
         "GOLD-SAFETY-14",
         "GOLD-SAFETY-15"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 15,
+      "executable": true
     },
     "gold/hospital_navigation.yaml": {
       "count": 5,
@@ -136,7 +149,12 @@
         "GOLD-HN-03",
         "GOLD-HN-04",
         "GOLD-HN-05"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 5,
+      "executable": true
     },
     "gold/language_voice.yaml": {
       "count": 15,
@@ -156,7 +174,15 @@
         "GOLD-LANG-13",
         "GOLD-LANG-14",
         "GOLD-LANG-15"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 13,
+      "blockers": {
+        "missing-rubric": 2
+      },
+      "executable": false
     },
     "gold/retrieval_grounding.yaml": {
       "count": 20,
@@ -181,7 +207,15 @@
         "GOLD-RAG-18",
         "GOLD-RAG-19",
         "GOLD-RAG-20"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 17,
+      "blockers": {
+        "missing-rubric": 3
+      },
+      "executable": false
     },
     "gold/ux_completeness.yaml": {
       "count": 20,
@@ -206,19 +240,37 @@
         "GOLD-UX-18",
         "GOLD-UX-19",
         "GOLD-UX-20"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 15,
+      "blockers": {
+        "missing-rubric": 5
+      },
+      "executable": false
     },
     "regression/p0_2026_03_26_zero_citation_stomach.yaml": {
       "count": 1,
       "caseIds": [
         "REG-P0-20260326-STOMACH-ZERO-CITATION-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 1,
+      "executable": true
     },
     "regression/p0_2026_07_05_lung_retrieval_miss.yaml": {
       "count": 1,
       "caseIds": [
         "REG-P0-20260705-LUNG-RETRIEVAL-MISS-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 1,
+      "executable": true
     },
     "tier1.5/sub_intent_precision.yaml": {
       "count": 21,
@@ -244,7 +296,12 @@
         "SIP-NEGATIVE-02",
         "SIP-VOICE-MESSY-01",
         "SIP-VOICE-MESSY-02"
-      ]
+      ],
+      "lanes": [
+        "voice"
+      ],
+      "executableCases": 21,
+      "executable": true
     },
     "tier1/common_cancers_20_mode_matrix.yaml": {
       "count": 100,
@@ -349,7 +406,12 @@
         "SUCHI-T1-LARYNX-CAREGIVER-01",
         "SUCHI-T1-LARYNX-POST-01",
         "SUCHI-T1-LARYNX-URGENT-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 100,
+      "executable": true
     },
     "tier1/hospital_navigation.yaml": {
       "count": 5,
@@ -359,7 +421,12 @@
         "HN-COMPARE-01",
         "HN-MUZAFFARPUR-01",
         "HN-KOLKATA-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 5,
+      "executable": true
     },
     "tier1/phase2_journeys.yaml": {
       "count": 9,
@@ -373,7 +440,16 @@
         "journey_caregiver_stress_crisis_001",
         "journey_emergency_001",
         "journey_emergency_002"
-      ]
+      ],
+      "lanes": [
+        "orphan"
+      ],
+      "executableCases": 0,
+      "blockers": {
+        "orphan-schema": 9
+      },
+      "executable": false,
+      "unexecutableReason": "issues #71, #89 — bespoke userText/expectedBehavior schema; also uses PERSONAL_SYMPTOMS/EMERGENCY intents that rubrics.v1.json does not define. Porting requires SCCF review of the intent mapping and pass criteria (AGENTS.md §1.3)."
     },
     "tier1/retrieval_quality.yaml": {
       "count": 21,
@@ -399,7 +475,12 @@
         "RQ-THYROID-01",
         "RQ-KIDNEY-01",
         "RQ-BLADDER-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 21,
+      "executable": true
     },
     "tier1/retrieval_quality_batch2.yaml": {
       "count": 3,
@@ -407,7 +488,12 @@
         "RQ-COLORECTAL-01",
         "RQ-PROSTATE-01",
         "RQ-CERVICAL-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 3,
+      "executable": true
     },
     "tier1/retrieval_quality_batch_a.yaml": {
       "count": 7,
@@ -419,7 +505,12 @@
         "RQ-CERVICAL-01",
         "RQ-OVARIAN-01",
         "RQ-ORAL-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 7,
+      "executable": true
     },
     "tier1/retrieval_quality_batch_b.yaml": {
       "count": 7,
@@ -431,7 +522,12 @@
         "RQ-LUNG-02",
         "RQ-COLORECTAL-02",
         "RQ-PROSTATE-02"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 7,
+      "executable": true
     },
     "tier1/retrieval_quality_batch_c.yaml": {
       "count": 7,
@@ -443,7 +539,12 @@
         "RQ-THYROID-01",
         "RQ-KIDNEY-01",
         "RQ-BLADDER-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 7,
+      "executable": true
     },
     "tier1/retrieval_quality_sample.yaml": {
       "count": 3,
@@ -451,7 +552,12 @@
         "RQ-BREAST-01",
         "RQ-LUNG-01",
         "RQ-ORAL-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 3,
+      "executable": true
     },
     "tier1/smoke_test_3_cases.yaml": {
       "count": 3,
@@ -459,7 +565,12 @@
         "SMOKE-LUNG-GEN-01",
         "SMOKE-BREAST-PATIENT-01",
         "SMOKE-URGENT-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 3,
+      "executable": true
     },
     "tier1/zero_citation_regression.yaml": {
       "count": 4,
@@ -468,7 +579,12 @@
         "SUCHI-T1-CERVICAL-CAREGIVER-01",
         "SUCHI-T1-CERVICAL-POST-01",
         "SUCHI-T1-CERVICAL-URGENT-01"
-      ]
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 4,
+      "executable": true
     },
     "tier2/authentic_indian_queries.yaml": {
       "count": 40,
@@ -513,7 +629,12 @@
         "AUTH-GREET-02",
         "AUTH-GREET-03",
         "AUTH-GREET-04"
-      ]
+      ],
+      "lanes": [
+        "voice"
+      ],
+      "executableCases": 40,
+      "executable": true
     },
     "tier2/generated.yaml": {
       "count": 150,
@@ -668,7 +789,12 @@
         "DYN-BREAS-ENGLISH-POSTDI-148",
         "DYN-LUNG-EMOTIONAL-POSTDI-149",
         "DYN-OVARI-CASUAL-SYMPTO-150"
-      ]
+      ],
+      "lanes": [
+        "voice"
+      ],
+      "executableCases": 150,
+      "executable": true
     },
     "tier2/multi_turn_journeys.yaml": {
       "count": 28,
@@ -701,7 +827,12 @@
         "JOURNEY-EMOTIONAL-TREATMENT-03",
         "JOURNEY-EMOTIONAL-TREATMENT-04",
         "JOURNEY-EMOTIONAL-TREATMENT-05"
-      ]
+      ],
+      "lanes": [
+        "voice"
+      ],
+      "executableCases": 28,
+      "executable": true
     },
     "voice/voice_e2e_cases.yaml": {
       "count": 6,
@@ -712,7 +843,12 @@
         "VOICE-HINGLISH-01",
         "VOICE-SHORT-01",
         "VOICE-MISPRONOUNCED-01"
-      ]
+      ],
+      "lanes": [
+        "voice-e2e"
+      ],
+      "executableCases": 6,
+      "executable": true
     },
     "voice/voice_transcript_cancer_queries.yaml": {
       "count": 10,
@@ -727,8 +863,19 @@
         "VT-PROSTATE-POSTDX-01",
         "VT-CHEMO-SIDE-01",
         "VT-HINDI-ORAL-01"
-      ]
+      ],
+      "lanes": [
+        "voice"
+      ],
+      "executableCases": 10,
+      "executable": true
     }
   },
-  "tombstones": []
+  "tombstones": [],
+  "executableCases": 572,
+  "unexecutableCases": 29,
+  "blockers": {
+    "missing-rubric": 20,
+    "orphan-schema": 9
+  }
 }

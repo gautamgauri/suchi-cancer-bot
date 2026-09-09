@@ -13,92 +13,38 @@
  * the orphan is listed by name, with its issue, so it stays visible until it is
  * either ported to a runnable schema or removed with a tombstone.
  *
- * Lanes
- * -----
- *  - "gold"  : `user_messages: string[]` — read by `runner/evaluator.ts`
- *              (`executeConversation(sessionId, testCase.user_messages, ...)`).
- *  - "voice" : `voice_input: string` — read by `runner/voice-transcript-eval.ts`.
- *  - "voice-e2e": `expectedTranscript` — synthetic voice cases.
- *  - "orphan": none of the above; no runner reads it.
+ * The lane rules themselves live in `scripts/case-lanes.ts` (issue #89) so that
+ * this guard and the case manifest cannot disagree about what "executable"
+ * means. This file asserts the repository's current state against them.
  */
 
 import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
+import {
+  DEFAULT_RUBRICS_PATH,
+  KNOWN_UNRUNNABLE,
+  loadRubricIntents,
+  scanLanes,
+  summariseExecutability,
+} from "./case-lanes";
+import { CaseManifest, manifestPathFor } from "./case-manifest";
 
 const CASES_DIR = path.join(__dirname, "..", "cases");
-
-/**
- * Case files that are known to be unrunnable, with the issue tracking the port.
- * Adding an entry here is a deliberate, reviewable act — it does not make the
- * file run, it only records that we know it does not.
- */
-const KNOWN_UNRUNNABLE: Record<string, string> = {
-  "tier1/phase2_journeys.yaml":
-    "issue #71 — bespoke userText/expectedBehavior schema; also uses PERSONAL_SYMPTOMS/EMERGENCY intents that rubrics.v1.json does not define",
-};
-
-type Lane = "gold" | "voice" | "voice-e2e" | "orphan";
-
-function listYamlFiles(dir: string): string[] {
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, entry.name);
-      if (entry.isDirectory()) walk(p);
-      else if (/\.ya?ml$/i.test(entry.name)) out.push(p);
-    }
-  };
-  walk(dir);
-  return out.sort();
-}
-
-function laneOf(testCase: Record<string, unknown>): Lane {
-  if (Array.isArray(testCase.user_messages)) return "gold";
-  if (typeof testCase.voice_input === "string") return "voice";
-  if (typeof testCase.expectedTranscript === "string") return "voice-e2e";
-  return "orphan";
-}
-
-interface FileClassification {
-  relPath: string;
-  count: number;
-  lanes: Set<Lane>;
-}
-
-function classifyCaseFiles(): FileClassification[] {
-  const out: FileClassification[] = [];
-  for (const file of listYamlFiles(CASES_DIR)) {
-    const parsed = yaml.load(fs.readFileSync(file, "utf-8")) as {
-      cases?: unknown;
-    };
-    // Files without a `cases:` array are templates/scratch — the manifest
-    // guard skips them too.
-    if (!parsed || !Array.isArray(parsed.cases)) continue;
-
-    const cases = parsed.cases.filter(
-      (c): c is Record<string, unknown> => !!c && typeof c === "object",
-    );
-    out.push({
-      relPath: path.relative(CASES_DIR, file).split(path.sep).join("/"),
-      count: cases.length,
-      lanes: new Set(cases.map(laneOf)),
-    });
-  }
-  return out;
-}
+const RUBRIC_INTENTS = loadRubricIntents(DEFAULT_RUBRICS_PATH);
 
 describe("eval case files are claimed by a runner lane", () => {
-  const classified = classifyCaseFiles();
+  const lanes = scanLanes(CASES_DIR, RUBRIC_INTENTS);
+  const entries = Object.entries(lanes);
 
   it("finds case files to classify", () => {
-    expect(classified.length).toBeGreaterThan(0);
+    expect(entries.length).toBeGreaterThan(0);
   });
 
   it("has no case file in an unreadable schema except the recorded ones", () => {
-    const orphans = classified
-      .filter((f) => f.lanes.has("orphan"))
-      .map((f) => f.relPath);
+    const orphans = entries
+      .filter(([, f]) => f.lanes.includes("orphan"))
+      .map(([relPath]) => relPath);
 
     const unexpected = orphans.filter((p) => !(p in KNOWN_UNRUNNABLE));
 
@@ -109,7 +55,9 @@ describe("eval case files are claimed by a runner lane", () => {
     // If a quarantined file is ported to a runnable schema, this fails so the
     // entry gets removed rather than lingering as a permanent excuse.
     const orphans = new Set(
-      classified.filter((f) => f.lanes.has("orphan")).map((f) => f.relPath),
+      entries
+        .filter(([, f]) => f.lanes.includes("orphan"))
+        .map(([relPath]) => relPath),
     );
 
     const stale = Object.keys(KNOWN_UNRUNNABLE).filter((p) => !orphans.has(p));
@@ -117,19 +65,102 @@ describe("eval case files are claimed by a runner lane", () => {
     expect(stale).toEqual([]);
   });
 
-  it("reports how many manifest cases are actually executable", () => {
-    const total = classified.reduce((n, f) => n + f.count, 0);
-    const unrunnable = classified
-      .filter((f) => f.relPath in KNOWN_UNRUNNABLE)
-      .reduce((n, f) => n + f.count, 0);
+  it("reports how many suite cases are actually executable", () => {
+    const summary = summariseExecutability(lanes);
 
-    // Pins the gap between "cases in the manifest" and "cases a runner can
-    // execute". If either number moves, this test forces the change to be
+    // Pins the gap between "cases in the suite" and "cases a runner can
+    // execute". If any number moves, this test forces the change to be
     // acknowledged instead of quietly re-inflating the coverage headline.
-    expect({ total, unrunnable, runnable: total - unrunnable }).toEqual({
+    //
+    // 601 present / 572 executable / 29 blocked, in two kinds:
+    //   - 9  orphan-schema   — tier1/phase2_journeys.yaml (issue #89)
+    //   - 20 missing-rubric  — gold-lane cases naming an intent
+    //                          rubrics.v1.json does not define, so
+    //                          `Evaluator.getRubric` throws before scoring.
+    //     Found while fixing #89; NOT fixed here, because both candidate fixes
+    //     (adding rubrics, or re-pointing a case at a different intent) change
+    //     what those cases assert — SCCF review, per AGENTS.md §1.3.
+    expect({
+      total: summary.total,
+      runnable: summary.executable,
+      unrunnable: summary.unexecutable,
+      blockers: summary.blockers,
+    }).toEqual({
       total: 601,
-      unrunnable: 9,
-      runnable: 592,
+      runnable: 572,
+      unrunnable: 29,
+      blockers: { "orphan-schema": 9, "missing-rubric": 20 },
     });
+  });
+
+  it("names the intents that have no rubric, so the list cannot grow silently", () => {
+    // Every distinct intent used by a gold-lane case must resolve, or be listed
+    // here. A new unmapped intent fails this test rather than surfacing as a
+    // mid-run crash.
+    const unmapped = new Set<string>();
+    for (const file of Object.keys(lanes)) {
+      const parsed: any = yaml.load(
+        fs.readFileSync(path.join(CASES_DIR, file), "utf-8"),
+      );
+      for (const c of parsed.cases ?? []) {
+        if (!Array.isArray(c?.user_messages)) continue;
+        if (!RUBRIC_INTENTS.has(String(c.intent))) unmapped.add(String(c.intent));
+      }
+    }
+
+    expect([...unmapped].sort()).toEqual([
+      "EMOTIONAL_SUPPORT",
+      "NAVIGATION",
+      "OUT_OF_SCOPE",
+      "RED_FLAGS_URGENT",
+      "SIDE_EFFECTS_GENERAL",
+    ]);
+  });
+});
+
+/**
+ * Issue #89: the manifest is the artefact people quote. Before this change it
+ * carried one number — 601 — and no way to tell that 29 of those cases run
+ * nowhere. These tests hold the manifest ON DISK to the same truth as the scan,
+ * so the committed inventory cannot drift from what the runners can do.
+ */
+describe("the committed manifest tells the truth about executability", () => {
+  const manifest: CaseManifest = JSON.parse(
+    fs.readFileSync(manifestPathFor(CASES_DIR), "utf-8"),
+  );
+  const lanes = scanLanes(CASES_DIR, RUBRIC_INTENTS);
+  const summary = summariseExecutability(lanes);
+
+  it("records the executable count, not just the present count", () => {
+    expect(manifest.totalCases).toBe(summary.total);
+    expect(manifest.executableCases).toBe(summary.executable);
+    expect(manifest.unexecutableCases).toBe(summary.unexecutable);
+    expect(manifest.blockers).toEqual(summary.blockers);
+  });
+
+  it("marks every file with its lanes and executable case count", () => {
+    for (const [file, entry] of Object.entries(manifest.files)) {
+      expect(lanes[file]).toBeDefined();
+      expect(entry.lanes).toEqual(lanes[file].lanes);
+      expect(entry.executableCases).toBe(lanes[file].executableCases);
+      expect(entry.executable).toBe(lanes[file].executable);
+    }
+  });
+
+  it("records WHY the known-unrunnable file is not executable", () => {
+    for (const file of Object.keys(KNOWN_UNRUNNABLE)) {
+      const entry = manifest.files[file];
+      expect(entry).toBeDefined();
+      expect(entry.executable).toBe(false);
+      expect(entry.unexecutableReason).toBe(KNOWN_UNRUNNABLE[file]);
+    }
+  });
+
+  it("still counts the quarantined journey cases as present, not deleted", () => {
+    // The 9 journeys are not coverage, but they are also not gone: their
+    // clinical expectations are preserved verbatim for whoever ports them.
+    const entry = manifest.files["tier1/phase2_journeys.yaml"];
+    expect(entry.count).toBe(9);
+    expect(entry.caseIds).toHaveLength(9);
   });
 });
