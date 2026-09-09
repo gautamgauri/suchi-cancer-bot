@@ -1,0 +1,19 @@
+# Normalize all text files to LF in the repository.
+# Working-tree line endings follow each developer's core.autocrlf setting,
+# but committed blobs are always LF — prevents whole-file CRLF diffs when
+# work moves between Windows (Cursor/Antigravity) and WSL/Linux clones.
+* text=auto
+
+# Must be LF even on Windows checkouts: executed inside Linux containers/CI.
+*.sh text eol=lf
+Dockerfile* text eol=lf
+
+# Never touch line endings in binaries.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.mp3 binary
+*.wav binary
