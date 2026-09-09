@@ -14,6 +14,7 @@ import {
 } from './interfaces/speech-provider.interface';
 import { VoiceRequestDto, VoiceResponse } from './dto';
 import { detectLocation } from '../chat/utils/location-detector';
+import { cleanResponseForDisplay } from '../chat/display-text-cleaner';
 
 @Injectable()
 export class VoiceService {
@@ -230,14 +231,16 @@ export class VoiceService {
       );
     }
 
-    // Strip citation markers from responseText (same cleanup as chat controller)
-    const cleanResponseText = chatResponse.responseText
-      .replace(/\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]\s*)+/g, '')
-      .replace(/\[citation:[^\]]+\]/g, '')
-      .replace(/\s*\[\d{1,3}\]/g, '')
-      .replace(/  +/g, ' ')
-      .replace(/\*\*\s*\*\*/g, '')
-      .trim();
+    // Strip citation markers from responseText — the SAME cleaner the chat
+    // controller uses, rather than a hand-rolled copy of it. The copy required
+    // a closing `]`, so a generation cut off mid-marker returned the raw KB id
+    // to the voice client (issue #87, Path 1).
+    //
+    // This is also the choke point for issue #87 Path 2: chat.service has many
+    // early returns that never reach its own voice post-processing, and every
+    // one of them lands here, so none of them can leak a marker into a voice
+    // response.
+    const cleanResponseText = cleanResponseForDisplay(chatResponse.responseText);
 
     return {
       messageId: chatResponse.messageId,

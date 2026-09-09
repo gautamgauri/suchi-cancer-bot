@@ -783,3 +783,251 @@ If symptoms persist for 2-4 weeks, seek medical evaluation [citation:doc1:chunk1
 
 
 
+
+/**
+ * Issue #87, Path 2 — the structured-template branch returns early, before the
+ * `channel === 'voice'` post-processing further down the method. A voice
+ * request routed to a template therefore handed raw markdown and INTACT
+ * `[citation:…]` markers to the caller, which passes them to TTS.
+ *
+ * These tests drive that exact branch: needsPlanning -> true,
+ * usesStructuredTemplate -> true, and a template body carrying the artifacts.
+ * No clinical wording is asserted on.
+ */
+describe("Voice channel on the structured-template branch (#87 Path 2)", () => {
+  const KB_ID = "kb_en_nci_types_breast_diagnosis_breast_cancer_biomarker_tests_v1";
+  // Complete marker, an UNTERMINATED one (generation cut off), bold, a heading.
+  const TEMPLATE_BODY =
+    `## Next steps\n` +
+    `**Biomarker tests** help your doctor choose treatment [citation:${KB_ID}:kb_2].\n` +
+    `- Ask about your report [citation:${KB_ID}:kb_`;
+
+  let chatService: ChatService;
+  let executionPlanner: any;
+  let planExecutor: any;
+
+  beforeEach(async () => {
+    const mockPrisma = {
+      $queryRaw: jest.fn().mockResolvedValue([
+        {
+          id: "session1",
+          createdAt: new Date(),
+          channel: "voice",
+          locale: "en",
+          userType: null,
+          status: "active",
+          userContext: "general",
+          cancerType: null,
+          greetingCompleted: true,
+          emotionalState: "neutral",
+        },
+      ]),
+      $executeRawUnsafe: jest.fn().mockResolvedValue(1),
+      session: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "session1",
+          cancerType: null,
+          emotionalState: "neutral",
+          userContext: "general",
+        }),
+        update: jest.fn(),
+      },
+      message: {
+        create: jest.fn().mockImplementation((args: any) =>
+          Promise.resolve({ id: "msg1", sessionId: "session1", ...args.data })
+        ),
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      messageCitation: { create: jest.fn(), createMany: jest.fn() },
+      safetyEvent: { create: jest.fn() },
+    };
+
+    executionPlanner = {
+      needsPlanning: jest.fn().mockReturnValue(true),
+      plan: jest.fn().mockReturnValue({
+        planId: "plan1",
+        usesStructuredTemplate: true,
+        template: { id: "template1" },
+        steps: [],
+        signals: {},
+        reasoning: "test",
+        estimatedRetrievalCalls: 0,
+        structuredHospitalResults: null,
+      }),
+    };
+    planExecutor = {
+      execute: jest.fn().mockResolvedValue({
+        responseText: TEMPLATE_BODY,
+        mergedChunks: [],
+        verification: { passed: true },
+      }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ChatService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: AnalyticsService, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
+        {
+          provide: SafetyService,
+          useValue: {
+            evaluate: jest.fn().mockReturnValue({
+              classification: "normal",
+              responseText: null,
+              rulesFired: [],
+              actions: [],
+            }),
+          },
+        },
+        {
+          provide: RagService,
+          useValue: {
+            retrieveWithMetadata: jest.fn().mockResolvedValue([]),
+            retrieveWithExpansion: jest.fn().mockResolvedValue([]),
+          },
+        },
+        { provide: LlmService, useValue: { generateWithCitations: jest.fn(), generate: jest.fn() } },
+        {
+          provide: EvidenceGateService,
+          useValue: {
+            validateEvidence: jest.fn().mockImplementation((chunks: any[]) => ({
+              status: "ok",
+              approvedChunks: chunks ?? [],
+              reasonCode: null,
+              shouldAbstain: false,
+              confidence: "high",
+              quality: "strong",
+            })),
+          },
+        },
+        {
+          provide: CitationService,
+          useValue: {
+            extractCitations: jest.fn().mockReturnValue({ citations: [], orphanCount: 0 }),
+            enrichCitations: jest.fn().mockImplementation((citations) => citations),
+            validateCitations: jest.fn().mockReturnValue({
+              isValid: true,
+              confidenceLevel: "GREEN" as const,
+              citations: [],
+            }),
+          },
+        },
+        {
+          provide: AbstentionService,
+          useValue: {
+            hasUrgencyIndicators: jest.fn().mockReturnValue(false),
+            generateAbstentionMessage: jest.fn(),
+            generateSafeFallbackResponse: jest.fn(),
+          },
+        },
+        {
+          provide: IntentClassifier,
+          useValue: {
+            classify: jest.fn().mockReturnValue({
+              intent: "INFORMATIONAL_GENERAL",
+              confidence: "high",
+            }),
+          },
+        },
+        { provide: TemplateSelector, useValue: {} },
+        { provide: StructuredExtractorService, useValue: new StructuredExtractorService() },
+        {
+          provide: ResponseValidatorService,
+          useValue: {
+            validate: jest.fn().mockReturnValue({ shouldAbstain: false, isValid: true, ungroundedEntities: [] }),
+          },
+        },
+        {
+          provide: GreetingFlowService,
+          useValue: {
+            extractContextFromMessage: jest.fn().mockResolvedValue({
+              context: "general",
+              cancerType: undefined,
+              confidence: 0.95,
+            }),
+            needsGreetingFlow: jest.fn().mockResolvedValue(false),
+            getGreetingStep: jest.fn().mockResolvedValue(0),
+            isGreetingFlowInProgress: jest.fn().mockResolvedValue(false),
+            handleGreetingFlowInterruption: jest.fn().mockResolvedValue(undefined),
+            parseGreetingResponse: jest.fn(),
+            updateSessionContext: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: EmpathyDetector,
+          useValue: {
+            detectEmotionalTone: jest.fn().mockResolvedValue({ tone: "neutral" }),
+            detectMentalHealthNeed: jest.fn().mockReturnValue({
+              needsSupport: false,
+              isCrisis: false,
+              category: null,
+              keywords: [],
+            }),
+          },
+        },
+        ...extraChatProviders(),
+        // Placed AFTER extraChatProviders() so these override its stubs and the
+        // Phase 3 structured-template branch is the one that runs.
+        { provide: ExecutionPlannerService, useValue: executionPlanner },
+        { provide: PlanExecutorService, useValue: planExecutor },
+      ],
+    }).compile();
+
+    chatService = module.get<ChatService>(ChatService);
+  });
+
+  async function handle(channel: "voice" | "web") {
+    return chatService.handle({
+      sessionId: "session1",
+      channel,
+      locale: "en",
+      userText: "what are biomarker tests",
+    } as any);
+  }
+
+  it("takes the structured-template branch (guard on the test setup itself)", async () => {
+    await handle("voice");
+    expect(planExecutor.execute).toHaveBeenCalled();
+  });
+
+  it("speaks no citation marker, complete or truncated", async () => {
+    const r = await handle("voice");
+
+    expect(r.responseText).not.toContain("[citation:");
+    expect(r.responseText).not.toContain(KB_ID);
+    expect(r.responseText).not.toContain("kb_en_");
+  });
+
+  it("speaks no raw markdown", async () => {
+    const r = await handle("voice");
+
+    expect(r.responseText).not.toContain("**");
+    expect(r.responseText).not.toMatch(/^#{1,6}\s/m);
+  });
+
+  it("keeps the words, having removed only the markup", async () => {
+    const r = await handle("voice");
+
+    expect(r.responseText).toContain("Biomarker tests");
+    expect(r.responseText).toContain("Ask about your report");
+  });
+
+  it("persists the raw text, so evaluation still sees the markers", async () => {
+    await handle("voice");
+
+    const created = (chatService as any).prisma.message.create.mock.calls
+      .map((c: any) => c[0]?.data?.text)
+      .filter((t: any) => typeof t === "string" && t.includes("Biomarker tests"));
+    expect(created.length).toBeGreaterThan(0);
+    expect(created[0]).toContain("[citation:");
+  });
+
+  it("leaves the non-voice channel to the display cleaner at the controller", async () => {
+    const r = await handle("web");
+
+    // Unchanged behaviour: the web surface is cleaned in chat.controller.ts via
+    // cleanResponseForDisplay (PR #82), not here.
+    expect(r.responseText).toContain("[citation:");
+  });
+});

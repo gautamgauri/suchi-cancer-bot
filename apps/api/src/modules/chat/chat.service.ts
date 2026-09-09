@@ -1190,10 +1190,21 @@ export class ChatService {
               latencyMs: Date.now() - started,
             });
 
+            // Voice channel: the main flow runs deduplicateResponse() then
+            // stripForVoice() before returning. This branch returns early and
+            // skipped both, so a `channel: "voice"` request that routed to a
+            // structured template sent raw markdown and intact `[citation:…]`
+            // markers onward to TTS (issue #87, Path 2). The persisted text
+            // stays raw for evaluation — only what leaves the service is cleaned.
+            const voiceSafeResponseText =
+              dto.channel === "voice"
+                ? stripForVoice(deduplicateResponse(assistant.text))
+                : assistant.text;
+
             return {
               sessionId: dto.sessionId,
               messageId: assistant.id,
-              responseText: assistant.text,
+              responseText: voiceSafeResponseText,
               safety: { classification: "normal" as const, actions: [] },
               ...(citations.length > 0 && {
                 citations: citations.map((c) => ({

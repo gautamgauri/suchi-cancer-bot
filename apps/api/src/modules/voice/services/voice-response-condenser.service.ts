@@ -1,4 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import {
+  stripCitationMarkers,
+  stripResidualMarkdownForSpeech,
+} from "../../../common/text-cleaning";
 
 const VOICE_DISCLAIMER =
   " Please consult your doctor for personal medical advice.";
@@ -13,8 +17,11 @@ export class VoiceResponseCondenser {
     // Strip the disclaimer-engine block (--- + italic disclaimer)
     text = text.replace(/\n+---\n\*[^*]+\*\s*$/s, "");
 
-    // Strip citation markers
-    text = text.replace(/\[citation:[^\]]+\]/g, "");
+    // Strip citation/source markers. This is the LAST code between the chat
+    // pipeline and the speech synthesiser, so it uses the hardened shared
+    // patterns: the old one required a closing `]` and spoke a truncated
+    // `[citation:kb_en_nci_...` aloud verbatim (issue #87, Path 1).
+    text = stripCitationMarkers(text);
 
     // Strip markdown bold/italic
     text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
@@ -33,6 +40,11 @@ export class VoiceResponseCondenser {
     text = text.replace(/\*?\*?Important:?\*?\*?[^\n]+\n*/gi, "");
     text = text.replace(/\*?\*?Note:?\*?\*?[^\n]+\n*/gi, "");
     text = text.replace(/\*?\*?Sources?:?\*?\*?[^\n]*/gi, "");
+
+    // Final sweep for any markdown the shaping above did not cover. Runs before
+    // the sentence split so leftover syntax cannot become part of a spoken
+    // sentence (issue #87).
+    text = stripResidualMarkdownForSpeech(text);
 
     // Collapse whitespace
     text = text.replace(/\n{2,}/g, " ").replace(/\s+/g, " ").trim();

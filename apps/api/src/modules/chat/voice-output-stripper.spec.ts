@@ -132,3 +132,57 @@ describe("stripForVoice — output remains readable", () => {
     expect(result).toContain("Radiation therapy");
   });
 });
+
+/**
+ * Issue #87, Path 1 — the voice stripper carried the same fail-open patterns
+ * #68 found on the display surface: every one required a closing `]`, so a
+ * generation that stopped mid-marker sent the raw knowledge-base identifier on
+ * to TTS. Each case below leaks against the pre-fix patterns.
+ *
+ * OD-003: voice responses never mention citations.
+ */
+describe("stripForVoice — truncated markers (#87 Path 1)", () => {
+  const KB_ID = "kb_en_nci_types_breast_diagnosis_breast_cancer_biomarker_tests_v1";
+
+  test("removes an UNTERMINATED citation marker instead of speaking the KB id", () => {
+    const result = stripForVoice(`Biomarker tests can guide treatment [citation:${KB_ID}:kb_`);
+
+    expect(result).not.toContain("[citation:");
+    expect(result).not.toContain(KB_ID);
+    expect(result).not.toContain("kb_en_");
+    expect(result).toContain("Biomarker tests can guide treatment");
+  });
+
+  test("removes an unterminated marker mid-text and keeps the prose after it", () => {
+    const result = stripForVoice(`Rest well [citation:${KB_ID} and drink water.`);
+
+    expect(result).not.toContain("[citation:");
+    expect(result).not.toContain(KB_ID);
+    expect(result).toContain("and drink water.");
+  });
+
+  test("does not swallow the sentence between an unterminated and a complete marker", () => {
+    // The old `[^\]]*` did not exclude `[`, so this matched as ONE marker and
+    // silently deleted the sentence in the middle.
+    const result = stripForVoice(
+      "[citation:doc1 Radiotherapy is given daily. [citation:doc2:chunk2]",
+    );
+
+    expect(result).toContain("Radiotherapy is given daily.");
+    expect(result).not.toContain("[citation:");
+  });
+
+  test("removes an unterminated [source: marker", () => {
+    const result = stripForVoice(`Early detection is key [source:${KB_ID}`);
+
+    expect(result).not.toContain("[source:");
+    expect(result).not.toContain(KB_ID);
+  });
+
+  test("removes markdown left unpaired by a truncated generation", () => {
+    const result = stripForVoice("**Call 112 if you have chest pain");
+
+    expect(result).not.toContain("**");
+    expect(result).toContain("Call 112 if you have chest pain");
+  });
+});
