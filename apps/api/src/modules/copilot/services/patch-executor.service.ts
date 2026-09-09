@@ -3,6 +3,7 @@ import { RagService } from '../../rag/rag.service';
 import { LlmService } from '../../llm/llm.service';
 import type { PatchPlan, PatchAction } from '../copilot.types';
 import { DEFINITIONAL_EXPLAIN_PROMPT } from '../../llm/prompts';
+import { stripCitationMarkers } from '../../../common/text-cleaning';
 
 const DISCLAIMER_TEXT = `\n\n**Disclaimer:** This information is for educational purposes only and is not a substitute for professional medical advice. Please consult your doctor or healthcare provider for personalized guidance.`;
 
@@ -85,8 +86,12 @@ export class PatchExecutorService {
   }
 
   private removeFabricatedCitations(text: string): string {
-    // Remove inline citation markers that don't have backing data
-    return text.replace(/\[citation:[^\]]+\]/g, '');
+    // Remove inline citation markers that don't have backing data. Uses the
+    // shared hardened patterns (issue #87, Path 1): the previous regex required
+    // a closing `]`, so a marker truncated mid-generation survived, and
+    // `[^\]]*` did not exclude `[`, so two markers with prose between them were
+    // removed as one — silently deleting the sentence in between.
+    return stripCitationMarkers(text);
   }
 
   private async reRetrieveAndPatch(query: string, response: string): Promise<string> {

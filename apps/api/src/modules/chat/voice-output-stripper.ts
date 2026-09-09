@@ -1,6 +1,15 @@
+import {
+  stripCitationMarkers,
+  stripResidualMarkdownForSpeech,
+} from "../../common/text-cleaning";
+
 /**
  * Strip markdown formatting and shorten responses for voice/TTS delivery.
  * Applied as a final post-processing step when channel === 'voice'.
+ *
+ * Marker removal and the final markdown sweep are delegated to
+ * `common/text-cleaning.ts` (issue #87) so this surface and the display surface
+ * share one hardened implementation instead of two that drift.
  */
 export function stripForVoice(text: string): string {
   let result = text;
@@ -40,9 +49,12 @@ export function stripForVoice(text: string): string {
   // Numbered lists: 1. item → item
   result = result.replace(/^\s*\d+\.\s+/gm, '');
 
-  // Citation markers [citation:docId:chunkId]
-  result = result.replace(/\s*\[citation:[^\]]*\]/g, '');
-  result = result.replace(/\s*\[source:[^\]]*\]/g, '');
+  // Citation/source markers — complete, unterminated and truncated-prefix.
+  // The old patterns here required a closing `]`, so a generation that stopped
+  // mid-marker spoke the raw KB id aloud, and `[^\]]*` did not exclude `[`, so
+  // two markers with prose between them were swallowed as one (issue #87,
+  // Path 1 — the voice twin of the display bug PR #82 fixed).
+  result = stripCitationMarkers(result);
 
   // Horizontal rules (--- or ***)
   result = result.replace(/^[-*_]{3,}\s*$/gm, '');
@@ -86,6 +98,10 @@ export function stripForVoice(text: string): string {
   // ── Clean up ──────────────────────────────────────────────────────
   // Multiple blank lines → single
   result = result.replace(/\n{3,}/g, '\n\n');
+
+  // Final sweep: whatever markdown survived the shaping above must not reach a
+  // speech synthesiser, which has no way to render it (issue #87).
+  result = stripResidualMarkdownForSpeech(result);
 
   // Trim
   result = result.trim();
