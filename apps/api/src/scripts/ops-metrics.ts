@@ -33,13 +33,40 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { fetchTier1EvalStatus, TIER1_EVAL_WORKFLOW } from "../modules/analytics/tier1-eval-status";
+import {
+  fetchTier1EvalStatus,
+  TIER1_EVAL_WORKFLOW,
+  Tier1EvalStatus,
+} from "../modules/analytics/tier1-eval-status";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Entry = { value: number | string; as_of: string; source: string; by: string };
 
 const isoDate = (d: Date) => d.toISOString().split("T")[0];
+
+/**
+ * #63 — the Tier-1 entry, or null when there is nothing to report.
+ *
+ * `as_of` must date itself by the RUN, not by when this script happened to be
+ * executed: the Ops Center flags entries older than `manual_stale_days`, so
+ * stamping collection time makes a run that stopped happening look perpetually
+ * fresh (PR #105 review). The run's own timestamp is normalised to the same
+ * YYYY-MM-DD shape every other entry uses — that is the format `_how_to`
+ * documents to the scorecard — and the full ISO timestamp stays in `source`.
+ * `asOf` is only a fallback for a reading that carries no run timestamp.
+ */
+export function buildTier1Entry(tier1: Tier1EvalStatus, asOf: string, by: string): Entry | null {
+  if (!tier1.available || !tier1.value) return null;
+
+  let as_of = asOf;
+  if (tier1.as_of) {
+    const runDate = new Date(tier1.as_of);
+    if (!Number.isNaN(runDate.getTime())) as_of = isoDate(runDate);
+  }
+
+  return { value: tier1.value, as_of, source: tier1.source, by };
+}
 
 /** Prisma errors lead with blank lines; surface the first line that says something. */
 const firstLine = (e: unknown) =>
@@ -144,8 +171,9 @@ async function main() {
 
   // #63 — the same collector the API serves, so the two cannot disagree.
   const tier1 = await fetchTier1EvalStatus();
-  if (tier1.available && tier1.value) {
-    entries.tier1_eval_status = { value: tier1.value, as_of: asOf, source: tier1.source, by };
+  const tier1Entry = buildTier1Entry(tier1, asOf, by);
+  if (tier1Entry) {
+    entries.tier1_eval_status = tier1Entry;
   } else {
     console.error(`[warn] tier1_eval_status ${tier1.source}`);
   }
@@ -198,7 +226,12 @@ async function main() {
   if (!db && !tier1.available) process.exit(1);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Guarded so `buildTier1Entry` can be unit-tested by importing this file
+// without the import also opening a Prisma connection and calling GitHub.
+// `npm run ops:metrics` (ts-node src/scripts/ops-metrics.ts) still runs main().
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

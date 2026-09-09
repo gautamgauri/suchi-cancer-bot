@@ -2,7 +2,9 @@
  * Unit tests for the #63 `tier1_eval_status` collector.
  *
  * Contract:
- *  - reads the latest run of `eval-tier1.yml` from the GitHub Actions REST API
+ *  - reads the latest NIGHTLY run of `eval-tier1.yml` on `main` from the GitHub
+ *    Actions REST API — the workflow also runs on pull requests, and a PR run
+ *    is not the production retrieval-quality canary
  *  - reports the run's `conclusion`, or its `status` when a run is still in
  *    flight — it never guesses a conclusion
  *  - EVERY failure path resolves to `available: false` with the reason in
@@ -17,6 +19,8 @@
 import {
   fetchTier1EvalStatus,
   tier1EvalRunsUrl,
+  TIER1_CANARY_BRANCH,
+  TIER1_CANARY_EVENT,
   TIER1_EVAL_WORKFLOW,
   TIER1_GH_REPO,
 } from "./tier1-eval-status";
@@ -74,13 +78,77 @@ describe("fetchTier1EvalStatus", () => {
 
     const [url, init] = (fetchImpl as unknown as jest.Mock).mock.calls[0];
     expect(url).toBe(
-      `https://api.github.com/repos/${TIER1_GH_REPO}/actions/workflows/${TIER1_EVAL_WORKFLOW}/runs?per_page=1`,
+      `https://api.github.com/repos/${TIER1_GH_REPO}/actions/workflows/${TIER1_EVAL_WORKFLOW}/runs` +
+        `?branch=${TIER1_CANARY_BRANCH}&event=${TIER1_CANARY_EVENT}&per_page=1`,
     );
     expect(url).toBe(tier1EvalRunsUrl());
     expect(init.method).toBe("GET");
     expect(init.headers.Accept).toBe("application/vnd.github+json");
     // GitHub 403s an unauthenticated call with no User-Agent.
     expect(init.headers["User-Agent"]).toBeTruthy();
+  });
+
+  it("filters the query to the nightly canary, not the newest run of any kind", async () => {
+    const fetchImpl = fetchReturning({ workflow_runs: [RUN] });
+    await fetchTier1EvalStatus({ fetchImpl });
+
+    const [url] = (fetchImpl as unknown as jest.Mock).mock.calls[0];
+    // eval-tier1.yml also runs on pull_request; without both filters the
+    // endpoint answers with whichever run finished last.
+    expect(url).toContain(`event=${TIER1_CANARY_EVENT}`);
+    expect(url).toContain(`branch=${TIER1_CANARY_BRANCH}`);
+    expect(TIER1_CANARY_EVENT).toBe("schedule");
+    expect(TIER1_CANARY_BRANCH).toBe("main");
+  });
+
+  it("does not report a newer pull_request run as the canary", async () => {
+    // A PR run that is NEWER and RED, alongside the older green nightly. This
+    // fake filters like the real endpoint does, so it answers the unfiltered
+    // query with the PR run and the filtered query with the nightly.
+    const prRun = {
+      ...RUN,
+      conclusion: "failure",
+      status: "completed",
+      created_at: "2026-09-08T11:03:00Z",
+      updated_at: "2026-09-08T11:31:07Z",
+      run_number: 269,
+      event: "pull_request",
+      head_branch: "feat/some-rag-change",
+      html_url: "https://github.com/gautamgauri/suchi-cancer-bot/actions/runs/34399999999",
+    };
+    const nightly = { ...RUN, event: "schedule", head_branch: "main" };
+    const all = [prRun, nightly]; // newest first, as GitHub returns them
+
+    const fetchImpl = jest.fn(async (url: string) => {
+      const query = new URL(url).searchParams;
+      const matching = all.filter(
+        (r) =>
+          (!query.get("event") || r.event === query.get("event")) &&
+          (!query.get("branch") || r.head_branch === query.get("branch")),
+      );
+      return response({ workflow_runs: matching.slice(0, Number(query.get("per_page") ?? 1)) });
+    }) as unknown as typeof fetch;
+
+    const status = await fetchTier1EvalStatus({ fetchImpl });
+
+    expect(status.available).toBe(true);
+    // The PR's red must not be published as the production retrieval signal...
+    expect(status.value).toBe("success");
+    // ...and the reading must date itself by the nightly, not by the PR run.
+    expect(status.as_of).toBe(RUN.updated_at);
+    expect(status.runUrl).toBe(RUN.html_url);
+    expect(status.source).toContain("#268");
+  });
+
+  it("is unavailable when only non-canary runs exist", async () => {
+    // What the filtered endpoint returns once GitHub disables a dormant
+    // schedule: an empty list. Rule 2 — unavailable, never a stand-in value.
+    const status = await fetchTier1EvalStatus({ fetchImpl: fetchReturning({ workflow_runs: [] }) });
+
+    expect(status.available).toBe(false);
+    expect(status.value).toBeNull();
+    expect(status.source).toContain(TIER1_CANARY_EVENT);
+    expect(status.source).toContain(TIER1_CANARY_BRANCH);
   });
 
   it("sends no credentials — the repo is public and the collector needs none", async () => {

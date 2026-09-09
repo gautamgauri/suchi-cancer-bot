@@ -1,6 +1,8 @@
 /**
- * #63 `tier1_eval_status` — the latest GitHub Actions "Eval Tier1 - Retrieval
- * Quality" run conclusion.
+ * #63 `tier1_eval_status` — the conclusion of the latest *nightly* GitHub
+ * Actions "Eval Tier1 - Retrieval Quality" run on `main`. The workflow also
+ * runs on pull requests, and those runs are not the production canary, so the
+ * query filters on event + branch (see TIER1_CANARY_EVENT below).
  *
  * The Ops Center rendered this as *unavailable* because nothing collected it.
  * `scripts/ops-metrics.ts` had a hand-run stopgap that shelled out to `gh run
@@ -25,6 +27,19 @@
 export const TIER1_GH_REPO = "gautamgauri/suchi-cancer-bot";
 /** Workflow *file name*, which is a valid `workflow_id` for the runs endpoint. */
 export const TIER1_EVAL_WORKFLOW = "eval-tier1.yml";
+
+/**
+ * The canary is the NIGHTLY run on the default branch, and only that.
+ * `.github/workflows/eval-tier1.yml` also triggers on `pull_request` for the
+ * rag/evidence/citations paths, so an unfiltered "latest run" query reports
+ * whichever run finished most recently — frequently a PR's run, since several
+ * such PRs can be open at once. That would publish a branch's retrieval quality
+ * as the production signal (PR #105 review). Filtering server-side keeps the
+ * selection in this one shared function, so the API service and the ops-metrics
+ * script cannot disagree about which run is the canary.
+ */
+export const TIER1_CANARY_EVENT = "schedule";
+export const TIER1_CANARY_BRANCH = "main";
 
 const GITHUB_API_ROOT = "https://api.github.com";
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -82,7 +97,12 @@ function firstLine(e: unknown): string {
 }
 
 export function tier1EvalRunsUrl(repo = TIER1_GH_REPO, workflow = TIER1_EVAL_WORKFLOW): string {
-  return `${GITHUB_API_ROOT}/repos/${repo}/actions/workflows/${workflow}/runs?per_page=1`;
+  // `branch` + `event` are documented filters on the list-workflow-runs
+  // endpoint; together they select the nightly canary and exclude PR runs.
+  return (
+    `${GITHUB_API_ROOT}/repos/${repo}/actions/workflows/${workflow}/runs` +
+    `?branch=${TIER1_CANARY_BRANCH}&event=${TIER1_CANARY_EVENT}&per_page=1`
+  );
 }
 
 /**
@@ -129,7 +149,12 @@ export async function fetchTier1EvalStatus(
     const body = (await response.json()) as { workflow_runs?: WorkflowRunPayload[] } | null;
     const run = body?.workflow_runs?.[0];
     if (!run) {
-      return unavailable(`no runs recorded for ${workflow} in ${repo}`);
+      // GitHub disables `schedule` triggers on a repo with no activity for 60
+      // days, so "no scheduled runs" is a real state — and the honest reading
+      // is unavailable, not the newest PR run standing in for the canary.
+      return unavailable(
+        `no ${TIER1_CANARY_EVENT} runs on ${TIER1_CANARY_BRANCH} recorded for ${workflow} in ${repo}`,
+      );
     }
 
     const value = run.conclusion || run.status || null;
@@ -140,7 +165,7 @@ export async function fetchTier1EvalStatus(
     const asOf = run.updated_at || run.created_at || null;
     const runUrl = run.html_url || null;
     const parts = [
-      `GitHub Actions ${workflow} latest run`,
+      `GitHub Actions ${workflow} latest ${TIER1_CANARY_EVENT} run on ${TIER1_CANARY_BRANCH}`,
       run.run_number ? `#${run.run_number}` : null,
       run.display_title || null,
       asOf,
