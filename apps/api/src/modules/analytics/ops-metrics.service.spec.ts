@@ -1,16 +1,19 @@
 /**
  * Unit tests for OpsMetricsService — Ops Center collectors for issues
- * #61 (active_users_7d), #62 (review_queue_size), #64 (safety_events_30d),
- * and the #86 KB duplicate-row guard (kbIndexIntegrity).
+ * #61 (active_users_7d), #62 (review_queue_size), #63 (tier1_eval_status),
+ * #64 (safety_events_30d), and the #86 KB duplicate-row guard
+ * (kbIndexIntegrity).
  *
  * Contract:
- *  - every query excludes eval traffic (Session.isEval = false)
+ *  - every DB query excludes eval traffic (Session.isEval = false)
  *  - the 7d and 30d windows are computed from the injected `now`
  *  - review queue counts flagged AND not-yet-reviewed sessions only
  *  - safety events are metadata only (type + count, never message text)
+ *  - #63 is the one non-DB figure: a GitHub outage degrades that tile alone
  *  - the service issues no writes
  *
  * PrismaService is mocked — no DB. `now` is injected for deterministic windows.
+ * `globalThis.fetch` is stubbed for the whole file so no test can reach GitHub.
  */
 
 import { OpsMetricsService } from "./ops-metrics.service";
@@ -62,6 +65,38 @@ function makeService(c: Counts = {}) {
   const service = new OpsMetricsService(prisma as any);
   return { service, prisma };
 }
+
+/** A GitHub Actions runs payload for the #63 collector. */
+const TIER1_RUN = {
+  conclusion: "success",
+  status: "completed",
+  updated_at: "2026-09-04T02:14:52Z",
+  run_number: 268,
+  display_title: "Eval Tier1 - Retrieval Quality",
+  html_url: "https://github.com/gautamgauri/suchi-cancer-bot/actions/runs/34323136646",
+};
+
+function ghFetch(body: unknown, status = 200) {
+  return jest.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  }) as unknown as typeof fetch;
+}
+
+const realFetch = globalThis.fetch;
+let globalFetchStub: jest.Mock;
+
+beforeEach(() => {
+  // Nothing in this file may touch the network. Any collect() that does not
+  // inject a fetch lands here, and the assertion below proves it stayed unused.
+  globalFetchStub = jest.fn().mockRejectedValue(new Error("no network in unit tests"));
+  globalThis.fetch = globalFetchStub as unknown as typeof fetch;
+});
+
+afterEach(() => {
+  globalThis.fetch = realFetch;
+});
 
 describe("OpsMetricsService", () => {
   it("collects all three Ops Center metrics", async () => {
@@ -220,6 +255,90 @@ describe("OpsMetricsService", () => {
     expect(m.kbIndexIntegrity.value).toBe(2);
     expect(m.kbIndexIntegrity.basis.totalRows).toBe(10);
     expect(typeof m.kbIndexIntegrity.value).toBe("number");
+  });
+
+  // --- #63 tier1_eval_status -----------------------------------------------
+
+  describe("#63 tier1_eval_status", () => {
+    it("is present in the collected metrics, in the manual-stopgap shape", async () => {
+      const { service } = makeService();
+
+      const m = await service.collect(NOW, { fetchImpl: ghFetch({ workflow_runs: [TIER1_RUN] }) });
+
+      expect(m.tier1EvalStatus.available).toBe(true);
+      expect(m.tier1EvalStatus.value).toBe("success");
+      // value / as_of / source are what ~/bodh-ai-ops/manual/suchi.json carries.
+      expect(m.tier1EvalStatus.as_of).toBe("2026-09-04T02:14:52Z");
+      expect(m.tier1EvalStatus.source).toContain("eval-tier1.yml");
+    });
+
+    it("renders unavailable — never a green or a zero — when GitHub is down", async () => {
+      const { service } = makeService();
+
+      const m = await service.collect(NOW, {
+        fetchImpl: jest.fn().mockRejectedValue(new Error("ECONNREFUSED")) as unknown as typeof fetch,
+      });
+
+      expect(m.tier1EvalStatus.available).toBe(false);
+      expect(m.tier1EvalStatus.value).toBeNull();
+      expect(m.tier1EvalStatus.value).not.toBe(0);
+      expect(m.tier1EvalStatus.source).toMatch(/unavailable/);
+    });
+
+    it("does not let a GitHub outage take down the DB metrics", async () => {
+      const { service } = makeService({ sessions7d: 4, unreviewed: 3, safetyTotal: 6 });
+
+      const m = await service.collect(NOW, { fetchImpl: ghFetch({}, 503) });
+
+      expect(m.tier1EvalStatus.available).toBe(false);
+      expect(m.activeUsers7d.value).toBe(4);
+      expect(m.reviewQueueSize.value).toBe(3);
+      expect(m.safetyEvents30d.value).toBe(6);
+    });
+
+    it("caches an available reading, to protect the unauthenticated rate budget", async () => {
+      const { service } = makeService();
+      const fetchImpl = ghFetch({ workflow_runs: [TIER1_RUN] });
+
+      await service.collect(NOW, { fetchImpl });
+      const second = await service.collect(new Date(NOW.getTime() + 60_000), { fetchImpl });
+
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(second.tier1EvalStatus.value).toBe("success");
+    });
+
+    it("re-reads once the cache window has passed", async () => {
+      const { service } = makeService();
+      const fetchImpl = ghFetch({ workflow_runs: [TIER1_RUN] });
+
+      await service.collect(NOW, { fetchImpl });
+      await service.collect(new Date(NOW.getTime() + 6 * 60_000), { fetchImpl });
+
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it("never caches an unavailable reading — a blip must not pin the tile", async () => {
+      const { service } = makeService();
+      const fetchImpl = ghFetch({}, 500);
+
+      await service.collect(NOW, { fetchImpl });
+      await service.collect(new Date(NOW.getTime() + 1_000), { fetchImpl });
+
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it("falls back to the runtime fetch when none is injected, and degrades cleanly", async () => {
+      // Every other test in this file calls collect() without injecting a fetch;
+      // this is the path they take. The beforeEach stub is what makes that safe —
+      // it rejects, so no test in this suite can reach the real GitHub API.
+      const { service } = makeService();
+
+      const m = await service.collect(NOW);
+
+      expect(globalFetchStub).toHaveBeenCalledTimes(1);
+      expect(m.tier1EvalStatus.available).toBe(false);
+      expect(m.tier1EvalStatus.value).toBeNull();
+    });
   });
 
   it("is read-only — exposes no write methods to Prisma", async () => {
