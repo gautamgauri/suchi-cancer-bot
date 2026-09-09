@@ -13,7 +13,11 @@
  *     --credentials-file ~/.config/gcloud/legacy_credentials/<sa>/adc.json --port 5432
  *   export DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)"
  *
- * `tier1_eval_status` comes from the GitHub Actions API via `gh`, not the DB.
+ * `tier1_eval_status` comes from the GitHub Actions REST API, not the DB. It
+ * shares one collector with `OpsMetricsService` (issue #63) — see
+ * `modules/analytics/tier1-eval-status.ts` — so the script and
+ * `GET /v1/admin/ops-metrics` cannot report different things. It no longer
+ * shells out to `gh`, so it needs no CLI and no credentials.
  *
  * Output is shaped for `~/bodh-ai-ops/manual/suchi.json`, which `ops.py
  * collect_usage()` reads directly — that file is the only transport the Ops
@@ -29,11 +33,9 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { execFileSync } from "child_process";
+import { fetchTier1EvalStatus, TIER1_EVAL_WORKFLOW } from "../modules/analytics/tier1-eval-status";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const GH_REPO = "gautamgauri/suchi-cancer-bot";
-const EVAL_WORKFLOW = "eval-tier1.yml";
 
 type Entry = { value: number | string; as_of: string; source: string; by: string };
 
@@ -89,43 +91,6 @@ async function collectDbMetrics(prisma: PrismaClient, now: Date) {
   };
 }
 
-/** #63 — latest Tier-1 eval conclusion from GitHub Actions. Not a DB metric. */
-function collectTier1Status(): { value: string; detail: string } | null {
-  try {
-    const raw = execFileSync(
-      "gh",
-      [
-        "run",
-        "list",
-        "--repo",
-        GH_REPO,
-        "--workflow",
-        EVAL_WORKFLOW,
-        "--limit",
-        "1",
-        "--json",
-        "conclusion,status,createdAt,displayTitle,url",
-      ],
-      { encoding: "utf-8", timeout: 30_000 },
-    );
-    const runs = JSON.parse(raw) as Array<{
-      conclusion: string | null;
-      status: string;
-      createdAt: string;
-      displayTitle: string;
-      url: string;
-    }>;
-    if (!runs.length) return null;
-    const run = runs[0];
-    // An in-flight run has no conclusion yet — report the status, never guess.
-    const value = run.conclusion || run.status || "unknown";
-    return { value, detail: `${run.createdAt} — ${run.displayTitle} — ${run.url}` };
-  } catch (e) {
-    console.error(`[warn] tier1_eval_status unavailable: ${firstLine(e)}`);
-    return null;
-  }
-}
-
 async function main() {
   const jsonOnly = process.argv.includes("--json");
   const now = new Date();
@@ -177,14 +142,12 @@ async function main() {
     };
   }
 
-  const tier1 = collectTier1Status();
-  if (tier1) {
-    entries.tier1_eval_status = {
-      value: tier1.value,
-      as_of: asOf,
-      source: `GitHub Actions ${EVAL_WORKFLOW} latest run — ${tier1.detail}`,
-      by,
-    };
+  // #63 — the same collector the API serves, so the two cannot disagree.
+  const tier1 = await fetchTier1EvalStatus();
+  if (tier1.available && tier1.value) {
+    entries.tier1_eval_status = { value: tier1.value, as_of: asOf, source: tier1.source, by };
+  } else {
+    console.error(`[warn] tier1_eval_status ${tier1.source}`);
   }
 
   const block = {
@@ -220,7 +183,9 @@ async function main() {
       console.error("  safety_events_30d   unavailable (no DB)");
       console.error("  kb_duplicate_rows   unavailable (no DB)");
     }
-    console.error(`  tier1_eval_status   ${tier1 ? tier1.value : "unavailable (gh unreachable)"}`);
+    console.error(
+      `  tier1_eval_status   ${tier1.available ? tier1.value : `unavailable (${TIER1_EVAL_WORKFLOW}: ${tier1.source})`}`,
+    );
     console.error("=".repeat(60));
     console.error("Paste the JSON below into ~/bodh-ai-ops/manual/suchi.json");
     console.error("");
@@ -230,7 +195,7 @@ async function main() {
   console.log(JSON.stringify(block, null, 2));
 
   // Exit non-zero only if nothing at all could be measured.
-  if (!db && !tier1) process.exit(1);
+  if (!db && !tier1.available) process.exit(1);
 }
 
 main().catch((e) => {

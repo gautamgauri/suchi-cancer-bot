@@ -1,15 +1,21 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  fetchTier1EvalStatus,
+  TIER1_EVAL_WORKFLOW,
+  type FetchTier1EvalStatusOptions,
+  type Tier1EvalStatus,
+} from "./tier1-eval-status";
 
 /**
- * Ops Center instrumentation metrics (GitHub issues #61, #62, #64) plus the
- * KB index integrity guard from issue #86.
+ * Ops Center instrumentation metrics (GitHub issues #61, #62, #63, #64) plus
+ * the KB index integrity guard from issue #86.
  *
- * These are the three Suchi figures the Bodh AI Ops scorecard renders as
+ * These are the Suchi figures the Bodh AI Ops scorecard renders as
  * "unavailable" because no collector exists. They are deliberately thin:
- * three read-only aggregate counts, no new tables, no scheduler, no
- * time-series storage. At current traffic (~10 real human users in 30 days
- * against ~700 eval-runner requests) anything heavier would be
+ * read-only aggregate counts plus one GitHub Actions read, no new tables, no
+ * scheduler, no time-series storage. At current traffic (~10 real human users
+ * in 30 days against ~700 eval-runner requests) anything heavier would be
  * instrumentation theatre.
  *
  * Rule inherited from the Ops Center: a metric with no collector reads
@@ -52,7 +58,21 @@ export interface OpsMetrics {
     healthy: boolean;
     caveat: string;
   };
+  /**
+   * #63 tier1_eval_status — conclusion of the latest "Eval Tier1 - Retrieval
+   * Quality" GitHub Actions run. Unlike the others this is not a DB figure, so
+   * it can be unavailable independently of them; `available: false` is the Ops
+   * Center's "unavailable" signal and is never a green or a zero.
+   */
+  tier1EvalStatus: Tier1EvalStatus;
 }
+
+/**
+ * The unauthenticated GitHub API allows 60 requests/hour per IP. The Tier-1
+ * workflow runs nightly, so anything fresher than this window is noise, and
+ * caching keeps a hammered admin dashboard from burning the shared budget.
+ */
+const TIER1_CACHE_TTL_MS = 5 * 60 * 1000;
 
 /**
  * One sequential pass over KbChunk (~74k rows). Deliberately avoids hashing
@@ -72,9 +92,39 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export class OpsMetricsService {
   private readonly logger = new Logger(OpsMetricsService.name);
 
+  /** Per-instance so tests get a cold cache and prod gets one per replica. */
+  private tier1Cache: { at: number; status: Tier1EvalStatus } | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
 
-  async collect(now: Date = new Date()): Promise<OpsMetrics> {
+  /**
+   * #63. Cached for TIER1_CACHE_TTL_MS. An unavailable reading is NOT cached:
+   * a transient GitHub blip should not pin the tile to "unavailable" for five
+   * minutes when the next request could measure it for real.
+   *
+   * `options` exists for the spec, which injects a fake fetch — no network and
+   * no live GitHub call in unit tests.
+   */
+  private async collectTier1EvalStatus(
+    now: Date,
+    options?: FetchTier1EvalStatusOptions,
+  ): Promise<Tier1EvalStatus> {
+    const cached = this.tier1Cache;
+    if (cached && now.getTime() - cached.at < TIER1_CACHE_TTL_MS) {
+      return cached.status;
+    }
+
+    const status = await fetchTier1EvalStatus(options);
+    if (status.available) {
+      this.tier1Cache = { at: now.getTime(), status };
+    }
+    return status;
+  }
+
+  async collect(
+    now: Date = new Date(),
+    tier1Options?: FetchTier1EvalStatusOptions,
+  ): Promise<OpsMetrics> {
     const since7d = new Date(now.getTime() - 7 * DAY_MS);
     const since30d = new Date(now.getTime() - 30 * DAY_MS);
 
@@ -86,6 +136,7 @@ export class OpsMetricsService {
       safetyTotal,
       safetyByType,
       kbIntegrityRows,
+      tier1EvalStatus,
     ] = await Promise.all([
       // #61 — sessions started in the window, excluding eval traffic.
       this.prisma.session.count({
@@ -121,6 +172,9 @@ export class OpsMetricsService {
           (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
         FROM "KbChunk"
       `,
+      // #63 — not a DB figure. Resolves to an `available: false` reading rather
+      // than rejecting, so a GitHub outage cannot take the whole response down.
+      this.collectTier1EvalStatus(now, tier1Options),
     ]);
 
     const byType = ((safetyByType ?? []) as Array<{ type: string; _count: { _all: number } }>)
@@ -139,8 +193,15 @@ export class OpsMetricsService {
     this.logger.log(
       `ops-metrics: sessions7d=${nonEvalSessions} waContacts7d=${distinctWhatsappContacts} ` +
         `reviewQueue=${unreviewedFlagged} safety30d=${safetyTotal} ` +
-        `kbDuplicateRows=${duplicatePositionRows} kbNonDeterministicIds=${nonDeterministicIdRows}`,
+        `kbDuplicateRows=${duplicatePositionRows} kbNonDeterministicIds=${nonDeterministicIdRows} ` +
+        `tier1EvalStatus=${tier1EvalStatus.available ? tier1EvalStatus.value : "unavailable"}`,
     );
+    if (!tier1EvalStatus.available) {
+      this.logger.warn(
+        `ops-metrics: ${TIER1_EVAL_WORKFLOW} status ${tier1EvalStatus.source} — the Ops Center ` +
+          "will render tier1_eval_status as unavailable (issue #63)",
+      );
+    }
     if (!kbHealthy) {
       this.logger.warn(
         `ops-metrics: KB index has ${duplicatePositionRows} duplicate (docId, chunkIndex) rows and ` +
@@ -177,6 +238,7 @@ export class OpsMetricsService {
           "deterministic `docId::chunk::N` shape ingest-kb.ts upserts on. Both must be 0 after " +
           "any ingest. Does not hash content, so genuine in-document repeats are not counted.",
       },
+      tier1EvalStatus,
     };
   }
 }
