@@ -28,6 +28,7 @@ import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { cleanVoiceInput } from "./input-cleaner";
+import { reconcileAppendedAnswer } from "./escalation-reconciler";
 // Phase 2 Agentic components
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
@@ -383,6 +384,23 @@ export class ChatService {
         } finally {
           clearTimeout(urgentTimeoutId!);
         }
+      }
+
+      // Issue #112: the escalation above is the only voice on emergency-level
+      // urgency. Strip urgency/triage statements out of the half we are about
+      // to append so it cannot contradict the escalation it sits under. Done
+      // before citation extraction so citations describe delivered text.
+      if (urgentRagResponse) {
+        const reconciled = reconcileAppendedAnswer(urgentRagResponse);
+        if (reconciled.removed.length > 0) {
+          this.logger.warn({
+            event: "escalation_triage_statement_removed",
+            sessionId: dto.sessionId,
+            removedCount: reconciled.removed.length,
+          });
+        }
+        // Nothing left worth appending — deliver the escalation on its own.
+        urgentRagResponse = reconciled.text.length > 0 ? reconciled.text : null;
       }
 
       if (urgentRagResponse) {
