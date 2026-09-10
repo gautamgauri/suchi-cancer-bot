@@ -9,6 +9,7 @@ import { LoadingIndicator } from "./LoadingIndicator";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { WelcomeMessage } from "./WelcomeMessage";
 import { apiService, ChatResponse, UserRole } from "../services/api";
+import { resolveEscalationText } from "../utils/escalationText";
 
 interface ChatInterfaceProps {
   sessionId: string | null;
@@ -160,9 +161,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
         }
 
         if (response.safety.actions.includes("show_emergency_banner")) {
+          // Issue #111: the banner carries only the escalation block. Handing it
+          // the whole responseText repeated the entire answer above the bubble.
           setSafetyBanner({
             classification: response.safety.classification as "red_flag" | "self_harm",
-            message: response.responseText
+            message: resolveEscalationText(response.responseText, response.safety.bannerText)
           });
         }
       } else {
