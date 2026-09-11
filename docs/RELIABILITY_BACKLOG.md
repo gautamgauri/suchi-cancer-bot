@@ -276,6 +276,52 @@ weaknesses found while investigating, deliberately *not* changed here:
   burst. Both are fixed in the follow-up serialisation PR, not here — this PR
   is kept to the safety-relevant template correction.
 
+### P1-12. Awareness question with a first-person clause is deflected as a personal-symptom query (issue #117) — PRODUCT DECISION NEEDED
+
+- **Observed (live WhatsApp, 2026-09-10 01:29 IST):**
+  `What are the early warning signs of breast cancer? I want to know what to look for.`
+  → "While I can't provide specific medical advice or list symptoms…" — no KB
+  content, no citations, an offer to prepare doctor questions.
+- **Not a channel bug — verified.** The reply comes from the FR-JOURNEY-003
+  soft-redirect branch, `chat.service.ts` `if (mode === "navigate" &&
+  intentResult.intent === "PERSONAL_SYMPTOMS")` (~line 2412), whose prompt
+  (`llm/prompts/symptom-soft-redirect.ts`) forbids listing cancer symptoms by
+  design. The only channel condition on that branch is voice stripping; the web
+  channel takes the identical path for this text. The issue's web comparison
+  used a *different* text (Hinglish `breast cancer ke early symptoms kya hote
+  hain?`, run q04), which classifies `INFORMATIONAL_SYMPTOMS` / `explain` and
+  is answered from the KB. Same channel, different text, different route.
+- **Where the route is decided** (all rule-based, deterministic):
+  1. `mode-detector.ts:33-46` — the text matches the identify pattern
+     (`signs of`), which gates on `hasPersonalDiagnosisSignal(text)`.
+  2. `mode-detector.ts:194-210` `hasPersonalDiagnosisSignal` fires on **any**
+     first-person pronoun (`/\b(i|i'm|im|me|my|mine)\b/`). "I want to know" →
+     `true` → mode `navigate`. This is asserted as intended by
+     `mode-detector.spec.ts:32` (`hasPersonalDiagnosisSignal("I want to know")
+     === true`).
+  3. `intent-classifier.ts:209` — symptom keywords + mode `navigate` →
+     `PERSONAL_SYMPTOMS` (for every session `userContext` except `general`).
+  4. → soft redirect above.
+  Contrast: the non-identify branch of the same detector already exempts
+  "I want to / would like to / need to (know|learn|understand)" from the
+  personal-pronoun rule (`mode-detector.ts:99`), so the same sentence *without*
+  "signs of" would be `explain`. The identify gate is the stricter, older rule.
+- **Why it is a product decision, not a patch:** the rule is tested as
+  intended behaviour and it is the safety-leaning direction (treat ambiguous
+  first-person as personal). Relaxing it changes which questions receive KB
+  symptom lists, on every channel. Proposed change for the product/SCCF call:
+  in the identify gate use `hasStrongPersonalSignal` (first-person *symptom
+  reports*: "I have / I noticed / my lump…") instead of the bare-pronoun
+  `hasPersonalDiagnosisSignal`, or extend the latter with the existing
+  "I want to know" exemption. Either keeps "how do I know if I have lymphoma"
+  and "can I identify if my mother has cancer" in navigate mode
+  (`mode-detector.spec.ts:17,25`) and routes "what are the warning signs of X?
+  I want to know what to look for" to explain mode. Needs eval coverage
+  (Tier1 identify cases) before shipping.
+- **Impact:** functional, not clinical. On the public number this is the most
+  common question class, so it is the most visible deflection. Live evidence
+  and the probe output are in issue #117 / PR for this entry.
+
 ---
 
 ## P2 — track and schedule
