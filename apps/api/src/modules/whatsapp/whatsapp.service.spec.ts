@@ -212,6 +212,22 @@ describe("WhatsAppService", () => {
       expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
     });
 
+    // Issue #116: raw `[citation:docId:chunkId]` markers and the "**Sources:**"
+    // section reached a patient. The HTTP controller strips them; this channel
+    // bypasses the controller and must strip them itself.
+    it("strips citation markers and the raw Sources section before replying", async () => {
+      chat.handle.mockResolvedValueOnce({
+        responseText:
+          "Chemo can cause fatigue [citation:kb_en_a_v1:kb_en_a_v1::chunk::0].\n\n" +
+          "**Sources:** [citation:kb_en_a_v1:kb_en_a_v1::chunk::0] [citation:kb_en_b_v1:kb_en_b_v1::chunk::2]",
+      });
+      await svc.processInbound([{ wamid: "w-cite", from: "9199", text: "chemo side effects?" }]);
+      const sent = (svc.sendText as jest.Mock).mock.calls[0][1] as string;
+      expect(sent).not.toContain("[citation:");
+      expect(sent).not.toContain("Sources:");
+      expect(sent).toBe("Chemo can cause fatigue.");
+    });
+
     it("self-heals a deleted session: re-mints and retries once", async () => {
       // Active contact pointing at a session row that no longer exists.
       prisma.whatsAppContact.findUnique.mockResolvedValueOnce({

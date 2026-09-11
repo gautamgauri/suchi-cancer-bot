@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChatService } from "../chat/chat.service";
+import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { SessionsService } from "../sessions/sessions.service";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
@@ -257,7 +258,11 @@ export class WhatsAppService {
           throw err;
         }
       }
-      await this.sendText(msg.from, result.responseText);
+      // Citations are for auditors, not readers (OD-003). The HTTP path strips
+      // markers in ChatController; this channel bypasses the controller, so it
+      // must strip them itself or raw `[citation:...]` ids reach the patient
+      // (issue #116). The raw text stays in the DB for evaluation.
+      await this.sendText(msg.from, cleanResponseForDisplay(result.responseText));
       await this.markLedger(msg.wamid, "processed");
     } catch (err: any) {
       this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
