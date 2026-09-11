@@ -3,6 +3,8 @@
 // auto-links bare URLs. The chat pipeline emits GitHub-flavoured markdown, so
 // we translate, then split on the 4096-char message-body limit.
 
+import { stripCitationDebris, stripCitationMarkers } from "../../common/text-cleaning";
+
 // FR-9: configurable safe per-message threshold (well under WhatsApp's 4096 hard
 // cap) and a max number of outbound messages for one answer.
 export const WA_MAX_LEN = 3200;
@@ -10,23 +12,18 @@ export const WA_MAX_MESSAGES = 3;
 // Appended to the last message when content is truncated to the message cap.
 const CONTINUATION_NOTE = "(Reply *continue* / *aur* to see the rest.)";
 
-// Internal markup that must never reach a patient (#116, OD-003 "citations are
-// for auditors, not users"). Same patterns the web controller
-// (chat.controller.ts `cleanResponseForDisplay`) and the voice stripper
-// (chat/voice-output-stripper.ts) already apply on their channels.
-const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(\[citation:[^\]]+\]\s*)+/g;
-const CITATION_MARKER_PATTERN = /\s*\[(?:citation|source):[^\]]*\]/g;
 // A markdown horizontal rule on its own line (`---`, `***`, `___`), e.g. the
 // separator emitted by appendDisclaimer() and renderTemplate()'s closing note.
 const HORIZONTAL_RULE_LINE = /^[ \t]*([-*_])\1{2,}[ \t]*$/gm;
 
 /** Translate markdown emphasis/links/headings/bullets to WhatsApp-friendly text. */
 export function toWhatsAppMarkdown(input: string): string {
-  let t = input;
-
-  // Strip internal citation markup first so nothing below can mangle it.
-  t = t.replace(RAW_SOURCES_SECTION_PATTERN, "");
-  t = t.replace(CITATION_MARKER_PATTERN, "");
+  // Internal citation markup must never reach a patient (#116; OD-003 "citations
+  // are for auditors, not users"). Same shared primitives the web display path
+  // (chat/display-text-cleaner.ts) and the voice/TTS path use, so the three
+  // surfaces cannot drift again (#87). Runs first so nothing below can mangle
+  // a marker, then per-line trailing whitespace the strip may leave behind.
+  let t = stripCitationDebris(stripCitationMarkers(input)).replace(/[ \t]+$/gm, "");
 
   // Markdown links [label](url) -> "label: url" (WhatsApp auto-links the bare URL).
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1: $2");

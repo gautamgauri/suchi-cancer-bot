@@ -82,6 +82,13 @@ describe("toWhatsAppMarkdown — internal markup must not reach the patient (#11
     expect(toWhatsAppMarkdown("Text [source:kb_x]")).toBe("Text");
   });
 
+  it("strips an UNTERMINATED marker left by a cut-off generation (shared text-cleaning behaviour, #68/#87)", () => {
+    expect(toWhatsAppMarkdown("might be effective [citation:kb_en_nci_types_breast_diagnosis_v1:kb_")).toBe(
+      "might be effective",
+    );
+    expect(toWhatsAppMarkdown("Rest helps [1]. Drink water [2].")).toBe("Rest helps. Drink water.");
+  });
+
   it("renders a RELATIVE markdown link as its label only (no dead path delivered)", () => {
     const leaked =
       "Side effects of chemotherapy The most common side effect of chemotherapy is [fatigue](/about-cancer/treatment/side-effects/fatigue), which is feeling exhausted or extremely tired.";
