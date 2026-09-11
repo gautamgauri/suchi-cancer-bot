@@ -93,6 +93,10 @@ steps:
       - '512Mi'
       - '--cpu'
       - '1'
+      # WhatsApp turns run AFTER the webhook has ACKed (fire-and-forget), so with
+      # request-scoped CPU the instance is throttled while the turn runs and the
+      # pipeline times out (issues #115/#116/#117). Keep CPU allocated always.
+      - '--no-cpu-throttling'
       - '--min-instances'
       - '0'
       - '--max-instances'
