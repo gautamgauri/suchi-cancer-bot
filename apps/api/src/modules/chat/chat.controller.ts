@@ -3,11 +3,18 @@ import { Throttle } from "@nestjs/throttler";
 import { ChatDto } from "./dto";
 import { ChatService } from "./chat.service";
 import { cleanResponseForDisplay } from "./display-text-cleaner";
+import {
+  CHAT_TURN_TIMEOUT_MS,
+  isChatTimeoutError,
+  REQUEST_TIMEOUT_ERROR,
+  TIMEOUT_GUIDANCE_TEXT,
+} from "./timeout-fallback";
 
 @Controller("chat")
 export class ChatController {
   private readonly logger = new Logger(ChatController.name);
-  private readonly REQUEST_TIMEOUT_MS = 55000; // 55 seconds — aligned with bounded LLM budget so timeout fallback returns before Cloud Run cap
+  // Shared with the WhatsApp worker (timeout-fallback.ts) so both channels bound a turn identically.
+  private readonly REQUEST_TIMEOUT_MS = CHAT_TURN_TIMEOUT_MS;
 
   constructor(private readonly chat: ChatService) {}
 
@@ -25,7 +32,7 @@ export class ChatController {
         this.chat.handle(dto, abortController.signal),
         new Promise((_, reject) => {
           abortController.signal.addEventListener('abort', () =>
-            reject(new Error('REQUEST_TIMEOUT'))
+            reject(new Error(REQUEST_TIMEOUT_ERROR))
           );
         }),
       ]) as any;
@@ -41,20 +48,12 @@ export class ChatController {
     } catch (error: any) {
       this.logger.error(`Chat error: ${error.message}`, error.stack);
       
-      // Handle timeout errors gracefully
-      if (error.message === 'REQUEST_TIMEOUT' || 
-          error.message?.includes('timeout') || 
-          error.message?.includes('LLM generation timeout') ||
-          error.message?.includes('aborted')) {
+      // Handle timeout errors gracefully (same predicate + copy as the WhatsApp worker)
+      if (isChatTimeoutError(error)) {
         this.logger.warn(`Request timeout after ${this.REQUEST_TIMEOUT_MS}ms for session ${dto.sessionId}`);
         throw new GatewayTimeoutException({
           sessionId: dto.sessionId,
-          responseText: "I'm sorry — my response is taking longer than expected. " +
-            "In the meantime, here are some general steps you can take:\n\n" +
-            "1. **Talk to a doctor**: If you have symptoms or concerns about cancer, the most important step is seeing a healthcare professional.\n" +
-            "2. **Indian Cancer Society Helpline**: Call 1800-22-1951 (toll-free) for guidance.\n" +
-            "3. **Emergency**: If you're experiencing severe symptoms (coughing blood, sudden severe pain, difficulty breathing), call 112 or 108 for an ambulance.\n\n" +
-            "Please try asking your question again — I should be able to give you a more detailed, referenced answer.",
+          responseText: TIMEOUT_GUIDANCE_TEXT,
           safety: { classification: "normal" as const, actions: [] },
           error: "timeout"
         });

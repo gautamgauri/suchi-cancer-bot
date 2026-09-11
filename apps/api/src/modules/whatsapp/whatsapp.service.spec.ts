@@ -1,6 +1,13 @@
 import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
-import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppService } from "./whatsapp.service";
+import {
+  FALLBACK_REPLY,
+  inboundLedgerId,
+  INBOUND_LEDGER_EVENT,
+  WA_TURN_TIMEOUT_MS,
+  WhatsAppService,
+} from "./whatsapp.service";
+import { TIMEOUT_GUIDANCE_TEXT } from "../chat/timeout-fallback";
 import { MetaWebhookBody } from "./whatsapp.types";
 
 /**
@@ -181,6 +188,7 @@ describe("WhatsAppService", () => {
       await svc.processInbound([{ wamid: "w1", from: "9199", text: "what is chemo?" }]);
       expect(chat.handle).toHaveBeenCalledWith(
         expect.objectContaining({ sessionId: "sess-new", channel: "whatsapp", userText: "what is chemo?" }),
+        expect.any(AbortSignal),
       );
       expect(svc.sendText).toHaveBeenCalledWith("9199", "Here is some info.");
     });
@@ -226,7 +234,10 @@ describe("WhatsAppService", () => {
       await svc.processInbound([{ wamid: "heal1", from: "9199", text: "hi" }]);
 
       expect(chat.handle).toHaveBeenCalledTimes(2);
-      expect(chat.handle).toHaveBeenLastCalledWith(expect.objectContaining({ sessionId: "sess-new" }));
+      expect(chat.handle).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sessionId: "sess-new" }),
+        expect.any(AbortSignal),
+      );
       expect(sessions.create).toHaveBeenCalled();
       expect(svc.sendText).toHaveBeenCalledWith("9199", "Recovered.");
     });
@@ -236,6 +247,83 @@ describe("WhatsAppService", () => {
       await svc.processInbound([{ wamid: "noretry", from: "9199", text: "hi" }]);
       expect(chat.handle).toHaveBeenCalledTimes(1);
       expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+    });
+
+    // Issue #115 — live public number, 2026-09-10: Hinglish turns ran 90–130s and
+    // then delivered FALLBACK_REPLY, because ChatService's budget errors were
+    // treated like any other exception and nothing bounded the turn.
+    describe("timeout handling (#115)", () => {
+      const HINGLISH_RED_FLAG =
+        "meri didi chemo ke baad se bahut kamjor hai, aaj bleeding bahut zyada ho gayi aur chakkar aa raha hai. kya karu??";
+
+      it("passes the inbound text to ChatService unmodified, with an AbortSignal", async () => {
+        await svc.processInbound([{ wamid: "sig1", from: "9199", text: HINGLISH_RED_FLAG }]);
+        expect(chat.handle).toHaveBeenCalledWith(
+          expect.objectContaining({ channel: "whatsapp", userText: HINGLISH_RED_FLAG }),
+          expect.any(AbortSignal),
+        );
+      });
+
+      it("answers a ChatService LLM-budget timeout with the timeout guidance, not the generic fallback", async () => {
+        // The exact error class llmWithDeadline raises once a slow turn has eaten the budget.
+        chat.handle.mockRejectedValueOnce(new Error("LLM generation timeout: no budget left for explain-mode-llm1"));
+        await svc.processInbound([{ wamid: "budget1", from: "9199", text: HINGLISH_RED_FLAG }]);
+
+        expect(svc.sendText).toHaveBeenCalledTimes(1);
+        expect(svc.sendText).toHaveBeenCalledWith("9199", TIMEOUT_GUIDANCE_TEXT);
+        expect(svc.sendText).not.toHaveBeenCalledWith("9199", FALLBACK_REPLY);
+        // The guidance is the web channel's existing copy: it carries the helplines.
+        expect(TIMEOUT_GUIDANCE_TEXT).toContain("112");
+        expect(TIMEOUT_GUIDANCE_TEXT).toContain("108");
+        expect(ledger.rows.get(inboundLedgerId("budget1")).payload.status).toBe("failed");
+      });
+
+      it("bounds a hung turn at WA_TURN_TIMEOUT_MS, aborts the pipeline and still replies", async () => {
+        jest.useFakeTimers();
+        try {
+          let seenSignal: AbortSignal | undefined;
+          chat.handle.mockImplementationOnce(
+            (_dto: any, signal: AbortSignal) =>
+              new Promise(() => {
+                seenSignal = signal; // never settles — simulates a pipeline that ran away
+              }),
+          );
+
+          const run = svc.processInbound([{ wamid: "hang1", from: "9199", text: HINGLISH_RED_FLAG }]);
+          await Promise.resolve(); // let resolveSession + handle start
+          await jest.advanceTimersByTimeAsync(WA_TURN_TIMEOUT_MS + 1);
+          await run;
+
+          expect(WA_TURN_TIMEOUT_MS).toBe(55_000); // same cap as the web controller
+          expect(seenSignal?.aborted).toBe(true);
+          expect(svc.sendText).toHaveBeenCalledTimes(1);
+          expect(svc.sendText).toHaveBeenCalledWith("9199", TIMEOUT_GUIDANCE_TEXT);
+          expect(ledger.rows.get(inboundLedgerId("hang1")).payload).toMatchObject({
+            status: "failed",
+            error: "REQUEST_TIMEOUT",
+          });
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it("keeps the generic fallback for non-timeout failures", async () => {
+        chat.handle.mockRejectedValueOnce(new Error("Gemini returned no output"));
+        await svc.processInbound([{ wamid: "other1", from: "9199", text: HINGLISH_RED_FLAG }]);
+        expect(svc.sendText).toHaveBeenCalledWith("9199", FALLBACK_REPLY);
+      });
+
+      it("does not fire the timeout after a turn that completed in time", async () => {
+        jest.useFakeTimers();
+        try {
+          await svc.processInbound([{ wamid: "fast1", from: "9199", text: "what is chemo?" }]);
+          await jest.advanceTimersByTimeAsync(WA_TURN_TIMEOUT_MS * 2);
+          expect(svc.sendText).toHaveBeenCalledTimes(1);
+          expect(svc.sendText).toHaveBeenCalledWith("9199", "Here is some info.");
+        } finally {
+          jest.useRealTimers();
+        }
+      });
     });
   });
 

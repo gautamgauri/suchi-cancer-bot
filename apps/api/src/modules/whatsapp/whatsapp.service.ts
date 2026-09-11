@@ -3,11 +3,25 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChatService } from "../chat/chat.service";
 import { SessionsService } from "../sessions/sessions.service";
+import {
+  CHAT_TURN_TIMEOUT_MS,
+  isChatTimeoutError,
+  REQUEST_TIMEOUT_ERROR,
+  TIMEOUT_GUIDANCE_TEXT,
+} from "../chat/timeout-fallback";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
-const FALLBACK_REPLY =
+export const FALLBACK_REPLY =
   "Sorry, something went wrong on our side. Please try sending your message again.";
+
+/**
+ * Per-turn wall-clock cap for one WhatsApp turn (issue #115). Same value the
+ * web controller races against `ChatService.handle`; before this the WhatsApp
+ * worker had no bound at all, so a slow turn ran 90–130s and then surfaced as
+ * the generic FALLBACK_REPLY.
+ */
+export const WA_TURN_TIMEOUT_MS = CHAT_TURN_TIMEOUT_MS;
 
 /** Ledger row marker in `AnalyticsEvent.eventName` (see `claimInbound`). */
 export const INBOUND_LEDGER_EVENT = "whatsapp_inbound";
@@ -244,7 +258,7 @@ export class WhatsAppService {
       let sessionId = await this.resolveSession(msg.from, locale);
       let result;
       try {
-        result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
+        result = await this.handleWithTimeout(sessionId, locale, msg.text);
       } catch (err: any) {
         // Self-heal a stale/deleted session (the stored sessionId no longer
         // exists in the DB) — mint a fresh session and retry ONCE. Without
@@ -252,7 +266,7 @@ export class WhatsAppService {
         if (isInvalidSessionError(err)) {
           this.logger.warn(`Stale session ${sessionId} for WhatsApp contact — re-minting and retrying`);
           sessionId = await this.resolveSession(msg.from, locale, true);
-          result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
+          result = await this.handleWithTimeout(sessionId, locale, msg.text);
         } else {
           throw err;
         }
@@ -260,9 +274,42 @@ export class WhatsAppService {
       await this.sendText(msg.from, result.responseText);
       await this.markLedger(msg.wamid, "processed");
     } catch (err: any) {
-      this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
+      // Timeout-class failures (the channel cap above, or ChatService's own
+      // "LLM generation timeout" budget errors) get the same guidance the web
+      // channel has always returned for them, instead of a bare "try again"
+      // (issue #115). Everything else keeps the generic fallback.
+      const timedOut = isChatTimeoutError(err);
+      this.logger.error(
+        `Failed to process WhatsApp message ${msg.wamid} (${timedOut ? "timeout" : "error"}): ${err?.message}`,
+        err?.stack,
+      );
       await this.markLedger(msg.wamid, "failed", err?.message);
-      await this.sendText(msg.from, FALLBACK_REPLY).catch(() => undefined);
+      await this.sendText(msg.from, timedOut ? TIMEOUT_GUIDANCE_TEXT : FALLBACK_REPLY).catch(() => undefined);
+    }
+  }
+
+  /**
+   * `ChatService.handle` bounded to `WA_TURN_TIMEOUT_MS`, mirroring the web
+   * controller: the AbortSignal lets the pipeline stop its own LLM calls, and
+   * the race guarantees the contact hears back even if it does not. Rejects
+   * with `REQUEST_TIMEOUT_ERROR` on the cap so the caller can classify it.
+   */
+  private async handleWithTimeout(sessionId: string, locale: string, userText: string) {
+    const abortController = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        abortController.abort();
+        reject(new Error(REQUEST_TIMEOUT_ERROR));
+      }, WA_TURN_TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([
+        this.chat.handle({ sessionId, channel: "whatsapp", locale, userText }, abortController.signal),
+        timeout,
+      ]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 

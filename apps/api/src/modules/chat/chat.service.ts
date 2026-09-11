@@ -27,7 +27,7 @@ import { PatientStateService, PatientState } from "./patient-state.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
-import { cleanVoiceInput } from "./input-cleaner";
+import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
 // Phase 2 Agentic components
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
@@ -191,7 +191,14 @@ export class ChatService {
     // ─── Phase 0: Voice Input Cleanup ────────────────────────────────
     // Web Speech API interim results can stutter/duplicate text.
     // Clean before any classification or persistence.
-    dto.userText = cleanVoiceInput(dto.userText);
+    //
+    // WhatsApp text is typed, never speech-interim, so it only gets the
+    // spelling corrections. The stutter/repeat collapse is wrong for typed
+    // Hindi/Hinglish: it rewrites reduplicated kinship terms and emphasis
+    // ("didi" → "di", "papa" → "pa", "bahut bahut" → "bahut"), mutating the
+    // caregiver's own words before classification and persistence (issue #115).
+    dto.userText =
+      dto.channel === "whatsapp" ? correctMedicalSpelling(dto.userText) : cleanVoiceInput(dto.userText);
 
     const obsTrace = this.observability.startTrace('chat_turn', {
       query: dto.userText?.substring(0, 200),
