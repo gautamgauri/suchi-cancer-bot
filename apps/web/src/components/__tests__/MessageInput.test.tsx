@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { MessageInput } from '../MessageInput';
 
@@ -136,6 +136,104 @@ describe('MessageInput', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
 
       expect(onSend).not.toHaveBeenCalled();
+    });
+  });
+
+  // Issue #115: the API applies speech-stutter cleanup only to spoken input, so
+  // the component must say when the browser mic contributed to a message.
+  describe('input modality flag', () => {
+    class FakeRecognition {
+      static last: FakeRecognition | null = null;
+      continuous = false;
+      interimResults = false;
+      lang = '';
+      onresult: ((e: any) => void) | null = null;
+      onerror: ((e: any) => void) | null = null;
+      onend: (() => void) | null = null;
+      start = vi.fn();
+      stop = vi.fn();
+      constructor() { FakeRecognition.last = this; }
+    }
+
+    const install = () => {
+      (window as any).SpeechRecognition = FakeRecognition;
+      FakeRecognition.last = null;
+    };
+    const uninstall = () => {
+      delete (window as any).SpeechRecognition;
+    };
+
+    it('typed text is sent without a modality flag (backward compatible)', () => {
+      const onSend = vi.fn();
+      render(<MessageInput onSend={onSend} />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'meri didi ko dard hai' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+      expect(onSend).toHaveBeenCalledTimes(1);
+      expect(onSend.mock.calls[0]).toEqual(['meri didi ko dard hai']);
+    });
+
+    it('text dictated through the mic is sent with inputMode "voice"', () => {
+      install();
+      try {
+        const onSend = vi.fn();
+        render(<MessageInput onSend={onSend} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Start voice input' }));
+        const rec = FakeRecognition.last!;
+        expect(rec.start).toHaveBeenCalled();
+        act(() => rec.onresult!({ results: [Object.assign([{ transcript: 'telltell me about chemo' }], { isFinal: true })] }));
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        expect(onSend).toHaveBeenCalledWith('telltell me about chemo', { inputMode: 'voice' });
+      } finally {
+        uninstall();
+      }
+    });
+
+    // Review on #125: a typed prefix or a manual edit means the message is no
+    // longer pure mic output, so speech cleanup must not run on it.
+    it('typed prefix + dictation is MIXED: sent without the voice flag', () => {
+      install();
+      try {
+        const onSend = vi.fn();
+        render(<MessageInput onSend={onSend} />);
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'meri didi ' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Start voice input' }));
+        act(() => FakeRecognition.last!.onresult!({ results: [Object.assign([{ transcript: 'has fever after chemo' }], { isFinal: true })] }));
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        expect(onSend.mock.calls[0]).toEqual(['meri didi has fever after chemo']);
+      } finally {
+        uninstall();
+      }
+    });
+
+    it('dictation followed by a manual edit is MIXED: sent without the voice flag', () => {
+      install();
+      try {
+        const onSend = vi.fn();
+        render(<MessageInput onSend={onSend} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Start voice input' }));
+        act(() => FakeRecognition.last!.onresult!({ results: [Object.assign([{ transcript: 'meri di ko fever hai' }], { isFinal: true })] }));
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'meri didi ko fever hai' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        expect(onSend.mock.calls[0]).toEqual(['meri didi ko fever hai']);
+      } finally {
+        uninstall();
+      }
+    });
+
+    it('the flag resets after sending: the next typed message carries none', () => {
+      install();
+      try {
+        const onSend = vi.fn();
+        render(<MessageInput onSend={onSend} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Start voice input' }));
+        act(() => FakeRecognition.last!.onresult!({ results: [Object.assign([{ transcript: 'first' }], { isFinal: true })] }));
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'second, typed' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        expect(onSend.mock.calls[1]).toEqual(['second, typed']);
+      } finally {
+        uninstall();
+      }
     });
   });
 });

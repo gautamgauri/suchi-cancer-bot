@@ -91,6 +91,42 @@ describe("StructuredOutputTemplates", () => {
         const result = selectOutputTemplate("NAVIGATION", [], "chemo ke liye kaise ready hona hai");
         expect(result).toBe(CHEMO_DAY_PREP);
       });
+
+      test("Hinglish: chemo + taiyari (romanised preparation)", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo ke liye kya taiyari karni chahiye")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "pehli chemo se pehle tayari kaise karein")).toBe(CHEMO_DAY_PREP);
+      });
+
+      // Issue #115 (live WhatsApp 2026-09-10 01:35 IST; web QA q01 same day): a
+      // caregiver reporting heavy post-chemo bleeding was answered with the routine
+      // chemo-day checklist because the bare Hinglish question word "kya" counted
+      // as a preparation cue.
+      test("REGRESSION #115: a post-chemo red-flag report is NOT a chemo-prep question", () => {
+        const liveText =
+          "meri didi chemo ke baad se bahut kamjor hai, aaj bleeding bahut zyada ho gayi aur chakkar aa raha hai. kya karu??";
+        expect(selectOutputTemplate("NAVIGATION", [], liveText)).toBeNull();
+        expect(selectOutputTemplate("EDUCATION", [], liveText)).toBeNull();
+      });
+
+      test("bare Hinglish question words do not select the chemo-prep template", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo ke side effects kya hote hain")).toBeNull();
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo kaise kaam karti hai")).toBeNull();
+      });
+
+      // Review on #125: the English equivalents of the bug — "what to" and a bare
+      // "day" — must not be preparation cues either.
+      test("English side-effect / timing questions are NOT chemo-prep questions", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "Chemo ke baad vomiting ho rahi hai, what to do?")).toBeNull();
+        expect(selectOutputTemplate("NAVIGATION", [], "One day after chemo I feel very weak, is this normal?")).toBeNull();
+        expect(selectOutputTemplate("EDUCATION", [], "what to do if fever comes 3 days after chemo")).toBeNull();
+      });
+
+      test("phrase-level preparation cues still select the template", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "what should I do before my first chemo")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo se pehle kya karna chahiye")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "how do I get ready for chemotherapy")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "what to expect on the day of chemo")).toBe(CHEMO_DAY_PREP);
+      });
     });
 
     describe("Second opinion queries → SECOND_OPINION_PREP", () => {
