@@ -58,7 +58,8 @@ HTTP-facing modules (controller path shown is under the global `/v1` prefix):
 | `feedback` | `POST /v1/feedback` | Thumbs up/down + comment on messages. |
 | `voice` | `POST /v1/voice/respond`, `POST /v1/voice/tts` | STT upload → chat → TTS; audio limits enforced. |
 | `voice-ws` | WS `/v1/voice/stream` | Streaming voice via Socket.io gateway (`voice-ws.gateway.ts`), optional. |
-| `health` | `GET /v1/health` | Deep health check: runs `SELECT 1` against Postgres and reports `database: connected|disconnected` (`src/modules/health/health.service.ts`). Used by deploy health gates. |
+| `health` | `GET /v1/health` | Deep health check: runs `SELECT 1` against Postgres and reports `database: connected|disconnected`, plus a `retrieval.fullTextSearch` sub-status (`src/modules/health/health.service.ts`). Used by deploy health gates, so the top-level `status` stays `ok` on a survivable retrieval degradation. |
+| `health` | `GET /v1/health/retrieval` | Retrieval readiness: re-probes `KbChunk.content_tsv` and returns **503** while the lexical arm of hybrid search is unavailable (issue #92). Not used by the deploy gate. |
 | `admin` | `/v1/admin/*` | Conversations, metrics, KB stats, daily report, hospital + article research triggers, navigator review portal, content/social approve-reject links, housekeeping (retention, draft expiry), review queue, analytics. Mixed auth (see §6). |
 | `youtube` | `/v1/admin/youtube/*` | YouTube transcript ingestion into the KB (BasicAuth). |
 | `distribution` | `GET /v1/distribution/approve/:slug`, `/reject/:slug` | One-click HMAC-tokenized approval links for social content packs (added in PR #43, prefix fixed in PR #44). |
@@ -138,7 +139,7 @@ entirely.
 | `Feedback` | Reactions and comments. |
 | `SafetyEvent` | Safety gate triggers per session/message. |
 | `AnalyticsEvent` | Generic event stream. |
-| `KbDocument` / `KbChunk` | KB docs and chunks; `KbChunk.embedding` is `vector(768)` (pgvector) plus FTS column (migration `20260120163141_add_fts_to_kbchunk`). |
+| `KbDocument` / `KbChunk` | KB docs and chunks; `KbChunk.embedding` is `vector(768)` (pgvector) plus the FTS column `content_tsv`, a STORED generated `to_tsvector('simple', content)` (migrations `20260120163141_add_fts_to_kbchunk` → `20260218000000_fts_simple_config`, dropped in error by `20260606000000_phase2_...`, restored by `20260908000000_restore_kb_chunk_fts` — issue #92). Readiness: `GET /v1/health/retrieval`. |
 | `MessageCitation` | Extracted citation markers per assistant message. |
 | `VoiceInteraction` | STT confidence, transcript, durations, TTS URL (migration `20260217000000_add_voice_interaction`). |
 | `WhatsAppContact` | Persistent phone→session mapping (migration `20260622000000_add_whatsapp_contact`). |
