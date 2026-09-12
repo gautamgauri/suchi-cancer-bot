@@ -34,13 +34,16 @@
 --   2. Installs a BEFORE INSERT OR UPDATE OF content trigger that keeps the
 --      column current, so rows written while the backfill runs are covered.
 --   3. Backfills and builds the GIN index ONLY on small tables (<= 5000 rows:
---      dev databases, CI, the PGlite regression test). On a production-sized
---      table it deliberately stops with a NOTICE: the backfill must run in
---      small committed batches and the index must be built CONCURRENTLY
---      (which cannot run inside a transaction). That procedure is
---      `scripts/sql/kb_fts_safe_rollout.py`, documented in
---      docs/OPERATIONS_RUNBOOK.md §4a; it ends with
+--      dev databases, CI, the PGlite regression test) — i.e. the migration either
+--      COMPLETES or FAILS. On a production-sized table it RAISES an exception
+--      (nothing is committed), so `prisma migrate deploy` cannot record it as
+--      applied while the column is still unpopulated and unindexed. The
+--      production procedure is `scripts/sql/kb_fts_safe_rollout.py`
+--      (docs/OPERATIONS_RUNBOOK.md §4a): it bootstraps the same column + trigger
+--      itself, backfills in committed batches, builds the index CONCURRENTLY
+--      (which cannot run inside a transaction), verifies, and only then runs
 --      `prisma migrate resolve --applied 20260908000000_restore_kb_chunk_fts`.
+--      Re-running this file after the script has finished is a harmless no-op.
 --
 --   A database that still carries the legacy GENERATED column (never ran
 --   20260606) is left exactly as it is: Postgres maintains that shape itself and
@@ -80,6 +83,20 @@ BEGIN
 
   SELECT count(*) INTO row_count FROM "KbChunk";
 
+  -- Safety invariant (review on the #92 follow-up): this file must never leave a
+  -- half-done state that Prisma then records as "applied". A production-sized table
+  -- is refused here unless the rollout script has already completed the work
+  -- (column populated + valid GIN index), in which case everything below is a no-op.
+  IF row_count > 5000 AND col_generated <> 's' THEN
+    IF EXISTS (SELECT 1 FROM "KbChunk" WHERE content_tsv IS NULL)
+       OR NOT EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+                      WHERE c.relname = 'kb_chunk_content_tsv_idx' AND i.indisvalid AND i.indisready) THEN
+      RAISE EXCEPTION USING
+        MESSAGE = format('KbChunk has %s rows: refusing to backfill/index inside a migration (that is a table rewrite — see the 2026-09-12 outage). Run scripts/sql/kb_fts_safe_rollout.py --execute, which bootstraps column + trigger, backfills in batches, builds the GIN index CONCURRENTLY and then marks this migration applied.', row_count),
+        HINT = 'docs/OPERATIONS_RUNBOOK.md §4a';
+    END IF;
+  END IF;
+
   IF col_generated = 's' THEN
     RAISE NOTICE 'KbChunk.content_tsv is a legacy STORED generated column — leaving it (Postgres maintains it); no trigger installed.';
     DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";
@@ -94,15 +111,13 @@ BEGIN
       UPDATE "KbChunk"
          SET content_tsv = to_tsvector('simple', content)
        WHERE content_tsv IS NULL;
-    ELSE
-      RAISE NOTICE 'KbChunk has % rows: backfill deliberately NOT run here. Run scripts/sql/kb_fts_safe_rollout.py (batched backfill, then CREATE INDEX CONCURRENTLY, then prisma migrate resolve).', row_count;
     END IF;
   END IF;
 
   IF row_count <= 5000 THEN
     -- Small table: a plain (SHARE-locking) build takes milliseconds.
     CREATE INDEX IF NOT EXISTS kb_chunk_content_tsv_idx ON "KbChunk" USING GIN (content_tsv);
-  ELSE
-    RAISE NOTICE 'GIN index kb_chunk_content_tsv_idx deliberately NOT built here on a % row table — build it with CREATE INDEX CONCURRENTLY after the backfill (scripts/sql/kb_fts_safe_rollout.py).', row_count;
   END IF;
+  -- Large table: reaching here means the rollout script already populated the
+  -- column and built a valid index (checked above), so there is nothing to do.
 END$$;

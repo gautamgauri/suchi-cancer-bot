@@ -475,6 +475,60 @@ describe("KB full-text search (issue #92)", () => {
     });
   });
 
+  describe("on a production-sized table the migration refuses instead of rewriting (review on the #92 follow-up)", () => {
+    // The 2026-09-12 outage: a STORED generated column rewrote the whole table.
+    // The safeguard is that migration.sql can never leave a large table half-done
+    // and be recorded as applied — it either completes (small table) or raises.
+    let big: PgliteDatabase;
+    const restoreSql = () => ftsMigrationsInOrder().find((m) => m.name === RESTORE_MIGRATION)!.sql;
+
+    beforeAll(async () => {
+      big = await buildDatabase(proc);
+      // Undo the restore so the column is absent, then make the table "large".
+      await big.exec(`DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";`);
+      await big.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
+      await big.exec(`ALTER TABLE "KbChunk" DROP COLUMN IF EXISTS ${KB_FTS_COLUMN};`);
+      await big.exec(`
+        INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
+        SELECT 'bulk-' || g, '${DOC_ID}', 1000 + g, 'filler chunk ' || g, now() FROM generate_series(1, 5001) g;
+      `);
+    });
+
+    afterAll(async () => {
+      await big?.close();
+    });
+
+    it("raises (nothing committed) when the column is unpopulated, so prisma migrate deploy cannot record it", async () => {
+      const err = await big.exec(restoreSql()).then(() => null).catch((e) => e);
+      expect(err).not.toBeNull();
+      expect(String((err as Error).message)).toMatch(/refusing to backfill\/index inside a migration/);
+      // DO-block failure rolls the whole statement back: no column, no trigger.
+      const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+      expect(probe.columnPresent).toBe(false);
+      expect(probe.triggerEnabled).toBe(false);
+    });
+
+    it("is a harmless no-op once the rollout script has populated the column and built a valid index", async () => {
+      // What scripts/sql/kb_fts_safe_rollout.py does, minus batching/CONCURRENTLY (PGlite).
+      await big.exec(`ALTER TABLE "KbChunk" ADD COLUMN ${KB_FTS_COLUMN} tsvector;`);
+      await big.exec(`
+        CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger LANGUAGE plpgsql AS $fn$
+        BEGIN NEW.${KB_FTS_COLUMN} := to_tsvector('${KB_FTS_CONFIG}', NEW.content); RETURN NEW; END $fn$;
+        CREATE TRIGGER kbchunk_content_tsv_trg BEFORE INSERT OR UPDATE OF content ON "KbChunk"
+          FOR EACH ROW EXECUTE FUNCTION kbchunk_content_tsv_maintain();
+      `);
+      await big.exec(`UPDATE "KbChunk" SET ${KB_FTS_COLUMN} = to_tsvector('${KB_FTS_CONFIG}', content) WHERE ${KB_FTS_COLUMN} IS NULL;`);
+      await big.exec(`CREATE INDEX ${KB_FTS_INDEX} ON "KbChunk" USING GIN (${KB_FTS_COLUMN});`);
+
+      await expect(big.exec(restoreSql())).resolves.toBeDefined();
+      const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+      expect(probe.triggerEnabled).toBe(true);
+      expect(probe.indexValid).toBe(true);
+      const nulls = await big.query<{ n: number }>(`SELECT count(*)::int AS n FROM "KbChunk" WHERE ${KB_FTS_COLUMN} IS NULL`);
+      expect(nulls[0].n).toBe(0);
+    });
+  });
+
   it("declares content_tsv in schema.prisma so a schema diff cannot drop it again", () => {
     const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
     const fromModel = schema.slice(schema.indexOf("model KbChunk {"));

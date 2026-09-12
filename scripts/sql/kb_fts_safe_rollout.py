@@ -13,10 +13,11 @@ WHY THIS SCRIPT EXISTS
   timed out. The statement was terminated. Nothing was changed.
 
 WHAT THIS SCRIPT DOES INSTEAD (each step is short or interruptible)
-  1. Runs the (rewritten) migration.sql: adds a PLAIN nullable tsvector column
-     (catalog-only, milliseconds) and installs the BEFORE INSERT OR UPDATE OF
-     content trigger. On a production-sized table the file itself refuses to
-     backfill or build the index and says so with a NOTICE.
+  1. Bootstraps the schema itself (the same DDL migration.sql carries): a PLAIN
+     nullable tsvector column (catalog-only, milliseconds) and the BEFORE INSERT
+     OR UPDATE OF content trigger. migration.sql is NOT run on a production-sized
+     table — it deliberately RAISES there, so `prisma migrate deploy` can never
+     record the migration as applied before the backfill and index exist.
   2. Backfills `content_tsv` in small committed batches, sleeping between
      batches. Never one long transaction. Ctrl-C between batches is safe.
   3. Builds the GIN index with CREATE INDEX CONCURRENTLY (outside any
@@ -58,6 +59,36 @@ INDEX = "kb_chunk_content_tsv_idx"
 TRIGGER = "kbchunk_content_tsv_trg"
 CONFIG = "simple"
 LOCK_TIMEOUT = "5s"
+
+# Mirrors the column/trigger part of migration.sql. Keep the two in sync: the
+# PGlite test replays migration.sql; production runs this.
+BOOTSTRAP_SQL = f"""
+SET lock_timeout = '{LOCK_TIMEOUT}';
+CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  NEW.{COLUMN} := to_tsvector('{CONFIG}', NEW.content);
+  RETURN NEW;
+END
+$fn$;
+DO $$
+DECLARE col_generated "char";
+BEGIN
+  SELECT a.attgenerated INTO col_generated FROM pg_attribute a
+  WHERE a.attrelid = to_regclass('{TABLE}') AND a.attname = '{COLUMN}' AND NOT a.attisdropped;
+  IF col_generated IS NULL THEN
+    ALTER TABLE {TABLE} ADD COLUMN IF NOT EXISTS {COLUMN} tsvector;
+    col_generated := '';
+  END IF;
+  IF col_generated = 's' THEN
+    DROP TRIGGER IF EXISTS {TRIGGER} ON {TABLE};
+  ELSE
+    DROP TRIGGER IF EXISTS {TRIGGER} ON {TABLE};
+    CREATE TRIGGER {TRIGGER} BEFORE INSERT OR UPDATE OF content ON {TABLE}
+      FOR EACH ROW EXECUTE FUNCTION kbchunk_content_tsv_maintain();
+  END IF;
+END$$;
+"""
 
 
 class Db:
@@ -156,19 +187,17 @@ def main() -> int:
         print("\ncontent_tsv is a legacy STORED generated column: Postgres maintains it, nothing to backfill.")
     if not args.execute:
         print("\nDRY RUN. Plan with --execute:")
-        print(f"  1. psql -f {MIGRATION_SQL.relative_to(REPO)}   (lock_timeout {LOCK_TIMEOUT}; column + trigger only on this table size)")
+        print(f"  1. bootstrap column + trigger (same DDL as migration.sql; lock_timeout {LOCK_TIMEOUT})")
         print(f"  2. backfill {before['nulls']} NULL rows in batches of {args.batch_size}, sleeping {args.sleep}s between batches")
         print(f"  3. CREATE INDEX CONCURRENTLY {INDEX} (if absent or INVALID)")
         print("  4. verify: 0 NULL rows, index valid, lexical query returns rows")
         print(f"  5. prisma migrate resolve --applied {MIGRATION}")
         return 0
 
-    # 1. column + trigger (the migration file refuses the heavy steps on a big table)
-    print("\n[1/5] applying migration.sql (column + trigger) ...")
-    out = db.exec_file(MIGRATION_SQL, timeout=120)
-    for line in out.splitlines():
-        if "NOTICE" in line or "ERROR" in line:
-            print("      " + line.strip()[:160])
+    # 1. column + trigger. Same DDL as migration.sql, minus its backfill/index and
+    #    minus its large-table guard: this script IS the large-table path.
+    print("\n[1/5] bootstrapping column + trigger (catalog-only, lock_timeout " + LOCK_TIMEOUT + ") ...")
+    db.exec(BOOTSTRAP_SQL, timeout=120)
     st = state(db)
     if st["column"] == "absent" or (st["column"] == "plain" and st["trigger"] != "enabled"):
         print(f"      unexpected state after migration.sql: {st}", file=sys.stderr)
@@ -251,6 +280,13 @@ def main() -> int:
     print("      " + (r.stdout + r.stderr).strip().splitlines()[-1][:160])
     if r.returncode != 0:
         return 1
+    # Proof that the file is now a no-op on this database (its large-table guard is
+    # satisfied): a future `prisma migrate deploy` re-run cannot break anything.
+    try:
+        db.exec_file(MIGRATION_SQL, timeout=120)
+        print("      migration.sql re-run: no-op OK")
+    except RuntimeError as e:
+        print("      WARNING: migration.sql re-run failed: " + str(e).splitlines()[0][:140], file=sys.stderr)
     print("\nDone. Check GET /v1/health/retrieval → fullTextSearch.status should be 'ok' (the boot probe re-runs on the next deploy or within the re-probe window).")
     return 0
 

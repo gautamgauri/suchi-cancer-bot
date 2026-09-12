@@ -155,6 +155,13 @@ Safe pattern (what `20260908000000_restore_kb_chunk_fts` now does):
 6. Verify `COUNT(*) WHERE col IS NULL = 0`, `pg_index.indisvalid`, and a live
    query; only then `prisma migrate resolve --applied <migration>`.
 
+The FTS migration `20260908000000_restore_kb_chunk_fts` enforces this: on a table
+with more than 5 000 rows it **raises** (nothing committed) unless the column is
+already populated and the GIN index valid, so `prisma migrate deploy` — including
+the gated pipeline's migration job — cannot record it as applied ahead of the
+backfill. The script below does the bootstrap itself and resolves the migration
+at the end; after that the file is a no-op.
+
 Scripted for the FTS column:
 
 ```bash
