@@ -85,8 +85,16 @@ apps/web/test-results/
 eval/results/
 eval/reports/
 
-# Landing page (separate deployment)
-apps/landing/
+# Landing page (separate deployment) — excluded EXCEPT the hospital directory,
+# which is the canonical source that cloudbuild's `stage-hospitals` step copies
+# into apps/api/data/ for the API image (issue #123). gitignore semantics cannot
+# re-include a file under an excluded directory, so exclude contents level by level.
+apps/landing/*
+!apps/landing/src/
+apps/landing/src/*
+!apps/landing/src/content/
+apps/landing/src/content/*
+!apps/landing/src/content/hospitals.json
 
 
 
