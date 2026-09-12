@@ -36,7 +36,9 @@
 --   3. Backfills and builds the GIN index ONLY on small tables (<= 5000 rows:
 --      dev databases, CI, the PGlite regression test) — i.e. the migration either
 --      COMPLETES or FAILS. On a production-sized table it RAISES an exception
---      (nothing is committed), so `prisma migrate deploy` cannot record it as
+--      and, because the whole file is one DO block, nothing at all is committed
+--      (Prisma 5 does not wrap migration.sql in a transaction; separate
+--      statements would not roll back together), so `prisma migrate deploy` cannot record it as
 --      applied while the column is still unpopulated and unindexed. The
 --      production procedure is `scripts/sql/kb_fts_safe_rollout.py`
 --      (docs/OPERATIONS_RUNBOOK.md §4a): it bootstraps the same column + trigger
@@ -53,21 +55,25 @@
 
 SET lock_timeout = '5s';
 
--- Trigger function: same expression, same 'simple' config, as the query in
--- src/modules/rag/kb-fts.sql.ts (websearch_to_tsquery('simple', ...)).
-CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger
-LANGUAGE plpgsql AS $fn$
-BEGIN
-  NEW.content_tsv := to_tsvector('simple', NEW.content);
-  RETURN NEW;
-END
-$fn$;
-
-DO $$
+-- Everything is ONE DO block on purpose. Prisma 5 does not wrap a PostgreSQL
+-- migration.sql in a transaction, so with separate statements a raise in the guard
+-- below would still leave any earlier statement committed. Inside a single DO block
+-- an exception rolls back the whole block: no function, no column, no trigger.
+DO $do$
 DECLARE
   col_generated "char";   -- attgenerated: 's' = STORED generated, '' = plain, NULL = column absent
   row_count     bigint;
 BEGIN
+  -- Trigger function: same expression, same 'simple' config, as the query in
+  -- src/modules/rag/kb-fts.sql.ts (websearch_to_tsquery('simple', ...)).
+  CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger
+  LANGUAGE plpgsql AS $fn$
+  BEGIN
+    NEW.content_tsv := to_tsvector('simple', NEW.content);
+    RETURN NEW;
+  END
+  $fn$;
+
   SELECT a.attgenerated
     INTO col_generated
   FROM pg_attribute a
@@ -120,4 +126,5 @@ BEGIN
   END IF;
   -- Large table: reaching here means the rollout script already populated the
   -- column and built a valid index (checked above), so there is nothing to do.
-END$$;
+END
+$do$;

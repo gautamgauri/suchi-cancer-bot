@@ -486,6 +486,7 @@ describe("KB full-text search (issue #92)", () => {
       big = await buildDatabase(proc);
       // Undo the restore so the column is absent, then make the table "large".
       await big.exec(`DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";`);
+      await big.exec(`DROP FUNCTION IF EXISTS kbchunk_content_tsv_maintain();`);
       await big.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
       await big.exec(`ALTER TABLE "KbChunk" DROP COLUMN IF EXISTS ${KB_FTS_COLUMN};`);
       await big.exec(`
@@ -502,10 +503,16 @@ describe("KB full-text search (issue #92)", () => {
       const err = await big.exec(restoreSql()).then(() => null).catch((e) => e);
       expect(err).not.toBeNull();
       expect(String((err as Error).message)).toMatch(/refusing to backfill\/index inside a migration/);
-      // DO-block failure rolls the whole statement back: no column, no trigger.
+      // The file is one DO block, so the raise rolls everything back: no column,
+      // no trigger, and not even the helper function (Prisma 5 does not wrap
+      // migration.sql in a transaction, so this atomicity has to come from the file).
       const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
       expect(probe.columnPresent).toBe(false);
       expect(probe.triggerEnabled).toBe(false);
+      const fn = await big.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM pg_proc WHERE proname = 'kbchunk_content_tsv_maintain'`
+      );
+      expect(fn[0].n).toBe(0);
     });
 
     it("is a harmless no-op once the rollout script has populated the column and built a valid index", async () => {
