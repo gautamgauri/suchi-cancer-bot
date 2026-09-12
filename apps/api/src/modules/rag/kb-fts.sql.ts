@@ -21,8 +21,14 @@
 /** Table carrying the FTS column. */
 export const KB_FTS_TABLE = "KbChunk";
 
-/** Generated tsvector column. Defined in raw migration SQL only — see KB_FTS_OWNERSHIP_NOTE. */
+/** tsvector column. Defined in raw migration SQL only — see KB_FTS_OWNERSHIP_NOTE. */
 export const KB_FTS_COLUMN = "content_tsv";
+
+/** Trigger that keeps a plain `content_tsv` current (BEFORE INSERT OR UPDATE OF content). */
+export const KB_FTS_TRIGGER = "kbchunk_content_tsv_trg";
+
+/** The trigger's function; its body carries the text-search config, like a generation expression would. */
+export const KB_FTS_TRIGGER_FN = "kbchunk_content_tsv_maintain";
 
 /** GIN index over the tsvector column. */
 export const KB_FTS_INDEX = "kb_chunk_content_tsv_idx";
@@ -35,10 +41,14 @@ export const KB_FTS_INDEX = "kb_chunk_content_tsv_idx";
 export const KB_FTS_CONFIG = "simple";
 
 export const KB_FTS_OWNERSHIP_NOTE =
-  `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" is a STORED GENERATED column created by raw ` +
-  `migration SQL (20260908000000_restore_kb_chunk_fts). Prisma cannot express generated ` +
-  `columns, so schema.prisma declares it as Unsupported("tsvector") purely to stop a ` +
-  `schema diff from dropping it again. Never "clean it up" out of either place.`;
+  `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" is a plain tsvector kept current by trigger ${KB_FTS_TRIGGER} ` +
+  `(function ${KB_FTS_TRIGGER_FN}), both created by raw migration SQL ` +
+  `(20260908000000_restore_kb_chunk_fts); a legacy STORED GENERATED shape is also accepted. ` +
+  `It is NOT a generated column on purpose: a STORED generated column rewrites the whole table ` +
+  `and every index (incl. the pgvector HNSW index) and caused a 15-minute retrieval outage on ` +
+  `2026-09-12. Prisma cannot express either shape, so schema.prisma declares it as ` +
+  `Unsupported("tsvector") purely to stop a schema diff from dropping it again. Never "clean it ` +
+  `up" out of either place.`;
 
 /**
  * The lexical retrieval query.
@@ -74,9 +84,12 @@ export const KB_FTS_SEARCH_SQL = `
 /**
  * Schema probe: reports whether the objects `KB_FTS_SEARCH_SQL` depends on exist
  * AND are shaped correctly. Existence alone is not enough — `prisma migrate diff`
- * emits `content_tsv tsvector` *without* the GENERATED clause, which would leave a
- * column that is always NULL and an FTS arm that returns zero rows forever without
- * ever raising an error. Hence the `attgenerated` / generation-expression checks.
+ * emits `content_tsv tsvector` with nothing maintaining it, which leaves a column
+ * that is always NULL and an FTS arm that returns zero rows forever without ever
+ * raising an error. So the probe reports HOW the column is maintained — a STORED
+ * generation expression (legacy) or the enabled `KB_FTS_TRIGGER` (current) — and
+ * whether the GIN index is not just present but VALID (an interrupted
+ * `CREATE INDEX CONCURRENTLY` leaves an invalid index behind).
  */
 export const KB_FTS_PROBE_SQL = `
   SELECT
@@ -85,8 +98,23 @@ export const KB_FTS_PROBE_SQL = `
     COALESCE(a.attgenerated = 's', false) AS "columnGenerated",
     pg_get_expr(d.adbin, d.adrelid) AS "generationExpr",
     EXISTS (
+      SELECT 1 FROM pg_trigger t
+      WHERE t.tgrelid = to_regclass('"${KB_FTS_TABLE}"')
+        AND t.tgname = '${KB_FTS_TRIGGER}'
+        AND NOT t.tgisinternal
+        AND t.tgenabled <> 'D'
+    ) AS "triggerEnabled",
+    (
+      SELECT pg_get_functiondef(p.oid) FROM pg_proc p WHERE p.proname = '${KB_FTS_TRIGGER_FN}' LIMIT 1
+    ) AS "triggerFunctionDef",
+    EXISTS (
       SELECT 1 FROM pg_indexes WHERE indexname = '${KB_FTS_INDEX}'
-    ) AS "indexPresent"
+    ) AS "indexPresent",
+    COALESCE((
+      SELECT i.indisvalid AND i.indisready
+      FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+      WHERE c.relname = '${KB_FTS_INDEX}'
+    ), false) AS "indexValid"
   FROM (SELECT 1) probe
   LEFT JOIN pg_attribute a
     ON a.attrelid = to_regclass('"${KB_FTS_TABLE}"')
@@ -100,9 +128,15 @@ export const KB_FTS_PROBE_SQL = `
 export interface KbFtsProbeRow {
   tablePresent: boolean;
   columnPresent: boolean;
+  /** Legacy shape: STORED generated column (Postgres maintains it). */
   columnGenerated: boolean;
   generationExpr: string | null;
+  /** Current shape: plain column kept current by the enabled maintenance trigger. */
+  triggerEnabled: boolean;
+  triggerFunctionDef: string | null;
   indexPresent: boolean;
+  /** pg_index.indisvalid AND indisready — false for an interrupted concurrent build. */
+  indexValid: boolean;
 }
 
 /**

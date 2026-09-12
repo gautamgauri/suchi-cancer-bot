@@ -505,6 +505,35 @@ more, and should be decided together with QA0904-1.
 
 ---
 
+## Incident 2026-09-12 — `KbChunk` table rewrite blocked retrieval for ~15 minutes
+
+**What happened.** Applying the first version of migration
+`20260908000000_restore_kb_chunk_fts` (PR #98) to production re-added
+`content_tsv` as a `GENERATED ALWAYS … STORED` column. Postgres rewrote the
+whole `"KbChunk"` table under an ACCESS EXCLUSIVE lock and rebuilt every index,
+including the pgvector HNSW index. On `db-f1-micro` this ran 15+ minutes
+(10:48–11:03 UTC). Twenty retrieval queries queued behind the lock, the pool hit
+`remaining connection slots are reserved`, `/v1/health` stopped answering, and
+8 web turns hit `REQUEST_TIMEOUT` (0 WhatsApp turns failed — the channel was
+quiet). The backend was terminated with `pg_terminate_backend`; the table, the
+HNSW index and `_prisma_migrations` were unchanged. The on-demand backup taken
+beforehand was not needed.
+
+**Why it was not caught earlier.** The PGlite regression test replays the
+migration against a 3-row table, where the same statement takes milliseconds.
+Rewrite cost is a function of table size and index count, which no unit test
+sees.
+
+**Fix.** The migration was rewritten (same name — no persistent database had
+recorded it) to a plain nullable column + `BEFORE INSERT OR UPDATE OF content`
+trigger, with backfill and `CREATE INDEX CONCURRENTLY` moved to
+`scripts/sql/kb_fts_safe_rollout.py`; the health probe accepts the trigger
+shape and checks `pg_index.indisvalid`. Procedure and the "never rewrite
+`KbChunk`" rule: `docs/OPERATIONS_RUNBOOK.md` §4a.
+
+**Still to do.** Run the rollout script in a night-IST window, then confirm
+`GET /v1/health/retrieval` reports `ok`.
+
 ## Human decisions required (cannot be resolved by an agent)
 
 1. P0-1: keep `deploy-api.yml` as a deploy path (and reconcile it) or demote

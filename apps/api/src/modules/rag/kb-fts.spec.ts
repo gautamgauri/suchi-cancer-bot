@@ -185,18 +185,38 @@ describe("KB full-text search (issue #92)", () => {
     expect(last.sql).toContain(`to_tsvector('${KB_FTS_CONFIG}', content)`);
   });
 
-  it("leaves content_tsv present, STORED GENERATED and on the 'simple' config after replaying the real migrations", async () => {
+  it("leaves content_tsv present, trigger-maintained on the 'simple' config, with a VALID GIN index after replaying the real migrations", async () => {
     const rows = await db.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL);
     expect(rows).toHaveLength(1);
 
     const probe = rows[0];
     expect(probe.tablePresent).toBe(true);
     expect(probe.columnPresent).toBe(true);
-    // Existence alone is not enough: a plain column stays NULL forever and the
-    // lexical arm returns zero rows without ever raising an error.
-    expect(probe.columnGenerated).toBe(true);
-    expect(probe.generationExpr).toContain(`'${KB_FTS_CONFIG}'`);
+    // Existence alone is not enough: an unmaintained column stays NULL forever and
+    // the lexical arm returns zero rows without ever raising an error. The current
+    // shape is a plain column + trigger (a STORED generated column rewrites the
+    // table and every index — the 2026-09-12 outage), so the probe must see the
+    // trigger and its 'simple' config.
+    expect(probe.columnGenerated).toBe(false);
+    expect(probe.triggerEnabled).toBe(true);
+    expect(probe.triggerFunctionDef).toContain(`'${KB_FTS_CONFIG}'`);
     expect(probe.indexPresent).toBe(true);
+    expect(probe.indexValid).toBe(true);
+  });
+
+  it("the trigger keeps content_tsv current on INSERT and on UPDATE OF content", async () => {
+    await db.exec(`INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
+                   VALUES ('chunk-trigger', '${DOC_ID}', 99, 'Mammography screening every two years', now());`);
+    const inserted = await db.query<{ populated: boolean }>(
+      `SELECT ${KB_FTS_COLUMN} IS NOT NULL AS populated FROM "KbChunk" WHERE id = 'chunk-trigger'`
+    );
+    expect(inserted[0].populated).toBe(true);
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).toContain("chunk-trigger");
+
+    await db.exec(`UPDATE "KbChunk" SET content = 'Colposcopy after an abnormal Pap smear' WHERE id = 'chunk-trigger';`);
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).not.toContain("chunk-trigger");
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["Pap smear", 12])).map((r) => r.id)).toContain("chunk-trigger");
+    await db.exec(`DELETE FROM "KbChunk" WHERE id = 'chunk-trigger';`);
   });
 
   it("returns ranked rows for the shipped lexical query", async () => {
@@ -241,15 +261,17 @@ describe("KB full-text search (issue #92)", () => {
     expect(ftsHealth.getHealth().schemaFailureCount).toBe(0);
   });
 
-  it("repairs a schema built from schema.prisma, where Prisma renders content_tsv as a plain column", async () => {
-    // `prisma migrate diff` / `db push` cannot express GENERATED, so a database created
-    // straight from the datamodel gets a `content_tsv tsvector` that is always NULL.
-    // The restore migration must rebuild it, not skip it via IF NOT EXISTS.
+  it("repairs a schema built from schema.prisma, where Prisma renders content_tsv as a plain, unmaintained column", async () => {
+    // `prisma migrate diff` / `db push` gives a `content_tsv tsvector` that nothing
+    // maintains, so it is always NULL. The restore migration must equip that existing
+    // column with the trigger (and backfill it), not skip it via IF NOT EXISTS.
     const fresh = await buildDatabase(proc, { simulateFreshDbPush: true });
     try {
       const probe = (await fresh.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-      expect(probe.columnGenerated).toBe(true);
-      expect(probe.generationExpr).toContain(`'${KB_FTS_CONFIG}'`);
+      expect(probe.columnGenerated).toBe(false);
+      expect(probe.triggerEnabled).toBe(true);
+      expect(probe.triggerFunctionDef).toContain(`'${KB_FTS_CONFIG}'`);
+      expect(probe.indexValid).toBe(true);
 
       const rows = await fresh.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
       expect(rows.map((r) => r.id)).toContain("chunk-hpv");
@@ -346,7 +368,7 @@ describe("KB full-text search (issue #92)", () => {
     });
   });
 
-  describe("when content_tsv is present but not generated (always NULL)", () => {
+  describe("when content_tsv is present but nothing maintains it (always NULL)", () => {
     // The masking case: the column exists, so the query executes and throws
     // nothing — it just returns zero rows forever. Query success must never be
     // read as proof that the schema is healthy.
@@ -364,6 +386,7 @@ describe("KB full-text search (issue #92)", () => {
       const probe = (await unrepaired.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
       expect(probe.columnPresent).toBe(true);
       expect(probe.columnGenerated).toBe(false);
+      expect(probe.triggerEnabled).toBe(false);
 
       const rows = await unrepaired.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
       expect(rows).toHaveLength(0);
@@ -404,6 +427,26 @@ describe("KB full-text search (issue #92)", () => {
         expect(health.isUnavailable()).toBe(true);
       } finally {
         jest.restoreAllMocks();
+      }
+    });
+
+    it("reports 'degraded' (not ok) when the GIN index is left INVALID by an interrupted concurrent build", async () => {
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      const invalid = await buildDatabase(proc);
+      try {
+        // Simulate what a cancelled CREATE INDEX CONCURRENTLY leaves behind.
+        await invalid.exec(`UPDATE pg_index SET indisvalid = false WHERE indexrelid = '${KB_FTS_INDEX}'::regclass;`);
+        const probe = (await invalid.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+        expect(probe.indexPresent).toBe(true);
+        expect(probe.indexValid).toBe(false);
+
+        const health = await new KbFtsHealthService(invalid.asPrisma()).probe();
+        expect(health.status).toBe("degraded");
+        expect(health.detail).toMatch(/INVALID/);
+      } finally {
+        jest.restoreAllMocks();
+        await invalid.close();
       }
     });
 

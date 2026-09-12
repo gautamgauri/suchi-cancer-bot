@@ -7,16 +7,19 @@ import {
   KB_FTS_OWNERSHIP_NOTE,
   KB_FTS_PROBE_SQL,
   KB_FTS_TABLE,
+  KB_FTS_TRIGGER,
   KbFtsProbeRow,
 } from "./kb-fts.sql";
 
 /**
  * Health of the lexical (FTS) arm of hybrid retrieval.
  *
- * - `ok`            — column exists, is a STORED generated tsvector on the expected config, index present.
- * - `degraded`      — queryable but not in the expected shape (e.g. GIN index missing → slow but correct).
- * - `unavailable`   — the column/table the query needs is missing, or present but not generated
- *                     (always NULL). The lexical arm contributes nothing.
+ * - `ok`            — column exists, is maintained (by the enabled trigger, or as a legacy STORED
+ *                     generated column) on the expected config, GIN index present and valid.
+ * - `degraded`      — queryable but not in the expected shape (GIN index missing or invalid → slow
+ *                     but correct; config mismatch → far fewer matches).
+ * - `unavailable`   — the column/table the query needs is missing, or present but maintained by
+ *                     nothing (always NULL). The lexical arm contributes nothing.
  * - `unknown`       — the probe could not run (DB unreachable at boot). Not a verdict.
  */
 export type KbFtsStatus = "ok" | "degraded" | "unavailable" | "unknown";
@@ -102,30 +105,41 @@ export class KbFtsHealthService implements OnModuleInit {
         return this.getHealth();
       }
 
-      if (!row.columnGenerated) {
+      // How is the column kept current? Either Postgres does it (legacy STORED
+      // generated column) or the maintenance trigger does (current shape — a
+      // generated column rewrites the whole table and caused the 2026-09-12 outage).
+      // A plain column with neither is `prisma migrate diff` output: always NULL.
+      const maintainedBy: "generated column" | "trigger" | null = row.columnGenerated
+        ? "generated column"
+        : row.triggerEnabled
+          ? "trigger"
+          : null;
+      if (!maintainedBy) {
         this.set(
           "unavailable",
-          `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" exists but is not a STORED GENERATED column, so it is ` +
-            `always NULL and every lexical query returns zero rows. This is what a schema built by ` +
-            `\`prisma migrate diff\`/\`db push\` produces. Run migration 20260908000000_restore_kb_chunk_fts.`
+          `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" exists but nothing maintains it (not GENERATED, and ` +
+            `trigger ${KB_FTS_TRIGGER} is missing or disabled), so it is always NULL and every lexical ` +
+            `query returns zero rows. This is what a schema built by \`prisma migrate diff\`/\`db push\` ` +
+            `produces. Run migration 20260908000000_restore_kb_chunk_fts.`
         );
         this.logUnavailable();
         return this.getHealth();
       }
 
-      const expr = row.generationExpr ?? "";
+      const expr = (row.columnGenerated ? row.generationExpr : row.triggerFunctionDef) ?? "";
       if (!expr.includes(`'${KB_FTS_CONFIG}'`)) {
         this.set(
           "degraded",
-          `"${KB_FTS_COLUMN}" is generated as ${expr || "<unknown>"} but queries use ` +
-            `websearch_to_tsquery('${KB_FTS_CONFIG}', …). Mismatched text-search configs match far ` +
-            `fewer rows (and no Hindi/Hinglish at all).`
+          `"${KB_FTS_COLUMN}" is maintained by ${maintainedBy} with ${expr ? "a definition that does not use" : "an unreadable definition for"} ` +
+            `'${KB_FTS_CONFIG}', but queries use websearch_to_tsquery('${KB_FTS_CONFIG}', …). Mismatched ` +
+            `text-search configs match far fewer rows (and no Hindi/Hinglish at all).`
         );
         this.logger.error({
           event: "kb_fts_config_mismatch",
           message: this.detail,
           expectedConfig: KB_FTS_CONFIG,
-          generationExpr: expr,
+          maintainedBy,
+          definition: expr.slice(0, 300),
         });
         return this.getHealth();
       }
@@ -140,7 +154,18 @@ export class KbFtsHealthService implements OnModuleInit {
         return this.getHealth();
       }
 
-      this.set("ok", `${KB_FTS_COLUMN} generated on '${KB_FTS_CONFIG}', ${KB_FTS_INDEX} present`);
+      if (!row.indexValid) {
+        this.set(
+          "degraded",
+          `GIN index ${KB_FTS_INDEX} exists but is INVALID — an interrupted CREATE INDEX CONCURRENTLY ` +
+            `leaves this behind. The planner ignores it (sequential scans). DROP INDEX ${KB_FTS_INDEX} ` +
+            `and rebuild it CONCURRENTLY.`
+        );
+        this.logger.error({ event: "kb_fts_index_invalid", message: this.detail, index: KB_FTS_INDEX });
+        return this.getHealth();
+      }
+
+      this.set("ok", `${KB_FTS_COLUMN} maintained by ${maintainedBy} on '${KB_FTS_CONFIG}', ${KB_FTS_INDEX} present and valid`);
       this.logger.log({
         event: "kb_fts_health_ok",
         message: `Lexical retrieval arm ready: ${this.detail}`,
@@ -201,15 +226,15 @@ export class KbFtsHealthService implements OnModuleInit {
    * A lexical query completed without throwing.
    *
    * Execution success is NOT evidence that the schema is repaired. A plain,
-   * non-generated `content_tsv` column — what `prisma migrate diff` emits, and
+   * unmaintained `content_tsv` column — what `prisma migrate diff` emits, and
    * precisely what the restore migration exists to repair — satisfies this
    * query, returns zero rows, and throws nothing. Clearing an `unavailable`
    * verdict on that basis would report a dead lexical arm as healthy, which is
    * the exact masking this service exists to prevent.
    *
    * So a success never sets `ok` directly. It only schedules a re-probe, which
-   * checks `attgenerated` and the generation expression and is the sole
-   * authority on the verdict. Throttled and never awaited, so the retrieval
+   * checks how the column is maintained (trigger or generation expression) and
+   * is the sole authority on the verdict. Throttled and never awaited, so the retrieval
    * path is not slowed.
    */
   recordQuerySuccess(): void {

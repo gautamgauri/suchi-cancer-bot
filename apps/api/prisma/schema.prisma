@@ -165,20 +165,13 @@ model KbChunk {
   content    String
   embedding  Unsupported("vector(768)")? // pgvector for semantic search
 
-  /// Full-text search vector for the lexical arm of hybrid retrieval.
-  ///
-  /// DO NOT REMOVE. In the database this is a STORED GENERATED column
-  /// (`GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED`), created by raw
-  /// migration SQL — Prisma cannot express generated columns, so it is declared here
-  /// as Unsupported() purely so a schema diff sees it and does not emit a DROP.
-  ///
-  /// It was invisible to Prisma before, and migration 20260606000000 duly dropped it;
-  /// `RagService.fullTextSearchWithMetadata` then failed silently for three months
-  /// (issue #92). Migration 20260908000000_restore_kb_chunk_fts restored it and also
-  /// repairs the shape a Prisma-generated schema would produce, because
-  /// `prisma migrate diff` renders this field as a plain, never-populated
-  /// `content_tsv tsvector`. `KbFtsHealthService` verifies at boot that the live
-  /// column really is generated on the 'simple' config.
+  /// DO NOT REMOVE. Full-text-search vector, owned by raw migration SQL (20260908000000_restore_kb_chunk_fts):
+  /// a PLAIN tsvector kept current by trigger kbchunk_content_tsv_trg. Deliberately NOT a
+  /// STORED generated column — that rewrites the whole table and every index (incl. the
+  /// pgvector HNSW index) and caused a 15-minute retrieval outage on 2026-09-12.
+  /// Declared here only so a schema diff cannot drop it again; `prisma migrate diff` renders
+  /// it as a bare `content_tsv tsvector`, which the migration then equips with the trigger.
+  /// `KbFtsHealthService` verifies at boot that the live column really is maintained.
   content_tsv Unsupported("tsvector")?
 
   createdAt  DateTime @default(now())
