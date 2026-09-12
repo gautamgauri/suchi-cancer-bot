@@ -197,7 +197,7 @@ operational detail in `docs/OPERATIONS_RUNBOOK.md`; pipeline internals in
 | `suchi-db-migrate` / `suchi-migrate` | Cloud Run Jobs running `prisma migrate deploy` | `cloudbuild.gated.yaml` / `deploy-api.yml` respectively |
 | `suchi-kb-ingest` | Cloud Run Job image (KB ingestion, `Dockerfile.kb-ingest`) | `cloudbuild.kb-ingest.yaml` |
 | `suchi-navigator-research`, `suchi-navigator-sender` | Cloud Run Jobs (hospital research via Claude API; daily sender) | `cloudbuild.navigator-research.yaml` |
-| Autoresearch loop | Cloud Build run producing `autoresearch/*` proposal branches (never auto-merged) | `cloudbuild-autoresearch.yaml` |
+| Autoresearch loop — **PAUSED 2026-07-20** (trigger disabled; see issue #60) | Cloud Build run producing `autoresearch/*` proposal branches (never auto-merged, never a deploy gate) | `cloudbuild-autoresearch.yaml` |
 | Database | Cloud SQL Postgres `suchi-db` with pgvector | connection `gen-lang-client-0202543132:us-central1:suchi-db` |
 
 **Critical property:** every deploy path uses `--set-env-vars` /

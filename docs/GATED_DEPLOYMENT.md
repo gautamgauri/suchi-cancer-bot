@@ -9,7 +9,9 @@ This deployment pattern provides "staging safety" without creating a separate en
 3. Only shifting traffic to the candidate if the health check passes
 4. If the health check fails, the build stops and live traffic remains on the previous revision
 
-> **Note (Feb 2026):** The eval:tier1 gate was removed from the gated pipeline due to reliability issues (see `cloudbuild-gated-issues.md`). The gate is now health-check only. Quality gating is handled separately by the autoresearch engine (`eval/autoresearch/`).
+> **Note (Feb 2026, corrected 2026-09-10):** The eval:tier1 gate was removed from the gated pipeline due to reliability issues (see `cloudbuild-gated-issues.md`). **The gate is health-check only: nothing gates answer quality on deploy.**
+>
+> This note previously said "Quality gating is handled separately by the autoresearch engine (`eval/autoresearch/`)". That has been false since 2026-07-20, when the `autoresearch-nightly` Cloud Build trigger was disabled (audit record and re-enable criteria: issue #60). The autoresearch loop was proposal-mode only in any case — it pushed `autoresearch/*` branches for human review and never gated a deploy. Do not read this page as describing a quality safety net on the deploy path; there is none. Retrieval quality is watched *after* the fact by the nightly Tier1 eval (`.github/workflows/eval-tier1.yml`), which is a canary, not a gate.
 
 ## How It Works
 
