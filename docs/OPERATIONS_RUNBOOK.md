@@ -125,6 +125,58 @@ Rules that apply to **any** deploy path:
    both cloudbuild files (and `deploy-api.yml` if it stays enabled).
 2. Verify local checks pass: run configuration parity check (`python scripts/check_deploy_config_parity.py`), ensure tests pass, `prisma migrate status` is clean, no doubled route prefixes, and the health check responds with 200. Refer to `docs/DEPLOYMENT.md` for details.
 3. Deploys are a human decision; agents open PRs only (see `AGENTS.md`).
+4. A migration that touches `KbChunk` must follow §4a — no table rewrites in
+   traffic hours, ever.
+
+## 4a. Schema changes on `KbChunk` — never a table rewrite
+
+`"KbChunk"` is ~74k rows of 1.4 KB text plus a 768-d `embedding` vector each,
+with a pgvector HNSW index. On suchi-db (`db-f1-micro`) **any statement that
+rewrites the table is a production outage**: the rewrite runs under an
+ACCESS EXCLUSIVE lock and rebuilds every index including the HNSW one. Measured
+2026-09-12: `ALTER TABLE "KbChunk" ADD COLUMN … GENERATED ALWAYS … STORED` ran
+15+ minutes, 20 retrieval queries queued behind it, the connection pool filled
+(`remaining connection slots are reserved`), `/v1/health` stopped answering and
+chat turns timed out until the backend was terminated. Statements that rewrite:
+adding a column with a volatile/non-null default or a STORED generated
+expression, changing a column type, `VACUUM FULL`, `CLUSTER`.
+
+Safe pattern (what `20260908000000_restore_kb_chunk_fts` now does):
+
+1. `SET lock_timeout = '5s'` — a metadata change that cannot get its lock aborts
+   instead of queueing behind a long transaction.
+2. Add the column **plain and nullable, no default** (catalog-only).
+3. Install the maintenance **trigger before backfilling**, so rows written
+   during the backfill are covered.
+4. Backfill in **small committed batches** (1 000–2 000 rows, short sleep
+   between), never one transaction. Watch DB CPU / connections / lock waiters.
+5. Build the index **after** the backfill with `CREATE INDEX CONCURRENTLY`
+   (outside any transaction — Prisma migrations cannot contain it).
+6. Verify `COUNT(*) WHERE col IS NULL = 0`, `pg_index.indisvalid`, and a live
+   query; only then `prisma migrate resolve --applied <migration>`.
+
+The FTS migration `20260908000000_restore_kb_chunk_fts` enforces this: on a table
+with more than 5 000 rows it **raises** (nothing committed) unless the column is
+already populated and the GIN index valid, so `prisma migrate deploy` — including
+the gated pipeline's migration job — cannot record it as applied ahead of the
+backfill. The script below does the bootstrap itself and resolves the migration
+at the end; after that the file is a no-op.
+
+Scripted for the FTS column:
+
+```bash
+# Terminal 1: cloud-sql-proxy … --port 5433   (see §1)
+# Terminal 2, repo root, low-traffic window (night IST):
+export DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)"
+python3 scripts/sql/kb_fts_safe_rollout.py            # dry run: state + plan
+python3 scripts/sql/kb_fts_safe_rollout.py --execute  # column+trigger → batched backfill → CONCURRENT index → verify → resolve
+curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health/retrieval   # fullTextSearch.status: ok
+```
+
+If something is already holding a lock on `KbChunk` for minutes, find it with
+`SELECT pid, now()-query_start, left(query,80) FROM pg_stat_activity WHERE
+state='active' ORDER BY query_start;` and `pg_terminate_backend(pid)` — a
+cancelled DDL rolls back cleanly.
 
 ## 5. Production health checks
 

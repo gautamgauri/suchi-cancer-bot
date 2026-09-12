@@ -185,18 +185,38 @@ describe("KB full-text search (issue #92)", () => {
     expect(last.sql).toContain(`to_tsvector('${KB_FTS_CONFIG}', content)`);
   });
 
-  it("leaves content_tsv present, STORED GENERATED and on the 'simple' config after replaying the real migrations", async () => {
+  it("leaves content_tsv present, trigger-maintained on the 'simple' config, with a VALID GIN index after replaying the real migrations", async () => {
     const rows = await db.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL);
     expect(rows).toHaveLength(1);
 
     const probe = rows[0];
     expect(probe.tablePresent).toBe(true);
     expect(probe.columnPresent).toBe(true);
-    // Existence alone is not enough: a plain column stays NULL forever and the
-    // lexical arm returns zero rows without ever raising an error.
-    expect(probe.columnGenerated).toBe(true);
-    expect(probe.generationExpr).toContain(`'${KB_FTS_CONFIG}'`);
+    // Existence alone is not enough: an unmaintained column stays NULL forever and
+    // the lexical arm returns zero rows without ever raising an error. The current
+    // shape is a plain column + trigger (a STORED generated column rewrites the
+    // table and every index — the 2026-09-12 outage), so the probe must see the
+    // trigger and its 'simple' config.
+    expect(probe.columnGenerated).toBe(false);
+    expect(probe.triggerEnabled).toBe(true);
+    expect(probe.triggerFunctionDef).toContain(`'${KB_FTS_CONFIG}'`);
     expect(probe.indexPresent).toBe(true);
+    expect(probe.indexValid).toBe(true);
+  });
+
+  it("the trigger keeps content_tsv current on INSERT and on UPDATE OF content", async () => {
+    await db.exec(`INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
+                   VALUES ('chunk-trigger', '${DOC_ID}', 99, 'Mammography screening every two years', now());`);
+    const inserted = await db.query<{ populated: boolean }>(
+      `SELECT ${KB_FTS_COLUMN} IS NOT NULL AS populated FROM "KbChunk" WHERE id = 'chunk-trigger'`
+    );
+    expect(inserted[0].populated).toBe(true);
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).toContain("chunk-trigger");
+
+    await db.exec(`UPDATE "KbChunk" SET content = 'Colposcopy after an abnormal Pap smear' WHERE id = 'chunk-trigger';`);
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).not.toContain("chunk-trigger");
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["Pap smear", 12])).map((r) => r.id)).toContain("chunk-trigger");
+    await db.exec(`DELETE FROM "KbChunk" WHERE id = 'chunk-trigger';`);
   });
 
   it("returns ranked rows for the shipped lexical query", async () => {
@@ -241,15 +261,17 @@ describe("KB full-text search (issue #92)", () => {
     expect(ftsHealth.getHealth().schemaFailureCount).toBe(0);
   });
 
-  it("repairs a schema built from schema.prisma, where Prisma renders content_tsv as a plain column", async () => {
-    // `prisma migrate diff` / `db push` cannot express GENERATED, so a database created
-    // straight from the datamodel gets a `content_tsv tsvector` that is always NULL.
-    // The restore migration must rebuild it, not skip it via IF NOT EXISTS.
+  it("repairs a schema built from schema.prisma, where Prisma renders content_tsv as a plain, unmaintained column", async () => {
+    // `prisma migrate diff` / `db push` gives a `content_tsv tsvector` that nothing
+    // maintains, so it is always NULL. The restore migration must equip that existing
+    // column with the trigger (and backfill it), not skip it via IF NOT EXISTS.
     const fresh = await buildDatabase(proc, { simulateFreshDbPush: true });
     try {
       const probe = (await fresh.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-      expect(probe.columnGenerated).toBe(true);
-      expect(probe.generationExpr).toContain(`'${KB_FTS_CONFIG}'`);
+      expect(probe.columnGenerated).toBe(false);
+      expect(probe.triggerEnabled).toBe(true);
+      expect(probe.triggerFunctionDef).toContain(`'${KB_FTS_CONFIG}'`);
+      expect(probe.indexValid).toBe(true);
 
       const rows = await fresh.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
       expect(rows.map((r) => r.id)).toContain("chunk-hpv");
@@ -346,7 +368,7 @@ describe("KB full-text search (issue #92)", () => {
     });
   });
 
-  describe("when content_tsv is present but not generated (always NULL)", () => {
+  describe("when content_tsv is present but nothing maintains it (always NULL)", () => {
     // The masking case: the column exists, so the query executes and throws
     // nothing — it just returns zero rows forever. Query success must never be
     // read as proof that the schema is healthy.
@@ -364,6 +386,7 @@ describe("KB full-text search (issue #92)", () => {
       const probe = (await unrepaired.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
       expect(probe.columnPresent).toBe(true);
       expect(probe.columnGenerated).toBe(false);
+      expect(probe.triggerEnabled).toBe(false);
 
       const rows = await unrepaired.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
       expect(rows).toHaveLength(0);
@@ -407,6 +430,26 @@ describe("KB full-text search (issue #92)", () => {
       }
     });
 
+    it("reports 'degraded' (not ok) when the GIN index is left INVALID by an interrupted concurrent build", async () => {
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      const invalid = await buildDatabase(proc);
+      try {
+        // Simulate what a cancelled CREATE INDEX CONCURRENTLY leaves behind.
+        await invalid.exec(`UPDATE pg_index SET indisvalid = false WHERE indexrelid = '${KB_FTS_INDEX}'::regclass;`);
+        const probe = (await invalid.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+        expect(probe.indexPresent).toBe(true);
+        expect(probe.indexValid).toBe(false);
+
+        const health = await new KbFtsHealthService(invalid.asPrisma()).probe();
+        expect(health.status).toBe("degraded");
+        expect(health.detail).toMatch(/INVALID/);
+      } finally {
+        jest.restoreAllMocks();
+        await invalid.close();
+      }
+    });
+
     it("does clear the verdict once the schema is actually repaired", async () => {
       // The recovery path must still work — the fix defers to the probe, it
       // does not pin the verdict permanently.
@@ -429,6 +472,67 @@ describe("KB full-text search (issue #92)", () => {
       } finally {
         jest.restoreAllMocks();
       }
+    });
+  });
+
+  describe("on a production-sized table the migration refuses instead of rewriting (review on the #92 follow-up)", () => {
+    // The 2026-09-12 outage: a STORED generated column rewrote the whole table.
+    // The safeguard is that migration.sql can never leave a large table half-done
+    // and be recorded as applied — it either completes (small table) or raises.
+    let big: PgliteDatabase;
+    const restoreSql = () => ftsMigrationsInOrder().find((m) => m.name === RESTORE_MIGRATION)!.sql;
+
+    beforeAll(async () => {
+      big = await buildDatabase(proc);
+      // Undo the restore so the column is absent, then make the table "large".
+      await big.exec(`DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";`);
+      await big.exec(`DROP FUNCTION IF EXISTS kbchunk_content_tsv_maintain();`);
+      await big.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
+      await big.exec(`ALTER TABLE "KbChunk" DROP COLUMN IF EXISTS ${KB_FTS_COLUMN};`);
+      await big.exec(`
+        INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
+        SELECT 'bulk-' || g, '${DOC_ID}', 1000 + g, 'filler chunk ' || g, now() FROM generate_series(1, 5001) g;
+      `);
+    });
+
+    afterAll(async () => {
+      await big?.close();
+    });
+
+    it("raises (nothing committed) when the column is unpopulated, so prisma migrate deploy cannot record it", async () => {
+      const err = await big.exec(restoreSql()).then(() => null).catch((e) => e);
+      expect(err).not.toBeNull();
+      expect(String((err as Error).message)).toMatch(/refusing to backfill\/index inside a migration/);
+      // The file is one DO block, so the raise rolls everything back: no column,
+      // no trigger, and not even the helper function (Prisma 5 does not wrap
+      // migration.sql in a transaction, so this atomicity has to come from the file).
+      const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+      expect(probe.columnPresent).toBe(false);
+      expect(probe.triggerEnabled).toBe(false);
+      const fn = await big.query<{ n: number }>(
+        `SELECT count(*)::int AS n FROM pg_proc WHERE proname = 'kbchunk_content_tsv_maintain'`
+      );
+      expect(fn[0].n).toBe(0);
+    });
+
+    it("is a harmless no-op once the rollout script has populated the column and built a valid index", async () => {
+      // What scripts/sql/kb_fts_safe_rollout.py does, minus batching/CONCURRENTLY (PGlite).
+      await big.exec(`ALTER TABLE "KbChunk" ADD COLUMN ${KB_FTS_COLUMN} tsvector;`);
+      await big.exec(`
+        CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger LANGUAGE plpgsql AS $fn$
+        BEGIN NEW.${KB_FTS_COLUMN} := to_tsvector('${KB_FTS_CONFIG}', NEW.content); RETURN NEW; END $fn$;
+        CREATE TRIGGER kbchunk_content_tsv_trg BEFORE INSERT OR UPDATE OF content ON "KbChunk"
+          FOR EACH ROW EXECUTE FUNCTION kbchunk_content_tsv_maintain();
+      `);
+      await big.exec(`UPDATE "KbChunk" SET ${KB_FTS_COLUMN} = to_tsvector('${KB_FTS_CONFIG}', content) WHERE ${KB_FTS_COLUMN} IS NULL;`);
+      await big.exec(`CREATE INDEX ${KB_FTS_INDEX} ON "KbChunk" USING GIN (${KB_FTS_COLUMN});`);
+
+      await expect(big.exec(restoreSql())).resolves.toBeDefined();
+      const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
+      expect(probe.triggerEnabled).toBe(true);
+      expect(probe.indexValid).toBe(true);
+      const nulls = await big.query<{ n: number }>(`SELECT count(*)::int AS n FROM "KbChunk" WHERE ${KB_FTS_COLUMN} IS NULL`);
+      expect(nulls[0].n).toBe(0);
     });
   });
 
