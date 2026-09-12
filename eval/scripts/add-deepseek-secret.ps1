@@ -38,9 +38,14 @@ if (-not $SkipPrompt) {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
     Write-Host ""
 } else {
-    # Fallback for automation (not recommended for production)
-    $ApiKey = "sk-6bc325dec38c4d4c95f9f4ecb185e1dc"
-    Write-Host "⚠ Using default API key from script (not recommended for production)" -ForegroundColor Yellow
+    # Automation path: the key must come from the environment. This script used to
+    # carry a literal key here (issue #127) — never again.
+    $ApiKey = $env:DEEPSEEK_API_KEY
+    if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+        Write-Host "ERROR: -SkipPrompt requires DEEPSEEK_API_KEY to be set in the environment" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Using DEEPSEEK_API_KEY from the environment" -ForegroundColor Yellow
     Write-Host ""
 }
 

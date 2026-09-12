@@ -17,12 +17,17 @@ try {
         $env:DEEPSEEK_API_KEY = $deepseekKey.Trim()
         Write-Host "Deepseek API key loaded" -ForegroundColor Green
     } else {
-        Write-Host "Warning: Could not load from Secret Manager. Using hardcoded key." -ForegroundColor Yellow
-        $env:DEEPSEEK_API_KEY = "sk-6bc325dec38c4d4c95f9f4ecb185e1dc"
+        throw "gcloud exited $LASTEXITCODE"
     }
 } catch {
-    Write-Host "Warning: Could not load from Secret Manager. Using hardcoded key." -ForegroundColor Yellow
-    $env:DEEPSEEK_API_KEY = "sk-6bc325dec38c4d4c95f9f4ecb185e1dc"
+    # No key literal in this repo (issue #127). Fall back ONLY to a key the caller
+    # already exported; otherwise stop, never guess.
+    if ([string]::IsNullOrWhiteSpace($env:DEEPSEEK_API_KEY)) {
+        Write-Host "ERROR: Could not load deepseek-api-key from Secret Manager ($_) and DEEPSEEK_API_KEY is not set." -ForegroundColor Red
+        Write-Host "       Run 'gcloud auth login' or export DEEPSEEK_API_KEY in this shell first." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Warning: Secret Manager unavailable — using DEEPSEEK_API_KEY from the environment." -ForegroundColor Yellow
 }
 
 # API is already configured in default.json to use GCloud

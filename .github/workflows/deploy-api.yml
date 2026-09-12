@@ -67,6 +67,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: No credential-shaped literals in tracked files (issue #127)
+        run: python3 scripts/check_no_secret_literals.py
+
       - name: Check deploy pipeline config parity
         run: python3 scripts/check_deploy_config_parity.py
 
