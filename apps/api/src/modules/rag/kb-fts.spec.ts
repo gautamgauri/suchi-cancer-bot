@@ -241,6 +241,7 @@ describe("KB full-text search (issue #92)", () => {
 
   it("RagService.fullTextSearchWithMetadata returns normalized evidence chunks against a real database", async () => {
     const ftsHealth = new KbFtsHealthService(db.asPrisma());
+    await ftsHealth.probe(); // as onModuleInit does at boot — the gate needs an `ok` verdict
     const rag = ragServiceOn(db, ftsHealth);
 
     const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing cervical cancer screening", 6);
@@ -332,42 +333,75 @@ describe("KB full-text search (issue #92)", () => {
       }
     });
 
-    it("a query success does NOT flip a stale 'unavailable' verdict to 'ok' — the re-probe says degraded", async () => {
+    it("REGRESSION: while degraded, RagService does NOT run the lexical SQL — it answers vector-only", async () => {
+      // Review on the expression-index PR: a missing index must not turn every
+      // hybrid turn into a full-table to_tsvector() scan on a small instance.
       jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
       jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
       try {
-        const health = new KbFtsHealthService(noIndex.asPrisma());
-        (health as any).set("unavailable", "forced stale verdict for test");
+        const prisma = noIndex.asPrisma();
+        const health = new KbFtsHealthService(prisma);
+        await health.probe();
+        expect(health.getHealth().status).toBe("degraded");
+
+        const rawSpy = jest.spyOn(prisma, "$queryRawUnsafe");
         const rag = ragServiceOn(noIndex, health);
         const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
-        expect(chunks.length).toBeGreaterThan(0);
 
-        const deadline = Date.now() + 3000;
-        while (health.getHealth().status === "unavailable" && Date.now() < deadline) {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
+        expect(chunks).toEqual([]);
+        const lexicalCalls = rawSpy.mock.calls.filter((c) => String(c[0]).includes("websearch_to_tsquery"));
+        expect(lexicalCalls).toHaveLength(0);
+        // The gate schedules a re-probe (probe SQL) instead — verdict stays degraded here.
+        await new Promise((resolve) => setTimeout(resolve, 300));
         expect(health.getHealth().status).toBe("degraded");
       } finally {
         jest.restoreAllMocks();
       }
     });
+
+    it("resumes the lexical arm by itself once the index exists and the re-probe sees it", async () => {
+      jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(noIndex.asPrisma());
+        await health.probe();
+        expect(health.shouldQuery()).toBe(false);
+
+        await noIndex.exec(`CREATE INDEX ${KB_FTS_INDEX} ON "KbChunk" USING GIN (to_tsvector('${KB_FTS_CONFIG}', content));`);
+        // Throttle window is 30 s in production; call the probe directly here.
+        await health.probe();
+        expect(health.shouldQuery()).toBe(true);
+
+        const rag = ragServiceOn(noIndex, health);
+        const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+        expect(chunks.map((c: any) => c.chunkId)).toContain("chunk-hpv");
+      } finally {
+        await noIndex.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
+        jest.restoreAllMocks();
+      }
+    });
   });
 
-  it("does clear a stale 'unavailable' verdict once a query succeeds on a healthy schema", async () => {
+  it("does clear a stale 'unavailable' verdict on a healthy schema: the gate skips once, re-probes, then the arm runs", async () => {
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
     try {
       const health = new KbFtsHealthService(db.asPrisma());
       (health as any).set("unavailable", "forced stale verdict for test");
       expect(health.isUnavailable()).toBe(true);
 
       const rag = ragServiceOn(db, health);
-      await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+      // First call is skipped (vector-only) but schedules the re-probe.
+      expect(await (rag as any).fullTextSearchWithMetadata("HPV testing", 6)).toEqual([]);
 
       const deadline = Date.now() + 3000;
       while (health.getHealth().status !== "ok" && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
       expect(health.getHealth().status).toBe("ok");
+      // …and the next call runs the lexical arm.
+      const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+      expect(chunks.map((c: any) => c.chunkId)).toContain("chunk-hpv");
     } finally {
       jest.restoreAllMocks();
     }
@@ -438,6 +472,8 @@ describe("KB full-text search (issue #92)", () => {
 
     it("escalates a failing lexical query instead of swallowing it, while chat keeps serving", async () => {
       const health = new KbFtsHealthService(broken.asPrisma());
+      // The table vanished AFTER a healthy boot probe: the gate lets the query run once.
+      (health as any).set("ok", "stale ok from boot");
       const rag = ragServiceOn(broken, health);
 
       const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);

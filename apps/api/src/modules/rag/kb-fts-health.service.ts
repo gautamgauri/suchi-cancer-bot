@@ -49,6 +49,16 @@ const LOG_THROTTLE_MS = 60_000;
  * noticed for three months. This service exists so that the distinction is
  * explicit, checked once at boot, counted per query, and reported on /v1/health.
  *
+ * OPERATIONAL GATE (review on the expression-index PR): `RagService` asks
+ * `shouldQuery()` before running the lexical SQL. Only an `ok` verdict runs it.
+ * With no/invalid index the expression query would compute to_tsvector over
+ * every chunk on every hybrid turn — correct rows, but a full-table scan per
+ * turn on a small instance is how an index regression becomes a latency and
+ * pool incident. So `degraded`, `unavailable` AND `unknown` all skip the arm
+ * (vector-only) and schedule a throttled re-probe; the arm resumes by itself
+ * once the probe sees a valid index. `unknown` skipping is deliberate: better
+ * one throttled probe than a blind scan.
+ *
  * Deliberate non-goal: this does NOT abort boot when something is missing.
  * Vector-only retrieval still answers correctly (just with degraded ranking), so
  * refusing to start would turn a ranking regression into a full chat outage for
@@ -72,6 +82,7 @@ export class KbFtsHealthService implements OnModuleInit {
   private lastError: string | null = null;
   private lastSchemaLogAt = 0;
   private lastQueryLogAt = 0;
+  private lastSkipLogAt = 0;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -165,6 +176,55 @@ export class KbFtsHealthService implements OnModuleInit {
   }
 
   /**
+   * Gate for the lexical arm: run the (expression) query only when the probe's
+   * last verdict is `ok`. Anything else returns false — the caller answers
+   * vector-only — and schedules a throttled re-probe so the arm comes back on
+   * its own once the index is valid again. Logged at warn, throttled.
+   */
+  shouldQuery(): boolean {
+    if (this.status === "ok") return true;
+
+    const now = Date.now();
+    if (now - this.lastSkipLogAt > LOG_THROTTLE_MS) {
+      this.lastSkipLogAt = now;
+      this.logger.warn({
+        event: "kb_fts_arm_skipped",
+        message:
+          `Lexical retrieval arm skipped (verdict: ${this.status}) — answering vector-only rather than ` +
+          `computing to_tsvector over every chunk per turn. ${this.detail}`,
+        status: this.status,
+      });
+    }
+    this.scheduleReprobe();
+    return false;
+  }
+
+  /** Throttled, fire-and-forget re-probe; the probe is the sole authority on the verdict. */
+  private scheduleReprobe(): void {
+    const now = Date.now();
+    if (this.reprobeInFlight || now - this.lastReprobeAt < KbFtsHealthService.REPROBE_THROTTLE_MS) {
+      return;
+    }
+    this.reprobeInFlight = true;
+    this.lastReprobeAt = now;
+    void this.probe()
+      .then((health) => {
+        if (health.status === "ok") {
+          this.logger.log({
+            event: "kb_fts_recovered",
+            message: "Lexical retrieval arm is back — schema re-probe confirms a valid expression index",
+          });
+        }
+      })
+      .catch(() => {
+        // probe() sets and logs its own verdict on failure; nothing to add.
+      })
+      .finally(() => {
+        this.reprobeInFlight = false;
+      });
+  }
+
+  /**
    * A lexical query failed because the schema does not match it. This is the
    * condition that hid for three months — it is logged at error level with a
    * dedicated event and surfaced on the health endpoint, not swallowed.
@@ -202,45 +262,14 @@ export class KbFtsHealthService implements OnModuleInit {
   }
 
   /**
-   * A lexical query completed without throwing.
-   *
-   * Execution success is NOT evidence that the schema is healthy: with an
-   * expression query, "no index" and "indexed" produce the same rows, only at
-   * different speeds. So a success never sets `ok` directly. It only schedules a
-   * re-probe, which inspects the index and is the sole authority on the verdict.
-   * Throttled and never awaited, so the retrieval path is not slowed.
+   * A lexical query completed without throwing. Success is NOT evidence that the
+   * index is healthy (an un-indexed expression query returns the same rows,
+   * slowly), so this never sets `ok` directly — it only lets the probe re-check
+   * when we are carrying a negative or unproven verdict.
    */
   recordQuerySuccess(): void {
-    // Hot path: nothing to reconsider unless we are currently carrying a
-    // negative or unproven verdict.
     if (this.status !== "unavailable" && this.status !== "unknown") return;
-
-    const now = Date.now();
-    if (
-      this.reprobeInFlight ||
-      now - this.lastReprobeAt < KbFtsHealthService.REPROBE_THROTTLE_MS
-    ) {
-      return;
-    }
-
-    this.reprobeInFlight = true;
-    this.lastReprobeAt = now;
-
-    void this.probe()
-      .then((health) => {
-        if (health.status === "ok") {
-          this.logger.log({
-            event: "kb_fts_recovered",
-            message: "Lexical retrieval arm is answering again — schema re-probe confirms it",
-          });
-        }
-      })
-      .catch(() => {
-        // probe() sets and logs its own verdict on failure; nothing to add.
-      })
-      .finally(() => {
-        this.reprobeInFlight = false;
-      });
+    this.scheduleReprobe();
   }
 
   getHealth(): KbFtsHealth {

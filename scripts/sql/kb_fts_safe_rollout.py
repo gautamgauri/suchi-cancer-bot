@@ -65,7 +65,7 @@ class Db:
         p = urlparse.urlparse(url)
         self.user = urlparse.unquote(p.username or "")
         self.password = urlparse.unquote(p.password or "")
-        self.dbname = p.path.lstrip("/")
+        self.dbname = urlparse.unquote(p.path.lstrip("/"))
         self.host, self.port = host, port
 
     def _base(self) -> list[str]:
@@ -93,7 +93,10 @@ class Db:
         return (r.stdout + r.stderr).strip()
 
     def prisma_url(self) -> str:
-        return f"postgresql://{urlparse.quote(self.user)}:{urlparse.quote(self.password)}@{self.host}:{self.port}/{self.dbname}"
+        # safe='' so a '/' (or any reserved char) in user/password/dbname is percent-encoded;
+        # the default safe='/' would emit an invalid URL.
+        q = lambda v: urlparse.quote(v, safe="")
+        return f"postgresql://{q(self.user)}:{q(self.password)}@{self.host}:{self.port}/{q(self.dbname)}"
 
 
 def state(db: Db) -> dict[str, str]:
