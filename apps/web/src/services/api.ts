@@ -42,6 +42,12 @@ export interface ChatResponse {
   safety: {
     classification: "normal" | "refusal" | "red_flag" | "self_harm";
     actions: Array<"show_emergency_banner" | "suggest_doctor_visit" | "end_conversation">;
+    /**
+     * Escalation copy for the emergency banner, sent with
+     * `show_emergency_banner`. Optional: older API builds omit it, and the
+     * client then slices `responseText` instead (see resolveEscalationText).
+     */
+    bannerText?: string;
   };
 }
 

@@ -1,4 +1,6 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import { removeCitationMarkers } from "../utils/citationParser";
 
 interface SafetyBannerProps {
   classification: "red_flag" | "self_harm";
@@ -21,7 +23,14 @@ export const SafetyBanner: React.FC<SafetyBannerProps> = ({ classification, mess
         <div style={styles.title}>
           {isEmergency ? "Seek Emergency Medical Care" : "Important Notice"}
         </div>
-        <div style={styles.message}>{message}</div>
+        {/*
+          Issue #111: the escalation copy is markdown, so it goes through the
+          same ReactMarkdown pipeline the message bubble uses. Rendering it as
+          plain text showed patients literal `**` on the highest-stakes path.
+        */}
+        <div style={styles.message}>
+          <ReactMarkdown>{removeCitationMarkers(message)}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );

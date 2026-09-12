@@ -43,6 +43,14 @@ import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
 import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
 
+/**
+ * Joins the safety escalation block and the appended RAG answer on the urgent
+ * path. Everything before it is the escalation; the web client renders exactly
+ * that in the emergency banner (issue #111). Mirrored byte-for-byte in
+ * apps/web/src/utils/escalationText.ts — change both or neither.
+ */
+export const ESCALATION_RAG_SEPARATOR = "\n\n**Information from trusted sources:**\n\n";
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -294,6 +302,9 @@ export class ChatService {
         safety: {
           classification: "red_flag" as const,
           actions: ["show_emergency_banner", "end_conversation"],
+          // Nothing is appended on the fast path, so the banner block is the
+          // whole reply (issue #111).
+          bannerText: assistant.text,
         },
       };
     }
@@ -327,7 +338,7 @@ export class ChatService {
         this.logger.warn(`Analytics emit failed: ${err.message}`)
       );
 
-      return { sessionId: dto.sessionId, messageId: assistant.id, responseText: assistant.text, safety: { classification: safetyResult.classification, actions: safetyResult.actions } };
+      return { sessionId: dto.sessionId, messageId: assistant.id, responseText: assistant.text, safety: { classification: safetyResult.classification, actions: safetyResult.actions, bannerText: assistant.text } };
     }
 
     // 1.5. Check for urgent red flags (but retrieve RAG first to include citations)
@@ -426,7 +437,7 @@ export class ChatService {
         const citationValidation = this.citationService.validateCitations(
           citations,
           earlyEvidenceChunks,
-          urgentResponse + "\n\n**Information from trusted sources:**\n\n" + ragResponse,
+          urgentResponse + ESCALATION_RAG_SEPARATOR + ragResponse,
           false, // isIdentifyQuestionWithGeneralIntent
           orphanCount,
           dto.userText
@@ -434,7 +445,10 @@ export class ChatService {
         
         // Combine urgent guidance with RAG content (urgent guidance first, then RAG with citations)
         urgentResponse = urgentResponse.split("\n\n**Next steps:**")[0]; // Remove generic next steps
-        urgentResponse += "\n\n**Information from trusted sources:**\n\n" + ragResponse;
+        // Captured before the append so the banner gets the escalation block
+        // alone — same bytes, no slicing on the client (issue #111).
+        const escalationText = urgentResponse;
+        urgentResponse += ESCALATION_RAG_SEPARATOR + ragResponse;
 
         // PHASE 2.5+: Append citation markers to response text for LLM judge compliance
         // The judge looks for [citation:docId:chunkId] markers in the response text
@@ -470,7 +484,7 @@ export class ChatService {
           sessionId: dto.sessionId, 
           messageId: assistant.id, 
           responseText: assistant.text, 
-          safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"] },
+          safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"], bannerText: escalationText },
           citations: citations.map(c => ({ docId: c.docId, chunkId: c.chunkId, position: c.position })),
           citationConfidence: citationValidation.confidenceLevel,
           retrievedChunks: earlyEvidenceChunks.slice(0, 6).map(chunk => ({
@@ -516,7 +530,7 @@ export class ChatService {
         sessionId: dto.sessionId, 
         messageId: assistant.id, 
         responseText: assistant.text, 
-        safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"] } 
+        safety: { classification: "red_flag" as const, actions: ["show_emergency_banner", "end_conversation"], bannerText: assistant.text }
       };
     }
 
