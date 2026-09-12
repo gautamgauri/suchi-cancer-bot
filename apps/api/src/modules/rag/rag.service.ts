@@ -10,6 +10,7 @@ import { QueryTypeClassifier } from "./query-type.classifier";
 import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer-topics";
 import { PatientState } from "../chat/patient-state.service";
 import { KB_FTS_SEARCH_SQL, isFtsSchemaError } from "./kb-fts.sql";
+import { dropReferenceChunks } from "./reference-chunk-filter";
 import { KbFtsHealthService } from "./kb-fts-health.service";
 
 @Injectable()
@@ -262,6 +263,30 @@ export class RagService {
   }
 
   /**
+   * Issue #129: PDQ `References` blocks (numbered PubMed link lists) are indexed
+   * like prose and out-rank the chunks that answer the question — for #126 the
+   * two top-ranked chunks were reference lists. Drop them at the point where SQL
+   * rows become evidence, before any ranking, so every retrieval path (vector,
+   * FTS, hybrid, multi-query, cancer-type) benefits without a re-ingest.
+   * Every caller over-fetches (2x topK), so dropping a few candidates does not
+   * starve the top-K.
+   */
+  private withoutReferenceChunks<T extends { content: string; chunkId?: string }>(chunks: T[], stage: string, query?: string): T[] {
+    const { kept, dropped } = dropReferenceChunks(chunks);
+    if (dropped.length > 0) {
+      this.logger.log({
+        event: "reference_chunks_dropped",
+        stage,
+        dropped: dropped.length,
+        kept: kept.length,
+        droppedChunkIds: dropped.slice(0, 6).map((c) => c.chunkId),
+        query: query?.substring(0, 60),
+      });
+    }
+    return kept;
+  }
+
+  /**
    * Retrieve chunks from documents tagged with specific cancer types
    * Uses the cancerTypes array field in KbDocument with Postgres array overlap operator
    */
@@ -310,7 +335,7 @@ export class RagService {
         LIMIT ${limit * 2}
       `;
 
-      return results.map((r) => ({
+      return this.withoutReferenceChunks(results.map((r) => ({
         chunkId: r.id,
         docId: r.docId,
         content: r.content,
@@ -324,7 +349,7 @@ export class RagService {
           lastReviewed: r.lastReviewed || undefined,
           isTrustedSource: r.isTrustedSource
         }
-      }));
+      })), "cancer-type", query);
     } catch (error) {
       this.logger.error(`retrieveByCancerTypes error: ${error.message}`, error.stack);
       return [];
@@ -650,8 +675,8 @@ export class RagService {
       }
     }));
 
-    // Apply trusted-source reranking
-    const reranked = this.rerankByTrustedSource(chunks, query);
+    // Apply trusted-source reranking (after dropping reference-list chunks, #129)
+    const reranked = this.rerankByTrustedSource(this.withoutReferenceChunks(chunks, "vector", query), query);
     
     // Return topK after reranking
     return reranked.slice(0, topK);
@@ -700,7 +725,7 @@ export class RagService {
       // Calculate max lexRank for normalization (guard against zero)
       const maxLexRank = Math.max(...results.map(r => r.lexRank), 0.01);
 
-      return results.map(r => ({
+      return this.withoutReferenceChunks(results.map(r => ({
         chunkId: r.id,
         docId: r.docId,
         content: r.content,
@@ -714,7 +739,7 @@ export class RagService {
           lastReviewed: r.lastReviewed || undefined,
           isTrustedSource: r.isTrustedSource
         }
-      }));
+      })), "fts", query);
     } catch (error) {
       // Per-query resilience is kept — one bad lexical query must not take down
       // chat — but the two failure modes are no longer indistinguishable.
@@ -921,8 +946,8 @@ export class RagService {
       }
     }));
 
-    // Apply trusted-source reranking
-    const reranked = this.rerankByTrustedSource(mappedChunks, query);
+    // Apply trusted-source reranking (after dropping reference-list chunks, #129)
+    const reranked = this.rerankByTrustedSource(this.withoutReferenceChunks(mappedChunks, "keyword", query), query);
     
     // Return topK after reranking
     return reranked.slice(0, topK);
