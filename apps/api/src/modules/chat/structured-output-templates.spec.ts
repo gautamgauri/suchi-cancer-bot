@@ -91,6 +91,27 @@ describe("StructuredOutputTemplates", () => {
         const result = selectOutputTemplate("NAVIGATION", [], "chemo ke liye kaise ready hona hai");
         expect(result).toBe(CHEMO_DAY_PREP);
       });
+
+      test("Hinglish: chemo + taiyari (romanised preparation)", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo ke liye kya taiyari karni chahiye")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "pehli chemo se pehle tayari kaise karein")).toBe(CHEMO_DAY_PREP);
+      });
+
+      // Issue #115 (live WhatsApp 2026-09-10 01:35 IST; web QA q01 same day): a
+      // caregiver reporting heavy post-chemo bleeding was answered with the routine
+      // chemo-day checklist because the bare Hinglish question word "kya" counted
+      // as a preparation cue.
+      test("REGRESSION #115: a post-chemo red-flag report is NOT a chemo-prep question", () => {
+        const liveText =
+          "meri didi chemo ke baad se bahut kamjor hai, aaj bleeding bahut zyada ho gayi aur chakkar aa raha hai. kya karu??";
+        expect(selectOutputTemplate("NAVIGATION", [], liveText)).toBeNull();
+        expect(selectOutputTemplate("EDUCATION", [], liveText)).toBeNull();
+      });
+
+      test("bare Hinglish question words do not select the chemo-prep template", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo ke side effects kya hote hain")).toBeNull();
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo kaise kaam karti hai")).toBeNull();
+      });
     });
 
     describe("Second opinion queries → SECOND_OPINION_PREP", () => {

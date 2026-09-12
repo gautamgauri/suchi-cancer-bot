@@ -42,7 +42,8 @@ declare global {
 }
 
 interface MessageInputProps {
-  onSend: (text: string) => void;
+  /** `meta.inputMode` is "voice" only when the browser mic contributed to this message. */
+  onSend: (text: string, meta?: { inputMode: "voice" }) => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -58,6 +59,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [showUnsupportedTooltip, setShowUnsupportedTooltip] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const baseTextRef = useRef<string>("");
+  // True once speech recognition has written into the current draft. Sent to the
+  // API as inputMode "voice" so speech cleanup runs only on spoken text (#115).
+  const usedVoiceRef = useRef(false);
 
   useEffect(() => {
     // Check if Web Speech API is supported
@@ -68,7 +72,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const handleSend = () => {
     const trimmed = text.trim();
     if (trimmed && !disabled) {
-      onSend(trimmed);
+      if (usedVoiceRef.current) onSend(trimmed, { inputMode: "voice" });
+      else onSend(trimmed);
+      usedVoiceRef.current = false;
       setText("");
     }
   };
@@ -108,6 +114,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       }
 
       // Replace (not append) — show base text + full transcript so far
+      if (finalTranscript || interimTranscript) usedVoiceRef.current = true;
       setText(baseTextRef.current + finalTranscript + interimTranscript);
     };
 
