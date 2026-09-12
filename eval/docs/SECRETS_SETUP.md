@@ -34,8 +34,9 @@ Create secrets for your API keys:
 # Set your project ID
 export PROJECT_ID=$(gcloud config get-value project)
 
-# Deepseek API Key
-echo -n "sk-6bc325dec38c4d4c95f9f4ecb185e1dc" | gcloud secrets create deepseek-api-key \
+# Deepseek API Key — paste it at the hidden prompt; never write a key into a file in this repo
+read -r -s -p "Deepseek API key: " DEEPSEEK_API_KEY && echo
+echo -n "$DEEPSEEK_API_KEY" | gcloud secrets create deepseek-api-key \
     --project=$PROJECT_ID \
     --data-file=- \
     --replication-policy="automatic"
