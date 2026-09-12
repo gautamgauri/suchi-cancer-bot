@@ -6,12 +6,34 @@
 # This allows both manual (gcloud builds submit) and trigger-based deployments.
 
 steps:
-  # hospitals.json is committed at apps/api/data/hospitals.json (canonical source).
-  # This step syncs from apps/landing/src/content/ when present (keeps both in sync),
-  # and falls back gracefully when the landing app is excluded from the build tarball.
-  - name: 'ubuntu'
+  # hospitals.json: the canonical source is apps/landing/src/content/hospitals.json
+  # (the navigator approve flow appends there). apps/api/data/hospitals.json is a
+  # git SYMLINK to it for local dev/Jest. A symlink copied into the API image
+  # dangles (the Docker context is apps/api only), which left production with an
+  # EMPTY hospital directory on every revision until 2026-09-12 (issue #123).
+  # So: replace the symlink with a real file and FAIL THE BUILD unless the result
+  # is a regular file whose JSON parses to a non-trivial hospitals array.
+  - name: 'node:20-slim'
     id: 'stage-hospitals'
-    args: ['bash', '-c', 'mkdir -p apps/api/data && if [ -f apps/landing/src/content/hospitals.json ]; then cp apps/landing/src/content/hospitals.json apps/api/data/hospitals.json && echo "Synced hospitals.json from landing app"; else echo "hospitals.json already present at apps/api/data/hospitals.json (committed copy)"; fi && ls -la apps/api/data/hospitals.json']
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+        src=apps/landing/src/content/hospitals.json
+        dst=apps/api/data/hospitals.json
+        test -f "$src" || { echo "FATAL: $src missing from build upload (check .gcloudignore)"; exit 1; }
+        mkdir -p apps/api/data
+        rm -f "$dst"
+        cp "$src" "$dst"
+        test -f "$dst" && ! test -L "$dst" || { echo "FATAL: $dst is not a regular file"; exit 1; }
+        node -e '
+          const d = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+          if (!Array.isArray(d.hospitals)) { console.error("FATAL: no hospitals array"); process.exit(1); }
+          if (d.hospitals.length < 50) { console.error("FATAL: only " + d.hospitals.length + " hospitals"); process.exit(1); }
+          console.log("Staged " + process.argv[1] + " as a regular file with " + d.hospitals.length + " hospitals");
+        ' "$dst"
+        ls -la "$dst"
 
   # Build API Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -77,6 +99,10 @@ steps:
       - '512Mi'
       - '--cpu'
       - '1'
+      # WhatsApp turns run AFTER the webhook has ACKed (fire-and-forget), so with
+      # request-scoped CPU the instance is throttled while the turn runs and the
+      # pipeline times out (issues #115/#116/#117). Keep CPU allocated always.
+      - '--no-cpu-throttling'
       - '--timeout'
       - '300'
       - '--min-instances'

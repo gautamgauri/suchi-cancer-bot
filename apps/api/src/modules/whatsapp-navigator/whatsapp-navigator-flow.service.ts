@@ -1,6 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import * as fs from "fs";
-import * as path from "path";
+import { hospitalDirectoryPath, readHospitalDirectoryFile } from "../../common/hospital-directory-file";
 import {
   AffordabilityLevel,
   CancerTypeGroup,
@@ -93,29 +92,16 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
   }
 
   private loadHospitals(): void {
-    // Single canonical path: apps/api/data/hospitals.json is a symlink to
-    // apps/landing/src/content/hospitals.json.
-    //   - Jest: process.cwd() = apps/api/
-    //   - Cloud Run: process.cwd() = /app  (cloudbuild stages the file there)
-    const jsonPath = path.resolve(process.cwd(), "data/hospitals.json");
-
+    // Shared loader (common/hospital-directory-file.ts) — same file, same
+    // pseudo-symlink handling as HospitalDirectoryService. A miss here is the
+    // #123 shape (dangling symlink in the image) and is logged at ERROR; the
+    // health status is recorded by HospitalDirectoryService, which loads first.
     try {
-      let raw = fs.readFileSync(jsonPath, "utf-8").trim();
-
-      // Handle Windows Git pseudo-symlinks if Git didn't create a real symlink
-      if (raw.startsWith("..") && !raw.includes("\n")) {
-        const absoluteTarget = path.resolve(path.dirname(jsonPath), raw);
-        this.logger.log(`Detected pseudo-symlink for hospitals.json. Resolving to target: ${absoluteTarget}`);
-        raw = fs.readFileSync(absoluteTarget, "utf-8");
-      }
-
-      const parsed = JSON.parse(raw) as { hospitals: Hospital[] };
-      this.hospitals = (parsed.hospitals ?? []).filter(
-        (h) => h.status === "active"
-      );
-      this.logger.log(`Loaded ${this.hospitals.length} active hospitals`);
+      const file = readHospitalDirectoryFile();
+      this.hospitals = (file.hospitals as Hospital[]).filter((h) => h.status === "active");
+      this.logger.log(`Loaded ${this.hospitals.length} active hospitals from ${file.path}`);
     } catch (err: any) {
-      this.logger.error(`Failed to load hospitals.json from ${jsonPath}: ${err.message}`);
+      this.logger.error(`Failed to load hospitals.json from ${hospitalDirectoryPath()}: ${err.message}`);
       this.hospitals = [];
     }
   }

@@ -192,6 +192,22 @@ export class ModeDetector {
    * - Symptom framing: I have, I got, I feel, experiencing, suffering from
    */
   static hasPersonalDiagnosisSignal(text: string): boolean {
+    // Phrases that use a first-person pronoun purely as informational framing
+    // ("I want to know what to look for", "please tell me the signs", "explain
+    // to me"). Remove them before matching so the bare "I"/"me" inside them does
+    // not read as a personal symptom report. Issue #117: "What are the early
+    // warning signs of breast cancer? I want to know what to look for." was
+    // routed to Navigate mode and soft-redirected with no KB content.
+    const informationalFraming = [
+      /\b(i|we)\s+(want|would like|need|wish|'d like|would love)\s+to\s+(know|learn|understand|find out|be aware)\b/gi,
+      // Only the genuinely informational forms: a bare "help me" / "let me" can be
+      // the sole personal signal ("will this treatment help me?") and must stay.
+      /\b(please\s+)?(tell|give|explain\s+to|show)\s+me\b/gi,
+      /\bhelp\s+me\s+(understand|learn|know)\b/gi,
+      /\blet\s+me\s+know\b/gi,
+    ];
+    const stripped = informationalFraming.reduce((t, p) => t.replace(p, " "), text);
+
     const personalSignals = [
       // First-person pronouns
       /\b(i|i'm|im|me|my|mine)\b/i,
@@ -206,7 +222,7 @@ export class ModeDetector {
       // Hindi family references
       /मदर|फादर|माँ|मम्मी|पापा|पत्नी|बच्चा|बेटा|बेटी/,
     ];
-    return personalSignals.some(pattern => pattern.test(text));
+    return personalSignals.some(pattern => pattern.test(stripped));
   }
 
   /**

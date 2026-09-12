@@ -13,9 +13,12 @@ $deepseekKey = gcloud secrets versions access latest --secret="deepseek-api-key"
 if ($LASTEXITCODE -eq 0) {
     $env:DEEPSEEK_API_KEY = $deepseekKey.Trim()
     Write-Host "✓ API key loaded" -ForegroundColor Green
+} elseif (-not [string]::IsNullOrWhiteSpace($env:DEEPSEEK_API_KEY)) {
+    # No key literal in this repo (issue #127): only an already-exported key is accepted.
+    Write-Host "⚠ Secret Manager unavailable — using DEEPSEEK_API_KEY from the environment" -ForegroundColor Yellow
 } else {
-    $env:DEEPSEEK_API_KEY = "sk-6bc325dec38c4d4c95f9f4ecb185e1dc"
-    Write-Host "⚠ Using fallback key" -ForegroundColor Yellow
+    Write-Host "ERROR: Could not load deepseek-api-key from Secret Manager and DEEPSEEK_API_KEY is not set." -ForegroundColor Red
+    exit 1
 }
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"

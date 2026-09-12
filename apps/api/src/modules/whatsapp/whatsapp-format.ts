@@ -17,6 +17,14 @@ export function toWhatsAppMarkdown(input: string): string {
   // Markdown links [label](url) -> "label: url" (WhatsApp auto-links the bare URL).
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1: $2");
 
+  // Relative links [label](/path) — common in KB content copied from NCI — have
+  // no usable URL on WhatsApp. Keep the label only (issue #116).
+  t = t.replace(/\[([^\]]+)\]\((?!https?:\/\/)[^\s)]*\)/g, "$1");
+
+  // Horizontal rules (---, ***, ___) are markdown-only; delivered literally they
+  // are just noise between paragraphs. Drop the line (issue #116).
+  t = t.replace(/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm, "");
+
   // Code fences and inline code -> strip the backticks, keep the content.
   t = t.replace(/```[a-zA-Z0-9]*\n?/g, "").replace(/`([^`]+)`/g, "$1");
 

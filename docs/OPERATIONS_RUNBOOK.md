@@ -201,6 +201,10 @@ Caveats:
   (state in `gs://suchi-navigator-state`; secret names
   `ANTHROPIC_API_KEY`, `NAVIGATOR_APPROVAL_SECRET`, `SMTP_PASS`).
 - Autoresearch nightly loop: `cloudbuild-autoresearch.yaml`, proposal-mode
-  only — it pushes `autoresearch/*` branches for human review.
+  only — it pushed `autoresearch/*` branches for human review.
+  **PAUSED since 2026-07-20** — the Cloud Build trigger `autoresearch-nightly`
+  is disabled, last build 2026-07-19. It does not run, and it never gated a
+  deploy. Audit record, preserved-branch manifest and the re-enable criteria
+  are in issue #60; do not re-enable without meeting them.
 - KB ingestion job image: `cloudbuild.kb-ingest.yaml` + `Dockerfile.kb-ingest`
   (runs `src/scripts/ingest-kb.ts --wipeChunks`).

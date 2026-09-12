@@ -23,12 +23,16 @@ export interface CreateSessionResponse {
   createdAt: string;
 }
 
+export type InputMode = "typed" | "voice";
+
 export interface ChatRequest {
   sessionId: string;
   channel: "web" | "app" | "whatsapp";
   userText: string;
   locale?: string;
   userType?: string;
+  /** "voice" when the text came from the browser mic (Web Speech API); lets the API apply speech cleanup only to spoken input. */
+  inputMode?: InputMode;
 }
 
 export interface ChatResponse {

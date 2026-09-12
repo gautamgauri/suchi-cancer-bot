@@ -27,7 +27,7 @@ import { PatientStateService, PatientState } from "./patient-state.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
-import { cleanVoiceInput } from "./input-cleaner";
+import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
 // Phase 2 Agentic components
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
@@ -196,10 +196,15 @@ export class ChatService {
   }
 
   async handle(dto: ChatDto, signal?: AbortSignal) {
-    // ─── Phase 0: Voice Input Cleanup ────────────────────────────────
-    // Web Speech API interim results can stutter/duplicate text.
-    // Clean before any classification or persistence.
-    dto.userText = cleanVoiceInput(dto.userText);
+    // ─── Phase 0: Input Cleanup (by modality, not channel) ────────────
+    // Speech recognition output (the `voice` channel, or the web mic which
+    // sends channel "web" + inputMode "voice") can stutter, duplicate words and
+    // carry fillers: it gets the full cleanup. TYPED text on any channel must
+    // not be rewritten — the stutter/repeat rules turned a WhatsApp caregiver's
+    // "meri didi" into "meri di" and "papa" into "pa" before classification
+    // (issue #115). Typed input only gets medical-spelling normalisation.
+    const spoken = dto.channel === "voice" || dto.inputMode === "voice";
+    dto.userText = spoken ? cleanVoiceInput(dto.userText) : correctMedicalSpelling(dto.userText);
 
     const obsTrace = this.observability.startTrace('chat_turn', {
       query: dto.userText?.substring(0, 200),

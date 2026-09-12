@@ -37,6 +37,25 @@ describe("toWhatsAppMarkdown", () => {
   it("collapses excessive blank lines", () => {
     expect(toWhatsAppMarkdown("a\n\n\n\nb")).toBe("a\n\nb");
   });
+
+  // Issue #116 — delivered verbatim to a patient on the live number.
+  it("keeps only the label of a relative markdown link", () => {
+    expect(
+      toWhatsAppMarkdown("The most common side effect is [fatigue](/about-cancer/treatment/side-effects/fatigue), which is tiredness."),
+    ).toBe("The most common side effect is fatigue, which is tiredness.");
+  });
+
+  it("drops horizontal-rule lines", () => {
+    expect(toWhatsAppMarkdown("Any questions?\n\n---\n\nThis is general information.")).toBe(
+      "Any questions?\n\nThis is general information.",
+    );
+    expect(toWhatsAppMarkdown("a\n***\nb")).toBe("a\n\nb");
+  });
+
+  it("does not treat a bullet or bold text as a horizontal rule", () => {
+    expect(toWhatsAppMarkdown("- item")).toBe("• item");
+    expect(toWhatsAppMarkdown("**bold**")).toBe("*bold*");
+  });
 });
 
 describe("splitForWhatsApp", () => {

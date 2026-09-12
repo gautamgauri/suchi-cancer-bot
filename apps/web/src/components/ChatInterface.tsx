@@ -8,7 +8,7 @@ import { SuchiAvatar } from "./SuchiAvatar";
 import { LoadingIndicator } from "./LoadingIndicator";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { WelcomeMessage } from "./WelcomeMessage";
-import { apiService, ChatResponse, UserRole } from "../services/api";
+import { apiService, ChatResponse, UserRole, InputMode } from "../services/api";
 import { resolveEscalationText } from "../utils/escalationText";
 
 interface ChatInterfaceProps {
@@ -99,7 +99,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, meta?: { inputMode: InputMode }) => {
     if (conversationEnded || !sessionId) return;
 
     const userMessage: Message = {
@@ -125,7 +125,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       const response: ChatResponse = await apiService.sendMessage({
         sessionId,
         channel: "web",
-        userText: text
+        userText: text,
+        ...(meta?.inputMode ? { inputMode: meta.inputMode } : {})
       });
 
       const assistantMessage: Message = {

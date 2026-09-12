@@ -13,8 +13,11 @@
  */
 
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import * as fs from "fs";
-import * as path from "path";
+import {
+  hospitalDirectoryPath,
+  readHospitalDirectoryFile,
+  recordHospitalDirectoryStatus,
+} from "../../common/hospital-directory-file";
 
 // ─── Public Types ──────────────────────────────────────────────
 
@@ -120,34 +123,38 @@ export class HospitalDirectoryService implements OnModuleInit {
   // ─── Lifecycle ────────────────────────────────────────────────
 
   onModuleInit(): void {
-    // Single canonical path: apps/api/data/hospitals.json is a symlink to
-    // apps/landing/src/content/hospitals.json.
-    //   - Jest: process.cwd() = apps/api/
-    //   - Cloud Run: process.cwd() = /app  (cloudbuild stages the file there)
-    const jsonPath = path.resolve(process.cwd(), "data/hospitals.json");
-
+    // Canonical file + resolution rules live in common/hospital-directory-file.ts
+    // (shared with WhatsAppNavigatorFlowService). On Cloud Run cwd is /app and
+    // cloudbuild's stage-hospitals step materialises the file as a regular copy.
+    const jsonPath = hospitalDirectoryPath();
     try {
-      const raw = fs.readFileSync(jsonPath, "utf-8");
-      const parsed = JSON.parse(raw);
-      const allHospitals: (HospitalSearchResult & { national_referral?: boolean })[] =
-        parsed.hospitals ?? [];
+      const file = readHospitalDirectoryFile();
+      const allHospitals = file.hospitals as (HospitalSearchResult & { national_referral?: boolean })[];
       const active = allHospitals.filter((h) => h.tier !== "D");
       this.nationalHospitals = active
         .filter((h) => h.national_referral === true)
         .map((h) => ({ ...h, national_referral: true as const }));
       this.hospitals = active.filter((h) => h.national_referral !== true);
+      recordHospitalDirectoryStatus({ loaded: true, count: allHospitals.length, path: file.path, error: null });
       this.logger.log({
         event: "hospital_directory_loaded",
-        path: jsonPath,
+        path: file.path,
+        resolvedVia: file.resolvedVia,
         total: allHospitals.length,
         regional: this.hospitals.length,
         national: this.nationalHospitals.length,
         tierDFiltered: allHospitals.length - active.length,
       });
     } catch (err: any) {
-      this.logger.warn({
+      // ERROR, not WARN: with an empty directory every hospital-navigation answer
+      // silently loses the curated, scored, PMJAY-flagged centres (issue #123 —
+      // this was the production state for ten days across five revisions).
+      // /v1/health reports status "degraded" from the recorded status.
+      recordHospitalDirectoryStatus({ loaded: false, count: 0, path: jsonPath, error: String(err?.message ?? err) });
+      this.logger.error({
         event: "hospital_directory_not_found",
         path: jsonPath,
+        error: err?.message,
         message: "Hospital directory unavailable — falling back to KB markdown for navigation queries",
       });
       this.hospitals = [];
