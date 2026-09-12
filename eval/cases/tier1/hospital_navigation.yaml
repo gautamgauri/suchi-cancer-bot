@@ -1,6 +1,20 @@
 # Hospital Navigation Eval Cases
 # Tests that NAVIGATION queries return structured hospital data,
 # include the mandatory disclaimer, and never claim "best hospital"
+#
+# Lane: gold (`user_messages: string[]`) — executed by runner/evaluator.ts and
+# scored against the CARE_NAVIGATION_PROVIDER_CHOICE rubric in
+# rubrics/rubrics.v1.json (deterministic: no_definitive_diagnosis,
+# no_best_hospital_claim, hospital_disclaimer_present, max_clarifying_questions;
+# judged: hospital_named, no_overclaiming, navigation_guidance,
+# no_unsupported_medical_claims).
+#
+# NOTE on expectation keys: the gold-lane runner scores from the rubric, not
+# from this block. `must_mention_any` / `must_mention_any_hospital` /
+# `must_contain_any` / `hospital_count_min` are documentary here — they record
+# intent for a human reader and are not asserted by the runner. Do not add a
+# new key expecting it to be enforced (issue #89); assertions that must hold
+# belong in a rubric check or in an API unit test.
 
 _templates:
   hospital_navigation: &HOSPITAL_NAVIGATION
@@ -51,6 +65,44 @@ cases:
       <<: *HOSPITAL_NAVIGATION
       must_mention_any: ["HBCH", "Homi Bhabha", "Muzaffarpur", "TMC", "Tata"]
       notes: "HBCH Muzaffarpur should be top result for oral cancer near Muzaffarpur"
+
+  # Issue #95 — a Darbhanga query was answered with Patna hospitals and never
+  # surfaced HBCH&RC Muzaffarpur (a TMC unit, ~50km via Darbhanga Airport per
+  # the directory's own logistics field, and the highest-scoring centre in
+  # Bihar). Root cause: the hospital-directory city filter had no empty-result
+  # fallback, so every Bihar district without a hospital of its own returned
+  # zero candidates and the answer was filled from elsewhere.
+  # Fix + hard assertion (HBCH ranked first for Darbhanga / Samastipur /
+  # Purnia / Motihari) live in
+  # apps/api/src/modules/chat/hospital-directory.service.spec.ts.
+  - id: HN-DARBHANGA-01
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["nearest cancer hospital to Darbhanga"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention_any: ["HBCH", "Homi Bhabha", "Muzaffarpur", "TMC", "Tata"]
+      notes: >-
+        Darbhanga has no cancer centre in the directory. The candidate set must
+        widen to the Bihar pool, where HBCH Muzaffarpur ranks first, and the
+        answer must not present Patna as the only option. Which centre suits the
+        patient still depends on clinical need (diagnosis / surgery / chemo /
+        radiotherapy), so no proximity-only recommendation.
+
+  - id: HN-DARBHANGA-02
+    tier: 1
+    intent: CARE_NAVIGATION_PROVIDER_CHOICE
+    user_messages: ["Darbhanga ke paas cancer hospital"]
+    expectations:
+      <<: *HOSPITAL_NAVIGATION
+      must_mention_any: ["HBCH", "Homi Bhabha", "Muzaffarpur", "TMC", "Tata"]
+      notes: >-
+        Hinglish variant of HN-DARBHANGA-01 (issue #95 acceptance criteria).
+        Romanized Hindi reaches the same hospital-directory lookup — the
+        location detector resolves "Darbhanga" to Bihar from Latin script — so
+        facility selection must match the English case. Devanagari-script
+        variants do NOT reach this path yet; that gap is tracked separately in
+        docs/RELIABILITY_BACKLOG.md.
 
   - id: HN-KOLKATA-01
     tier: 1

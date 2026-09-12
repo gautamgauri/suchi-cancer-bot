@@ -15,6 +15,7 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import * as fs from "fs";
 import * as path from "path";
+import { resolveStateForCity } from "./utils/location-detector";
 
 // ─── Public Types ──────────────────────────────────────────────
 
@@ -62,6 +63,21 @@ export interface ComparisonResult {
     scores: Record<string, number>;
   };
 }
+
+/**
+ * Which rung of the geographic fallback chain produced the candidate set.
+ *  - "city"           → hospitals in the requested city
+ *  - "state"          → no hospital in that city; widened to the city's state
+ *  - "adjacent_state" → none in that state either; widened to neighbouring states
+ *  - "unfiltered"     → no geographic match at all; full regional pool retained
+ *  - "none"           → caller supplied no city and no state
+ */
+export type GeographicStage =
+  | "city"
+  | "state"
+  | "adjacent_state"
+  | "unfiltered"
+  | "none";
 
 export interface VisitPrep {
   hospitalId: string;
@@ -158,47 +174,127 @@ export class HospitalDirectoryService implements OnModuleInit {
   // ─── Public API ────────────────────────────────────────────────
 
   /**
+   * Resolve the geographic candidate set for a search, degrading in steps
+   * instead of ever returning an empty set:
+   *
+   *   1. exact city   — hospitals whose city matches the requested city
+   *   2. same state   — the city has no oncology centre; widen to its state
+   *   3. adjacent     — the state has none either; widen to neighbouring states
+   *   4. unfiltered   — no geographic match anywhere; keep the full regional pool
+   *
+   * Why this exists (issue #95): the city filter used to assign its result
+   * unconditionally, making it the only filter in `searchHospitals` without
+   * graceful degradation, and it was reached via `else if` so a query that
+   * carried a city never consulted the state pool. Bihar has active oncology
+   * centres in exactly three cities (Patna, Muzaffarpur, Bhagalpur), so every
+   * other district — the whole of North Bihar, Darbhanga included — produced
+   * zero candidates. The caller then had no directory rows at all and the
+   * answer was filled from elsewhere, which is how a Darbhanga patient was
+   * pointed at Patna while HBCH&RC Muzaffarpur (a TMC unit, score 90, the
+   * highest-scoring centre in Bihar) was never surfaced.
+   *
+   * This widens the candidate SET only. It deliberately does not rank by
+   * proximity: ordering stays with the directory score (quality / cost /
+   * location / PMJAY) in step 5 of `searchHospitals`, so what surfaces first is
+   * still driven by clinical capability and affordability rather than by which
+   * facility happens to be nearest. See `docs/RELIABILITY_BACKLOG.md`
+   * ("hospital proximity ranking") for why a distance model is not appropriate
+   * on the data available today.
+   */
+  private resolveGeographicCandidates(
+    pool: HospitalSearchResult[],
+    params: HospitalSearchParams
+  ): { results: HospitalSearchResult[]; stage: GeographicStage } {
+    const city = params.city?.trim() || null;
+    // A caller may pass a city without a state (public API). Recover the state
+    // from the canonical city table rather than losing the geography.
+    const state = params.state?.trim() || resolveStateForCity(city);
+
+    if (!city && !state) {
+      return { results: pool, stage: "none" };
+    }
+
+    // ── Stage 1: exact city ──
+    if (city) {
+      const cityLower = city.toLowerCase();
+      const cityFiltered = pool.filter(
+        (h) =>
+          h.city.toLowerCase().includes(cityLower) ||
+          cityLower.includes(h.city.toLowerCase())
+      );
+      if (cityFiltered.length > 0) {
+        return { results: cityFiltered, stage: "city" };
+      }
+    }
+
+    if (state) {
+      // ── Stage 2: same state ──
+      const stateFiltered = pool.filter((h) => h.state === state);
+      if (stateFiltered.length > 0) {
+        if (city) {
+          this.logger.log({
+            event: "hospital_search_geographic_fallback",
+            stage: "state",
+            requestedCity: city,
+            resolvedState: state,
+            count: stateFiltered.length,
+            reason:
+              "no directory hospital in the requested city — widened to the state pool",
+          });
+        }
+        return { results: stateFiltered, stage: "state" };
+      }
+
+      // ── Stage 3: adjacent states ──
+      const neighbors = this.STATE_ADJACENCY[state] ?? [];
+      if (neighbors.length > 0) {
+        const adjacent = pool.filter((h) => neighbors.includes(h.state));
+        if (adjacent.length > 0) {
+          this.logger.log({
+            event: "hospital_search_adjacency_fallback",
+            requestedCity: city,
+            requestedState: state,
+            foundIn: neighbors,
+            count: adjacent.length,
+          });
+          return { results: adjacent, stage: "adjacent_state" };
+        }
+      }
+    }
+
+    // ── Stage 4: no geographic match — keep the pool (same graceful
+    // degradation the cancer-type, PMJAY and affordability filters use) ──
+    this.logger.log({
+      event: "hospital_search_geographic_fallback",
+      stage: "unfiltered",
+      requestedCity: city,
+      requestedState: state,
+      count: pool.length,
+      reason:
+        "no match at city, state or adjacent-state level — full regional pool retained",
+    });
+    return { results: pool, stage: "unfiltered" };
+  }
+
+  /**
    * Search hospitals with additive filters applied in order:
-   * 1. Geographic (city/state) with adjacency fallback
+   * 1. Geographic (city → state → adjacent state → unfiltered fallback chain)
    * 2. Cancer type → departments
    * 3. PMJAY filter
    * 4. Affordability tier
    * 5. Sort by score desc, limit maxResults
+   *
+   * Every filter degrades gracefully: when a filter would empty the candidate
+   * set it is skipped and the previous set is kept, so the caller always gets
+   * the best available structured rows rather than nothing.
    */
   searchHospitals(params: HospitalSearchParams): HospitalSearchResult[] {
     if (this.hospitals.length === 0) return [];
 
     let results = [...this.hospitals];
 
-    // ── 1. Geographic filter ──
-    if (params.city) {
-      const cityLower = params.city.toLowerCase();
-      const cityFiltered = results.filter(
-        (h) =>
-          h.city.toLowerCase().includes(cityLower) ||
-          cityLower.includes(h.city.toLowerCase())
-      );
-      results = cityFiltered;
-    } else if (params.state) {
-      const stateFiltered = results.filter((h) => h.state === params.state);
-      if (stateFiltered.length > 0) {
-        results = stateFiltered;
-      } else {
-        // Adjacency fallback: try neighboring states
-        const neighbors = this.STATE_ADJACENCY[params.state] ?? [];
-        if (neighbors.length > 0) {
-          results = results.filter((h) => neighbors.includes(h.state));
-          if (results.length > 0) {
-            this.logger.debug({
-              event: "hospital_search_adjacency_fallback",
-              requestedState: params.state,
-              foundIn: neighbors,
-              count: results.length,
-            });
-          }
-        }
-      }
-    }
+    // ── 1. Geographic filter (city → state → adjacent state → unfiltered) ──
+    results = this.resolveGeographicCandidates(results, params).results;
 
     // ── 2. Cancer type filter ──
     if (params.cancerType) {

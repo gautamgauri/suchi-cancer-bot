@@ -224,7 +224,7 @@ by this handoff review.
      `apps/api/src/modules/chat/intent-classifier.ts` — the red-flag path is
      the safety module, not an intent.)
 - **Impact:** its 9 case IDs are counted by the case-manifest guard, so the
-  headline **601 cases overstates executable coverage by 9 (592 runnable)**.
+  headline **603 cases overstates executable coverage by 9 (594 runnable)**.
   Nine user-journey behaviours — newly diagnosed, caregiver reading a report,
   symptom worry, caregiver crisis escalation, emergency red flags — read as
   covered and are not tested at all. This is also why #70's false negative
@@ -233,7 +233,7 @@ by this handoff review.
   every case file by runner lane (`gold` / `voice` / `voice-e2e` / orphan),
   fails if a **new** file arrives in a schema no runner reads, fails if a
   quarantined file is quietly ported (stale-entry check), and pins the
-  601/9/592 split so the coverage headline cannot silently re-inflate.
+  603/9/594 split so the coverage headline cannot silently re-inflate.
 - **`mode:` — recorded decision (was the open question in #71.3):** the
   `mode: navigate|explain` key is descriptive only, not a request field, and
   that is correct as-is. `runner/api-client.ts` posts
@@ -275,6 +275,89 @@ weaknesses found while investigating, deliberately *not* changed here:
   race in `resolveSession` that minted four sessions for one new contact's
   burst. Both are fixed in the follow-up serialisation PR, not here — this PR
   is kept to the safety-relevant template correction.
+### P1-12. Hospital ranking has no proximity signal — recommendation: do not build a distance model on today's data (issue #95)
+
+- **Context:** issue #95 (a Darbhanga query answered with Patna hospitals,
+  HBCH&RC Muzaffarpur never surfaced) is fixed at the candidate-set level: the
+  city filter in `apps/api/src/modules/chat/hospital-directory.service.ts` now
+  degrades city → state → adjacent state → full regional pool instead of
+  returning `[]`. Ranking was left alone: `searchHospitals` still orders by the
+  directory `score` (quality / cost / location / PMJAY).
+- **Assessed and deliberately not implemented:** a district/region proximity
+  map for Bihar. The data does not support it, measured against
+  `apps/api/data/hospitals.json` (83 entries, symlinked from
+  `apps/landing/src/content/hospitals.json`):
+  1. **No geographic primitive.** No `district`, no coordinates, no
+     hospital-to-city distances. `region` is coarse and inconsistent — nine
+     distinct values across the file, with both `"East India"` and `"East"` in
+     use *within Bihar* (HBCH Muzaffarpur is `"East India"`, AIIMS Patna is
+     `"East"`). It cannot separate North from South Bihar.
+  2. **Catchment prose is too sparse, and misses the reported city.** Only 2 of
+     12 Bihar records name a catchment: HBCH Muzaffarpur
+     (`"Muzaffarpur, Sitamarhi, Vaishali, Sheohar, Gopalganj"`) and Healing
+     Touch Bhagalpur (`"Bhagalpur, Munger, Banka"`). **Darbhanga appears in
+     neither.** A catchment-driven map would therefore not have fixed the very
+     query in the issue. The only Darbhanga signal in the whole file is
+     HBCH's `logistics.nearest_airport: "Darbhanga Airport (~50km)"` — one
+     free-text field on one record; 53 of 83 records have any logistics place
+     name at all.
+  3. **Proximity ranking would be clinically wrong here.** Bihar's active
+     oncology supply sits in three cities: Patna (9 records), Muzaffarpur (1),
+     Bhagalpur (1). Ranking eastern-Bihar queries by distance promotes Healing
+     Touch Bhagalpur (tier C, score 50) over HBCH Muzaffarpur (tier A, score
+     90, TMC unit) — and Healing Touch's own record says
+     `"No radiation or medical oncology — refer to Patna or Muzaffarpur for
+     those needs"`. Issue #95 is explicit that the recommendation must follow
+     clinical need, not proximity; the score already encodes that.
+- **Recommendation, in order:**
+  1. Add a `district` field (and, where a facility genuinely claims one, a
+     structured `catchment_districts` list) to the facility schema and populate
+     it **through the Navigator research/review/approve pipeline**
+     (`docs/NAVIGATOR_PIPELINE.md`). Facility data is not an agent's to author
+     — see the human-decision list below.
+  2. Only once districts exist, consider proximity as a **tiebreak within a
+     score band**, never as the primary key, so a nearer facility can win
+     between comparable options but can never displace a materially
+     better-equipped one.
+  3. Do not synthesise distances from `logistics.nearest_railway` /
+     `nearest_airport` strings. They are free text, ~64% populated, and
+     describe the facility's own transport links, not the patient's.
+- **Observability in place meanwhile:** every widening step logs
+  `event: "hospital_search_geographic_fallback"` (with `stage`,
+  `requestedCity`, `resolvedState`, `count`) or
+  `event: "hospital_search_adjacency_fallback"`, so the districts that actually
+  generate fallbacks can be counted from production logs before anyone invests
+  in a distance model.
+
+### P1-13. Devanagari-script hospital queries never reach the hospital directory (issue #95 acceptance criteria, partially met)
+
+- **What:** issue #95 requires Hindi/Hinglish variants to follow the same
+  facility-selection logic. **Hinglish (Latin script) does** — verified:
+  `detectLocation("Darbhanga ke paas cancer hospital")` →
+  `{city: "Darbhanga", state: "Bihar"}`, and the `hospitalSearch` signal fires,
+  so it runs the same `searchHospitals` call as the English query.
+  **Devanagari does not**, for two independent reasons:
+  1. `execution-planner.service.ts` gates the whole structured lookup on
+     `detected.hospitalSearch`, whose pattern is
+     `/\b(hospital|अस्पताल|clinic|...)\b/i`. JavaScript `\b` never matches next
+     to Devanagari, so `अस्पताल` can never match — same root cause as QA0904-1
+     and `AbstentionService.hasUrgencyIndicators`. Verified:
+     `.test("दरभंगा के पास कैंसर अस्पताल कहाँ है") === false`. The hospital
+     directory is therefore never consulted at all.
+  2. `utils/location-detector.ts` holds only Latin aliases, so even with the
+     signal fixed, `detectLocation("दरभंगा में …")` returns `null`.
+- **Impact:** a Hindi-script navigation query gets no structured hospital rows
+  and is answered from retrieval/model prior — the same failure mode as issue
+  #95, still live for Devanagari input. Hindi is a primary user language for
+  SCCF (Bihar).
+- **Not fixed here, deliberately:** the fix means adding Devanagari terms to
+  detection patterns that sit alongside the safety keyword lists, and the
+  `\b`-on-Devanagari class of bug should be fixed once, consistently, with the
+  QA0904-1 review rather than patched per call site (AGENTS.md §1.3).
+- **Fix shape:** drop `\b` in favour of explicit boundaries (or the `u` flag
+  with Unicode property escapes) for the Devanagari alternatives, and add
+  Devanagari aliases to `INDIAN_CITIES`; pin both with tests next to
+  `intent-classifier.romanized.spec.ts`.
 
 ---
 
@@ -516,7 +599,7 @@ more, and should be decided together with QA0904-1.
    schema (which requires deciding the pass criteria for symptom-worry and
    emergency journeys — SCCF medical review per AGENTS.md §1.3) or retire the
    file with a manifest tombstone. Until then, quote executable coverage as
-   572, not 601 — see item 12; the case manifest now reports the figure
+   574, not 603 — see item 12; the case manifest now reports the figure
    directly (`npm --prefix eval run cases:check`, issue #89).
 12. P1-11 (found 2026-09-09 while fixing #89): **20 gold-lane eval cases name
    an intent `rubrics/rubrics.v1.json` does not define**, so
@@ -535,3 +618,13 @@ more, and should be decided together with QA0904-1.
    assert — including red-flag ones — so this is an eval-owner + SCCF call,
    not an agent fix. Pinned by `eval/scripts/case-schema.test.ts` so the list
    cannot grow silently.
+13. P1-12: hospital proximity. Decide whether the Navigator pipeline should
+   start capturing a `district` (and optionally a catchment district list) per
+   facility. That is a facility-data schema change and goes through the
+   Navigator review/approve pipeline, not a code fix — an agent must not
+   author district or distance values.
+14. P1-13: Devanagari-script hospital queries. The `hospitalSearch` signal and
+   the city table are both Latin-only, so a Hindi-script navigation query
+   never reaches the hospital directory. Fixing it means editing detection
+   patterns that sit next to the safety keyword lists (same `\b`-on-Devanagari
+   root cause as QA0904-1) — the Devanagari term list needs SCCF review.

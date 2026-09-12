@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-09T17:00:50.463Z",
-  "totalCases": 601,
+  "generatedAt": "2026-09-09T19:08:00.870Z",
+  "totalCases": 603,
   "files": {
     "generalinfo/general_info_100.yaml": {
       "count": 100,
@@ -414,18 +414,20 @@
       "executable": true
     },
     "tier1/hospital_navigation.yaml": {
-      "count": 5,
+      "count": 7,
       "caseIds": [
         "HN-PATNA-01",
         "HN-PMJAY-01",
         "HN-COMPARE-01",
         "HN-MUZAFFARPUR-01",
+        "HN-DARBHANGA-01",
+        "HN-DARBHANGA-02",
         "HN-KOLKATA-01"
       ],
       "lanes": [
         "gold"
       ],
-      "executableCases": 5,
+      "executableCases": 7,
       "executable": true
     },
     "tier1/phase2_journeys.yaml": {
@@ -872,7 +874,7 @@
     }
   },
   "tombstones": [],
-  "executableCases": 572,
+  "executableCases": 574,
   "unexecutableCases": 29,
   "blockers": {
     "missing-rubric": 20,
