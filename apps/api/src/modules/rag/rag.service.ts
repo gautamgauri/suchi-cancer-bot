@@ -271,7 +271,7 @@ export class RagService {
    * Every caller over-fetches (2x topK), so dropping a few candidates does not
    * starve the top-K.
    */
-  private withoutReferenceChunks<T extends { content: string; chunkId?: string }>(chunks: T[], stage: string, query?: string): T[] {
+  private withoutReferenceChunks<T extends { content: string; chunkId?: string }>(chunks: T[], stage: string): T[] {
     const { kept, dropped } = dropReferenceChunks(chunks);
     if (dropped.length > 0) {
       this.logger.log({
@@ -279,8 +279,8 @@ export class RagService {
         stage,
         dropped: dropped.length,
         kept: kept.length,
+        // No query text: it can be a patient's own words. Stage + ids are enough to debug.
         droppedChunkIds: dropped.slice(0, 6).map((c) => c.chunkId),
-        query: query?.substring(0, 60),
       });
     }
     return kept;
@@ -349,7 +349,7 @@ export class RagService {
           lastReviewed: r.lastReviewed || undefined,
           isTrustedSource: r.isTrustedSource
         }
-      })), "cancer-type", query);
+      })), "cancer-type");
     } catch (error) {
       this.logger.error(`retrieveByCancerTypes error: ${error.message}`, error.stack);
       return [];
@@ -676,7 +676,7 @@ export class RagService {
     }));
 
     // Apply trusted-source reranking (after dropping reference-list chunks, #129)
-    const reranked = this.rerankByTrustedSource(this.withoutReferenceChunks(chunks, "vector", query), query);
+    const reranked = this.rerankByTrustedSource(this.withoutReferenceChunks(chunks, "vector"), query);
     
     // Return topK after reranking
     return reranked.slice(0, topK);
@@ -739,7 +739,7 @@ export class RagService {
           lastReviewed: r.lastReviewed || undefined,
           isTrustedSource: r.isTrustedSource
         }
-      })), "fts", query);
+      })), "fts");
     } catch (error) {
       // Per-query resilience is kept — one bad lexical query must not take down
       // chat — but the two failure modes are no longer indistinguishable.
@@ -947,7 +947,7 @@ export class RagService {
     }));
 
     // Apply trusted-source reranking (after dropping reference-list chunks, #129)
-    const reranked = this.rerankByTrustedSource(this.withoutReferenceChunks(mappedChunks, "keyword", query), query);
+    const reranked = this.rerankByTrustedSource(this.withoutReferenceChunks(mappedChunks, "keyword"), query);
     
     // Return topK after reranking
     return reranked.slice(0, topK);

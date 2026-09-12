@@ -7,26 +7,36 @@ import {
 } from "./reference-chunk-filter";
 
 /**
- * Fixtures are cut from the REAL knowledge-base document behind issue #126
- * (NCI PDQ "Breast Cancer Treatment During Pregnancy"), at the same ~1400-char
- * size the ingest chunker produces, so the verdicts here are the verdicts
- * production retrieval will make on this document.
+ * Fixtures are verbatim excerpts of the REAL knowledge-base document behind issue
+ * #126 (NCI PDQ "Breast Cancer Treatment During Pregnancy", public domain),
+ * committed under __fixtures__ because the KB corpus (kb/en/) is not tracked in
+ * git and so is absent in CI. Slices are taken at the ~1400-char size the ingest
+ * chunker produces, so the verdicts here are the verdicts production retrieval
+ * makes on this document.
  */
-const DOC = path.resolve(
-  __dirname,
-  "../../../../../kb/en/02_nci_core/pdq/types-breast-hp-pregnancy-breast-treatment-pdq.md"
-);
-const lines = fs.readFileSync(DOC, "utf8").split("\n");
-const slice = (from: number, to: number) => lines.slice(from - 1, to).join("\n");
-
+const FIXTURE = path.resolve(__dirname, "__fixtures__/pdq-pregnancy-breast-treatment.excerpt.md");
+const fixtureText = fs.readFileSync(FIXTURE, "utf8");
+function section(name: string): string {
+  const marker = `<!-- FIXTURE:${name} -->\n`;
+  const start = fixtureText.indexOf(marker);
+  if (start < 0) throw new Error(`fixture section ${name} missing`);
+  const body = fixtureText.slice(start + marker.length);
+  const end = body.indexOf("<!-- FIXTURE:");
+  return (end < 0 ? body : body.slice(0, end)).trimEnd();
+}
+const referencesSection = section("references-block");
 /** `###### References` heading + the first entries (chunk that starts a block). */
-const referencesBlockWithHeading = slice(97, 110).slice(0, 1400);
+const referencesBlockWithHeading = referencesSection.slice(0, 1400);
 /** Cut mid-entry, no heading — what chunks ::25 / ::26 in production look like. */
-const referencesBlockMidway = slice(99, 110).slice(300, 1700);
+const referencesBlockMidway = referencesSection.slice(referencesSection.indexOf("\n1. ") + 300, referencesSection.indexOf("\n1. ") + 1700);
 /** `### Chemotherapy` prose with inline `[[6](#cit/section_3.6)]` markers — the answer to #126. */
-const chemotherapyProse = slice(189, 215);
+const chemotherapyProse = section("chemotherapy-prose");
 /** `## Special Considerations` → Lactation + Fetal Consequences (chunk ::35). */
-const specialConsiderations = slice(317, 335);
+const specialConsiderations = section("special-considerations");
+
+/** The full local corpus, when present (developer machines); CI has no kb/en. */
+const PDQ_DIR = path.resolve(__dirname, "../../../../../kb/en/02_nci_core/pdq");
+const localCorpus = fs.existsSync(PDQ_DIR);
 
 describe("reference-chunk filter (issue #129)", () => {
   it("fixtures are the shapes described", () => {
@@ -138,16 +148,18 @@ describe("reference-chunk filter (issue #129)", () => {
     });
   });
 
-  describe("KB-wide sanity on real PDQ documents", () => {
-    // Section bodies (no References block) must never be flagged; References blocks
-    // chunked at 1400 chars must be (≥ 98%). Sampled across the PDQ corpus so a
-    // regex tweak cannot silently start eating prose.
-    const pdqDir = path.resolve(__dirname, "../../../../../kb/en/02_nci_core/pdq");
-    const files = fs.existsSync(pdqDir)
+  // Runs only where the KB corpus is checked out (kb/en is git-ignored, so not in CI).
+  // Section bodies (no References block) must never be flagged; References blocks
+  // chunked at 1400 chars must be (≥ 98%). Sampled across the PDQ corpus so a regex
+  // tweak cannot silently start eating prose. Run locally before changing a rule.
+  (localCorpus ? describe : describe.skip)("KB-wide sanity on the local PDQ corpus", () => {
+    // describe.skip still executes this body at collection time, so guard the read.
+    const pdqDir = PDQ_DIR;
+    const files = localCorpus
       ? fs.readdirSync(pdqDir).filter((f) => f.endsWith(".md")).sort().filter((_, i) => i % 12 === 0)
       : [];
 
-    it("flags zero prose chunks and every reference block across sampled documents", () => {
+    it("flags zero prose chunks and ≥ 98% of reference blocks across sampled documents", () => {
       let proseChunks = 0;
       let proseFlagged = 0;
       let refChunks = 0;
