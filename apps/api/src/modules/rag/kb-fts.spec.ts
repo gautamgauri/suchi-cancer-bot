@@ -6,9 +6,10 @@ import { RagService } from "./rag.service";
 import { KbFtsHealthService } from "./kb-fts-health.service";
 import { PgliteDatabase, PgliteProcess } from "./__test-utils__/pglite-client";
 import {
-  KB_FTS_COLUMN,
   KB_FTS_CONFIG,
   KB_FTS_INDEX,
+  KB_FTS_INDEXDEF_MARKER,
+  KB_FTS_LEGACY_COLUMN,
   KB_FTS_PROBE_SQL,
   KB_FTS_SEARCH_SQL,
   KbFtsProbeRow,
@@ -33,8 +34,10 @@ import {
  * REAL statement the service ships (`KB_FTS_SEARCH_SQL`) — including once through
  * `RagService.fullTextSearchWithMetadata` itself.
  *
- * On the parent commit of the fix, everything below that touches the database fails:
- * `column c.content_tsv does not exist`.
+ * DESIGN UNDER TEST (2026-09-12): the lexical arm is a GIN EXPRESSION index over
+ * to_tsvector('simple', content) and a query using the identical expression. There is
+ * no tsvector column. Two column designs were abandoned the same day (table rewrite
+ * outage; 190 ms/row trigger backfill) — see the migration header.
  */
 
 const API_ROOT = path.resolve(__dirname, "../../..");
@@ -69,7 +72,13 @@ function ftsMigrationsInOrder(): Array<{ name: string; sql: string }> {
     .filter((entry) => fs.statSync(path.join(MIGRATIONS_DIR, entry)).isDirectory())
     .sort()
     .map((name) => ({ name, sql: fs.readFileSync(path.join(MIGRATIONS_DIR, name, "migration.sql"), "utf8") }))
-    .filter((m) => m.sql.includes(KB_FTS_COLUMN) || m.sql.includes(KB_FTS_INDEX));
+    .filter((m) => m.sql.includes(KB_FTS_LEGACY_COLUMN) || m.sql.includes(KB_FTS_INDEX));
+}
+
+function restoreSql(): string {
+  const restore = ftsMigrationsInOrder().find((m) => m.name === RESTORE_MIGRATION);
+  if (!restore) throw new Error(`${RESTORE_MIGRATION} is missing from prisma/migrations`);
+  return restore.sql;
 }
 
 /**
@@ -99,52 +108,41 @@ function baselineDdlFromSchema(): string {
 
 async function buildDatabase(
   proc: PgliteProcess,
-  options: { simulateFreshDbPush?: boolean; leaveUnrepaired?: boolean } = {}
+  options: { replayMigrations?: boolean; seed?: boolean } = {}
 ): Promise<PgliteDatabase> {
+  const { replayMigrations = true, seed = true } = options;
   const db = await proc.createDatabase();
   await db.exec(baselineDdlFromSchema());
 
-  if (options.leaveUnrepaired) {
-    // A `db push` database with the restore migration NOT yet applied: Prisma's
-    // plain `content_tsv tsvector` placeholder, always NULL, never generated.
-    // The lexical query runs clean against it and returns nothing.
-  } else if (options.simulateFreshDbPush) {
-    // A `db push`/`migrate diff` database is baselined at the datamodel, so it keeps
-    // Prisma's plain `content_tsv tsvector` placeholder and only *new* migrations run.
-    const restore = ftsMigrationsInOrder().find((m) => m.name === RESTORE_MIGRATION);
-    if (!restore) throw new Error(`${RESTORE_MIGRATION} is missing from prisma/migrations`);
-    await db.exec(restore.sql);
-  } else {
-    // Production's base schema predates FTS — `content_tsv` was created by migration
-    // 20260120163141, not by the datamodel. Drop the datamodel's plain placeholder so
-    // the migration history replays from the same starting point production had.
-    await db.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
-    await db.exec(`ALTER TABLE "KbChunk" DROP COLUMN IF EXISTS ${KB_FTS_COLUMN};`);
-
+  if (replayMigrations) {
+    // Production's history: 20260120 (generated column, 'english') → 20260218 ('simple')
+    // → 20260606 (dropped) → 20260908 (expression index). Replayed from the same
+    // starting point production had: the datamodel carries no FTS objects.
     for (const migration of ftsMigrationsInOrder()) {
       await db.exec(migration.sql);
     }
   }
 
-  await db.exec(`
-    INSERT INTO "KbDocument" (id, "sourceType", source, title, version, url, status, "isTrustedSource", "createdAt", "updatedAt")
-    VALUES ('${DOC_ID}', '02_nci_core', 'NCI', 'Cervical cancer screening', '1', 'https://example.org/screening',
-            'active', true, now(), now());
-  `);
-  for (const [index, chunk] of CHUNKS.entries()) {
-    await db.query(
-      `INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt") VALUES ($1, $2, $3, $4, now())`,
-      [chunk.id, DOC_ID, index, chunk.content]
-    );
+  if (seed) {
+    await db.exec(`
+      INSERT INTO "KbDocument" (id, "sourceType", source, title, version, url, status, "isTrustedSource", "createdAt", "updatedAt")
+      VALUES ('${DOC_ID}', '02_nci_core', 'NCI', 'Cervical cancer screening', '1', 'https://example.org/screening',
+              'active', true, now(), now());
+    `);
+    for (const [index, chunk] of CHUNKS.entries()) {
+      await db.query(
+        `INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt") VALUES ($1, $2, $3, $4, now())`,
+        [chunk.id, DOC_ID, index, chunk.content]
+      );
+    }
+    // An archived document must never come back from retrieval.
+    await db.exec(`
+      INSERT INTO "KbDocument" (id, "sourceType", source, title, version, url, status, "isTrustedSource", "createdAt", "updatedAt")
+      VALUES ('doc-retired', '02_nci_core', 'NCI', 'Retired page', '1', NULL, 'archived', true, now(), now());
+      INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
+      VALUES ('chunk-retired', 'doc-retired', 0, 'HPV testing guidance that has since been withdrawn.', now());
+    `);
   }
-  // A retired document must never surface — the query filters on d.status = 'active'.
-  await db.exec(`
-    INSERT INTO "KbDocument" (id, "sourceType", source, title, version, url, status, "isTrustedSource", "createdAt", "updatedAt")
-    VALUES ('doc-retired', '02_nci_core', 'NCI', 'Retired screening guidance', '1', NULL, 'archived', true, now(), now());
-    INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
-    VALUES ('chunk-retired', 'doc-retired', 0, 'Cervical cancer screening HPV testing retired guidance', now());
-  `);
-
   return db;
 }
 
@@ -157,6 +155,12 @@ function ragServiceOn(db: PgliteDatabase, ftsHealth: KbFtsHealthService): RagSer
     {} as any, // reranker
     ftsHealth
   );
+}
+
+async function probe(db: PgliteDatabase): Promise<KbFtsProbeRow> {
+  const rows = await db.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL);
+  expect(rows).toHaveLength(1);
+  return rows[0];
 }
 
 describe("KB full-text search (issue #92)", () => {
@@ -174,49 +178,23 @@ describe("KB full-text search (issue #92)", () => {
     await proc?.stop();
   });
 
-  it("keeps content_tsv in the migration history (the #92 drop is not re-introduced)", () => {
+  it("the FTS migration history ends with the expression index, not a drop (the #92 drop is not re-introduced)", () => {
     const migrations = ftsMigrationsInOrder();
     const last = migrations[migrations.length - 1];
-
-    // The FTS lifecycle must end with a restore, not a drop. This is the guard that
-    // would have failed CI on 2026-06-06.
-    expect(migrations.map((m) => m.name)).toContain(RESTORE_MIGRATION);
-    expect(last.sql).toMatch(/ADD COLUMN IF NOT EXISTS content_tsv/);
-    expect(last.sql).toContain(`to_tsvector('${KB_FTS_CONFIG}', content)`);
+    expect(last.name).toBe(RESTORE_MIGRATION);
+    expect(last.sql).toMatch(/CREATE INDEX kb_chunk_content_tsv_idx ON "KbChunk" USING GIN \(to_tsvector\('simple', content\)\)/);
+    // The abandoned designs must not come back: no generated column, no trigger creation.
+    expect(last.sql).not.toMatch(/GENERATED ALWAYS/);
+    expect(last.sql).not.toMatch(/CREATE TRIGGER/);
   });
 
-  it("leaves content_tsv present, trigger-maintained on the 'simple' config, with a VALID GIN index after replaying the real migrations", async () => {
-    const rows = await db.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL);
-    expect(rows).toHaveLength(1);
-
-    const probe = rows[0];
-    expect(probe.tablePresent).toBe(true);
-    expect(probe.columnPresent).toBe(true);
-    // Existence alone is not enough: an unmaintained column stays NULL forever and
-    // the lexical arm returns zero rows without ever raising an error. The current
-    // shape is a plain column + trigger (a STORED generated column rewrites the
-    // table and every index — the 2026-09-12 outage), so the probe must see the
-    // trigger and its 'simple' config.
-    expect(probe.columnGenerated).toBe(false);
-    expect(probe.triggerEnabled).toBe(true);
-    expect(probe.triggerFunctionDef).toContain(`'${KB_FTS_CONFIG}'`);
-    expect(probe.indexPresent).toBe(true);
-    expect(probe.indexValid).toBe(true);
-  });
-
-  it("the trigger keeps content_tsv current on INSERT and on UPDATE OF content", async () => {
-    await db.exec(`INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
-                   VALUES ('chunk-trigger', '${DOC_ID}', 99, 'Mammography screening every two years', now());`);
-    const inserted = await db.query<{ populated: boolean }>(
-      `SELECT ${KB_FTS_COLUMN} IS NOT NULL AS populated FROM "KbChunk" WHERE id = 'chunk-trigger'`
-    );
-    expect(inserted[0].populated).toBe(true);
-    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).toContain("chunk-trigger");
-
-    await db.exec(`UPDATE "KbChunk" SET content = 'Colposcopy after an abnormal Pap smear' WHERE id = 'chunk-trigger';`);
-    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).not.toContain("chunk-trigger");
-    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["Pap smear", 12])).map((r) => r.id)).toContain("chunk-trigger");
-    await db.exec(`DELETE FROM "KbChunk" WHERE id = 'chunk-trigger';`);
+  it("leaves a VALID GIN expression index over to_tsvector('simple', content) and no legacy column after replaying the real migrations", async () => {
+    const p = await probe(db);
+    expect(p.tablePresent).toBe(true);
+    expect(p.indexDef).toContain(KB_FTS_INDEXDEF_MARKER);
+    expect(p.indexDef).toMatch(/USING gin/i);
+    expect(p.indexValid).toBe(true);
+    expect(p.legacyColumnPresent).toBe(false);
   });
 
   it("returns ranked rows for the shipped lexical query", async () => {
@@ -241,6 +219,26 @@ describe("KB full-text search (issue #92)", () => {
     expect(hinglish.map((r) => r.id)).toContain("chunk-hindi");
   });
 
+  it("the planner uses the expression index for the shipped predicate", async () => {
+    // Tiny table: force the choice so the test checks *usability*, not cost estimates.
+    await db.exec("SET enable_seqscan = off;");
+    try {
+      const plan = await db.query<{ "QUERY PLAN": string }>(
+        `EXPLAIN SELECT c.id FROM "KbChunk" c, websearch_to_tsquery('${KB_FTS_CONFIG}', 'HPV testing') q WHERE to_tsvector('${KB_FTS_CONFIG}', c.content) @@ q`
+      );
+      expect(plan.map((r) => r["QUERY PLAN"]).join("\n")).toContain(KB_FTS_INDEX);
+    } finally {
+      await db.exec("RESET enable_seqscan;");
+    }
+  });
+
+  it("newly inserted rows are searchable immediately (no column to keep current)", async () => {
+    await db.exec(`INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
+                   VALUES ('chunk-new', '${DOC_ID}', 99, 'Mammography screening every two years', now());`);
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).toContain("chunk-new");
+    await db.exec(`DELETE FROM "KbChunk" WHERE id = 'chunk-new';`);
+  });
+
   it("RagService.fullTextSearchWithMetadata returns normalized evidence chunks against a real database", async () => {
     const ftsHealth = new KbFtsHealthService(db.asPrisma());
     const rag = ragServiceOn(db, ftsHealth);
@@ -261,25 +259,6 @@ describe("KB full-text search (issue #92)", () => {
     expect(ftsHealth.getHealth().schemaFailureCount).toBe(0);
   });
 
-  it("repairs a schema built from schema.prisma, where Prisma renders content_tsv as a plain, unmaintained column", async () => {
-    // `prisma migrate diff` / `db push` gives a `content_tsv tsvector` that nothing
-    // maintains, so it is always NULL. The restore migration must equip that existing
-    // column with the trigger (and backfill it), not skip it via IF NOT EXISTS.
-    const fresh = await buildDatabase(proc, { simulateFreshDbPush: true });
-    try {
-      const probe = (await fresh.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-      expect(probe.columnGenerated).toBe(false);
-      expect(probe.triggerEnabled).toBe(true);
-      expect(probe.triggerFunctionDef).toContain(`'${KB_FTS_CONFIG}'`);
-      expect(probe.indexValid).toBe(true);
-
-      const rows = await fresh.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
-      expect(rows.map((r) => r.id)).toContain("chunk-hpv");
-    } finally {
-      await fresh.close();
-    }
-  });
-
   it("reports 'ok' from the boot probe on a correctly migrated database", async () => {
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
     try {
@@ -294,17 +273,131 @@ describe("KB full-text search (issue #92)", () => {
     }
   });
 
-  describe("when content_tsv goes missing again", () => {
+  it("the migration removes leftovers of the abandoned column designs and builds the expression index", async () => {
+    const legacy = await buildDatabase(proc, { replayMigrations: false });
+    try {
+      // What the trigger-maintained design left behind.
+      await legacy.exec(`
+        ALTER TABLE "KbChunk" ADD COLUMN ${KB_FTS_LEGACY_COLUMN} tsvector;
+        CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger LANGUAGE plpgsql AS $fn$
+        BEGIN NEW.${KB_FTS_LEGACY_COLUMN} := to_tsvector('${KB_FTS_CONFIG}', NEW.content); RETURN NEW; END $fn$;
+        CREATE TRIGGER kbchunk_content_tsv_trg BEFORE INSERT OR UPDATE OF content ON "KbChunk"
+          FOR EACH ROW EXECUTE FUNCTION kbchunk_content_tsv_maintain();
+        CREATE INDEX ${KB_FTS_INDEX} ON "KbChunk" USING GIN (${KB_FTS_LEGACY_COLUMN});
+      `);
+      expect((await probe(legacy)).legacyColumnPresent).toBe(true);
+
+      await legacy.exec(restoreSql());
+
+      const p = await probe(legacy);
+      expect(p.legacyColumnPresent).toBe(false);
+      expect(p.indexDef).toContain(KB_FTS_INDEXDEF_MARKER);
+      expect(p.indexValid).toBe(true);
+      const fn = await legacy.query<{ n: number }>(`SELECT count(*)::int AS n FROM pg_proc WHERE proname = 'kbchunk_content_tsv_maintain'`);
+      expect(fn[0].n).toBe(0);
+      expect((await legacy.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12])).map((r) => r.id)).toContain("chunk-hpv");
+    } finally {
+      await legacy.close();
+    }
+  });
+
+  describe("when the expression index is missing (e.g. a schema diff dropped it again)", () => {
+    // The June-2026 failure shape — but with an expression query the arm is now
+    // *degraded*, not dead: rows still come back via a sequential scan.
+    let noIndex: PgliteDatabase;
+
+    beforeAll(async () => {
+      noIndex = await buildDatabase(proc, { replayMigrations: false });
+    });
+
+    afterAll(async () => {
+      await noIndex?.close();
+    });
+
+    it("the shipped query still returns correct rows", async () => {
+      const rows = await noIndex.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
+      expect(rows.map((r) => r.id)).toContain("chunk-hpv");
+    });
+
+    it("probes as 'degraded' with a remediation pointing at the migration/script", async () => {
+      jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(noIndex.asPrisma());
+        const result = await health.probe();
+        expect(result.status).toBe("degraded");
+        expect(result.detail).toMatch(/missing/);
+        expect(health.isUnavailable()).toBe(false);
+      } finally {
+        jest.restoreAllMocks();
+      }
+    });
+
+    it("a query success does NOT flip a stale 'unavailable' verdict to 'ok' — the re-probe says degraded", async () => {
+      jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(noIndex.asPrisma());
+        (health as any).set("unavailable", "forced stale verdict for test");
+        const rag = ragServiceOn(noIndex, health);
+        const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+        expect(chunks.length).toBeGreaterThan(0);
+
+        const deadline = Date.now() + 3000;
+        while (health.getHealth().status === "unavailable" && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        expect(health.getHealth().status).toBe("degraded");
+      } finally {
+        jest.restoreAllMocks();
+      }
+    });
+  });
+
+  it("does clear a stale 'unavailable' verdict once a query succeeds on a healthy schema", async () => {
+    jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    try {
+      const health = new KbFtsHealthService(db.asPrisma());
+      (health as any).set("unavailable", "forced stale verdict for test");
+      expect(health.isUnavailable()).toBe(true);
+
+      const rag = ragServiceOn(db, health);
+      await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
+
+      const deadline = Date.now() + 3000;
+      while (health.getHealth().status !== "ok" && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(health.getHealth().status).toBe("ok");
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
+
+  it("reports 'degraded' (not ok) when the index is left INVALID by an interrupted concurrent build", async () => {
+    jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    const invalid = await buildDatabase(proc);
+    try {
+      await invalid.exec(`UPDATE pg_index SET indisvalid = false WHERE indexrelid = '${KB_FTS_INDEX}'::regclass;`);
+      const p = await probe(invalid);
+      expect(p.indexDef).not.toBeNull();
+      expect(p.indexValid).toBe(false);
+
+      const health = await new KbFtsHealthService(invalid.asPrisma()).probe();
+      expect(health.status).toBe("degraded");
+      expect(health.detail).toMatch(/INVALID/);
+    } finally {
+      jest.restoreAllMocks();
+      await invalid.close();
+    }
+  });
+
+  describe("when the table itself is gone", () => {
     let broken: PgliteDatabase;
-    let ftsHealth: KbFtsHealthService;
     let errorSpy: jest.SpyInstance;
 
     beforeAll(async () => {
-      broken = await buildDatabase(proc);
-      // Reproduce exactly what migration 20260606000000 did to production.
-      await broken.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
-      await broken.exec(`ALTER TABLE "KbChunk" DROP COLUMN ${KB_FTS_COLUMN};`);
-      ftsHealth = new KbFtsHealthService(broken.asPrisma());
+      broken = await buildDatabase(proc, { seed: false });
+      await broken.exec(`DROP TABLE "KbChunk" CASCADE;`);
     });
 
     beforeEach(() => {
@@ -322,7 +415,6 @@ describe("KB full-text search (issue #92)", () => {
     });
 
     it("classifies the real Postgres error as a schema failure, not an unlucky query", async () => {
-      // Healthy database: the same statement does not raise at all.
       await expect(db.query(KB_FTS_SEARCH_SQL, ["HPV testing", 12])).resolves.toBeDefined();
 
       const schemaError = await broken
@@ -331,19 +423,15 @@ describe("KB full-text search (issue #92)", () => {
         .catch((e) => e);
 
       expect(schemaError).not.toBeNull();
-      expect((schemaError as any).code).toBe("42703"); // undefined_column, straight from Postgres
+      expect((schemaError as any).code).toBe("42P01"); // undefined_table, straight from Postgres
       expect(isFtsSchemaError(schemaError)).toBe(true);
       // A transient failure must NOT be mistaken for a dead schema.
       expect(isFtsSchemaError(new Error("Timed out fetching a new connection from the pool"))).toBe(false);
     });
 
     it("reports 'unavailable' from the probe and logs it at error level", async () => {
-      const health = await ftsHealth.probe();
-
+      const health = await new KbFtsHealthService(broken.asPrisma()).probe();
       expect(health.status).toBe("unavailable");
-      expect(health.detail).toContain(KB_FTS_COLUMN);
-      expect(ftsHealth.isUnavailable()).toBe(true);
-
       const events = errorSpy.mock.calls.map((call) => call[0]?.event);
       expect(events).toContain("kb_fts_unavailable");
     });
@@ -352,146 +440,30 @@ describe("KB full-text search (issue #92)", () => {
       const health = new KbFtsHealthService(broken.asPrisma());
       const rag = ragServiceOn(broken, health);
 
-      // Per-query resilience is preserved: the caller still gets an array, so the
-      // vector arm can answer the turn.
       const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
       expect(chunks).toEqual([]);
 
-      // But the condition is counted and escalated, instead of one indistinguishable
-      // log line per turn.
       expect(health.getHealth().schemaFailureCount).toBeGreaterThan(0);
       expect(health.getHealth().status).toBe("unavailable");
-      expect(health.getHealth().lastError).toContain(KB_FTS_COLUMN);
 
       const events = errorSpy.mock.calls.map((call) => call[0]?.event);
       expect(events).toContain("kb_fts_unavailable");
     });
   });
 
-  describe("when content_tsv is present but nothing maintains it (always NULL)", () => {
-    // The masking case: the column exists, so the query executes and throws
-    // nothing — it just returns zero rows forever. Query success must never be
-    // read as proof that the schema is healthy.
-    let unrepaired: PgliteDatabase;
-
-    beforeAll(async () => {
-      unrepaired = await buildDatabase(proc, { leaveUnrepaired: true });
-    });
-
-    afterAll(async () => {
-      await unrepaired?.close();
-    });
-
-    it("executes the shipped query without error and returns nothing", async () => {
-      const probe = (await unrepaired.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-      expect(probe.columnPresent).toBe(true);
-      expect(probe.columnGenerated).toBe(false);
-      expect(probe.triggerEnabled).toBe(false);
-
-      const rows = await unrepaired.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
-      expect(rows).toHaveLength(0);
-    });
-
-    it("probes as 'unavailable' even though the column exists", async () => {
-      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
-      try {
-        const health = new KbFtsHealthService(unrepaired.asPrisma());
-        const result = await health.probe();
-
-        expect(result.status).toBe("unavailable");
-        expect(health.isUnavailable()).toBe(true);
-      } finally {
-        jest.restoreAllMocks();
-      }
-    });
-
-    it("does NOT clear the unavailable verdict when a query merely succeeds", async () => {
-      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
-      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
-      try {
-        const health = new KbFtsHealthService(unrepaired.asPrisma());
-        await health.probe();
-        expect(health.isUnavailable()).toBe(true);
-
-        // A real retrieval call through RagService: the query succeeds, so the
-        // service records a success. Before the re-probe fix this flipped the
-        // sub-status straight to "ok" and reported a dead arm as healthy.
-        const rag = ragServiceOn(unrepaired, health);
-        const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
-        expect(chunks).toHaveLength(0);
-
-        // Give the throttled, fire-and-forget re-probe time to land.
-        await new Promise((resolve) => setTimeout(resolve, 400));
-
-        expect(health.getHealth().status).toBe("unavailable");
-        expect(health.isUnavailable()).toBe(true);
-      } finally {
-        jest.restoreAllMocks();
-      }
-    });
-
-    it("reports 'degraded' (not ok) when the GIN index is left INVALID by an interrupted concurrent build", async () => {
-      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
-      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
-      const invalid = await buildDatabase(proc);
-      try {
-        // Simulate what a cancelled CREATE INDEX CONCURRENTLY leaves behind.
-        await invalid.exec(`UPDATE pg_index SET indisvalid = false WHERE indexrelid = '${KB_FTS_INDEX}'::regclass;`);
-        const probe = (await invalid.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-        expect(probe.indexPresent).toBe(true);
-        expect(probe.indexValid).toBe(false);
-
-        const health = await new KbFtsHealthService(invalid.asPrisma()).probe();
-        expect(health.status).toBe("degraded");
-        expect(health.detail).toMatch(/INVALID/);
-      } finally {
-        jest.restoreAllMocks();
-        await invalid.close();
-      }
-    });
-
-    it("does clear the verdict once the schema is actually repaired", async () => {
-      // The recovery path must still work — the fix defers to the probe, it
-      // does not pin the verdict permanently.
-      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
-      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
-      try {
-        const health = new KbFtsHealthService(db.asPrisma());
-        (health as any).set("unavailable", "forced stale verdict for test");
-        expect(health.isUnavailable()).toBe(true);
-
-        const rag = ragServiceOn(db, health);
-        await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
-
-        const deadline = Date.now() + 3000;
-        while (health.getHealth().status !== "ok" && Date.now() < deadline) {
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-
-        expect(health.getHealth().status).toBe("ok");
-      } finally {
-        jest.restoreAllMocks();
-      }
-    });
-  });
-
-  describe("on a production-sized table the migration refuses instead of rewriting (review on the #92 follow-up)", () => {
-    // The 2026-09-12 outage: a STORED generated column rewrote the whole table.
-    // The safeguard is that migration.sql can never leave a large table half-done
-    // and be recorded as applied — it either completes (small table) or raises.
+  describe("on a production-sized table the migration refuses instead of scanning under a lock", () => {
+    // The safeguard from the 2026-09-12 review: migration.sql either completes
+    // (small table) or raises with nothing committed — so `prisma migrate deploy`
+    // can never record it as applied ahead of the concurrent index build.
     let big: PgliteDatabase;
-    const restoreSql = () => ftsMigrationsInOrder().find((m) => m.name === RESTORE_MIGRATION)!.sql;
 
     beforeAll(async () => {
-      big = await buildDatabase(proc);
-      // Undo the restore so the column is absent, then make the table "large".
-      await big.exec(`DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";`);
-      await big.exec(`DROP FUNCTION IF EXISTS kbchunk_content_tsv_maintain();`);
-      await big.exec(`DROP INDEX IF EXISTS ${KB_FTS_INDEX};`);
-      await big.exec(`ALTER TABLE "KbChunk" DROP COLUMN IF EXISTS ${KB_FTS_COLUMN};`);
+      big = await buildDatabase(proc, { replayMigrations: false, seed: false });
       await big.exec(`
+        INSERT INTO "KbDocument" (id, "sourceType", source, title, version, url, status, "isTrustedSource", "createdAt", "updatedAt")
+        VALUES ('${DOC_ID}', '02_nci_core', 'NCI', 'Bulk', '1', NULL, 'active', true, now(), now());
         INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
-        SELECT 'bulk-' || g, '${DOC_ID}', 1000 + g, 'filler chunk ' || g, now() FROM generate_series(1, 5001) g;
+        SELECT 'bulk-' || g, '${DOC_ID}', g, 'filler chunk ' || g, now() FROM generate_series(1, 5001) g;
       `);
     });
 
@@ -499,50 +471,32 @@ describe("KB full-text search (issue #92)", () => {
       await big?.close();
     });
 
-    it("raises (nothing committed) when the column is unpopulated, so prisma migrate deploy cannot record it", async () => {
+    it("raises with the 'refusing' message and leaves no index behind", async () => {
       const err = await big.exec(restoreSql()).then(() => null).catch((e) => e);
       expect(err).not.toBeNull();
-      expect(String((err as Error).message)).toMatch(/refusing to backfill\/index inside a migration/);
-      // The file is one DO block, so the raise rolls everything back: no column,
-      // no trigger, and not even the helper function (Prisma 5 does not wrap
-      // migration.sql in a transaction, so this atomicity has to come from the file).
-      const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-      expect(probe.columnPresent).toBe(false);
-      expect(probe.triggerEnabled).toBe(false);
-      const fn = await big.query<{ n: number }>(
-        `SELECT count(*)::int AS n FROM pg_proc WHERE proname = 'kbchunk_content_tsv_maintain'`
-      );
-      expect(fn[0].n).toBe(0);
+      expect(String((err as Error).message)).toMatch(/refusing to build the FTS index inside a migration/);
+      expect((await probe(big)).indexDef).toBeNull();
     });
 
-    it("is a harmless no-op once the rollout script has populated the column and built a valid index", async () => {
-      // What scripts/sql/kb_fts_safe_rollout.py does, minus batching/CONCURRENTLY (PGlite).
-      await big.exec(`ALTER TABLE "KbChunk" ADD COLUMN ${KB_FTS_COLUMN} tsvector;`);
-      await big.exec(`
-        CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger LANGUAGE plpgsql AS $fn$
-        BEGIN NEW.${KB_FTS_COLUMN} := to_tsvector('${KB_FTS_CONFIG}', NEW.content); RETURN NEW; END $fn$;
-        CREATE TRIGGER kbchunk_content_tsv_trg BEFORE INSERT OR UPDATE OF content ON "KbChunk"
-          FOR EACH ROW EXECUTE FUNCTION kbchunk_content_tsv_maintain();
-      `);
-      await big.exec(`UPDATE "KbChunk" SET ${KB_FTS_COLUMN} = to_tsvector('${KB_FTS_CONFIG}', content) WHERE ${KB_FTS_COLUMN} IS NULL;`);
-      await big.exec(`CREATE INDEX ${KB_FTS_INDEX} ON "KbChunk" USING GIN (${KB_FTS_COLUMN});`);
-
+    it("is a harmless no-op once the rollout script has built a valid expression index", async () => {
+      // What scripts/sql/kb_fts_safe_rollout.py does, minus CONCURRENTLY (PGlite).
+      await big.exec(`CREATE INDEX ${KB_FTS_INDEX} ON "KbChunk" USING GIN (to_tsvector('${KB_FTS_CONFIG}', content));`);
       await expect(big.exec(restoreSql())).resolves.toBeDefined();
-      const probe = (await big.query<KbFtsProbeRow>(KB_FTS_PROBE_SQL))[0];
-      expect(probe.triggerEnabled).toBe(true);
-      expect(probe.indexValid).toBe(true);
-      const nulls = await big.query<{ n: number }>(`SELECT count(*)::int AS n FROM "KbChunk" WHERE ${KB_FTS_COLUMN} IS NULL`);
-      expect(nulls[0].n).toBe(0);
+      const p = await probe(big);
+      expect(p.indexValid).toBe(true);
+      expect(p.indexDef).toContain(KB_FTS_INDEXDEF_MARKER);
     });
   });
 
-  it("declares content_tsv in schema.prisma so a schema diff cannot drop it again", () => {
+  it("schema.prisma carries no tsvector column and keeps the guard note about the expression index", () => {
     const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
     const fromModel = schema.slice(schema.indexOf("model KbChunk {"));
     const modelBody = fromModel.slice(0, fromModel.indexOf("\n}"));
 
-    expect(modelBody).toMatch(/content_tsv\s+Unsupported\("tsvector"\)\?/);
-    expect(modelBody).toContain(`map: "${KB_FTS_INDEX}"`);
+    // No stored tsvector: a schema diff must not try to (re)create or drop a column.
+    expect(modelBody).not.toMatch(/content_tsv\s+Unsupported/);
+    // The note that stops the next "clean-up" from repeating June 2026.
     expect(modelBody).toContain("DO NOT REMOVE");
+    expect(modelBody).toContain(KB_FTS_INDEX);
   });
 });

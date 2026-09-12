@@ -3,34 +3,36 @@
  *
  * WHY THIS FILE EXISTS (issue #92): the FTS SQL used to be an inline tagged
  * template inside `RagService.fullTextSearchWithMetadata`. It referenced
- * `KbChunk.content_tsv`, a generated column that lives only in raw migration
+ * `KbChunk.content_tsv`, a generated column that lived only in raw migration
  * SQL. When migration 20260606000000 dropped that column, nothing in the
  * TypeScript build, the Prisma schema or the test suite could notice, and the
  * query failed silently for three months.
  *
- * Keeping the SQL and the schema identifiers here means:
- *   - the boot-time probe (`KbFtsHealthService`) checks the very objects the
- *     query needs, not a hand-copied guess at them, and
- *   - `kb-fts.spec.ts` executes this exact statement against a real Postgres.
+ * DESIGN (since 2026-09-12): there is NO stored tsvector column any more. The
+ * lexical arm indexes the EXPRESSION `to_tsvector('simple', content)` with a GIN
+ * index and queries by the same expression. Postgres uses an expression index
+ * only when the query's expression is textually identical to the index's, so
+ * `KB_FTS_EXPRESSION` is the one place that text lives.
  *
- * If you change the text-search config here you MUST ship a migration that
- * rebuilds `content_tsv` with the same config — `to_tsvector` and
- * `websearch_to_tsquery` must agree or `@@` silently matches nothing.
+ * Why no column: a STORED generated column rewrites the whole table (15-minute
+ * outage, 2026-09-12 10:48 UTC), and a plain column with a trigger costs a
+ * write per row that must also update the pgvector HNSW index (measured
+ * 190 ms/row = 2.5 h of writes for the backfill). The expression index needs
+ * one concurrent build and no row writes, and there is no shadow state to drift.
+ *
+ * Because the query computes the expression itself, it still WORKS without the
+ * index — it just sequentially scans. So the lexical arm can only be "dead" if
+ * the table is missing; a missing or invalid index is "degraded", never a silent zero.
+ *
+ * Keeping the SQL and the identifiers here means the boot-time probe
+ * (`KbFtsHealthService`) checks the very objects the query needs, and
+ * `kb-fts.spec.ts` executes this exact statement against a real Postgres.
  */
 
-/** Table carrying the FTS column. */
+/** Table carrying the searchable text. */
 export const KB_FTS_TABLE = "KbChunk";
 
-/** tsvector column. Defined in raw migration SQL only — see KB_FTS_OWNERSHIP_NOTE. */
-export const KB_FTS_COLUMN = "content_tsv";
-
-/** Trigger that keeps a plain `content_tsv` current (BEFORE INSERT OR UPDATE OF content). */
-export const KB_FTS_TRIGGER = "kbchunk_content_tsv_trg";
-
-/** The trigger's function; its body carries the text-search config, like a generation expression would. */
-export const KB_FTS_TRIGGER_FN = "kbchunk_content_tsv_maintain";
-
-/** GIN index over the tsvector column. */
+/** GIN expression index. Created by raw migration SQL only — see KB_FTS_OWNERSHIP_NOTE. */
 export const KB_FTS_INDEX = "kb_chunk_content_tsv_idx";
 
 /**
@@ -40,15 +42,28 @@ export const KB_FTS_INDEX = "kb_chunk_content_tsv_idx";
  */
 export const KB_FTS_CONFIG = "simple";
 
+/**
+ * The indexed expression, with `c.` as the table alias used by the query. The
+ * migration indexes `to_tsvector('simple', content)`; pg_get_indexdef renders
+ * that as `to_tsvector('simple'::regconfig, content)` — see KB_FTS_INDEXDEF_MARKER.
+ */
+export const KB_FTS_EXPRESSION = `to_tsvector('${KB_FTS_CONFIG}', c.content)`;
+
+/** How pg_get_indexdef renders the indexed expression; the probe checks for it. */
+export const KB_FTS_INDEXDEF_MARKER = `to_tsvector('${KB_FTS_CONFIG}'::regconfig, content)`;
+
+/** Name of the legacy column some databases may still carry; the probe reports it so it gets dropped. */
+export const KB_FTS_LEGACY_COLUMN = "content_tsv";
+
 export const KB_FTS_OWNERSHIP_NOTE =
-  `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" is a plain tsvector kept current by trigger ${KB_FTS_TRIGGER} ` +
-  `(function ${KB_FTS_TRIGGER_FN}), both created by raw migration SQL ` +
-  `(20260908000000_restore_kb_chunk_fts); a legacy STORED GENERATED shape is also accepted. ` +
-  `It is NOT a generated column on purpose: a STORED generated column rewrites the whole table ` +
-  `and every index (incl. the pgvector HNSW index) and caused a 15-minute retrieval outage on ` +
-  `2026-09-12. Prisma cannot express either shape, so schema.prisma declares it as ` +
-  `Unsupported("tsvector") purely to stop a schema diff from dropping it again. Never "clean it ` +
-  `up" out of either place.`;
+  `Lexical search on "${KB_FTS_TABLE}" is an EXPRESSION index: ${KB_FTS_INDEX} = GIN ` +
+  `(to_tsvector('${KB_FTS_CONFIG}', content)), created by raw migration SQL ` +
+  `(20260908000000_restore_kb_chunk_fts) — on production with CREATE INDEX CONCURRENTLY via ` +
+  `scripts/sql/kb_fts_safe_rollout.py. There is deliberately NO tsvector column: a STORED ` +
+  `generated column rewrites the table (2026-09-12 outage) and a trigger-maintained column ` +
+  `costs a write per row through the pgvector HNSW index. Prisma cannot express an expression ` +
+  `index, so a schema diff will propose dropping it — never accept that; kb-fts.spec.ts pins ` +
+  `the migration history.`;
 
 /**
  * The lexical retrieval query.
@@ -56,15 +71,15 @@ export const KB_FTS_OWNERSHIP_NOTE =
  * $1 = user query text (fed to websearch_to_tsquery, so phrases and AND/OR work)
  * $2 = row limit
  *
- * Kept structurally identical to the pre-#92 inline statement so the fix is a
- * restoration, not a retrieval-behaviour change.
+ * Uses KB_FTS_EXPRESSION in both the predicate and the rank so the planner can
+ * use the expression index for the predicate.
  */
 export const KB_FTS_SEARCH_SQL = `
   SELECT
     c.id,
     c."docId",
     c.content,
-    ts_rank_cd(c.${KB_FTS_COLUMN}, query) AS "lexRank",
+    ts_rank_cd(${KB_FTS_EXPRESSION}, query) AS "lexRank",
     d.title,
     d.url,
     d."sourceType",
@@ -76,67 +91,42 @@ export const KB_FTS_SEARCH_SQL = `
   INNER JOIN "KbDocument" d ON c."docId" = d.id,
   websearch_to_tsquery('${KB_FTS_CONFIG}', $1) query
   WHERE d.status = 'active'
-    AND c.${KB_FTS_COLUMN} @@ query
-  ORDER BY ts_rank_cd(c.${KB_FTS_COLUMN}, query) DESC
+    AND ${KB_FTS_EXPRESSION} @@ query
+  ORDER BY ts_rank_cd(${KB_FTS_EXPRESSION}, query) DESC
   LIMIT $2::int
 `;
 
 /**
- * Schema probe: reports whether the objects `KB_FTS_SEARCH_SQL` depends on exist
- * AND are shaped correctly. Existence alone is not enough — `prisma migrate diff`
- * emits `content_tsv tsvector` with nothing maintaining it, which leaves a column
- * that is always NULL and an FTS arm that returns zero rows forever without ever
- * raising an error. So the probe reports HOW the column is maintained — a STORED
- * generation expression (legacy) or the enabled `KB_FTS_TRIGGER` (current) — and
- * whether the GIN index is not just present but VALID (an interrupted
- * `CREATE INDEX CONCURRENTLY` leaves an invalid index behind).
+ * Schema probe: is the table there, is the expression index there, is it VALID
+ * (an interrupted CREATE INDEX CONCURRENTLY leaves an invalid index the planner
+ * ignores), and is it over the expression the query uses? Also reports whether a
+ * legacy `content_tsv` column is still present so it can be dropped.
  */
 export const KB_FTS_PROBE_SQL = `
   SELECT
     to_regclass('"${KB_FTS_TABLE}"') IS NOT NULL AS "tablePresent",
-    (a.attname IS NOT NULL) AS "columnPresent",
-    COALESCE(a.attgenerated = 's', false) AS "columnGenerated",
-    pg_get_expr(d.adbin, d.adrelid) AS "generationExpr",
-    EXISTS (
-      SELECT 1 FROM pg_trigger t
-      WHERE t.tgrelid = to_regclass('"${KB_FTS_TABLE}"')
-        AND t.tgname = '${KB_FTS_TRIGGER}'
-        AND NOT t.tgisinternal
-        AND t.tgenabled <> 'D'
-    ) AS "triggerEnabled",
-    (
-      SELECT pg_get_functiondef(p.oid) FROM pg_proc p WHERE p.proname = '${KB_FTS_TRIGGER_FN}' LIMIT 1
-    ) AS "triggerFunctionDef",
-    EXISTS (
-      SELECT 1 FROM pg_indexes WHERE indexname = '${KB_FTS_INDEX}'
-    ) AS "indexPresent",
+    (SELECT indexdef FROM pg_indexes WHERE indexname = '${KB_FTS_INDEX}') AS "indexDef",
     COALESCE((
       SELECT i.indisvalid AND i.indisready
       FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
       WHERE c.relname = '${KB_FTS_INDEX}'
-    ), false) AS "indexValid"
-  FROM (SELECT 1) probe
-  LEFT JOIN pg_attribute a
-    ON a.attrelid = to_regclass('"${KB_FTS_TABLE}"')
-   AND a.attname = '${KB_FTS_COLUMN}'
-   AND NOT a.attisdropped
-  LEFT JOIN pg_attrdef d
-    ON d.adrelid = a.attrelid
-   AND d.adnum = a.attnum
+    ), false) AS "indexValid",
+    EXISTS (
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = to_regclass('"${KB_FTS_TABLE}"')
+        AND attname = '${KB_FTS_LEGACY_COLUMN}'
+        AND NOT attisdropped
+    ) AS "legacyColumnPresent"
 `;
 
 export interface KbFtsProbeRow {
   tablePresent: boolean;
-  columnPresent: boolean;
-  /** Legacy shape: STORED generated column (Postgres maintains it). */
-  columnGenerated: boolean;
-  generationExpr: string | null;
-  /** Current shape: plain column kept current by the enabled maintenance trigger. */
-  triggerEnabled: boolean;
-  triggerFunctionDef: string | null;
-  indexPresent: boolean;
+  /** pg_get_indexdef output, or null when the index is missing. */
+  indexDef: string | null;
   /** pg_index.indisvalid AND indisready — false for an interrupted concurrent build. */
   indexValid: boolean;
+  /** A stored tsvector column from the abandoned designs is still present. */
+  legacyColumnPresent: boolean;
 }
 
 /**
@@ -168,8 +158,9 @@ export function isFtsSchemaError(error: unknown): boolean {
 
   const message = typeof err.message === "string" ? err.message : "";
   return (
-    new RegExp(`column\\s+.?(c\\.)?${KB_FTS_COLUMN}.?\\s+does not exist`, "i").test(message) ||
+    /column\s+.?(c\.)?content\s+does not exist/i.test(message) ||
     /relation\s+.?KbChunk.?\s+does not exist/i.test(message) ||
-    /function\s+websearch_to_tsquery.*does not exist/i.test(message)
+    /function\s+(websearch_to_tsquery|to_tsvector).*does not exist/i.test(message) ||
+    /text search configuration\s+.?simple.?\s+does not exist/i.test(message)
   );
 }

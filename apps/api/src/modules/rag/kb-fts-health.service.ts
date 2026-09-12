@@ -1,25 +1,27 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import {
-  KB_FTS_COLUMN,
   KB_FTS_CONFIG,
   KB_FTS_INDEX,
+  KB_FTS_INDEXDEF_MARKER,
+  KB_FTS_LEGACY_COLUMN,
   KB_FTS_OWNERSHIP_NOTE,
   KB_FTS_PROBE_SQL,
   KB_FTS_TABLE,
-  KB_FTS_TRIGGER,
   KbFtsProbeRow,
 } from "./kb-fts.sql";
 
 /**
  * Health of the lexical (FTS) arm of hybrid retrieval.
  *
- * - `ok`            — column exists, is maintained (by the enabled trigger, or as a legacy STORED
- *                     generated column) on the expected config, GIN index present and valid.
- * - `degraded`      — queryable but not in the expected shape (GIN index missing or invalid → slow
- *                     but correct; config mismatch → far fewer matches).
- * - `unavailable`   — the column/table the query needs is missing, or present but maintained by
- *                     nothing (always NULL). The lexical arm contributes nothing.
+ * The arm queries the EXPRESSION to_tsvector('simple', content), so it keeps
+ * returning correct rows even with no index — only slower. Hence:
+ *
+ * - `ok`            — table present, expression GIN index present, VALID and over the expected expression.
+ * - `degraded`      — correct but slow: index missing, INVALID (interrupted CREATE INDEX
+ *                     CONCURRENTLY) or over a different expression/config (planner will not use it).
+ * - `unavailable`   — the table the query needs is missing, or queries fail with a schema
+ *                     error. The lexical arm contributes nothing.
  * - `unknown`       — the probe could not run (DB unreachable at boot). Not a verdict.
  */
 export type KbFtsStatus = "ok" | "degraded" | "unavailable" | "unknown";
@@ -47,7 +49,7 @@ const LOG_THROTTLE_MS = 60_000;
  * noticed for three months. This service exists so that the distinction is
  * explicit, checked once at boot, counted per query, and reported on /v1/health.
  *
- * Deliberate non-goal: this does NOT abort boot when the column is missing.
+ * Deliberate non-goal: this does NOT abort boot when something is missing.
  * Vector-only retrieval still answers correctly (just with degraded ranking), so
  * refusing to start would turn a ranking regression into a full chat outage for
  * patients. The escalation path is the boot-time ERROR log plus
@@ -96,76 +98,53 @@ export class KbFtsHealthService implements OnModuleInit {
         return this.getHealth();
       }
 
-      if (!row.columnPresent) {
-        this.set(
-          "unavailable",
-          `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" is missing — run migration 20260908000000_restore_kb_chunk_fts`
-        );
-        this.logUnavailable();
-        return this.getHealth();
-      }
+      const legacyNote = row.legacyColumnPresent
+        ? ` A legacy "${KB_FTS_LEGACY_COLUMN}" column is still present and unused — drop it (catalog-only) with migration 20260908000000_restore_kb_chunk_fts.`
+        : "";
 
-      // How is the column kept current? Either Postgres does it (legacy STORED
-      // generated column) or the maintenance trigger does (current shape — a
-      // generated column rewrites the whole table and caused the 2026-09-12 outage).
-      // A plain column with neither is `prisma migrate diff` output: always NULL.
-      const maintainedBy: "generated column" | "trigger" | null = row.columnGenerated
-        ? "generated column"
-        : row.triggerEnabled
-          ? "trigger"
-          : null;
-      if (!maintainedBy) {
-        this.set(
-          "unavailable",
-          `"${KB_FTS_TABLE}"."${KB_FTS_COLUMN}" exists but nothing maintains it (not GENERATED, and ` +
-            `trigger ${KB_FTS_TRIGGER} is missing or disabled), so it is always NULL and every lexical ` +
-            `query returns zero rows. This is what a schema built by \`prisma migrate diff\`/\`db push\` ` +
-            `produces. Run migration 20260908000000_restore_kb_chunk_fts.`
-        );
-        this.logUnavailable();
-        return this.getHealth();
-      }
-
-      const expr = (row.columnGenerated ? row.generationExpr : row.triggerFunctionDef) ?? "";
-      if (!expr.includes(`'${KB_FTS_CONFIG}'`)) {
+      if (!row.indexDef) {
         this.set(
           "degraded",
-          `"${KB_FTS_COLUMN}" is maintained by ${maintainedBy} with ${expr ? "a definition that does not use" : "an unreadable definition for"} ` +
-            `'${KB_FTS_CONFIG}', but queries use websearch_to_tsquery('${KB_FTS_CONFIG}', …). Mismatched ` +
-            `text-search configs match far fewer rows (and no Hindi/Hinglish at all).`
+          `expression index ${KB_FTS_INDEX} is missing — lexical search still returns correct rows ` +
+            `but computes to_tsvector over every chunk (sequential scan). Build it: ` +
+            `scripts/sql/kb_fts_safe_rollout.py (production) or migration 20260908000000_restore_kb_chunk_fts.` +
+            legacyNote
+        );
+        this.logger.warn({ event: "kb_fts_index_missing", message: this.detail, index: KB_FTS_INDEX });
+        return this.getHealth();
+      }
+
+      if (!row.indexDef.includes(KB_FTS_INDEXDEF_MARKER) || !/USING gin/i.test(row.indexDef)) {
+        this.set(
+          "degraded",
+          `${KB_FTS_INDEX} exists but is not GIN over ${KB_FTS_INDEXDEF_MARKER} (actual: ` +
+            `${row.indexDef.slice(0, 160)}). Queries use websearch_to_tsquery('${KB_FTS_CONFIG}', …) ` +
+            `against that exact expression, so the planner will not use this index and a mismatched ` +
+            `config matches far fewer rows (and no Hindi/Hinglish at all).` +
+            legacyNote
         );
         this.logger.error({
           event: "kb_fts_config_mismatch",
           message: this.detail,
           expectedConfig: KB_FTS_CONFIG,
-          maintainedBy,
-          definition: expr.slice(0, 300),
+          indexDef: row.indexDef.slice(0, 300),
         });
-        return this.getHealth();
-      }
-
-      if (!row.indexPresent) {
-        this.set(
-          "degraded",
-          `GIN index ${KB_FTS_INDEX} is missing — lexical search still returns correct rows but ` +
-            `sequentially scans every chunk.`
-        );
-        this.logger.warn({ event: "kb_fts_index_missing", message: this.detail, index: KB_FTS_INDEX });
         return this.getHealth();
       }
 
       if (!row.indexValid) {
         this.set(
           "degraded",
-          `GIN index ${KB_FTS_INDEX} exists but is INVALID — an interrupted CREATE INDEX CONCURRENTLY ` +
-            `leaves this behind. The planner ignores it (sequential scans). DROP INDEX ${KB_FTS_INDEX} ` +
-            `and rebuild it CONCURRENTLY.`
+          `${KB_FTS_INDEX} exists but is INVALID — an interrupted CREATE INDEX CONCURRENTLY leaves this ` +
+            `behind and the planner ignores it (sequential scans). DROP INDEX CONCURRENTLY ${KB_FTS_INDEX} ` +
+            `and rebuild it CONCURRENTLY (scripts/sql/kb_fts_safe_rollout.py does both).` +
+            legacyNote
         );
         this.logger.error({ event: "kb_fts_index_invalid", message: this.detail, index: KB_FTS_INDEX });
         return this.getHealth();
       }
 
-      this.set("ok", `${KB_FTS_COLUMN} maintained by ${maintainedBy} on '${KB_FTS_CONFIG}', ${KB_FTS_INDEX} present and valid`);
+      this.set("ok", `${KB_FTS_INDEX} present and valid over to_tsvector('${KB_FTS_CONFIG}', content)${legacyNote}`);
       this.logger.log({
         event: "kb_fts_health_ok",
         message: `Lexical retrieval arm ready: ${this.detail}`,
@@ -225,17 +204,11 @@ export class KbFtsHealthService implements OnModuleInit {
   /**
    * A lexical query completed without throwing.
    *
-   * Execution success is NOT evidence that the schema is repaired. A plain,
-   * unmaintained `content_tsv` column — what `prisma migrate diff` emits, and
-   * precisely what the restore migration exists to repair — satisfies this
-   * query, returns zero rows, and throws nothing. Clearing an `unavailable`
-   * verdict on that basis would report a dead lexical arm as healthy, which is
-   * the exact masking this service exists to prevent.
-   *
-   * So a success never sets `ok` directly. It only schedules a re-probe, which
-   * checks how the column is maintained (trigger or generation expression) and
-   * is the sole authority on the verdict. Throttled and never awaited, so the retrieval
-   * path is not slowed.
+   * Execution success is NOT evidence that the schema is healthy: with an
+   * expression query, "no index" and "indexed" produce the same rows, only at
+   * different speeds. So a success never sets `ok` directly. It only schedules a
+   * re-probe, which inspects the index and is the sole authority on the verdict.
+   * Throttled and never awaited, so the retrieval path is not slowed.
    */
   recordQuerySuccess(): void {
     // Hot path: nothing to reconsider unless we are currently carrying a
@@ -299,7 +272,6 @@ export class KbFtsHealthService implements OnModuleInit {
         `LEXICAL RETRIEVAL IS DEAD — hybrid search is running vector-only, which silently ` +
         `discards 45% of the scoring weight on long queries and 20% on short ones. ${this.detail}`,
       table: KB_FTS_TABLE,
-      column: KB_FTS_COLUMN,
       index: KB_FTS_INDEX,
       expectedConfig: KB_FTS_CONFIG,
       schemaFailureCount: this.schemaFailureCount,

@@ -1,4 +1,4 @@
--- Restore full-text search on KbChunk (issue #92) — NON-BLOCKING implementation.
+-- Restore full-text search on KbChunk (issue #92) — EXPRESSION INDEX, no column.
 --
 -- HISTORY
 --   20260120163141_add_fts_to_kbchunk  added `content_tsv` as a STORED generated
@@ -17,114 +17,68 @@
 --                                      since, costing long queries 45% and short queries
 --                                      20% of their retrieval scoring weight.
 --
--- INCIDENT 2026-09-12 (why this file is NOT a GENERATED column any more)
---   The first version of this migration re-added `content_tsv` as
---   `GENERATED ALWAYS AS (...) STORED`. On Postgres that is a full table rewrite
---   under an ACCESS EXCLUSIVE lock, and the rewrite rebuilds EVERY index on the
---   table — including the pgvector HNSW index on `embedding`. On production
---   (suchi-db, db-f1-micro, ~74k rows of 1.4 KB text + 768-d vectors) it ran
---   for 15+ minutes; all retrieval queries queued behind the lock, the
---   connection pool filled, /v1/health stopped answering and chat turns timed
---   out. The statement was terminated; nothing was changed. Never run a
---   rewriting ALTER on "KbChunk" again.
+-- TWO ABANDONED DESIGNS (2026-09-12)
+--   1. STORED generated column: Postgres rewrites the whole table under an ACCESS
+--      EXCLUSIVE lock and rebuilds every index incl. the pgvector HNSW one. On
+--      suchi-db (db-f1-micro, ~49k rows of 1.4 KB text + 768-d vectors) it ran
+--      15+ minutes with all retrieval queued behind it. Terminated; nothing kept.
+--   2. Plain column + trigger + batched backfill: non-blocking, but every updated
+--      row is too large for a HOT update, so it re-enters all four indexes incl.
+--      the HNSW one — measured 190 ms/row = ~2.5 h of writes. Stopped at 12k rows;
+--      column, trigger and function were dropped again (catalog-only).
 --
--- WHAT THIS FILE DOES INSTEAD
---   1. Adds `content_tsv` as a PLAIN, nullable tsvector with no default — a
---      catalog-only change, no rewrite, milliseconds.
---   2. Installs a BEFORE INSERT OR UPDATE OF content trigger that keeps the
---      column current, so rows written while the backfill runs are covered.
---   3. Backfills and builds the GIN index ONLY on small tables (<= 5000 rows:
---      dev databases, CI, the PGlite regression test) — i.e. the migration either
---      COMPLETES or FAILS. On a production-sized table it RAISES an exception
---      and, because the whole file is one DO block, nothing at all is committed
---      (Prisma 5 does not wrap migration.sql in a transaction; separate
---      statements would not roll back together), so `prisma migrate deploy` cannot record it as
---      applied while the column is still unpopulated and unindexed. The
---      production procedure is `scripts/sql/kb_fts_safe_rollout.py`
---      (docs/OPERATIONS_RUNBOOK.md §4a): it bootstraps the same column + trigger
---      itself, backfills in committed batches, builds the index CONCURRENTLY
---      (which cannot run inside a transaction), verifies, and only then runs
---      `prisma migrate resolve --applied 20260908000000_restore_kb_chunk_fts`.
---      Re-running this file after the script has finished is a harmless no-op.
+-- THIS DESIGN
+--   Index the expression instead:  GIN (to_tsvector('simple', content)).
+--   No column, no trigger, no backfill, no per-row writes, no shadow state to
+--   drift, nothing Prisma has to represent (it cannot; see ownership note in
+--   src/modules/rag/kb-fts.sql.ts). The query uses the identical expression so
+--   the planner uses the index; without the index the query still returns
+--   correct rows via a sequential scan.
 --
---   A database that still carries the legacy GENERATED column (never ran
---   20260606) is left exactly as it is: Postgres maintains that shape itself and
---   the boot probe (KbFtsHealthService) accepts either shape.
---
--- Safe to re-run. Every statement is conditional or IF NOT EXISTS.
+-- SIZE GUARD
+--   A plain CREATE INDEX takes a SHARE lock (blocks writes) and scans the table.
+--   Fine for <= 5000 rows (dev, CI, the PGlite test). On a production-sized table
+--   this file RAISES unless the index already exists and is valid — production
+--   builds it with CREATE INDEX CONCURRENTLY via scripts/sql/kb_fts_safe_rollout.py,
+--   which then marks this migration applied. Everything is one DO block: on Prisma
+--   5 (no implicit transaction) that is what makes a raise commit nothing at all.
+--   Safe to re-run: every statement is conditional.
 
 SET lock_timeout = '5s';
 
--- Everything is ONE DO block on purpose. Prisma 5 does not wrap a PostgreSQL
--- migration.sql in a transaction, so with separate statements a raise in the guard
--- below would still leave any earlier statement committed. Inside a single DO block
--- an exception rolls back the whole block: no function, no column, no trigger.
 DO $do$
 DECLARE
-  col_generated "char";   -- attgenerated: 's' = STORED generated, '' = plain, NULL = column absent
-  row_count     bigint;
+  row_count bigint;
+  idx_ok    boolean;
 BEGIN
-  -- Trigger function: same expression, same 'simple' config, as the query in
-  -- src/modules/rag/kb-fts.sql.ts (websearch_to_tsquery('simple', ...)).
-  CREATE OR REPLACE FUNCTION kbchunk_content_tsv_maintain() RETURNS trigger
-  LANGUAGE plpgsql AS $fn$
-  BEGIN
-    NEW.content_tsv := to_tsvector('simple', NEW.content);
-    RETURN NEW;
-  END
-  $fn$;
-
-  SELECT a.attgenerated
-    INTO col_generated
-  FROM pg_attribute a
-  WHERE a.attrelid = to_regclass('"KbChunk"')
-    AND a.attname = 'content_tsv'
-    AND NOT a.attisdropped;
-
-  IF col_generated IS NULL THEN
-    -- Plain, nullable, no default: metadata-only, no table rewrite.
-    ALTER TABLE "KbChunk" ADD COLUMN IF NOT EXISTS content_tsv tsvector;
-    col_generated := '';
+  -- Any leftover from the two abandoned designs: catalog-only drops, no rewrite.
+  DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";
+  DROP FUNCTION IF EXISTS kbchunk_content_tsv_maintain();
+  IF EXISTS (SELECT 1 FROM pg_attribute
+             WHERE attrelid = to_regclass('"KbChunk"') AND attname = 'content_tsv' AND NOT attisdropped) THEN
+    -- The old index (if any) is over the column; it goes with it.
+    DROP INDEX IF EXISTS kb_chunk_content_tsv_idx;
+    ALTER TABLE "KbChunk" DROP COLUMN content_tsv;
   END IF;
 
   SELECT count(*) INTO row_count FROM "KbChunk";
 
-  -- Safety invariant (review on the #92 follow-up): this file must never leave a
-  -- half-done state that Prisma then records as "applied". A production-sized table
-  -- is refused here unless the rollout script has already completed the work
-  -- (column populated + valid GIN index), in which case everything below is a no-op.
-  IF row_count > 5000 AND col_generated <> 's' THEN
-    IF EXISTS (SELECT 1 FROM "KbChunk" WHERE content_tsv IS NULL)
-       OR NOT EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
-                      WHERE c.relname = 'kb_chunk_content_tsv_idx' AND i.indisvalid AND i.indisready) THEN
-      RAISE EXCEPTION USING
-        MESSAGE = format('KbChunk has %s rows: refusing to backfill/index inside a migration (that is a table rewrite — see the 2026-09-12 outage). Run scripts/sql/kb_fts_safe_rollout.py --execute, which bootstraps column + trigger, backfills in batches, builds the GIN index CONCURRENTLY and then marks this migration applied.', row_count),
-        HINT = 'docs/OPERATIONS_RUNBOOK.md §4a';
-    END IF;
-  END IF;
+  SELECT COALESCE(bool_and(i.indisvalid AND i.indisready), false)
+    INTO idx_ok
+  FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+  WHERE c.relname = 'kb_chunk_content_tsv_idx'
+    AND pg_get_indexdef(i.indexrelid) LIKE '%to_tsvector(''simple''::regconfig, content)%';
 
-  IF col_generated = 's' THEN
-    RAISE NOTICE 'KbChunk.content_tsv is a legacy STORED generated column — leaving it (Postgres maintains it); no trigger installed.';
-    DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";
+  IF idx_ok THEN
+    RAISE NOTICE 'kb_chunk_content_tsv_idx already present and valid — nothing to do.';
+  ELSIF row_count <= 5000 THEN
+    -- Small table: a plain build takes milliseconds. Replace an invalid/mismatched one.
+    DROP INDEX IF EXISTS kb_chunk_content_tsv_idx;
+    CREATE INDEX kb_chunk_content_tsv_idx ON "KbChunk" USING GIN (to_tsvector('simple', content));
   ELSE
-    -- Trigger BEFORE the backfill, so nothing written during the backfill is missed.
-    DROP TRIGGER IF EXISTS kbchunk_content_tsv_trg ON "KbChunk";
-    CREATE TRIGGER kbchunk_content_tsv_trg
-      BEFORE INSERT OR UPDATE OF content ON "KbChunk"
-      FOR EACH ROW EXECUTE FUNCTION kbchunk_content_tsv_maintain();
-
-    IF row_count <= 5000 THEN
-      UPDATE "KbChunk"
-         SET content_tsv = to_tsvector('simple', content)
-       WHERE content_tsv IS NULL;
-    END IF;
+    RAISE EXCEPTION USING
+      MESSAGE = format('KbChunk has %s rows: refusing to build the FTS index inside a migration (SHARE lock + full scan). Run scripts/sql/kb_fts_safe_rollout.py --execute, which builds kb_chunk_content_tsv_idx CONCURRENTLY, verifies it, and then marks this migration applied.', row_count),
+      HINT = 'docs/OPERATIONS_RUNBOOK.md §4a';
   END IF;
-
-  IF row_count <= 5000 THEN
-    -- Small table: a plain (SHARE-locking) build takes milliseconds.
-    CREATE INDEX IF NOT EXISTS kb_chunk_content_tsv_idx ON "KbChunk" USING GIN (content_tsv);
-  END IF;
-  -- Large table: reaching here means the rollout script already populated the
-  -- column and built a valid index (checked above), so there is nothing to do.
 END
 $do$;

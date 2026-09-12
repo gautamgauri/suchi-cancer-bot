@@ -531,8 +531,22 @@ trigger, with backfill and `CREATE INDEX CONCURRENTLY` moved to
 shape and checks `pg_index.indisvalid`. Procedure and the "never rewrite
 `KbChunk`" rule: `docs/OPERATIONS_RUNBOOK.md` §4a.
 
-**Still to do.** Run the rollout script in a night-IST window, then confirm
-`GET /v1/health/retrieval` reports `ok`.
+**Second attempt, same day.** The trigger-maintained plain column was rolled out
+(column + trigger in milliseconds, no locks) but the batched backfill measured
+**190 ms per row**: each updated `KbChunk` row is too large for a HOT update, so
+it re-enters all four indexes including the 182 MB pgvector HNSW index. 48,737
+rows would have meant ~2.5 h of steady writes. Stopped at 12,000 rows; column,
+trigger and function dropped again (catalog-only, 3 s).
+
+**Final design.** A GIN **expression** index over `to_tsvector('simple',
+content)` and a query using the identical expression: no column, no trigger, no
+backfill, no per-row writes, nothing for Prisma to represent or drop. Built on
+production with `CREATE INDEX CONCURRENTLY` in 90 s (36 MB, valid); `EXPLAIN`
+shows a Bitmap Index Scan on it. Without the index the query still returns
+correct rows, so the health verdict for "index missing" is `degraded`, not
+`unavailable`. Code: `kb-fts.sql.ts`, `KbFtsHealthService`,
+`scripts/sql/kb_fts_safe_rollout.py`, migration `20260908000000` (rewritten;
+no persistent database had recorded it).
 
 ## Human decisions required (cannot be resolved by an agent)
 
