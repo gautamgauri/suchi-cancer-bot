@@ -165,14 +165,15 @@ model KbChunk {
   content    String
   embedding  Unsupported("vector(768)")? // pgvector for semantic search
 
-  /// DO NOT REMOVE. Full-text-search vector, owned by raw migration SQL (20260908000000_restore_kb_chunk_fts):
-  /// a PLAIN tsvector kept current by trigger kbchunk_content_tsv_trg. Deliberately NOT a
-  /// STORED generated column — that rewrites the whole table and every index (incl. the
-  /// pgvector HNSW index) and caused a 15-minute retrieval outage on 2026-09-12.
-  /// Declared here only so a schema diff cannot drop it again; `prisma migrate diff` renders
-  /// it as a bare `content_tsv tsvector`, which the migration then equips with the trigger.
-  /// `KbFtsHealthService` verifies at boot that the live column really is maintained.
-  content_tsv Unsupported("tsvector")?
+  /// Full-text search: there is deliberately NO tsvector column. The lexical arm uses a
+  /// GIN EXPRESSION index kb_chunk_content_tsv_idx over to_tsvector('simple', content),
+  /// created by raw migration SQL (20260908000000_restore_kb_chunk_fts) and, on production,
+  /// by scripts/sql/kb_fts_safe_rollout.py with CREATE INDEX CONCURRENTLY. Prisma cannot
+  /// express expression indexes, so `prisma migrate diff` will propose DROP INDEX for it —
+  /// DO NOT REMOVE it; that is exactly how full-text search died in June 2026 (#92).
+  /// kb-fts.spec.ts pins the migration history. Why no column: a STORED generated column
+  /// rewrites the table (15-min outage, 2026-09-12) and a trigger-maintained column costs
+  /// a write per row through the pgvector HNSW index (190 ms/row measured).
 
   createdAt  DateTime @default(now())
 
@@ -180,9 +181,6 @@ model KbChunk {
 
   @@index([docId])
   @@index([content])
-  /// GIN index over content_tsv. Named to match the raw-SQL index so a diff does not
-  /// try to recreate or drop it.
-  @@index([content_tsv], map: "kb_chunk_content_tsv_idx", type: Gin)
 }
 
 model VoiceInteraction {

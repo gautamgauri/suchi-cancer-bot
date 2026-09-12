@@ -700,6 +700,12 @@ export class RagService {
     query: string,
     topK: number
   ): Promise<EvidenceChunk[]> {
+    // Operational gate: without a valid expression index the query would scan and
+    // to_tsvector() every chunk on every turn. Answer vector-only until the probe
+    // reports `ok`; the gate schedules its own throttled re-probe.
+    if (!this.ftsHealth.shouldQuery()) {
+      return [];
+    }
     try {
       // Use websearch_to_tsquery for better query parsing (handles phrases, AND/OR, etc.)
       const results = await this.prisma.$queryRawUnsafe<Array<{

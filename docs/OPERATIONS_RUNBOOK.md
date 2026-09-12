@@ -155,21 +155,31 @@ Safe pattern (what `20260908000000_restore_kb_chunk_fts` now does):
 6. Verify `COUNT(*) WHERE col IS NULL = 0`, `pg_index.indisvalid`, and a live
    query; only then `prisma migrate resolve --applied <migration>`.
 
-The FTS migration `20260908000000_restore_kb_chunk_fts` enforces this: on a table
-with more than 5 000 rows it **raises** (nothing committed) unless the column is
-already populated and the GIN index valid, so `prisma migrate deploy` — including
-the gated pipeline's migration job — cannot record it as applied ahead of the
-backfill. The script below does the bootstrap itself and resolves the migration
-at the end; after that the file is a no-op.
+Full-text search itself follows this rule by **not having a column at all**: the
+lexical arm is a GIN **expression** index `kb_chunk_content_tsv_idx` over
+`to_tsvector('simple', content)`, and the query uses the identical expression.
+Nothing is written to any row; a missing index only makes lexical search slower,
+never wrong. (Both column designs were tried on 2026-09-12 and abandoned: the
+STORED generated column rewrote the table — the outage above — and a
+trigger-maintained column cost 190 ms per backfilled row because every updated
+row re-enters the HNSW index.)
 
-Scripted for the FTS column:
+Migration `20260908000000_restore_kb_chunk_fts` enforces this: on a table with
+more than 5 000 rows it **raises** (one atomic DO block, nothing committed)
+unless the expression index already exists and is valid, so `prisma migrate
+deploy` — including the gated pipeline's migration job — cannot record it as
+applied ahead of the index. The script below builds the index CONCURRENTLY,
+verifies it (validity, expression, live hits, `EXPLAIN` shows the index),
+resolves the migration and re-runs the file as a no-op proof.
+
+Scripted for the FTS index:
 
 ```bash
 # Terminal 1: cloud-sql-proxy … --port 5433   (see §1)
-# Terminal 2, repo root, low-traffic window (night IST):
+# Terminal 2, repo root, low-traffic window preferred (the build scans the table but takes no blocking lock):
 export DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)"
 python3 scripts/sql/kb_fts_safe_rollout.py            # dry run: state + plan
-python3 scripts/sql/kb_fts_safe_rollout.py --execute  # column+trigger → batched backfill → CONCURRENT index → verify → resolve
+python3 scripts/sql/kb_fts_safe_rollout.py --execute  # drop legacy objects → CONCURRENT index → verify → resolve
 curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health/retrieval   # fullTextSearch.status: ok
 ```
 
