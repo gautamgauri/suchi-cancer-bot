@@ -188,6 +188,38 @@ describe('MessageInput', () => {
       }
     });
 
+    // Review on #125: a typed prefix or a manual edit means the message is no
+    // longer pure mic output, so speech cleanup must not run on it.
+    it('typed prefix + dictation is MIXED: sent without the voice flag', () => {
+      install();
+      try {
+        const onSend = vi.fn();
+        render(<MessageInput onSend={onSend} />);
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'meri didi ' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Start voice input' }));
+        act(() => FakeRecognition.last!.onresult!({ results: [Object.assign([{ transcript: 'has fever after chemo' }], { isFinal: true })] }));
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        expect(onSend.mock.calls[0]).toEqual(['meri didi has fever after chemo']);
+      } finally {
+        uninstall();
+      }
+    });
+
+    it('dictation followed by a manual edit is MIXED: sent without the voice flag', () => {
+      install();
+      try {
+        const onSend = vi.fn();
+        render(<MessageInput onSend={onSend} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Start voice input' }));
+        act(() => FakeRecognition.last!.onresult!({ results: [Object.assign([{ transcript: 'meri di ko fever hai' }], { isFinal: true })] }));
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'meri didi ko fever hai' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+        expect(onSend.mock.calls[0]).toEqual(['meri didi ko fever hai']);
+      } finally {
+        uninstall();
+      }
+    });
+
     it('the flag resets after sending: the next typed message carries none', () => {
       install();
       try {

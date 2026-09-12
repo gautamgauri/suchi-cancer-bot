@@ -112,6 +112,21 @@ describe("StructuredOutputTemplates", () => {
         expect(selectOutputTemplate("NAVIGATION", [], "chemo ke side effects kya hote hain")).toBeNull();
         expect(selectOutputTemplate("NAVIGATION", [], "chemo kaise kaam karti hai")).toBeNull();
       });
+
+      // Review on #125: the English equivalents of the bug — "what to" and a bare
+      // "day" — must not be preparation cues either.
+      test("English side-effect / timing questions are NOT chemo-prep questions", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "Chemo ke baad vomiting ho rahi hai, what to do?")).toBeNull();
+        expect(selectOutputTemplate("NAVIGATION", [], "One day after chemo I feel very weak, is this normal?")).toBeNull();
+        expect(selectOutputTemplate("EDUCATION", [], "what to do if fever comes 3 days after chemo")).toBeNull();
+      });
+
+      test("phrase-level preparation cues still select the template", () => {
+        expect(selectOutputTemplate("NAVIGATION", [], "what should I do before my first chemo")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "chemo se pehle kya karna chahiye")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "how do I get ready for chemotherapy")).toBe(CHEMO_DAY_PREP);
+        expect(selectOutputTemplate("NAVIGATION", [], "what to expect on the day of chemo")).toBe(CHEMO_DAY_PREP);
+      });
     });
 
     describe("Second opinion queries → SECOND_OPINION_PREP", () => {

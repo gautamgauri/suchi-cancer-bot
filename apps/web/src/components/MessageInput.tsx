@@ -59,9 +59,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [showUnsupportedTooltip, setShowUnsupportedTooltip] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const baseTextRef = useRef<string>("");
-  // True once speech recognition has written into the current draft. Sent to the
-  // API as inputMode "voice" so speech cleanup runs only on spoken text (#115).
-  const usedVoiceRef = useRef(false);
+  // Provenance of the current draft (#115). Only a draft that is ENTIRELY mic
+  // output and has not been typed into is sent as inputMode "voice": the API then
+  // runs speech-stutter cleanup, which must never touch typed words ("didi" ->
+  // "di"). Typed-then-dictated or dictated-then-edited drafts are "mixed" and
+  // take the safer spelling-only path.
+  const voiceDraftRef = useRef<"none" | "pure" | "mixed">("none");
 
   useEffect(() => {
     // Check if Web Speech API is supported
@@ -72,9 +75,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const handleSend = () => {
     const trimmed = text.trim();
     if (trimmed && !disabled) {
-      if (usedVoiceRef.current) onSend(trimmed, { inputMode: "voice" });
+      if (voiceDraftRef.current === "pure") onSend(trimmed, { inputMode: "voice" });
       else onSend(trimmed);
-      usedVoiceRef.current = false;
+      voiceDraftRef.current = "none";
       setText("");
     }
   };
@@ -114,7 +117,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       }
 
       // Replace (not append) — show base text + full transcript so far
-      if (finalTranscript || interimTranscript) usedVoiceRef.current = true;
+      if (finalTranscript || interimTranscript) {
+        const typedPrefix = baseTextRef.current.trim() !== "";
+        voiceDraftRef.current = typedPrefix || voiceDraftRef.current === "mixed" ? "mixed" : "pure";
+      }
       setText(baseTextRef.current + finalTranscript + interimTranscript);
     };
 
@@ -158,7 +164,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     <div style={styles.container}>
       <textarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          // A keystroke after dictation makes the draft mixed; programmatic
+          // setText from recognition does not fire onChange.
+          if (voiceDraftRef.current !== "none") voiceDraftRef.current = "mixed";
+          setText(e.target.value);
+        }}
         onKeyPress={handleKeyPress}
         disabled={disabled}
         placeholder={placeholder}
