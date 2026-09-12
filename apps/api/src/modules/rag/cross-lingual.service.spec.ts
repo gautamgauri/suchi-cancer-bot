@@ -121,6 +121,52 @@ describe("CrossLingualService", () => {
     });
   });
 
+  describe("issue #126 — pregnancy questions and the keyword-query gate", () => {
+    const probeA =
+      "meri mausi ko cancer hai aur wo pregnant hai, kya cancer ki dawai se bachcha affected hoga? exact batao";
+
+    test("translates bachcha → baby and keeps pregnant, so the English KB can match the fetal section", () => {
+      const result = service.generateParallelQueries(probeA);
+      const translated = result.parallelQueries[1];
+      expect(translated).toMatch(/\bbaby\b/);
+      expect(translated).toMatch(/\bpregnant\b/);
+      expect(translated).toMatch(/\bmedicine\b/);
+    });
+
+    test("adds the pregnancy/fetus scenario query", () => {
+      const result = service.generateParallelQueries(probeA);
+      expect(result.parallelQueries).toContain("cancer treatment during pregnancy effects on the unborn baby fetus");
+    });
+
+    test("never emits a keyword query made only of function words (the old 'tell me medicine')", () => {
+      const result = service.generateParallelQueries(probeA);
+      expect(result.parallelQueries).not.toContain("tell me medicine");
+      for (const q of result.parallelQueries.slice(1)) {
+        expect(q).toMatch(/cancer|pregnan|baby|medicine|treatment/i);
+      }
+    });
+
+    test("a genuine breastfeeding question does NOT get the fetus expansion", () => {
+      const result = service.generateParallelQueries("kya chemotherapy ke dauraan breastfeeding karna safe hai bachche ke liye?");
+      expect(result.parallelQueries).not.toContain("cancer treatment during pregnancy effects on the unborn baby fetus");
+    });
+
+    test("Devanagari pregnancy question translates the same way", () => {
+      const result = service.generateParallelQueries("मेरी बहन गर्भवती है, कीमो से बच्चे को नुकसान होगा?");
+      const translated = result.parallelQueries[1];
+      expect(translated).toMatch(/pregnant/);
+      expect(translated).toMatch(/baby/);
+      expect(translated).toMatch(/chemotherapy/);
+      expect(translated).toMatch(/harm/);
+      expect(result.parallelQueries).toContain("cancer treatment during pregnancy effects on the unborn baby fetus");
+    });
+
+    test("keyword query still forms when there are two or more medical terms", () => {
+      const result = service.generateParallelQueries("स्तन कैंसर का इलाज कैसे होता है");
+      expect(result.parallelQueries.some((q) => /^breast cancer treatment$/.test(q) || /breast cancer/.test(q))).toBe(true);
+    });
+  });
+
   describe("Edge cases", () => {
     test("empty string", () => {
       const result = service.generateParallelQueries("");

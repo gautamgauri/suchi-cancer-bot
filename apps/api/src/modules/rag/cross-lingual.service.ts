@@ -44,6 +44,15 @@ const HI_EN_DICTIONARY: Array<[RegExp, string]> = [
   [/ब्रेन\s*(ट्यूमर|कैंसर)/g, "brain cancer"],
   [/कैंसर/g, "cancer"],
 
+  // Pregnancy & family context (issue #126: a pregnancy question retrieved
+  // breast-milk content because none of these words reached the English KB)
+  [/गर्भवती/g, "pregnant"],
+  [/गर्भावस्था/g, "pregnancy"],
+  [/गर्भ\s*में/g, "in the womb"],
+  [/स्तनपान/g, "breastfeeding"],
+  [/बच्चे|बच्चा|शिशु/g, "baby"],
+  [/नुकसान/g, "harm"],
+
   // Symptoms
   [/लक्षण/g, "symptoms"],
   [/गांठ/g, "lump"],
@@ -117,6 +126,13 @@ const HINGLISH_EN_DICTIONARY: Array<[RegExp, string]> = [
   [/\bkhoon\s*(ka|ke|ki)?\s*cancer\b/gi, "blood cancer"],
   [/\bphephde?\s*(ka|ke|ki)?\s*cancer\b/gi, "lung cancer"],
 
+  // Pregnancy & family context (issue #126)
+  [/\b(pregnant|pregnent|garbhw?a?vati|garbhwati)\b/gi, "pregnant"],
+  [/\bpet\s*se\s*hai\b/gi, "is pregnant"],
+  [/\b(bachch?a|bacch?a|bachch?e|bacch?e|bachch?on|shishu)\b/gi, "baby"],
+  [/\bnuk?saan\b/gi, "harm"],
+  [/\bbreast\s*feeding\b/gi, "breastfeeding"],
+
   // Medical terms
   [/\bilaaj\b/gi, "treatment"],
   [/\bdawai?\b/gi, "medicine"],
@@ -140,6 +156,27 @@ const HINGLISH_EN_DICTIONARY: Array<[RegExp, string]> = [
   [/\bjanch\b/gi, "test"],
   [/\bsurjari\b/gi, "surgery"],
   [/\bchahiye\b/gi, "needed"],
+];
+
+// ─── Keyword-query gate and scenario expansions ──────────────────
+
+/**
+ * A translated term counts towards the English keyword query only if it is a
+ * medical noun (or phrase containing one). Function words that the dictionaries
+ * also translate — "tell me", "what", "how", "needed", "I need", "information",
+ * "about", "help" — must never form a query on their own.
+ */
+const MEDICAL_TERM =
+  /\b(cancer|tumou?r|symptoms?|lump|pain|bleeding|blood|fever|fatigue|vomiting|diarrhea|swelling|cough|breath(ing)?|weight loss|appetite|treatment|chemotherapy|radiation|surgery|medicine|biopsy|test|report|hospital|doctor|OPD|appointment|scheme|insurance|Ayushman|pregnan(t|cy)|womb|baby|breastfeeding|harm)\b/i;
+
+/** Extra English queries for situations everyday Hindi/Hinglish words under-specify. */
+const SCENARIO_EXPANSIONS: Array<{ when: RegExp[]; unless: RegExp[]; add: string }> = [
+  {
+    // Pregnant + baby/child + cancer/treatment/medicine → the fetus, not a nursing infant.
+    when: [/\bpregnan(t|cy)\b|\bin the womb\b/i, /\b(baby|child|fetus)\b/i, /\b(cancer|treatment|chemotherapy|medicine|radiation|surgery)\b/i],
+    unless: [/\b(breastfeed(ing)?|nursing|breast milk|lactation)\b/i],
+    add: "cancer treatment during pregnancy effects on the unborn baby fetus",
+  },
 ];
 
 // ─── Service ─────────────────────────────────────────────────────
@@ -202,11 +239,30 @@ export class CrossLingualService {
       parallelQueries.push(translated);
     }
 
-    // Also add a purely-English medical equivalent if we have enough terms
-    if (translatedTerms.length >= 2) {
-      const medicalQuery = translatedTerms.join(" ");
-      if (medicalQuery !== translated) {
+    // Also add a purely-English medical equivalent — but only from MEDICAL terms.
+    // Before this gate the keyword query for "…dawai se bachcha affected hoga?
+    // exact batao" was literally "tell me medicine" (issue #126): two translated
+    // function words with no medical noun, which retrieves noise.
+    const medicalTerms = translatedTerms.filter((t) => MEDICAL_TERM.test(t));
+    if (medicalTerms.length >= 2) {
+      const medicalQuery = medicalTerms.join(" ");
+      if (medicalQuery !== translated && !parallelQueries.includes(medicalQuery)) {
         parallelQueries.push(medicalQuery);
+      }
+    }
+
+    // Scenario expansions: a Hinglish/Hindi question can describe a clinical
+    // situation with everyday words the English KB never uses ("bachcha" for an
+    // unborn baby). Add one explicit English scenario query so the right section
+    // ranks (issue #126: the pregnancy question matched the *nursing* baby text).
+    for (const expansion of SCENARIO_EXPANSIONS) {
+      if (
+        expansion.when.every((re) => re.test(translated)) &&
+        !expansion.unless.some((re) => re.test(translated)) &&
+        !parallelQueries.includes(expansion.add)
+      ) {
+        parallelQueries.push(expansion.add);
+        translatedTerms.push(expansion.add);
       }
     }
 
