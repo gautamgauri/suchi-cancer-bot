@@ -541,8 +541,17 @@ export function selectOutputTemplate(
 
   // Chemo preparation
   const isChemo = /\b(chemo|chemotherapy)\b/i.test(lowerText) || /कीमो/.test(lowerText);
+  // A preparation cue is required. Bare Hinglish question words ("kya",
+  // "kaise") are NOT one: almost every Hinglish sentence has them, so with
+  // them here any message that mentioned chemo — including a caregiver
+  // reporting heavy post-chemo bleeding ("... chemo ke baad ... bleeding
+  // bahut zyada ... kya karu") — was answered with the routine chemo-day
+  // checklist (issue #115, live 2026-09-10; web QA q01 same day).
+  // Phrase-level cues only (review on #125): bare "day" and "what to" were the
+  // same structural bug in English — "chemo ke baad vomiting, what to do?" and
+  // "one day after chemo I feel weak" are not preparation questions.
   const isPrep =
-    /\b(prepare|preparation|ready|day|what to|kya|kaise)\b/i.test(lowerText) ||
+    /\b(prepare|preparation|preparing|get(ting)? ready|be ready|ready (for|hona|ho)|chemo day|day of (my |the |first )?chemo|before( my| the| your| first| pehli){0,2} chemo|chemo se pehle|what to (bring|carry|wear|eat|expect)|taiya?a?ri|tayy?ari)\b/i.test(lowerText) ||
     /तैयारी/.test(lowerText);
   if (isChemo && isPrep) {
     return CHEMO_DAY_PREP;

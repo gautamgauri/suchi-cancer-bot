@@ -22,6 +22,18 @@ describe("ModeDetector - identify questions", () => {
       expect(ModeDetector.detectMode("how to detect breast cancer")).toBe("explain");
     });
 
+    // Issue #117 — live prod repro (web and WhatsApp): this awareness question
+    // was routed to NAVIGATE and answered with "I can't list symptoms".
+    test("early warning signs + 'I want to know what to look for' -> EXPLAIN", () => {
+      expect(
+        ModeDetector.detectMode("What are the early warning signs of breast cancer? I want to know what to look for."),
+      ).toBe("explain");
+    });
+
+    test("signs of cancer + a real personal report still -> NAVIGATE", () => {
+      expect(ModeDetector.detectMode("what are the signs of breast cancer? I have found a lump")).toBe("navigate");
+    });
+
     test("can I identify if my mother has cancer -> NAVIGATE (personal reference)", () => {
       expect(ModeDetector.detectMode("can I identify if my mother has cancer")).toBe("navigate");
     });
@@ -29,9 +41,27 @@ describe("ModeDetector - identify questions", () => {
 
   describe("hasPersonalDiagnosisSignal", () => {
     test("detects first-person pronouns", () => {
-      expect(ModeDetector.hasPersonalDiagnosisSignal("I want to know")).toBe(true);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("I think I have a lump")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("my symptoms")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("me personally")).toBe(true);
+    });
+
+    // Issue #117: "I want to know what to look for" is informational framing,
+    // not a personal symptom report. The bare "I" must not flip an awareness
+    // question into Navigate mode (which soft-redirects with no KB content).
+    test("informational framing with a first-person verb is NOT a personal signal", () => {
+      expect(ModeDetector.hasPersonalDiagnosisSignal("I want to know")).toBe(false);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("I would like to learn about the signs")).toBe(false);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("please tell me the warning signs")).toBe(false);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("can you explain to me how it is detected")).toBe(false);
+    });
+
+    test("informational framing does not mask a real personal signal", () => {
+      expect(ModeDetector.hasPersonalDiagnosisSignal("I want to know if my lump is cancer")).toBe(true);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("tell me what to do, I have a lump")).toBe(true);
+      // Codex review on #119: a bare "help me" can be the only personal signal.
+      expect(ModeDetector.hasPersonalDiagnosisSignal("how can you tell if cancer treatment will help me?")).toBe(true);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("help me understand the warning signs")).toBe(false);
     });
 
     test("detects second-person direct questions", () => {

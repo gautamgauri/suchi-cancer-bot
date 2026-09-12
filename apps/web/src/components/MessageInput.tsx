@@ -42,7 +42,8 @@ declare global {
 }
 
 interface MessageInputProps {
-  onSend: (text: string) => void;
+  /** `meta.inputMode` is "voice" only when the browser mic contributed to this message. */
+  onSend: (text: string, meta?: { inputMode: "voice" }) => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -58,6 +59,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [showUnsupportedTooltip, setShowUnsupportedTooltip] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const baseTextRef = useRef<string>("");
+  // Provenance of the current draft (#115). Only a draft that is ENTIRELY mic
+  // output and has not been typed into is sent as inputMode "voice": the API then
+  // runs speech-stutter cleanup, which must never touch typed words ("didi" ->
+  // "di"). Typed-then-dictated or dictated-then-edited drafts are "mixed" and
+  // take the safer spelling-only path.
+  const voiceDraftRef = useRef<"none" | "pure" | "mixed">("none");
 
   useEffect(() => {
     // Check if Web Speech API is supported
@@ -68,7 +75,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const handleSend = () => {
     const trimmed = text.trim();
     if (trimmed && !disabled) {
-      onSend(trimmed);
+      if (voiceDraftRef.current === "pure") onSend(trimmed, { inputMode: "voice" });
+      else onSend(trimmed);
+      voiceDraftRef.current = "none";
       setText("");
     }
   };
@@ -108,6 +117,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       }
 
       // Replace (not append) — show base text + full transcript so far
+      if (finalTranscript || interimTranscript) {
+        const typedPrefix = baseTextRef.current.trim() !== "";
+        voiceDraftRef.current = typedPrefix || voiceDraftRef.current === "mixed" ? "mixed" : "pure";
+      }
       setText(baseTextRef.current + finalTranscript + interimTranscript);
     };
 
@@ -151,7 +164,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     <div style={styles.container}>
       <textarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          // A keystroke after dictation makes the draft mixed; programmatic
+          // setText from recognition does not fire onChange.
+          if (voiceDraftRef.current !== "none") voiceDraftRef.current = "mixed";
+          setText(e.target.value);
+        }}
         onKeyPress={handleKeyPress}
         disabled={disabled}
         placeholder={placeholder}

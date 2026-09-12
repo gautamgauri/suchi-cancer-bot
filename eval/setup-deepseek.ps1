@@ -35,14 +35,27 @@ if (-not $apiEnabled) {
     }
 }
 
-# Create Deepseek API key secret
+# Create Deepseek API key secret. The value comes from the environment or a
+# hidden prompt — never from this file (issue #127: two keys were committed here).
+$deepseekKey = $env:DEEPSEEK_API_KEY
+if ([string]::IsNullOrWhiteSpace($deepseekKey)) {
+    Write-Host "Enter your Deepseek API key (input will be hidden):" -ForegroundColor Yellow
+    $secureKey = Read-Host -AsSecureString
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+    $deepseekKey = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+}
+if ([string]::IsNullOrWhiteSpace($deepseekKey)) {
+    Write-Host "ERROR: No Deepseek API key provided (set DEEPSEEK_API_KEY or enter it at the prompt)" -ForegroundColor Red
+    exit 1
+}
 Write-Host "Creating deepseek-api-key secret..." -ForegroundColor Yellow
 $secretExists = gcloud secrets describe deepseek-api-key --project=$projectId 2>$null
 if ($secretExists) {
     Write-Host "Secret already exists. Updating with new version..." -ForegroundColor Yellow
-    echo -n "sk-6bc325dec38c4d4c95f9f4ecb185e1dc" | gcloud secrets versions add deepseek-api-key --project=$projectId --data-file=-
+    $deepseekKey | gcloud secrets versions add deepseek-api-key --project=$projectId --data-file=-
 } else {
-    echo -n "sk-6bc325dec38c4d4c95f9f4ecb185e1dc" | gcloud secrets create deepseek-api-key --project=$projectId --data-file=- --replication-policy="automatic"
+    $deepseekKey | gcloud secrets create deepseek-api-key --project=$projectId --data-file=- --replication-policy="automatic"
 }
 
 if ($LASTEXITCODE -eq 0) {
