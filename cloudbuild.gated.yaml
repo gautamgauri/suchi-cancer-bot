@@ -3,9 +3,37 @@
 # Eval gate removed — use the /eval slash command locally before merging instead
 
 steps:
+  # hospitals.json: the canonical source is apps/landing/src/content/hospitals.json
+  # (the navigator approve flow appends there). apps/api/data/hospitals.json is a
+  # git SYMLINK to it for local dev/Jest. A symlink copied into the API image
+  # dangles (the Docker context is apps/api only), which left production with an
+  # EMPTY hospital directory on every revision until 2026-09-12 (issue #123).
+  # So: replace the symlink with a real file and FAIL THE BUILD if the result is
+  # not a regular, non-empty hospitals.json.
+  - name: 'ubuntu'
+    id: 'stage-hospitals'
+    args:
+      - 'bash'
+      - '-c'
+      - |
+        set -euo pipefail
+        src=apps/landing/src/content/hospitals.json
+        dst=apps/api/data/hospitals.json
+        test -f "$src" || { echo "FATAL: $src missing from build upload (check .gcloudignore)"; exit 1; }
+        mkdir -p apps/api/data
+        rm -f "$dst"
+        cp "$src" "$dst"
+        test -f "$dst" && ! test -L "$dst" || { echo "FATAL: $dst is not a regular file"; exit 1; }
+        grep -q '"hospitals"' "$dst" || { echo "FATAL: $dst has no hospitals array"; exit 1; }
+        count=$(grep -c '"id":' "$dst")
+        [ "$count" -ge 50 ] || { echo "FATAL: only $count hospital ids in $dst"; exit 1; }
+        echo "Staged $dst as a regular file with $count hospital ids"
+        ls -la "$dst"
+
   # 1) Build API Docker image
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-api'
+    waitFor: ['stage-hospitals']
     dir: 'apps/api'
     args:
       - 'build'
@@ -134,7 +162,9 @@ steps:
         echo "Checking health at: $health_url"
 
         for i in $(seq 1 60); do
-          if curl -fsS "$health_url" >/dev/null 2>&1; then
+          # Require status "ok" in the body: "degraded" (e.g. hospital directory
+          # not loaded, issue #123) is HTTP 200 but must NOT be promoted.
+          if curl -fsS "$health_url" 2>/dev/null | grep -q '"status":"ok"'; then
             echo "✅ Candidate revision is healthy"
             exit 0
           fi
