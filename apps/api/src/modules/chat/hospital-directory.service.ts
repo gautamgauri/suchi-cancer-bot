@@ -82,6 +82,29 @@ export type GeographicStage =
   | "unfiltered"
   | "none";
 
+/**
+ * How far the geographic fallback chain had to widen to produce the candidate
+ * set, together with the location it widened *from*.
+ *
+ * This travels with the results so the patient-facing layer can label the list
+ * truthfully. Without it a caller cannot tell hospitals in the requested city
+ * from hospitals 400km away in another state, and the prompt block ends up
+ * calling both "Regional / Nearby Centres" (PR #99 review blocker).
+ */
+export interface HospitalSearchGeography {
+  stage: GeographicStage;
+  /** City the search was requested for, as supplied by the caller (trimmed). */
+  requestedCity: string | null;
+  /** State used for widening — supplied by the caller or resolved from the city. */
+  resolvedState: string | null;
+}
+
+/** Search results plus the geographic provenance of the candidate set. */
+export interface HospitalSearchOutcome {
+  results: HospitalSearchResult[];
+  geography: HospitalSearchGeography;
+}
+
 export interface VisitPrep {
   hospitalId: string;
   hospitalName: string;
@@ -296,12 +319,39 @@ export class HospitalDirectoryService implements OnModuleInit {
    * the best available structured rows rather than nothing.
    */
   searchHospitals(params: HospitalSearchParams): HospitalSearchResult[] {
-    if (this.hospitals.length === 0) return [];
+    return this.searchHospitalsWithGeography(params).results;
+  }
+
+  /**
+   * Same search as {@link searchHospitals}, but also returns which rung of the
+   * geographic fallback chain produced the candidate set.
+   *
+   * Callers that render results to a patient (or to the LLM prompt) must use
+   * this variant: an "adjacent state" or "unfiltered" set must never be
+   * labelled as nearby. `searchHospitals` remains for callers that only need
+   * the rows.
+   */
+  searchHospitalsWithGeography(params: HospitalSearchParams): HospitalSearchOutcome {
+    const requestedCity = params.city?.trim() || null;
+    const resolvedState = params.state?.trim() || resolveStateForCity(requestedCity);
+
+    if (this.hospitals.length === 0) {
+      return {
+        results: [],
+        geography: { stage: "none", requestedCity, resolvedState },
+      };
+    }
 
     let results = [...this.hospitals];
 
     // ── 1. Geographic filter (city → state → adjacent state → unfiltered) ──
-    results = this.resolveGeographicCandidates(results, params).results;
+    const geographic = this.resolveGeographicCandidates(results, params);
+    results = geographic.results;
+    const geography: HospitalSearchGeography = {
+      stage: geographic.stage,
+      requestedCity,
+      resolvedState,
+    };
 
     // ── 2. Cancer type filter ──
     if (params.cancerType) {
@@ -368,7 +418,7 @@ export class HospitalDirectoryService implements OnModuleInit {
       NATIONAL_SCOPE_STATES.has(params.city ?? "");
 
     if (skipNational || this.nationalHospitals.length === 0) {
-      return regionalResults;
+      return { results: regionalResults, geography };
     }
 
     // Filter national pool by cancer type if specified, then pick top 2 by score
@@ -404,7 +454,7 @@ export class HospitalDirectoryService implements OnModuleInit {
       ids: nationalResults.map((h) => h.id),
     });
 
-    return [...regionalResults, ...nationalResults];
+    return { results: [...regionalResults, ...nationalResults], geography };
   }
 
   /**

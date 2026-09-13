@@ -449,6 +449,109 @@ describe("HospitalDirectoryService", () => {
     });
   });
 
+  // ── Stage propagation (PR #99 review blocker) ──────────────────────────
+  //
+  // The fallback chain always knew which rung produced the candidate set, but
+  // `searchHospitals()` discarded it, so the patient-facing layer could not tell
+  // an exact-city match from a 400km cross-border fallback and labelled both
+  // "Regional / Nearby Centres". `searchHospitalsWithGeography()` returns the
+  // stage so the label can be derived instead of asserted.
+  describe("Geographic stage propagation", () => {
+    it("reports stage \"city\" when the requested city has hospitals", () => {
+      const { results, geography } = svc.searchHospitalsWithGeography({
+        city: "Patna",
+        state: "Bihar",
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("city");
+      expect(geography.requestedCity).toBe("Patna");
+      expect(geography.resolvedState).toBe("Bihar");
+      expect(results.length).toBeGreaterThan(0);
+    });
+
+    it("reports stage \"state\" when the search widened to the state pool", () => {
+      const { geography } = svc.searchHospitalsWithGeography({
+        city: "Darbhanga",
+        state: "Bihar",
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("state");
+      expect(geography.requestedCity).toBe("Darbhanga");
+      expect(geography.resolvedState).toBe("Bihar");
+    });
+
+    it("resolves the state from the city table when the caller passes none", () => {
+      const { geography } = svc.searchHospitalsWithGeography({
+        city: "Darbhanga",
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("state");
+      expect(geography.resolvedState).toBe("Bihar");
+    });
+
+    it("reports stage \"adjacent_state\" when the search crossed a state border", () => {
+      const { results, geography } = svc.searchHospitalsWithGeography({
+        city: "Ranchi",
+        state: "Jharkhand",
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("adjacent_state");
+      // The rows really are in another state — this is exactly what must not be
+      // labelled "nearby".
+      expect(results.every((h) => h.state !== "Jharkhand")).toBe(true);
+    });
+
+    it("reports stage \"unfiltered\" when nothing matched at any rung", () => {
+      const { results, geography } = svc.searchHospitalsWithGeography({
+        city: "Nowhere",
+        state: "Nowhereland",
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("unfiltered");
+      expect(geography.requestedCity).toBe("Nowhere");
+      // Never-empty guarantee from #95 survives.
+      expect(results.length).toBeGreaterThan(0);
+    });
+
+    it("reports stage \"none\" when the caller supplied no location at all", () => {
+      const { geography } = svc.searchHospitalsWithGeography({
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("none");
+      expect(geography.requestedCity).toBeNull();
+      expect(geography.resolvedState).toBeNull();
+    });
+
+    it("reports stage \"none\" with an empty result set when the directory failed to load", () => {
+      const emptySvc = new HospitalDirectoryService();
+      const { results, geography } = emptySvc.searchHospitalsWithGeography({
+        city: "Patna",
+        state: "Bihar",
+      });
+      expect(results).toEqual([]);
+      expect(geography.stage).toBe("none");
+    });
+
+    it("keeps searchHospitals() returning exactly the rows of the geography variant", () => {
+      const params = { city: "Darbhanga", state: "Bihar", includeNational: false };
+      expect(svc.searchHospitals(params)).toEqual(
+        svc.searchHospitalsWithGeography(params).results
+      );
+    });
+
+    it("reports the stage for the pool the caller actually asked for, not the post-filter set", () => {
+      // Cancer-type filtering narrows the rows but must not change the rung:
+      // these are still same-state results for a Darbhanga patient.
+      const { geography } = svc.searchHospitalsWithGeography({
+        city: "Darbhanga",
+        state: "Bihar",
+        cancerType: "oral",
+        includeNational: false,
+      });
+      expect(geography.stage).toBe("state");
+    });
+  });
+
   describe("maxResults limiting", () => {
     it("respects maxResults cap", () => {
       const results = svc.searchHospitals({
@@ -584,5 +687,31 @@ describe("HospitalDirectoryService — North Bihar candidate set (real directory
     });
     const scores = results.map((h) => h.score);
     expect(scores).toEqual([...scores].sort((a, b) => b - a));
+  });
+
+  it.each(NORTH_BIHAR_CITIES)(
+    "reports the %s candidate set as a same-state widening, not an exact-city match",
+    (city) => {
+      const { geography } = svc.searchHospitalsWithGeography({
+        city,
+        state: "Bihar",
+        maxResults: 3,
+        includeNational: false,
+      });
+      // HBCH is in Muzaffarpur, not in the patient's own city — the caller must
+      // be able to see that so it is never labelled a centre in <city>.
+      expect(geography.stage).toBe("state");
+      expect(geography.requestedCity).toBe(city);
+    }
+  );
+
+  it("reports an exact-city match for Muzaffarpur against the real directory", () => {
+    const { geography } = svc.searchHospitalsWithGeography({
+      city: "Muzaffarpur",
+      state: "Bihar",
+      maxResults: 5,
+      includeNational: false,
+    });
+    expect(geography.stage).toBe("city");
   });
 });

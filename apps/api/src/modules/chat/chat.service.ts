@@ -33,7 +33,11 @@ import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
 import { CrossLingualService } from "../rag/cross-lingual.service";
 // Phase 3 Agentic components
-import { ExecutionPlannerService, HospitalSearchResult } from "./execution-planner.service";
+import {
+  ExecutionPlannerService,
+  HospitalSearchResult,
+  HospitalSearchGeography,
+} from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { ReviewService } from "../review/review.service";
@@ -1108,6 +1112,7 @@ export class ChatService {
     };
 
     let structuredHospitalResults: HospitalSearchResult[] | null = null;
+    let structuredHospitalGeography: HospitalSearchGeography | null = null;
 
     if (this.executionPlanner.needsPlanning(dto.userText, agenticIntent.category, intentResult.intent)) {
       const plan = this.executionPlanner.plan(
@@ -1118,6 +1123,7 @@ export class ChatService {
         intentResult.intent
       );
       structuredHospitalResults = plan.structuredHospitalResults ?? null;
+      structuredHospitalGeography = plan.structuredHospitalGeography ?? null;
 
       // Only use the structured template path (non-template path falls through to existing flow)
       if (plan.usesStructuredTemplate) {
@@ -1884,7 +1890,9 @@ export class ChatService {
 
       // For navigation intents: prepend structured hospital facts to the checklist slot so the LLM
       // treats them as authoritative before KB references. KB markdown remains for pathway guidance.
-      const hospitalContextBlock = isNavigationIntent ? this.buildHospitalContextBlock(structuredHospitalResults) : "";
+      const hospitalContextBlock = isNavigationIntent
+        ? this.buildHospitalContextBlock(structuredHospitalResults, structuredHospitalGeography)
+        : "";
       const combinedChecklist = [hospitalContextBlock, checklist].filter(Boolean).join("\n\n");
 
       // Generate response with Explain Mode prompt + checklist
@@ -3156,7 +3164,10 @@ export class ChatService {
    *
    * Returns empty string if no results (LLM falls back to KB markdown only).
    */
-  private buildHospitalContextBlock(results: HospitalSearchResult[] | null): string {
+  private buildHospitalContextBlock(
+    results: HospitalSearchResult[] | null,
+    geography?: HospitalSearchGeography | null
+  ): string {
     if (!results || results.length === 0) return "";
 
     const regional = results.filter((h) => !h.national_referral);
@@ -3192,7 +3203,15 @@ export class ChatService {
 
     const regionalBlock =
       regional.length > 0
-        ? `--- Regional / Nearby Centres ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
+        ? `--- ${this.regionalCentresHeading(geography)} ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
+        : "";
+
+    // When the search widened past the patient's own state, say so explicitly.
+    // The heading alone is easy for a generator to paraphrase away.
+    const travelCaveat =
+      regional.length > 0 &&
+      (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")
+        ? `\nIMPORTANT: no cancer centre in the directory serves ${geography.requestedCity ?? geography.resolvedState ?? "the patient's stated location"} directly. The centres listed above are in other districts or states and may involve significant travel. Do NOT describe them as "nearby" or "close by", and do NOT state or estimate a travel time or distance.\n`
         : "";
 
     const nationalBlock =
@@ -3208,10 +3227,50 @@ The following hospitals are from the Suchi Navigator structured database (verifi
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
 When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
-
+${travelCaveat}
 ${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
 === END HOSPITAL DATA ===`;
+  }
+
+  /**
+   * Heading for the regional block, stated in terms of what the search actually
+   * found rather than asserting proximity.
+   *
+   * The old heading was a flat `Regional / Nearby Centres`. Once #95's fallback
+   * chain widened the candidate set instead of returning nothing, that heading
+   * became false at the adjacent-state and unfiltered rungs: a Darbhanga query
+   * that widens into West Bengal would present Siliguri or Kolkata — 300–400km
+   * away — as "nearby", and a Jaipur query that matches no rung at all would
+   * present the entire East-India pool the same way. The stage is known at
+   * search time, so the label is derived from it instead of guessed.
+   *
+   * No heading claims a distance or a travel time — the directory holds no
+   * coordinates, so any such claim would be invented (issue #103).
+   */
+  private regionalCentresHeading(geography?: HospitalSearchGeography | null): string {
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+
+    switch (geography?.stage) {
+      // Hospitals in the city the patient named.
+      case "city":
+        return city ? `Centres in ${city}` : "Cancer centres";
+      // No centre in that city; these are elsewhere in the same state.
+      case "state":
+        return state ? `Centres in ${state}` : "Cancer centres";
+      // Nothing in the state either — these are across a state border.
+      case "adjacent_state":
+        return "Centres in neighbouring states — may involve significant travel";
+      // No geographic match at any rung; this is the unfiltered pool.
+      case "unfiltered":
+        return city
+          ? `Major cancer centres (none found near ${city}) — travel distance not established`
+          : "Major cancer centres — travel distance not established";
+      // No location was supplied at all, so nothing was filtered.
+      default:
+        return "Major cancer centres";
+    }
   }
 }
