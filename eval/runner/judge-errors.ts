@@ -208,6 +208,47 @@ export function classifyJudgeError(error: unknown): JudgeErrorClassification {
   };
 }
 
+// ── Verdict parsing ──────────────────────────────────────────────────────────
+
+/**
+ * The only `ok` values that count as a rendered verdict.
+ *
+ * A judge reply may carry a check object whose `ok` is missing, null, a number,
+ * or free text ("maybe"). Boolean-converting those manufactures a quality
+ * failure out of an incomplete reply — exactly the #110 defect, one level down
+ * from the transport case. Anything not listed here is a `malformed_verdict`
+ * and the check goes UNSCORED.
+ *
+ * Strings are accepted because Gemini/Vertex intermittently returns `"true"` /
+ * `"false"` for a boolean field; the set is deliberately narrow.
+ */
+const TRUE_VERDICTS: ReadonlySet<string> = new Set(["true"]);
+const FALSE_VERDICTS: ReadonlySet<string> = new Set(["false"]);
+
+/**
+ * Returns the verdict a judge actually rendered, or `undefined` when the `ok`
+ * field is absent or not a supported value (caller must then treat the check as
+ * `malformed_verdict` → unscored, never as `passed: false`).
+ */
+export function parseOkVerdict(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (TRUE_VERDICTS.has(v)) return true;
+    if (FALSE_VERDICTS.has(v)) return false;
+  }
+  return undefined;
+}
+
+/** Short, safe rendering of an unusable `ok` value for the unscored reason. */
+export function describeOkValue(value: unknown): string {
+  if (value === undefined) return "missing";
+  if (value === null) return "null";
+  if (typeof value === "string") return `string ${JSON.stringify(value.slice(0, 40))}`;
+  if (typeof value === "number" || typeof value === "boolean") return `${typeof value} ${String(value)}`;
+  return Array.isArray(value) ? "array" : typeof value;
+}
+
 // ── Bounded retry with backoff ───────────────────────────────────────────────
 
 export interface JudgeRetryOptions {

@@ -14,6 +14,8 @@ import {
   isUnscored,
   summarizeUnscoredReasons,
   unscoredJudgeResult,
+  parseOkVerdict,
+  describeOkValue,
 } from "./judge-errors";
 
 /** Exact shape thrown by @google-cloud/vertexai on a 429 (no `status` property). */
@@ -235,3 +237,32 @@ describe("unscored result helpers", () => {
     expect(summarizeUnscoredReasons(undefined)).toBeUndefined();
   });
 });
+
+describe("parseOkVerdict — only a real verdict counts as a verdict (#110 review P1)", () => {
+  it("accepts booleans", () => {
+    expect(parseOkVerdict(true)).toBe(true);
+    expect(parseOkVerdict(false)).toBe(false);
+  });
+
+  it('accepts the "true"/"false" strings Gemini intermittently returns', () => {
+    expect(parseOkVerdict("true")).toBe(true);
+    expect(parseOkVerdict("false")).toBe(false);
+    expect(parseOkVerdict(" TRUE ")).toBe(true);
+    expect(parseOkVerdict("False")).toBe(false);
+  });
+
+  it("rejects missing / null / numeric / free-text values", () => {
+    for (const bad of [undefined, null, 1, 0, "maybe", "yes", "no", "", "1", {}, []]) {
+      expect(parseOkVerdict(bad)).toBeUndefined();
+    }
+  });
+
+  it("describeOkValue renders the offending value compactly", () => {
+    expect(describeOkValue(undefined)).toBe("missing");
+    expect(describeOkValue(null)).toBe("null");
+    expect(describeOkValue(1)).toBe("number 1");
+    expect(describeOkValue("maybe")).toBe('string "maybe"');
+    expect(describeOkValue([])).toBe("array");
+  });
+});
+

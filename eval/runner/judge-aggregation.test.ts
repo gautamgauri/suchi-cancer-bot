@@ -451,3 +451,68 @@ describe("LLMJudge.judge — a transport failure never becomes a fail verdict", 
     expect(results[0].unscored).toBeUndefined();
   });
 });
+
+describe("LLMJudge.parseResponse — an incomplete verdict is unscored, not a fail (#110 review P1)", () => {
+  const checks = [
+    { id: "rag_backed_content", description: "grounded", required: true, type: "boolean" },
+  ];
+  const judgeConfig = rubric.llm_judge;
+
+  /** A judge whose transport always succeeds, returning `body` verbatim. */
+  function judgeReturning(body: string): LLMJudge {
+    const judge = new LLMJudge(
+      {
+        ...config,
+        llmProvider: "vertex_ai",
+        fallbackLlmProvider: "vertex_ai",
+        vertexAiConfig: { project: "p", location: "us-central1", model: "gemini-2.5-flash" },
+        judgeRetries: 0,
+      } as EvaluationConfig,
+      { sleep: async () => undefined, random: () => 0, baseDelayMs: 1 }
+    );
+    (judge as any).callLLM = jest.fn(async () => body);
+    return judge;
+  }
+
+  async function verdictFor(ok: string): Promise<LLMJudgeResult> {
+    const body = `{"checks":{"rag_backed_content":{${ok}"evidence":"the answer cites the KB"}}}`;
+    const [result] = await judgeReturning(body).judge("some answer", judgeConfig, checks as any);
+    return result;
+  }
+
+  it.each([
+    ["missing", ""],
+    ["null", '"ok":null,'],
+    ['"maybe"', '"ok":"maybe",'],
+    ["numeric 1", '"ok":1,'],
+    ["numeric 0", '"ok":0,'],
+    ["an object", '"ok":{"value":true},'],
+  ])("REGRESSION: ok %s is malformed_verdict → unscored, not passed:false", async (_label, ok) => {
+    const result = await verdictFor(ok);
+    expect(result.unscored).toBe(true);
+    expect(result.skipped).toBe(true);
+    expect(result.unscoredReason).toBe("malformed_verdict");
+    expect(result.passed).toBe(false); // carries no verdict; excluded from scoring
+    expect(resolveCaseUnscored({ llmJudgeResults: [result] })).toBe(true);
+  });
+
+  it.each([
+    ['boolean true', '"ok":true,', true],
+    ['boolean false', '"ok":false,', false],
+    ['string "true"', '"ok":"true",', true],
+    ['string "false"', '"ok":"false",', false],
+  ])("renders a real verdict for ok %s", async (_label, ok, expected) => {
+    const result = await verdictFor(ok as string);
+    expect(result.unscored).toBeUndefined();
+    expect(result.skipped).toBeUndefined();
+    expect(result.passed).toBe(expected);
+    expect(result.evidence).toBe("the answer cites the KB");
+  });
+
+  it("a rendered ok:false stays a genuine failure — the case is NOT laundered into unscored", async () => {
+    const result = await verdictFor('"ok":false,');
+    expect(
+      resolveCaseUnscored({ llmJudgeResults: [result] }, new Set(["rag_backed_content"]))
+    ).toBe(false);
+  });
+});

@@ -5,6 +5,8 @@ import {
   classifyJudgeError,
   isUnscored,
   unscoredJudgeResult,
+  parseOkVerdict,
+  describeOkValue,
   DEFAULT_JUDGE_RETRIES,
   JudgeErrorClassification,
   JudgeRetryOptions,
@@ -714,21 +716,34 @@ export class LLMJudge {
       
       const parsed: LLMJudgeResponse = JSON.parse(jsonText);
 
+      const MALFORMED = { kind: "malformed_verdict" as const, label: "malformed_verdict" };
+
       return checks.map((check) => {
         const checkResult = parsed.checks?.[check.id];
-        if (!checkResult) {
+        if (!checkResult || typeof checkResult !== "object") {
           // The judge answered but omitted this check: that is a malformed
           // verdict, not a verdict of "fail" (issue #110).
           return unscoredJudgeResult(
             check.id,
-            { kind: "malformed_verdict", label: "malformed_verdict" },
+            MALFORMED,
             `Check result not found in LLM response. Keys returned: [${Object.keys(parsed.checks || {}).join(', ')}]`
           );
         }
 
-        // Handle ok as boolean or string (Gemini sometimes returns "true"/"false" strings)
+        // `ok` may be a boolean or the strings "true"/"false" (Gemini returns
+        // those intermittently). ANY other value — missing, null, 1, "maybe" —
+        // is an incomplete reply, not a verdict of "fail": boolean-converting it
+        // would manufacture a quality failure from judge noise (issue #110).
         const okValue = checkResult.ok;
-        const passed = okValue === true || okValue === "true";
+        const verdict = parseOkVerdict(okValue);
+        if (verdict === undefined) {
+          return unscoredJudgeResult(
+            check.id,
+            MALFORMED,
+            `Check "${check.id}" carried no usable \`ok\` verdict (${describeOkValue(okValue)}).`
+          );
+        }
+        const passed = verdict;
         let score: number | undefined;
 
         // Calculate score based on count if applicable
