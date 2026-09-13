@@ -18,7 +18,10 @@ import {
   readHospitalDirectoryFile,
   recordHospitalDirectoryStatus,
 } from "../../common/hospital-directory-file";
-import { resolveStateForCity } from "./utils/location-detector";
+import {
+  resolveCoordsForCity,
+  resolveStateForCity,
+} from "./utils/location-detector";
 
 // ─── Public Types ──────────────────────────────────────────────
 
@@ -31,6 +34,16 @@ export interface HospitalSearchParams {
   maxResults?: number;
   /** When false, skip appending national referral centres (e.g. already national-scope query) */
   includeNational?: boolean;
+  /**
+   * Departments the patient's need actually requires, independent of cancer
+   * type — e.g. `["radiation_oncology"]` for someone who has been told they
+   * need radiotherapy. Names are normalised, so "Radiotherapy" and
+   * "radiation_oncology" are the same requirement.
+   *
+   * This is a HARD filter. A centre that does not have the department is never
+   * offered for that need, however close it is.
+   */
+  requiredDepartments?: string[];
 }
 
 export interface HospitalSearchResult {
@@ -53,6 +66,23 @@ export interface HospitalSearchResult {
   score: number;
   /** True when this is a national referral centre surfaced alongside regional results */
   national_referral?: boolean;
+  /** Geocoded latitude — absent when the record has not been geocoded */
+  latitude?: number | null;
+  /** Geocoded longitude — absent when the record has not been geocoded */
+  longitude?: number | null;
+  /** Which geocoder produced the coordinates (e.g. "nominatim") */
+  geocode_source?: string | null;
+  /** Which query tier answered: "name_address" | "address" | "city" */
+  geocode_confidence?: string | null;
+  /**
+   * Straight-line kilometres from the city the patient named, populated by
+   * `searchHospitals` when both ends are geocoded. Absent when there is no
+   * distance signal — which callers must render as "distance unknown", never
+   * as zero. This is a great-circle distance, NOT a travel distance and NOT a
+   * travel time; the road route is always longer and the journey time depends
+   * on connections this data says nothing about.
+   */
+  distance_km?: number;
 }
 
 
@@ -69,6 +99,8 @@ export interface ComparisonResult {
 
 /**
  * Which rung of the geographic fallback chain produced the candidate set.
+ *  - "distance"       → the patient's city is geocoded, so the whole regional
+ *                       pool was ordered by real distance and no state rung ran
  *  - "city"           → hospitals in the requested city
  *  - "state"          → no hospital in that city; widened to the city's state
  *  - "adjacent_state" → none in that state either; widened to neighbouring states
@@ -76,6 +108,8 @@ export interface ComparisonResult {
  *  - "none"           → caller supplied no city and no state
  */
 export type GeographicStage =
+  /** hospitals ordered by real distance from the patient's geocoded city */
+  | "distance"
   | "city"
   | "state"
   | "adjacent_state"
@@ -116,6 +150,146 @@ export interface VisitPrep {
 }
 
 // ─── Service ───────────────────────────────────────────────────
+
+// ─── Department names ──────────────────────────────────────────────────────
+//
+// `hospitals.json` spells departments two ways, because it was assembled from
+// two research passes: snake_case (`radiation_oncology`) on 12 records and
+// Title Case prose (`Radiation Oncology`, `Radiotherapy`, `Head & Neck
+// Oncology`) on the other 71. The capability filter compared raw strings, so
+// AIIMS Patna — which lists `Radiotherapy` — never matched a radiotherapy
+// requirement, and `gynaecology` and `haematology` (the names the cancer-type
+// map used) appear in NO record at all in that spelling, so those filters
+// matched nothing and were silently skipped by the graceful-degradation branch.
+//
+// Both sides are normalised through this table before comparison. Synonyms map
+// to one canonical name; anything unrecognised keeps its normalised form rather
+// than being dropped, so a new department name fails closed (it simply does not
+// match a requirement) instead of matching everything.
+
+/** Collapse spelling/case/punctuation differences to one comparable token. */
+function normaliseDepartmentToken(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/** Different names for the same clinical capability. */
+const DEPARTMENT_SYNONYMS: Record<string, string> = {
+  // Radiation. "Radiotherapy" is the department name AIIMS Patna uses.
+  radiotherapy: "radiation_oncology",
+  radiation_therapy: "radiation_oncology",
+  radiation_oncology: "radiation_oncology",
+  // Head and neck
+  head_and_neck_oncology: "head_and_neck",
+  head_and_neck_surgery: "head_and_neck",
+  head_and_neck: "head_and_neck",
+  // Gynaecologic
+  gynaecologic_oncology: "gynaec_oncology",
+  gynecologic_oncology: "gynaec_oncology",
+  gynaec_oncology: "gynaec_oncology",
+  gynec_oncology: "gynaec_oncology",
+  gynaecology: "gynaec_oncology",
+  gynecology: "gynaec_oncology",
+  // Blood
+  haematology: "hemato_oncology",
+  hematology: "hemato_oncology",
+  haemato_oncology: "hemato_oncology",
+  hemato_oncology: "hemato_oncology",
+  // Paediatric
+  paediatric_oncology: "pediatric_oncology",
+  pediatric_oncology: "pediatric_oncology",
+  // Palliative
+  palliative_medicine: "palliative_care",
+  palliative_care: "palliative_care",
+  // Straightforward case variants
+  medical_oncology: "medical_oncology",
+  surgical_oncology: "surgical_oncology",
+  uro_oncology: "uro_oncology",
+  urologic_oncology: "uro_oncology",
+  nuclear_medicine: "nuclear_medicine",
+  neuro_oncology: "neuro_oncology",
+  neurosurgery_oncology: "neuro_oncology",
+  bone_marrow_transplant: "bone_marrow_transplant",
+};
+
+/** Canonical name for a department as written anywhere in the directory. */
+export function normaliseDepartment(raw: string): string {
+  const token = normaliseDepartmentToken(raw);
+  return DEPARTMENT_SYNONYMS[token] ?? token;
+}
+
+/** True when `hospital` offers at least one of the required departments. */
+function hasAnyDepartment(
+  hospitalDepartments: string[],
+  required: string[]
+): boolean {
+  if (required.length === 0) return true;
+  const have = new Set(hospitalDepartments.map(normaliseDepartment));
+  return required.map(normaliseDepartment).some((d) => have.has(d));
+}
+
+// ─── Distance ──────────────────────────────────────────────────────────────
+
+/** Mean Earth radius in kilometres (IUGG). */
+const EARTH_RADIUS_KM = 6371.0088;
+
+const toRadians = (deg: number): number => (deg * Math.PI) / 180;
+
+/**
+ * Great-circle distance between two points, in kilometres.
+ *
+ * This is a STRAIGHT-LINE distance. The road route is always longer, and the
+ * journey time depends on rail and road connections this data says nothing
+ * about — Darbhanga to Muzaffarpur is well connected, while other 100km hops in
+ * the same region are four hours. Use it to ORDER centres; never render it as a
+ * travel time (issue #103).
+ */
+export function haversineKm(
+  a: [number, number],
+  b: [number, number]
+): number {
+  const [lat1, lon1] = a;
+  const [lat2, lon2] = b;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** A hospital's coordinates, or null when it has not been geocoded. */
+function hospitalCoords(h: HospitalSearchResult): [number, number] | null {
+  return typeof h.latitude === "number" && typeof h.longitude === "number"
+    ? [h.latitude, h.longitude]
+    : null;
+}
+
+/**
+ * Nearest first, directory `score` breaking ties.
+ *
+ * A hospital with no coordinates sorts LAST rather than first: an unknown
+ * distance is not a short one, and the alternative — treating absent as zero —
+ * would put exactly the records we know least about at the top of a list a
+ * patient uses to decide where to travel.
+ *
+ * The score tiebreak matters more than it looks. Several centres share one
+ * city, so they share a distance to the decimal; without it the order within a
+ * city would be whatever the file happened to list first, and a tier-A TMC unit
+ * could fall below a tier-C private hospital on the same street.
+ */
+function compareByDistanceThenScore(
+  a: HospitalSearchResult,
+  b: HospitalSearchResult
+): number {
+  const da = a.distance_km ?? Number.POSITIVE_INFINITY;
+  const db = b.distance_km ?? Number.POSITIVE_INFINITY;
+  if (da !== db) return da - db;
+  return b.score - a.score;
+}
 
 /** National states — queries for these locations don't need national referrals appended */
 const NATIONAL_SCOPE_STATES = new Set([
@@ -223,13 +397,15 @@ export class HospitalDirectoryService implements OnModuleInit {
    * pointed at Patna while HBCH&RC Muzaffarpur (a TMC unit, score 90, the
    * highest-scoring centre in Bihar) was never surfaced.
    *
-   * This widens the candidate SET only. It deliberately does not rank by
-   * proximity: ordering stays with the directory score (quality / cost /
-   * location / PMJAY) in step 5 of `searchHospitals`, so what surfaces first is
-   * still driven by clinical capability and affordability rather than by which
-   * facility happens to be nearest. See `docs/RELIABILITY_BACKLOG.md`
-   * ("hospital proximity ranking") for why a distance model is not appropriate
-   * on the data available today.
+   * This chain is now the FALLBACK path only. When the patient's city is in the
+   * geocoded `INDIAN_CITIES` table, `searchHospitals` orders the whole regional
+   * pool by real distance instead (stage "distance") and no state rung runs at
+   * all — because a state border is an administrative fact, not a travel
+   * burden. Kishanganj is 83km from Siliguri in West Bengal and 284km from
+   * Patna in its own state; Buxar is nearer Varanasi in Uttar Pradesh than
+   * Patna. The rungs below still run for a city the table does not know, where
+   * there is no distance signal and administrative proximity is the only
+   * geography available (issue #103).
    */
   private resolveGeographicCandidates(
     pool: HospitalSearchResult[],
@@ -344,34 +520,82 @@ export class HospitalDirectoryService implements OnModuleInit {
 
     let results = [...this.hospitals];
 
-    // ── 1. Geographic filter (city → state → adjacent state → unfiltered) ──
-    const geographic = this.resolveGeographicCandidates(results, params);
-    results = geographic.results;
+    // ── 1. Capability — a HARD filter, and it runs FIRST ──
+    //
+    // Distance alone is unsafe, and the directory proves it: Healing Touch
+    // Bhagalpur (tier C) is the nearest centre to eastern Bihar, and its own
+    // record reads "No radiation or medical oncology — refer to Patna or
+    // Muzaffarpur for those needs." Nearest-by-km would route a radiotherapy
+    // patient to a centre that cannot deliver it. So capability is resolved
+    // before any geography is considered, and unlike every other filter here it
+    // does NOT degrade gracefully: a centre that cannot serve the need is
+    // dropped even if dropping it empties the set. Offering nothing is
+    // recoverable; offering a centre that cannot treat the patient is not.
+    const requiredDepartments = this.resolveRequiredDepartments(params);
+    if (requiredDepartments.length > 0) {
+      const before = results.length;
+      results = results.filter((h) =>
+        hasAnyDepartment(h.departments, requiredDepartments)
+      );
+      if (results.length === 0) {
+        this.logger.warn({
+          event: "hospital_capability_filter_empty",
+          requiredDepartments,
+          cancerType: params.cancerType ?? null,
+          candidatesBefore: before,
+          reason:
+            "no centre in the regional pool offers the required department — returning none rather than a centre that cannot serve the need",
+        });
+      }
+    }
+
+    // ── 2. Geography ──
+    //
+    // When the patient's city is geocoded, order the whole pool by real
+    // distance: no state rung runs, because a border is not a travel burden
+    // (issue #103). Otherwise fall back to #99's widening chain, which is the
+    // only geography available for a city the table does not know.
+    const origin = resolveCoordsForCity(requestedCity);
+    let stage: GeographicStage;
+
+    // Distance ordering needs BOTH ends geocoded. An origin alone is not a
+    // distance signal, so if no candidate carries coordinates we must not claim
+    // to have ordered by distance — fall back to the administrative chain
+    // rather than head a list "Nearest centres to X" with nothing measured.
+    const withDistance = origin
+      ? results.map((h) => {
+          const coords = hospitalCoords(h);
+          return coords
+            ? { ...h, distance_km: haversineKm(origin, coords) }
+            : { ...h };
+        })
+      : [];
+    const measured = withDistance.filter(
+      (h) => typeof h.distance_km === "number"
+    ).length;
+
+    if (origin && measured > 0) {
+      stage = "distance";
+      results = withDistance;
+      this.logger.log({
+        event: "hospital_search_distance_ordering",
+        requestedCity,
+        resolvedState,
+        count: results.length,
+        measured,
+        ungeocoded: results.length - measured,
+      });
+    } else {
+      const geographic = this.resolveGeographicCandidates(results, params);
+      results = geographic.results;
+      stage = geographic.stage;
+    }
+
     const geography: HospitalSearchGeography = {
-      stage: geographic.stage,
+      stage,
       requestedCity,
       resolvedState,
     };
-
-    // ── 2. Cancer type filter ──
-    if (params.cancerType) {
-      const targetDepts = this.CANCER_TYPE_DEPARTMENTS[params.cancerType] ?? [];
-      if (targetDepts.length > 0) {
-        const typeFiltered = results.filter((h) =>
-          h.departments.some((d) => targetDepts.includes(d))
-        );
-        // Graceful degradation: if no match, skip this filter
-        if (typeFiltered.length > 0) {
-          results = typeFiltered;
-        } else {
-          this.logger.debug({
-            event: "hospital_cancer_type_filter_skipped",
-            cancerType: params.cancerType,
-            reason: "no results after filter — graceful degradation",
-          });
-        }
-      }
-    }
 
     // ── 3. PMJAY filter ──
     if (params.pmjayRequired) {
@@ -406,7 +630,9 @@ export class HospitalDirectoryService implements OnModuleInit {
     }
 
     // ── 5. Sort + limit ──
-    results.sort((a, b) => b.score - a.score);
+    results.sort(
+      stage === "distance" ? compareByDistanceThenScore : (a, b) => b.score - a.score
+    );
     const regionalResults = results.slice(0, params.maxResults ?? 3);
 
     // ── 6. Append national referral centres ──
@@ -421,16 +647,13 @@ export class HospitalDirectoryService implements OnModuleInit {
       return { results: regionalResults, geography };
     }
 
-    // Filter national pool by cancer type if specified, then pick top 2 by score
+    // The same hard capability rule applies to the national pool: a referral
+    // centre that cannot serve the need is not a referral.
     let nationalPool = [...this.nationalHospitals];
-    if (params.cancerType) {
-      const targetDepts = this.CANCER_TYPE_DEPARTMENTS[params.cancerType] ?? [];
-      if (targetDepts.length > 0) {
-        const typeFiltered = nationalPool.filter((h) =>
-          h.departments.some((d) => targetDepts.includes(d))
-        );
-        if (typeFiltered.length > 0) nationalPool = typeFiltered;
-      }
+    if (requiredDepartments.length > 0) {
+      nationalPool = nationalPool.filter((h) =>
+        hasAnyDepartment(h.departments, requiredDepartments)
+      );
     }
     // When PMJAY required, prefer government/low-cost national centres
     if (params.pmjayRequired) {
@@ -455,6 +678,24 @@ export class HospitalDirectoryService implements OnModuleInit {
     });
 
     return { results: [...regionalResults, ...nationalResults], geography };
+  }
+
+  /**
+   * The departments this search requires: an explicit `requiredDepartments`
+   * plus whatever the cancer type implies. Normalised and deduplicated, so
+   * "Radiotherapy" and "radiation_oncology" collapse to one requirement.
+   */
+  private resolveRequiredDepartments(params: HospitalSearchParams): string[] {
+    const required = new Set<string>();
+    for (const d of params.requiredDepartments ?? []) {
+      required.add(normaliseDepartment(d));
+    }
+    if (params.cancerType) {
+      for (const d of this.CANCER_TYPE_DEPARTMENTS[params.cancerType] ?? []) {
+        required.add(normaliseDepartment(d));
+      }
+    }
+    return [...required];
   }
 
   /**

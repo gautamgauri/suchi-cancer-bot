@@ -14,6 +14,21 @@ interface CityEntry {
   canonical: string;
   state: string;
   aliases: string[];
+  /**
+   * [latitude, longitude] of the town itself — NOT of the district that shares
+   * its name, which can sit tens of kilometres away.
+   *
+   * Geocoded once, offline, by `scripts/geocode-hospitals.py --cities` against
+   * public Nominatim, and committed here so nothing is resolved at runtime. Each
+   * value cleared two hard gates: the returned address had to name both this
+   * city and its state, and the point had to fall inside India. Optional only so
+   * a future entry can be added before it is geocoded — every entry present
+   * today carries one.
+   *
+   * Locality precision. Adequate for ordering cancer centres that are tens of
+   * kilometres apart; never adequate for a travel time or a street address.
+   */
+  coords?: [number, number];
 }
 
 /** Indian cities map — Bihar focus + major metros */
@@ -139,6 +154,29 @@ function matchCity(word: string): { entry: CityEntry; confidence: number } | nul
     return { entry: bestMatch.entry, confidence };
   }
 
+  return null;
+}
+
+/**
+ * Resolve the coordinates of a known city, using the same canonical
+ * INDIAN_CITIES table `detectLocation` uses (canonical names + aliases).
+ *
+ * Exists so the hospital directory can order centres by real distance from the
+ * city the patient named. Returns null for a city not in the table, which the
+ * caller must treat as "no distance signal" — never as "distance zero".
+ *
+ * @returns [latitude, longitude], or null when the city is unknown or ungeocoded
+ */
+export function resolveCoordsForCity(
+  city: string | null | undefined
+): [number, number] | null {
+  if (!city || city.trim().length === 0) return null;
+  const lower = city.trim().toLowerCase();
+  for (const entry of INDIAN_CITIES) {
+    if (entry.canonical.toLowerCase() === lower || entry.aliases.includes(lower)) {
+      return entry.coords ?? null;
+    }
+  }
   return null;
 }
 
