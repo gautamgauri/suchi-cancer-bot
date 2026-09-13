@@ -18,6 +18,7 @@ Related: issue #27, `docs/RELIABILITY_BACKLOG.md` (P2-6),
 | Scope needed | `w_organization_social` (+ `r_organization_social` for step 3 only) |
 | Token lifetime | **60 days**, then posting fails with HTTP 401 |
 | Helper script | `scripts/linkedin-oauth-exchange.ts` (`npm run linkedin:auth -- <cmd>`) |
+| Token handling | never printed; `--to-secret-manager` \| `--out` (0600) \| `--print-token` opt-in |
 
 > **Deploy order matters.** `cloudbuild.yaml` and `cloudbuild.gated.yaml` now
 > reference both secrets. Cloud Run resolves every `--set-secrets` reference at
@@ -54,7 +55,9 @@ Two ways, either is fine:
   what you want. (A vanity URL such as `/company/suchi-cancer-care/` does *not*
   contain the id; switch to the admin view to see it.)
 - **From the API**, after step 2: `npm run linkedin:auth -- orgs` prints every
-  organisation the token may post for, already in URN form.
+  organisation the token may post for, already in URN form. Read the token from
+  a file written by `--out` with `--token-file <path>`, or export
+  `LINKEDIN_ACCESS_TOKEN`.
 
 The value to store is the full URN, not the bare number:
 
@@ -92,11 +95,36 @@ Open it in a browser **signed in as the page admin**, approve, and copy the
 The code expires in 30 minutes and is single-use.
 
 ```bash
-npm run linkedin:auth -- exchange --code <code>
+# recommended: the token goes straight into Secret Manager over the child
+# process's stdin — it never reaches stdout, argv, a shell history or a temp file
+npm run linkedin:auth -- exchange --code <code> \
+  --to-secret-manager linkedin-access-token
 ```
 
-The script prints the granted scopes, the exact expiry date, whether a
-refresh token came back, and the `gcloud` command to store the token.
+**The token is never printed.** The script prints only metadata — granted
+scopes, token length, the exact expiry date, whether a refresh token came back —
+and then the new Secret Manager version name. You must name exactly one
+destination; with none it refuses and exits 1 rather than falling back to
+printing.
+
+| Flag | What it does |
+| --- | --- |
+| `--to-secret-manager <name>` | pipes the value into `gcloud secrets versions add <name> --data-file=-` and prints only the new version name. `--secret-project <id>` overrides the default project. |
+| `--out <path>` | writes the raw value to a new file with mode `0600` and **no trailing newline**. Refuses to overwrite an existing file unless you add `--force`. |
+| `--print-token` | the escape hatch: prints the value to stdout, after a warning. Only for a terminal you are certain is not recorded. |
+
+If a refresh token comes back it goes to a sibling destination —
+`linkedin-access-token-refresh` for `--to-secret-manager`, `<path>.refresh` for
+`--out` — so neither value overwrites the other.
+
+With `--out`, step 3's manual `gcloud` path still works, and the file is already
+newline-free:
+
+```bash
+gcloud secrets versions add linkedin-access-token --data-file=<path> \
+  --project=gen-lang-client-0202543132
+shred -u <path>    # or rm; the file is a live 60-day credential
+```
 
 *Drop `r_organization_social` from `LINKEDIN_SCOPES` if LinkedIn has not
 approved it for the app — posting needs only `w_organization_social`, and you
@@ -112,16 +140,28 @@ PROJECT=gen-lang-client-0202543132
 # First time only — create the secret containers
 gcloud secrets create linkedin-access-token --replication-policy=automatic --project=$PROJECT
 gcloud secrets create linkedin-author-urn  --replication-policy=automatic --project=$PROJECT
+```
 
-# Every rotation — add a new version (never edit a version in place)
-printf %s '<access token>' | \
-  gcloud secrets versions add linkedin-access-token --data-file=- --project=$PROJECT
+`--to-secret-manager` in step 2 already added the access-token version, so only
+the author URN is left — it is not a secret value, just a configuration id:
+
+```bash
 printf %s 'urn:li:organization:<id>' | \
   gcloud secrets versions add linkedin-author-urn --data-file=- --project=$PROJECT
 ```
 
+Manual alternative, if you used `--out` or `--print-token` in step 2 (never edit
+a version in place — always add a new one):
+
+```bash
+printf %s '<access token>' | \
+  gcloud secrets versions add linkedin-access-token --data-file=- --project=$PROJECT
+```
+
 `printf %s` rather than `echo` — a trailing newline inside the token value
-produces a malformed `Authorization` header and a confusing 401.
+produces a malformed `Authorization` header and a confusing 401. Note that a
+token typed on a command line lands in your shell history; `--to-secret-manager`
+exists to avoid exactly that.
 
 The Cloud Run runtime service account needs `roles/secretmanager.secretAccessor`
 on both secrets (it already has it on the other `suchi-api` secrets; grant it
@@ -142,6 +182,14 @@ revision — see `docs/DEPLOYMENT.md`).
 
 ## 5. Verify
 
+0. **The helper never leaked the token.** `npm run linkedin:auth -- --self-test`
+   runs the offline checks on the helper's pure parts (argument parsing,
+   destination resolution, redaction, the 0600 file write);
+   among them is an assertion that the exchange summary never contains the token
+   value. It runs in CI in the "Build + config parity" job. If you used
+   `--out`, delete the file once the secret version exists. If you used
+   `--print-token`, clear the scrollback, and treat the token as compromised if
+   the session was recorded.
 1. **Configuration is visible.** Publish or re-send any article approval — the
    social approval email now shows a **LinkedIn** copy block and a **"LinkedIn
    only"** button, and the "Approve all" button counts 3 platforms. Those
@@ -177,6 +225,10 @@ curl -X POST https://www.linkedin.com/oauth/v2/accessToken \
 
 Note that refreshing does not extend the *refresh* token (365 days from first
 issue), so a full re-authorisation is still needed roughly once a year.
+
+Rotation writes a new secret version; nothing in the repo or the Cloud Run
+config changes. Prefer `--to-secret-manager linkedin-access-token` so the value
+never lands anywhere else.
 
 **Set a recurring calendar reminder at 55 days** ("Rotate Suchi LinkedIn token —
 docs/LINKEDIN_ORG_POSTING.md"). Rotation is steps 2 → 3 → 4, about ten minutes.

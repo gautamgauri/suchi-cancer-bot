@@ -11,6 +11,7 @@
     "eval:hybrid-retrieval": "tsx scripts/test-hybrid-retrieval.ts",
     "sync:hospitals": "ts-node scripts/sync-hospital-kb.ts",
     "linkedin:auth": "ts-node scripts/linkedin-oauth-exchange.ts",
+    "linkedin:auth:self-test": "ts-node scripts/linkedin-oauth-exchange.ts --self-test",
     "navigator:send": "ts-node navigator/cli.ts send",
     "navigator:status": "ts-node navigator/cli.ts status"
   },
