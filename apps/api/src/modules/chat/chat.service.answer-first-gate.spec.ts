@@ -45,6 +45,9 @@ import { ObservabilityService } from "../observability/observability.service";
 
 const Q04_HI = "लोग कहते हैं कि बायोप्सी कराने से कैंसर फैल जाता है। क्या यह सच है?";
 const Q04_PROD_SIMILARITIES = [0.456, 0.435, 0.43, 0.429, 0.428, 0.396];
+// Subjectless form flagged in the #137 review: "kya sach hai ki ..." with no
+// यह/ये subject and no postposed क्या.
+const SUBJECTLESS_HI = "\u0915\u094D\u092F\u093E \u0938\u091A \u0939\u0948 \u0915\u093F \u092C\u093E\u092F\u094B\u092A\u094D\u0938\u0940 \u0915\u0930\u093E\u0928\u0947 \u0938\u0947 \u0915\u0948\u0902\u0938\u0930 \u092B\u0948\u0932 \u091C\u093E\u0924\u093E \u0939\u0948?";
 
 const DEFINITIONAL_REPLY = "DEFINITIONAL [citation:doc0:doc0::chunk::0] [citation:doc1:doc1::chunk::1]";
 const FULL_EXPLAIN_REPLY = "FULL_EXPLAIN [citation:doc0:doc0::chunk::0] [citation:doc1:doc1::chunk::1]";
@@ -253,6 +256,26 @@ describe("Answer-first definitional gate — claim-verification questions (issue
     const [systemPrompt, , userMessage] = llm.generateWithCitations.mock.calls[0];
     expect(systemPrompt).toBe("explain");
     expect(userMessage).toBe(Q04_HI);
+  });
+
+  it("subjectless Hindi truth check (#137 review): \u0915\u094D\u092F\u093E \u0938\u091A \u0939\u0948 \u0915\u093F \u2026 must also skip the definitional path", async () => {
+    // Same evidence and gate conditions as q04, but with the hearsay clause
+    // dropped — the form Codex flagged as still reaching the definitional path.
+    const { service, llm } = await buildService({ userContext: null, chunks: makeChunks(Q04_PROD_SIMILARITIES) });
+
+    const result = await service.handle({
+      sessionId: "session1",
+      userText: SUBJECTLESS_HI,
+      channel: "web",
+    } as any);
+
+    expect(llm.generateDefinitionalResponse).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).toHaveBeenCalledTimes(1);
+    expect(result.responseText).toContain("FULL_EXPLAIN");
+
+    const [systemPrompt, , userMessage] = llm.generateWithCitations.mock.calls[0];
+    expect(systemPrompt).toBe("explain");
+    expect(userMessage).toBe(SUBJECTLESS_HI);
   });
 
   it("control: a plain definitional question with the same evidence still takes the answer-first path", async () => {

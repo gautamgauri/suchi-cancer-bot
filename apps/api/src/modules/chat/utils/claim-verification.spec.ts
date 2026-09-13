@@ -40,6 +40,80 @@ describe("isClaimVerificationQuestion", () => {
     });
   });
 
+  // ---------------------------------------------------------------------
+  // #137 review — forms that slipped through the first pass.
+  // ---------------------------------------------------------------------
+  describe("subjectless Hindi/Hinglish truth checks (#137 review)", () => {
+    it.each([
+      "\u0915\u094D\u092F\u093E \u0938\u091A \u0939\u0948 \u0915\u093F \u092C\u093E\u092F\u094B\u092A\u094D\u0938\u0940 \u0938\u0947 \u0915\u0948\u0902\u0938\u0930 \u092B\u0948\u0932\u0924\u093E \u0939\u0948?",
+      "\u0915\u094D\u092F\u093E \u0938\u091A \u0939\u0948 \u0915\u093F \u091A\u0940\u0928\u0940 \u0916\u093E\u0928\u0947 \u0938\u0947 \u0915\u0948\u0902\u0938\u0930 \u092C\u0922\u093C\u0924\u093E \u0939\u0948",
+      "kya sach hai ki biopsy se cancer failta hai",
+      "kya sach hai ki cheeni se cancer badhta hai?",
+      "kya ye sach hai ki biopsy karane se cancer fail jata hai",
+      "kya yeh sach hai ki khaini se cancer hota hai",
+    ])("%s", (text) => {
+      expect(isClaimVerificationQuestion(text)).toBe(true);
+    });
+  });
+
+  describe("postposed question particle (#137 review)", () => {
+    it.each([
+      "\u092C\u093E\u092F\u094B\u092A\u094D\u0938\u0940 \u0938\u0947 \u0915\u0948\u0902\u0938\u0930 \u092B\u0948\u0932\u0924\u093E \u0939\u0948 \u0915\u094D\u092F\u093E?",
+      "\u0938\u0941\u092A\u093E\u0930\u0940 \u0938\u0947 \u0915\u0948\u0902\u0938\u0930 \u0939\u094B\u0924\u093E \u0939\u0948 \u0915\u094D\u092F\u093E",
+      "biopsy se cancer failta hai kya?",
+      "khaini se cancer hota hai kya?",
+      "sugar se tumour badhta hai kya",
+      "yeh sach hai kya?",
+    ])("%s", (text) => {
+      expect(isClaimVerificationQuestion(text)).toBe(true);
+    });
+  });
+
+  describe("reported-speech hearsay with `ne` (#137 review)", () => {
+    it.each([
+      "kisi ne bataya ki biopsy se cancer failta hai",
+      "logon ne kaha ki chemo se aur nuksan hota hai",
+      "mere padosi ne bola ki cancer chhoot se failta hai",
+      "\u0915\u093F\u0938\u0940 \u0928\u0947 \u092C\u0924\u093E\u092F\u093E \u0915\u093F \u092C\u093E\u092F\u094B\u092A\u094D\u0938\u0940 \u0938\u0947 \u0915\u0948\u0902\u0938\u0930 \u092B\u0948\u0932\u0924\u093E \u0939\u0948",
+      "\u0932\u094B\u0917\u094B\u0902 \u0928\u0947 \u0915\u0939\u093E \u0915\u093F \u0915\u0940\u092E\u094B \u0938\u0947 \u092E\u094C\u0924 \u0939\u094B \u091C\u093E\u0924\u0940 \u0939\u0948",
+    ])("%s", (text) => {
+      expect(isClaimVerificationQuestion(text)).toBe(true);
+    });
+  });
+
+  describe("English `really` / myth framings (#137 review)", () => {
+    it.each([
+      "Does sugar really make cancer grow faster?",
+      "Does chemotherapy really kill more people than cancer?",
+      "Do mobile phones really cause brain tumours?",
+      "Is it a myth that a biopsy spreads cancer?",
+      "Is it a myth that only smokers get lung cancer?",
+    ])("%s", (text) => {
+      expect(isClaimVerificationQuestion(text)).toBe(true);
+    });
+  });
+
+  describe("clinician attribution is an instruction, not hearsay (#137 review)", () => {
+    it.each([
+      "My doctor told me I need chemo. What is chemo?",
+      "doctor kehte hain ki chemo lena chahiye",
+      "doctor kehte hain biopsy karani hai; biopsy kya hai?",
+      "\u0921\u0949\u0915\u094D\u091F\u0930 \u0915\u0939\u0924\u0947 \u0939\u0948\u0902 \u0915\u093F \u092C\u093E\u092F\u094B\u092A\u094D\u0938\u0940 \u0915\u0930\u093E\u0928\u0940 \u0939\u0948",
+      "\u0921\u0949\u0915\u094D\u091F\u0930 \u0928\u0947 \u092C\u0924\u093E\u092F\u093E \u0915\u093F \u0915\u0940\u092E\u094B \u0936\u0941\u0930\u0942 \u0939\u094B\u0917\u0940",
+      "nurse ne bataya ki port lagega",
+    ])("%s", (text) => {
+      expect(isClaimVerificationQuestion(text)).toBe(false);
+    });
+
+    it("a clinician mention does not mask a rumour later in the same message", () => {
+      expect(
+        isClaimVerificationQuestion(
+          "doctor kehte hain ki biopsy safe hai, par log kehte hain ki isse cancer failta hai"
+        )
+      ).toBe(true);
+    });
+  });
+
   describe("does NOT match simple definitional / informational questions", () => {
     it.each([
       "What is a biopsy?",
@@ -50,6 +124,9 @@ describe("isClaimVerificationQuestion", () => {
       "Tell me about breast cancer",
       "What are the symptoms of oral cancer?",
       "How is cancer diagnosed?",
+      "biopsy kya hoti hai",
+      "\u0915\u0940\u092E\u094B\u0925\u0947\u0930\u0947\u092A\u0940 \u0915\u094D\u092F\u093E \u0939\u0948",
+      "What are the side effects of radiation?",
     ])("%s", (text) => {
       expect(isClaimVerificationQuestion(text)).toBe(false);
     });
