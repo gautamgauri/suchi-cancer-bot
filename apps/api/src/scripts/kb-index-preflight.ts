@@ -13,9 +13,10 @@
  * WHY A SCRIPT-SIDE CHECK WHEN THE DB NOW HAS @@unique([docId, chunkIndex])
  *   The unique index catches the exact shape that caused the 2026 incident —
  *   two rows at one position — and is the real guard. It cannot see the
- *   *precursor*: a row whose id is not `docId::chunk::N` but which sits alone
- *   at its position (a doc ingested only by the legacy run, or a chunk whose
- *   position no longer exists in the current chunking). Those rows are still
+ *   *precursor*: a row whose id is not exactly `docId::chunk::N` but which sits
+ *   alone at its position (a doc ingested only by the legacy run, a chunk whose
+ *   position no longer exists in the current chunking, or an id that names a
+ *   different doc or a different index than the row it sits on). Those rows are still
  *   invisible to the upsert, still served by retrieval, and are exactly what
  *   turns into duplicates the moment the chunker's output shifts. Refusing to
  *   ingest on top of them keeps the repair a deliberate, verified act instead
@@ -25,18 +26,55 @@
  * the caller runs KB_INDEX_INTEGRITY_SQL and hands the row to `assess`.
  */
 
+/** How many offending ids the refusal message names. */
+export const ID_SAMPLE_LIMIT = 5;
+
+/**
+ * The SQL predicate for "this row is NOT at the id ingest-kb.ts upserts on".
+ *
+ * It is an exact comparison against `generateChunkId`'s output, not a
+ * `LIKE '%::chunk::%'` substring test. The substring form answers a weaker
+ * question — "does this id contain the separator?" — and so passes rows the
+ * upsert can never reach: a legacy `legacy::chunk::x` (non-numeric suffix), an
+ * id carrying a *different* doc's name, or one whose numeric suffix has drifted
+ * from its own `chunkIndex`. Every one of those is invisible to the upsert in
+ * exactly the way a uuid id is, so counting them as healthy lets ingestion walk
+ * into a bare 23505 unique-violation instead of the actionable refusal below.
+ */
+export const NON_DETERMINISTIC_ID_PREDICATE = `id IS DISTINCT FROM ("docId" || '::chunk::' || "chunkIndex")`;
+
 /**
  * The cheap always-on integrity signal — query (A) of
  * scripts/sql/kb_duplicate_cleanup.sql, identical to the one behind
  * OpsMetricsService.kbIndexIntegrity and `npm run ops:metrics`. Counts only;
  * it never hashes `content`, so genuine in-document repeats are not flagged.
+ *
+ * The sample ids come from their own LIMITed subquery rather than a sliced
+ * `array_agg`, so a table in the January-2026 state (25,065 offenders) does not
+ * materialise 25,065 strings just to print five.
  */
 export const KB_INDEX_INTEGRITY_SQL = `
   SELECT
-    count(*)::int AS total_rows,
-    (count(*) FILTER (WHERE id NOT LIKE '%::chunk::%'))::int AS non_deterministic_id_rows,
-    (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
-  FROM "KbChunk"
+    c.total_rows,
+    c.non_deterministic_id_rows,
+    c.duplicate_position_rows,
+    COALESCE(s.non_deterministic_id_samples, ARRAY[]::text[]) AS non_deterministic_id_samples
+  FROM (
+    SELECT
+      count(*)::int AS total_rows,
+      (count(*) FILTER (WHERE ${NON_DETERMINISTIC_ID_PREDICATE}))::int AS non_deterministic_id_rows,
+      (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
+    FROM "KbChunk"
+  ) c
+  LEFT JOIN LATERAL (
+    SELECT array_agg(t.id) AS non_deterministic_id_samples
+    FROM (
+      SELECT id FROM "KbChunk"
+      WHERE ${NON_DETERMINISTIC_ID_PREDICATE}
+      ORDER BY id
+      LIMIT ${ID_SAMPLE_LIMIT}
+    ) t
+  ) s ON true
 `;
 
 /** One row of {@link KB_INDEX_INTEGRITY_SQL}. Postgres aggregates may arrive as bigint. */
@@ -44,6 +82,8 @@ export type KbIndexIntegrityRow = {
   total_rows: number | bigint;
   non_deterministic_id_rows: number | bigint;
   duplicate_position_rows: number | bigint;
+  /** Up to {@link ID_SAMPLE_LIMIT} offending ids, for the operator to grep on. */
+  non_deterministic_id_samples?: string[] | null;
 };
 
 export type KbIndexPreflight = {
@@ -52,6 +92,8 @@ export type KbIndexPreflight = {
   totalRows: number;
   nonDeterministicIdRows: number;
   duplicatePositionRows: number;
+  /** Up to {@link ID_SAMPLE_LIMIT} offending ids; empty when there are none. */
+  nonDeterministicIdSamples: string[];
   /** Operator-facing explanation; empty string when `ok`. */
   reason: string;
 };
@@ -73,13 +115,26 @@ export function assessKbIndexIntegrity(row: KbIndexIntegrityRow | undefined | nu
   const totalRows = Number(row?.total_rows ?? 0);
   const nonDeterministicIdRows = Number(row?.non_deterministic_id_rows ?? 0);
   const duplicatePositionRows = Number(row?.duplicate_position_rows ?? 0);
+  const nonDeterministicIdSamples = (row?.non_deterministic_id_samples ?? [])
+    .filter((id): id is string => typeof id === "string" && id.length > 0)
+    .slice(0, ID_SAMPLE_LIMIT);
 
   const problems: string[] = [];
   if (nonDeterministicIdRows > 0) {
+    // Name the offenders. "25065 rows have the wrong id" sends an operator to a
+    // GROUP BY on a f1-micro; "legacy::chunk::x, doc-other::chunk::3" tells them
+    // at a glance whether this is the uuid legacy run, a renamed doc, or a
+    // chunkIndex that drifted from its id.
+    const samples = nonDeterministicIdSamples.length
+      ? ` (e.g. ${nonDeterministicIdSamples.join(", ")}` +
+        (nonDeterministicIdRows > nonDeterministicIdSamples.length
+          ? `, +${nonDeterministicIdRows - nonDeterministicIdSamples.length} more)`
+          : ")")
+      : "";
     problems.push(
-      `${nonDeterministicIdRows} of ${totalRows} KbChunk row(s) have an id that is not the ` +
-        "deterministic `docId::chunk::N` shape this script upserts on — an ingest run would " +
-        "insert alongside them instead of replacing them"
+      `${nonDeterministicIdRows} of ${totalRows} KbChunk row(s) have an id that is not exactly the ` +
+        "deterministic `docId::chunk::N` this script upserts on — an ingest run would " +
+        `insert alongside them instead of replacing them${samples}`
     );
   }
   if (duplicatePositionRows > 0) {
@@ -90,7 +145,14 @@ export function assessKbIndexIntegrity(row: KbIndexIntegrityRow | undefined | nu
   }
 
   if (problems.length === 0) {
-    return { ok: true, totalRows, nonDeterministicIdRows, duplicatePositionRows, reason: "" };
+    return {
+      ok: true,
+      totalRows,
+      nonDeterministicIdRows,
+      duplicatePositionRows,
+      nonDeterministicIdSamples,
+      reason: "",
+    };
   }
 
   return {
@@ -98,6 +160,7 @@ export function assessKbIndexIntegrity(row: KbIndexIntegrityRow | undefined | nu
     totalRows,
     nonDeterministicIdRows,
     duplicatePositionRows,
+    nonDeterministicIdSamples,
     reason: `KB index integrity check failed: ${problems.join("; ")}. ${REMEDIATION}`,
   };
 }

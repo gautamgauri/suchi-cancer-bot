@@ -66,7 +66,10 @@ BEGIN
   END IF;
 
   SELECT count(*) - count(DISTINCT ("docId", "chunkIndex")),
-         count(*) FILTER (WHERE id NOT LIKE '%::chunk::%')
+         -- Exact, not a `%::chunk::%` substring test: `legacy::chunk::x` or an
+         -- id naming another doc contains the separator but is just as
+         -- unreachable by ingest-kb.ts's upsert as a uuid id.
+         count(*) FILTER (WHERE id IS DISTINCT FROM ("docId" || '::chunk::' || "chunkIndex"))
     INTO dupe_rows, nondet_rows
   FROM "KbChunk";
 

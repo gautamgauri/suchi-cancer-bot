@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { PgliteDatabase, PgliteProcess } from "../modules/rag/__test-utils__/pglite-client";
 import {
+  ID_SAMPLE_LIMIT,
   KB_INDEX_INTEGRITY_SQL,
   KbIndexIntegrityRow,
   assessKbIndexIntegrity,
@@ -32,12 +33,14 @@ const UNIQUE_INDEX = "KbChunk_docId_chunkIndex_key";
 function row(
   total: number,
   nonDeterministic: number,
-  duplicates: number
+  duplicates: number,
+  samples: string[] = []
 ): KbIndexIntegrityRow {
   return {
     total_rows: total,
     non_deterministic_id_rows: nonDeterministic,
     duplicate_position_rows: duplicates,
+    non_deterministic_id_samples: samples,
   };
 }
 
@@ -79,6 +82,58 @@ describe("assessKbIndexIntegrity (ingest-kb preflight, issue #86)", () => {
     const verdict = assessKbIndexIntegrity(row(48739, 0, 2));
     expect(verdict.ok).toBe(false);
     expect(verdict.reason).toContain("beyond the first at their (docId, chunkIndex)");
+  });
+
+  it("names up to five offending ids, and says how many more there are", () => {
+    const verdict = assessKbIndexIntegrity(
+      row(73802, 25065, 25065, [
+        "0f1d0c5e-2a4b-4c1e-9a77-2b0f3a5d6e7c",
+        "9c2a1b34-5d6e-4f70-8123-456789abcdef",
+        "a9f4b2c1-0d3e-4f56-9876-543210fedcba",
+        "b1c2d3e4-f506-4718-9a2b-3c4d5e6f7081",
+        "c2d3e4f5-0617-4829-ab3c-4d5e6f708192",
+      ])
+    );
+    expect(verdict.nonDeterministicIdSamples).toHaveLength(ID_SAMPLE_LIMIT);
+    expect(verdict.reason).toContain("0f1d0c5e-2a4b-4c1e-9a77-2b0f3a5d6e7c");
+    expect(verdict.reason).toContain("c2d3e4f5-0617-4829-ab3c-4d5e6f708192");
+    expect(verdict.reason).toContain("+25060 more");
+  });
+
+  it("does not claim there are more when every offender is named", () => {
+    const verdict = assessKbIndexIntegrity(row(48739, 2, 0, ["legacy::chunk::x", "doc-other::chunk::3"]));
+    expect(verdict.reason).toContain("legacy::chunk::x, doc-other::chunk::3)");
+    expect(verdict.reason).not.toContain("more)");
+  });
+
+  it("refuses an id whose `docId` names a different document", () => {
+    // `doc-other::chunk::3` sitting on doc-screening/3 contains `::chunk::`, so
+    // the old substring predicate called it deterministic. ingest-kb.ts upserts
+    // `doc-screening::chunk::3` and inserts a SECOND row at position 3 — which
+    // is now a bare 23505 from the unique index, with no explanation attached.
+    const verdict = assessKbIndexIntegrity(row(48738, 1, 0, ["doc-other::chunk::3"]));
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain("doc-other::chunk::3");
+    expect(verdict.reason).toContain("not exactly the");
+  });
+
+  it("refuses a legacy id with a non-numeric suffix", () => {
+    const verdict = assessKbIndexIntegrity(row(48738, 1, 0, ["legacy::chunk::x"]));
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain("legacy::chunk::x");
+  });
+
+  it("still refuses when the database returned no samples", () => {
+    // A caller running the counters-only form of the query must not be turned
+    // into a pass by the absence of the sample column.
+    const verdict = assessKbIndexIntegrity({
+      total_rows: 10,
+      non_deterministic_id_rows: 1,
+      duplicate_position_rows: 0,
+    });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.nonDeterministicIdSamples).toEqual([]);
+    expect(verdict.reason).not.toContain("e.g.");
   });
 
   it("coerces the bigint Postgres returns for un-cast aggregates", () => {
@@ -232,7 +287,47 @@ describe(`migration ${MIGRATION_NAME} (issue #86)`, () => {
     expect(verdict.totalRows).toBe(2);
     expect(verdict.nonDeterministicIdRows).toBe(1);
     expect(verdict.duplicatePositionRows).toBe(0);
+    expect(verdict.nonDeterministicIdSamples).toEqual(["a9f4b2c1-0d3e-4f56-9876-543210fedcba"]);
     expect(verdict.ok).toBe(false);
+  });
+
+  it("the integrity SQL catches ids the old `%::chunk::%` test called healthy", async () => {
+    // All three rows sit alone at their position, so the unique index is happy
+    // and all three contain `::chunk::`. None is reachable by ingest-kb.ts's
+    // upsert, which is the whole point of the preflight.
+    const db = await resetToPreMigration();
+    await insertChunk(db, "doc-screening::chunk::0", 0);
+    await insertChunk(db, "legacy::chunk::x", 1); // non-numeric suffix
+    await insertChunk(db, "doc-other::chunk::2", 2); // id names a different doc
+    await insertChunk(db, "doc-screening::chunk::7", 3); // suffix drifted from chunkIndex
+
+    const rows = await db.query<KbIndexIntegrityRow>(KB_INDEX_INTEGRITY_SQL);
+    const verdict = assessKbIndexIntegrity(rows[0]);
+
+    expect(verdict.totalRows).toBe(4);
+    expect(verdict.duplicatePositionRows).toBe(0);
+    expect(verdict.nonDeterministicIdRows).toBe(3);
+    expect(verdict.nonDeterministicIdSamples.sort()).toEqual([
+      "doc-other::chunk::2",
+      "doc-screening::chunk::7",
+      "legacy::chunk::x",
+    ]);
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).toContain("legacy::chunk::x");
+  });
+
+  it("the integrity SQL caps the sample list at five ids", async () => {
+    const db = await resetToPreMigration();
+    for (let i = 0; i < 8; i++) {
+      await insertChunk(db, `legacy-${i}::chunk::x`, i);
+    }
+
+    const rows = await db.query<KbIndexIntegrityRow>(KB_INDEX_INTEGRITY_SQL);
+    const verdict = assessKbIndexIntegrity(rows[0]);
+
+    expect(verdict.nonDeterministicIdRows).toBe(8);
+    expect(verdict.nonDeterministicIdSamples).toHaveLength(ID_SAMPLE_LIMIT);
+    expect(verdict.reason).toContain("+3 more");
   });
 
   it("the schema declares the constraint the migration creates", () => {
