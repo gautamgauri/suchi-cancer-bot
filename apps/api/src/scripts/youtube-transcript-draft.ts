@@ -13,7 +13,10 @@
  *     --kbRoot ../../kb \
  *     --manifest ../../kb/manifest.oncotalks-pending.json
  *
- * Optional: --only <videoId>   regenerate a single video
+ * Optional: --only <videoId>   regenerate a single video. The rest of the
+ *                              staging manifest is left alone — only this
+ *                              video's entry is replaced (or appended).
+ *                              An unknown id is an error, not an empty run.
  *           --check            fail if the regenerated output differs from
  *                              what is committed (drift check for CI)
  */
@@ -24,7 +27,7 @@ import { KbService, KbDocument, CurationOverrides } from "../modules/youtube/kb.
 
 type Decision = "include" | "exclude";
 
-interface CuratedVideo extends CurationOverrides {
+export interface CuratedVideo extends CurationOverrides {
   videoId: string;
   decision: Decision;
   /** Why this video is or is not in the KB. Required for both decisions. */
@@ -33,12 +36,120 @@ interface CuratedVideo extends CurationOverrides {
   language?: string;
 }
 
-interface CurationFile {
+export interface CurationFile {
   channelId: string;
   channelUrl: string;
   reviewedBy?: string;
   reviewedOn?: string;
   videos: CuratedVideo[];
+}
+
+/**
+ * The staging manifest. `docs` entries are `KbDocument`s plus whatever fields a
+ * reviewer has added by hand (`tracked`, review notes); those survive a
+ * regeneration, see `mergeStagedManifest`.
+ */
+export interface StagedManifest {
+  locale: string;
+  schemaVersion: string;
+  staged: boolean;
+  note: string;
+  docs: Array<KbDocument & Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export const STAGED_MANIFEST_NOTE =
+  "STAGED — NOT INGESTED. These are uncorrected machine transcripts awaiting SCCF medical review " +
+  "(issue #91 D1-D5) and the KB duplicate cleanup (issue #86). ingest-kb.ts reads kb/manifest.json, " +
+  "not this file, so nothing here is picked up by `npm run kb:ingest`. Each entry carries `tracked`: " +
+  "true once the draft file is committed next to this manifest. `.gitignore` un-ignores " +
+  "kb/en/01_suchi_oncotalks/, so an English-original draft is tracked and reviewable like the Hindi " +
+  "ones; regenerate any single draft with `--only <videoId>`.";
+
+export function emptyStagedManifest(): StagedManifest {
+  return {
+    locale: "multi",
+    schemaVersion: "2.0",
+    staged: true,
+    note: STAGED_MANIFEST_NOTE,
+    docs: [],
+  };
+}
+
+/**
+ * Which videos this run builds.
+ *
+ * Throws on an unknown `--only` id rather than quietly building nothing: the
+ * caller of a typo'd id wants to hear about the typo, and an empty run used to
+ * end with the manifest rewritten to zero entries.
+ */
+export function selectVideos(curation: CurationFile, only?: string): CuratedVideo[] {
+  const included = curation.videos.filter((v) => v.decision === "include");
+  if (!only) return included;
+
+  const match = curation.videos.find((v) => v.videoId === only);
+  if (!match) {
+    throw new Error(
+      `--only ${only}: no such video in the curation file. ` +
+        `Known ids: ${curation.videos.length} entries, e.g. ${curation.videos
+          .slice(0, 3)
+          .map((v) => v.videoId)
+          .join(", ")}`,
+    );
+  }
+  if (match.decision !== "include") {
+    throw new Error(
+      `--only ${only}: this video is curated as "${match.decision}" (${match.reason}). ` +
+        `Refusing to build a draft the curation says does not belong in the KB.`,
+    );
+  }
+  return [match];
+}
+
+/**
+ * Fold freshly generated entries into the staging manifest.
+ *
+ * `replaceAll` (a full run) rewrites the document list; a `--only` run merges
+ * by id, so regenerating one draft cannot delete the other ten. In both cases
+ * a matching existing entry is merged under the generated one, which preserves
+ * hand-maintained fields (`tracked`, reviewer notes) that this script does not
+ * produce.
+ */
+export function mergeStagedManifest(
+  existing: StagedManifest | null,
+  entries: KbDocument[],
+  opts: { replaceAll: boolean },
+): StagedManifest {
+  const base: StagedManifest = existing
+    ? { ...existing, docs: Array.isArray(existing.docs) ? [...existing.docs] : [] }
+    : emptyStagedManifest();
+  base.note = STAGED_MANIFEST_NOTE;
+
+  const previousById = new Map(base.docs.map((doc) => [doc.id, doc]));
+  const merge = (entry: KbDocument) => ({ ...(previousById.get(entry.id) ?? {}), ...entry });
+
+  if (opts.replaceAll) {
+    base.docs = entries.map(merge);
+    return base;
+  }
+
+  for (const entry of entries) {
+    const at = base.docs.findIndex((doc) => doc.id === entry.id);
+    if (at === -1) base.docs.push(merge(entry));
+    else base.docs[at] = merge(entry);
+  }
+  return base;
+}
+
+export function readStagedManifest(manifestPath: string): StagedManifest | null {
+  if (!fs.existsSync(manifestPath)) return null;
+  const parsed = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as StagedManifest;
+  if (!Array.isArray(parsed.docs)) parsed.docs = [];
+  return parsed;
+}
+
+export function writeStagedManifest(manifestPath: string, manifest: StagedManifest): void {
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf-8");
 }
 
 function arg(name: string): string | undefined {
@@ -47,7 +158,7 @@ function arg(name: string): string | undefined {
 }
 const flag = (name: string) => process.argv.includes(`--${name}`);
 
-async function main() {
+export async function main() {
   const curationPath = path.resolve(
     arg("curation") || path.join(process.cwd(), "../../scripts/youtube-transcripts/curation.json"),
   );
@@ -65,7 +176,9 @@ async function main() {
   const kb = new KbService();
   kb.resolveKbRoot(); // fail fast if this is not a real KB checkout
 
-  const included = curation.videos.filter((v) => v.decision === "include" && (!only || v.videoId === only));
+  // Resolved BEFORE anything is written: an unknown --only id must abort with a
+  // non-zero exit and leave the manifest untouched.
+  const included = selectVideos(curation, only);
   const excluded = curation.videos.filter((v) => v.decision === "exclude");
 
   console.log(`Curation: ${curation.videos.length} videos — ${included.length} to build, ${excluded.length} excluded`);
@@ -125,25 +238,16 @@ async function main() {
 
   // Staged manifest ONLY. `npm run kb:ingest` reads kb/manifest.json and would
   // otherwise embed uncorrected machine transcripts on the next routine run.
-  fs.writeFileSync(
-    manifestPath,
-    JSON.stringify(
-      {
-        locale: "multi",
-        schemaVersion: "2.0",
-        staged: true,
-        note:
-          "STAGED — NOT INGESTED. These are uncorrected machine transcripts awaiting SCCF medical review " +
-          "(issue #91 D1-D5) and the KB duplicate cleanup (issue #86). ingest-kb.ts reads kb/manifest.json, " +
-          "not this file, so nothing here is picked up by `npm run kb:ingest`.",
-        docs: entries,
-      },
-      null,
-      2,
-    ) + "\n",
-    "utf-8",
+  //
+  // A `--only` run merges into whatever is already there. Rewriting the file
+  // from `entries` alone would delete every other staged transcript, which is
+  // exactly what regenerating a single draft must not do.
+  const manifest = mergeStagedManifest(readStagedManifest(manifestPath), entries, { replaceAll: !only });
+  writeStagedManifest(manifestPath, manifest);
+  console.log(
+    `\n✓ ${only ? `Merged 1 entry into` : `Wrote ${entries.length} staged manifest entries to`} ` +
+      `${path.relative(process.cwd(), manifestPath)} (${manifest.docs.length} total)`,
   );
-  console.log(`\n✓ Wrote ${entries.length} staged manifest entries to ${path.relative(process.cwd(), manifestPath)}`);
 
   if (excluded.length > 0) {
     const byReason = new Map<string, string[]>();
@@ -156,7 +260,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  });
+}
