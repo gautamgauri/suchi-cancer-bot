@@ -42,6 +42,70 @@ HEAD_BYTES = 4096
 HTML_MARKERS = (b"<html", b"<!doctype html", b"<head", b"<body", b"<script")
 
 
+def svg_root_element(head: bytes) -> bytes | None:
+    """Return the lowercased name of the first element in `head`, or None.
+
+    A valid SVG file may open with any combination of a UTF-8 BOM, whitespace,
+    an XML declaration or processing instruction (`<?xml ... ?>`), XML comments
+    (`<!-- ... -->`) and a DOCTYPE (possibly carrying an internal subset in
+    square brackets) before the `<svg` root. We step over exactly those, then
+    report whatever element actually comes first. None means we ran out of head
+    bytes mid-prolog (or found no element at all), which callers treat as a
+    failure rather than guessing.
+    """
+    text = head
+    if text.startswith(b"\xef\xbb\xbf"):  # UTF-8 BOM
+        text = text[3:]
+
+    while True:
+        text = text.lstrip()
+        low = text.lower()
+        if not text:
+            return None
+
+        if low.startswith(b"<?"):  # XML declaration or processing instruction
+            end = text.find(b"?>")
+            if end == -1:
+                return None
+            text = text[end + 2:]
+            continue
+
+        if low.startswith(b"<!--"):  # XML comment
+            end = text.find(b"-->", 4)
+            if end == -1:
+                return None
+            text = text[end + 3:]
+            continue
+
+        if low.startswith(b"<!doctype"):
+            gt = text.find(b">")
+            bracket = text.find(b"[")
+            if bracket != -1 and (gt == -1 or bracket < gt):
+                # Internal subset: the declaration ends at the '>' after its ']'.
+                close = text.find(b"]", bracket)
+                if close == -1:
+                    return None
+                gt = text.find(b">", close)
+            if gt == -1:
+                return None
+            text = text[gt + 1:]
+            continue
+
+        break
+
+    if not text.startswith(b"<"):
+        return None
+    name = bytearray()
+    for byte in text[1:]:
+        ch = bytes([byte])
+        if ch in b" \t\r\n/>":
+            break
+        name += ch
+    if not name:
+        return None
+    return bytes(name).lower()
+
+
 def sniff(ext: str, head: bytes) -> str | None:
     """Return None if `head` looks like an image of type `ext`, else a reason."""
     ext = ext.lower()
@@ -93,17 +157,17 @@ def sniff(ext: str, head: bytes) -> str | None:
         return "not an ICO (expected 00 00 01 00 or PNG)"
 
     if ext == ".svg":
-        text = head
-        if text.startswith(b"\xef\xbb\xbf"):  # UTF-8 BOM
-            text = text[3:]
-        stripped = text.lstrip()
-        if not (stripped.startswith(b"<svg") or stripped.startswith(b"<?xml")):
-            return "SVG must start with <svg or <?xml"
-        low = text.lower()
-        if any(marker in low for marker in HTML_MARKERS):
+        # HTML markup anywhere in the head disqualifies the file outright, even
+        # if a legal-looking prolog precedes it (<!-- x --><html>... is HTML).
+        if any(marker in head.lower() for marker in HTML_MARKERS):
             return "SVG contains HTML markup"
-        if b"<svg" not in low:
-            return "SVG has an XML prolog but no <svg root in the first %d bytes" % HEAD_BYTES
+        root = svg_root_element(head)
+        if root is None:
+            return ("SVG has no root element after its prolog in the first %d bytes"
+                    % HEAD_BYTES)
+        if root != b"svg":
+            return ("SVG root element must be <svg (after any BOM, XML declaration, "
+                    "comments or DOCTYPE), got <%s" % root.decode("ascii", "replace"))
         return None
 
     return f"unknown image extension {ext}"
@@ -169,6 +233,22 @@ def self_test() -> int:
         (".svg", b'<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
         (".svg", b'<?xml version="1.0"?>\n<!-- c -->\n<svg xmlns="http://www.w3.org/2000/svg"/>'),
         (".svg", b'\xef\xbb\xbf<svg xmlns="http://www.w3.org/2000/svg"/>'),
+        # A comment before the root, with no XML declaration at all (what most
+        # exporters emit: "<!-- Generator: Adobe Illustrator ... -->").
+        (".svg", b'<!-- Generator: Some Exporter 1.0 -->\n<svg xmlns="http://www.w3.org/2000/svg"/>'),
+        # Multiple comments, one of them spanning lines.
+        (".svg", b'<!-- one -->\n<!-- two\n   still two -->\n<svg viewBox="0 0 1 1"/>'),
+        # DOCTYPE before the root (SVG 1.1 files still ship with this).
+        (".svg", b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"'
+                 b' "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg/>'),
+        # DOCTYPE carrying an internal subset in square brackets.
+        (".svg", b'<!DOCTYPE svg [<!ENTITY ns_svg "http://www.w3.org/2000/svg">]>\n<svg/>'),
+        # BOM first, then the full prolog: BOM + declaration + comment + DOCTYPE.
+        (".svg", b'\xef\xbb\xbf<?xml version="1.0" encoding="UTF-8"?>\n<!-- c -->\n'
+                 b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "svg11.dtd">\n'
+                 b'<svg xmlns="http://www.w3.org/2000/svg"/>'),
+        # An xml-stylesheet processing instruction between declaration and root.
+        (".svg", b'<?xml version="1.0"?><?xml-stylesheet href="s.css"?><svg/>'),
     ]
     bad = [
         (".jpg", b'<!DOCTYPE html>\n<html lang="nl" id="facebook">'),
@@ -182,6 +262,16 @@ def self_test() -> int:
         (".svg", b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
         (".svg", b"just text"),
         (".svg", b"<?xml version='1.0'?><note/>"),
+        # A legal-looking comment prolog does not launder an HTML document.
+        (".svg", b'<!-- innocent -->\n<!DOCTYPE html>\n<html lang="nl"><body>x</body></html>'),
+        (".svg", b'<!-- innocent --><html><head><title>login</title></head></html>'),
+        # A comment prolog followed by a non-svg root element.
+        (".svg", b'<!-- c --><note>not an svg</note>'),
+        # DOCTYPE that is not an svg doctype, followed by a non-svg root.
+        (".svg", b'<!DOCTYPE note SYSTEM "note.dtd"><note/>'),
+        # Unterminated comment: we never reach a root element, so we do not
+        # get to assume one.
+        (".svg", b"<!-- this comment never closes and neither does the file"),
         (".png", b""),
     ]
     failures = 0
