@@ -64,11 +64,34 @@ unreviewed transcript cannot appear in an answer.
 `<kbRoot>/manifest.json` and nothing else, so `npm run kb:ingest` cannot pick
 them up — not by accident, and not as a side effect of a routine re-ingest.
 
-**How they get reviewed.** Through a pull request, like code. `kb/hi/` is
-tracked by git (only `kb/en/` is in `.gitignore`, because it holds the imported
-NCI corpus), so a Hindi transcript is reviewable as a normal diff. A reviewer
-reads the draft against the recording — every section heading carries a `?t=`
-deep link to the exact moment — and corrects the text in the PR.
+**How they get reviewed.** Through a pull request, like code. A reviewer reads
+the draft against the recording — every section heading carries a `?t=` deep
+link to the exact moment — and corrects the text in the PR.
+
+A draft is written under the language of its *original* caption track, so the
+Hindi episodes land in `kb/hi/01_suchi_oncotalks/` and the English-original one
+in `kb/en/01_suchi_oncotalks/`. `kb/hi/` was never ignored. `kb/en/` is — it
+holds the bulk-imported NCI corpus — and that used to swallow the English
+draft: `git status` never showed the file, so the tracked staging manifest
+could name a path that git had no copy of, and the PR review the whole gate
+depends on silently had nothing to review. `.gitignore` therefore carries a
+narrow exception:
+
+```gitignore
+kb/en/*
+!kb/en/01_suchi_oncotalks/
+```
+
+The contents of `kb/en/` are ignored rather than the directory itself, because
+git does not descend into an excluded directory and would never reach the `!`
+line. Verify with `git check-ignore -v kb/en/01_suchi_oncotalks/<file>.md`: it
+must exit non-zero (not ignored), while a path under `kb/en/02_nci_core/` must
+still report as ignored. OncoTalks drafts in **any** language are therefore
+tracked and reviewable; nothing else in `kb/en/` is.
+
+Manifest entries carry `tracked` to record this: `true` once the draft file is
+committed alongside the entry, `false` for an entry whose draft has not been
+committed yet (regenerate it with `--only <videoId>`, see below).
 
 **Promotion is deliberate and manual.** After SCCF sign-off: move the entry
 from `kb/manifest.oncotalks-pending.json` into `kb/manifest.json`, set
