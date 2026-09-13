@@ -42,3 +42,20 @@ drawn bbox. Rebuild vs master: **99.49 %** of lit pixels overlap
 
 The wordmark and the script tagline are **not** vectorised here — the site sets
 "Suchitra Cancer Care" as live text in `Header.astro` / `Footer.astro`.
+
+## Renders (evidence, not shipped assets)
+
+| file | what it shows |
+|---|---|
+| `renders/sccf-mark-vs-original.png` | master \| rebuild \| overlay (yellow = agreement) |
+| `renders/favicon-legibility.png` | the shipped 16/32/48 rasters at 12× and at true size on white / dark / grey |
+| `renders/header-lockup-before-after.png` | the logo lockup, orb vs real mark |
+| `renders/header-1280-before-after.png` | built page header at 1280 px |
+| `renders/header-400-before-after.png` | built page header at 400 px |
+
+## Regenerating
+
+```bash
+python3 scripts/brand/build_brand_assets.py   # needs cairosvg + pillow
+python3 scripts/check_image_assets.py         # magic-byte check on everything shipped
+```
