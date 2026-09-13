@@ -75,9 +75,13 @@ const CHUNKS: Array<{ id: string; content: string }> = [
   },
 ];
 
-/** The Hinglish pregnancy probe from issues #126/#134, exactly as a user typed it. */
+/**
+ * SYNTHETIC Hinglish pregnancy probe in the shape issues #126/#134 are about —
+ * written for this test, never a real user message (AGENTS.md §1.5: no patient
+ * data in fixtures). Kept identical to the one in kb-fts-query.spec.ts.
+ */
 const PROBE_A =
-  "meri mausi ko cancer hai aur wo pregnant hai, kya cancer ki dawai se bachcha affected hoga? exact batao";
+  "meri bhabhi ko cancer hai aur wo pregnant hai, kya uski dawai se bachche ko nuksaan hoga? jaldi bataiye";
 
 /** What the chat path hands to retrieval for PROBE_A: the cross-lingual translation. */
 function translatedProbeA(): string {

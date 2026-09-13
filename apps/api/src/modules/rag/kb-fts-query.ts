@@ -128,8 +128,9 @@ const ENGLISH_STOPWORDS = new Set<string>([
 /**
  * Romanised Hindi (Hinglish) function words and chat filler: the case/postposition
  * particles, pronouns, common auxiliaries, question words and kinship/person words
- * — the last because "meri mausi ko cancer hai" must not spend one of the two
- * required matches on "mausi", a word no English knowledge-base chunk contains.
+ * — the last because a question that opens by naming a relative ("… bhabhi ko
+ * cancer hai …") must not spend one of the two required matches on the kinship
+ * word, which no English knowledge-base chunk contains.
  * Spelling variants are listed because Hinglish has no orthography.
  *
  * DELIBERATELY ABSENT: the content-bearing Hinglish words that
@@ -174,7 +175,7 @@ const HINGLISH_FUNCTION_WORDS = new Set<string>([
   "zaroor", "jaroor", "zaruri", "zaroori", "jaruri", "jaroori", "dhanyavad", "shukriya", "namaste", "namaskar",
   // kinship / person words (never in the English KB; would otherwise consume a match)
   "maa", "ma", "mummy", "mumma", "mata", "papa", "pita", "pitaji", "baap", "bhai", "bhaiya", "behen", "behan",
-  "bahan", "didi", "beta", "beti", "bete", "chacha", "chachi",
+  "bahan", "didi", "beta", "beti", "bete", "chacha", "chachi", "bhabhi", "bhabi", "bhabhiji",
   "mama", "mami", "mausi", "masi", "maasi", "mausa", "bua", "phupha", "nana", "nani", "dada", "dadi", "tau", "tai",
   "patni", "pati", "biwi", "bibi", "shadi", "saas", "sasur", "bahu", "damad", "dost", "aadmi", "aurat", "ladka",
   "ladki", "log", "logon", "logo", "insaan", "vyakti", "rishtedar", "parivar", "ghar", "gaon", "gaanv", "sheher",

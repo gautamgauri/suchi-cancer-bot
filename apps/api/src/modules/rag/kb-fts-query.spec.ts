@@ -13,9 +13,14 @@ import {
  * of the emitted tsquery text.
  */
 
-/** The Hinglish probe from the issue, as the user typed it. */
+/**
+ * SYNTHETIC Hinglish probe in the shape issue #134 is about: kinship word +
+ * "cancer hai" + "dawai se" + "bachche ko nuksaan hoga" + a filler tail. Written
+ * for this test — never a real user message (AGENTS.md §1.5: no patient data in
+ * fixtures).
+ */
 const PROBE_A =
-  "meri mausi ko cancer hai aur wo pregnant hai, kya cancer ki dawai se bachcha affected hoga? exact batao";
+  "meri bhabhi ko cancer hai aur wo pregnant hai, kya uski dawai se bachche ko nuksaan hoga? jaldi bataiye";
 
 /** Split a tsquery into its top-level `|` conjuncts, respecting parentheses. */
 function topLevelConjuncts(tsquery: string): string[] {
@@ -61,8 +66,8 @@ describe("buildKbFtsQuery (issue #134)", () => {
     it("drops every Hinglish function word, the kinship word and the filler, keeps the medical content", () => {
       const q = buildKbFtsQuery(translated);
       expect(q).not.toBeNull();
-      expect(q!.terms.map((t) => t.toLowerCase())).toEqual(["cancer", "pregnant", "medicine", "baby", "affected"]);
-      for (const noise of ["meri", "mausi", "ko", "hai", "aur", "wo", "kya", "ki", "se", "hoga", "exact", "tell", "me"]) {
+      expect(q!.terms.map((t) => t.toLowerCase())).toEqual(["cancer", "pregnant", "medicine", "baby", "harm"]);
+      for (const noise of ["meri", "bhabhi", "ko", "hai", "aur", "wo", "kya", "uski", "se", "hoga", "jaldi", "tell", "me"]) {
         expect(q!.terms.map((t) => t.toLowerCase())).not.toContain(noise);
         expect(q!.droppedTerms.map((t) => t.toLowerCase())).toContain(noise);
       }
@@ -84,7 +89,7 @@ describe("buildKbFtsQuery (issue #134)", () => {
       expect(pairs(q.tsquery)).toHaveLength(10);
       expect(pairs(q.tsquery)).toContainEqual(["baby", "medicine"]);
       expect(pairs(q.tsquery)).toContainEqual(["baby", "pregnant"]);
-      expect(pairs(q.tsquery)).toContainEqual(["affected", "medicine"]);
+      expect(pairs(q.tsquery)).toContainEqual(["harm", "medicine"]);
       expect(pairs(q.tsquery)).toContainEqual(["cancer", "pregnant"]);
       // No token of the original sentence survives unquoted.
       expect(q.tsquery).toMatch(/^(\('[^']+' & '[^']+'\)( \| )?)+$/);
@@ -92,10 +97,10 @@ describe("buildKbFtsQuery (issue #134)", () => {
 
     it("the untranslated original keeps the Hinglish medical nouns as content", () => {
       const q = buildKbFtsQuery(PROBE_A)!;
-      // 'dawai' (medicine) and 'bachcha' (child) are not translated here — that is
-      // CrossLingualService's job — but they are content, not function words, and
-      // the Hindi KB (kb/hi) does contain them.
-      expect(q.terms.map((t) => t.toLowerCase())).toEqual(["cancer", "pregnant", "dawai", "bachcha", "affected"]);
+      // 'dawai' (medicine), 'bachche' (child) and 'nuksaan' (harm) are not translated
+      // here — that is CrossLingualService's job — but they are content, not function
+      // words, and the Hindi KB (kb/hi) does contain them.
+      expect(q.terms.map((t) => t.toLowerCase())).toEqual(["cancer", "pregnant", "dawai", "bachche", "nuksaan"]);
     });
   });
 
