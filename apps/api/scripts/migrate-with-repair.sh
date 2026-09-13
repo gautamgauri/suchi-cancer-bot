@@ -195,9 +195,16 @@ echo "=== (6) Verify KbChunk unique position index (issue #86) ==="
 # instead of a silent 34% duplicate index (73,802 -> 48,737 rows, cleaned
 # 2026-09-06). If the migration RAISEd because duplicates are back, the deploy
 # must fail here rather than serve a degraded KB.
+# Temporarily disable set -e (as step (2) does) so a transient Cloud SQL error
+# from `node` does not terminate the job before $? is captured and before the
+# retries below ever run.
+set +e
 attempt=1
 kb_idx_status=1
-while [ $attempt -le 3 ]; do
+kb_max_attempts=3
+kb_delay=2
+
+while [ $attempt -le $kb_max_attempts ]; do
   node - << "NODE"
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
@@ -225,18 +232,22 @@ const prisma = new PrismaClient();
 })().catch(e => { console.error(e); process.exit(1); });
 NODE
   kb_idx_status=$?
+  # 0 = index present and valid, 2 = index genuinely missing/invalid. Both are
+  # verdicts, not connectivity failures, so neither is retried. Anything else
+  # (1 = driver/connection error) gets another attempt.
   if [ $kb_idx_status -eq 0 ] || [ $kb_idx_status -eq 2 ]; then
     break
   fi
-  if [ $attempt -lt 3 ]; then
-    echo "Attempt $attempt failed (exit $kb_idx_status), retrying in 2s..."
-    sleep 2
+  if [ $attempt -lt $kb_max_attempts ]; then
+    echo "Attempt $attempt failed (exit $kb_idx_status), retrying in ${kb_delay}s..."
+    sleep $kb_delay
     attempt=$((attempt + 1))
   else
-    echo "All 3 attempts failed (last exit: $kb_idx_status)"
+    echo "All $kb_max_attempts attempts failed (last exit: $kb_idx_status)"
     break
   fi
 done
+set -e
 
 if [ "$kb_idx_status" -ne 0 ]; then
   echo "❌ KbChunk unique position index check failed!"
