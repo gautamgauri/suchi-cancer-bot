@@ -2,6 +2,7 @@ import { EvaluationConfig } from "../types";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { getSecrets, isSecretManagerAvailable } from "./secrets-manager";
+import { normalizeJudgeRetries } from "../runner/judge-errors";
 
 export async function loadConfig(configPath?: string): Promise<EvaluationConfig> {
   const defaultPath = path.join(__dirname, "default.json");
@@ -58,8 +59,13 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
     fallbackLlmProvider: (process.env.EVAL_FALLBACK_LLM_PROVIDER || config.fallbackLlmProvider || "vertex_ai") as "vertex_ai" | "openai" | "deepseek",
     timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || String(config.timeoutMs || 60000), 10),
     retries: parseInt(process.env.EVAL_RETRIES || String(config.retries || 2), 10),
-    // Bounded judge retries on 429/5xx/timeout before a case goes unscored (issue #110)
-    judgeRetries: parseInt(process.env.EVAL_JUDGE_RETRIES || String(config.judgeRetries ?? 3), 10),
+    // Bounded judge retries on 429/5xx/timeout before a case goes unscored (issue #110).
+    // Normalised, not parseInt'd: a non-numeric env var or JSON value yields NaN,
+    // and `attempt > NaN` never terminates the retry loop — a 429 would then spin
+    // until the workflow timeout instead of reporting the case unscored.
+    judgeRetries: normalizeJudgeRetries(
+      process.env.EVAL_JUDGE_RETRIES?.trim() || config.judgeRetries
+    ),
     parallel: process.env.EVAL_PARALLEL === "true" || config.parallel || false,
     maxConcurrency: parseInt(process.env.EVAL_MAX_CONCURRENCY || String(config.maxConcurrency || 5), 10),
   };

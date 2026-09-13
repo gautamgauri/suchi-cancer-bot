@@ -271,6 +271,33 @@ export type JudgeCallOutcome<T> =
   | { ok: false; error: unknown; classification: JudgeErrorClassification; attempts: number };
 
 export const DEFAULT_JUDGE_RETRIES = 3;
+/** Hard ceiling on judge retries — nothing configurable may exceed it. */
+export const MAX_JUDGE_RETRIES = 10;
+export const MIN_JUDGE_RETRIES = 0;
+
+/**
+ * Coerce a configured retry count (env var, JSON config, caller option) into a
+ * finite integer in [MIN_JUDGE_RETRIES, MAX_JUDGE_RETRIES].
+ *
+ * Why this exists: `parseInt("chatty", 10)` is `NaN`, and `attempt > NaN` is
+ * permanently false — a retryable 429 would then loop until the workflow
+ * timeout instead of reporting the case unscored. Anything that is not a finite
+ * number falls back to the documented default rather than poisoning the loop.
+ */
+export function normalizeJudgeRetries(
+  value: unknown,
+  fallback: number = DEFAULT_JUDGE_RETRIES
+): number {
+  const raw =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value.trim())
+        : NaN;
+  const n = Number.isFinite(raw) ? Math.trunc(raw) : Math.trunc(fallback);
+  const safe = Number.isFinite(n) ? n : DEFAULT_JUDGE_RETRIES;
+  return Math.min(MAX_JUDGE_RETRIES, Math.max(MIN_JUDGE_RETRIES, safe));
+}
 const DEFAULT_BASE_DELAY_MS = 2000;
 const DEFAULT_MAX_DELAY_MS = 30000;
 
@@ -297,7 +324,9 @@ export async function callJudgeWithRetry<T>(
   fn: () => Promise<T>,
   opts: JudgeRetryOptions = {}
 ): Promise<JudgeCallOutcome<T>> {
-  const maxRetries = Math.max(0, opts.maxRetries ?? DEFAULT_JUDGE_RETRIES);
+  // Defensive: a NaN/Infinity/negative maxRetries from ANY config path must not
+  // turn `attempt > maxRetries` into a permanently-false loop guard (#110).
+  const maxRetries = normalizeJudgeRetries(opts.maxRetries);
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
 
   let attempt = 0;

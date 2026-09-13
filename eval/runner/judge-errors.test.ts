@@ -16,6 +16,9 @@ import {
   unscoredJudgeResult,
   parseOkVerdict,
   describeOkValue,
+  normalizeJudgeRetries,
+  DEFAULT_JUDGE_RETRIES,
+  MAX_JUDGE_RETRIES,
 } from "./judge-errors";
 
 /** Exact shape thrown by @google-cloud/vertexai on a 429 (no `status` property). */
@@ -263,6 +266,71 @@ describe("parseOkVerdict — only a real verdict counts as a verdict (#110 revie
     expect(describeOkValue(1)).toBe("number 1");
     expect(describeOkValue("maybe")).toBe('string "maybe"');
     expect(describeOkValue([])).toBe("array");
+  });
+});
+
+describe("normalizeJudgeRetries — no config path can unbound the retry loop (#110 review P2)", () => {
+  it("keeps sane integers, clamped to 0..10", () => {
+    expect(normalizeJudgeRetries(0)).toBe(0);
+    expect(normalizeJudgeRetries(5)).toBe(5);
+    expect(normalizeJudgeRetries("4")).toBe(4);
+    expect(normalizeJudgeRetries(" 2 ")).toBe(2);
+    expect(normalizeJudgeRetries(2.9)).toBe(2);
+  });
+
+  it("falls back to the documented default for NaN / non-numeric / missing", () => {
+    expect(normalizeJudgeRetries(undefined)).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries(null)).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries(NaN)).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries("abc")).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries("")).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries({})).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries(true)).toBe(DEFAULT_JUDGE_RETRIES);
+  });
+
+  it("clamps negatives, huge values and infinities into range", () => {
+    expect(normalizeJudgeRetries(-1)).toBe(0);
+    expect(normalizeJudgeRetries("-7")).toBe(0);
+    expect(normalizeJudgeRetries(1e9)).toBe(MAX_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries("999")).toBe(MAX_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries(Infinity)).toBe(DEFAULT_JUDGE_RETRIES);
+    expect(normalizeJudgeRetries(-Infinity)).toBe(DEFAULT_JUDGE_RETRIES);
+  });
+});
+
+describe("callJudgeWithRetry — defensive against a poisoned maxRetries (#110 review P2)", () => {
+  const noSleep = async () => {};
+
+  it("REGRESSION: maxRetries NaN does not loop forever — it falls back to the default", async () => {
+    const fn = jest.fn(async () => {
+      throw vertexClientError(429, "Too Many Requests", "RESOURCE_EXHAUSTED");
+    });
+    const out = await callJudgeWithRetry(fn, { maxRetries: NaN, sleep: noSleep });
+    expect(out.ok).toBe(false);
+    expect(out.attempts).toBe(DEFAULT_JUDGE_RETRIES + 1);
+    expect(fn).toHaveBeenCalledTimes(DEFAULT_JUDGE_RETRIES + 1);
+  });
+
+  it("caps an absurd maxRetries and floors a negative one", async () => {
+    const huge = jest.fn(async () => {
+      throw vertexClientError(429, "Too Many Requests", "RESOURCE_EXHAUSTED");
+    });
+    const capped = await callJudgeWithRetry(huge, { maxRetries: 1e6, sleep: noSleep });
+    expect(capped.attempts).toBe(MAX_JUDGE_RETRIES + 1);
+
+    const neg = jest.fn(async () => {
+      throw vertexClientError(429, "Too Many Requests", "RESOURCE_EXHAUSTED");
+    });
+    const floored = await callJudgeWithRetry(neg, { maxRetries: -5, sleep: noSleep });
+    expect(floored.attempts).toBe(1);
+  });
+
+  it("Infinity is not a licence for an unbounded loop", async () => {
+    const fn = jest.fn(async () => {
+      throw vertexClientError(503, "Service Unavailable", "UNAVAILABLE");
+    });
+    const out = await callJudgeWithRetry(fn, { maxRetries: Infinity, sleep: noSleep });
+    expect(out.attempts).toBe(DEFAULT_JUDGE_RETRIES + 1);
   });
 });
 
