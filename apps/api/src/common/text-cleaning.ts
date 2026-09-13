@@ -73,8 +73,15 @@ const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(?:\[citation:[^[\]\
  */
 const DANGLING_SOURCES_HEADER_PATTERN = /\n*[ \t]*\*\*Sources:\*\*[ \t]*$/;
 
-/** Leftover empty bold markers like "** **". */
-const EMPTY_BOLD_PATTERN = /\*\*\s*\*\*/g;
+/**
+ * Leftover empty bold markers like "** **".
+ *
+ * Horizontal whitespace only. `\s*` also matched newlines, so the closing `**`
+ * of one bold line, the paragraph break, and the opening `**` of the next line
+ * were treated as a single empty span and deleted — the critical escalation
+ * header shipped as "…medical emergency.Call for help NOW:" (issue #135).
+ */
+const EMPTY_BOLD_PATTERN = /\*\*[ \t]*\*\*/g;
 
 /**
  * Punctuation orphaned by a removed marker (issue #81, finding 3).
