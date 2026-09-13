@@ -3261,6 +3261,32 @@ MANDATORY: End your response with this exact sentence — "Hospital services, do
    * coordinates, so any such claim would be invented (issue #103).
    */
   private regionalCentresHeading(geography?: HospitalSearchGeography | null): string {
+    return `${this.stageHeading(geography)}${this.capabilityLabel(geography)}`;
+  }
+
+  /**
+   * Factual suffix for the regional heading when the search required a
+   * treatment the directory has nowhere in the regional pool.
+   *
+   * The directory keeps the never-empty guarantee by returning the unfiltered
+   * pool in that case, so without this label the rows read as centres that can
+   * deliver the treatment the patient asked for. They are not — they are the
+   * centres that exist. This is a data label on a list, in the same register as
+   * the stage headings; it states what the search found and asserts nothing
+   * about how to answer.
+   */
+  private capabilityLabel(geography?: HospitalSearchGeography | null): string {
+    if (geography?.capabilityUnavailable !== true) return "";
+    const needs = (geography.requiredDepartments ?? [])
+      .map((d) => d.replace(/_/g, " "))
+      .join(", ");
+    return needs
+      ? ` — no centre listed here offers ${needs}`
+      : " — no centre listed here offers the treatment asked about";
+  }
+
+  /** The heading proper, derived from the rung that produced the candidates. */
+  private stageHeading(geography?: HospitalSearchGeography | null): string {
     const city = geography?.requestedCity?.trim() || null;
     const state = geography?.resolvedState?.trim() || null;
 

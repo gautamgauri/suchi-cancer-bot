@@ -189,8 +189,18 @@ function detectSignals(userText: string, sessionContext?: SessionContext): Detec
     /\b(scared|fear|afraid|darr|डर|anxious|worried|tension|चिंता|helpless|hopeless)\b/i.test(lower);
   if (emotionalDistress) signals.push("emotional_distress");
 
+  // The Devanagari alternatives are matched WITHOUT `\b`. JavaScript's `\b` is
+  // ASCII-only, so `\bअस्पताल\b` never fires: a space and अ are both non-word
+  // characters to it, so there is no boundary between them. This gate therefore
+  // rejected every Hindi-script hospital question outright — which, with the
+  // capability requirement now resolved inside this branch, would have left the
+  // Devanagari half of the treatment-need extractor permanently unreachable.
+  // Same bug family as the Hindi safety-keyword misses (issue #30). Only this
+  // signal is repaired here; the other `\b`-guarded Devanagari alternatives in
+  // this function have the same latent defect and are left untouched.
   const hospitalSearch =
-    /\b(hospital|अस्पताल|clinic|centre|center|dispensary|kaun sa|कौन सा|best|acha|अच्छा)\b/i.test(lower);
+    /\b(hospital|clinic|centre|center|dispensary|kaun sa|best|acha)\b/i.test(lower) ||
+    /(अस्पताल|कौन सा|अच्छा)/.test(lower);
   if (hospitalSearch) signals.push("hospital_search");
 
   const chemoPrepare =
@@ -247,6 +257,69 @@ export class ExecutionPlannerService {
   }
 
   /**
+   * Treatment needs the patient states in their own words, mapped to the
+   * directory's normalised department names.
+   *
+   * This is separate from the cancer type on purpose. "Which hospital in
+   * Bhagalpur for radiotherapy?" names no cancer at all, so
+   * {@link extractCancerType} returns null and — before this — the search went
+   * out with no capability requirement whatsoever, leaving the directory's hard
+   * capability filter unreachable from the patient-facing path. The nearest
+   * centre to Bhagalpur is surgery-only Healing Touch, whose own record says to
+   * refer radiation patients to Patna or Muzaffarpur, and it was offered first
+   * (PR #148 review, P1).
+   *
+   * Patterns are matched twice: a Latin/Hinglish form with `\b` word
+   * boundaries, and a Devanagari form WITHOUT them. JavaScript's `\b` is
+   * ASCII-only, so a boundary next to a Devanagari character matches on the
+   * wrong side of the word — the bug that silently disabled Hindi safety
+   * keyword matching (issue #30). Devanagari script needs no boundary anyway:
+   * these strings do not occur as substrings of unrelated words.
+   */
+  private static readonly TREATMENT_NEED_PATTERNS: ReadonlyArray<{
+    department: string;
+    latin: RegExp;
+    devanagari: RegExp;
+  }> = [
+    {
+      // "sikai"/"sekai" is what patients in Bihar call radiotherapy far more
+      // often than they say "radiation".
+      department: "radiation_oncology",
+      latin:
+        /\b(radiotherapy|radio\s?therapy|radiation|radiation\s?therapy|rt\s?treatment|sikai|sekai|sikayi|shikai)\b/i,
+      devanagari: /(रेडियोथेरेपी|रेडियोथिरेपी|रेडिएशन|रेडियेशन|सिकाई|सिंकाई|सेकाई)/,
+    },
+    {
+      // "kimo"/"keemo" is the everyday Hinglish spelling of chemo.
+      department: "medical_oncology",
+      latin: /\b(chemo(?:therapy)?|kimo(?:therapy)?|keemo(?:therapy)?|kemo(?:therapy)?)\b/i,
+      devanagari: /(कीमो|कीमोथेरेपी|किमो|केमो)/,
+    },
+    {
+      department: "surgical_oncology",
+      latin: /\b(surgery|surgical|operation|operate|oparation|sarjari|opration)\b/i,
+      devanagari: /(सर्जरी|ऑपरेशन|आपरेशन|शल्य)/,
+    },
+  ];
+
+  /**
+   * Departments a query's stated treatment need requires, or `[]` when the
+   * patient named no treatment. Deduplicated and in a stable order.
+   */
+  private extractTreatmentNeeds(userText: string): string[] {
+    const needs: string[] = [];
+    for (const pattern of ExecutionPlannerService.TREATMENT_NEED_PATTERNS) {
+      if (
+        (pattern.latin.test(userText) || pattern.devanagari.test(userText)) &&
+        !needs.includes(pattern.department)
+      ) {
+        needs.push(pattern.department);
+      }
+    }
+    return needs;
+  }
+
+  /**
    * Generate an execution plan for a given query.
    *
    * @returns ExecutionPlan with ordered steps
@@ -269,6 +342,10 @@ export class ExecutionPlannerService {
     if (detected.hospitalSearch && category === "NAVIGATION" && this.hospitalDirectory.isLoaded()) {
       const locationResult = detectLocation(userText);
       const cancerType = this.extractCancerType(userText);
+      // What the patient said they need done, independent of cancer type. This
+      // is what makes the directory's hard capability filter reachable from the
+      // patient-facing flow (PR #148 review, P1).
+      const requiredDepartments = this.extractTreatmentNeeds(userText);
       const pmjayRequired =
         detected.schemeQuery ||
         /\b(pmjay|ayushman|pm-jay|government\s+hospital|sarkari|free\s+hospital)\b/i.test(userText.toLowerCase());
@@ -278,6 +355,7 @@ export class ExecutionPlannerService {
         city: locationResult?.city ?? null,
         state: locationResult?.state ?? null,
         cancerType,
+        requiredDepartments,
         pmjayRequired,
         affordabilityTier,
         maxResults: 3,
@@ -286,7 +364,7 @@ export class ExecutionPlannerService {
       structuredHospitalGeography = hospitalOutcome.geography;
 
       reasoningParts.push(
-        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, stage=${structuredHospitalGeography.stage}, cancerType=${cancerType ?? "any"}, pmjay=${pmjayRequired})`
+        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, stage=${structuredHospitalGeography.stage}, cancerType=${cancerType ?? "any"}, needs=${requiredDepartments.join("+") || "none"}, capabilityUnavailable=${structuredHospitalGeography.capabilityUnavailable === true}, pmjay=${pmjayRequired})`
       );
     }
 

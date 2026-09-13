@@ -4,6 +4,7 @@ import {
   haversineKm,
   normaliseDepartment,
 } from "./hospital-directory.service";
+import { ExecutionPlannerService } from "./execution-planner.service";
 import { readHospitalDirectoryFile } from "../../common/hospital-directory-file";
 import { resolveCoordsForCity } from "./utils/location-detector";
 import * as fs from "fs";
@@ -168,6 +169,108 @@ describe("Hospital distance ordering (issue #103)", () => {
     });
   });
 
+  // ── The capability filter must be reachable from the patient's words ─────
+  //
+  // End-to-end through ExecutionPlannerService, because that is where the gap
+  // was: the hard filter existed and worked, but nothing in the patient-facing
+  // flow ever set `requiredDepartments`, so it never ran on a real query
+  // (PR #148 review, P1).
+  describe("a patient's stated treatment need reaches the capability filter", () => {
+    const HEALING_TOUCH = "healing-touch-bhagalpur";
+    let planner: ExecutionPlannerService;
+
+    beforeAll(() => {
+      planner = new ExecutionPlannerService(svc);
+    });
+
+    const lookup = (text: string): HospitalSearchResult[] => {
+      const plan = planner.plan(text, "NAVIGATION", undefined, "en");
+      expect(plan.structuredHospitalResults).not.toBeNull();
+      return plan.structuredHospitalResults as HospitalSearchResult[];
+    };
+
+    it("does not offer surgery-only Healing Touch first for a Bhagalpur radiotherapy query", () => {
+      const results = lookup("Which hospital in Bhagalpur for radiotherapy?");
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].id).not.toBe(HEALING_TOUCH);
+      expect(results.map((h) => h.id)).not.toContain(HEALING_TOUCH);
+      results
+        .filter((h) => !h.national_referral)
+        .forEach((h) =>
+          expect(h.departments.map(normaliseDepartment)).toContain(
+            "radiation_oncology"
+          )
+        );
+    });
+
+    it("does the same for the Hinglish and Devanagari forms of the question", () => {
+      // The Devanagari row also covers the `\b` gate in `detectSignals`: before
+      // it was split, `\bअस्पताल\b` never matched, so a Hindi-script hospital
+      // question never reached the directory at all.
+      for (const text of [
+        "Bhagalpur me sikai ke liye kaun sa hospital hai",
+        "भागलपुर में रेडियोथेरेपी के लिए कौन सा अस्पताल है",
+      ]) {
+        const results = lookup(text);
+        expect(results.length).toBeGreaterThan(0);
+        expect(results.map((h) => h.id)).not.toContain(HEALING_TOUCH);
+      }
+    });
+
+    it("still offers Healing Touch when the patient states a need it can serve", () => {
+      // The control: the filter must not be a blanket demotion of a tier-C
+      // centre. Healing Touch does surgical oncology, and for a surgery
+      // question it is the nearest centre in Bhagalpur.
+      const results = lookup("Which hospital in Bhagalpur for cancer surgery?");
+      expect(results[0].id).toBe(HEALING_TOUCH);
+    });
+
+    it("flags the search but still returns rows when nothing regional can serve the need", () => {
+      // Never-empty guarantee: no centre in the regional pool offers proton
+      // therapy, so the unfiltered pool is kept — and flagged, so the caller
+      // says no capable centre was found rather than presenting these as
+      // centres that deliver it.
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Bhagalpur",
+        maxResults: 3,
+        includeNational: false,
+        requiredDepartments: ["proton_therapy"],
+      });
+      expect(outcome.results.length).toBeGreaterThan(0);
+      expect(outcome.geography.capabilityUnavailable).toBe(true);
+      expect(outcome.geography.requiredDepartments).toContain("proton_therapy");
+    });
+
+    it("does not flag a search the directory can actually serve", () => {
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Bhagalpur",
+        maxResults: 3,
+        includeNational: false,
+        requiredDepartments: ["radiation_oncology"],
+      });
+      expect(outcome.geography.capabilityUnavailable).toBe(false);
+    });
+
+    it("ANDs a stated need against the cancer type instead of ORing them", () => {
+      // Merged into one set and matched with `some`, an oral-cancer
+      // radiotherapy query is satisfied by `surgical_oncology` — and
+      // surgery-only Healing Touch comes back for a radiation question.
+      const results = svc.searchHospitals({
+        city: "Bhagalpur",
+        maxResults: 5,
+        includeNational: false,
+        cancerType: "oral",
+        requiredDepartments: ["radiation_oncology"],
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.map((h) => h.id)).not.toContain(HEALING_TOUCH);
+      results.forEach((h) => {
+        const depts = h.departments.map(normaliseDepartment);
+        expect(depts).toContain("radiation_oncology");
+      });
+    });
+  });
+
   // ── The department-casing bug the #99 review found ───────────────────────
   describe("department matching is spelling- and case-insensitive", () => {
     it("matches AIIMS Patna's 'Radiotherapy' against a radiation_oncology need", () => {
@@ -218,13 +321,22 @@ describe("Hospital distance ordering (issue #103)", () => {
 
     it("fails closed on an unrecognised department rather than matching everything", () => {
       expect(normaliseDepartment("Interpretive Dance")).toBe("interpretive_dance");
-      const results = svc.searchHospitals({
+      const outcome = svc.searchHospitalsWithGeography({
         city: "Patna",
         maxResults: 20,
         includeNational: false,
         requiredDepartments: ["Interpretive Dance"],
       });
-      expect(results).toEqual([]);
+      // Failing closed means the requirement matches NOTHING — not that an
+      // unknown name quietly matches every centre. The rows that come back are
+      // the never-empty fallback, and they are flagged as not serving the need
+      // (PR #148 review): a patient is never handed an empty list, and the
+      // caller is never allowed to present these as capable centres.
+      expect(outcome.geography.capabilityUnavailable).toBe(true);
+      expect(outcome.geography.requiredDepartments).toEqual([
+        "interpretive_dance",
+      ]);
+      expect(outcome.results.length).toBeGreaterThan(0);
     });
 
     it("finds gynaecologic centres, which matched nothing before normalisation", () => {
