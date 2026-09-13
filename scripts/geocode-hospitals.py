@@ -219,12 +219,42 @@ def gate_inside_india(lat: float, lon: float) -> tuple[bool, str]:
     )
 
 
+# On a locality query Nominatim will happily answer with the DISTRICT that
+# shares the city's name, whose centroid can sit tens of kilometres from the
+# town itself — "Darbhanga, Bihar" returns the district at (26.083, 86.032)
+# ahead of the city at (26.157, 85.900), a 15km error in the origin of every
+# distance we compute from it. So on the locality tier, prefer a result that is
+# actually a populated place.
+SETTLEMENT_ADDRESS_TYPES = [
+    "city",
+    "town",
+    "municipality",
+    "village",
+    "suburb",
+    "neighbourhood",
+    "hamlet",
+]
+
+
+def _settlement_rank(hit: dict) -> int:
+    """Lower is better. Non-settlement results sort last."""
+    addresstype = str(hit.get("addresstype", "")).lower()
+    if addresstype in SETTLEMENT_ADDRESS_TYPES:
+        return SETTLEMENT_ADDRESS_TYPES.index(addresstype)
+    return len(SETTLEMENT_ADDRESS_TYPES)
+
+
 def try_queries(
     queries: list[tuple[str, str]], city: str, state: str
 ) -> tuple[dict | None, list[str]]:
     """
-    Walk the query tiers most-specific first, returning the first hit that
-    clears BOTH gates, along with every rejection reason seen on the way.
+    Walk the query tiers most-specific first, returning the best hit from the
+    first tier that yields one clearing BOTH gates, along with every rejection
+    reason seen on the way.
+
+    Within a tier, "best" means the first gate-passing hit — except on the
+    locality (`city`) tier, where a populated-place result beats a
+    same-named district or county (see SETTLEMENT_ADDRESS_TYPES).
     """
     rejections: list[str] = []
 
@@ -234,6 +264,7 @@ def try_queries(
             rejections.append(f"[{confidence}] no result for {query!r}")
             continue
 
+        passing: list[tuple[dict, float, float]] = []
         for hit in hits:
             try:
                 lat = round(float(hit["lat"]), 4)
@@ -252,16 +283,25 @@ def try_queries(
                 rejections.append(f"[{confidence}] {why}")
                 continue
 
-            return (
-                {
-                    "latitude": lat,
-                    "longitude": lon,
-                    "geocode_source": GEOCODE_SOURCE,
-                    "geocode_confidence": confidence,
-                    "display_name": hit.get("display_name", ""),
-                },
-                rejections,
-            )
+            passing.append((hit, lat, lon))
+
+        if not passing:
+            continue
+
+        if confidence == "city":
+            passing.sort(key=lambda p: _settlement_rank(p[0]))
+
+        hit, lat, lon = passing[0]
+        return (
+            {
+                "latitude": lat,
+                "longitude": lon,
+                "geocode_source": GEOCODE_SOURCE,
+                "geocode_confidence": confidence,
+                "display_name": hit.get("display_name", ""),
+            },
+            rejections,
+        )
 
     return None, rejections
 
