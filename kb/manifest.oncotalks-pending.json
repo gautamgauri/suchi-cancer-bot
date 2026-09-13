@@ -2,7 +2,7 @@
   "locale": "multi",
   "schemaVersion": "2.0",
   "staged": true,
-  "note": "STAGED — NOT INGESTED. These are uncorrected machine transcripts awaiting SCCF medical review (issue #91 D1-D5) and the KB duplicate cleanup (issue #86). ingest-kb.ts reads kb/manifest.json, not this file, so nothing here is picked up by `npm run kb:ingest`. One entry (kb_en_oncotalks_6edsfQY1TZU_v1) is marked tracked:false — `.gitignore` ignores kb/en/, so that draft cannot be committed and is not in this PR. Regenerate it locally with: npx ts-node src/scripts/youtube-transcript-draft.ts --only 6edsfQY1TZU",
+  "note": "STAGED — NOT INGESTED. These are uncorrected machine transcripts awaiting SCCF medical review (issue #91 D1-D5) and the KB duplicate cleanup (issue #86). ingest-kb.ts reads kb/manifest.json, not this file, so nothing here is picked up by `npm run kb:ingest`. Each entry carries `tracked`: true once the draft file is committed next to this manifest. `.gitignore` un-ignores kb/en/01_suchi_oncotalks/, so an English-original draft is tracked and reviewable like the Hindi ones; regenerate any single draft with `--only <videoId>`.",
   "docs": [
     {
       "id": "kb_hi_oncotalks_fa-i0SavbXU_v1",
@@ -334,7 +334,7 @@
       "sourceType": "01_suchi_oncotalks",
       "path": "en/01_suchi_oncotalks/onco-talks-episode-6-precision-oncology-6edsfQY1TZU.md",
       "license": "sccf_owned",
-      "lastReviewed": "2026-09-06",
+      "lastReviewed": "2026-09-13",
       "reviewFrequency": "annual",
       "audienceLevel": "patient",
       "language": "en",
@@ -353,7 +353,7 @@
       "citation": "Onco Talks, SCCF, Video ID: 6edsfQY1TZU",
       "captionTrack": "en-orig",
       "transcriptQuality": "PLACEHOLDER",
-      "tracked": false
+      "tracked": true
     }
   ]
 }
