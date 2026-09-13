@@ -200,6 +200,21 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     expect(build([], geo("state", "Darbhanga", "Bihar"))).toBe("");
   });
 
+  // ── Prompt-instruction boundary (PR #148 review, P1) ───────────────────
+  //
+  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF medical review
+  // in their own labelled PR. The distance-handling instruction that belongs
+  // with this feature was split out; this block must stay free of it until
+  // that review lands.
+  it("carries no un-reviewed distance instruction to the model", () => {
+    const block = build(
+      [hospital({ distance_km: 52 })],
+      geo("distance", "Patna", "Bihar")
+    );
+    expect(block).not.toContain("STRAIGHT-LINE distance, already rounded");
+    expect(block).not.toContain("NEVER convert it into a travel time");
+  });
+
   // ── Capability label (PR #148 review, P1) ──────────────────────────────
   //
   // When no centre in the regional pool offers what was asked for, the
