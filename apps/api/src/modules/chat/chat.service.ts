@@ -3199,9 +3199,17 @@ export class ChatService {
       // never implies more precision than a locality-level geocode carries.
       // No travel time is stated anywhere — the road route is longer and the
       // journey depends on connections this data says nothing about (#103).
+      //
+      // Under 10km the figure is a bound, not a number. Many records are
+      // geocoded to city confidence, i.e. to the very coordinate the patient's
+      // city resolves to, so a same-city search measures exactly 0km — and the
+      // old `Math.max(10, …)` turned every one of those into "~10 km away",
+      // asserting a distance that was never measured (PR #148 review, P2).
       const distance =
         typeof h.distance_km === "number"
-          ? ` | ~${Math.max(10, Math.round(h.distance_km / 10) * 10)} km away (straight-line)`
+          ? h.distance_km < 10
+            ? ` | within 10 km (straight-line)`
+            : ` | ~${Math.round(h.distance_km / 10) * 10} km away (straight-line)`
           : "";
 
       return `[${i + 1}] ${h.name}${tier}
