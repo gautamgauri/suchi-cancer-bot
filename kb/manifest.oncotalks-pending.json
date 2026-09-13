@@ -1,0 +1,348 @@
+{
+  "locale": "multi",
+  "schemaVersion": "2.0",
+  "staged": true,
+  "note": "STAGED — NOT INGESTED. These are uncorrected machine transcripts awaiting SCCF medical review (issue #91 D1-D5) and the KB duplicate cleanup (issue #86). ingest-kb.ts reads kb/manifest.json, not this file, so nothing here is picked up by `npm run kb:ingest`.",
+  "docs": [
+    {
+      "id": "kb_hi_oncotalks_fa-i0SavbXU_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 1)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-fa-i0SavbXU.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=fa-i0SavbXU",
+      "citation": "Onco Talks, SCCF, Video ID: fa-i0SavbXU",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_UZU6fb6bk1A_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 2)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-UZU6fb6bk1A.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=UZU6fb6bk1A",
+      "citation": "Onco Talks, SCCF, Video ID: UZU6fb6bk1A",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_faFyxDN_2Ws_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 3)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-faFyxDN_2Ws.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=faFyxDN_2Ws",
+      "citation": "Onco Talks, SCCF, Video ID: faFyxDN_2Ws",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_A7KXJNbo3Ew_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 4)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-A7KXJNbo3Ew.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=A7KXJNbo3Ew",
+      "citation": "Onco Talks, SCCF, Video ID: A7KXJNbo3Ew",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_41p4gxKcbVI_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 5)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-41p4gxKcbVI.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=41p4gxKcbVI",
+      "citation": "Onco Talks, SCCF, Video ID: 41p4gxKcbVI",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_aFIF9SwjJD0_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 6)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-aFIF9SwjJD0.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=aFIF9SwjJD0",
+      "citation": "Onco Talks, SCCF, Video ID: aFIF9SwjJD0",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_zEanLkUpnsA_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 7)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-zEanLkUpnsA.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=zEanLkUpnsA",
+      "citation": "Onco Talks, SCCF, Video ID: zEanLkUpnsA",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_V9SMABvec20_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 8)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-V9SMABvec20.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=V9SMABvec20",
+      "citation": "Onco Talks, SCCF, Video ID: V9SMABvec20",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks__bdgVdMu6Z4_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 9)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-_bdgVdMu6Z4.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=_bdgVdMu6Z4",
+      "citation": "Onco Talks, SCCF, Video ID: _bdgVdMu6Z4",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_hi_oncotalks_LdgCLmz2YFQ_v1",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 10)",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (HI)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "hi/01_suchi_oncotalks/breast-cancer-awareness-series-expert-insights-par-LdgCLmz2YFQ.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "url": "https://www.youtube.com/watch?v=LdgCLmz2YFQ",
+      "citation": "Onco Talks, SCCF, Video ID: LdgCLmz2YFQ",
+      "captionTrack": "hi-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    },
+    {
+      "id": "kb_en_oncotalks_6edsfQY1TZU_v1",
+      "title": "Onco Talks Episode 6: Precision Oncology",
+      "version": "v1",
+      "status": "inactive",
+      "reviewStatus": "pending",
+      "source": "Suchitra Cancer Care Foundation - Onco Talks (EN)",
+      "sourceType": "01_suchi_oncotalks",
+      "path": "en/01_suchi_oncotalks/onco-talks-episode-6-precision-oncology-6edsfQY1TZU.md",
+      "license": "sccf_owned",
+      "lastReviewed": "2026-09-06",
+      "reviewFrequency": "annual",
+      "audienceLevel": "patient",
+      "language": "en",
+      "cancerTypes": [
+        "general",
+        "breast"
+      ],
+      "tags": [
+        "precision-oncology",
+        "genomic-testing",
+        "targeted-therapy",
+        "transcript",
+        "onco-talks"
+      ],
+      "url": "https://www.youtube.com/watch?v=6edsfQY1TZU",
+      "citation": "Onco Talks, SCCF, Video ID: 6edsfQY1TZU",
+      "captionTrack": "en-orig",
+      "transcriptQuality": "PLACEHOLDER"
+    }
+  ]
+}
