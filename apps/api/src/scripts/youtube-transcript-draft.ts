@@ -18,7 +18,8 @@
  *                              video's entry is replaced (or appended).
  *                              An unknown id is an error, not an empty run.
  *           --check            fail if the regenerated output differs from
- *                              what is committed (drift check for CI)
+ *                              what is committed, or if a draft was never
+ *                              committed at all (drift check for CI)
  */
 import fs from "fs";
 import path from "path";
@@ -74,6 +75,22 @@ export function emptyStagedManifest(): StagedManifest {
     note: STAGED_MANIFEST_NOTE,
     docs: [],
   };
+}
+
+export type DraftState = "match" | "differs" | "missing";
+
+/**
+ * Compare a regenerated draft against what is committed.
+ *
+ * `missing` is drift, not a pass. The earlier check only compared two existing
+ * strings, so `before === null` — a draft that was never committed, or one an
+ * editor deleted — fell through as "no difference recorded", the freshly built
+ * file was removed to restore the read-only state, and the run reported that
+ * the committed drafts matched. A checkout missing every transcript passed.
+ */
+export function classifyDraft(before: string | null, after: string): DraftState {
+  if (before === null) return "missing";
+  return before === after ? "match" : "differs";
 }
 
 /**
@@ -184,7 +201,7 @@ export async function main() {
   console.log(`Curation: ${curation.videos.length} videos — ${included.length} to build, ${excluded.length} excluded`);
 
   const entries: KbDocument[] = [];
-  const drift: string[] = [];
+  const drift: Array<{ path: string; state: Exclude<DraftState, "match"> }> = [];
 
   for (const video of included) {
     console.log(`\n▶ ${video.videoId} — ${video.title ?? "(untitled)"}`);
@@ -217,9 +234,12 @@ export async function main() {
 
     const after = fs.readFileSync(written, "utf-8");
     if (check) {
-      if (before !== null && before !== after) drift.push(written);
+      const state = classifyDraft(before, after);
+      if (state !== "match") drift.push({ path: written, state });
       // --check is read-only: put back exactly what was committed so a drift
-      // run never leaves the working tree (or CI checkout) modified.
+      // run never leaves the working tree (or CI checkout) modified. A draft
+      // that was not committed is removed again — it is still reported as
+      // drift above, which is the whole point.
       if (before !== null) fs.writeFileSync(written, before, "utf-8");
       else fs.rmSync(written);
     }
@@ -228,11 +248,14 @@ export async function main() {
 
   if (check) {
     if (drift.length > 0) {
-      console.error(`\n✗ Regenerated output differs from what is committed:\n  ${drift.join("\n  ")}`);
+      const lines = drift.map(
+        (d) => `  ${d.state === "missing" ? "not committed" : "differs     "}  ${path.relative(kbRoot, d.path)}`,
+      );
+      console.error(`\n✗ Committed drafts do not match a fresh regeneration:\n${lines.join("\n")}`);
       process.exitCode = 1;
       return;
     }
-    console.log("\n✓ Committed drafts match a fresh regeneration");
+    console.log(`\n✓ Committed drafts match a fresh regeneration (${included.length} checked)`);
     return;
   }
 

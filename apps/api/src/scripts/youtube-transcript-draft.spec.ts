@@ -10,6 +10,7 @@ import {
   selectVideos,
   mergeStagedManifest,
   emptyStagedManifest,
+  classifyDraft,
   CurationFile,
   StagedManifest,
 } from "./youtube-transcript-draft";
@@ -126,6 +127,20 @@ describe("youtube-transcript-draft helpers", () => {
       expect(merged.docs).toHaveLength(1);
     });
   });
+
+  describe("classifyDraft", () => {
+    it("reports a match when the committed text is identical", () => {
+      expect(classifyDraft("same", "same")).toBe("match");
+    });
+
+    it("reports drift when the committed text differs", () => {
+      expect(classifyDraft("old", "new")).toBe("differs");
+    });
+
+    it("reports a draft that was never committed as drift, not a match", () => {
+      expect(classifyDraft(null, "regenerated")).toBe("missing");
+    });
+  });
 });
 
 describe("youtube-transcript-draft main()", () => {
@@ -229,5 +244,65 @@ describe("youtube-transcript-draft main()", () => {
   it("--only with an unknown id never writes a manifest when none exists", async () => {
     await expect(run("--only", "notavideoid")).rejects.toThrow(/no such video/);
     expect(existsSync(manifestPath)).toBe(false);
+  });
+
+  describe("--check", () => {
+    // saveToKb names the file from the curated title, not the video id.
+    const draftPaths = () =>
+      ["part-one-aaa00000001.md", "part-two-bbb00000002.md"].map((name) =>
+        join(kbRoot, "hi", "01_suchi_oncotalks", name),
+      );
+
+    it("passes when the committed drafts match a fresh regeneration", async () => {
+      await run();
+      await run("--check");
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("fails when a committed draft has drifted", async () => {
+      await run();
+      const [first] = draftPaths();
+      writeFileSync(first, "edited by hand\n", "utf-8");
+
+      await run("--check");
+
+      expect(process.exitCode).toBe(1);
+      // read-only: the committed text is put back, not overwritten by the run
+      expect(readFileSync(first, "utf-8")).toBe("edited by hand\n");
+    });
+
+    it("fails when a committed draft is missing entirely", async () => {
+      await run();
+      const [first] = draftPaths();
+      rmSync(first);
+
+      await run("--check");
+
+      expect(process.exitCode).toBe(1);
+      // the regenerated file is removed again, so --check stays read-only
+      expect(existsSync(first)).toBe(false);
+    });
+
+    it("fails on a fresh checkout where no draft has been committed at all", async () => {
+      await run("--check");
+
+      expect(process.exitCode).toBe(1);
+      expect(draftPaths().some((p) => existsSync(p))).toBe(false);
+    });
+
+    it("names the missing draft in the failure output", async () => {
+      const errors: string[] = [];
+      (console.error as jest.Mock).mockImplementation((msg: string) => errors.push(String(msg)));
+
+      await run("--check");
+
+      expect(errors.join("\n")).toMatch(/not committed/);
+      expect(errors.join("\n")).toMatch(/aaa00000001/);
+    });
+
+    it("writes no manifest in --check mode", async () => {
+      await run("--check");
+      expect(existsSync(manifestPath)).toBe(false);
+    });
   });
 });
