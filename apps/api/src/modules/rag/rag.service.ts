@@ -10,6 +10,7 @@ import { QueryTypeClassifier } from "./query-type.classifier";
 import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer-topics";
 import { PatientState } from "../chat/patient-state.service";
 import { KB_FTS_SEARCH_SQL, isFtsSchemaError } from "./kb-fts.sql";
+import { buildKbFtsQuery } from "./kb-fts-query";
 import { dropReferenceChunks } from "./reference-chunk-filter";
 import { KbFtsHealthService } from "./kb-fts-health.service";
 
@@ -706,8 +707,28 @@ export class RagService {
     if (!this.ftsHealth.shouldQuery()) {
       return [];
     }
+
+    // Issue #134: search for the CONTENT words of the question, at least two of
+    // which must co-occur — not for every token of the sentence ANDed together,
+    // which returned nothing for natural-language English and for all Hinglish.
+    const lexical = buildKbFtsQuery(query);
+    if (!lexical) {
+      this.logger.debug({
+        event: "kb_fts_query_empty",
+        message: "No content words left after stopword/function-word removal — lexical arm skipped for this turn",
+        query: query.substring(0, 80),
+      });
+      return [];
+    }
+    this.logger.debug({
+      event: "kb_fts_query",
+      terms: lexical.terms,
+      genericTerms: lexical.genericTerms,
+      minMatchedTerms: lexical.minMatchedTerms,
+      droppedCount: lexical.droppedTerms.length,
+    });
+
     try {
-      // Use websearch_to_tsquery for better query parsing (handles phrases, AND/OR, etc.)
       const results = await this.prisma.$queryRawUnsafe<Array<{
         id: string;
         docId: string;
@@ -720,7 +741,7 @@ export class RagService {
         citation: string | null;
         lastReviewed: Date | null;
         isTrustedSource: boolean;
-      }>>(KB_FTS_SEARCH_SQL, query, topK * 2);
+      }>>(KB_FTS_SEARCH_SQL, lexical.tsquery, topK * 2);
 
       this.ftsHealth.recordQuerySuccess();
 
