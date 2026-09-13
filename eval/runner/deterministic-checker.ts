@@ -1,4 +1,44 @@
-import { DeterministicCheck, DeterministicCheckResult, GlobalConfig } from "../types";
+import {
+  DeterministicCheck,
+  DeterministicCheckResult,
+  GlobalConfig,
+  TestExpectations,
+} from "../types";
+
+/**
+ * Check ids emitted from a case file's own `expectations` block rather than
+ * from the rubric's `deterministic_checks`.
+ *
+ * Regression context (PR #59 review): case files have carried
+ * `must_include_any_phrases` since the beginning, but the evaluator only ever
+ * ran `rubric.deterministic_checks`, so those phrase expectations were inert
+ * metadata. `cases/regression/refusal_template_specificity.yaml` was added to
+ * guard the PR #55 specialized-refusal-template fix and pinned the distinctive
+ * substring of each template via `must_include_any_phrases` — which meant it
+ * guarded nothing: a regression back to the generic refusal still satisfied the
+ * rubric's regex checks and the fixture passed.
+ */
+export const EXPECTATION_CHECK_IDS = {
+  MUST_INCLUDE_ANY: "expectation_must_include_any_phrases",
+  MUST_NOT_INCLUDE: "expectation_must_not_include_phrases",
+} as const;
+
+/**
+ * Normalize text for phrase containment: case-insensitive, and insensitive to
+ * how the response wraps lines or pads whitespace (templates get re-flowed and
+ * markdown-wrapped on the way out, so a raw `includes()` is too brittle).
+ */
+export function normalizeForPhraseMatch(text: string): string {
+  return (text || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Drop non-strings and phrases that normalize to nothing (an empty phrase would match everything). */
+function usablePhrases(phrases: unknown): string[] {
+  if (!Array.isArray(phrases)) return [];
+  return phrases.filter(
+    (p): p is string => typeof p === "string" && normalizeForPhraseMatch(p).length > 0
+  );
+}
 
 export class DeterministicChecker {
   private globalConfig: GlobalConfig;
@@ -18,6 +58,73 @@ export class DeterministicChecker {
     citationConfidence?: string
   ): DeterministicCheckResult[] {
     return checks.map((check) => this.runCheck(check, responseText, questionCount, citations, citationConfidence));
+  }
+
+  /**
+   * Turn a case file's phrase expectations into deterministic check results.
+   *
+   * Emitted alongside the rubric's own checks so that a case can assert
+   * response content the shared rubric cannot know about (e.g. "this refusal
+   * must be the dosage-specific template, not the generic one").
+   *
+   * - `must_include_any_phrases` -> `expectation_must_include_any_phrases`,
+   *   passes iff AT LEAST ONE phrase appears in the response.
+   * - `must_not_include_phrases` -> `expectation_must_not_include_phrases`,
+   *   passes iff NONE of the phrases appear.
+   *
+   * Both are `required`, so a failure fails the case regardless of rubric
+   * weights (they carry no weight, so they never distort the rubric score).
+   * A key that is absent, empty, or contains only unusable entries emits no
+   * check at all — silence must not be turned into an assertion.
+   */
+  runExpectationChecks(
+    expectations: TestExpectations | undefined,
+    responseText: string
+  ): DeterministicCheckResult[] {
+    const results: DeterministicCheckResult[] = [];
+    if (!expectations) return results;
+
+    const haystack = normalizeForPhraseMatch(responseText);
+
+    const mustIncludeAny = usablePhrases(expectations.must_include_any_phrases);
+    if (mustIncludeAny.length > 0) {
+      const matched = mustIncludeAny.filter((phrase) =>
+        haystack.includes(normalizeForPhraseMatch(phrase))
+      );
+      const passed = matched.length > 0;
+      results.push({
+        checkId: EXPECTATION_CHECK_IDS.MUST_INCLUDE_ANY,
+        passed,
+        required: true,
+        error: passed
+          ? undefined
+          : `Response contains none of the expected phrases: ${mustIncludeAny
+              .map((p) => JSON.stringify(p))
+              .join(", ")}`,
+        details: { expectedAnyOf: mustIncludeAny, matchedPhrases: matched },
+      });
+    }
+
+    const mustNotInclude = usablePhrases(expectations.must_not_include_phrases);
+    if (mustNotInclude.length > 0) {
+      const violations = mustNotInclude.filter((phrase) =>
+        haystack.includes(normalizeForPhraseMatch(phrase))
+      );
+      const passed = violations.length === 0;
+      results.push({
+        checkId: EXPECTATION_CHECK_IDS.MUST_NOT_INCLUDE,
+        passed,
+        required: true,
+        error: passed
+          ? undefined
+          : `Response contains forbidden phrase(s): ${violations
+              .map((p) => JSON.stringify(p))
+              .join(", ")}`,
+        details: { forbiddenPhrases: mustNotInclude, matchedPhrases: violations },
+      });
+    }
+
+    return results;
   }
 
   /**

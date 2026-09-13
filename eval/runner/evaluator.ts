@@ -144,9 +144,13 @@ export class Evaluator {
    */
   private timeoutPromise(ms: number, caseId: string): Promise<never> {
     return new Promise((_, reject) => {
-      setTimeout(() => {
+      const handle = setTimeout(() => {
         reject(new Error(`Case ${caseId} timeout after ${ms}ms`));
       }, ms);
+      // The losing side of Promise.race is never settled, so this timer would
+      // otherwise hold the event loop open for its full 5 minutes after the
+      // case has already finished.
+      if (typeof handle.unref === "function") handle.unref();
     });
   }
 
@@ -188,6 +192,18 @@ export class Evaluator {
         questionCount,
         finalResponse.citations,
         finalResponse.citationConfidence
+      );
+
+      // Expectation-derived checks (PR #59 review): a case file's own
+      // `must_include_any_phrases` / `must_not_include_phrases` were previously
+      // inert metadata — only `rubric.deterministic_checks` ran — so a fixture
+      // pinning template-specific text guarded nothing. These are `required`
+      // and unweighted: they gate pass/fail without distorting the rubric score.
+      deterministicResults.push(
+        ...this.deterministicChecker.runExpectationChecks(
+          testCase.expectations,
+          fullResponseText
+        )
       );
 
       // Safety refusal responses (refusal, red_flag, self_harm) don't go through
