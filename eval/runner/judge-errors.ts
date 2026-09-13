@@ -41,6 +41,8 @@ export interface JudgeErrorClassification {
   kind: JudgeErrorKind;
   /** HTTP status when one could be recovered from the error shape or message */
   statusCode?: number;
+  /** Canonical gRPC status name when the error carried one (named or numeric) */
+  grpcStatus?: string;
   /**
    * True when the failure sits between the harness and the judge model
    * (auth, quota, network, provider outage, SDK). False for `unknown` and
@@ -77,6 +79,62 @@ function asHttpStatus(value: unknown): number | undefined {
   const n =
     typeof value === "string" && /^\d{3}$/.test(value) ? parseInt(value, 10) : value;
   return typeof n === "number" && Number.isInteger(n) && n >= 100 && n < 600 ? n : undefined;
+}
+
+/**
+ * Canonical gRPC status codes (google.rpc.Code). `@grpc/grpc-js` throws errors
+ * whose `code` is the NUMBER, not the name — 8 for RESOURCE_EXHAUSTED, 4 for
+ * DEADLINE_EXCEEDED, 14 for UNAVAILABLE. Those numbers are below 100, so
+ * `asHttpStatus` rejects them and, before this mapping, they fell through to a
+ * non-retryable `unknown` — a quota error the loop refused to retry.
+ * gRPC codes (1..16) and HTTP statuses (100..599) do not overlap, so a small
+ * integer is unambiguously a gRPC status.
+ */
+const GRPC_STATUS_NAMES: Readonly<Record<number, string>> = {
+  1: "CANCELLED",
+  2: "UNKNOWN",
+  3: "INVALID_ARGUMENT",
+  4: "DEADLINE_EXCEEDED",
+  5: "NOT_FOUND",
+  6: "ALREADY_EXISTS",
+  7: "PERMISSION_DENIED",
+  8: "RESOURCE_EXHAUSTED",
+  9: "FAILED_PRECONDITION",
+  10: "ABORTED",
+  11: "OUT_OF_RANGE",
+  12: "UNIMPLEMENTED",
+  13: "INTERNAL",
+  14: "UNAVAILABLE",
+  15: "DATA_LOSS",
+  16: "UNAUTHENTICATED",
+};
+
+const GRPC_STATUS_SET: ReadonlySet<string> = new Set(Object.values(GRPC_STATUS_NAMES));
+
+function asGrpcStatus(value: unknown): string | undefined {
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? GRPC_STATUS_NAMES[value] : undefined;
+  }
+  if (typeof value === "string") {
+    const s = value.trim().toUpperCase();
+    if (/^\d{1,2}$/.test(s)) return GRPC_STATUS_NAMES[parseInt(s, 10)];
+    return GRPC_STATUS_SET.has(s) ? s : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Recover a canonical gRPC status name from either the named form Vertex puts
+ * on `cause.status` or the numeric `code` `@grpc/grpc-js` throws.
+ */
+export function extractGrpcStatus(error: unknown): string | undefined {
+  const e = error as any;
+  if (!e) return undefined;
+  for (const c of [e.cause?.status, e.status, e.code, e.cause?.code, e.grpcStatus]) {
+    const name = asGrpcStatus(c);
+    if (name !== undefined) return name;
+  }
+  return undefined;
 }
 
 /**
@@ -125,7 +183,7 @@ export function classifyJudgeError(error: unknown): JudgeErrorClassification {
   const statusCode = extractStatusCode(e);
   const name = String(e.name ?? "");
   const code = String(e.code ?? "").toUpperCase();
-  const grpc = String(e.cause?.status ?? "").toUpperCase();
+  const grpc = extractGrpcStatus(e) ?? "";
   const msg = String(e.message ?? "").toLowerCase();
 
   let kind: JudgeErrorKind;
@@ -198,12 +256,19 @@ export function classifyJudgeError(error: unknown): JudgeErrorClassification {
     kind = "unknown";
   }
 
+  const qualifier = statusCode
+    ? ` (HTTP ${statusCode})`
+    : grpc
+      ? ` (gRPC ${grpc})`
+      : "";
+
   return {
     kind,
     statusCode,
+    ...(grpc ? { grpcStatus: grpc } : {}),
     transport: TRANSPORT.has(kind),
     retryable: RETRYABLE.has(kind),
-    label: `${kind}${statusCode ? ` (HTTP ${statusCode})` : ""}`,
+    label: `${kind}${qualifier}`,
     retryAfterMs: extractRetryAfterMs(e),
   };
 }

@@ -334,3 +334,62 @@ describe("callJudgeWithRetry — defensive against a poisoned maxRetries (#110 r
   });
 });
 
+describe("numeric gRPC status codes classify like their named forms (#110 review P2)", () => {
+  /** Shape thrown by @grpc/grpc-js: numeric `code`, no HTTP status anywhere. */
+  function grpcError(code: number, details: string): Error {
+    const err: any = new Error(details);
+    err.code = code;
+    err.details = details;
+    err.metadata = {};
+    return err;
+  }
+
+  const cases: Array<[number, string, string, boolean]> = [
+    [8, "RESOURCE_EXHAUSTED", "rate_limited", true],
+    [4, "DEADLINE_EXCEEDED", "timeout", true],
+    [14, "UNAVAILABLE", "provider_error", true],
+    [13, "INTERNAL", "provider_error", true],
+    [16, "UNAUTHENTICATED", "auth_failed", false],
+    [7, "PERMISSION_DENIED", "auth_failed", false],
+  ];
+
+  for (const [code, name, kind, retryable] of cases) {
+    it(`gRPC code ${code} (${name}) → ${kind}`, () => {
+      // Opaque message on purpose: the numeric code must carry the classification.
+      const c = classifyJudgeError(grpcError(code, "call failed"));
+      expect(c.kind).toBe(kind);
+      expect(c.retryable).toBe(retryable);
+      expect(c.transport).toBe(true);
+      expect(c.grpcStatus).toBe(name);
+      expect(c.label).toBe(`${kind} (gRPC ${name})`);
+    });
+  }
+
+  it("reads a numeric code from `cause.code` and a stringified code too", () => {
+    expect(classifyJudgeError({ cause: { code: 8 }, message: "call failed" }).kind).toBe("rate_limited");
+    expect(classifyJudgeError({ code: "14", message: "call failed" }).kind).toBe("provider_error");
+  });
+
+  it("a retryable gRPC code is actually retried by the bounded loop", async () => {
+    let calls = 0;
+    const fn = jest.fn(async () => {
+      calls += 1;
+      if (calls < 2) throw grpcError(8, "call failed");
+      return "ok";
+    });
+    const out = await callJudgeWithRetry(fn, { maxRetries: 2, sleep: async () => {} });
+    expect(out.ok).toBe(true);
+    expect(out.attempts).toBe(2);
+  });
+
+  it("does not confuse HTTP statuses or errno strings with gRPC codes", () => {
+    // Vertex ClientError carries cause.code = 429 (HTTP), not a gRPC code.
+    const vertex = classifyJudgeError(vertexClientError(429, "Too Many Requests", "RESOURCE_EXHAUSTED"));
+    expect(vertex.statusCode).toBe(429);
+    expect(vertex.label).toBe("rate_limited (HTTP 429)"); // HTTP wins the label when present
+    expect(classifyJudgeError({ code: "ECONNRESET", message: "socket hang up" }).kind).toBe("network_error");
+    // gRPC OK (0) and out-of-range numbers are not statuses.
+    expect(classifyJudgeError({ code: 0, message: "something odd" }).kind).toBe("unknown");
+    expect(classifyJudgeError({ code: 99, message: "something odd" }).kind).toBe("unknown");
+  });
+});
