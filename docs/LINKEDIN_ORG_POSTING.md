@@ -55,9 +55,11 @@ Two ways, either is fine:
   what you want. (A vanity URL such as `/company/suchi-cancer-care/` does *not*
   contain the id; switch to the admin view to see it.)
 - **From the API**, after step 2: `npm run linkedin:auth -- orgs` prints every
-  organisation the token may post for, already in URN form. Read the token from
-  a file written by `--out` with `--token-file <path>`, or export
-  `LINKEDIN_ACCESS_TOKEN`.
+  organisation the member holds an approved role on, already in URN form and
+  with the role shown next to each. Read the token from a file written by
+  `--out` with `--token-file <path>`, or export `LINKEDIN_ACCESS_TOKEN`.
+  ADMINISTRATOR, `CONTENT_ADMIN` and `DIRECT_SPONSORED_CONTENT_POSTER` can all
+  post, so the listing is not filtered to admins.
 
 The value to store is the full URN, not the bare number:
 
@@ -184,7 +186,7 @@ revision — see `docs/DEPLOYMENT.md`).
 
 0. **The helper never leaked the token.** `npm run linkedin:auth -- --self-test`
    runs the offline checks on the helper's pure parts (argument parsing,
-   destination resolution, redaction, the 0600 file write);
+   destination resolution, redaction, the org/role table, the 0600 file write);
    among them is an assertion that the exchange summary never contains the token
    value. It runs in CI in the "Build + config parity" job. If you used
    `--out`, delete the file once the secret version exists. If you used

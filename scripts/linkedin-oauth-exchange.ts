@@ -50,6 +50,15 @@ const SCOPES = process.env.LINKEDIN_SCOPES ?? "w_organization_social r_organizat
 // Must match a redirect URL registered on the LinkedIn app exactly.
 const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI ?? "https://suchicancercare.org/oauth/linkedin";
 
+// Every role that may post on behalf of an organisation. ADMINISTRATOR alone is
+// too narrow: social-post.service.ts accepts CONTENT_ADMIN too, and LinkedIn
+// also lets DIRECT_SPONSORED_CONTENT_POSTER publish.
+export const POSTING_ROLES = [
+  "ADMINISTRATOR",
+  "CONTENT_ADMIN",
+  "DIRECT_SPONSORED_CONTENT_POSTER",
+] as const;
+
 // ---------------------------------------------------------------------------
 // Pure helpers (covered by `--self-test`)
 // ---------------------------------------------------------------------------
@@ -223,8 +232,44 @@ export function redactSecrets(text: string, secrets: Array<string | undefined>, 
 
 export interface OrgAcl {
   organization?: string;
+  organizationalTarget?: string;
   role?: string;
   state?: string;
+}
+
+export interface OrgRow {
+  organization: string;
+  roles: string[];
+  states: string[];
+}
+
+/** Collapse an organizationAcls element list into one row per organisation. */
+export function formatOrgRows(elements: OrgAcl[]): OrgRow[] {
+  const byOrg = new Map<string, { roles: Set<string>; states: Set<string> }>();
+  for (const e of elements) {
+    const org = e.organization ?? e.organizationalTarget;
+    if (!org) continue;
+    let entry = byOrg.get(org);
+    if (!entry) {
+      entry = { roles: new Set(), states: new Set() };
+      byOrg.set(org, entry);
+    }
+    if (e.role) entry.roles.add(e.role);
+    if (e.state) entry.states.add(e.state);
+  }
+  return [...byOrg.entries()]
+    .map(([organization, v]) => ({
+      organization,
+      roles: [...v.roles].sort(),
+      states: [...v.states].sort(),
+    }))
+    .sort((a, b) => a.organization.localeCompare(b.organization));
+}
+
+export function renderOrgRow(row: OrgRow): string {
+  const roles = row.roles.length ? row.roles.join(", ") : "(role not reported)";
+  const states = row.states.length ? row.states.join(", ") : "(state not reported)";
+  return `  ${row.organization}   roles: ${roles}   state: ${states}`;
 }
 
 export function buildAuthUrl(opts: {
@@ -419,26 +464,53 @@ function readToken(parsed: ParsedArgs): string {
   return requireEnv("LINKEDIN_ACCESS_TOKEN");
 }
 
-async function orgs(parsed: ParsedArgs): Promise<void> {
-  const token = readToken(parsed);
-  const url = `${REST_BASE}/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED`;
-  const res = await fetch(url, {
+async function fetchAcls(token: string, role?: string): Promise<{ ok: boolean; status: number; body: string }> {
+  const params = new URLSearchParams({ q: "roleAssignee", state: "APPROVED" });
+  if (role) params.set("role", role);
+  const res = await fetch(`${REST_BASE}/organizationAcls?${params.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       "X-Restli-Protocol-Version": "2.0.0",
       "LinkedIn-Version": API_VERSION,
     },
   });
-  const text = await res.text();
-  if (!res.ok) failAcls(res.status, text, token);
-  const elements = (JSON.parse(text) as { elements?: OrgAcl[] }).elements ?? [];
-  if (elements.length === 0) {
-    console.log("No approved organisation admin roles for this member.");
+  return { ok: res.ok, status: res.status, body: await res.text() };
+}
+
+async function orgs(parsed: ParsedArgs): Promise<void> {
+  const token = readToken(parsed);
+  const elements: OrgAcl[] = [];
+
+  // Ask for every role at once. Some LinkedIn API versions reject an unfiltered
+  // roleAssignee query, so fall back to one query per posting-capable role.
+  const all = await fetchAcls(token);
+  if (all.ok) {
+    elements.push(...((JSON.parse(all.body) as { elements?: OrgAcl[] }).elements ?? []));
+  } else if (all.status === 400 || all.status === 404) {
+    let anyOk = false;
+    for (const role of POSTING_ROLES) {
+      const one = await fetchAcls(token, role);
+      if (!one.ok) continue;
+      anyOk = true;
+      elements.push(...((JSON.parse(one.body) as { elements?: OrgAcl[] }).elements ?? []));
+    }
+    if (!anyOk) {
+      failAcls(all.status, all.body, token);
+    }
+  } else {
+    failAcls(all.status, all.body, token);
+  }
+
+  const rows = formatOrgRows(elements);
+  if (rows.length === 0) {
+    console.log("No approved organisation roles for this member.");
+    console.log("Read the org id off the page's admin URL instead — docs/LINKEDIN_ORG_POSTING.md step 1.");
     return;
   }
-  console.log("\nOrganisation pages this token can post for:\n");
-  for (const e of elements) console.log(`  ${e.organization}   (role ${e.role}, ${e.state})`);
-  console.log("\nUse the SCCF one verbatim as LINKEDIN_AUTHOR_URN:\n");
+  console.log("\nOrganisation pages this member holds an approved role on:\n");
+  for (const row of rows) console.log(renderOrgRow(row));
+  console.log(`\nPosting needs one of: ${POSTING_ROLES.join(", ")}.`);
+  console.log("Use the SCCF URN verbatim as LINKEDIN_AUTHOR_URN:\n");
   console.log("  printf %s 'urn:li:organization:<id>' | gcloud secrets versions add linkedin-author-urn \\");
   console.log(`    --data-file=- --project=${GCP_PROJECT}\n`);
 }
@@ -562,6 +634,25 @@ export function selfTest(): number {
     check("every occurrence replaced", redactSecrets(`${FAKE_TOKEN} ${FAKE_TOKEN}`, [FAKE_TOKEN]).includes(FAKE_TOKEN) === false);
     check("undefined secrets ignored", redactSecrets("plain", [undefined, ""]) === "plain");
     check("short secrets left alone", redactSecrets("a short abc text", ["abc"]) === "a short abc text");
+  }
+
+  console.log("formatOrgRows");
+  {
+    const rows = formatOrgRows([
+      { organization: "urn:li:organization:2", role: "CONTENT_ADMIN", state: "APPROVED" },
+      { organization: "urn:li:organization:1", role: "ADMINISTRATOR", state: "APPROVED" },
+      { organization: "urn:li:organization:1", role: "CONTENT_ADMIN", state: "APPROVED" },
+      { organizationalTarget: "urn:li:organization:3", role: "DIRECT_SPONSORED_CONTENT_POSTER", state: "APPROVED" },
+      { role: "ADMINISTRATOR", state: "APPROVED" },
+    ]);
+    check("one row per organisation", rows.length === 3, JSON.stringify(rows));
+    check("sorted by URN", rows[0].organization.endsWith(":1"));
+    check("roles merged", rows[0].roles.join(",") === "ADMINISTRATOR,CONTENT_ADMIN");
+    check("organizationalTarget accepted", rows.some((r) => r.organization.endsWith(":3")));
+    check("element without an org dropped", rows.every((r) => r.organization.startsWith("urn:li:organization:")));
+    check("CONTENT_ADMIN-only org kept", rows.some((r) => r.organization.endsWith(":2") && r.roles.includes("CONTENT_ADMIN")));
+    check("rendered row shows the role", renderOrgRow(rows[0]).includes("ADMINISTRATOR, CONTENT_ADMIN"));
+    check("empty input is empty output", formatOrgRows([]).length === 0);
   }
 
   console.log("buildAuthUrl");
