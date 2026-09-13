@@ -1,8 +1,10 @@
 #!/bin/sh
 set -e
 
-# Use MIG env var if set, otherwise default to the migration name
-MIG="${MIG:-20250101000000_add_greeting_context_to_session}"
+# Use MIG env var if set, otherwise default to the newest migration name.
+# Keep this in sync with the MIG value in cloudbuild.gated.yaml whenever a
+# migration is added (docs/cloudbuild-gated-issues.md, Issue 2).
+MIG="${MIG:-20260913000000_kb_chunk_unique_position}"
 
 echo "=== (1) Attempt prisma migrate deploy ==="
 if ! npx prisma migrate deploy; then
@@ -179,6 +181,66 @@ NODE
       exit 1
     fi
   done
+fi
+
+echo "=== (6) Verify KbChunk unique position index (issue #86) ==="
+# Issue 3 in docs/cloudbuild-gated-issues.md: steps (2)-(5) only ever checked the
+# greeting-context columns, so a migration that silently failed to apply could
+# still exit 0. This is the structural check for the newest migration.
+#
+# It also closes the hazard the repair path itself creates: step (4) marks $MIG
+# applied when the *column* repair ran, which for a migration that creates an
+# index would record a lie. Asserting the index exists makes that loud instead.
+# `KbChunk_docId_chunkIndex_key` is what makes a duplicate ingest a 23505
+# instead of a silent 34% duplicate index (73,802 -> 48,737 rows, cleaned
+# 2026-09-06). If the migration RAISEd because duplicates are back, the deploy
+# must fail here rather than serve a degraded KB.
+attempt=1
+kb_idx_status=1
+while [ $attempt -le 3 ]; do
+  node - << "NODE"
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+(async () => {
+  try {
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT COALESCE(bool_and(i.indisvalid AND i.indisready AND i.indisunique), false) AS ok
+         FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+        WHERE c.relname = 'KbChunk_docId_chunkIndex_key'`
+    );
+    const ok = rows?.[0]?.ok === true;
+    if (!ok) {
+      console.error(
+        "KbChunk_docId_chunkIndex_key is MISSING or invalid. Migration " +
+        "20260913000000_kb_chunk_unique_position did not apply. If it raised, the table " +
+        "holds duplicate (docId, chunkIndex) rows again: see scripts/sql/kb_duplicate_cleanup.sql (issue #86)."
+      );
+      process.exit(2);
+    }
+    console.log("KbChunk unique position index present and valid.");
+    process.exit(0);
+  } finally {
+    await prisma.$disconnect();
+  }
+})().catch(e => { console.error(e); process.exit(1); });
+NODE
+  kb_idx_status=$?
+  if [ $kb_idx_status -eq 0 ] || [ $kb_idx_status -eq 2 ]; then
+    break
+  fi
+  if [ $attempt -lt 3 ]; then
+    echo "Attempt $attempt failed (exit $kb_idx_status), retrying in 2s..."
+    sleep 2
+    attempt=$((attempt + 1))
+  else
+    echo "All 3 attempts failed (last exit: $kb_idx_status)"
+    break
+  fi
+done
+
+if [ "$kb_idx_status" -ne 0 ]; then
+  echo "❌ KbChunk unique position index check failed!"
+  exit 1
 fi
 
 echo "Migration job completed successfully."

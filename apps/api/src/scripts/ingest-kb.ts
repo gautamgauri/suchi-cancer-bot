@@ -5,6 +5,11 @@ import matter from "gray-matter";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
 import { isTrustedSource } from "../config/trusted-sources.config";
+import {
+  assessKbIndexIntegrity,
+  KB_INDEX_INTEGRITY_SQL,
+  KbIndexIntegrityRow,
+} from "./kb-index-preflight";
 
 type ManifestDoc = {
   id: string;
@@ -400,12 +405,44 @@ async function ingestDoc(doc: ManifestDoc, opts: Opts) {
   }
 }
 
+/**
+ * Refuse to ingest on top of a damaged index (issue #86).
+ *
+ * This script's upsert only reaches rows whose id is `docId::chunk::N`. Rows
+ * left by the legacy uuid-id run are invisible to it, so an ingest run inserts
+ * a second copy of each chunk instead of overwriting — the failure mode that
+ * put 25,065 duplicate rows (34% of the index) into production and cost 91% of
+ * eval queries roughly a third of their evidence. Stopping here keeps the
+ * repair a deliberate act.
+ *
+ * A dry run writes nothing, so it warns instead of exiting — that is precisely
+ * the run an operator makes to look at the damage.
+ */
+async function kbIndexPreflight(opts: Opts): Promise<void> {
+  const rows = await withRetry(() =>
+    prisma.$queryRawUnsafe<KbIndexIntegrityRow[]>(KB_INDEX_INTEGRITY_SQL)
+  );
+  const verdict = assessKbIndexIntegrity(rows?.[0]);
+  if (verdict.ok) return;
+
+  if (opts.dryRun) {
+    console.warn(`\n⚠️  ${verdict.reason}\n   (--dryRun: continuing, nothing will be written.)\n`);
+    return;
+  }
+
+  console.error("\n❌ KB INDEX PREFLIGHT FAILED — refusing to ingest.\n");
+  console.error(`   ${verdict.reason}\n`);
+  process.exit(1);
+}
+
 async function main() {
   const opts = parseArgs();
   const manifestPath = path.join(opts.kbRoot, "manifest.json");
   mustExist(manifestPath);
   const manifest = readJson<Manifest>(manifestPath);
   const embeddingsStatus = opts.skipEmbeddings ? "disabled" : "enabled";
+
+  await kbIndexPreflight(opts);
 
   // SAFETY: Check existing data and warn before destructive operations
   if (opts.wipeChunks) {

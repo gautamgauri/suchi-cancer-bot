@@ -71,7 +71,7 @@ steps:
       - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY}/suchi-api:$BUILD_ID'
       - '--set-cloudsql-instances=${_CLOUDSQL_CONNECTION_NAME}'
       - '--set-secrets=DATABASE_URL=database-url:latest'
-      - '--set-env-vars=NODE_ENV=production,MIG=20260908000000_restore_kb_chunk_fts'
+      - '--set-env-vars=NODE_ENV=production,MIG=20260913000000_kb_chunk_unique_position'
       - '--command=/app/scripts/migrate-with-repair.sh'
       - '--max-retries=1'
       - '--parallelism=1'
