@@ -120,16 +120,19 @@ export class YoutubeController {
       // Fetch transcripts (with optional language preference)
       const transcripts = [];
       const fetchFailures: Array<{ videoId: string; reason: string }> = [];
-      for (const videoId of videoIds) {
+      for (const [index, videoId] of videoIds.entries()) {
         try {
           const transcript = await this.youtubeService.getVideoTranscript(videoId, body.language);
           transcripts.push(transcript);
-
-          // Rate limiting: wait 1 second between requests
-          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
           this.logger.error(`Failed to process ${videoId}: ${error.message}`);
           fetchFailures.push({ videoId, reason: error.message });
+        }
+
+        // Rate limiting: wait 1 second BETWEEN requests — not after the last
+        // one, and not skipped on failure (a failed fetch still hit YouTube).
+        if (index < videoIds.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
 
