@@ -58,6 +58,8 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
     fallbackLlmProvider: (process.env.EVAL_FALLBACK_LLM_PROVIDER || config.fallbackLlmProvider || "vertex_ai") as "vertex_ai" | "openai" | "deepseek",
     timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || String(config.timeoutMs || 60000), 10),
     retries: parseInt(process.env.EVAL_RETRIES || String(config.retries || 2), 10),
+    // Bounded judge retries on 429/5xx/timeout before a case goes unscored (issue #110)
+    judgeRetries: parseInt(process.env.EVAL_JUDGE_RETRIES || String(config.judgeRetries ?? 3), 10),
     parallel: process.env.EVAL_PARALLEL === "true" || config.parallel || false,
     maxConcurrency: parseInt(process.env.EVAL_MAX_CONCURRENCY || String(config.maxConcurrency || 5), 10),
   };

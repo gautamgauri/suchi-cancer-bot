@@ -1,5 +1,14 @@
 import { LLMCheck, LLMJudgeConfig, LLMJudgeResult, LLMJudgeResponse, EvaluationConfig } from "../types";
 import OpenAI from "openai";
+import {
+  callJudgeWithRetry,
+  classifyJudgeError,
+  isUnscored,
+  unscoredJudgeResult,
+  DEFAULT_JUDGE_RETRIES,
+  JudgeErrorClassification,
+  JudgeRetryOptions,
+} from "./judge-errors";
 
 // Cost tracking for Deepseek API usage
 interface DeepseekCostLog {
@@ -24,6 +33,9 @@ const GEMINI_PRICING = {
   "gemini-1.5-pro": { input: 0.00000125, output: 0.000005 },
 };
 
+/** Test seams for the retry loop (sleep/jitter); production uses real timers. */
+export type LLMJudgeDeps = Pick<JudgeRetryOptions, "sleep" | "random" | "baseDelayMs" | "maxDelayMs">;
+
 export class LLMJudge {
   private config: EvaluationConfig;
   private openaiClient?: OpenAI;
@@ -31,9 +43,11 @@ export class LLMJudge {
   private costLog: DeepseekCostLog[] = [];
   private totalCost: number = 0;
   private fallbackUsedCount: number = 0;
+  private deps: LLMJudgeDeps;
 
-  constructor(config: EvaluationConfig) {
+  constructor(config: EvaluationConfig, deps: LLMJudgeDeps = {}) {
     this.config = config;
+    this.deps = deps;
 
     if (config.llmProvider === "openai" && config.openAiConfig?.apiKey) {
       this.openaiClient = new OpenAI({
@@ -105,90 +119,80 @@ export class LLMJudge {
       citationDocIds?: string[];
     }
   ): Promise<LLMJudgeResult[]> {
-    // PHASE 2.5+: If LLM judge is not available, return skipped results
-    // These are excluded from scoring (not counted in numerator OR denominator)
+    // Issue #110: every path that does not yield a rendered verdict returns
+    // UNSCORED results (explicit reason, counted separately from pass/fail).
+    // Nothing in here may turn an infrastructure failure into a failed check.
     if (!this.isAvailable()) {
-      console.warn(`⚠ LLM Judge skipped: ${this.config.llmProvider} client not initialized`);
-      return checks.map((check) => ({
-        checkId: check.id,
-        passed: false, // Not passed, but skipped - excluded from scoring
-        skipped: true,
-        error: `LLM Judge not available: ${this.config.llmProvider} client not initialized. Check excluded from scoring.`,
-      }));
+      console.warn(`⚠ LLM Judge unavailable: ${this.config.llmProvider} client not initialized`);
+      const cls = { kind: "not_configured" as const, label: "not_configured" };
+      return checks.map((check) =>
+        unscoredJudgeResult(
+          check.id,
+          cls,
+          `LLM Judge not available: ${this.config.llmProvider} client not initialized. Check unscored.`
+        )
+      );
     }
 
-    try {
-      const prompt = this.buildPrompt(responseText, judgeConfig, checks, testCaseContext);
-      const response = await this.callLLM(prompt, judgeConfig);
-      return this.parseResponse(response, checks);
-    } catch (error: any) {
-      // Classify error type for clear reporting
-      const statusCode = error.status || error.response?.status;
-      const errorMsg = error.message?.toLowerCase() || '';
+    const prompt = this.buildPrompt(responseText, judgeConfig, checks, testCaseContext);
 
-      let errorType: 'auth_failed' | 'rate_limited' | 'provider_error' | 'network_error' | 'unknown';
-      let shouldTryFallback = false;
-
-      if (statusCode === 401 || statusCode === 403 || errorMsg.includes('unauthorized') || errorMsg.includes('forbidden')) {
-        errorType = 'auth_failed';
-        shouldTryFallback = true;
-      } else if (statusCode === 429 || errorMsg.includes('rate limit')) {
-        errorType = 'rate_limited';
-        shouldTryFallback = true;
-      } else if (statusCode >= 500 || errorMsg.includes('internal server error')) {
-        errorType = 'provider_error';
-        shouldTryFallback = true;
-      } else if (
-        errorMsg.includes('econnrefused') ||
-        errorMsg.includes('etimedout') ||
-        errorMsg.includes('timeout') ||
-        errorMsg.includes('network') ||
-        errorMsg.includes('dns') ||
-        error.code === 'ECONNREFUSED' ||
-        error.code === 'ETIMEDOUT'
-      ) {
-        errorType = 'network_error';
-        shouldTryFallback = true;
-      } else {
-        errorType = 'unknown';
-        shouldTryFallback = false; // Unknown errors should fail (might be code bug)
-      }
-
-      const errorLabel = `${errorType}${statusCode ? ` (HTTP ${statusCode})` : ''}`;
-
-      // Try fallback provider if available
-      if (shouldTryFallback && this.isFallbackAvailable()) {
-        console.warn(`⚠ Primary LLM failed: ${errorLabel} - trying fallback (${this.config.fallbackLlmProvider})`);
-        try {
-          const prompt = this.buildPrompt(responseText, judgeConfig, checks, testCaseContext);
-          const response = await this.callFallbackLLM(prompt, judgeConfig);
-          this.fallbackUsedCount++;
-          console.log(`✅ Fallback LLM succeeded (${this.config.fallbackLlmProvider})`);
-          return this.parseResponse(response, checks);
-        } catch (fallbackError: any) {
-          console.error(`❌ Fallback LLM also failed: ${fallbackError.message}`);
-          // Continue to skip logic below
-        }
-      }
-
-      if (shouldTryFallback) {
-        console.warn(`⚠ LLM Judge skipped: ${errorLabel} - ${error.message}`);
-        return checks.map((check) => ({
-          checkId: check.id,
-          passed: false,
-          skipped: true,
-          error: `${errorLabel}: ${error.message}`,
-        }));
-      }
-
-      // Non-skippable errors (unknown/parsing issues)
-      console.error(`❌ LLM Judge failed: ${errorLabel} - ${error.message}`);
-      return checks.map((check) => ({
-        checkId: check.id,
-        passed: false,
-        error: `${errorLabel}: ${error.message}`,
-      }));
+    const primary = await callJudgeWithRetry(() => this.callLLM(prompt, judgeConfig), this.retryOptions("primary"));
+    if (primary.ok) {
+      return this.parseResponse(primary.value, checks);
     }
+
+    const primaryMsg = errorMessage(primary.error);
+    console.warn(
+      `⚠ LLM Judge primary (${this.config.llmProvider}) failed after ${primary.attempts} attempt(s): ` +
+        `${primary.classification.label} - ${primaryMsg}`
+    );
+
+    // Fallback only when it is a genuinely different provider — re-calling the
+    // same provider with the same credentials is not a fallback, it is a fifth
+    // attempt without backoff (the #74 "fallback to itself" mechanic).
+    if (this.isFallbackAvailable() && this.config.fallbackLlmProvider !== this.config.llmProvider) {
+      console.warn(`  ↪ trying fallback provider (${this.config.fallbackLlmProvider})`);
+      const fallback = await callJudgeWithRetry(
+        () => this.callFallbackLLM(prompt, judgeConfig),
+        this.retryOptions("fallback")
+      );
+      if (fallback.ok) {
+        this.fallbackUsedCount++;
+        console.log(`✅ Fallback LLM succeeded (${this.config.fallbackLlmProvider})`);
+        return this.parseResponse(fallback.value, checks);
+      }
+      console.error(
+        `❌ Fallback LLM also failed after ${fallback.attempts} attempt(s): ` +
+          `${fallback.classification.label} - ${errorMessage(fallback.error)}`
+      );
+    }
+
+    return this.unscoredResults(checks, primary.classification, primaryMsg, primary.attempts);
+  }
+
+  private retryOptions(stage: "primary" | "fallback"): JudgeRetryOptions {
+    return {
+      maxRetries: this.config.judgeRetries ?? DEFAULT_JUDGE_RETRIES,
+      sleep: this.deps.sleep,
+      random: this.deps.random,
+      baseDelayMs: this.deps.baseDelayMs,
+      maxDelayMs: this.deps.maxDelayMs,
+      onRetry: ({ attempt, delayMs, classification }) => {
+        console.warn(
+          `  ⏳ judge ${stage} attempt ${attempt} hit ${classification.label}; retrying in ${Math.round(delayMs / 1000)}s`
+        );
+      },
+    };
+  }
+
+  private unscoredResults(
+    checks: LLMCheck[],
+    classification: JudgeErrorClassification,
+    message: string,
+    attempts: number
+  ): LLMJudgeResult[] {
+    console.warn(`⚠ LLM Judge UNSCORED (${classification.label}) — ${checks.length} check(s) carry no verdict`);
+    return checks.map((check) => unscoredJudgeResult(check.id, classification, message, attempts));
   }
 
   /**
@@ -216,8 +220,10 @@ export class LLMJudge {
       const result = await this.judge(responseText, judgeConfig, checks, testCaseContext);
       allResults.push(result);
 
-      // If all results from first run are skipped (auth issue), don't retry
-      if (i === 0 && result.every(r => r.skipped)) {
+      // If the first run rendered no verdict at all (judge unavailable after
+      // its own bounded retries), a second consensus pass would only add load
+      // to a provider that is already refusing us.
+      if (i === 0 && result.every(isUnscored)) {
         return result;
       }
     }
@@ -237,27 +243,23 @@ export class LLMJudge {
         .filter((r): r is LLMJudgeResult => r !== undefined);
 
       if (checkResults.length === 0) {
-        return {
-          checkId: check.id,
-          passed: false,
-          error: "No results found for check",
-        };
+        return unscoredJudgeResult(
+          check.id,
+          { kind: "malformed_verdict", label: "malformed_verdict" },
+          "No results found for check in any judge run"
+        );
       }
 
-      // Skip consensus if any result was skipped (auth issues)
-      const skippedResult = checkResults.find(r => r.skipped);
-      if (skippedResult) {
-        return skippedResult;
+      // A verdict from ANY run beats no verdict: only when every run went
+      // unscored does the check stay unscored (issue #110). Previously a single
+      // skipped run discarded the other run's real verdict.
+      const validResults = checkResults.filter(r => !isUnscored(r) && !r.error);
+      if (validResults.length === 0) {
+        return checkResults.find(isUnscored) ?? checkResults.find(r => r.error) ?? checkResults[0];
       }
-
-      // Skip consensus if any result had an error
-      const errorResult = checkResults.find(r => r.error);
-      if (errorResult && checkResults.every(r => r.error)) {
-        return errorResult;
-      }
+      const unscoredRuns = checkResults.length - validResults.length;
 
       // Majority vote for passed
-      const validResults = checkResults.filter(r => !r.error);
       const passCount = validResults.filter(r => r.passed).length;
       const majority = passCount > validResults.length / 2;
 
@@ -274,7 +276,9 @@ export class LLMJudge {
         count: Math.round(avgCount),
         score: avgScore > 0 ? avgScore : undefined,
         evidence: evidenceResult?.evidence,
-        consensus: `${passCount}/${validResults.length} passed`,
+        consensus:
+          `${passCount}/${validResults.length} passed` +
+          (unscoredRuns > 0 ? ` (${unscoredRuns} run(s) unscored)` : ""),
       };
     });
   }
@@ -713,11 +717,13 @@ export class LLMJudge {
       return checks.map((check) => {
         const checkResult = parsed.checks?.[check.id];
         if (!checkResult) {
-          return {
-            checkId: check.id,
-            passed: false,
-            error: `Check result not found in LLM response. Keys returned: [${Object.keys(parsed.checks || {}).join(', ')}]`,
-          };
+          // The judge answered but omitted this check: that is a malformed
+          // verdict, not a verdict of "fail" (issue #110).
+          return unscoredJudgeResult(
+            check.id,
+            { kind: "malformed_verdict", label: "malformed_verdict" },
+            `Check result not found in LLM response. Keys returned: [${Object.keys(parsed.checks || {}).join(', ')}]`
+          );
         }
 
         // Handle ok as boolean or string (Gemini sometimes returns "true"/"false" strings)
@@ -748,13 +754,22 @@ export class LLMJudge {
         };
       });
     } catch (error: any) {
-      // If parsing fails, return failed results
-      return checks.map((check) => ({
-        checkId: check.id,
-        passed: false,
-        error: `Failed to parse LLM response: ${error.message}`,
-      }));
+      // Unparseable reply: the judge rendered no usable verdict (issue #110).
+      const cls = { kind: "malformed_verdict" as const, label: "malformed_verdict" };
+      return checks.map((check) =>
+        unscoredJudgeResult(check.id, cls, `Failed to parse LLM response: ${error.message}`)
+      );
     }
   }
 }
+
+function errorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
+}
+
+// Re-exported so callers that only import the judge can classify on their own.
+export { classifyJudgeError };
 
