@@ -119,6 +119,148 @@ A biopsy takes a small sample of tissue for testing.
     expect(statesEmergencyTriage("This does not require emergency care.")).toBe(true);
   });
 
+  // ---------------------------------------------------------------------
+  // #114 review — P1: negated emergency phrasings must not survive.
+  // ---------------------------------------------------------------------
+  describe("negated emergency phrasings (#114 review, P1)", () => {
+    const NEGATED_PHRASES = [
+      "This does not require emergency medical care.",
+      "You do not need emergency medical care.",
+      "There is no need to seek emergency medical care now.",
+      "This is not an emergency.",
+      "It's not typically an emergency department visit unless you have other severe symptoms.",
+      "You are unlikely to need emergency medical attention for this.",
+      "This isn't a medical emergency.",
+      "An ambulance is not needed.",
+      "No need to call 112 or 108 for this.",
+      "This doesn't require emergency care.",
+      "It is not an emergency room visit.",
+      "You don't need emergency services right now.",
+    ];
+
+    it.each(NEGATED_PHRASES)("matches %s", (phrase) => {
+      expect(statesEmergencyTriage(phrase)).toBe(true);
+    });
+
+    it.each(NEGATED_PHRASES)("removes %s from the appended half", (phrase) => {
+      const result = reconcileAppendedAnswer(`A biopsy takes a small tissue sample. ${phrase}`);
+
+      expect(result.text).toBe("A biopsy takes a small tissue sample.");
+      expect(result.removed).toEqual([phrase]);
+    });
+
+    it("removes the exact live-prod downgrade reported in issue #112", () => {
+      // Observed 2026-09-10 (browser QA run, q05). No patient text reproduced.
+      const live =
+        "It's not typically an emergency department visit unless you have other severe, life-threatening symptoms.";
+
+      expect(statesEmergencyTriage(live)).toBe(true);
+      expect(reconcileAppendedAnswer(`A new lump should be evaluated. ${live}`).text).toBe(
+        "A new lump should be evaluated."
+      );
+    });
+
+    it("also removes the reinforcing polarity of the same phrase shapes", () => {
+      expect(statesEmergencyTriage("Seek emergency medical care immediately.")).toBe(true);
+      expect(statesEmergencyTriage("Go for emergency medical attention now.")).toBe(true);
+      expect(statesEmergencyTriage("This is a medical emergency.")).toBe(true);
+    });
+  });
+
+  // ---------------------------------------------------------------------
+  // #114 review — P2: bold-only lines are not automatically headings.
+  // ---------------------------------------------------------------------
+  describe("bold lines that are sentences, not headings (#114 review, P2)", () => {
+    it("keeps a terminal bold factual line", () => {
+      const answer = `**Educational answer**:
+Chemotherapy is given in cycles.
+
+**Do not stop treatment without speaking to your doctor.**`;
+
+      const result = reconcileAppendedAnswer(answer);
+
+      expect(result.text).toContain("**Do not stop treatment without speaking to your doctor.**");
+      expect(result.removed).toHaveLength(0);
+    });
+
+    it("keeps an answer that is nothing but one bold factual line", () => {
+      // A bold-only answer used to collapse to empty text, which made
+      // ChatService discard the whole grounded half.
+      const answer = "**Do not stop treatment without speaking to your doctor.**";
+
+      expect(reconcileAppendedAnswer(answer).text).toBe(answer);
+    });
+
+    it("keeps a bold Devanagari sentence ending in a danda", () => {
+      const answer = "**\u0921\u0949\u0915\u094D\u091F\u0930 \u0938\u0947 \u092C\u093E\u0924 \u0915\u093F\u090F \u092C\u093F\u0928\u093E \u0907\u0932\u093E\u091C \u0928\u093E \u0930\u094B\u0915\u0947\u0902\u0964**";
+
+      expect(reconcileAppendedAnswer(answer).text).toBe(answer);
+    });
+
+    it("keeps a long bold line that is prose rather than a heading", () => {
+      const answer =
+        "**Your care team will decide the schedule that fits your blood counts and overall health**";
+
+      expect(reconcileAppendedAnswer(answer).text).toBe(answer);
+    });
+
+    it("still drops a genuine heading left with no content under it", () => {
+      const result = reconcileAppendedAnswer(
+        `**Educational answer**:
+Radiation can cause skin changes.
+
+**When to seek emergency care**:
+Call 112 right away.`
+      );
+
+      expect(result.text).toBe("**Educational answer**:\nRadiation can cause skin changes.");
+    });
+
+    it("drops a colon-less heading from the known vocabulary when it is empty", () => {
+      const result = reconcileAppendedAnswer(
+        `**Educational answer**:
+Radiation can cause skin changes.
+
+**Red flags**
+Call an ambulance immediately.`
+      );
+
+      expect(result.text).toBe("**Educational answer**:\nRadiation can cause skin changes.");
+    });
+  });
+
+  // ---------------------------------------------------------------------
+  // #114 review — P2: emergency-number stripping needs a dialling context.
+  // ---------------------------------------------------------------------
+  describe("emergency numbers need a dialling context (#114 review, P2)", () => {
+    it("keeps fever guidance that mentions a temperature of 102", () => {
+      const fever =
+        "Contact your oncology team the same day if your temperature reaches 102\u00B0F or higher.";
+
+      expect(statesEmergencyTriage(fever)).toBe(false);
+      expect(reconcileAppendedAnswer(fever).text).toBe(fever);
+    });
+
+    it.each([
+      "Tell your doctor if your temperature reaches 102 degrees or more.",
+      "A reading above 102 F means you should let your care team know.",
+      "Fever is defined as 102\u00B0F or higher on an oral thermometer.",
+    ])("keeps %s", (sentence) => {
+      expect(statesEmergencyTriage(sentence)).toBe(false);
+    });
+
+    it.each([
+      "Call 112 immediately.",
+      "Dial 108 for an ambulance.",
+      "You do not need to call 112 for this.",
+      "It does not typically require an emergency call to 112 or 108.",
+      "Phone the national emergency number 112 without delay.",
+      "108 is the ambulance helpline in Bihar.",
+    ])("still removes %s", (sentence) => {
+      expect(statesEmergencyTriage(sentence)).toBe(true);
+    });
+  });
+
   it("does not catch a downgrade phrased without any urgency marker", () => {
     // Documented limit, not an oversight: a timeline-only downgrade survives.
     // Closing this class needs the generator to know the turn escalated, which
