@@ -52,6 +52,14 @@ export interface HospitalSearchResult {
   navigation_notes: string[];
   score: number;
   national_referral?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  /**
+   * Straight-line kilometres from the city the patient named, populated by the
+   * directory when both ends are geocoded. Absent means "distance unknown" —
+   * never zero, and never a travel time.
+   */
+  distance_km?: number;
 }
 
 // ─── Plan Step Types ───────────────────────────────────────────

@@ -3195,8 +3195,17 @@ export class ChatService {
         ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}`
         : "";
 
+      // Straight-line distance, rounded to the nearest 10km so the number
+      // never implies more precision than a locality-level geocode carries.
+      // No travel time is stated anywhere — the road route is longer and the
+      // journey depends on connections this data says nothing about (#103).
+      const distance =
+        typeof h.distance_km === "number"
+          ? ` | ~${Math.max(10, Math.round(h.distance_km / 10) * 10)} km away (straight-line)`
+          : "";
+
       return `[${i + 1}] ${h.name}${tier}
-  Type: ${h.type} | City: ${h.city}, ${h.state}
+  Type: ${h.type} | City: ${h.city}, ${h.state}${distance}
   Departments: ${depts || "Not specified"}
   PMJAY: ${pmjay} | NCG Member: ${ncg} | Cost: ${h.cost_tier || "Unknown"}${phone}${address}${navNotes}${notes}`;
     };
@@ -3227,6 +3236,8 @@ The following hospitals are from the Suchi Navigator structured database (verifi
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
 When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
+
+Where a distance is given it is a STRAIGHT-LINE distance, already rounded. Repeat it as written if you mention it. NEVER convert it into a travel time, a road distance, or a journey duration — the road route is longer and the time depends on connections this data does not contain.
 ${travelCaveat}
 ${combinedBlocks}
 
@@ -3254,6 +3265,10 @@ MANDATORY: End your response with this exact sentence — "Hospital services, do
     const state = geography?.resolvedState?.trim() || null;
 
     switch (geography?.stage) {
+      // The patient's city is geocoded, so the list is ordered by real
+      // straight-line distance and each line carries its own kilometre figure.
+      case "distance":
+        return city ? `Nearest cancer centres to ${city}` : "Nearest cancer centres";
       // Hospitals in the city the patient named.
       case "city":
         return city ? `Centres in ${city}` : "Cancer centres";
