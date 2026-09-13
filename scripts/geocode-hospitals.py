@@ -225,7 +225,7 @@ def gate_inside_india(lat: float, lon: float) -> tuple[bool, str]:
 # ahead of the city at (26.157, 85.900), a 15km error in the origin of every
 # distance we compute from it. So on the locality tier, prefer a result that is
 # actually a populated place.
-SETTLEMENT_ADDRESS_TYPES = [
+LOCALITY_PREFERENCE = [
     "city",
     "town",
     "municipality",
@@ -233,30 +233,79 @@ SETTLEMENT_ADDRESS_TYPES = [
     "suburb",
     "neighbourhood",
     "hamlet",
+    "county",          # tehsil / subdistrict
+    "state_district",  # district — centroid can be tens of km from the town
+    "state",
 ]
 
 
-def _settlement_rank(hit: dict) -> int:
-    """Lower is better. Non-settlement results sort last."""
+def _locality_rank(hit: dict) -> int:
+    """Lower is better. Types we do not recognise sort last."""
     addresstype = str(hit.get("addresstype", "")).lower()
-    if addresstype in SETTLEMENT_ADDRESS_TYPES:
-        return SETTLEMENT_ADDRESS_TYPES.index(addresstype)
-    return len(SETTLEMENT_ADDRESS_TYPES)
+    if addresstype in LOCALITY_PREFERENCE:
+        return LOCALITY_PREFERENCE.index(addresstype)
+    return len(LOCALITY_PREFERENCE)
+
+
+def _gate_hits(
+    hits: list[dict], confidence: str, city: str, state: str, rejections: list[str]
+) -> list[tuple[dict, float, float, str]]:
+    """Every hit from one tier that clears BOTH gates."""
+    passing: list[tuple[dict, float, float, str]] = []
+    for hit in hits:
+        try:
+            lat = round(float(hit["lat"]), 4)
+            lon = round(float(hit["lon"]), 4)
+        except (KeyError, TypeError, ValueError):
+            rejections.append(f"[{confidence}] unparseable coordinates in result")
+            continue
+
+        ok, why = gate_inside_india(lat, lon)
+        if not ok:
+            rejections.append(f"[{confidence}] {why}")
+            continue
+
+        ok, why = gate_city_and_state(hit, city, state)
+        if not ok:
+            rejections.append(f"[{confidence}] {why}")
+            continue
+
+        passing.append((hit, lat, lon, confidence))
+    return passing
+
+
+def _hit_payload(hit: dict, lat: float, lon: float, confidence: str) -> dict:
+    return {
+        "latitude": lat,
+        "longitude": lon,
+        "geocode_source": GEOCODE_SOURCE,
+        "geocode_confidence": confidence,
+        "display_name": hit.get("display_name", ""),
+    }
 
 
 def try_queries(
-    queries: list[tuple[str, str]], city: str, state: str
+    queries: list[tuple[str, str]],
+    city: str,
+    state: str,
+    rank_across_tiers: bool = False,
 ) -> tuple[dict | None, list[str]]:
     """
-    Walk the query tiers most-specific first, returning the best hit from the
-    first tier that yields one clearing BOTH gates, along with every rejection
+    Resolve one record, returning the best gate-passing hit and every rejection
     reason seen on the way.
 
-    Within a tier, "best" means the first gate-passing hit — except on the
-    locality (`city`) tier, where a populated-place result beats a
-    same-named district or county (see SETTLEMENT_ADDRESS_TYPES).
+    Two selection strategies, because the two modes want opposite things:
+
+    - **hospitals** (`rank_across_tiers=False`): the tiers ARE the ranking — a
+      street-level answer beats a locality centroid — so the first tier that
+      yields a gate-passing hit wins. Within the locality tier only, a
+      populated place beats the district that shares its name.
+    - **cities** (`rank_across_tiers=True`): every tier is asking the same
+      question ("where is this town?"), so all tiers are pooled and the most
+      local result wins regardless of which query found it.
     """
     rejections: list[str] = []
+    pooled: list[tuple[dict, float, float, str]] = []
 
     for confidence, query in queries:
         hits = nominatim_search(query)
@@ -264,44 +313,23 @@ def try_queries(
             rejections.append(f"[{confidence}] no result for {query!r}")
             continue
 
-        passing: list[tuple[dict, float, float]] = []
-        for hit in hits:
-            try:
-                lat = round(float(hit["lat"]), 4)
-                lon = round(float(hit["lon"]), 4)
-            except (KeyError, TypeError, ValueError):
-                rejections.append(f"[{confidence}] unparseable coordinates in result")
-                continue
-
-            ok, why = gate_inside_india(lat, lon)
-            if not ok:
-                rejections.append(f"[{confidence}] {why}")
-                continue
-
-            ok, why = gate_city_and_state(hit, city, state)
-            if not ok:
-                rejections.append(f"[{confidence}] {why}")
-                continue
-
-            passing.append((hit, lat, lon))
-
+        passing = _gate_hits(hits, confidence, city, state, rejections)
         if not passing:
             continue
 
-        if confidence == "city":
-            passing.sort(key=lambda p: _settlement_rank(p[0]))
+        if rank_across_tiers:
+            pooled.extend(passing)
+            continue
 
-        hit, lat, lon = passing[0]
-        return (
-            {
-                "latitude": lat,
-                "longitude": lon,
-                "geocode_source": GEOCODE_SOURCE,
-                "geocode_confidence": confidence,
-                "display_name": hit.get("display_name", ""),
-            },
-            rejections,
-        )
+        if confidence == "city":
+            passing.sort(key=lambda p: _locality_rank(p[0]))
+        hit, lat, lon, conf = passing[0]
+        return _hit_payload(hit, lat, lon, conf), rejections
+
+    if pooled:
+        pooled.sort(key=lambda p: _locality_rank(p[0]))
+        hit, lat, lon, conf = pooled[0]
+        return _hit_payload(hit, lat, lon, conf), rejections
 
     return None, rejections
 
@@ -472,8 +500,18 @@ def run_cities(args: argparse.Namespace) -> int:
             continue
 
         print(f"[city {entries}] {canonical}, {state}")
+        # Second tier repeats the name as the district. Most Indian district
+        # headquarters share the district's name, and Nominatim will surface the
+        # settlement node for "Buxar, Buxar, Bihar, India" while answering the
+        # plain "Buxar, Bihar, India" with district and tehsil boundaries only.
         hit, rejections = try_queries(
-            [("city", f"{canonical}, {state}, India")], canonical, state
+            [
+                ("city", f"{canonical}, {state}, India"),
+                ("city", f"{canonical}, {canonical}, {state}, India"),
+            ],
+            canonical,
+            state,
+            rank_across_tiers=True,
         )
 
         if hit is None:
@@ -492,12 +530,15 @@ def run_cities(args: argparse.Namespace) -> int:
             f"{hit['display_name'][:90]}"
         )
         if not args.dry_run:
-            coords = f", coords: [{hit['latitude']}, {hit['longitude']}]"
-            cleaned_rest = re.sub(r",\s*coords:\s*\[[^\]]*\]", "", rest)
+            coords = f"coords: [{hit['latitude']}, {hit['longitude']}]"
+            # Drop any previous coords, then re-emit with exactly one separator
+            # so --force does not accumulate whitespace on each pass.
+            cleaned_rest = re.sub(r",?\s*coords:\s*\[[^\]]*\]", "", rest).strip()
+            trailer = f"{cleaned_rest} " if cleaned_rest else ""
             lines[idx] = (
                 f"{match.group('indent')}{{ canonical: '{canonical}', "
-                f"state: '{state}', aliases: [{match.group('aliases')}]"
-                f"{cleaned_rest}{coords} }},"
+                f"state: '{state}', aliases: [{match.group('aliases')}], "
+                f"{trailer}{coords} }},"
             )
 
     if not args.dry_run:
