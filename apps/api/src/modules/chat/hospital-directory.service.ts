@@ -131,6 +131,20 @@ export interface HospitalSearchGeography {
   requestedCity: string | null;
   /** State used for widening — supplied by the caller or resolved from the city. */
   resolvedState: string | null;
+  /**
+   * Normalised departments this search required — from `requiredDepartments`
+   * and from the cancer type — or an empty array when it required none.
+   */
+  requiredDepartments?: string[];
+  /**
+   * True when NO centre in the regional pool offers what the search required,
+   * so the results below are the unfiltered pool rather than capable centres.
+   *
+   * The never-empty guarantee still holds — a patient is never handed an empty
+   * list — but the caller must not present these rows as able to deliver the
+   * stated need. Label them, and say no capable centre was found nearby.
+   */
+  capabilityUnavailable?: boolean;
 }
 
 /** Search results plus the geographic provenance of the candidate set. */
@@ -221,14 +235,30 @@ export function normaliseDepartment(raw: string): string {
   return DEPARTMENT_SYNONYMS[token] ?? token;
 }
 
-/** True when `hospital` offers at least one of the required departments. */
-function hasAnyDepartment(
+/**
+ * True when `hospitalDepartments` satisfies EVERY requirement group.
+ *
+ * A requirement group is an "any of these departments will do" set — the
+ * departments that treat a cancer type, say. Two groups therefore mean two
+ * separate things the centre must be able to do, and they are ANDed.
+ *
+ * This matters for the common navigation query. "Bhagalpur mein oral cancer ki
+ * radiotherapy kahan hoti hai" produces a cancer-type group
+ * (head_and_neck / surgical_oncology / radiation_oncology) and a stated-need
+ * group (radiation_oncology). Flattened into one set and matched with `some`,
+ * surgery-only Healing Touch satisfies it through `surgical_oncology` and is
+ * offered to a patient who came asking for radiotherapy. Kept apart, the
+ * stated need has to be met on its own terms.
+ */
+function meetsAllRequirements(
   hospitalDepartments: string[],
-  required: string[]
+  groups: string[][]
 ): boolean {
-  if (required.length === 0) return true;
+  if (groups.length === 0) return true;
   const have = new Set(hospitalDepartments.map(normaliseDepartment));
-  return required.map(normaliseDepartment).some((d) => have.has(d));
+  return groups.every((group) =>
+    group.some((d) => have.has(normaliseDepartment(d)))
+  );
 }
 
 // ─── Distance ──────────────────────────────────────────────────────────────
@@ -514,7 +544,13 @@ export class HospitalDirectoryService implements OnModuleInit {
     if (this.hospitals.length === 0) {
       return {
         results: [],
-        geography: { stage: "none", requestedCity, resolvedState },
+        geography: {
+          stage: "none",
+          requestedCity,
+          resolvedState,
+          requiredDepartments: [],
+          capabilityUnavailable: false,
+        },
       };
     }
 
@@ -527,24 +563,35 @@ export class HospitalDirectoryService implements OnModuleInit {
     // record reads "No radiation or medical oncology — refer to Patna or
     // Muzaffarpur for those needs." Nearest-by-km would route a radiotherapy
     // patient to a centre that cannot deliver it. So capability is resolved
-    // before any geography is considered, and unlike every other filter here it
-    // does NOT degrade gracefully: a centre that cannot serve the need is
-    // dropped even if dropping it empties the set. Offering nothing is
-    // recoverable; offering a centre that cannot treat the patient is not.
-    const requiredDepartments = this.resolveRequiredDepartments(params);
-    if (requiredDepartments.length > 0) {
+    // before any geography is considered, and a centre that cannot serve the
+    // need is dropped however near it is — even when dropping it empties the
+    // city.
+    //
+    // The one case where the filter does not simply win is when it empties the
+    // WHOLE regional pool: nothing in East India offers what was asked for. An
+    // empty answer helps no one there, so the unfiltered pool is kept and the
+    // geography is flagged `capabilityUnavailable`, which the patient-facing
+    // layer must render as "no centre near you offers this" rather than as a
+    // list of centres that do.
+    const requirementGroups = this.resolveDepartmentRequirements(params);
+    const requiredDepartments = requirementGroups.flat();
+    let capabilityUnavailable = false;
+    if (requirementGroups.length > 0) {
       const before = results.length;
-      results = results.filter((h) =>
-        hasAnyDepartment(h.departments, requiredDepartments)
+      const capable = results.filter((h) =>
+        meetsAllRequirements(h.departments, requirementGroups)
       );
-      if (results.length === 0) {
+      if (capable.length > 0) {
+        results = capable;
+      } else {
+        capabilityUnavailable = true;
         this.logger.warn({
           event: "hospital_capability_filter_empty",
           requiredDepartments,
           cancerType: params.cancerType ?? null,
           candidatesBefore: before,
           reason:
-            "no centre in the regional pool offers the required department — returning none rather than a centre that cannot serve the need",
+            "no centre in the regional pool offers the required department — keeping the unfiltered pool and flagging capabilityUnavailable so the caller says no capable centre was found",
         });
       }
     }
@@ -595,6 +642,8 @@ export class HospitalDirectoryService implements OnModuleInit {
       stage,
       requestedCity,
       resolvedState,
+      requiredDepartments,
+      capabilityUnavailable,
     };
 
     // ── 3. PMJAY filter ──
@@ -650,9 +699,9 @@ export class HospitalDirectoryService implements OnModuleInit {
     // The same hard capability rule applies to the national pool: a referral
     // centre that cannot serve the need is not a referral.
     let nationalPool = [...this.nationalHospitals];
-    if (requiredDepartments.length > 0) {
+    if (requirementGroups.length > 0) {
       nationalPool = nationalPool.filter((h) =>
-        hasAnyDepartment(h.departments, requiredDepartments)
+        meetsAllRequirements(h.departments, requirementGroups)
       );
     }
     // When PMJAY required, prefer government/low-cost national centres
@@ -681,21 +730,38 @@ export class HospitalDirectoryService implements OnModuleInit {
   }
 
   /**
-   * The departments this search requires: an explicit `requiredDepartments`
-   * plus whatever the cancer type implies. Normalised and deduplicated, so
-   * "Radiotherapy" and "radiation_oncology" collapse to one requirement.
+   * What this search requires, as one "any of these will do" group per distinct
+   * requirement — the explicitly stated treatment need, and whatever the cancer
+   * type implies. Normalised and deduplicated, so "Radiotherapy" and
+   * "radiation_oncology" collapse to one requirement.
+   *
+   * The groups stay apart rather than being merged into one set: see
+   * {@link meetsAllRequirements} for why merging quietly re-admits a centre
+   * that cannot deliver the treatment the patient named.
    */
-  private resolveRequiredDepartments(params: HospitalSearchParams): string[] {
-    const required = new Set<string>();
-    for (const d of params.requiredDepartments ?? []) {
-      required.add(normaliseDepartment(d));
-    }
-    if (params.cancerType) {
-      for (const d of this.CANCER_TYPE_DEPARTMENTS[params.cancerType] ?? []) {
-        required.add(normaliseDepartment(d));
-      }
-    }
-    return [...required];
+  private resolveDepartmentRequirements(
+    params: HospitalSearchParams
+  ): string[][] {
+    const groups: string[][] = [];
+
+    const stated = [
+      ...new Set(
+        (params.requiredDepartments ?? []).map((d) => normaliseDepartment(d))
+      ),
+    ];
+    if (stated.length > 0) groups.push(stated);
+
+    const byCancerType = [
+      ...new Set(
+        (params.cancerType
+          ? (this.CANCER_TYPE_DEPARTMENTS[params.cancerType] ?? [])
+          : []
+        ).map((d) => normaliseDepartment(d))
+      ),
+    ];
+    if (byCancerType.length > 0) groups.push(byCancerType);
+
+    return groups;
   }
 
   /**

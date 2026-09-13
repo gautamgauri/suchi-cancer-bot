@@ -199,4 +199,49 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     expect(build(null, geo("state", "Darbhanga", "Bihar"))).toBe("");
     expect(build([], geo("state", "Darbhanga", "Bihar"))).toBe("");
   });
+
+  // ── Capability label (PR #148 review, P1) ──────────────────────────────
+  //
+  // When no centre in the regional pool offers what was asked for, the
+  // directory keeps its never-empty guarantee by returning the unfiltered
+  // pool. The list must then say so, or the rows read as centres that can
+  // deliver the treatment.
+  describe("capability label", () => {
+    const geoWith = (
+      over: Partial<HospitalSearchGeography>
+    ): HospitalSearchGeography => ({
+      ...geo("distance", "Bhagalpur", "Bihar"),
+      ...over,
+    });
+
+    it("says no centre offers the need when the search could not be served", () => {
+      const block = build(
+        [hospital({ distance_km: 52 })],
+        geoWith({
+          capabilityUnavailable: true,
+          requiredDepartments: ["radiation_oncology"],
+        })
+      );
+      expect(block).toContain(
+        "--- Nearest cancer centres to Bhagalpur — no centre listed here offers radiation oncology ---"
+      );
+    });
+
+    it("stays silent when the search was served", () => {
+      const block = build(
+        [hospital({ distance_km: 52 })],
+        geoWith({
+          capabilityUnavailable: false,
+          requiredDepartments: ["radiation_oncology"],
+        })
+      );
+      expect(block).toContain("--- Nearest cancer centres to Bhagalpur ---");
+      expect(block).not.toContain("no centre listed here offers");
+    });
+
+    it("stays silent for a search that required nothing", () => {
+      const block = build([hospital({ distance_km: 52 })], geoWith({}));
+      expect(block).not.toContain("no centre listed here offers");
+    });
+  });
 });
