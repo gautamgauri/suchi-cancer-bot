@@ -50,7 +50,7 @@ export const envSchema = z.object({
   // Review Copilot
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
   // Social post publishing (all optional — platforms without credentials are silently skipped)
-  SUCHI_SITE_URL:           z.string().optional().default("https://suchicancercare.org"),
+  SUCHI_SITE_URL:           z.string().optional().default("https://suchitracancercare.org"),
   SOCIAL_APPROVAL_SECRET:   z.string().optional(),
   DISTRIBUTION_APPROVAL_SECRET: z.string().optional(), // HMAC key for one-click distribution approve/reject links
   // Meta (Facebook + Instagram)
