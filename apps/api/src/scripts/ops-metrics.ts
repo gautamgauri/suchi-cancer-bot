@@ -96,7 +96,7 @@ async function collectDbMetrics(prisma: PrismaClient, now: Date) {
     >`
       SELECT
         count(*)::int AS total_rows,
-        (count(*) FILTER (WHERE id NOT LIKE '%::chunk::%'))::int AS non_deterministic_id_rows,
+        (count(*) FILTER (WHERE id IS DISTINCT FROM ("docId" || '::chunk::' || "chunkIndex")))::int AS non_deterministic_id_rows,
         (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
       FROM "KbChunk"
     `,
