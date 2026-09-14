@@ -68,11 +68,16 @@ export const KB_FTS_OWNERSHIP_NOTE =
 /**
  * The lexical retrieval query.
  *
- * $1 = user query text (fed to websearch_to_tsquery, so phrases and AND/OR work)
+ * $1 = tsquery TEXT built by `buildKbFtsQuery()` (kb-fts-query.ts) — content
+ *      words only, joined so that at least two of them must match. NOT the raw
+ *      user sentence: `websearch_to_tsquery('simple', <sentence>)` ANDs every
+ *      token and 'simple' drops no stopwords, so natural-language English and
+ *      every Hinglish question returned zero rows (issue #134).
  * $2 = row limit
  *
  * Uses KB_FTS_EXPRESSION in both the predicate and the rank so the planner can
- * use the expression index for the predicate.
+ * use the expression index for the predicate. `to_tsquery` (not `websearch_`)
+ * because the builder emits an explicit boolean expression with phrase operators.
  */
 export const KB_FTS_SEARCH_SQL = `
   SELECT
@@ -89,7 +94,7 @@ export const KB_FTS_SEARCH_SQL = `
     d."isTrustedSource"
   FROM "${KB_FTS_TABLE}" c
   INNER JOIN "KbDocument" d ON c."docId" = d.id,
-  websearch_to_tsquery('${KB_FTS_CONFIG}', $1) query
+  to_tsquery('${KB_FTS_CONFIG}', $1) query
   WHERE d.status = 'active'
     AND ${KB_FTS_EXPRESSION} @@ query
   ORDER BY ts_rank_cd(${KB_FTS_EXPRESSION}, query) DESC
@@ -160,7 +165,7 @@ export function isFtsSchemaError(error: unknown): boolean {
   return (
     /column\s+.?(c\.)?content\s+does not exist/i.test(message) ||
     /relation\s+.?KbChunk.?\s+does not exist/i.test(message) ||
-    /function\s+(websearch_to_tsquery|to_tsvector).*does not exist/i.test(message) ||
+    /function\s+(websearch_to_tsquery|to_tsquery|to_tsvector).*does not exist/i.test(message) ||
     /text search configuration\s+.?simple.?\s+does not exist/i.test(message)
   );
 }
