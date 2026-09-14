@@ -51,7 +51,14 @@ export interface EvidenceGateResult {
   // NEW: Clear status and approved chunks for trust-first enforcement
   status: 'ok' | 'insufficient';
   approvedChunks: EvidenceChunk[];
-  reasonCode: 'NO_RESULTS' | 'LOW_TRUST' | 'LOW_SCORE' | 'RECENCY_FAIL' | 'LOW_DIVERSITY' | 'FILTERED_OUT' | null;
+  reasonCode: 'NO_RESULTS' | 'LOW_TRUST' | 'LOW_SCORE' | 'RECENCY_FAIL' | 'LOW_DIVERSITY'
+    | 'FILTERED_OUT'
+    // Symptomatic query whose evidence is authoritative but off-topic (issue #53).
+    // Distinct from LOW_SCORE so the abstention is attributable in analytics and
+    // so a bounded symptomatic response can be routed to it once SCCF has signed
+    // off on the wording.
+    | 'LOW_RELEVANCE_SYMPTOMATIC'
+    | null;
   
   // EXISTING: Keep for backward compatibility
   shouldAbstain: boolean;
@@ -60,6 +67,16 @@ export interface EvidenceGateResult {
   reason?: AbstentionReason;
   message?: string;
 }
+
+/**
+ * Minimum average gate score (max of vecSim/lexSim, to avoid hybrid dilution)
+ * for evidence to count as topically relevant to a SYMPTOMATIC query.
+ *
+ * Same 0.3 figure the existing `isVeryWeak` rule already treats as "very weak";
+ * issue #53 makes it binding on the symptomatic path rather than skippable when
+ * a Tier-1 source happens to be present.
+ */
+const SYMPTOMATIC_MIN_RELEVANCE = 0.3;
 
 @Injectable()
 export class EvidenceGateService {
@@ -227,6 +244,48 @@ export class EvidenceGateService {
     const avgGateScore = gateScores.length > 0
       ? gateScores.reduce((sum, s) => sum + s, 0) / gateScores.length
       : 0;
+
+    // Issue #53 — SYMPTOMATIC PATH: source prestige must not rescue poor
+    // topical relevance.
+    //
+    // Below, `adjustedThresholds` drops to {1,1} whenever any Tier-1 chunk is
+    // present, which makes `isVeryWeak` false for ANY non-empty chunk set. The
+    // relevance floor is therefore not merely relaxed on the Tier-1 path — it
+    // is bypassed entirely. A single barely-related NCI paragraph was enough to
+    // license a full symptomatic answer, which is the runtime gap RQ-LUNG-02
+    // exposed: a total topical miss still produced an ungrounded medical
+    // explanation.
+    //
+    // NCI can be authoritative and still be the WRONG NCI paragraph. For a
+    // patient describing their own symptoms, "who published it" cannot stand in
+    // for "is it about this". The distinction being drawn:
+    //
+    //   weak because only ONE relevant authoritative passage was found
+    //       -> still usable; a cautious, bounded educational answer is fine,
+    //          and the {1,1} count relaxation below still applies.
+    //   weak because SEMANTIC RELEVANCE is poor
+    //       -> unusable, whatever the source's priority.
+    //
+    // Only the symptomatic path is changed. Every other queryType keeps the
+    // existing "Safe + Useful" behaviour.
+    if (queryType === 'symptoms' && avgGateScore < SYMPTOMATIC_MIN_RELEVANCE) {
+      this.logger.warn(
+        `Symptomatic query with avgGateScore ${avgGateScore.toFixed(3)} < ` +
+        `${SYMPTOMATIC_MIN_RELEVANCE} — abstaining regardless of source priority (issue #53)`
+      );
+      return {
+        status: 'insufficient',
+        approvedChunks: [],
+        reasonCode: 'LOW_RELEVANCE_SYMPTOMATIC',
+        shouldAbstain: true,
+        confidence: "low",
+        quality: "insufficient",
+        reason: "no_evidence",
+        message:
+          `Found ${chunks.length} passage(s) from ${uniqueDocIds.size} source(s), but none are ` +
+          `topically relevant enough to ground an answer about the patient's own symptoms`
+      };
+    }
 
     // Rule B3: Very weak matches (low gateScore AND insufficient passages/sources)
     // "Safe + Useful" policy: if we have trusted sources, allow through with low confidence
