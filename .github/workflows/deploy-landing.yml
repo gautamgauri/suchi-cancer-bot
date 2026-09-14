@@ -31,6 +31,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/landing/package-lock.json
 
+      # An HTML page saved under a .jpg name shipped to the live About page
+      # (issue #140). Refuse to build, let alone deploy, if any tracked image
+      # asset is not the image its extension claims.
+      - name: Public image assets have real image magic bytes (issue #140)
+        run: python3 scripts/check_image_assets.py
+
       - name: Install dependencies
         run: npm ci
         working-directory: apps/landing
