@@ -24,7 +24,12 @@ export interface PatientStateResult {
  * No LLM calls — pure pattern matching for sub-millisecond classification.
  *
  * Priority order (highest to lowest):
- *   URGENT > POST_DIAGNOSIS > CAREGIVER > SIDE_EFFECTS > SYMPTOMATIC > INFORMATIONAL
+ *   URGENT > CAREGIVER > POST_DIAGNOSIS > SIDE_EFFECTS > SYMPTOMATIC > INFORMATIONAL
+ *
+ * CAREGIVER sits above POST_DIAGNOSIS because its patterns answer WHO IS
+ * SPEAKING while POST_DIAGNOSIS's answer WHAT IS WRONG, and a relative's
+ * illness satisfies the latter just as well as one's own (issue #154). An
+ * explicit first-person claim on the illness overrides the relation word.
  */
 @Injectable()
 export class PatientStateService {
@@ -76,6 +81,21 @@ export class PatientStateService {
   private readonly CAREGIVER_RELATION_PATTERNS: RegExp[] = [
     /\bmy\s+(father|mother|mom|dad|wife|husband|spouse|brother|sister|son|daughter|friend|relative|uncle|aunt|grandfather|grandmother|parent)\b/i,
     /\bmy\s+(bhai|behen|maa|papa|pita|mata|pati|patni|dost|rishtedaar)\b/i, // Hindi relations
+    // Hinglish possessive + relation. The rule above requires the ENGLISH "my",
+    // so the natural Hinglish forms — "mere papa", "meri maa", "mera bhai" —
+    // matched no relation at all and fell through to INFORMATIONAL (issue #154).
+    // The relation nouns here are disjoint from the illness nouns in
+    // FIRST_PERSON_DISEASE_OWNERSHIP, so "meri maa" reads as a relation while
+    // "meri report" still reads as the speaker's own.
+    /\bmer[aei]\s+(bhai|behen|bahan|maa|maan|papa|pita|mata|pati|patni|beta|beti|chacha|chachi|dada|dadi|nana|nani|dost|rishtedaar|sasur|saas)\b/i,
+    // Devanagari relations. NO `\b` anywhere near these: JavaScript word
+    // boundaries are ASCII-only and are meaningless against Devanagari, a bug
+    // this project has shipped before. Without these a Hindi-script caregiver
+    // ("मेरे पिता को कैंसर है") matched no relation at all and fell through to
+    // INFORMATIONAL (issue #154).
+    /मेरे\s*(पिता|पापा|भाई|पति|चाचा|दादा|बेटे|ससुर)/,
+    /मेरी\s*(माँ|मां|माता|बहन|पत्नी|बेटी|चाची|दादी|सास)/,
+    /मेरा\s*(बेटा|भाई|दोस्त|रिश्तेदार)/,
     /\b(father|mother|mom|dad|wife|husband|spouse)\s+(has|had|got|diagnosed|is\s+having)\b/i,
     /\b(caring|care)\s+for\s+(my|a)\b/i,
     /\bsomeone\s+(I\s+know|close\s+to\s+me)\b/i,
@@ -96,6 +116,43 @@ export class PatientStateService {
     /\bmalignant\b/i,
     /\blump\b/i,
     /\btreatment\b/i,
+    // Devanagari equivalents — again deliberately without `\b` (issue #154).
+    /कैंसर|कैन्सर/,
+    /ट्यूमर|गाँठ|गांठ/,
+    /कीमो(थेरेपी)?/,
+    /रेडिएशन|विकिरण/,
+    /बायोप्सी/,
+    /इलाज|उपचार/,
+  ];
+
+  // ── FIRST-PERSON DISEASE OWNERSHIP (issue #154) ──────────────────────
+  // Who is ill, as distinct from what is wrong.
+  //
+  // POST_DIAGNOSIS's markers ("stage 4", "diagnosed with", "biopsy report")
+  // are DISEASE FACTS: equally true whether the speaker is the patient or a
+  // relative. CAREGIVER's markers are the only ones that say WHO IS SPEAKING.
+  // Because detect() returned on the first matching tier and POST_DIAGNOSIS
+  // was checked first, every caregiver query that mentioned a clinical fact —
+  // including "my father was diagnosed with breast cancer", the single most
+  // natural caregiver opening — was answered with the patient contract.
+  //
+  // These patterns are the tie-breaker in the other direction: an explicit
+  // first-person claim on the illness outranks a relation word, so
+  // "my father had cancer and now I have stage 2" stays POST_DIAGNOSIS.
+  private readonly FIRST_PERSON_DISEASE_OWNERSHIP: RegExp[] = [
+    /\bI\s+(have|had|am\s+having)\s+(stage\s+[1-4IV]+|cancer|a\s+(lump|tumou?r|mass)|lymphoma|leukemia|carcinoma|melanoma)\b/i,
+    /\bI\s+(was|am|have\s+been)\s+diagnosed\b/i,
+    /\b(my|I)\s+(own\s+)?(cancer|tumou?r)\s+(is|was|has)\b/i,
+    /\bmy\s+(biopsy|pathology|report|results?|oncologist|diagnosis|chemo(therapy)?|radiation|mastectomy|surgery)\b/i,
+    /\bmy\s+(er|pr|her2)\b/i,
+    /\bI'?m\s+(a\s+)?(cancer\s+)?(patient|survivor)\b/i,
+    // Hinglish
+    /\bmujhe\s+(cancer|kainsar|tumou?r|gaanth)\b/i,
+    /\bmer[ai]\s+(cancer|report|biopsy|ilaaj)\b/i,
+    // Devanagari — no `\b`, see the note on the relation patterns above.
+    /मुझे\s*(कैंसर|कैन्सर|ट्यूमर|गाँठ|गांठ)/,
+    /मेरा\s*(कैंसर|कैन्सर|ट्यूमर|इलाज|ऑपरेशन)/,
+    /मेरी\s*(रिपोर्ट|बायोप्सी|कीमो|सर्जरी)/,
   ];
 
   // ── SIDE_EFFECTS patterns ────────────────────────────────────────────
@@ -154,23 +211,24 @@ export class PatientStateService {
       return { state: PatientState.URGENT, confidence: "high", matchedPatterns: matched };
     }
 
-    // 2. POST_DIAGNOSIS
-    for (const pattern of this.POST_DIAGNOSIS_PATTERNS) {
-      if (pattern.test(text)) {
-        matched.push(`post_diagnosis:${pattern.source.substring(0, 40)}`);
-      }
-    }
-    if (matched.length > 0) {
-      return {
-        state: PatientState.POST_DIAGNOSIS,
-        confidence: matched.length >= 2 ? "high" : "medium",
-        matchedPatterns: matched,
-      };
-    }
-
-    // 3. CAREGIVER — need relation pattern + cancer context
+    // 2. WHO IS SPEAKING, before WHAT IS WRONG (issue #154)
+    //
+    // Precedence is URGENT > first-person disease ownership > CAREGIVER >
+    // POST_DIAGNOSIS > the rest. The previous order put POST_DIAGNOSIS second,
+    // and because each tier returns on its first match, CAREGIVER was never
+    // reached for any caregiver query that mentioned a clinical fact — a stage,
+    // "diagnosed with", a biopsy report. Those markers describe the DISEASE and
+    // are equally true of a relative's illness; only the relation words say who
+    // is asking. Caregivers were therefore addressed as the patient and lost the
+    // caregiver-only material: the action steps, the preparation checklist and
+    // the support helplines.
+    const ownsDisease = this.FIRST_PERSON_DISEASE_OWNERSHIP.some((p) => p.test(text));
     const hasRelation = this.CAREGIVER_RELATION_PATTERNS.some((p) => p.test(text));
-    if (hasRelation) {
+
+    // 3. CAREGIVER — a relation plus cancer context, unless the speaker has
+    // explicitly claimed the illness as their own ("my father had cancer and
+    // now I have stage 2" is the patient speaking, not a caregiver).
+    if (hasRelation && !ownsDisease) {
       const hasCancerContext = this.CANCER_CONTEXT_PATTERNS.some((p) => p.test(text));
       // "his/her cancer/treatment" patterns already imply cancer context
       const hasImpliedCancerContext = /\b(his|her)\s+(cancer|diagnosis|treatment|chemo|report|biopsy)\b/i.test(text);
@@ -184,7 +242,24 @@ export class PatientStateService {
       // Fall through to check other states
     }
 
-    // 4. SIDE_EFFECTS
+    // 4. POST_DIAGNOSIS
+    if (ownsDisease) {
+      matched.push("post_diagnosis:first_person_disease_ownership");
+    }
+    for (const pattern of this.POST_DIAGNOSIS_PATTERNS) {
+      if (pattern.test(text)) {
+        matched.push(`post_diagnosis:${pattern.source.substring(0, 40)}`);
+      }
+    }
+    if (matched.length > 0) {
+      return {
+        state: PatientState.POST_DIAGNOSIS,
+        confidence: matched.length >= 2 ? "high" : "medium",
+        matchedPatterns: matched,
+      };
+    }
+
+    // 5. SIDE_EFFECTS
     for (const pattern of this.SIDE_EFFECTS_PATTERNS) {
       if (pattern.test(text)) {
         matched.push(`side_effects:${pattern.source.substring(0, 40)}`);
@@ -198,7 +273,7 @@ export class PatientStateService {
       };
     }
 
-    // 5. SYMPTOMATIC — need first-person + symptom keyword
+    // 6. SYMPTOMATIC — need first-person + symptom keyword
     const hasFirstPerson = this.SYMPTOMATIC_FIRST_PERSON.some((p) => p.test(text));
     const hasSymptomKeyword = this.SYMPTOM_KEYWORDS.some((p) => p.test(text));
 
@@ -225,7 +300,7 @@ export class PatientStateService {
       }
     }
 
-    // 6. INFORMATIONAL — default fallback
+    // 7. INFORMATIONAL — default fallback
     return { state: PatientState.INFORMATIONAL, confidence: "low", matchedPatterns: ["informational:default"] };
   }
 }
