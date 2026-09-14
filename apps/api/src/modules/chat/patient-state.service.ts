@@ -28,8 +28,14 @@ export interface PatientStateResult {
  *
  * CAREGIVER sits above POST_DIAGNOSIS because its patterns answer WHO IS
  * SPEAKING while POST_DIAGNOSIS's answer WHAT IS WRONG, and a relative's
- * illness satisfies the latter just as well as one's own (issue #154). An
- * explicit first-person claim on the illness overrides the relation word.
+ * illness satisfies the latter just as well as one's own (issue #154). A
+ * first-person claim on one's OWN care overrides the relation word.
+ *
+ * Those two jobs use two different sets. FIRST_PERSON_SELF_REFERENCE is broad
+ * and only decides patient-vs-caregiver; FIRST_PERSON_DIAGNOSIS_OWNERSHIP is
+ * narrow and is the only first-person route into POST_DIAGNOSIS, because that
+ * contract asserts to the reader that they have been diagnosed. A scheduled
+ * biopsy, an oncology appointment or an operation is not a diagnosis.
  */
 @Injectable()
 export class PatientStateService {
@@ -85,7 +91,7 @@ export class PatientStateService {
     // so the natural Hinglish forms — "mere papa", "meri maa", "mera bhai" —
     // matched no relation at all and fell through to INFORMATIONAL (issue #154).
     // The relation nouns here are disjoint from the illness nouns in
-    // FIRST_PERSON_DISEASE_OWNERSHIP, so "meri maa" reads as a relation while
+    // FIRST_PERSON_SELF_REFERENCE, so "meri maa" reads as a relation while
     // "meri report" still reads as the speaker's own.
     /\bmer[aei]\s+(bhai|behen|bahan|maa|maan|papa|pita|mata|pati|patni|beta|beti|chacha|chachi|dada|dadi|nana|nani|dost|rishtedaar|sasur|saas)\b/i,
     // Devanagari relations. NO `\b` anywhere near these: JavaScript word
@@ -125,8 +131,10 @@ export class PatientStateService {
     /इलाज|उपचार/,
   ];
 
-  // ── FIRST-PERSON DISEASE OWNERSHIP (issue #154) ──────────────────────
-  // Who is ill, as distinct from what is wrong.
+  // ── WHO IS SPEAKING vs WHAT IS CONFIRMED (issue #154, PR #156 review) ──
+  //
+  // Two different questions, and collapsing them into one list is what the
+  // review of PR #156 caught.
   //
   // POST_DIAGNOSIS's markers ("stage 4", "diagnosed with", "biopsy report")
   // are DISEASE FACTS: equally true whether the speaker is the patient or a
@@ -136,23 +144,71 @@ export class PatientStateService {
   // including "my father was diagnosed with breast cancer", the single most
   // natural caregiver opening — was answered with the patient contract.
   //
-  // These patterns are the tie-breaker in the other direction: an explicit
-  // first-person claim on the illness outranks a relation word, so
-  // "my father had cancer and now I have stage 2" stays POST_DIAGNOSIS.
-  private readonly FIRST_PERSON_DISEASE_OWNERSHIP: RegExp[] = [
-    /\bI\s+(have|had|am\s+having)\s+(stage\s+[1-4IV]+|cancer|a\s+(lump|tumou?r|mass)|lymphoma|leukemia|carcinoma|melanoma)\b/i,
-    /\bI\s+(was|am|have\s+been)\s+diagnosed\b/i,
-    /\b(my|I)\s+(own\s+)?(cancer|tumou?r)\s+(is|was|has)\b/i,
-    /\bmy\s+(biopsy|pathology|report|results?|oncologist|diagnosis|chemo(therapy)?|radiation|mastectomy|surgery)\b/i,
-    /\bmy\s+(er|pr|her2)\b/i,
-    /\bI'?m\s+(a\s+)?(cancer\s+)?(patient|survivor)\b/i,
+  // So: two sets, with deliberately opposite breadth.
+  //
+  //   FIRST_PERSON_SELF_REFERENCE — WHO. The speaker is talking about their
+  //     own care. BROAD on purpose. It only decides which side of the
+  //     patient/caregiver fork the message falls on, and the cost of a false
+  //     positive is that a caregiver query keeps the routing it had before
+  //     issue #154. What it buys is that a patient who mentions a relative in
+  //     passing ("my wife wants to understand my treatment plan") is not
+  //     handed the caregiver contract and addressed as somebody else's
+  //     attendant. Membership of this set is never, on its own, a reason to
+  //     claim the speaker has cancer.
+  //
+  //   FIRST_PERSON_DIAGNOSIS_OWNERSHIP — CONFIRMED. The speaker states a
+  //     cancer diagnosis they already have. NARROW on purpose, because this
+  //     is the set that unlocks the POST_DIAGNOSIS contract, and that
+  //     contract opens by acknowledging the diagnosis and then enumerates
+  //     treatment options. Possessing a *pending* biopsy, an oncology
+  //     appointment, an operation or a lump is not a diagnosis: "My biopsy is
+  //     scheduled tomorrow; what should I expect?" is a frightened
+  //     undiagnosed person, and telling them they have cancer is the worst
+  //     failure this classifier can produce. Anything short of stated disease
+  //     falls through to the symptom/informational tiers, whose contracts
+  //     explicitly forbid assuming a diagnosis.
+  //
+  // The sets are nested — every diagnosis claim is also self-reference — so
+  // ownership is folded into the self check in detect() rather than repeated
+  // here.
+
+  // BROAD — answers "is the speaker talking about their own care?"
+  private readonly FIRST_PERSON_SELF_REFERENCE: RegExp[] = [
+    // Possessive directly on a clinical noun. Adjacency matters: "my mother's
+    // biopsy report" does not match, because "my" is followed by the relation.
+    /\bmy\s+(own\s+)?(biopsy|pathology|histopathology|scans?|mri|ct|pet|x-?ray|mammogram|colonoscopy|endoscopy|ultrasound|blood\s+tests?|tests?|reports?|results?|oncologist|surgeon|surgery|operation|treatments?|therapy|medicines?|medication|prescription|lumps?|symptoms?|tumou?rs?|cancer)\b/i,
+    /\bI\s+(have|had|am\s+having|found|noticed|discovered)\s+(a\s+)?(lump|mass|growth|tumou?r)\b/i,
     // Hinglish
+    /\bmer[ai]\s+(biopsy|report|rip[oa]rt|tests?|scan|ilaaj|treatment|operation|surgery|dawa|gaanth|cancer|kainsar)\b/i,
     /\bmujhe\s+(cancer|kainsar|tumou?r|gaanth)\b/i,
-    /\bmer[ai]\s+(cancer|report|biopsy|ilaaj)\b/i,
     // Devanagari — no `\b`, see the note on the relation patterns above.
     /मुझे\s*(कैंसर|कैन्सर|ट्यूमर|गाँठ|गांठ)/,
-    /मेरा\s*(कैंसर|कैन्सर|ट्यूमर|इलाज|ऑपरेशन)/,
-    /मेरी\s*(रिपोर्ट|बायोप्सी|कीमो|सर्जरी)/,
+    /मेर[ाीे]\s*(कैंसर|कैन्सर|ट्यूमर|गाँठ|गांठ|इलाज|उपचार|कीमो(थेरेपी)?|रिपोर्ट|बायोप्सी|जाँच|जांच|सर्जरी|ऑपरेशन|दवा|टेस्ट|स्कैन)/,
+  ];
+
+  // NARROW — answers "has the speaker said they are already diagnosed?"
+  private readonly FIRST_PERSON_DIAGNOSIS_OWNERSHIP: RegExp[] = [
+    // Stated disease. A lump, mass or growth is NOT here: that is a symptom
+    // under investigation, and it belongs to the SYMPTOMATIC tier.
+    /\bI\s+(have|had|am\s+having)\s+(stage\s+[1-4IV]+|cancer|lymphoma|leukemia|carcinoma|melanoma|sarcoma|myeloma)\b/i,
+    /\bI\s+(was|am|have\s+been)\s+diagnosed\b/i,
+    /\b(my|I)\s+(own\s+)?(cancer|tumou?r)\s+(is|was|has)\b/i,
+    // Care one only receives after a diagnosis. Bare "my biopsy", "my
+    // oncologist", "my surgery" and "my appointment" are deliberately absent:
+    // a person still awaiting a diagnosis has all of those too.
+    /\bmy\s+(diagnosis|chemo(therapy)?|radiation|radiotherapy|mastectomy)\b/i,
+    // A completed diagnostic report, as opposed to a scheduled procedure.
+    /\bmy\s+(biopsy|pathology|histopathology)\s+(report|results?)\b/i,
+    /\bmy\s+(er|pr|her2)\b/i,
+    /\bI'?m\s+(a\s+)?(cancer\s+)?(patient|survivor)\b/i,
+    // Hinglish. "meri report" is kept for parity with the long-standing
+    // English `\bmy\s+report\b` POST_DIAGNOSIS pattern above — a report in
+    // hand, not a procedure in the diary.
+    /\bmujhe\s+(cancer|kainsar)\b/i,
+    /\bmer[ai]\s+(cancer|kainsar|ilaaj|k[ei]mo(therapy)?|report)\b/i,
+    // Devanagari — no `\b`, see the note on the relation patterns above.
+    /मुझे\s*(कैंसर|कैन्सर)/,
+    /मेर[ाीे]\s*(कैंसर|कैन्सर|इलाज|उपचार|कीमो(थेरेपी)?|रिपोर्ट)/,
   ];
 
   // ── SIDE_EFFECTS patterns ────────────────────────────────────────────
@@ -222,13 +278,29 @@ export class PatientStateService {
     // is asking. Caregivers were therefore addressed as the patient and lost the
     // caregiver-only material: the action steps, the preparation checklist and
     // the support helplines.
-    const ownsDisease = this.FIRST_PERSON_DISEASE_OWNERSHIP.some((p) => p.test(text));
+    // Two distinct questions, deliberately answered by two sets of different
+    // breadth (see their definitions above):
+    //   speaksForSelf  — is this their own care they are asking about?
+    //   ownsDiagnosis  — have they said they are already diagnosed?
+    // The first gates CAREGIVER, the second gates POST_DIAGNOSIS. Using one
+    // list for both either misroutes a patient who mentions a relative, or
+    // tells an undiagnosed person they have cancer.
+    const ownsDiagnosis = this.FIRST_PERSON_DIAGNOSIS_OWNERSHIP.some((p) => p.test(text));
+    const speaksForSelf =
+      ownsDiagnosis || this.FIRST_PERSON_SELF_REFERENCE.some((p) => p.test(text));
     const hasRelation = this.CAREGIVER_RELATION_PATTERNS.some((p) => p.test(text));
 
-    // 3. CAREGIVER — a relation plus cancer context, unless the speaker has
-    // explicitly claimed the illness as their own ("my father had cancer and
-    // now I have stage 2" is the patient speaking, not a caregiver).
-    if (hasRelation && !ownsDisease) {
+    // 3. CAREGIVER — a relation plus cancer context, unless the speaker is
+    // talking about their own care ("my father had cancer and now I have
+    // stage 2", or "my wife wants to understand my treatment plan", are both
+    // the patient speaking, not a caregiver).
+    //
+    // The gate here is speaksForSelf, NOT ownsDiagnosis. A patient who has not
+    // stated a diagnosis is still not a caregiver, and requiring proof of
+    // disease to stay on the patient side would hand the caregiver contract —
+    // action steps, hospital checklist, helplines for the attendant — to the
+    // ill person themselves.
+    if (hasRelation && !speaksForSelf) {
       const hasCancerContext = this.CANCER_CONTEXT_PATTERNS.some((p) => p.test(text));
       // "his/her cancer/treatment" patterns already imply cancer context
       const hasImpliedCancerContext = /\b(his|her)\s+(cancer|diagnosis|treatment|chemo|report|biopsy)\b/i.test(text);
@@ -242,9 +314,10 @@ export class PatientStateService {
       // Fall through to check other states
     }
 
-    // 4. POST_DIAGNOSIS
-    if (ownsDisease) {
-      matched.push("post_diagnosis:first_person_disease_ownership");
+    // 4. POST_DIAGNOSIS — only for a stated diagnosis. Self-reference alone is
+    // not enough: it says whose care this is, not that cancer was found.
+    if (ownsDiagnosis) {
+      matched.push("post_diagnosis:first_person_diagnosis_ownership");
     }
     for (const pattern of this.POST_DIAGNOSIS_PATTERNS) {
       if (pattern.test(text)) {
