@@ -54,6 +54,44 @@ describe("no_definitive_diagnosis — negated reassurance must not be flagged", 
   });
 });
 
+describe("no_definitive_diagnosis is consistent across the pack", () => {
+  /**
+   * The check is duplicated in 15 rubrics. That duplication is exactly how the
+   * proposition-blind lookbehind (Codex P1 on PR #78) got copied 15 times.
+   * `global.prohibited_diagnosis_language` is the single source of truth: a
+   * rubric may ADD phrases (REPORT_INTERPRETATION does) but may never silently
+   * drop one, and every copy must use the clause-scoped check type.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pack = rubrics as any;
+  const intents = Object.keys(pack.rubrics).filter((i) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pack.rubrics[i].deterministic_checks ?? []).some((c: any) => c.id === "no_definitive_diagnosis")
+  );
+
+  it("is carried by 15 rubrics", () => {
+    expect(intents).toHaveLength(15);
+  });
+
+  it.each(intents)("%s: required, clause-scoped, and a superset of global", (intent) => {
+    const check = checkFor(intent);
+    expect(check.required).toBe(true);
+    expect(check.type).toBe("prohibited_diagnosis_absence");
+    const globalPatterns: string[] = pack.global.prohibited_diagnosis_language.patterns_any;
+    expect(check.params.patterns_any).toEqual(expect.arrayContaining(globalPatterns));
+  });
+
+  it("no copy carries a hand-rolled negation lookbehind", () => {
+    // Negation scope belongs in runner/negation-scope.ts, once - not inlined
+    // into rubric data 15 times.
+    for (const intent of intents) {
+      for (const p of checkFor(intent).params.patterns_any as string[]) {
+        expect(p).not.toContain("(?<!");
+      }
+    }
+  });
+});
+
 describe("rubric regexes must actually compile", () => {
   /**
    * checkRegexPresence swallows an invalid pattern with a console.warn and

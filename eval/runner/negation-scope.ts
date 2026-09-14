@@ -83,7 +83,8 @@ const CLAUSE_SUBJECT = String.raw`(?:you|your|i|we|they|he|she|it|this|these|the
 const CLAUSE_BOUNDARY_PATTERNS = [
   // Sentence / hard punctuation, including dashes and line breaks.
   String.raw`[.!?;:\n\r]`,
-  String.raw`--|[—–]`,
+  // Dash used as a clause break: "--", an em/en dash, or a spaced hyphen.
+  String.raw`--|[—–]|\s-\s`,
   // Contrastive conjunctions always open a new clause.
   String.raw`\b(?:but|however|yet|nevertheless|nonetheless|whereas|although|though|instead|still|otherwise|rather)\b`,
   // Coordination that introduces a fresh subject: "..., you", "and you", "so you".
@@ -134,15 +135,23 @@ function normalizePattern(pattern: string): string {
  * just after the last clause boundary that ends before the match.
  */
 function clauseStart(text: string, matchIndex: number): number {
-  const before = text.slice(0, matchIndex);
+  // Scan the FULL text, not text.slice(0, matchIndex): several boundaries are
+  // defined by a lookahead at the new clause's subject ("and |you", ", |you"),
+  // and truncating at the match start would cut that lookahead off and hide
+  // the boundary. Keep only boundaries that finish at or before the match.
   let start = 0;
   CLAUSE_BOUNDARY_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = CLAUSE_BOUNDARY_RE.exec(before)) !== null) {
-    start = m.index + m[0].length;
+  while ((m = CLAUSE_BOUNDARY_RE.exec(text)) !== null) {
     // Zero-width alternatives cannot occur here (every branch consumes at
     // least one character), but guard anyway so this can never spin.
-    if (m[0].length === 0) CLAUSE_BOUNDARY_RE.lastIndex += 1;
+    if (m[0].length === 0) {
+      CLAUSE_BOUNDARY_RE.lastIndex += 1;
+      continue;
+    }
+    const end = m.index + m[0].length;
+    if (end > matchIndex) break;
+    start = end;
   }
   return start;
 }
