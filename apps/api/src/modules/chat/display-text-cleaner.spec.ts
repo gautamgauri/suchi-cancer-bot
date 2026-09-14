@@ -132,6 +132,29 @@ describe('cleanResponseForDisplay', () => {
     });
   });
 
+  describe('escalated reply header keeps its line break (issue #135)', () => {
+    // Exact `safety.bannerText` from live prod, 2026-09-13, seed 1789272008,
+    // q02 messageId c8f0e493-…; the bubble's `responseText` in the same payload
+    // was 6 characters shorter: `**\n\n**` between the two header lines was gone.
+    const bannerTextFromRun =
+      '⚠️ **This sounds like a medical emergency.**\n\n**Call for help NOW:**\n• **112** — National emergency number (police, fire, ambulance)\n• **108** — Free ambulance service (available in most states)\n• **102** — Medical emergency helpline\n\n**While waiting for help:**\n• Do not move the person unnecessarily\n• If breathing is difficult, keep them sitting upright\n• If there is severe bleeding, apply gentle pressure with a clean cloth\n• Keep the person calm and warm\n• Note the time symptoms started — doctors will need this\n\n**Bring to the hospital:**\n• Aadhaar card / ID\n• Current medications list\n• Ayushman Bharat (PMJAY) card if available\n• Any recent medical reports\n\n**Important:** I am an information assistant, not a doctor. This is not a diagnosis. Please get emergency medical help immediately.\n\n---\n*If this is a medical emergency, call 112 or 108 immediately. This information does not replace emergency medical care.*';
+
+    it('leaves the critical escalation text byte-identical (no markers to strip)', () => {
+      expect(cleanResponseForDisplay(bannerTextFromRun)).toBe(bannerTextFromRun);
+    });
+
+    it('keeps "medical emergency." and "Call for help NOW:" on separate lines', () => {
+      const out = cleanResponseForDisplay(bannerTextFromRun);
+
+      expect(out).toContain('medical emergency.**\n\n**Call for help NOW:**');
+      expect(out).not.toContain('medical emergency.Call for help NOW:');
+    });
+
+    it('still strips a genuinely empty bold marker on a single line', () => {
+      expect(cleanResponseForDisplay('Some text ** ** more text.')).toBe('Some text more text.');
+    });
+  });
+
   describe('legitimate text is preserved', () => {
     it('leaves English punctuation and markdown untouched', () => {
       const text =

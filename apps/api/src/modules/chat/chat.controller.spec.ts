@@ -121,6 +121,33 @@ describe("ChatController — user-facing response text", () => {
     expect(result.responseText).toContain("\n\n");
   });
 
+  it("keeps the escalated reply's header break so bannerText stays a byte-exact prefix of responseText (issue #135)", async () => {
+    // Live prod 2026-09-13 (seed 1789272008, q02): the critical template's
+    // `…emergency.**\n\n**Call for help NOW:**` reached the bubble as
+    // `…emergency.Call for help NOW:` while the banner (never cleaned) was
+    // intact — breaking the #111 invariant that bannerText prefixes responseText.
+    const bannerText =
+      "⚠️ **This sounds like a medical emergency.**\n\n**Call for help NOW:**\n• **112** — National emergency number (police, fire, ambulance)\n• **108** — Free ambulance service (available in most states)\n• **102** — Medical emergency helpline";
+    const chat = {
+      handle: jest.fn().mockResolvedValue({
+        sessionId: dto.sessionId,
+        messageId: "msg-2",
+        responseText: bannerText,
+        citations: [],
+        safety: {
+          classification: "red_flag",
+          actions: ["show_emergency_banner", "end_conversation"],
+          bannerText,
+        },
+      }),
+    } as unknown as ChatService;
+
+    const result = await new ChatController(chat).send(dto);
+
+    expect(result.responseText.startsWith(result.safety.bannerText)).toBe(true);
+    expect(result.responseText).toContain("medical emergency.**\n\n**Call for help NOW:**");
+  });
+
   it("does not mangle ordinary prose that merely contains brackets or numbers", async () => {
     const controller = controllerReturning(
       "Screening is usually offered from age 40 (see your doctor about timing).",
