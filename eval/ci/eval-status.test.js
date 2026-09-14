@@ -198,3 +198,191 @@ test('email report for all-pass run does not request sending', () => {
   assert.equal(shouldSend, false);
   assert.match(subject, /All 21 tests passed/);
 });
+
+// --- Issue #110: judge transport failures are unscored, not quality failures --
+
+/**
+ * Report with `unscored` cases as the runner now writes them: the case is
+ * neither passed nor failed, its judge checks carry `unscored: true`, and the
+ * summary has a `judge` block on the availability axis.
+ */
+function makeUnscoredReport({ unscored = 3, failed = 0, total = 21, mixed = 0 } = {}) {
+  const base = makeReport({ failed, total });
+  const unscoredIds = [];
+  const judgeTouchedIds = [];
+  for (let i = 0; i < unscored; i += 1) {
+    const idx = total - 1 - i; // take from the tail so failures stay at the head
+    const r = base.results[idx];
+    r.passed = false;
+    r.unscored = true;
+    r.unscoredReason = 'rate_limited (HTTP 429) x6';
+    r.llmJudgeResults = [
+      { checkId: 'rag_backed_content', passed: false, skipped: true, unscored: true, unscoredReason: 'rate_limited', error: 'rate_limited (HTTP 429): got status: 429' },
+    ];
+    unscoredIds.push(r.testCaseId);
+    judgeTouchedIds.push(r.testCaseId);
+  }
+  // `mixed` cases failed on a rendered check AND lost another to the judge:
+  // they belong in `failed`, but the judge still could not fully score them.
+  for (let i = 0; i < mixed; i += 1) {
+    const r = base.results[i];
+    r.passed = false;
+    r.unscored = false;
+    r.llmJudgeResults = [
+      { checkId: 'rag_backed_content', passed: false },
+      { checkId: 'tone_supportive', passed: false, skipped: true, unscored: true, unscoredReason: 'rate_limited', error: 'rate_limited (HTTP 429): got status: 429' },
+    ];
+    judgeTouchedIds.push(r.testCaseId);
+  }
+  base.summary.passed = total - unscored - failed;
+  base.summary.failed = failed;
+  base.summary.unscored = unscored;
+  base.summary.judge = {
+    status: unscored + mixed === 0 ? 'active' : 'degraded',
+    scoredChecks: mixed,
+    unscoredChecks: unscored + mixed,
+    unscoredCases: judgeTouchedIds.length,
+    unscoredCaseIds: judgeTouchedIds,
+    reasons: { 'rate_limited (HTTP 429)': unscored + mixed },
+  };
+  return base;
+}
+
+test('#110: unscored cases within tolerance keep CI green (they are not passes either)', () => {
+  // 2 of 21 = 9.5% <= 10% tolerance
+  const status = deriveEvalStatus('success', makeUnscoredReport({ unscored: 2 }));
+  assert.equal(status, EVAL_STATUS.PASSED);
+});
+
+test('#110: unscored cases above tolerance => judge_unavailable, never failed', () => {
+  const report = makeUnscoredReport({ unscored: 6 });
+  assert.equal(deriveEvalStatus('success', report), EVAL_STATUS.JUDGE_UNAVAILABLE);
+  assert.notEqual(deriveEvalStatus('success', report), EVAL_STATUS.FAILED);
+});
+
+test('#110: judge_unavailable outranks failed when the judge could not score the run', () => {
+  const report = makeUnscoredReport({ unscored: 6, failed: 2 });
+  assert.equal(deriveEvalStatus('success', report), EVAL_STATUS.JUDGE_UNAVAILABLE);
+});
+
+test('#110: tolerance is configurable via argument and EVAL_MAX_UNSCORED_RATIO', () => {
+  const report = makeUnscoredReport({ unscored: 6 }); // 28.6%
+  assert.equal(
+    deriveEvalStatus('success', report, { maxUnscoredRatio: 0.5 }),
+    EVAL_STATUS.PASSED
+  );
+  assert.equal(
+    deriveEvalStatus('success', report, { env: { EVAL_MAX_UNSCORED_RATIO: '0.5' } }),
+    EVAL_STATUS.PASSED
+  );
+  assert.equal(
+    deriveEvalStatus('success', report, { maxUnscoredRatio: '0' }),
+    EVAL_STATUS.JUDGE_UNAVAILABLE
+  );
+  // Garbage falls back to the default rather than disabling the gate.
+  assert.equal(
+    deriveEvalStatus('success', report, { maxUnscoredRatio: 'not-a-number', env: {} }),
+    EVAL_STATUS.JUDGE_UNAVAILABLE
+  );
+});
+
+test('#110: a case that failed on rendered checks is still a failure, even with an unscored sibling', () => {
+  // 2 mixed cases (9.5% <= tolerance): the judge left a hole in each, but each
+  // failed a check it DID render, so the run is a quality failure, not an outage.
+  const report = makeUnscoredReport({ unscored: 0, failed: 2, mixed: 2 });
+  assert.equal(deriveEvalStatus('success', report), EVAL_STATUS.FAILED);
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  assert.equal(result.evaluation.failed, 2);
+  assert.equal(result.evaluation.unscored, 0);
+  assert.equal(result.evaluation.failedCaseIds.length, 2);
+  // ...and the availability axis still records that the judge was degraded.
+  assert.equal(result.evaluation.judge.unscoredCases, 2);
+});
+
+test('#110: judge holes count toward the outage tolerance even on cases that also failed', () => {
+  // 3 of 21 = 14.3% > 10%: the judge could not fully score enough of the run
+  // for it to be a trustworthy quality signal, so the red says "judge", and the
+  // annotation still names the genuine failures it did observe.
+  const report = makeUnscoredReport({ unscored: 0, failed: 3, mixed: 3 });
+  assert.equal(deriveEvalStatus('success', report), EVAL_STATUS.JUDGE_UNAVAILABLE);
+  const check = evaluateCheck(buildEvalResult({ report, evalStepOutcome: 'success', env: {} }));
+  assert.match(check.message, /3 case\(s\) did fail on checks that were scored/);
+});
+
+test('#110: eval-result.json separates unscored ids from failed ids', () => {
+  const report = makeUnscoredReport({ unscored: 3, failed: 2 });
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  const e = result.evaluation;
+  assert.equal(e.status, EVAL_STATUS.JUDGE_UNAVAILABLE);
+  assert.equal(e.unscored, 3);
+  assert.equal(e.unscoredCaseIds.length, 3);
+  assert.equal(e.failedCaseIds.length, 2);
+  for (const id of e.unscoredCaseIds) {
+    assert.ok(!e.failedCaseIds.includes(id), `${id} must not be reported as a failure`);
+  }
+  assert.equal(e.judge.status, 'degraded');
+  assert.equal(e.judge.maxUnscoredRatio, 0.1);
+  assert.deepEqual(e.judge.reasons, { 'rate_limited (HTTP 429)': 3 });
+});
+
+test('#110: legacy pre-#110 reports (no unscored fields) still derive a status', () => {
+  const report = makeReport({ failed: 1 });
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  assert.equal(result.evaluation.status, EVAL_STATUS.FAILED);
+  assert.equal(result.evaluation.unscored, 0);
+  assert.deepEqual(result.evaluation.unscoredCaseIds, []);
+});
+
+test('#110: evaluateCheck fails CI with a judge-unavailable reason, not an eval failure', () => {
+  const report = makeUnscoredReport({ unscored: 6, failed: 1 });
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  const check = evaluateCheck(result);
+  assert.equal(check.exitCode, 1);
+  assert.match(check.message, /::error title=Judge unavailable::/);
+  assert.match(check.message, /infrastructure failure, not a quality failure/);
+  assert.match(check.message, /rate_limited \(HTTP 429\)=6/);
+  assert.doesNotMatch(check.message, /::error title=Evaluation failed::/);
+});
+
+test('#110: a true quality failure still fails CI as an evaluation failure', () => {
+  const report = makeUnscoredReport({ unscored: 1, failed: 4 });
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  const check = evaluateCheck(result);
+  assert.equal(check.exitCode, 1);
+  assert.match(check.message, /::error title=Evaluation failed::/);
+  // The tolerated unscored case is reported as a warning, never as a failure.
+  assert.match(check.message, /::warning title=Judge partially unavailable::/);
+});
+
+test('#110: tolerated unscored cases pass CI but emit a warning annotation', () => {
+  const report = makeUnscoredReport({ unscored: 2 });
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  const check = evaluateCheck(result);
+  assert.equal(check.exitCode, 0);
+  assert.match(check.message, /::warning title=Judge partially unavailable::/);
+  assert.match(check.message, /unscored, not passed/);
+});
+
+test('#110: job summary lists unscored cases and the judge status separately', () => {
+  const report = makeUnscoredReport({ unscored: 3, failed: 2 });
+  const result = buildEvalResult({ report, evalStepOutcome: 'success', env: {} });
+  const md = buildSummaryMarkdown(result, 'success');
+  assert.match(md, /judge unavailable/);
+  assert.match(md, /\| Unscored \(judge unavailable\) \| 3 \|/);
+  assert.match(md, /Unscored cases \(judge rendered no verdict — not quality failures\)/);
+  assert.match(md, /Judge status: `degraded`/);
+});
+
+test('#110: email report separates unscored cases from failures and still notifies', () => {
+  const report = makeUnscoredReport({ unscored: 3, failed: 0 });
+  const { subject, body, shouldSend } = buildEmailReport(report, {
+    GITHUB_REPOSITORY: 'gautamgauri/suchi-cancer-bot',
+    GITHUB_RUN_ID: '123',
+  });
+  assert.equal(shouldSend, true);
+  assert.match(subject, /judge unavailable — 3\/21 unscored, 0 failures/);
+  assert.match(body, /Unscored Cases \(LLM judge unavailable — NOT quality failures\)/);
+  assert.match(body, /\| Unscored \(judge unavailable\) \| 3 \|/);
+  assert.doesNotMatch(body, /All tests passed/);
+  assert.doesNotMatch(body, /@dikshafoundation\.org/);
+});
