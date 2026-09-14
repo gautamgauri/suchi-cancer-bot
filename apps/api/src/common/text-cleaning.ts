@@ -141,6 +141,116 @@ export function stripCitationDebris(text: string): string {
 }
 
 /**
+ * Internal prompt scaffolding that reached the patient (issue #152).
+ *
+ * The response contracts in `llm.service.ts` are written as numbered, ALL-CAPS
+ * imperatives addressed to the model ("1. ACKNOWLEDGE the diagnosis
+ * empathetically:", "7. QUESTIONS FOR DOCTOR:"). Two consecutive scheduled
+ * WhatsApp QA runs delivered those headings verbatim in the reply bubble: the
+ * model reproduced the scaffold instead of only being steered by it. A reader
+ * got instructions addressed to the model where the answer should have been.
+ *
+ * This is the same fail-CLOSED bargain as the citation strip above. A heading
+ * the reader was never meant to see costs nothing when removed; staff-speak
+ * delivered to someone who just heard the word "cancer" costs trust.
+ *
+ * SCOPE — deliberately narrow. This removes LABELS ONLY and keeps every word of
+ * the answer that follows them, so it can never delete clinical content:
+ *
+ *   "1. ACKNOWLEDGE the diagnosis empathetically: I understand receiving…"
+ *     -> "I understand receiving…"
+ *
+ * It matches a CLOSED vocabulary lifted from the contracts themselves (see the
+ * list below), and every numbered form additionally requires the `N.` prefix
+ * the contracts use. Matching ALL-CAPS plus a number is what keeps ordinary
+ * prose — including a legitimate title-case "Treatment options:" heading the
+ * model writes for the reader — untouched.
+ *
+ * This does NOT change any contract wording. Restating the contracts so they
+ * stop being deliverable-shaped is the real fix and is clinical-prompt surface,
+ * so it goes through SCCF review separately; this is the delivery-boundary net
+ * that stops the leak reaching patients in the meantime.
+ */
+const CONTRACT_HEADING_KEYWORDS = [
+  // Longest first: the alternation must not settle for a shorter prefix.
+  "QUESTIONS FOR DOCTOR",
+  "PREPARATION CHECKLIST",
+  "SUPPORT RESOURCES",
+  "CAREGIVER-SPECIFIC",
+  "URGENT RED FLAGS",
+  "TREATMENT OPTIONS",
+  "WHAT IT COULD BE",
+  "STAGING OVERVIEW",
+  "ACKNOWLEDGE",
+  "WHAT TO DO",
+  "RECOMMEND",
+  "REASSURE",
+  "TIMELINE",
+  "EXPLAIN",
+  "START",
+  "TESTS",
+];
+
+/**
+ * A numbered contract heading: an optional bold wrapper, the `N.` the contract
+ * writes, one of the keywords above, the short lowercase descriptor the
+ * contract trails it with, and the `:`/`—` terminator.
+ *
+ * `(?![A-Za-z])` rather than `\b` after the keyword: JavaScript word boundaries
+ * are ASCII-only and are meaningless against Devanagari, a bug this project has
+ * shipped before (see the punctuation patterns above). The descriptor is capped
+ * and forbidden from crossing a newline or a second terminator so a match can
+ * never run forward and swallow the prose it precedes.
+ */
+const CONTRACT_HEADING_PATTERN = new RegExp(
+  "(^|\\s)" +
+    "\\*{0,2}\\d{1,2}[.)]\\s*\\*{0,2}\\s*" +
+    "(?:" + CONTRACT_HEADING_KEYWORDS.join("|") + ")" +
+    "(?![A-Za-z])" +
+    "[^\\n:—]{0,80}?" +
+    "\\s*(?:[:—]|(?=\\n))\\s*\\*{0,2}\\s*",
+  "g"
+);
+
+/**
+ * The contract's own title line, if the model echoes the whole block.
+ */
+const CONTRACT_TITLE_PATTERN =
+  /(^|\s)\*{0,2}RESPONSE CONTRACT(?: FOR [A-Z -]+)?(?: QUERIES)?\s*(?:\([^)\n]*\))?\s*:?\s*\*{0,2}\s*/g;
+
+/**
+ * `Educational answer:` and its siblings are prompt SECTION LABELS
+ * (`prompts/explain-mode.ts:24`, `prompts/navigate-mode.ts:16`,
+ * `llm.service.ts:1034`), not reader-facing headings — the web escalation
+ * banner already drops this one. The raw label survives in the stored text for
+ * evaluation; it just stops being delivered.
+ */
+const SECTION_LABEL_PATTERN =
+  /(^|\s)\*{0,2}Educational answer\*{0,2}\s*[:：]\s*\*{0,2}\s*/gi;
+
+/**
+ * A machine salutation. The model has no name for the reader, so "Dear User" /
+ * "डियर यूजर" is scaffolding leaking through a template, never something a
+ * person wrote to them.
+ */
+const MACHINE_SALUTATION_PATTERN =
+  /(^|\s)\*{0,2}(?:Dear User|डियर यूजर)\*{0,2}\s*[,،:।]?\s*/gi;
+
+/**
+ * Remove internal prompt scaffolding from text about to be shown or spoken to a
+ * patient (issue #152). Labels only — the answer after each label is kept.
+ */
+export function stripPromptScaffolding(text: string): string {
+  if (!text) return text;
+
+  return text
+    .replace(CONTRACT_TITLE_PATTERN, "$1")
+    .replace(CONTRACT_HEADING_PATTERN, "$1")
+    .replace(SECTION_LABEL_PATTERN, "$1")
+    .replace(MACHINE_SALUTATION_PATTERN, "$1");
+}
+
+/**
  * Last-stop safety net for TTS-bound text (issue #87).
  *
  * Each voice surface already shapes markdown its own way — the condenser turns
@@ -186,5 +296,7 @@ export function stripResidualMarkdownForSpeech(text: string): string {
  */
 export function cleanForSpeech(text: string): string {
   if (!text) return text;
-  return stripResidualMarkdownForSpeech(stripCitationDebris(stripCitationMarkers(text)));
+  return stripResidualMarkdownForSpeech(
+    stripCitationDebris(stripPromptScaffolding(stripCitationMarkers(text)))
+  );
 }
