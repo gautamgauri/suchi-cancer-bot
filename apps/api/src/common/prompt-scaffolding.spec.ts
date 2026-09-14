@@ -1,0 +1,214 @@
+/**
+ * Issue #152 — internal prompt scaffolding delivered to patients.
+ *
+ * The two fixtures below are the text a tester's phone ACTUALLY RECEIVED in the
+ * scheduled WhatsApp QA runs of 2026-09-14, copied verbatim from the issue. They
+ * are the regression bar: whatever else changes, these two strings must never
+ * again reach a reader with the scaffolding in them.
+ */
+
+import { stripPromptScaffolding } from "./text-cleaning";
+import { cleanResponseForDisplay } from "../modules/chat/display-text-cleaner";
+
+describe("stripPromptScaffolding (issue #152)", () => {
+  describe("delivered evidence", () => {
+    // run runs/2026-09-14T06-00-24_seed1789345824, q04 (abstention/en).
+    const DELIVERED_POST_DIAGNOSIS =
+      "Important: This information is for general educational purposes and is not a " +
+      "diagnosis. Please consult with your healthcare provider for accurate, personalized " +
+      "medical information. It's natural to feel anxious about this. Let me help you with " +
+      "some information. 1. ACKNOWLEDGE the diagnosis empathetically: I understand " +
+      "receiving a cancer diagnosis can be overwhelming. 2. EXPLAIN what the diagnosis " +
+      "means in plain language: A cancer diagnosis means that abnormal cells are growing " +
+      "uncontrollably in the body. For your uncle, this means these cells have been " +
+      "identified in his lungs. 3. STAGING OVERVIEW: Staging is a process that helps " +
+      "doctors understand the extent of the cancer, including the tumor size, whether it " +
+      "has spread to nearby lymph nodes.";
+
+    it("removes every contract heading from the delivered POST_DIAGNOSIS reply", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_POST_DIAGNOSIS);
+
+      expect(cleaned).not.toContain("ACKNOWLEDGE");
+      expect(cleaned).not.toContain("EXPLAIN");
+      expect(cleaned).not.toContain("STAGING OVERVIEW");
+      expect(cleaned).not.toMatch(/\d\.\s*[A-Z]{3,}/);
+    });
+
+    it("keeps every word of the answer that followed each heading", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_POST_DIAGNOSIS);
+
+      expect(cleaned).toContain("I understand receiving a cancer diagnosis can be overwhelming.");
+      expect(cleaned).toContain("A cancer diagnosis means that abnormal cells are growing");
+      expect(cleaned).toContain("identified in his lungs.");
+      expect(cleaned).toContain("Staging is a process that helps doctors understand");
+      // The disclaimer prefix is clinical wording and must survive untouched.
+      expect(cleaned).toContain(
+        "This information is for general educational purposes and is not a diagnosis."
+      );
+    });
+
+    // run runs/2026-09-14T00-00-56_seed1789324256, q01 (myth/hinglish).
+    const DELIVERED_HINGLISH =
+      "मुझे समझ आ रहा है कि आप जानना चाहते हैं कि क्या डियोडोरेंट के इस्तेमाल से ब्रेस्ट कैंसर हो सकता है। " +
+      "Educational answer: डियर यूजर, डियोडोरेंट और एंटीपर्सपिरेंट के इस्तेमाल से ब्रेस्ट कैंसर होने की " +
+      "चिंताओं का समर्थन करने के लिए कोई सबूत नहीं है।";
+
+    it("removes the section label and the machine salutation from the Hinglish reply", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_HINGLISH);
+
+      expect(cleaned).not.toContain("Educational answer");
+      expect(cleaned).not.toContain("डियर यूजर");
+    });
+
+    it("keeps the Devanagari answer around them intact", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_HINGLISH);
+
+      expect(cleaned).toContain("मुझे समझ आ रहा है कि आप जानना चाहते हैं");
+      expect(cleaned).toContain(
+        "डियोडोरेंट और एंटीपर्सपिरेंट के इस्तेमाल से ब्रेस्ट कैंसर होने की चिंताओं का समर्थन करने के लिए कोई सबूत नहीं है।"
+      );
+    });
+  });
+
+  describe("the full contract vocabulary", () => {
+    // Every ALL-CAPS heading in llm.service.ts's contracts, with the answer the
+    // model would write after it.
+    const HEADINGS = [
+      "1. ACKNOWLEDGE the diagnosis empathetically:",
+      "1. ACKNOWLEDGE emotional weight:",
+      "1. ACKNOWLEDGE with empathy:",
+      "1. START your response with compassion:",
+      "2. EXPLAIN what the diagnosis means in plain language:",
+      "2. EXPLAIN the condition in plain language:",
+      "2. REASSURE:",
+      "3. STAGING OVERVIEW:",
+      "3. WHAT IT COULD BE:",
+      "3. TREATMENT OPTIONS with oncologist recommendation:",
+      "4. TREATMENT OPTIONS:",
+      "4. WHAT TO DO:",
+      "4. CAREGIVER-SPECIFIC steps:",
+      "5. RECOMMEND consulting an oncologist:",
+      "5. TESTS:",
+      "5. PREPARATION CHECKLIST:",
+      "6. TIMELINE:",
+      "6. SUPPORT RESOURCES:",
+      "6. URGENT RED FLAGS:",
+      "7. QUESTIONS FOR DOCTOR:",
+    ];
+
+    it.each(HEADINGS)("strips %s and keeps the answer after it", (heading) => {
+      const cleaned = stripPromptScaffolding(`${heading} Speak to your oncologist soon.`);
+
+      expect(cleaned).toBe("Speak to your oncologist soon.");
+    });
+
+    it("strips a heading written with an em dash instead of a colon", () => {
+      expect(stripPromptScaffolding("4. TREATMENT OPTIONS — Surgery and chemotherapy.")).toBe(
+        "Surgery and chemotherapy."
+      );
+    });
+
+    it("strips a bold-wrapped heading", () => {
+      expect(
+        stripPromptScaffolding("**3. STAGING OVERVIEW:** Staging describes how far it has spread.")
+      ).toBe("Staging describes how far it has spread.");
+    });
+
+    it("strips a heading that ends the line with no terminator", () => {
+      const cleaned = stripPromptScaffolding("7. QUESTIONS FOR DOCTOR\nWhat stage is my cancer?");
+
+      expect(cleaned).not.toContain("QUESTIONS FOR DOCTOR");
+      expect(cleaned).toContain("What stage is my cancer?");
+    });
+
+    it("strips the contract's own title line", () => {
+      const cleaned = stripPromptScaffolding(
+        "RESPONSE CONTRACT FOR POST-DIAGNOSIS QUERIES (STRICT ORDER): A biopsy is a test."
+      );
+
+      expect(cleaned).toBe("A biopsy is a test.");
+    });
+  });
+
+  describe("it does not touch ordinary prose", () => {
+    it("keeps a title-case heading the model wrote for the reader", () => {
+      const text = "**Treatment options:** Surgery, chemotherapy and radiation are all used.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps a numbered list of real advice", () => {
+      const text =
+        "1. See a doctor: book an appointment this week.\n" +
+        "2. Bring your reports: take every scan you have.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps an ALL-CAPS word that is not a contract heading", () => {
+      const text = "1. MRI scans and CT scans are both used to look for spread.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps a keyword used as ordinary prose without the numbered prefix", () => {
+      const text = "Your oncologist will explain what the results mean.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps the emergency escalation header and its line break (issue #135)", () => {
+      const text =
+        "**This may be a medical emergency.**\n\n**Call for help NOW:**\nCall 112 right away.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("leaves Devanagari prose with a danda untouched", () => {
+      const text = "कीमोथेरेपी के दौरान बुखार आना गंभीर हो सकता है। तुरंत डॉक्टर से मिलें।";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("is a no-op on empty input", () => {
+      expect(stripPromptScaffolding("")).toBe("");
+    });
+
+    it("is idempotent", () => {
+      const once = stripPromptScaffolding("2. EXPLAIN in plain language: Cancer is a cell disease.");
+
+      expect(stripPromptScaffolding(once)).toBe(once);
+    });
+
+    it("never lengthens the text", () => {
+      const samples = [
+        "1. ACKNOWLEDGE with empathy: I hear you.",
+        "Educational answer: Screening finds cancer early.",
+        "Plain prose with no scaffolding at all.",
+      ];
+
+      for (const s of samples) {
+        expect(stripPromptScaffolding(s).length).toBeLessThanOrEqual(s.length);
+      }
+    });
+  });
+
+  describe("at the shared delivery boundary", () => {
+    it("cleanResponseForDisplay strips scaffolding for chat, voice and WhatsApp alike", () => {
+      const raw =
+        "1. ACKNOWLEDGE the diagnosis empathetically: I understand this is frightening. " +
+        "[citation:kb_en_nci_lung_v1:kb_3]";
+      const cleaned = cleanResponseForDisplay(raw);
+
+      expect(cleaned).toBe("I understand this is frightening.");
+    });
+
+    it("strips scaffolding and citation markers in the same pass without debris", () => {
+      const cleaned = cleanResponseForDisplay(
+        "Educational answer: स्क्रीनिंग जल्दी पता लगाती है [citation:a:b]।"
+      );
+
+      expect(cleaned).toBe("स्क्रीनिंग जल्दी पता लगाती है।");
+    });
+  });
+});
