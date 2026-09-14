@@ -250,9 +250,10 @@ export class CrossLingualService {
     }
 
     // Also add a purely-English medical equivalent — but only from MEDICAL terms.
-    // Before this gate the keyword query for "…dawai se bachcha affected hoga?
-    // exact batao" was literally "tell me medicine" (issue #126): two translated
-    // function words with no medical noun, which retrieves noise.
+    // Before this gate, a Hinglish pregnancy question that asked for medicine
+    // advice and ended in a "tell me" imperative produced the keyword query
+    // "tell me medicine" (issue #126): two translated function words with no
+    // medical noun, which retrieves noise.
     const medicalTerms = translatedTerms.filter((t) => MEDICAL_TERM.test(t));
     if (medicalTerms.length >= 2) {
       const medicalQuery = medicalTerms.join(" ");
