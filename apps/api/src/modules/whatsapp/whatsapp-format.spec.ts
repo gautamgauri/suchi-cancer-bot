@@ -17,8 +17,8 @@ describe("toWhatsAppMarkdown", () => {
   });
 
   it("rewrites markdown links to 'label: url'", () => {
-    expect(toWhatsAppMarkdown("See [our site](https://suchicancercare.org/x)")).toBe(
-      "See our site: https://suchicancercare.org/x",
+    expect(toWhatsAppMarkdown("See [our site](https://suchitracancercare.org/x)")).toBe(
+      "See our site: https://suchitracancercare.org/x",
     );
   });
 

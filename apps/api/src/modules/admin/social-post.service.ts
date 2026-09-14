@@ -42,7 +42,7 @@ const HARD_BLOCK_PATTERNS: RegExp[] = [
 
 const GCS_BUCKET   = process.env.QUEUE_GCS_BUCKET;
 const GCS_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-0202543132";
-const SITE_URL     = process.env.SUCHI_SITE_URL ?? "https://suchicancercare.org";
+const SITE_URL     = process.env.SUCHI_SITE_URL ?? "https://suchitracancercare.org";
 const API_BASE     = "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/social";
 
 const CONTENT_TYPE_TO_PATH: Record<string, string> = {

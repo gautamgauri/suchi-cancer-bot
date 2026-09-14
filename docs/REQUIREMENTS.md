@@ -176,7 +176,7 @@ The system uses **two independent classification layers**. These are not the sam
 
 ## 5. Functional Requirements — Content Pipeline
 
-The content pipeline produces treatment-information articles published on the Suchi website (`suchicancercare.org`).
+The content pipeline produces treatment-information articles published on the Suchi website (`suchitracancercare.org`).
 
 ### 5.1 Article Generation
 
