@@ -197,8 +197,10 @@ export class PatientStateService {
     // oncologist", "my surgery" and "my appointment" are deliberately absent:
     // a person still awaiting a diagnosis has all of those too.
     /\bmy\s+(diagnosis|chemo(therapy)?|radiation|radiotherapy|mastectomy)\b/i,
-    // A completed diagnostic report, as opposed to a scheduled procedure.
-    /\bmy\s+(biopsy|pathology|histopathology)\s+(report|results?)\b/i,
+    // NOTE: no "my biopsy report" / "my results" pattern here either. A report
+    // one is still WAITING for is not a diagnosis, and the report that has
+    // actually said something is caught by the result-bearing POST_DIAGNOSIS
+    // patterns above (`biopsy report says/shows`, `pathology report`).
     /\bmy\s+(er|pr|her2)\b/i,
     /\bI'?m\s+(a\s+)?(cancer\s+)?(patient|survivor)\b/i,
     // Hinglish. "meri report" is kept for parity with the long-standing

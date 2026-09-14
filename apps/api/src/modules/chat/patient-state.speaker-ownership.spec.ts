@@ -120,4 +120,113 @@ describe("patient-state speaker ownership (issue #154)", () => {
       );
     });
   });
+
+  /**
+   * PR #156 review, P1 — "Require an actual diagnosis before marking biopsy
+   * ownership".
+   *
+   * The first cut of FIRST_PERSON_DISEASE_OWNERSHIP matched `my (biopsy|
+   * oncologist|surgery|results)`, so possessing a PENDING procedure counted as
+   * proof of disease and routed to POST_DIAGNOSIS. That contract opens by
+   * acknowledging the diagnosis ("I understand receiving a [cancer type]
+   * diagnosis can be overwhelming") and then enumerates treatment options —
+   * i.e. it tells an undiagnosed person, at the most frightened moment they
+   * will ever have, that they have cancer. This is the highest-cost mistake
+   * this classifier can make, so the assertion is on the harm (never
+   * POST_DIAGNOSIS) rather than on any one replacement state.
+   */
+  describe("a pending procedure is not a diagnosis (PR #156 review, P1)", () => {
+    it.each([
+      // The exact string from the review finding.
+      "My biopsy is scheduled tomorrow; what should I expect?",
+      "My biopsy is next week — what happens during the procedure?",
+      "I am waiting for my biopsy results.",
+      "I have an appointment with an oncologist on Monday. What should I ask?",
+      "My surgery is scheduled for Friday, what should I expect?",
+      // Hinglish and Devanagari: the ownership sets are per-script, so the
+      // narrowing has to hold in all three or the bug simply moves.
+      "Meri biopsy kal hai, mujhe kya expect karna chahiye?",
+      "मेरी बायोप्सी कल है, मुझे क्या उम्मीद करनी चाहिए?",
+      "मेरी सर्जरी अगले हफ्ते है",
+    ])("is never told they are diagnosed: %s", (q) => {
+      expect(state(q)).not.toBe(PatientState.POST_DIAGNOSIS);
+    });
+
+    it("the flagship case lands on a contract that assumes nothing", () => {
+      // INFORMATIONAL carries no response contract at all, and SYMPTOMATIC's
+      // contract explicitly forbids assuming a diagnosis. Either is safe;
+      // today this text reaches INFORMATIONAL.
+      expect(state("My biopsy is scheduled tomorrow; what should I expect?")).toBe(
+        PatientState.INFORMATIONAL
+      );
+    });
+
+    it("a lump one is still having looked at is a symptom, not a diagnosis", () => {
+      expect(state("I have a lump in my breast, what should I do?")).toBe(
+        PatientState.SYMPTOMATIC
+      );
+    });
+
+    it("narrowing did not break actual diagnoses", () => {
+      expect(state("I was diagnosed with breast cancer last week.")).toBe(
+        PatientState.POST_DIAGNOSIS
+      );
+      expect(state("My chemotherapy starts next month.")).toBe(
+        PatientState.POST_DIAGNOSIS
+      );
+      expect(state("My mastectomy is scheduled for next month.")).toBe(
+        PatientState.POST_DIAGNOSIS
+      );
+      expect(state("My biopsy report says grade 2 — what does that mean?")).toBe(
+        PatientState.POST_DIAGNOSIS
+      );
+    });
+  });
+
+  /**
+   * PR #156 review, P2 — "Preserve patient routing for unlisted first-person
+   * forms".
+   *
+   * The CAREGIVER early return was gated on the disease-ownership list, so a
+   * diagnosed patient who mentioned a supporting relative in a form the list
+   * did not enumerate was handed the caregiver contract: addressed as somebody
+   * else's attendant, and given checklists and helplines instead of their own
+   * treatment information.
+   *
+   * The gate is now self-reference, which is deliberately broader than
+   * diagnosis ownership. The two findings pull in opposite directions and this
+   * asymmetry is the resolution: proving WHO is speaking may be generous
+   * (worst case: the routing this file had before issue #154), proving a
+   * DIAGNOSIS must be strict (worst case: telling someone they have cancer).
+   */
+  describe("a patient who mentions a relative stays a patient (PR #156 review, P2)", () => {
+    it.each([
+      // The exact string from the review finding.
+      "My wife wants to understand my treatment plan",
+      "My daughter is asking about my chemo schedule.",
+      "My son wants to know what my oncologist recommended.",
+      "My husband will come with me to my radiation sessions.",
+      "Meri patni mera treatment plan samajhna chahti hai",
+      "मेरी पत्नी मेरे इलाज के बारे में जानना चाहती है",
+    ])("routes to POST_DIAGNOSIS, not CAREGIVER: %s", (q) => {
+      expect(state(q)).toBe(PatientState.POST_DIAGNOSIS);
+    });
+
+    it("the relative's own illness still reads as CAREGIVER", () => {
+      // The discriminator is the possessive, not the relation word: "her
+      // treatment plan" is the relative's, "my treatment plan" is the
+      // speaker's.
+      expect(state("My wife wants to understand her treatment plan")).toBe(
+        PatientState.CAREGIVER
+      );
+    });
+
+    it("self-reference alone does not manufacture a diagnosis", () => {
+      // It suppresses CAREGIVER (who is speaking) without unlocking
+      // POST_DIAGNOSIS (what is confirmed).
+      expect(state("My mother had breast cancer. I found a lump last week.")).toBe(
+        PatientState.SYMPTOMATIC
+      );
+    });
+  });
 });
