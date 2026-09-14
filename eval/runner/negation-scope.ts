@@ -70,7 +70,14 @@ const NEGATION_TOKENS = [
   String.raw`[a-z]n['’]t\b`,
 ];
 
-const NEGATION_RE = new RegExp(`(?:${NEGATION_TOKENS.join("|")})`, "gi");
+const NEGATION_SOURCE = `(?:${NEGATION_TOKENS.join("|")})`;
+
+/**
+ * Fresh regex per call. A module-level /g regex carries a mutable lastIndex,
+ * and shared mutable state in a P0 safety check is not worth the allocation
+ * it saves.
+ */
+const negationRe = () => new RegExp(NEGATION_SOURCE, "gi");
 
 /**
  * Words that start a new clause, so a preceding negation no longer governs
@@ -92,7 +99,9 @@ const CLAUSE_BOUNDARY_PATTERNS = [
   String.raw`\b(?:and|or|so)\s+(?=${CLAUSE_SUBJECT}\b)`,
 ];
 
-const CLAUSE_BOUNDARY_RE = new RegExp(`(?:${CLAUSE_BOUNDARY_PATTERNS.join("|")})`, "gi");
+const CLAUSE_BOUNDARY_SOURCE = `(?:${CLAUSE_BOUNDARY_PATTERNS.join("|")})`;
+
+const clauseBoundaryRe = () => new RegExp(CLAUSE_BOUNDARY_SOURCE, "gi");
 
 /**
  * Upper bound on how far back a governing negation may sit inside the same
@@ -140,13 +149,13 @@ function clauseStart(text: string, matchIndex: number): number {
   // and truncating at the match start would cut that lookahead off and hide
   // the boundary. Keep only boundaries that finish at or before the match.
   let start = 0;
-  CLAUSE_BOUNDARY_RE.lastIndex = 0;
+  const re = clauseBoundaryRe();
   let m: RegExpExecArray | null;
-  while ((m = CLAUSE_BOUNDARY_RE.exec(text)) !== null) {
+  while ((m = re.exec(text)) !== null) {
     // Zero-width alternatives cannot occur here (every branch consumes at
     // least one character), but guard anyway so this can never spin.
     if (m[0].length === 0) {
-      CLAUSE_BOUNDARY_RE.lastIndex += 1;
+      re.lastIndex += 1;
       continue;
     }
     const end = m.index + m[0].length;
@@ -161,15 +170,24 @@ function clauseStart(text: string, matchIndex: number): number {
  * "Governs" = appears in the same clause, before the phrase, within
  * MAX_NEGATION_DISTANCE characters of it.
  */
-function governingNegation(text: string, matchIndex: number): string | null {
-  const start = Math.max(clauseStart(text, matchIndex), matchIndex - MAX_NEGATION_DISTANCE);
+function governingNegation(text: string, matchIndex: number, clauseFrom: number): string | null {
+  let start = Math.max(clauseFrom, matchIndex - MAX_NEGATION_DISTANCE);
+  // Never start the window mid-word. Slicing "casino" into "no" would put a
+  // `\b` at the cut and invent a negation out of nothing — the same class of
+  // bug as `\b` against Devanagari in the Hindi safety work.
+  while (start > 0 && start < matchIndex && /\w/.test(text[start - 1]) && /\w/.test(text[start])) {
+    start += 1;
+  }
   const window = text.slice(start, matchIndex);
   let last: string | null = null;
-  NEGATION_RE.lastIndex = 0;
+  const re = negationRe();
   let m: RegExpExecArray | null;
-  while ((m = NEGATION_RE.exec(window)) !== null) {
+  while ((m = re.exec(window)) !== null) {
+    if (m[0].length === 0) {
+      re.lastIndex += 1;
+      continue;
+    }
     last = m[0];
-    if (m[0].length === 0) NEGATION_RE.lastIndex += 1;
   }
   return last;
 }
@@ -208,7 +226,7 @@ export function scanProhibitedDiagnosis(text: string, patterns: string[]): Prohi
         matched: m[0],
         index: m.index,
         clause: text.slice(start, m.index + m[0].length).trim(),
-        negatedBy: governingNegation(text, m.index),
+        negatedBy: governingNegation(text, m.index, start),
       });
     }
   }

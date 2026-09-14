@@ -20,7 +20,7 @@
  * response string; this bug is entirely in how a response string is scored.
  */
 
-import { scanProhibitedDiagnosis } from "./negation-scope";
+import { scanProhibitedDiagnosis, MAX_NEGATION_DISTANCE } from "./negation-scope";
 import { DeterministicChecker } from "./deterministic-checker";
 import rubrics from "../rubrics/rubrics.v1.json";
 
@@ -119,6 +119,17 @@ describe("scan details", () => {
     const exempted = scan.hits.find((h) => h.negatedBy !== null);
     expect(exempted?.matched).toBe("you have cancer");
     expect(exempted?.negatedBy).toBe("not");
+  });
+
+  it("never invents a negation by slicing a word at the distance cap", () => {
+    // The 120-char cap must not cut "casino" into "no" and hand the phrase a
+    // word boundary it does not have. Padding puts the cut inside the word.
+    const pad = "x".repeat(MAX_NEGATION_DISTANCE - 4);
+    const text = `${pad}casino you definitely have cancer`;
+    const scan = scanProhibitedDiagnosis(text, ["(?i)you (definitely|certainly|clearly) have"]);
+    expect(scan.hits).toHaveLength(1);
+    expect(scan.hits[0].negatedBy).toBeNull();
+    expect(scan.ungoverned).toHaveLength(1);
   });
 
   it("fails closed on an uncompilable pattern instead of skipping it", () => {
