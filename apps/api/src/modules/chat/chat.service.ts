@@ -19,6 +19,7 @@ import { ResponseValidatorService } from "./response-validator.service";
 import { StructuredExtractorService, StructuredInfo } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
+import { isClaimVerificationQuestion } from "./utils/claim-verification";
 import { detectCancerType } from "./utils/cancer-type-detector";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
@@ -1732,6 +1733,14 @@ export class ChatService {
 
     const queryNeedsStructuredResponse = needsStructuredResponse(dto.userText);
 
+    // Issue #136: "people say X — is it true?" questions are claim checks, not
+    // definitions. The answer-first path returns a 2-3 sentence definition plus a
+    // clarifying question and never engages with the claim, so a myth question
+    // that happens to satisfy every other condition (Hindi biopsy probe, daily QA
+    // 2026-09-13) came back as "a biopsy is a procedure…". Route them to the
+    // full explain path instead. Language handling downstream is unchanged.
+    const isClaimVerification = isClaimVerificationQuestion(dto.userText);
+
     // DEBUG: Log all answer-first trigger conditions for diagnosis
     this.logger.log({
       event: 'answer_first_condition_check',
@@ -1742,6 +1751,7 @@ export class ChatService {
         intent: intentResult.intent,
         mightBeIdentifyQuestion,
         queryNeedsStructuredResponse,
+        isClaimVerification,
         evidenceChunksLength: evidenceChunks.length,
         avgSimilarity: avgSimilarity.toFixed(3),
         // Final eligibility (answer-first only for simple definitional queries)
@@ -1749,6 +1759,7 @@ export class ChatService {
                   (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
                   !mightBeIdentifyQuestion &&
                   !queryNeedsStructuredResponse &&
+                  !isClaimVerification &&
                   evidenceChunks.length >= 2 &&
                   avgSimilarity >= 0.40
       }
@@ -1762,6 +1773,7 @@ export class ChatService {
       (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
       !mightBeIdentifyQuestion && // Not an "identify" question (those need full structured response)
       !queryNeedsStructuredResponse && // Not asking for lists of symptoms/tests/treatments
+      !isClaimVerification && // Not a "is it true that…" myth check (#136) — needs the full explain path
       evidenceChunks.length >= 2 && // Sufficient chunks
       avgSimilarity >= 0.40 // Moderate confidence threshold
     ) {
