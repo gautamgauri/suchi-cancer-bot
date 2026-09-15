@@ -235,7 +235,7 @@ describe("SocialPostService — LinkedIn org posting", () => {
   const KEYS = ["LINKEDIN_ACCESS_TOKEN", "LINKEDIN_AUTHOR_URN"];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const callPost = (text = "Hello", url = "https://suchicancercare.org/a", title = "T"): Promise<any> =>
+  const callPost = (text = "Hello", url = "https://suchitracancercare.org/a", title = "T"): Promise<any> =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).postLinkedIn(text, url, title);
 
@@ -276,7 +276,7 @@ describe("SocialPostService — LinkedIn org posting", () => {
     process.env.LINKEDIN_AUTHOR_URN = "urn:li:organization:71580340";
     const fetchSpy = stubFetch({ ok: true, status: 201, headers: { "x-restli-id": "urn:li:share:99" } });
 
-    const res = await callPost("Read our new guide", "https://suchicancercare.org/x", "Chemotherapy");
+    const res = await callPost("Read our new guide", "https://suchitracancercare.org/x", "Chemotherapy");
 
     expect(res).toEqual({ success: true, postId: "urn:li:share:99" });
     const [url, opts] = fetchSpy.mock.calls[0];
@@ -292,7 +292,7 @@ describe("SocialPostService — LinkedIn org posting", () => {
     expect(body.commentary).toContain("Read our new guide");
     expect(body.visibility).toBe("PUBLIC");
     expect(body.distribution.feedDistribution).toBe("MAIN_FEED");
-    expect(body.content.article.source).toBe("https://suchicancercare.org/x");
+    expect(body.content.article.source).toBe("https://suchitracancercare.org/x");
     expect(body.content.article.title).toBe("Chemotherapy");
     expect(body.lifecycleState).toBe("PUBLISHED");
     // ugcPosts-era fields must be gone
@@ -364,7 +364,7 @@ describe("escapeLittleText", () => {
   });
 
   it("leaves ordinary prose and URLs untouched", () => {
-    const plain = "Cancer care in Bihar: read more at https://suchicancercare.org/x-y";
+    const plain = "Cancer care in Bihar: read more at https://suchitracancercare.org/x-y";
     expect(escapeLittleText(plain)).toBe(plain);
   });
 });

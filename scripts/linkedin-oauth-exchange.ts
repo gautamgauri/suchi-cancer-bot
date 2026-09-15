@@ -54,7 +54,7 @@ const GCP_PROJECT  = process.env.GCP_PROJECT ?? "gen-lang-client-0202543132";
 const SCOPES = process.env.LINKEDIN_SCOPES ?? "w_organization_social r_organization_social";
 
 // Must match a redirect URL registered on the LinkedIn app exactly.
-const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI ?? "https://suchicancercare.org/oauth/linkedin";
+const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI ?? "https://suchitracancercare.org/oauth/linkedin";
 
 // Every role that may post on behalf of an organisation. ADMINISTRATOR alone is
 // too narrow: social-post.service.ts accepts CONTENT_ADMIN too, and LinkedIn

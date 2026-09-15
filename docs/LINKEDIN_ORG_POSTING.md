@@ -42,7 +42,7 @@ Related: issue #27, `docs/RELIABILITY_BACKLOG.md` (P2-6),
 - A **redirect URL** registered on the app's Auth tab. It never has to serve
   anything; LinkedIn only needs to redirect a browser to it and you copy the
   `code` out of the address bar. Default used by the script:
-  `https://suchicancercare.org/oauth/linkedin`. Override with
+  `https://suchitracancercare.org/oauth/linkedin`. Override with
   `LINKEDIN_REDIRECT_URI` if you register something else — it must byte-match.
 - Client ID and client secret from the app's Auth tab.
 
@@ -87,7 +87,7 @@ id; `scope` is space-separated and URL-encoded):
 https://www.linkedin.com/oauth/v2/authorization
   ?response_type=code
   &client_id=<LINKEDIN_CLIENT_ID>
-  &redirect_uri=https%3A%2F%2Fsuchicancercare.org%2Foauth%2Flinkedin
+  &redirect_uri=https%3A%2F%2Fsuchitracancercare.org%2Foauth%2Flinkedin
   &state=suchi-<timestamp>
   &scope=w_organization_social%20r_organization_social
 ```
