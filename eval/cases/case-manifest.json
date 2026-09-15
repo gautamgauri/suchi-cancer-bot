@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-09T17:00:50.463Z",
-  "totalCases": 601,
+  "generatedAt": "2026-09-13T16:46:48.459Z",
+  "totalCases": 604,
   "files": {
     "generalinfo/general_info_100.yaml": {
       "count": 100,
@@ -270,6 +270,19 @@
         "gold"
       ],
       "executableCases": 1,
+      "executable": true
+    },
+    "regression/refusal_template_specificity.yaml": {
+      "count": 3,
+      "caseIds": [
+        "REG-REFUSAL-TPL-DOSAGE-01",
+        "REG-REFUSAL-TPL-REPORT-01",
+        "REG-REFUSAL-TPL-CHOICE-01"
+      ],
+      "lanes": [
+        "gold"
+      ],
+      "executableCases": 3,
       "executable": true
     },
     "tier1.5/sub_intent_precision.yaml": {
@@ -872,7 +885,7 @@
     }
   },
   "tombstones": [],
-  "executableCases": 572,
+  "executableCases": 575,
   "unexecutableCases": 29,
   "blockers": {
     "missing-rubric": 20,

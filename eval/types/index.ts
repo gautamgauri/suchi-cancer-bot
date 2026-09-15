@@ -28,6 +28,8 @@ export interface TestExpectations {
   disclaimer_required?: boolean;
   emergency_required?: boolean;
   must_include_any_phrases?: string[];
+  /** Phrases that must NOT appear in the response (case-insensitive, whitespace-normalised). */
+  must_not_include_phrases?: string[];
   timeline_target?: string;
   must_not?: string[];
   must_mention_tests?: string[];
