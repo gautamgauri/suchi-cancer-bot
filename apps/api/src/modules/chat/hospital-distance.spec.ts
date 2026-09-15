@@ -225,20 +225,20 @@ describe("Hospital distance ordering (issue #103)", () => {
       expect(results[0].id).toBe(HEALING_TOUCH);
     });
 
-    it("flags the search but still returns rows when nothing regional can serve the need", () => {
-      // Never-empty guarantee: no centre in the regional pool offers proton
-      // therapy, so the unfiltered pool is kept — and flagged, so the caller
-      // says no capable centre was found rather than presenting these as
-      // centres that deliver it.
+    it("flags the search AND withholds the incapable rows when nothing regional can serve the need", () => {
+      // No centre in the regional pool offers proton therapy. The rows that
+      // would have come back are withheld from the treatment-option list and
+      // parked on `nonCapableRegional` instead (PR #148 review, P0).
       const outcome = svc.searchHospitalsWithGeography({
         city: "Bhagalpur",
         maxResults: 3,
         includeNational: false,
         requiredDepartments: ["proton_therapy"],
       });
-      expect(outcome.results.length).toBeGreaterThan(0);
       expect(outcome.geography.capabilityUnavailable).toBe(true);
       expect(outcome.geography.requiredDepartments).toContain("proton_therapy");
+      expect(outcome.results).toEqual([]);
+      expect(outcome.nonCapableRegional.length).toBeGreaterThan(0);
     });
 
     it("does not flag a search the directory can actually serve", () => {
@@ -268,6 +268,154 @@ describe("Hospital distance ordering (issue #103)", () => {
         const depts = h.departments.map(normaliseDepartment);
         expect(depts).toContain("radiation_oncology");
       });
+    });
+  });
+
+  // ── Capability fails CLOSED, structurally (PR #148 review, P0) ───────────
+  //
+  // The blocker this block pins: when the hard capability filter emptied the
+  // whole regional pool, the search used to keep the unfiltered pool in
+  // `results`, set `capabilityUnavailable`, and rely on the caller appending a
+  // heading — "no centre listed here offers radiation oncology" — while the
+  // incapable centres went to the generator as its authoritative hospital
+  // list. That made a safety property depend on the model honouring a label.
+  //
+  // Structure carries it now. Incapable regional centres leave `results`
+  // entirely and land on `nonCapableRegional`, which no recommendation path
+  // reads. Proton therapy is the real-data case: zero of the 49 regional
+  // centres offer it, two of the 34 national ones do.
+  describe("no incapable centre reaches the treatment-option list", () => {
+    const PROTON = "proton_therapy";
+
+    /** Does this row actually offer the thing that was asked for? */
+    const offers = (h: HospitalSearchResult, dept: string) =>
+      h.departments.map(normaliseDepartment).includes(dept);
+
+    it("returns no incapable regional row for a requirement nothing regional satisfies", () => {
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Bhagalpur",
+        maxResults: 3,
+        requiredDepartments: [PROTON],
+      });
+
+      expect(outcome.geography.capabilityUnavailable).toBe(true);
+
+      // The assertion the review asked for: every row a patient could be
+      // offered can actually deliver the treatment named. Not "is labelled" —
+      // is capable.
+      outcome.results.forEach((h) => expect(offers(h, PROTON)).toBe(true));
+
+      // And specifically none of the near-but-incapable Bihar centres.
+      const regional = outcome.results.filter((h) => !h.national_referral);
+      expect(regional).toEqual([]);
+    });
+
+    it("still returns the capable national referral centres when some exist", () => {
+      // Failing closed must not fail silent. A patient asking about proton
+      // therapy from Bhagalpur is pointed at the centres that have it, so the
+      // generator is never handed an empty directory and left to improvise.
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Bhagalpur",
+        maxResults: 3,
+        requiredDepartments: [PROTON],
+      });
+
+      expect(outcome.results.length).toBeGreaterThan(0);
+      outcome.results.forEach((h) => {
+        expect(h.national_referral).toBe(true);
+        expect(offers(h, PROTON)).toBe(true);
+      });
+    });
+
+    it("keeps the withheld centres addressable, off the option list", () => {
+      // They are real centres near the patient; they simply cannot do this.
+      // Kept on their own field so a future SCCF-reviewed surface can say so
+      // truthfully, and so nothing that builds recommendations can reach them.
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Bhagalpur",
+        maxResults: 3,
+        requiredDepartments: [PROTON],
+      });
+
+      expect(outcome.nonCapableRegional.length).toBeGreaterThan(0);
+      outcome.nonCapableRegional.forEach((h) => {
+        expect(offers(h, PROTON)).toBe(false);
+        expect(h.national_referral).not.toBe(true);
+      });
+
+      // Disjoint from the option list — no row is in both.
+      const optionIds = new Set(outcome.results.map((h) => h.id));
+      outcome.nonCapableRegional.forEach((h) =>
+        expect(optionIds.has(h.id)).toBe(false)
+      );
+    });
+
+    it("returns nothing at all when not even a national centre can serve the need", () => {
+      // Fail closed all the way down. An unrecognised department matches no
+      // centre anywhere, and the honest answer is an empty directory rather
+      // than a list of centres relabelled as unable to help.
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Bhagalpur",
+        maxResults: 3,
+        requiredDepartments: ["Interpretive Dance"],
+      });
+
+      expect(outcome.geography.capabilityUnavailable).toBe(true);
+      expect(outcome.results).toEqual([]);
+      expect(outcome.nonCapableRegional.length).toBeGreaterThan(0);
+    });
+
+    it("leaves the ordinary case untouched — capable regional centres still lead", () => {
+      // The control. Radiotherapy IS available regionally, so nothing is
+      // withheld and the nearest capable centre still comes first.
+      const outcome = svc.searchHospitalsWithGeography({
+        city: "Darbhanga",
+        maxResults: 3,
+        requiredDepartments: ["radiation_oncology"],
+      });
+
+      expect(outcome.geography.capabilityUnavailable).toBe(false);
+      expect(outcome.nonCapableRegional).toEqual([]);
+      expect(outcome.results.filter((h) => !h.national_referral).length)
+        .toBeGreaterThan(0);
+      outcome.results.forEach((h) =>
+        expect(offers(h, "radiation_oncology")).toBe(true)
+      );
+    });
+
+    it("keeps an incapable centre out of the planner's structured results too", () => {
+      // End-to-end through the surface a patient actually reaches: the plan's
+      // `structuredHospitalResults` is what becomes the LLM's hospital list.
+      //
+      // The shipped directory does have radiotherapy near Bhagalpur, so the
+      // pools are narrowed here to the shape the blocker describes — a region
+      // whose only centre cannot do the thing, and a national centre that can.
+      // Both rows are real records from the shipped file.
+      const local = new HospitalDirectoryService();
+      (local as any).hospitals = [svc.getHospitalById("healing-touch-bhagalpur")!];
+      (local as any).nationalHospitals = [
+        { ...svc.getHospitalById("aiims-patna")!, national_referral: true as const },
+      ];
+      expect(
+        offers((local as any).hospitals[0], "radiation_oncology")
+      ).toBe(false);
+
+      const planner = new ExecutionPlannerService(local);
+      const plan = planner.plan(
+        "Which hospital in Bhagalpur for radiotherapy?",
+        "NAVIGATION",
+        undefined,
+        "en"
+      );
+
+      const rows = plan.structuredHospitalResults ?? [];
+      // Healing Touch is the nearest centre and the ONLY regional one, and it
+      // cannot deliver radiotherapy. It must not appear as an option.
+      expect(rows.map((h) => h.id)).not.toContain("healing-touch-bhagalpur");
+      rows.forEach((h) => expect(offers(h, "radiation_oncology")).toBe(true));
+      // And the capable referral centre still comes back, so the answer is
+      // useful rather than merely empty.
+      expect(rows.map((h) => h.id)).toContain("aiims-patna");
     });
   });
 
@@ -328,15 +476,15 @@ describe("Hospital distance ordering (issue #103)", () => {
         requiredDepartments: ["Interpretive Dance"],
       });
       // Failing closed means the requirement matches NOTHING — not that an
-      // unknown name quietly matches every centre. The rows that come back are
-      // the never-empty fallback, and they are flagged as not serving the need
-      // (PR #148 review): a patient is never handed an empty list, and the
-      // caller is never allowed to present these as capable centres.
+      // unknown name quietly matches every centre, and not that the pool it
+      // emptied comes back anyway. The treatment-option list is empty and the
+      // rows it would have held are on `nonCapableRegional` (PR #148 review).
       expect(outcome.geography.capabilityUnavailable).toBe(true);
       expect(outcome.geography.requiredDepartments).toEqual([
         "interpretive_dance",
       ]);
-      expect(outcome.results.length).toBeGreaterThan(0);
+      expect(outcome.results).toEqual([]);
+      expect(outcome.nonCapableRegional.length).toBeGreaterThan(0);
     });
 
     it("finds gynaecologic centres, which matched nothing before normalisation", () => {
