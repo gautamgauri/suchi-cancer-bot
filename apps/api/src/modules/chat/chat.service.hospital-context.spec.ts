@@ -126,36 +126,52 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     expect(block).toContain("--- Major cancer centres ---");
   });
 
-  // ── Prompt-instruction boundary (PR #99 re-review) ─────────────────────
+  // ── Cross-border travel caveat (SCCF review) ───────────────────────────
   //
   // AGENTS.md §1.3: prompt changes under chat/ go through SCCF human/medical
-  // review in their own labelled PR. This PR is the structural half — stage
-  // headings and data. The instruction that told the model not to describe a
-  // cross-border fallback as "nearby" and not to state or estimate a travel
-  // time was split out to its own labelled SCCF-review PR; this block must
-  // stay free of it until that review lands.
-  it("carries no un-reviewed proximity instruction to the model, on any rung", () => {
-    const rungs: [HospitalSearchGeography["stage"], string, string][] = [
-      ["adjacent_state", "Kishanganj", "Bihar"],
-      ["unfiltered", "Jaipur", "Rajasthan"],
-      ["city", "Patna", "Bihar"],
-      ["state", "Darbhanga", "Bihar"],
-      ["none", "", ""],
-    ];
-    for (const [stage, city, state] of rungs) {
-      const block = build(
-        [hospital({ city: "Siliguri", state: "West Bengal" })],
-        geo(stage, city || null, state || null)
-      );
-      expect(block).not.toContain("Do NOT describe them as");
-      expect(block).not.toContain("do NOT state or estimate a travel time");
+  // review in their own labelled PR. This is that change. #99 keeps the
+  // structural half — the stage-derived headings — and the assertion it uses
+  // to keep this instruction OUT is flipped here to assert it is present.
+  //
+  // It exists because on the adjacent-state and unfiltered rungs the block
+  // hands the model centres that can be 300–400 km from the patient, and a
+  // heading is easy to paraphrase away. Without the instruction there is
+  // nothing stopping the generator calling Siliguri "close by" to someone in
+  // Kishanganj, or inventing a journey time the directory holds no data for.
+  it("tells the model not to call a cross-border fallback nearby", () => {
+    const block = build(
+      [hospital({ city: "Siliguri", state: "West Bengal" })],
+      geo("adjacent_state", "Kishanganj", "Bihar")
+    );
+    expect(block).toContain(
+      "no cancer centre in the directory serves Kishanganj directly"
+    );
+    expect(block).toContain('Do NOT describe them as "nearby"');
+    expect(block).toContain("do NOT state or estimate a travel time or distance");
+  });
+
+  it("carries the same instruction on the unfiltered rung", () => {
+    const block = build(
+      [hospital({ city: "Kolkata", state: "West Bengal" })],
+      geo("unfiltered", "Jaipur", "Rajasthan")
+    );
+    expect(block).toContain(
+      "no cancer centre in the directory serves Jaipur directly"
+    );
+    expect(block).toContain('Do NOT describe them as "nearby"');
+  });
+
+  it("does not carry it when the centres really are in the patient's city or state", () => {
+    for (const stage of ["city", "state"] as const) {
+      const block = build([hospital()], geo(stage, "Darbhanga", "Bihar"));
       expect(block).not.toContain("no cancer centre in the directory serves");
+      expect(block).not.toContain("Do NOT describe them as");
     }
   });
 
-  it("keeps the only travel language on the heading, where the rung puts it", () => {
-    // adjacent_state and unfiltered disclose the widening in the heading
-    // itself — that is the structural half and it stays here.
+  it("keeps the structural travel language on the heading too", () => {
+    // The heading disclosure from #99 is unchanged by this branch: the
+    // instruction is additional to it, not a replacement for it.
     expect(
       build(
         [hospital({ city: "Siliguri", state: "West Bengal" })],
