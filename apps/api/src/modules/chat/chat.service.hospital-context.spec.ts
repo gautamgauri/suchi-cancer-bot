@@ -178,4 +178,102 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     expect(build(null, geo("state", "Darbhanga", "Bihar"))).toBe("");
     expect(build([], geo("state", "Darbhanga", "Bihar"))).toBe("");
   });
+
+  // ── Distance rendering (PR #148 review, P2) ────────────────────────────
+  //
+  // `Math.max(10, …)` floored every measured distance at ten kilometres, so a
+  // hospital geocoded to city confidence — i.e. to the very coordinate the
+  // patient's city resolves to, which is how many records are geocoded —
+  // measured 0km and was fed to the model as "~10 km away". A bound is
+  // truthful there; a number is not.
+  describe("distance lines", () => {
+    const withDistance = (km: number): string =>
+      build([hospital({ distance_km: km })], geo("distance", "Patna", "Bihar"));
+
+    it.each([0, 0.4, 3.2, 9.9])(
+      "renders a sub-10km distance (%s) as a bound, never as ~10 km",
+      (km) => {
+        const block = withDistance(km);
+        expect(block).toContain("within 10 km (straight-line)");
+        expect(block).not.toContain("~10 km away");
+        expect(block).not.toContain("0 km away");
+      }
+    );
+
+    it("rounds a longer distance to the nearest 10km, as before", () => {
+      expect(withDistance(52.4)).toContain("~50 km away (straight-line)");
+      expect(withDistance(96)).toContain("~100 km away (straight-line)");
+      expect(withDistance(11)).toContain("~10 km away (straight-line)");
+    });
+
+    it("says nothing at all when no distance was measured", () => {
+      const block = build([hospital()], geo("distance", "Patna", "Bihar"));
+      expect(block).not.toContain("km away");
+      expect(block).not.toContain("within 10 km");
+    });
+
+    it("heads a distance-ordered list by the city it is ordered from", () => {
+      expect(withDistance(52)).toContain("--- Nearest cancer centres to Patna ---");
+    });
+  });
+
+  // ── Prompt-instruction boundary (PR #148 review, P1) ───────────────────
+  //
+  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF medical review
+  // in their own labelled PR. The distance-handling instruction that belongs
+  // with this feature was split out; this block must stay free of it until
+  // that review lands.
+  it("carries no un-reviewed distance instruction to the model", () => {
+    const block = build(
+      [hospital({ distance_km: 52 })],
+      geo("distance", "Patna", "Bihar")
+    );
+    expect(block).not.toContain("STRAIGHT-LINE distance, already rounded");
+    expect(block).not.toContain("NEVER convert it into a travel time");
+  });
+
+  // ── Capability label (PR #148 review, P1) ──────────────────────────────
+  //
+  // When no centre in the regional pool offers what was asked for, the
+  // directory keeps its never-empty guarantee by returning the unfiltered
+  // pool. The list must then say so, or the rows read as centres that can
+  // deliver the treatment.
+  describe("capability label", () => {
+    const geoWith = (
+      over: Partial<HospitalSearchGeography>
+    ): HospitalSearchGeography => ({
+      ...geo("distance", "Bhagalpur", "Bihar"),
+      ...over,
+    });
+
+    it("says no centre offers the need when the search could not be served", () => {
+      const block = build(
+        [hospital({ distance_km: 52 })],
+        geoWith({
+          capabilityUnavailable: true,
+          requiredDepartments: ["radiation_oncology"],
+        })
+      );
+      expect(block).toContain(
+        "--- Nearest cancer centres to Bhagalpur — no centre listed here offers radiation oncology ---"
+      );
+    });
+
+    it("stays silent when the search was served", () => {
+      const block = build(
+        [hospital({ distance_km: 52 })],
+        geoWith({
+          capabilityUnavailable: false,
+          requiredDepartments: ["radiation_oncology"],
+        })
+      );
+      expect(block).toContain("--- Nearest cancer centres to Bhagalpur ---");
+      expect(block).not.toContain("no centre listed here offers");
+    });
+
+    it("stays silent for a search that required nothing", () => {
+      const block = build([hospital({ distance_km: 52 })], geoWith({}));
+      expect(block).not.toContain("no centre listed here offers");
+    });
+  });
 });

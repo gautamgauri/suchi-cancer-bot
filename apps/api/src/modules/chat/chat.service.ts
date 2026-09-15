@@ -3195,8 +3195,25 @@ export class ChatService {
         ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}`
         : "";
 
+      // Straight-line distance, rounded to the nearest 10km so the number
+      // never implies more precision than a locality-level geocode carries.
+      // No travel time is stated anywhere — the road route is longer and the
+      // journey depends on connections this data says nothing about (#103).
+      //
+      // Under 10km the figure is a bound, not a number. Many records are
+      // geocoded to city confidence, i.e. to the very coordinate the patient's
+      // city resolves to, so a same-city search measures exactly 0km — and the
+      // old `Math.max(10, …)` turned every one of those into "~10 km away",
+      // asserting a distance that was never measured (PR #148 review, P2).
+      const distance =
+        typeof h.distance_km === "number"
+          ? h.distance_km < 10
+            ? ` | within 10 km (straight-line)`
+            : ` | ~${Math.round(h.distance_km / 10) * 10} km away (straight-line)`
+          : "";
+
       return `[${i + 1}] ${h.name}${tier}
-  Type: ${h.type} | City: ${h.city}, ${h.state}
+  Type: ${h.type} | City: ${h.city}, ${h.state}${distance}
   Departments: ${depts || "Not specified"}
   PMJAY: ${pmjay} | NCG Member: ${ncg} | Cost: ${h.cost_tier || "Unknown"}${phone}${address}${navNotes}${notes}`;
     };
@@ -3250,10 +3267,42 @@ MANDATORY: End your response with this exact sentence — "Hospital services, do
    * coordinates, so any such claim would be invented (issue #103).
    */
   private regionalCentresHeading(geography?: HospitalSearchGeography | null): string {
+    return `${this.stageHeading(geography)}${this.capabilityLabel(geography)}`;
+  }
+
+  /**
+   * Factual suffix for the regional heading when the search required a
+   * treatment the directory has nowhere in the regional pool.
+   *
+   * NOT the mechanism that keeps incapable centres away from a patient — that
+   * is structural and lives in the directory. `searchHospitalsWithGeography()`
+   * now withholds those rows to `HospitalSearchOutcome.nonCapableRegional`, so
+   * on the planner path `regional` is empty whenever `capabilityUnavailable` is
+   * set and this suffix never renders (PR #148 review, P0). It remains as a
+   * belt-and-braces label for any caller that hands this method rows of its
+   * own: a data label on a list, in the same register as the stage headings,
+   * stating what the search found and asserting nothing about how to answer.
+   */
+  private capabilityLabel(geography?: HospitalSearchGeography | null): string {
+    if (geography?.capabilityUnavailable !== true) return "";
+    const needs = (geography.requiredDepartments ?? [])
+      .map((d) => d.replace(/_/g, " "))
+      .join(", ");
+    return needs
+      ? ` — no centre listed here offers ${needs}`
+      : " — no centre listed here offers the treatment asked about";
+  }
+
+  /** The heading proper, derived from the rung that produced the candidates. */
+  private stageHeading(geography?: HospitalSearchGeography | null): string {
     const city = geography?.requestedCity?.trim() || null;
     const state = geography?.resolvedState?.trim() || null;
 
     switch (geography?.stage) {
+      // The patient's city is geocoded, so the list is ordered by real
+      // straight-line distance and each line carries its own kilometre figure.
+      case "distance":
+        return city ? `Nearest cancer centres to ${city}` : "Nearest cancer centres";
       // Hospitals in the city the patient named.
       case "city":
         return city ? `Centres in ${city}` : "Cancer centres";

@@ -14,59 +14,74 @@ interface CityEntry {
   canonical: string;
   state: string;
   aliases: string[];
+  /**
+   * [latitude, longitude] of the town itself — NOT of the district that shares
+   * its name, which can sit tens of kilometres away.
+   *
+   * Geocoded once, offline, by `scripts/geocode-hospitals.py --cities` against
+   * public Nominatim, and committed here so nothing is resolved at runtime. Each
+   * value cleared two hard gates: the returned address had to name both this
+   * city and its state, and the point had to fall inside India. Optional only so
+   * a future entry can be added before it is geocoded — every entry present
+   * today carries one.
+   *
+   * Locality precision. Adequate for ordering cancer centres that are tens of
+   * kilometres apart; never adequate for a travel time or a street address.
+   */
+  coords?: [number, number];
 }
 
 /** Indian cities map — Bihar focus + major metros */
 const INDIAN_CITIES: CityEntry[] = [
   // Bihar
-  { canonical: 'Muzaffarpur', state: 'Bihar', aliases: ['muzaffarpur', 'muzzafarpur', 'muzafarpur', 'muzaffurpur'] },
-  { canonical: 'Patna', state: 'Bihar', aliases: ['patna', 'patnaa'] },
-  { canonical: 'Gaya', state: 'Bihar', aliases: ['gaya', 'gayaa', 'bodh gaya', 'bodhgaya'] },
-  { canonical: 'Bhagalpur', state: 'Bihar', aliases: ['bhagalpur', 'bhagalpoor'] },
-  { canonical: 'Darbhanga', state: 'Bihar', aliases: ['darbhanga', 'darbangha'] },
-  { canonical: 'Purnia', state: 'Bihar', aliases: ['purnia', 'purnea', 'purneya'] },
-  { canonical: 'Arrah', state: 'Bihar', aliases: ['arrah', 'ara', 'arah'] },
-  { canonical: 'Begusarai', state: 'Bihar', aliases: ['begusarai', 'begusrai'] },
-  { canonical: 'Katihar', state: 'Bihar', aliases: ['katihar', 'katiyar'] },
-  { canonical: 'Munger', state: 'Bihar', aliases: ['munger', 'monghyr', 'munghyr'] },
-  { canonical: 'Chhapra', state: 'Bihar', aliases: ['chhapra', 'chapra', 'chapara'] },
-  { canonical: 'Samastipur', state: 'Bihar', aliases: ['samastipur', 'samasthipur'] },
-  { canonical: 'Hajipur', state: 'Bihar', aliases: ['hajipur', 'hajeepur'] },
-  { canonical: 'Sasaram', state: 'Bihar', aliases: ['sasaram', 'sasaaram'] },
-  { canonical: 'Dehri', state: 'Bihar', aliases: ['dehri', 'dehri on sone'] },
-  { canonical: 'Siwan', state: 'Bihar', aliases: ['siwan', 'seewan'] },
-  { canonical: 'Motihari', state: 'Bihar', aliases: ['motihari', 'motihaari'] },
-  { canonical: 'Nawada', state: 'Bihar', aliases: ['nawada', 'nawaada'] },
-  { canonical: 'Bagaha', state: 'Bihar', aliases: ['bagaha', 'bagahaa'] },
-  { canonical: 'Bettiah', state: 'Bihar', aliases: ['bettiah', 'betiah', 'betiyaa'] },
-  { canonical: 'Jehanabad', state: 'Bihar', aliases: ['jehanabad', 'jahanabad'] },
-  { canonical: 'Aurangabad', state: 'Bihar', aliases: ['aurangabad'] },
-  { canonical: 'Buxar', state: 'Bihar', aliases: ['buxar', 'baksar'] },
-  { canonical: 'Kishanganj', state: 'Bihar', aliases: ['kishanganj', 'kishangunj'] },
+  { canonical: 'Muzaffarpur', state: 'Bihar', aliases: ['muzaffarpur', 'muzzafarpur', 'muzafarpur', 'muzaffurpur'], coords: [26.1183, 85.3858] },
+  { canonical: 'Patna', state: 'Bihar', aliases: ['patna', 'patnaa'], coords: [25.6093, 85.1235] },
+  { canonical: 'Gaya', state: 'Bihar', aliases: ['gaya', 'gayaa', 'bodh gaya', 'bodhgaya'], coords: [24.7964, 85.008] },
+  { canonical: 'Bhagalpur', state: 'Bihar', aliases: ['bhagalpur', 'bhagalpoor'], coords: [25.2495, 86.9828] },
+  { canonical: 'Darbhanga', state: 'Bihar', aliases: ['darbhanga', 'darbangha'], coords: [26.157, 85.8995] },
+  { canonical: 'Purnia', state: 'Bihar', aliases: ['purnia', 'purnea', 'purneya'], coords: [25.7774, 87.4731] },
+  { canonical: 'Arrah', state: 'Bihar', aliases: ['arrah', 'ara', 'arah'], coords: [25.5603, 84.6632] },
+  { canonical: 'Begusarai', state: 'Bihar', aliases: ['begusarai', 'begusrai'], coords: [25.4139, 86.1349] },
+  { canonical: 'Katihar', state: 'Bihar', aliases: ['katihar', 'katiyar'], coords: [25.5434, 87.569] },
+  { canonical: 'Munger', state: 'Bihar', aliases: ['munger', 'monghyr', 'munghyr'], coords: [25.3774, 86.4731] },
+  { canonical: 'Chhapra', state: 'Bihar', aliases: ['chhapra', 'chapra', 'chapara'], coords: [25.7784, 84.7515] },
+  { canonical: 'Samastipur', state: 'Bihar', aliases: ['samastipur', 'samasthipur'], coords: [25.8597, 85.7839] },
+  { canonical: 'Hajipur', state: 'Bihar', aliases: ['hajipur', 'hajeepur'], coords: [25.6906, 85.209] },
+  { canonical: 'Sasaram', state: 'Bihar', aliases: ['sasaram', 'sasaaram'], coords: [24.951, 84.0149] },
+  { canonical: 'Dehri', state: 'Bihar', aliases: ['dehri', 'dehri on sone'], coords: [24.9078, 84.1901] },
+  { canonical: 'Siwan', state: 'Bihar', aliases: ['siwan', 'seewan'], coords: [26.2185, 84.3585] },
+  { canonical: 'Motihari', state: 'Bihar', aliases: ['motihari', 'motihaari'], coords: [26.6507, 84.9115] },
+  { canonical: 'Nawada', state: 'Bihar', aliases: ['nawada', 'nawaada'], coords: [24.8932, 85.5452] },
+  { canonical: 'Bagaha', state: 'Bihar', aliases: ['bagaha', 'bagahaa'], coords: [27.0979, 84.0894] },
+  { canonical: 'Bettiah', state: 'Bihar', aliases: ['bettiah', 'betiah', 'betiyaa'], coords: [26.8023, 84.5074] },
+  { canonical: 'Jehanabad', state: 'Bihar', aliases: ['jehanabad', 'jahanabad'], coords: [25.2232, 84.9565] },
+  { canonical: 'Aurangabad', state: 'Bihar', aliases: ['aurangabad'], coords: [24.7537, 84.3747] },
+  { canonical: 'Buxar', state: 'Bihar', aliases: ['buxar', 'baksar'], coords: [25.5716, 83.973] },
+  { canonical: 'Kishanganj', state: 'Bihar', aliases: ['kishanganj', 'kishangunj'], coords: [26.1014, 87.9508] },
   // Jharkhand
-  { canonical: 'Ranchi', state: 'Jharkhand', aliases: ['ranchi', 'raanchi'] },
-  { canonical: 'Jamshedpur', state: 'Jharkhand', aliases: ['jamshedpur', 'jamsedpur', 'tatanagar'] },
-  { canonical: 'Dhanbad', state: 'Jharkhand', aliases: ['dhanbad', 'dhanabaad'] },
-  { canonical: 'Bokaro', state: 'Jharkhand', aliases: ['bokaro', 'bokaro steel city'] },
+  { canonical: 'Ranchi', state: 'Jharkhand', aliases: ['ranchi', 'raanchi'], coords: [23.3701, 85.325] },
+  { canonical: 'Jamshedpur', state: 'Jharkhand', aliases: ['jamshedpur', 'jamsedpur', 'tatanagar'], coords: [22.8015, 86.203] },
+  { canonical: 'Dhanbad', state: 'Jharkhand', aliases: ['dhanbad', 'dhanabaad'], coords: [23.7953, 86.431] },
+  { canonical: 'Bokaro', state: 'Jharkhand', aliases: ['bokaro', 'bokaro steel city'], coords: [23.6544, 86.1456] },
   // Major metros
-  { canonical: 'Delhi', state: 'Delhi', aliases: ['delhi', 'new delhi', 'dilli'] },
-  { canonical: 'Mumbai', state: 'Maharashtra', aliases: ['mumbai', 'bombay'] },
-  { canonical: 'Kolkata', state: 'West Bengal', aliases: ['kolkata', 'calcutta'] },
-  { canonical: 'Chennai', state: 'Tamil Nadu', aliases: ['chennai', 'madras'] },
-  { canonical: 'Bengaluru', state: 'Karnataka', aliases: ['bengaluru', 'bangalore', 'bangaluru'] },
-  { canonical: 'Hyderabad', state: 'Telangana', aliases: ['hyderabad', 'hyderabaad'] },
-  { canonical: 'Lucknow', state: 'Uttar Pradesh', aliases: ['lucknow', 'lakhnau'] },
-  { canonical: 'Varanasi', state: 'Uttar Pradesh', aliases: ['varanasi', 'banaras', 'benaras', 'kashi'] },
-  { canonical: 'Ahmedabad', state: 'Gujarat', aliases: ['ahmedabad', 'amdavad'] },
-  { canonical: 'Pune', state: 'Maharashtra', aliases: ['pune', 'poona'] },
-  { canonical: 'Jaipur', state: 'Rajasthan', aliases: ['jaipur', 'jaipoor'] },
-  { canonical: 'Chandigarh', state: 'Chandigarh', aliases: ['chandigarh', 'chandigadh'] },
-  { canonical: 'Bhopal', state: 'Madhya Pradesh', aliases: ['bhopal', 'bhopaal'] },
-  { canonical: 'Prayagraj', state: 'Uttar Pradesh', aliases: ['prayagraj', 'allahabad', 'ilahabad'] },
-  { canonical: 'Guwahati', state: 'Assam', aliases: ['guwahati', 'gauhati'] },
+  { canonical: 'Delhi', state: 'Delhi', aliases: ['delhi', 'new delhi', 'dilli'], coords: [28.6665, 77.217] },
+  { canonical: 'Mumbai', state: 'Maharashtra', aliases: ['mumbai', 'bombay'], coords: [19.055, 72.8692] },
+  { canonical: 'Kolkata', state: 'West Bengal', aliases: ['kolkata', 'calcutta'], coords: [22.5726, 88.3639] },
+  { canonical: 'Chennai', state: 'Tamil Nadu', aliases: ['chennai', 'madras'], coords: [13.0837, 80.2702] },
+  { canonical: 'Bengaluru', state: 'Karnataka', aliases: ['bengaluru', 'bangalore', 'bangaluru'], coords: [12.9768, 77.5901] },
+  { canonical: 'Hyderabad', state: 'Telangana', aliases: ['hyderabad', 'hyderabaad'], coords: [17.3606, 78.4741] },
+  { canonical: 'Lucknow', state: 'Uttar Pradesh', aliases: ['lucknow', 'lakhnau'], coords: [26.8381, 80.9346] },
+  { canonical: 'Varanasi', state: 'Uttar Pradesh', aliases: ['varanasi', 'banaras', 'benaras', 'kashi'], coords: [25.3356, 83.0076] },
+  { canonical: 'Ahmedabad', state: 'Gujarat', aliases: ['ahmedabad', 'amdavad'], coords: [23.0215, 72.5801] },
+  { canonical: 'Pune', state: 'Maharashtra', aliases: ['pune', 'poona'], coords: [18.5214, 73.8545] },
+  { canonical: 'Jaipur', state: 'Rajasthan', aliases: ['jaipur', 'jaipoor'], coords: [26.9155, 75.819] },
+  { canonical: 'Chandigarh', state: 'Chandigarh', aliases: ['chandigarh', 'chandigadh'], coords: [30.7334, 76.7797] },
+  { canonical: 'Bhopal', state: 'Madhya Pradesh', aliases: ['bhopal', 'bhopaal'], coords: [23.2585, 77.402] },
+  { canonical: 'Prayagraj', state: 'Uttar Pradesh', aliases: ['prayagraj', 'allahabad', 'ilahabad'], coords: [25.4381, 81.8338] },
+  { canonical: 'Guwahati', state: 'Assam', aliases: ['guwahati', 'gauhati'], coords: [26.1806, 91.7539] },
   // Key cancer treatment hubs
-  { canonical: 'Vellore', state: 'Tamil Nadu', aliases: ['vellore', 'velor'] },
-  { canonical: 'Thiruvananthapuram', state: 'Kerala', aliases: ['thiruvananthapuram', 'trivandrum'] },
+  { canonical: 'Vellore', state: 'Tamil Nadu', aliases: ['vellore', 'velor'], coords: [12.9072, 79.131] },
+  { canonical: 'Thiruvananthapuram', state: 'Kerala', aliases: ['thiruvananthapuram', 'trivandrum'], coords: [8.4882, 76.9476] },
 ];
 
 /** Context patterns that precede city names */
@@ -139,6 +154,29 @@ function matchCity(word: string): { entry: CityEntry; confidence: number } | nul
     return { entry: bestMatch.entry, confidence };
   }
 
+  return null;
+}
+
+/**
+ * Resolve the coordinates of a known city, using the same canonical
+ * INDIAN_CITIES table `detectLocation` uses (canonical names + aliases).
+ *
+ * Exists so the hospital directory can order centres by real distance from the
+ * city the patient named. Returns null for a city not in the table, which the
+ * caller must treat as "no distance signal" — never as "distance zero".
+ *
+ * @returns [latitude, longitude], or null when the city is unknown or ungeocoded
+ */
+export function resolveCoordsForCity(
+  city: string | null | undefined
+): [number, number] | null {
+  if (!city || city.trim().length === 0) return null;
+  const lower = city.trim().toLowerCase();
+  for (const entry of INDIAN_CITIES) {
+    if (entry.canonical.toLowerCase() === lower || entry.aliases.includes(lower)) {
+      return entry.coords ?? null;
+    }
+  }
   return null;
 }
 
