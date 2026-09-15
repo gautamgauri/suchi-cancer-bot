@@ -137,20 +137,48 @@ export interface HospitalSearchGeography {
    */
   requiredDepartments?: string[];
   /**
-   * True when NO centre in the regional pool offers what the search required,
-   * so the results below are the unfiltered pool rather than capable centres.
+   * True when NO centre in the regional pool offers what the search required.
    *
-   * The never-empty guarantee still holds — a patient is never handed an empty
-   * list — but the caller must not present these rows as able to deliver the
-   * stated need. Label them, and say no capable centre was found nearby.
+   * This is why the regional half of `results` is empty rather than a signal
+   * that the rows in it are suspect: the incapable centres were withheld to
+   * {@link HospitalSearchOutcome.nonCapableRegional}. It distinguishes "nothing
+   * near you can do this" from "nothing matched at all", which a caller needs
+   * in order to say something truthful.
+   *
+   * The never-empty guarantee is deliberately NOT extended to this case. A list
+   * that cannot serve the need is worse than no list; capability-filtered
+   * national referrals are the fallback.
    */
   capabilityUnavailable?: boolean;
 }
 
 /** Search results plus the geographic provenance of the candidate set. */
 export interface HospitalSearchOutcome {
+  /**
+   * The treatment-option list, and the ONLY field a patient-facing path may
+   * present as places to go for the need that was searched for.
+   *
+   * Every row here satisfies the search's required departments. When the
+   * requirement empties a pool, that pool contributes nothing to this field —
+   * it does not fall back to centres that cannot deliver the treatment.
+   */
   results: HospitalSearchResult[];
   geography: HospitalSearchGeography;
+  /**
+   * Regional centres WITHHELD from {@link results} because not one of them
+   * offers what the search required (`geography.capabilityUnavailable`).
+   *
+   * These are real cancer centres and they are near the patient — they simply
+   * cannot deliver the treatment that was asked about. They are kept here, off
+   * the treatment-option list, so a caller that wants to say something truthful
+   * about them ("these centres are near you but none offers radiotherapy") can,
+   * while no recommendation path can reach them by accident. Empty in the
+   * normal case.
+   *
+   * Anything rendered from this field is a separate, SCCF-reviewed surface; it
+   * is NOT a substitute for {@link results}.
+   */
+  nonCapableRegional: HospitalSearchResult[];
 }
 
 export interface VisitPrep {
@@ -520,9 +548,13 @@ export class HospitalDirectoryService implements OnModuleInit {
    * 4. Affordability tier
    * 5. Sort by score desc, limit maxResults
    *
-   * Every filter degrades gracefully: when a filter would empty the candidate
-   * set it is skipped and the previous set is kept, so the caller always gets
-   * the best available structured rows rather than nothing.
+   * The geography, PMJAY and affordability filters degrade gracefully: when one
+   * would empty the candidate set it is skipped and the previous set is kept.
+   * The capability filter does NOT — a centre that cannot deliver the treatment
+   * the search required is never returned for it, even when dropping it leaves
+   * nothing regional. Those rows are available on
+   * {@link HospitalSearchOutcome.nonCapableRegional} instead, which this
+   * `results`-only wrapper discards.
    */
   searchHospitals(params: HospitalSearchParams): HospitalSearchResult[] {
     return this.searchHospitalsWithGeography(params).results;
@@ -551,6 +583,7 @@ export class HospitalDirectoryService implements OnModuleInit {
           requiredDepartments: [],
           capabilityUnavailable: false,
         },
+        nonCapableRegional: [],
       };
     }
 
@@ -567,12 +600,19 @@ export class HospitalDirectoryService implements OnModuleInit {
     // need is dropped however near it is — even when dropping it empties the
     // city.
     //
-    // The one case where the filter does not simply win is when it empties the
-    // WHOLE regional pool: nothing in East India offers what was asked for. An
-    // empty answer helps no one there, so the unfiltered pool is kept and the
-    // geography is flagged `capabilityUnavailable`, which the patient-facing
-    // layer must render as "no centre near you offers this" rather than as a
-    // list of centres that do.
+    // The filter wins even when it empties the WHOLE regional pool — nothing in
+    // East India offers what was asked for. An earlier revision failed OPEN
+    // there: it kept the unfiltered pool in `results`, flagged
+    // `capabilityUnavailable`, and left the patient-facing layer to append a
+    // heading saying none of these centres can help. That made a safety
+    // property depend on the generator honouring a label while being handed the
+    // incapable centres as its authoritative hospital list (PR #148 review,
+    // P0). Structure now carries what wording was carrying: those rows leave
+    // `results` entirely and move to `nonCapableRegional` (see step 6), so no
+    // recommendation path can offer them for a need they cannot meet. The
+    // separately capability-filtered national referrals still stand, so a
+    // patient who needs radiotherapy in a region without it is pointed at a
+    // centre that has it rather than at nothing.
     const requirementGroups = this.resolveDepartmentRequirements(params);
     const requiredDepartments = requirementGroups.flat();
     let capabilityUnavailable = false;
@@ -591,7 +631,7 @@ export class HospitalDirectoryService implements OnModuleInit {
           cancerType: params.cancerType ?? null,
           candidatesBefore: before,
           reason:
-            "no centre in the regional pool offers the required department — keeping the unfiltered pool and flagging capabilityUnavailable so the caller says no capable centre was found",
+            "no centre in the regional pool offers the required department — withholding the regional rows from the treatment-option list (nonCapableRegional) and falling back to capability-filtered national referrals",
         });
       }
     }
@@ -684,7 +724,18 @@ export class HospitalDirectoryService implements OnModuleInit {
     );
     const regionalResults = results.slice(0, params.maxResults ?? 3);
 
-    // ── 6. Append national referral centres ──
+    // ── 6. Fail closed on capability ──
+    //
+    // If not one regional centre can deliver what the search required, those
+    // rows are not treatment options and must not be returned as if they were.
+    // They move to `nonCapableRegional`, a field no recommendation path reads,
+    // and the regional half of `results` is empty. The national referral pool
+    // below is filtered by the same requirement, so what the patient is offered
+    // is always a centre that can actually do the thing.
+    const capableRegional = capabilityUnavailable ? [] : regionalResults;
+    const nonCapableRegional = capabilityUnavailable ? regionalResults : [];
+
+    // ── 7. Append national referral centres ──
     // Skip if: explicitly disabled, or the query is already national-scope
     // (i.e. user asked about Delhi/Mumbai/Bangalore directly)
     const skipNational =
@@ -693,7 +744,7 @@ export class HospitalDirectoryService implements OnModuleInit {
       NATIONAL_SCOPE_STATES.has(params.city ?? "");
 
     if (skipNational || this.nationalHospitals.length === 0) {
-      return { results: regionalResults, geography };
+      return { results: capableRegional, geography, nonCapableRegional };
     }
 
     // The same hard capability rule applies to the national pool: a referral
@@ -726,7 +777,11 @@ export class HospitalDirectoryService implements OnModuleInit {
       ids: nationalResults.map((h) => h.id),
     });
 
-    return { results: [...regionalResults, ...nationalResults], geography };
+    return {
+      results: [...capableRegional, ...nationalResults],
+      geography,
+      nonCapableRegional,
+    };
   }
 
   /**
