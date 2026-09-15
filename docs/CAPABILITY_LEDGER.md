@@ -7,7 +7,7 @@
 | Status | Living document — refresh every release |
 | Verified against | **Repo `main` @ `8d15e3f`. NO PRODUCTION VERIFICATION was performed for this first edition** — no deploy, no `/v1/version` check, no prod DB read, no prod run IDs. Every row below is therefore **L1 (static/CI) at most**. Read nothing here as evidence about the deployed `suchi-api` service. |
 | Test evidence | **859 tests across 43 suites, all passing; `nest build` clean.** Reproduce: `cd apps/api && npx jest`. |
-| Eval evidence | `eval/cases/case-manifest.json` — **601 cases across 25 files**, manifest generated 2026-07-05. Tier-1 nightly is enforcing (a true eval failure fails CI). |
+| Eval evidence | `eval/cases/case-manifest.json` — **603 cases across 25 files** (594 in a runnable lane; 9 orphaned, see `eval/scripts/case-schema.test.ts`), manifest regenerated 2026-09-08. Tier-1 nightly is enforcing (a true eval failure fails CI). |
 | Requirements baseline | `docs/REQUIREMENTS.md` (131 reqs) + `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md` (105 implemented / 7 partial / 18 not started, reconciled against source 2026-06-24) |
 | Created | 2026-09-05, closing issue [#65](https://github.com/gautamgauri/suchi-cancer-bot/issues/65) |
 

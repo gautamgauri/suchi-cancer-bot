@@ -23,10 +23,16 @@ import {
   selectOutputTemplate,
   TEMPLATE_REGISTRY,
 } from "./structured-output-templates";
-import { HospitalDirectoryService } from "./hospital-directory.service";
+import {
+  HospitalDirectoryService,
+  HospitalSearchGeography,
+} from "./hospital-directory.service";
 import { detectLocation } from "./utils/location-detector";
 
 // ─── Hospital Search Result (mirrored from HospitalDirectoryService) ──────────
+
+/** Re-exported so the executor/chat layer imports one hospital type surface. */
+export type { HospitalSearchGeography };
 
 export interface HospitalSearchResult {
   id: string;
@@ -126,6 +132,12 @@ export interface ExecutionPlan {
   usesStructuredTemplate: boolean;
   /** Structured hospital search results (populated when hospitalSearch signal detected) */
   structuredHospitalResults?: HospitalSearchResult[] | null;
+  /**
+   * Which rung of the geographic fallback chain produced those results, and the
+   * location it widened from. Required downstream so the prompt block can label
+   * the list truthfully instead of calling every rung "nearby" (PR #99 review).
+   */
+  structuredHospitalGeography?: HospitalSearchGeography | null;
 }
 
 // ─── Signal Detection (reuses Phase 2 patterns) ────────────────
@@ -245,6 +257,7 @@ export class ExecutionPlannerService {
 
     // ── Hospital Intelligence: structured lookup for hospital_search signals ──
     let structuredHospitalResults: HospitalSearchResult[] | null = null;
+    let structuredHospitalGeography: HospitalSearchGeography | null = null;
     if (detected.hospitalSearch && category === "NAVIGATION" && this.hospitalDirectory.isLoaded()) {
       const locationResult = detectLocation(userText);
       const cancerType = this.extractCancerType(userText);
@@ -253,7 +266,7 @@ export class ExecutionPlannerService {
         /\b(pmjay|ayushman|pm-jay|government\s+hospital|sarkari|free\s+hospital)\b/i.test(userText.toLowerCase());
       const affordabilityTier: "low" | "medium" | "any" = detected.budgetConcern ? "low" : "any";
 
-      structuredHospitalResults = this.hospitalDirectory.searchHospitals({
+      const hospitalOutcome = this.hospitalDirectory.searchHospitalsWithGeography({
         city: locationResult?.city ?? null,
         state: locationResult?.state ?? null,
         cancerType,
@@ -261,9 +274,11 @@ export class ExecutionPlannerService {
         affordabilityTier,
         maxResults: 3,
       });
+      structuredHospitalResults = hospitalOutcome.results;
+      structuredHospitalGeography = hospitalOutcome.geography;
 
       reasoningParts.push(
-        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, cancerType=${cancerType ?? "any"}, pmjay=${pmjayRequired})`
+        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, stage=${structuredHospitalGeography.stage}, cancerType=${cancerType ?? "any"}, pmjay=${pmjayRequired})`
       );
     }
 
@@ -422,6 +437,7 @@ export class ExecutionPlannerService {
         estimatedRetrievalCalls: 5,
         usesStructuredTemplate,
         structuredHospitalResults,
+        structuredHospitalGeography,
       };
     }
 
@@ -445,6 +461,7 @@ export class ExecutionPlannerService {
       estimatedRetrievalCalls: retrievalCalls.length,
       usesStructuredTemplate,
       structuredHospitalResults,
+      structuredHospitalGeography,
     };
   }
 
