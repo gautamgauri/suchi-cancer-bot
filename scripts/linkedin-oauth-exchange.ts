@@ -352,7 +352,12 @@ export function addSecretVersion(secret: string, project: string, value: string)
       reject(new Error(`Could not run gcloud (${(err as Error).message}). Is the SDK installed and on PATH?`)),
     );
     child.on("close", (code) => {
-      if (code === 0) return resolve(stdout.trim() || `${secret} (new version)`);
+      if (code === 0) {
+        // Scrub the child's own output before it becomes something we print:
+        // --format=value(name) should only yield a version resource name, but
+        // that is gcloud's promise to keep, not ours to assume.
+        return resolve(redactSecrets(stdout.trim(), [value]) || `${secret} (new version)`);
+      }
       reject(new Error(`gcloud exited ${code}: ${redactSecrets(stderr.trim(), [value]).slice(0, 600)}`));
     });
     child.stdin.on("error", () => { /* surfaced by the close handler */ });

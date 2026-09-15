@@ -18,7 +18,7 @@ Related: issue #27, `docs/RELIABILITY_BACKLOG.md` (P2-6),
 | Scope needed | `w_organization_social` (+ `r_organization_social` for step 3 only) |
 | Token lifetime | **60 days**, then posting fails with HTTP 401 |
 | Helper script | `scripts/linkedin-oauth-exchange.ts` (`npm run linkedin:auth -- <cmd>`) |
-| Token handling | never printed; `--to-secret-manager` \| `--out` (0600) \| `--print-token` opt-in |
+| Token handling | never printed - there is no flag that prints it; `--to-secret-manager` \| `--out` (0600) |
 
 > **Deploy order matters.** `cloudbuild.yaml` and `cloudbuild.gated.yaml` now
 > reference both secrets. Cloud Run resolves every `--set-secrets` reference at
@@ -113,7 +113,20 @@ printing.
 | --- | --- |
 | `--to-secret-manager <name>` | pipes the value into `gcloud secrets versions add <name> --data-file=-` and prints only the new version name. `--secret-project <id>` overrides the default project. |
 | `--out <path>` | writes the raw value to a new file with mode `0600` and **no trailing newline**. Refuses to overwrite an existing file unless you add `--force`. |
-| `--print-token` | the escape hatch: prints the value to stdout, after a warning. Only for a terminal you are certain is not recorded. |
+
+There is deliberately **no flag that prints the token**. `--print-token` existed
+in an earlier draft of this helper and was removed: a 60-day posting credential
+written to stdout is captured by terminal scrollback, `script`/asciinema
+recordings, CI logs and shell wrappers, and the opt-in did nothing to stop that
+once someone pasted the command from this runbook. If you find yourself wanting
+it, use `--to-secret-manager <name>` - that is the supported path, and it is the
+one the deploy reads from. Use `--out <path>` only when you must move the value
+by hand, and delete the file as soon as the secret version exists.
+
+The helper enforces this in code, not just by convention: `Destination` has no
+terminal variant, so a printing sink cannot be expressed, and
+`--self-test` re-scans this script's own source on every CI run to assert that no
+`console.*` call is handed a token value. Please do not add the flag back.
 
 If a refresh token comes back it goes to a sibling destination —
 `linkedin-access-token-refresh` for `--to-secret-manager`, `<path>.refresh` for
@@ -152,8 +165,8 @@ printf %s 'urn:li:organization:<id>' | \
   gcloud secrets versions add linkedin-author-urn --data-file=- --project=$PROJECT
 ```
 
-Manual alternative, if you used `--out` or `--print-token` in step 2 (never edit
-a version in place — always add a new one):
+Manual alternative, if you used `--out` in step 2 (never edit a version in
+place — always add a new one):
 
 ```bash
 printf %s '<access token>' | \
@@ -188,10 +201,10 @@ revision — see `docs/DEPLOYMENT.md`).
    runs the offline checks on the helper's pure parts (argument parsing,
    destination resolution, redaction, the org/role table, the 0600 file write);
    among them is an assertion that the exchange summary never contains the token
-   value. It runs in CI in the "Build + config parity" job. If you used
-   `--out`, delete the file once the secret version exists. If you used
-   `--print-token`, clear the scrollback, and treat the token as compromised if
-   the session was recorded.
+   value, and a check that drives the real delivery paths with stdout and stderr
+   captured and asserts the token appears in neither. It runs in CI in the
+   "Build + config parity" job. If you used `--out`, delete the file once the
+   secret version exists.
 1. **Configuration is visible.** Publish or re-send any article approval — the
    social approval email now shows a **LinkedIn** copy block and a **"LinkedIn
    only"** button, and the "Approve all" button counts 3 platforms. Those
