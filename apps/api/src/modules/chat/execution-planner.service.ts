@@ -360,11 +360,16 @@ export class ExecutionPlannerService {
         affordabilityTier,
         maxResults: 3,
       });
+      // `results` only — never `nonCapableRegional`. Those are the centres the
+      // directory withheld because they cannot deliver what the patient asked
+      // about, and this field becomes the LLM's authoritative hospital list
+      // (PR #148 review, P0). Anything that wants to speak about the withheld
+      // centres needs its own SCCF-reviewed surface, not this one.
       structuredHospitalResults = hospitalOutcome.results;
       structuredHospitalGeography = hospitalOutcome.geography;
 
       reasoningParts.push(
-        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, stage=${structuredHospitalGeography.stage}, cancerType=${cancerType ?? "any"}, needs=${requiredDepartments.join("+") || "none"}, capabilityUnavailable=${structuredHospitalGeography.capabilityUnavailable === true}, pmjay=${pmjayRequired})`
+        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, stage=${structuredHospitalGeography.stage}, cancerType=${cancerType ?? "any"}, needs=${requiredDepartments.join("+") || "none"}, capabilityUnavailable=${structuredHospitalGeography.capabilityUnavailable === true}, withheldIncapable=${hospitalOutcome.nonCapableRegional.length}, pmjay=${pmjayRequired})`
       );
     }
 

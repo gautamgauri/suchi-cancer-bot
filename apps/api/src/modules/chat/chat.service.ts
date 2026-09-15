@@ -3305,12 +3305,14 @@ MANDATORY: End your response with this exact sentence — "Hospital services, do
    * Factual suffix for the regional heading when the search required a
    * treatment the directory has nowhere in the regional pool.
    *
-   * The directory keeps the never-empty guarantee by returning the unfiltered
-   * pool in that case, so without this label the rows read as centres that can
-   * deliver the treatment the patient asked for. They are not — they are the
-   * centres that exist. This is a data label on a list, in the same register as
-   * the stage headings; it states what the search found and asserts nothing
-   * about how to answer.
+   * NOT the mechanism that keeps incapable centres away from a patient — that
+   * is structural and lives in the directory. `searchHospitalsWithGeography()`
+   * now withholds those rows to `HospitalSearchOutcome.nonCapableRegional`, so
+   * on the planner path `regional` is empty whenever `capabilityUnavailable` is
+   * set and this suffix never renders (PR #148 review, P0). It remains as a
+   * belt-and-braces label for any caller that hands this method rows of its
+   * own: a data label on a list, in the same register as the stage headings,
+   * stating what the search found and asserting nothing about how to answer.
    */
   private capabilityLabel(geography?: HospitalSearchGeography | null): string {
     if (geography?.capabilityUnavailable !== true) return "";
