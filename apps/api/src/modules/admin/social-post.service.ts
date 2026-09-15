@@ -45,6 +45,13 @@ const GCS_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT ?? "gen-lang-client-020254
 const SITE_URL     = process.env.SUCHI_SITE_URL ?? "https://suchitracancercare.org";
 const API_BASE     = "https://suchi-api-lxiveognla-uc.a.run.app/v1/admin/social";
 
+// LinkedIn versioned REST API (Posts API — successor to the deprecated /v2/ugcPosts).
+// LinkedIn-Version is YYYYMM; LinkedIn sunsets a version roughly a year after release,
+// so bump this when the runbook's rotation check flags it.
+const LINKEDIN_POSTS_URL   = "https://api.linkedin.com/rest/posts";
+const LINKEDIN_API_VERSION = "202608";
+const LINKEDIN_DOC         = "docs/LINKEDIN_ORG_POSTING.md";
+
 const CONTENT_TYPE_TO_PATH: Record<string, string> = {
   treatment:   "tests-treatment/treatments",
   test:        "tests-treatment/diagnosis-tests",
@@ -194,7 +201,7 @@ export class SocialPostService {
     await Promise.all(targets.map(async (p) => {
       if (p === "facebook")  results.facebook  = await this.postFacebook(draft.copy.facebook);
       if (p === "instagram") results.instagram = await this.postInstagram(draft.copy.instagram);
-      if (p === "linkedin")  results.linkedin  = await this.postLinkedIn(draft.copy.linkedin, draft.articleUrl);
+      if (p === "linkedin")  results.linkedin  = await this.postLinkedIn(draft.copy.linkedin, draft.articleUrl, draft.title);
     }));
 
     const published = targets.filter((p) => results[p].success);
@@ -350,46 +357,98 @@ REVIEW: {one-sentence description of the specific concern}`,
   }
 
   /**
-   * LinkedIn UGC Posts API.
+   * LinkedIn Posts API (versioned REST) — organization page posting.
+   *
+   * Uses POST /rest/posts, which replaced the deprecated /v2/ugcPosts UGC API.
+   * Every versioned call needs BOTH the `LinkedIn-Version` (YYYYMM) and
+   * `X-Restli-Protocol-Version: 2.0.0` headers.
+   *
    * Requires:
-   *   LINKEDIN_ACCESS_TOKEN — OAuth 2.0 bearer token (60-day expiry; rotate monthly)
-   *   LINKEDIN_AUTHOR_URN   — "urn:li:organization:12345" for a company page
-   *                            or "urn:li:person:xxxxx" for a personal profile
+   *   LINKEDIN_ACCESS_TOKEN — OAuth 2.0 bearer token with `w_organization_social`
+   *                           (60-day expiry, no refresh token for non-MDP apps —
+   *                           a human must re-run the OAuth flow)
+   *   LINKEDIN_AUTHOR_URN   — "urn:li:organization:<id>" for the SCCF company page
+   *                           (a urn:li:person: URN still works but needs
+   *                           w_member_social instead and posts to a personal feed)
+   *
+   * Full setup and rotation runbook: docs/LINKEDIN_ORG_POSTING.md
    */
-  private async postLinkedIn(text: string, articleUrl: string): Promise<PlatformResult> {
+  private async postLinkedIn(text: string, articleUrl: string, title?: string): Promise<PlatformResult> {
     const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
     const authorUrn   = process.env.LINKEDIN_AUTHOR_URN;
     if (!accessToken || !authorUrn) return { success: false, error: "not_configured" };
 
+    if (!/^urn:li:(organization|person):/.test(authorUrn)) {
+      this.logger.error(
+        `LinkedIn post skipped: LINKEDIN_AUTHOR_URN is "${authorUrn}", expected "urn:li:organization:<id>" — see ${LINKEDIN_DOC}`,
+      );
+      return { success: false, error: "invalid_author_urn" };
+    }
+
     const body = {
       author: authorUrn,
-      lifecycleState: "PUBLISHED",
-      specificContent: {
-        "com.linkedin.ugc.ShareContent": {
-          shareCommentary: { text },
-          shareMediaCategory: "ARTICLE",
-          media: [{ status: "READY", originalUrl: articleUrl }],
+      commentary: escapeLittleText(text),
+      visibility: "PUBLIC",
+      distribution: {
+        feedDistribution: "MAIN_FEED",
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      content: {
+        // The Posts API does not scrape the URL — title/description must be supplied.
+        article: {
+          source: articleUrl,
+          title: (title ?? "Suchi Cancer Care").slice(0, 400),
         },
       },
-      visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" },
+      lifecycleState: "PUBLISHED",
+      isReshareDisabledByAuthor: false,
     };
 
-    const res = await fetch("https://api.linkedin.com/v2/ugcPosts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
-        "X-Restli-Protocol-Version": "2.0.0",
-      },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(LINKEDIN_POSTS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+          "X-Restli-Protocol-Version": "2.0.0",
+          "LinkedIn-Version": LINKEDIN_API_VERSION,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`LinkedIn post failed: network error — ${msg}`);
+      return { success: false, error: `network_error: ${msg}` };
+    }
+
     if (!res.ok) {
-      const errText = await res.text();
+      const errText = await res.text().catch(() => "");
+      // 401 is nearly always the 60-day token having expired. Say so loudly:
+      // a silent failure here is how LinkedIn posting stayed dead for months.
+      if (res.status === 401) {
+        this.logger.error(
+          `LinkedIn post failed 401 — access token expired or revoked. ` +
+          `Re-run the OAuth flow and update the linkedin-access-token secret: see ${LINKEDIN_DOC}. ` +
+          `Response: ${errText.slice(0, 200)}`,
+        );
+        return { success: false, error: `token_expired (HTTP 401) — see ${LINKEDIN_DOC}` };
+      }
+      if (res.status === 403) {
+        this.logger.error(
+          `LinkedIn post failed 403 — the token lacks w_organization_social, or the authorising member ` +
+          `is not an ADMINISTRATOR/CONTENT_ADMIN of ${authorUrn}: see ${LINKEDIN_DOC}. ` +
+          `Response: ${errText.slice(0, 200)}`,
+        );
+        return { success: false, error: `insufficient_permissions (HTTP 403) — see ${LINKEDIN_DOC}` };
+      }
       this.logger.error(`LinkedIn post failed ${res.status}: ${errText.slice(0, 200)}`);
       return { success: false, error: `HTTP ${res.status}` };
     }
+
     const postId = res.headers.get("x-restli-id") ?? undefined;
-    this.logger.log(`LinkedIn posted: ${postId}`);
+    this.logger.log(`LinkedIn posted to ${authorUrn}: ${postId ?? "(no x-restli-id header)"}`);
     return { success: true, postId };
   }
 
@@ -607,4 +666,17 @@ function buildPostBlock(label: string, text: string, note?: string): string {
   const noteHtml = note ? `<p style="font-size:11px;color:#888;margin:4px 0 0">${escHtml(note)}</p>` : "";
   return `<h3 style="margin-top:28px;margin-bottom:6px">${label}</h3>
 <div style="background:#f9f9f9;padding:14px 16px;border-left:4px solid #1a73e8;font-size:13px;white-space:pre-wrap;font-family:monospace">${escHtml(text)}</div>${noteHtml}`;
+}
+
+/**
+ * LinkedIn "little" text format escaping for the Posts API `commentary` field.
+ *
+ * Every reserved character must be backslash-escaped "even if those characters
+ * are not used in one of the supported elements or templates" — an unescaped
+ * "(" or "#" in generated copy is otherwise a 422 or silently mangled text.
+ * Reserved set per the little-text-format grammar: \ | { } @ [ ] ( ) < > # * _ ~
+ * Backslash is escaped first so we never double-escape our own escapes.
+ */
+export function escapeLittleText(text: string): string {
+  return text.replace(/[\\|{}@[\]()<>#*_~]/g, (c) => `\\${c}`);
 }
