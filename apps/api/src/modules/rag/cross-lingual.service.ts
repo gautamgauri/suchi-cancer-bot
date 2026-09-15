@@ -161,12 +161,22 @@ const HINGLISH_EN_DICTIONARY: Array<[RegExp, string]> = [
 // ─── Keyword-query gate and scenario expansions ──────────────────
 
 /**
+ * Romanised-Hindi words that make an all-Latin query read as Hinglish. Exported
+ * because the lexical query builder (`kb-fts-query.ts`) must agree with this
+ * list about which of these are *function* words (mujhe, batao, chahiye, kaise)
+ * and which are *content* words it must never drop (ilaaj, dawai, gaanth,
+ * bukhar, lakshan, janch) — issue #134.
+ */
+export const HINGLISH_MARKERS =
+  /\b(mujhe|jaankari|jankari|baare\s*mein|bare\s*me|batao|bataiye|chahiye|kaise|kya\s*hai|ilaaj|dawai|gaanth|bukhar|saans|lakshan|janch|aage\s*kya|paise|sarkari|kharcha)\b/gi;
+
+/**
  * A translated term counts towards the English keyword query only if it is a
  * medical noun (or phrase containing one). Function words that the dictionaries
  * also translate — "tell me", "what", "how", "needed", "I need", "information",
  * "about", "help" — must never form a query on their own.
  */
-const MEDICAL_TERM =
+export const MEDICAL_TERM =
   /\b(cancer|tumou?r|symptoms?|lump|pain|bleeding|blood|fever|fatigue|vomiting|diarrhea|swelling|cough|breath(ing)?|weight loss|appetite|treatment|chemotherapy|radiation|surgery|medicine|biopsy|test|report|hospital|doctor|OPD|appointment|scheme|insurance|Ayushman|pregnan(t|cy)|womb|baby|breastfeeding|harm)\b/i;
 
 /** Extra English queries for situations everyday Hindi/Hinglish words under-specify. */
@@ -321,8 +331,7 @@ export class CrossLingualService {
     if (devanagariRatio > 0.2) return "mixed";
 
     // Check for Romanized Hindi (Hinglish) — all Latin script but Hindi words
-    const hinglishMarkers = /\b(mujhe|jaankari|jankari|baare\s*mein|bare\s*me|batao|bataiye|chahiye|kaise|kya\s*hai|ilaaj|dawai|gaanth|bukhar|saans|lakshan|janch|aage\s*kya|paise|sarkari|kharcha)\b/gi;
-    const matches = text.match(hinglishMarkers) || [];
+    const matches = text.match(HINGLISH_MARKERS) || [];
     if (matches.length >= 1) return "mixed";
 
     return "en";

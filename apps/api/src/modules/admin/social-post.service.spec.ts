@@ -43,7 +43,7 @@ function makeDraft(overrides: Partial<Draft> = {}): Draft {
     slug: "test-slug",
     title: TITLE,
     contentType: "treatment",
-    articleUrl: "https://suchicancercare.org/x",
+    articleUrl: "https://suchitracancercare.org/x",
     copy: { facebook: "fb", instagram: "ig", linkedin: "li" },
     status: "sent_for_approval",
     createdAt: "2026-06-01T00:00:00.000Z",

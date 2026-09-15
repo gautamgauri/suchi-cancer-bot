@@ -10,12 +10,24 @@
  * to see costs nothing when removed; a raw knowledge-base identifier that
  * reaches the reader costs trust (issue #68).
  *
+ * Internal prompt scaffolding is stripped here for the same reason (issue #152):
+ * the response contracts are written as numbered ALL-CAPS imperatives addressed
+ * to the model, and WhatsApp QA caught the model reproducing them verbatim in
+ * the patient's reply bubble. This is the one boundary all three patient
+ * surfaces pass through — HTTP chat (`chat.controller.ts`), voice
+ * (`voice.service.ts`) and WhatsApp (`whatsapp.service.ts`) — so the strip
+ * belongs here rather than in a fourth channel-specific cleaner.
+ *
  * The patterns themselves moved to `common/text-cleaning.ts` (issue #87) so the
  * voice/TTS surface stops carrying its own, weaker copy of them. Behaviour here
  * is unchanged; `display-text-cleaner.spec.ts` is the guard on that.
  */
 
-import { stripCitationDebris, stripCitationMarkers } from "../../common/text-cleaning";
+import {
+  stripCitationDebris,
+  stripCitationMarkers,
+  stripPromptScaffolding,
+} from "../../common/text-cleaning";
 
 /**
  * Strip citation artifacts and the punctuation debris they leave behind.
@@ -25,5 +37,5 @@ import { stripCitationDebris, stripCitationMarkers } from "../../common/text-cle
  */
 export function cleanResponseForDisplay(text: string): string {
   if (!text) return text;
-  return stripCitationDebris(stripCitationMarkers(text));
+  return stripCitationDebris(stripPromptScaffolding(stripCitationMarkers(text)));
 }

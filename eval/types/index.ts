@@ -148,7 +148,21 @@ export interface LLMJudgeResult {
   evidence?: string;
   count?: number;
   error?: string;
-  skipped?: boolean; // True if LLM judge was not available (not counted as failure)
+  /**
+   * Legacy alias of `unscored` (pre-#110 reports). True when no verdict was
+   * rendered; never counted as a failure.
+   */
+  skipped?: boolean;
+  /**
+   * True when the judge did not render a verdict for this check (transport
+   * failure, exhausted retries, not configured, unparseable reply). Unscored
+   * checks are counted separately from pass/fail — see runner/judge-errors.ts.
+   */
+  unscored?: boolean;
+  /** Machine-readable reason when `unscored` (JudgeErrorKind) */
+  unscoredReason?: string;
+  /** Judge call attempts made before giving up (retries included) */
+  attempts?: number;
   consensus?: string; // e.g., "2/2 passed" - shows majority vote result when using judgeWithConsensus
 }
 
@@ -200,6 +214,15 @@ export interface EvaluationResult {
   errorStep?: "session_create" | "chat_send" | "unknown";
   error?: string;
   timedOut?: boolean; // ✅ NEW: Flag for timeout failures
+  /**
+   * True when at least one LLM-judge check on this case rendered no verdict
+   * (issue #110). An unscored case is neither passed nor failed: `passed` is
+   * false, but it is excluded from `summary.failed` and reported under
+   * `summary.unscored` / `summary.judge`.
+   */
+  unscored?: boolean;
+  /** e.g. "rate_limited (HTTP 429) ×6" */
+  unscoredReason?: string;
   executionTimeMs: number;
 }
 
@@ -217,10 +240,23 @@ export interface EvaluationReport {
   summary: {
     total: number;
     passed: number;
+    /** Cases that failed on rendered checks. Excludes `unscored`. */
     failed: number;
     skipped: number;
+    /** Cases with at least one judge check that rendered no verdict (issue #110). */
+    unscored: number;
     averageScore: number;
     executionTimeMs: number;
+    /** LLM-judge availability for the run — an infrastructure axis, not a quality one. */
+    judge?: {
+      status: "active" | "degraded" | "unavailable" | "not_run";
+      scoredChecks: number;
+      unscoredChecks: number;
+      unscoredCases: number;
+      unscoredCaseIds: string[];
+      /** Count of unscored checks by reason label, e.g. { "rate_limited (HTTP 429)": 12 } */
+      reasons: Record<string, number>;
+    };
     retrievalQuality?: {
       top3TrustedPresenceRate: number; // Percentage of cases with trusted source in top-3
       citationCoverageRate: number; // Percentage of responses with citations
@@ -265,6 +301,8 @@ export interface EvaluationConfig {
   };
   timeoutMs: number;
   retries: number;
+  /** Extra judge-call attempts on retryable transport errors (429/5xx/timeout). Default 3. */
+  judgeRetries?: number;
   parallel: boolean;
   maxConcurrency?: number;
 }

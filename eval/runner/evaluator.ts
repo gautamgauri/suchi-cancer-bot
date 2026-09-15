@@ -449,6 +449,17 @@ export class Evaluator {
       result.score = this.reportGenerator.calculateScore(result, rubric);
       result.passed = this.reportGenerator.determinePass(result, rubric);
 
+      // Issue #110: a judge that rendered no verdict makes the case UNSCORED —
+      // neither a pass nor a quality failure. Decided here, where the rubric is
+      // in hand, and recorded explicitly so the report, the per-case records
+      // and CI all count it on the same axis. A case that failed on checks the
+      // judge DID render stays a genuine failure (see resolveCaseUnscored).
+      result.unscored =
+        !result.passed && this.reportGenerator.determineUnscored({ ...result, unscored: undefined }, rubric);
+      if (result.unscored) {
+        result.unscoredReason = this.reportGenerator.unscoredReasonFor(result);
+      }
+
       return result;
     } catch (error: any) {
       const errorText = error?.message || "Unknown error";
@@ -502,11 +513,13 @@ export class Evaluator {
         const result = await this.evaluateTestCase(testCase);
         
         const duration = Date.now() - caseStartTime;
-        const status = result.passed ? '✅' : result.error ? '❌' : '⚠️';
+        const status = result.passed ? '✅' : result.error ? '❌' : result.unscored ? '⏸️' : '⚠️';
         console.log(`  ${status} Completed in ${(duration / 1000).toFixed(1)}s`);
-        
+
         if (result.error) {
           console.log(`  Error: ${result.error}`);
+        } else if (result.unscored) {
+          console.log(`  UNSCORED — judge unavailable (${result.unscoredReason ?? 'no verdict'}); not a quality failure`);
         } else {
           console.log(`  Score: ${(result.score * 100).toFixed(1)}%`);
           const citationCount = result.responseMetadata.citations?.length || 0;

@@ -21,6 +21,12 @@ name: Eval Tier1 - Retrieval Quality
 #                  * eval fails   -> job RED with "Evaluation failed" error annotation,
 #                    regardless of email delivery outcome
 #                  * no report    -> job RED with "Eval infrastructure error" annotation
+#                  * judge down   -> job RED with "Judge unavailable" annotation (issue #110):
+#                    the LLM judge (Vertex) returned 429/5xx/auth/timeout after bounded
+#                    retries for more than EVAL_MAX_UNSCORED_RATIO of cases. Those cases
+#                    are UNSCORED — reported separately, never counted as failed. Unscored
+#                    cases within the tolerance emit a warning annotation and CI stays green
+#                    (they are still not counted as passed).
 #
 # Log hygiene: SMTP secrets are auto-masked by Actions; the recipient address is
 # additionally masked via ::add-mask:: before any step that could echo it, and the
@@ -54,6 +60,13 @@ on:
 env:
   # Notification recipient. Kept in one place; masked from logs at job start.
   EVAL_NOTIFY_TO: gautamgauri@dikshafoundation.org
+  # Issue #110 — judge transport tolerance. Share of cases (0..1) the LLM judge
+  # may leave unscored before the run is declared `judge_unavailable` instead of
+  # passed/failed. 0.1 of 21 cases = 2 cases. Read by eval/ci/eval-status.js.
+  EVAL_MAX_UNSCORED_RATIO: '0.1'
+  # Extra judge-call attempts on 429/5xx/timeout (exponential backoff) before a
+  # case goes unscored. Read by eval/config/loader.ts.
+  EVAL_JUDGE_RETRIES: '3'
 
 jobs:
   eval-tier1:
@@ -148,7 +161,8 @@ jobs:
         id: eval-run
 
       # Machine-readable outcome + metrics (schema in eval/ci/eval-status.js).
-      # Distinguishes: passed | failed (true eval failure) | infra_error (no usable report).
+      # Distinguishes: passed | failed (true eval failure) | infra_error (no usable
+      # report) | judge_unavailable (LLM judge could not score > tolerance, #110).
       - name: Build eval-result.json
         id: eval-result
         if: always()
@@ -157,6 +171,7 @@ jobs:
           node ci/eval-status.js result \
             --report reports/tier1-report.json \
             --eval-outcome "${{ steps.eval-run.outcome }}" \
+            --max-unscored-ratio "$EVAL_MAX_UNSCORED_RATIO" \
             --output reports/eval-result.json
 
       # Includes the per-case structured records (*.records.json) and the
@@ -221,7 +236,8 @@ jobs:
           fi
 
       # The single source of truth for the job's CI conclusion:
-      # exit 0 only when the evaluation itself passed.
+      # exit 0 only when the evaluation itself passed. A judge outage exits 1
+      # with a "Judge unavailable" annotation, never "Evaluation failed" (#110).
       - name: Enforce evaluation status
         if: always()
         working-directory: eval

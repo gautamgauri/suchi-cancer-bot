@@ -104,6 +104,9 @@ export function mineFailures(report: EvaluationReport): FailureBucket[] {
 
   for (const result of report.results) {
     if (result.passed) continue;
+    // Issue #110: an unscored case says the judge was unavailable, not that
+    // the answer was wrong — there is nothing for the patcher to repair.
+    if (result.unscored) continue;
 
     const failedChecks: Array<{ checkId: string; reason: string }> = [];
 

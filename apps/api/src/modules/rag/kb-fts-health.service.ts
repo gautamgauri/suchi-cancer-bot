@@ -7,9 +7,26 @@ import {
   KB_FTS_LEGACY_COLUMN,
   KB_FTS_OWNERSHIP_NOTE,
   KB_FTS_PROBE_SQL,
+  KB_FTS_SEARCH_SQL,
   KB_FTS_TABLE,
   KbFtsProbeRow,
+  isFtsSchemaError,
 } from "./kb-fts.sql";
+import { buildKbFtsQuery } from "./kb-fts-query";
+
+/**
+ * Sentence the probe pushes through the REAL lexical statement once the catalog
+ * checks pass (issue #134). Natural-language on purpose: this is the shape that
+ * returned zero rows for months while the catalog looked perfect. Row count is
+ * not asserted (an empty KB is legal); only that the statement executes.
+ *
+ * Deliberately made of SELECTIVE words (no "cancer", no "treatment"): the shipped
+ * statement ranks every matching row before LIMIT, so a probe built from generic
+ * terms would sort tens of thousands of chunks on every cold start. These terms
+ * still exercise the whole path — stopword removal, the pairwise floor, quoting,
+ * to_tsquery, the expression predicate and ts_rank_cd.
+ */
+export const KB_FTS_PROBE_QUERY = "what paperwork should I bring to a colposcopy appointment";
 
 /**
  * Health of the lexical (FTS) arm of hybrid retrieval.
@@ -129,7 +146,7 @@ export class KbFtsHealthService implements OnModuleInit {
         this.set(
           "degraded",
           `${KB_FTS_INDEX} exists but is not GIN over ${KB_FTS_INDEXDEF_MARKER} (actual: ` +
-            `${row.indexDef.slice(0, 160)}). Queries use websearch_to_tsquery('${KB_FTS_CONFIG}', …) ` +
+            `${row.indexDef.slice(0, 160)}). Queries use to_tsquery('${KB_FTS_CONFIG}', …) ` +
             `against that exact expression, so the planner will not use this index and a mismatched ` +
             `config matches far fewer rows (and no Hindi/Hinglish at all).` +
             legacyNote
@@ -155,7 +172,26 @@ export class KbFtsHealthService implements OnModuleInit {
         return this.getHealth();
       }
 
-      this.set("ok", `${KB_FTS_INDEX} present and valid over to_tsvector('${KB_FTS_CONFIG}', content)${legacyNote}`);
+      // Catalog is right — now run the statement RagService actually ships, built
+      // the way RagService builds it, so a query-text regression (bad tsquery
+      // grammar, renamed function) shows up here and not as ftsCount: 0 in logs.
+      const smoke = await this.runSmokeQuery();
+      if (smoke) {
+        if (smoke.schema) {
+          this.set("unavailable", `lexical query rejected by Postgres on a correct-looking schema: ${smoke.error}`);
+          this.logUnavailable();
+        } else {
+          this.set(
+            "degraded",
+            `${KB_FTS_INDEX} is valid but the lexical statement failed: ${smoke.error}. ` +
+              `The arm is skipped (vector-only) until a re-probe succeeds.`
+          );
+          this.logger.warn({ event: "kb_fts_smoke_query_failed", message: this.detail });
+        }
+        return this.getHealth();
+      }
+
+      this.set("ok", `${KB_FTS_INDEX} present and valid over to_tsvector('${KB_FTS_CONFIG}', content); lexical statement executes${legacyNote}`);
       this.logger.log({
         event: "kb_fts_health_ok",
         message: `Lexical retrieval arm ready: ${this.detail}`,
@@ -172,6 +208,27 @@ export class KbFtsHealthService implements OnModuleInit {
         message: `Could not verify the lexical retrieval arm: ${this.detail}`,
       });
       return this.getHealth();
+    }
+  }
+
+  /**
+   * Executes KB_FTS_SEARCH_SQL with a builder-produced tsquery and LIMIT 1.
+   * Returns null on success, otherwise the failure and whether it is a schema
+   * error. Only called after the index is known to be valid, so this is one
+   * indexed lookup — never a scan.
+   */
+  private async runSmokeQuery(): Promise<{ error: string; schema: boolean } | null> {
+    const lexical = buildKbFtsQuery(KB_FTS_PROBE_QUERY);
+    if (!lexical) {
+      // Cannot happen with the constant above; guard so a future edit fails loudly.
+      return { error: `probe sentence "${KB_FTS_PROBE_QUERY}" produced no content terms`, schema: false };
+    }
+    try {
+      await this.prisma.$queryRawUnsafe(KB_FTS_SEARCH_SQL, lexical.tsquery, 1);
+      return null;
+    } catch (error) {
+      this.lastError = this.describe(error);
+      return { error: this.lastError, schema: isFtsSchemaError(error) };
     }
   }
 

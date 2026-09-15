@@ -23,6 +23,7 @@ import {
   loadApprovedSources,
   ApprovedCitationSources,
 } from "./citation-verifier";
+import { isUnscored, resolveCaseUnscored, summarizeUnscoredReasons } from "./judge-errors";
 
 export const CASE_RECORD_SCHEMA_VERSION = 1;
 
@@ -99,7 +100,16 @@ export interface CaseEvaluationRecord {
     passed: boolean;
     score: number;
     requiredCheckFailures: string[];
+    /** LLM checks that rendered a verdict of fail. Excludes unscored checks. */
     failedLlmChecks: string[];
+    /**
+     * True when the judge rendered no verdict for ≥1 check (issue #110).
+     * The case is neither passed nor failed; see `unscoredReason`.
+     */
+    unscored: boolean;
+    unscoredReason?: string;
+    /** LLM checks with no verdict (transport failure, judge not configured, malformed reply) */
+    unscoredLlmChecks: string[];
     error?: string;
     errorStep?: string;
     timedOut?: boolean;
@@ -244,8 +254,15 @@ export function buildCaseRecord(
     .filter((d) => d.required && !d.passed)
     .map((d) => d.checkId);
   const failedLlmChecks = (result.llmJudgeResults || [])
-    .filter((l) => !l.passed && !l.skipped)
+    .filter((l) => !l.passed && !isUnscored(l))
     .map((l) => l.checkId);
+  const unscoredLlmChecks = (result.llmJudgeResults || [])
+    .filter(isUnscored)
+    .map((l) => l.checkId);
+  // The evaluator's explicit decision wins; the fallback keeps rendered
+  // failures (execution error, required deterministic miss) out of the
+  // unscored bucket. See resolveCaseUnscored.
+  const unscored = !result.passed && resolveCaseUnscored(result);
 
   const retrievalPath: CaseEvaluationRecord["retrieval"]["retrievalPath"] =
     !integrity.applicable
@@ -258,6 +275,8 @@ export function buildCaseRecord(
 
   const clusters = new Set<string>(integrity.clusters);
   if (result.error) clusters.add("execution-error");
+  // Judge transport/availability failure is its own cluster — never "quality".
+  if (unscored) clusters.add("judge-unavailable");
   // Non-citation failures: safety vs general quality
   for (const checkId of requiredCheckFailures) {
     if (checkId.startsWith("citation") || checkId === "citations_present") continue;
@@ -327,6 +346,11 @@ export function buildCaseRecord(
       score: result.score,
       requiredCheckFailures,
       failedLlmChecks,
+      unscored,
+      unscoredReason: unscored
+        ? result.unscoredReason ?? summarizeUnscoredReasons(result.llmJudgeResults)
+        : undefined,
+      unscoredLlmChecks,
       error: result.error,
       errorStep: result.errorStep,
       timedOut: result.timedOut,

@@ -3,7 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { Logger } from "@nestjs/common";
 import { RagService } from "./rag.service";
-import { KbFtsHealthService } from "./kb-fts-health.service";
+import { KB_FTS_PROBE_QUERY, KbFtsHealthService } from "./kb-fts-health.service";
+import { CrossLingualService } from "./cross-lingual.service";
+import { buildKbFtsQuery } from "./kb-fts-query";
 import { PgliteDatabase, PgliteProcess } from "./__test-utils__/pglite-client";
 import {
   KB_FTS_CONFIG,
@@ -63,7 +65,38 @@ const CHUNKS: Array<{ id: string; content: string }> = [
     id: "chunk-hindi",
     content: "सर्वाइकल कैंसर की जांच के लिए HPV test किया जाता है। यह जांच 30 saal ke baad karani chahiye.",
   },
+  {
+    // Issue #134 regression target: the Hinglish pregnancy probe must match this lexically.
+    id: "chunk-pregnancy",
+    content:
+      "Breast cancer treatment for a woman who is pregnant: chemotherapy given in the second or third trimester " +
+      "does not appear to harm the unborn baby. Anticancer medicine given in the first trimester can affect how " +
+      "the baby develops, so treatment is planned around the pregnancy.",
+  },
 ];
+
+/**
+ * SYNTHETIC Hinglish pregnancy probe in the shape issues #126/#134 are about —
+ * written for this test, never a real user message (AGENTS.md §1.5: no patient
+ * data in fixtures). Kept identical to the one in kb-fts-query.spec.ts.
+ */
+const PROBE_A =
+  "meri bhabhi ko cancer hai aur wo pregnant hai, kya uski dawai se bachche ko nuksaan hoga? jaldi bataiye";
+
+/** What the chat path hands to retrieval for PROBE_A: the cross-lingual translation. */
+function translatedProbeA(): string {
+  return new CrossLingualService().generateParallelQueries(PROBE_A).parallelQueries[1];
+}
+
+/** $1 for KB_FTS_SEARCH_SQL, built the way RagService builds it (issue #134). */
+function lexical(query: string): string {
+  const built = buildKbFtsQuery(query);
+  if (!built) throw new Error(`no content terms in "${query}"`);
+  return built.tsquery;
+}
+
+/** The statement as it shipped before #134 — raw sentence into websearch_to_tsquery (AND of every token). */
+const LEGACY_AND_SQL = KB_FTS_SEARCH_SQL.replace(`to_tsquery('${KB_FTS_CONFIG}', $1)`, `websearch_to_tsquery('${KB_FTS_CONFIG}', $1)`);
 
 /** Every migration that touches the FTS objects, oldest first, as shipped. */
 function ftsMigrationsInOrder(): Array<{ name: string; sql: string }> {
@@ -199,7 +232,7 @@ describe("KB full-text search (issue #92)", () => {
 
   it("returns ranked rows for the shipped lexical query", async () => {
     const rows = await db.query<{ id: string; docId: string; lexRank: number }>(KB_FTS_SEARCH_SQL, [
-      "HPV testing for cervical cancer screening",
+      lexical("HPV testing for cervical cancer screening"),
       12,
     ]);
 
@@ -212,19 +245,79 @@ describe("KB full-text search (issue #92)", () => {
   });
 
   it("matches Hindi/Hinglish content — the reason the config is 'simple' and not 'english'", async () => {
-    const devanagari = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["सर्वाइकल कैंसर की जांच", 12]);
+    const devanagari = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical("सर्वाइकल कैंसर की जांच"), 12]);
     expect(devanagari.map((r) => r.id)).toContain("chunk-hindi");
 
-    const hinglish = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV test", 12]);
+    const hinglish = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical("HPV test"), 12]);
     expect(hinglish.map((r) => r.id)).toContain("chunk-hindi");
   });
 
-  it("the planner uses the expression index for the shipped predicate", async () => {
+  describe("issue #134 — content-word tsquery instead of AND-of-every-token", () => {
+    it("REGRESSION: the Hinglish pregnancy probe lexically matches the pregnancy chunk, and ranks it first", async () => {
+      const rows = await db.query<{ id: string; lexRank: number }>(KB_FTS_SEARCH_SQL, [lexical(translatedProbeA()), 12]);
+      expect(rows.map((r) => r.id)).toContain("chunk-pregnancy");
+      expect(rows[0].id).toBe("chunk-pregnancy");
+      expect(rows[0].lexRank).toBeGreaterThan(0);
+    });
+
+    it("REGRESSION: RagService itself — not just the SQL — retrieves the pregnancy chunk for the probe", async () => {
+      jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+      jest.spyOn(Logger.prototype, "debug").mockImplementation(() => undefined);
+      try {
+        const health = new KbFtsHealthService(db.asPrisma());
+        await health.probe();
+        expect(health.shouldQuery()).toBe(true);
+        const rag = ragServiceOn(db, health);
+        const chunks = await (rag as any).fullTextSearchWithMetadata(translatedProbeA(), 6);
+        expect(chunks.map((c: any) => c.chunkId)).toContain("chunk-pregnancy");
+      } finally {
+        jest.restoreAllMocks();
+      }
+    });
+
+    it("the health probe's own sentence goes through the same builder and the shipped statement", async () => {
+      const built = buildKbFtsQuery(KB_FTS_PROBE_QUERY);
+      expect(built).not.toBeNull();
+      await expect(db.query(KB_FTS_SEARCH_SQL, [built!.tsquery, 1])).resolves.toBeDefined();
+    });
+
+    it("BEFORE/AFTER: the same probe through the pre-#134 statement returns nothing", async () => {
+      // 'simple' keeps "meri", "hai", "kya" as lexemes and websearch_to_tsquery ANDs them all.
+      const before = await db.query<{ id: string }>(LEGACY_AND_SQL, [translatedProbeA(), 12]);
+      expect(before).toEqual([]);
+      const after = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical(translatedProbeA()), 12]);
+      expect(after.length).toBeGreaterThan(0);
+    });
+
+    it("a natural-language English question matches on its content words", async () => {
+      const question = "What should happen after an abnormal screening result at the district hospital?";
+      expect(await db.query<{ id: string }>(LEGACY_AND_SQL, [question, 12])).toEqual([]);
+      const rows = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical(question), 12]);
+      expect(rows[0]?.id).toBe("chunk-followup");
+    });
+
+    it("a one-word overlap is not a hit: at least two specific terms must co-occur", async () => {
+      // "screening" appears in chunk-hpv and chunk-followup; "colposcopy" only in chunk-followup.
+      const rows = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical("colposcopy screening follow-up"), 12]);
+      expect(rows.map((r) => r.id)).toEqual(["chunk-followup"]);
+    });
+
+    it("a quoted phrase is matched as a phrase", async () => {
+      const phrase = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical('"unborn baby" chemotherapy'), 12]);
+      expect(phrase.map((r) => r.id)).toEqual(["chunk-pregnancy"]);
+      // Same words, wrong order → no phrase match.
+      const reversed = await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical('"baby unborn" chemotherapy'), 12]);
+      expect(reversed).toEqual([]);
+    });
+  });
+
+  it("the planner uses the expression index for the shipped predicate (pairwise OR-of-ANDs shape)", async () => {
     // Tiny table: force the choice so the test checks *usability*, not cost estimates.
     await db.exec("SET enable_seqscan = off;");
     try {
+      const tsquery = lexical("HPV testing for cervical cancer screening").replace(/'/g, "''");
       const plan = await db.query<{ "QUERY PLAN": string }>(
-        `EXPLAIN SELECT c.id FROM "KbChunk" c, websearch_to_tsquery('${KB_FTS_CONFIG}', 'HPV testing') q WHERE to_tsvector('${KB_FTS_CONFIG}', c.content) @@ q`
+        `EXPLAIN SELECT c.id FROM "KbChunk" c, to_tsquery('${KB_FTS_CONFIG}', '${tsquery}') q WHERE to_tsvector('${KB_FTS_CONFIG}', c.content) @@ q`
       );
       expect(plan.map((r) => r["QUERY PLAN"]).join("\n")).toContain(KB_FTS_INDEX);
     } finally {
@@ -235,7 +328,7 @@ describe("KB full-text search (issue #92)", () => {
   it("newly inserted rows are searchable immediately (no column to keep current)", async () => {
     await db.exec(`INSERT INTO "KbChunk" (id, "docId", "chunkIndex", content, "createdAt")
                    VALUES ('chunk-new', '${DOC_ID}', 99, 'Mammography screening every two years', now());`);
-    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["mammography", 12])).map((r) => r.id)).toContain("chunk-new");
+    expect((await db.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical("mammography"), 12])).map((r) => r.id)).toContain("chunk-new");
     await db.exec(`DELETE FROM "KbChunk" WHERE id = 'chunk-new';`);
   });
 
@@ -296,7 +389,7 @@ describe("KB full-text search (issue #92)", () => {
       expect(p.indexValid).toBe(true);
       const fn = await legacy.query<{ n: number }>(`SELECT count(*)::int AS n FROM pg_proc WHERE proname = 'kbchunk_content_tsv_maintain'`);
       expect(fn[0].n).toBe(0);
-      expect((await legacy.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12])).map((r) => r.id)).toContain("chunk-hpv");
+      expect((await legacy.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical("HPV testing"), 12])).map((r) => r.id)).toContain("chunk-hpv");
     } finally {
       await legacy.close();
     }
@@ -316,7 +409,7 @@ describe("KB full-text search (issue #92)", () => {
     });
 
     it("the shipped query still returns correct rows", async () => {
-      const rows = await noIndex.query<{ id: string }>(KB_FTS_SEARCH_SQL, ["HPV testing", 12]);
+      const rows = await noIndex.query<{ id: string }>(KB_FTS_SEARCH_SQL, [lexical("HPV testing"), 12]);
       expect(rows.map((r) => r.id)).toContain("chunk-hpv");
     });
 
@@ -349,7 +442,7 @@ describe("KB full-text search (issue #92)", () => {
         const chunks = await (rag as any).fullTextSearchWithMetadata("HPV testing", 6);
 
         expect(chunks).toEqual([]);
-        const lexicalCalls = rawSpy.mock.calls.filter((c) => String(c[0]).includes("websearch_to_tsquery"));
+        const lexicalCalls = rawSpy.mock.calls.filter((c) => String(c[0]).includes("to_tsquery"));
         expect(lexicalCalls).toHaveLength(0);
         // The gate schedules a re-probe (probe SQL) instead — verdict stays degraded here.
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -449,10 +542,10 @@ describe("KB full-text search (issue #92)", () => {
     });
 
     it("classifies the real Postgres error as a schema failure, not an unlucky query", async () => {
-      await expect(db.query(KB_FTS_SEARCH_SQL, ["HPV testing", 12])).resolves.toBeDefined();
+      await expect(db.query(KB_FTS_SEARCH_SQL, [lexical("HPV testing"), 12])).resolves.toBeDefined();
 
       const schemaError = await broken
-        .query(KB_FTS_SEARCH_SQL, ["HPV testing", 12])
+        .query(KB_FTS_SEARCH_SQL, [lexical("HPV testing"), 12])
         .then(() => null)
         .catch((e) => e);
 
