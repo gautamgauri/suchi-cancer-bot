@@ -26,10 +26,16 @@
  *   # self-check of the pure helpers (no network, no credentials)
  *   ts-node scripts/linkedin-oauth-exchange.ts --self-test
  *
- * SECURITY: this script never writes a token to stdout unless you pass the
- * explicit `--print-token` opt-in. Terminal scrollback, `script`/asciinema
- * recordings, CI logs and shell wrappers all capture stdout; a LinkedIn posting
- * token captured there is a live credential for 60 days.
+ * SECURITY: this script has no code path that writes a token value to stdout or
+ * stderr, and no flag that asks for one. Terminal scrollback, `script`/asciinema
+ * recordings, CI logs and shell wrappers all capture those streams, and a
+ * LinkedIn posting token captured there is a live credential for 60 days. A
+ * token therefore leaves this process only through `--to-secret-manager` (piped
+ * into gcloud over the child's stdin) or `--out` (a file created mode 0600).
+ * Asking for a token with neither is an error, not a reason to fall back to
+ * printing. `--self-test` re-derives that property from this file's own source
+ * on every run rather than trusting the flag table — see
+ * findTokenPrintingCalls().
  */
 
 import { spawn } from "node:child_process";
@@ -73,7 +79,6 @@ export const FLAG_SPEC: Record<string, FlagKind> = {
   "secret-project": "value",
   "token-file": "value",
   force: "boolean",
-  "print-token": "boolean",
   "self-test": "boolean",
   help: "boolean",
 };
@@ -135,10 +140,13 @@ export function parseArgs(argv: string[], spec: Record<string, FlagKind> = FLAG_
   return { command, flags, errors };
 }
 
+/**
+ * Where an exchanged token is written. There is deliberately no terminal
+ * variant: see the SECURITY note at the top of this file.
+ */
 export type Destination =
   | { kind: "secret-manager"; secret: string; project: string }
-  | { kind: "file"; path: string; force: boolean }
-  | { kind: "stdout" };
+  | { kind: "file"; path: string; force: boolean };
 
 export interface DestinationResult {
   destination?: Destination;
@@ -147,8 +155,8 @@ export interface DestinationResult {
 
 /**
  * Exactly one token destination must be chosen, explicitly. There is no
- * implicit default: a helper that prints credentials when you forget a flag is
- * the bug this function exists to prevent.
+ * implicit default and no terminal fallback: a helper that prints credentials
+ * when you forget a flag is the bug this function exists to prevent.
  */
 export function resolveDestination(
   flags: Record<string, string | true>,
@@ -165,7 +173,6 @@ export function resolveDestination(
   if (typeof out === "string") {
     chosen.push({ kind: "file", path: out, force: flags["force"] === true });
   }
-  if (flags["print-token"] === true) chosen.push({ kind: "stdout" });
 
   if (chosen.length === 0) {
     return {
@@ -173,12 +180,12 @@ export function resolveDestination(
         "No token destination given. Choose exactly one:",
         "  --to-secret-manager <secret-name>  pipe the token into `gcloud secrets versions add` (recommended)",
         "  --out <path>                       write it to a new file created with mode 0600",
-        "  --print-token                      print it to stdout (captured by scrollback and logs)",
+        "There is no option to show the token: it would be captured by scrollback and logs.",
       ],
     };
   }
   if (chosen.length > 1) {
-    return { errors: ["Choose only one of --to-secret-manager, --out and --print-token."] };
+    return { errors: ["Choose only one of --to-secret-manager and --out."] };
   }
   return { destination: chosen[0], errors: [] };
 }
@@ -353,20 +360,14 @@ export function addSecretVersion(secret: string, project: string, value: string)
   });
 }
 
-async function deliver(label: string, value: string, dest: Destination): Promise<void> {
+export async function deliver(label: string, value: string, dest: Destination): Promise<void> {
   if (dest.kind === "secret-manager") {
     const version = await addSecretVersion(dest.secret, dest.project, value);
     console.log(`${label}: stored as Secret Manager version ${version}`);
     return;
   }
-  if (dest.kind === "file") {
-    writeSecretFile(dest.path, value, dest.force);
-    console.log(`${label}: written to ${path.resolve(dest.path)} (mode 0600, no trailing newline)`);
-    return;
-  }
-  console.log(`\n!! ${label} follows in cleartext — scrollback, recordings and log`);
-  console.log("!! wrappers will capture it. Rotate it if this terminal is shared.\n");
-  console.log(value);
+  writeSecretFile(dest.path, value, dest.force);
+  console.log(`${label}: written to ${path.resolve(dest.path)} (mode 0600, no trailing newline)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -390,7 +391,7 @@ function printUrl(parsed: ParsedArgs): void {
 async function exchange(parsed: ParsedArgs): Promise<void> {
   const code = typeof parsed.flags.code === "string" ? parsed.flags.code : undefined;
   if (!code) {
-    console.error("Usage: exchange --code <authorization code> (--to-secret-manager <name> | --out <path> | --print-token)");
+    console.error("Usage: exchange --code <authorization code> (--to-secret-manager <name> | --out <path>)");
     process.exit(1);
   }
   const { destination, errors } = resolveDestination(parsed.flags);
@@ -430,7 +431,9 @@ async function exchange(parsed: ParsedArgs): Promise<void> {
       await deliver("Refresh token", data.refresh_token, refreshDestination(destination));
     }
   } catch (err) {
-    console.error(`\nCould not store the token: ${(err as Error).message}`);
+    // A storage backend can echo what it was handed; scrub before printing.
+    const detail = redactSecrets((err as Error).message, [data.access_token, data.refresh_token]);
+    console.error(`\nCould not store the token: ${detail}`);
     console.error("The token itself is still valid — re-run with a different destination,");
     console.error("or store it by hand (docs/LINKEDIN_ORG_POSTING.md step 3).");
     process.exit(1);
@@ -445,10 +448,7 @@ export function refreshDestination(dest: Destination): Destination {
   if (dest.kind === "secret-manager") {
     return { ...dest, secret: `${dest.secret}-refresh` };
   }
-  if (dest.kind === "file") {
-    return { ...dest, path: `${dest.path}.refresh` };
-  }
-  return dest;
+  return { ...dest, path: `${dest.path}.refresh` };
 }
 
 function readToken(parsed: ParsedArgs): string {
@@ -529,7 +529,7 @@ function usage(): void {
   console.error("Usage:");
   console.error("  linkedin-oauth-exchange.ts url [--state <s>]");
   console.error("  linkedin-oauth-exchange.ts exchange --code <code> \\");
-  console.error("      (--to-secret-manager <secret> [--secret-project <id>] | --out <path> [--force] | --print-token)");
+  console.error("      (--to-secret-manager <secret> [--secret-project <id>] | --out <path> [--force])");
   console.error("  linkedin-oauth-exchange.ts orgs [--token-file <path>]");
   console.error("  linkedin-oauth-exchange.ts --self-test");
   console.error("See docs/LINKEDIN_ORG_POSTING.md");
@@ -542,7 +542,87 @@ function usage(): void {
 // roots: ["<rootDir>/src"]), so the pure helpers carry their own checks.
 // ---------------------------------------------------------------------------
 
-export function selfTest(): number {
+/**
+ * Re-derive, from this file's own source, that no console/stdout/stderr call is
+ * handed a token-bearing expression directly. This is a source guard, not a
+ * proof: a token laundered through an intermediate variable would slip past it,
+ * which is why the runtime capture check below also exists. Together they cover
+ * the two ways a leak gets reintroduced - someone adds `console.log(token)`, or
+ * someone adds a sink that prints.
+ */
+export function findTokenPrintingCalls(source: string): string[] {
+  // Identifiers that hold, or destructure to, a live credential in this file.
+  const TOKEN_EXPR = /\b(access_token|refresh_token|accessToken|refreshToken)\b/;
+  const SINK =
+    /\b(?:console\.(?:log|error|warn|info|debug|trace|dir)|process\.(?:stdout|stderr)\.write)\s*\(/g;
+  const offenders: string[] = [];
+
+  let m: RegExpExecArray | null;
+  while ((m = SINK.exec(source)) !== null) {
+    // Walk to the matching close paren so the whole argument list is examined.
+    let depth = 1;
+    let i = m.index + m[0].length;
+    let quote: string | null = null;
+    for (; i < source.length && depth > 0; i++) {
+      const ch = source[i];
+      if (quote) {
+        if (ch === "\\") i++;
+        else if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+      else if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+    }
+    let args = source.slice(m.index + m[0].length, i - 1);
+    // A value passed INTO redactSecrets(...) is being scrubbed, not printed;
+    // drop those spans before judging what is left.
+    args = args.replace(/redactSecrets\s*\([\s\S]*?\)\s*\)/g, "").replace(/redactSecrets\s*\([\s\S]*?\)/g, "");
+    if (TOKEN_EXPR.test(args)) {
+      offenders.push(`${m[0]}${args.trim().slice(0, 120)}`);
+    }
+  }
+  return offenders;
+}
+
+/** Run `fn` with every console/stdout/stderr sink captured into one string. */
+async function captureAllOutput(fn: () => void | Promise<void>): Promise<string> {
+  const chunks: string[] = [];
+  const realOut = process.stdout.write.bind(process.stdout);
+  const realErr = process.stderr.write.bind(process.stderr);
+  const realConsole = { log: console.log, error: console.error, warn: console.warn, info: console.info };
+  const sink = (...a: unknown[]) => {
+    chunks.push(a.map(String).join(" "));
+  };
+  process.stdout.write = ((c: unknown) => {
+    chunks.push(String(c));
+    return true;
+  }) as typeof process.stdout.write;
+  process.stderr.write = ((c: unknown) => {
+    chunks.push(String(c));
+    return true;
+  }) as typeof process.stderr.write;
+  console.log = sink;
+  console.error = sink;
+  console.warn = sink;
+  console.info = sink;
+  try {
+    await fn();
+  } catch (err) {
+    // An exception is itself an output channel: its message must be clean too.
+    chunks.push(String((err as Error)?.message ?? err));
+  } finally {
+    process.stdout.write = realOut;
+    process.stderr.write = realErr;
+    console.log = realConsole.log;
+    console.error = realConsole.error;
+    console.warn = realConsole.warn;
+    console.info = realConsole.info;
+  }
+  return chunks.join("\n");
+}
+
+export async function selfTest(): Promise<number> {
   const failures: string[] = [];
   const check = (name: string, cond: boolean, detail = "") => {
     if (cond) console.log(`  ok   ${name}`);
@@ -562,10 +642,15 @@ export function selfTest(): number {
     check("no errors on a valid line", p.errors.length === 0, p.errors.join("; "));
   }
   {
-    const p = parseArgs(["exchange", "--code=AQT=456", "--print-token"]);
+    const p = parseArgs(["exchange", "--code=AQT=456", "--force"]);
     check("--k=v form keeps later '=' in the value", p.flags.code === "AQT=456");
-    check("boolean flag set", p.flags["print-token"] === true);
+    check("boolean flag set", p.flags["force"] === true);
   }
+  check(
+    "--print-token is no longer a flag at all",
+    parseArgs(["exchange", "--print-token"]).errors.some((e) => e.includes("--print-token")) &&
+      FLAG_SPEC["print-token"] === undefined,
+  );
   check("unknown flag is an error", parseArgs(["--nope"]).errors.some((e) => e.includes("--nope")));
   check("missing value is an error", parseArgs(["exchange", "--code"]).errors.some((e) => e.includes("--code")));
   check("flag-shaped value is not swallowed", parseArgs(["exchange", "--code", "--out", "/tmp/x"]).errors.length === 1);
@@ -577,8 +662,9 @@ export function selfTest(): number {
   {
     const none = resolveDestination({});
     check("no destination refuses", none.destination === undefined && none.errors.length > 0);
-    check("refusal names all three options", none.errors.join(" ").includes("--to-secret-manager") && none.errors.join(" ").includes("--out") && none.errors.join(" ").includes("--print-token"));
-    const both = resolveDestination({ out: "/tmp/x", "print-token": true });
+    check("refusal names both options", none.errors.join(" ").includes("--to-secret-manager") && none.errors.join(" ").includes("--out"));
+    check("refusal offers no way to print the token", !none.errors.join(" ").includes("--print-token"));
+    const both = resolveDestination({ out: "/tmp/x", "to-secret-manager": "s" });
     check("two destinations refuse", both.destination === undefined && both.errors.length === 1);
     const sm = resolveDestination({ "to-secret-manager": "linkedin-access-token" }, "proj-1");
     check("secret-manager destination", sm.destination?.kind === "secret-manager" && (sm.destination as { secret: string }).secret === "linkedin-access-token");
@@ -589,7 +675,26 @@ export function selfTest(): number {
     check("file destination defaults to no-force", file.destination?.kind === "file" && (file.destination as { force: boolean }).force === false);
     const forced = resolveDestination({ out: "/tmp/x", force: true });
     check("--force carried", (forced.destination as { force: boolean }).force === true);
-    check("--print-token destination", resolveDestination({ "print-token": true }).destination?.kind === "stdout");
+    // The type no longer has a terminal variant; assert no input produces one.
+    const everyFlagCombo: Array<Record<string, string | true>> = [
+      { "print-token": true },
+      { "print-token": true, out: "/tmp/x" },
+      { stdout: true },
+      { out: "/tmp/x" },
+      { "to-secret-manager": "s" },
+      {},
+    ];
+    check(
+      "no flag combination yields a terminal destination",
+      everyFlagCombo.every((f) => {
+        const kind = resolveDestination(f).destination?.kind;
+        return kind === undefined || kind === "file" || kind === "secret-manager";
+      }),
+    );
+    check(
+      "--print-token alone is still refused",
+      resolveDestination({ "print-token": true }).destination === undefined,
+    );
   }
 
   console.log("refreshDestination");
@@ -682,6 +787,77 @@ export function selfTest(): number {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 
+  console.log("no token reaches stdout/stderr");
+  {
+    // (a) Source guard: no sink is handed a token-bearing expression directly.
+    // Scan the operational half of the file only - everything below the
+    // self-test banner is fixtures, including deliberate leak samples used to
+    // prove the guard can fail.
+    const source = fs.readFileSync(__filename.replace(/\.js$/, ".ts"), "utf8");
+    const SELF_TEST_BANNER = "// Self-test";
+    const bannerAt = source.indexOf(SELF_TEST_BANNER);
+    check("self-test banner still marks the fixture boundary", bannerAt > 0);
+    const operational = source.slice(0, bannerAt);
+    // If a refactor moved the banner up, the scan would cover nothing and pass
+    // vacuously; require it to still cover the real command implementations.
+    check(
+      "the scanned region still holds the real code",
+      operational.includes("async function exchange(") && operational.includes("export async function deliver("),
+    );
+    const offenders = findTokenPrintingCalls(operational);
+    check("no console/stdout call takes a token expression", offenders.length === 0, offenders.join(" | "));
+    // The guard must actually be able to fail, or it proves nothing.
+    check(
+      "the source guard detects a planted leak",
+      findTokenPrintingCalls('console.log(data.access_token);').length === 1,
+    );
+    check(
+      "the source guard ignores a redacted value",
+      findTokenPrintingCalls('console.error(redactSecrets(e, [data.access_token]));').length === 0,
+    );
+
+    // (b) Runtime guard: drive the real delivery paths and read every byte.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "li-nostdout-"));
+    const out = path.join(dir, "tok");
+
+    const fileRun = await captureAllOutput(() =>
+      deliver("Access token", FAKE_TOKEN, { kind: "file", path: out, force: false }),
+    );
+    check("file delivery prints the path, never the token", !fileRun.includes(FAKE_TOKEN), fileRun);
+    check("file delivery confirms where it went", fileRun.includes(out));
+    check("the token really was written", fs.readFileSync(out, "utf8") === FAKE_TOKEN);
+
+    // Delivery failure (file already exists) must not echo the value either.
+    const clobber = await captureAllOutput(() =>
+      deliver("Access token", FAKE_TOKEN, { kind: "file", path: out, force: false }),
+    );
+    check("delivery failure never echoes the token", !clobber.includes(FAKE_TOKEN), clobber);
+
+    // A storage backend that echoes what it was handed must be scrubbed.
+    const echoed = await captureAllOutput(() => {
+      const detail = redactSecrets(`gcloud said: ${FAKE_TOKEN}`, [FAKE_TOKEN, FAKE_REFRESH]);
+      console.error(`\nCould not store the token: ${detail}`);
+    });
+    check("an echoing backend is scrubbed before printing", !echoed.includes(FAKE_TOKEN), echoed);
+
+    // The summary block printed on every successful exchange.
+    const summary = await captureAllOutput(() => {
+      for (const line of summarizeToken(
+        { access_token: FAKE_TOKEN, refresh_token: FAKE_REFRESH, expires_in: 5184000 },
+        Date.now(),
+      )) {
+        console.log(line);
+      }
+    });
+    check("exchange summary contains neither token", !summary.includes(FAKE_TOKEN) && !summary.includes(FAKE_REFRESH), summary);
+
+    // Usage/help text must not advertise a printing option.
+    const help = await captureAllOutput(() => usage());
+    check("usage offers no token-printing flag", !help.includes("--print-token"), help);
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
   console.log("");
   if (failures.length) {
     console.log(`SELF-TEST FAILED: ${failures.length} check(s) — ${failures.join(", ")}`);
@@ -696,7 +872,7 @@ export function selfTest(): number {
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
   if (parsed.flags["self-test"] === true) {
-    process.exit(selfTest());
+    process.exit(await selfTest());
   }
   if (parsed.errors.length) {
     for (const e of parsed.errors) console.error(e);
