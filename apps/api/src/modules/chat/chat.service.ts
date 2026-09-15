@@ -3206,13 +3206,14 @@ export class ChatService {
         ? `--- ${this.regionalCentresHeading(geography)} ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
         : "";
 
-    // When the search widened past the patient's own state, say so explicitly.
-    // The heading alone is easy for a generator to paraphrase away.
-    const travelCaveat =
-      regional.length > 0 &&
-      (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")
-        ? `\nIMPORTANT: no cancer centre in the directory serves ${geography.requestedCity ?? geography.resolvedState ?? "the patient's stated location"} directly. The centres listed above are in other districts or states and may involve significant travel. Do NOT describe them as "nearby" or "close by", and do NOT state or estimate a travel time or distance.\n`
-        : "";
+    // NOTE: the instruction that told the model not to call a cross-border
+    // fallback "nearby" and not to invent a travel time lived here. It is a
+    // prompt change under chat/, so AGENTS.md §1.3 sends it through SCCF
+    // human/medical review in its own labelled PR rather than riding along
+    // with this structural one (PR #99 re-review). Until that lands, the only
+    // thing this block says about distance is what the stage heading says:
+    // "may involve significant travel" on the adjacent-state rung, "travel
+    // distance not established" on the unfiltered one.
 
     const nationalBlock =
       national.length > 0
@@ -3227,7 +3228,7 @@ The following hospitals are from the Suchi Navigator structured database (verifi
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
 When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
-${travelCaveat}
+
 ${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."

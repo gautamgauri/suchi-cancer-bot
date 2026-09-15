@@ -126,33 +126,54 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     expect(block).toContain("--- Major cancer centres ---");
   });
 
-  it("adds an explicit do-not-call-it-nearby instruction on the adjacent-state rung", () => {
-    const block = build(
-      [hospital({ city: "Siliguri", state: "West Bengal" })],
-      geo("adjacent_state", "Kishanganj", "Bihar")
-    );
-    expect(block).toContain(
-      "no cancer centre in the directory serves Kishanganj directly"
-    );
-    expect(block).toContain('Do NOT describe them as "nearby"');
-    expect(block).toContain("do NOT state or estimate a travel time or distance");
+  // ── Prompt-instruction boundary (PR #99 re-review) ─────────────────────
+  //
+  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF human/medical
+  // review in their own labelled PR. This PR is the structural half — stage
+  // headings and data. The instruction that told the model not to describe a
+  // cross-border fallback as "nearby" and not to state or estimate a travel
+  // time was split out to its own labelled SCCF-review PR; this block must
+  // stay free of it until that review lands.
+  it("carries no un-reviewed proximity instruction to the model, on any rung", () => {
+    const rungs: [HospitalSearchGeography["stage"], string, string][] = [
+      ["adjacent_state", "Kishanganj", "Bihar"],
+      ["unfiltered", "Jaipur", "Rajasthan"],
+      ["city", "Patna", "Bihar"],
+      ["state", "Darbhanga", "Bihar"],
+      ["none", "", ""],
+    ];
+    for (const [stage, city, state] of rungs) {
+      const block = build(
+        [hospital({ city: "Siliguri", state: "West Bengal" })],
+        geo(stage, city || null, state || null)
+      );
+      expect(block).not.toContain("Do NOT describe them as");
+      expect(block).not.toContain("do NOT state or estimate a travel time");
+      expect(block).not.toContain("no cancer centre in the directory serves");
+    }
   });
 
-  it("adds the same instruction on the unfiltered rung", () => {
-    const block = build(
-      [hospital({ city: "Kolkata", state: "West Bengal" })],
-      geo("unfiltered", "Jaipur", "Rajasthan")
-    );
-    expect(block).toContain(
-      "no cancer centre in the directory serves Jaipur directly"
-    );
-  });
+  it("keeps the only travel language on the heading, where the rung puts it", () => {
+    // adjacent_state and unfiltered disclose the widening in the heading
+    // itself — that is the structural half and it stays here.
+    expect(
+      build(
+        [hospital({ city: "Siliguri", state: "West Bengal" })],
+        geo("adjacent_state", "Kishanganj", "Bihar")
+      )
+    ).toContain("may involve significant travel");
+    expect(
+      build(
+        [hospital({ city: "Kolkata", state: "West Bengal" })],
+        geo("unfiltered", "Jaipur", "Rajasthan")
+      )
+    ).toContain("travel distance not established");
 
-  it("does not add the travel caveat when the hospitals really are in the patient's city or state", () => {
+    // ...and a genuine city/state match claims nothing about travel at all.
     for (const stage of ["city", "state"] as const) {
       const block = build([hospital()], geo(stage, "Darbhanga", "Bihar"));
       expect(block).not.toContain("may involve significant travel");
-      expect(block).not.toContain("directly. The centres listed above");
+      expect(block).not.toContain("travel distance not established");
     }
   });
 
