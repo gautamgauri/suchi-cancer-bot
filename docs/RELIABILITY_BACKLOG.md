@@ -403,9 +403,13 @@ the contract. Also placeholder generators in
 ### P2-6. LinkedIn token expiry (tracked: issue #27)
 
 `LINKEDIN_ACCESS_TOKEN` (60-day OAuth token,
-`apps/api/src/modules/admin/social-post.service.ts`) expires ~2026-07-20;
-LinkedIn posting is intentionally disabled until an org page exists. Decide:
-rotate or remove the code path.
+`apps/api/src/modules/admin/social-post.service.ts`) expired ~2026-07-20.
+**Decided (Sep 2026): rotate, not remove** — SCCF has an organisation page, so
+`postLinkedIn()` now targets the versioned Posts API with an
+`urn:li:organization:` author. The engineering side is done; what remains is a
+human OAuth sign-in and two Secret Manager values. Runbook:
+`docs/LINKEDIN_ORG_POSTING.md`. The 60-day expiry itself does not go away —
+rotation stays a recurring calendar task.
 
 ### P2-7. Instagram social card placeholder (tracked: issue #28)
 

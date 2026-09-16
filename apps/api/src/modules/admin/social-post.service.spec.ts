@@ -11,7 +11,7 @@
  */
 
 import { ForbiddenException, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { SocialPostService } from "./social-post.service";
+import { SocialPostService, escapeLittleText } from "./social-post.service";
 
 jest.mock("@google-cloud/storage", () => ({ Storage: jest.fn() }));
 
@@ -221,5 +221,150 @@ describe("SocialPostService — safety gate", () => {
       jest.spyOn(service as any, "loadQueue").mockResolvedValue({ posts: [] });
       await expect(service.approvePost(ID, validToken)).rejects.toThrow(NotFoundException);
     });
+  });
+});
+
+// ── LinkedIn organisation posting (issue #27) ───────────────────────────────
+
+describe("SocialPostService — LinkedIn org posting", () => {
+  let service: SocialPostService;
+  const llmStub = {} as never;
+  const emailStub = { sendEmail: jest.fn().mockResolvedValue(undefined) } as never;
+
+  const SAVED: Record<string, string | undefined> = {};
+  const KEYS = ["LINKEDIN_ACCESS_TOKEN", "LINKEDIN_AUTHOR_URN"];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const callPost = (text = "Hello", url = "https://suchitracancercare.org/a", title = "T"): Promise<any> =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).postLinkedIn(text, url, title);
+
+  function stubFetch(init: { ok: boolean; status: number; headers?: Record<string, string>; text?: string }) {
+    const fn = jest.fn().mockResolvedValue({
+      ok: init.ok,
+      status: init.status,
+      headers: { get: (h: string) => (init.headers ?? {})[h.toLowerCase()] ?? null },
+      text: async () => init.text ?? "",
+    });
+    (global as unknown as { fetch: unknown }).fetch = fn;
+    return fn;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new SocialPostService(llmStub, emailStub);
+    for (const k of KEYS) { SAVED[k] = process.env[k]; delete process.env[k]; }
+  });
+
+  afterEach(() => {
+    for (const k of KEYS) {
+      if (SAVED[k] === undefined) delete process.env[k];
+      else process.env[k] = SAVED[k];
+    }
+    delete (global as unknown as { fetch?: unknown }).fetch;
+  });
+
+  it("returns not_configured and makes no network call when credentials are absent", async () => {
+    const fetchSpy = stubFetch({ ok: true, status: 201 });
+    const res = await callPost();
+    expect(res).toEqual({ success: false, error: "not_configured" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("posts to the versioned Posts API with an organization author and the required headers", async () => {
+    process.env.LINKEDIN_ACCESS_TOKEN = "tok";
+    process.env.LINKEDIN_AUTHOR_URN = "urn:li:organization:71580340";
+    const fetchSpy = stubFetch({ ok: true, status: 201, headers: { "x-restli-id": "urn:li:share:99" } });
+
+    const res = await callPost("Read our new guide", "https://suchitracancercare.org/x", "Chemotherapy");
+
+    expect(res).toEqual({ success: true, postId: "urn:li:share:99" });
+    const [url, opts] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.linkedin.com/rest/posts");
+    // Versioned REST API — NOT the deprecated /v2/ugcPosts endpoint.
+    expect(url).not.toContain("ugcPosts");
+    expect(opts.headers["Authorization"]).toBe("Bearer tok");
+    expect(opts.headers["X-Restli-Protocol-Version"]).toBe("2.0.0");
+    expect(opts.headers["LinkedIn-Version"]).toMatch(/^20\d{4}$/);
+
+    const body = JSON.parse(opts.body);
+    expect(body.author).toBe("urn:li:organization:71580340");
+    expect(body.commentary).toContain("Read our new guide");
+    expect(body.visibility).toBe("PUBLIC");
+    expect(body.distribution.feedDistribution).toBe("MAIN_FEED");
+    expect(body.content.article.source).toBe("https://suchitracancercare.org/x");
+    expect(body.content.article.title).toBe("Chemotherapy");
+    expect(body.lifecycleState).toBe("PUBLISHED");
+    // ugcPosts-era fields must be gone
+    expect(body.specificContent).toBeUndefined();
+  });
+
+  it("logs a clear 'token expired' error pointing at the runbook on a 401", async () => {
+    process.env.LINKEDIN_ACCESS_TOKEN = "expired";
+    process.env.LINKEDIN_AUTHOR_URN = "urn:li:organization:1";
+    stubFetch({ ok: false, status: 401, text: '{"message":"Empty oauth2 access token"}' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logSpy = jest.spyOn((service as any).logger, "error").mockImplementation(() => undefined);
+
+    const res = await callPost();
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain("token_expired");
+    expect(res.error).toContain("docs/LINKEDIN_ORG_POSTING.md");
+    const logged = logSpy.mock.calls[0][0] as string;
+    expect(logged).toContain("401");
+    expect(logged).toContain("expired");
+    expect(logged).toContain("docs/LINKEDIN_ORG_POSTING.md");
+  });
+
+  it("explains a 403 as a missing w_organization_social scope or page-admin role", async () => {
+    process.env.LINKEDIN_ACCESS_TOKEN = "tok";
+    process.env.LINKEDIN_AUTHOR_URN = "urn:li:organization:1";
+    stubFetch({ ok: false, status: 403, text: "ACCESS_DENIED" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jest.spyOn((service as any).logger, "error").mockImplementation(() => undefined);
+
+    const res = await callPost();
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain("insufficient_permissions");
+  });
+
+  it("rejects a malformed author URN before calling the API", async () => {
+    process.env.LINKEDIN_ACCESS_TOKEN = "tok";
+    process.env.LINKEDIN_AUTHOR_URN = "71580340"; // bare org id, missing the urn prefix
+    const fetchSpy = stubFetch({ ok: true, status: 201 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jest.spyOn((service as any).logger, "error").mockImplementation(() => undefined);
+
+    const res = await callPost();
+
+    expect(res).toEqual({ success: false, error: "invalid_author_urn" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when fetch rejects (network error)", async () => {
+    process.env.LINKEDIN_ACCESS_TOKEN = "tok";
+    process.env.LINKEDIN_AUTHOR_URN = "urn:li:organization:1";
+    (global as unknown as { fetch: unknown }).fetch = jest.fn().mockRejectedValue(new Error("ECONNRESET"));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jest.spyOn((service as any).logger, "error").mockImplementation(() => undefined);
+
+    const res = await callPost();
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain("ECONNRESET");
+  });
+});
+
+describe("escapeLittleText", () => {
+  it("escapes every reserved little-text character", async () => {
+    expect(escapeLittleText("(SCCF) #cancer @page [x] {y} <z> a|b c*d e_f g~h i\\j"))
+      .toBe("\\(SCCF\\) \\#cancer \\@page \\[x\\] \\{y\\} \\<z\\> a\\|b c\\*d e\\_f g\\~h i\\\\j");
+  });
+
+  it("leaves ordinary prose and URLs untouched", () => {
+    const plain = "Cancer care in Bihar: read more at https://suchitracancercare.org/x-y";
+    expect(escapeLittleText(plain)).toBe(plain);
   });
 });

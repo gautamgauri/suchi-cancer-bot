@@ -76,6 +76,23 @@ jobs:
       - name: Public image assets have real image magic bytes (issue #140)
         run: python3 scripts/check_image_assets.py
 
+      # The LinkedIn OAuth helper lives in scripts/, which no jest project
+      # reaches (apps/api/jest.config.js roots at apps/api/src), so its pure
+      # helpers - argument parsing, token-destination resolution, redaction,
+      # the org/role table - carry their own checks. They assert, among other
+      # things, that the exchange summary never contains the token value.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: LinkedIn OAuth helper self-test
+        run: npm run linkedin:auth:self-test
+
       - name: Build API image (verification only, not pushed)
         run: |
           docker build \
