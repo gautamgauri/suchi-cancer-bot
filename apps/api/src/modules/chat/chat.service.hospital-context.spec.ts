@@ -217,19 +217,27 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     });
   });
 
-  // ── Prompt-instruction boundary (PR #148 review, P1) ───────────────────
+  // ── Distance-handling instruction (SCCF review) ────────────────────────
   //
-  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF medical review
-  // in their own labelled PR. The distance-handling instruction that belongs
-  // with this feature was split out; this block must stay free of it until
-  // that review lands.
-  it("carries no un-reviewed distance instruction to the model", () => {
+  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF human/medical
+  // review in their own labelled PR. This is that change. It exists because
+  // the block now carries kilometre figures, and without an instruction the
+  // model is free to call a 90km centre "nearby" or to turn "~50 km" into
+  // "about an hour away" — a journey time this data cannot support, on roads
+  // it knows nothing about, to a patient deciding where to travel for
+  // treatment.
+  it("tells the model a distance is straight-line and must not become a travel time", () => {
     const block = build(
       [hospital({ distance_km: 52 })],
       geo("distance", "Patna", "Bihar")
     );
-    expect(block).not.toContain("STRAIGHT-LINE distance, already rounded");
-    expect(block).not.toContain("NEVER convert it into a travel time");
+    expect(block).toContain(
+      "Where a distance is given it is a STRAIGHT-LINE distance, already rounded."
+    );
+    expect(block).toContain("Repeat it as written if you mention it.");
+    expect(block).toContain(
+      "NEVER convert it into a travel time, a road distance, or a journey duration"
+    );
   });
 
   // ── Capability label (PR #148 review, P1) ──────────────────────────────
