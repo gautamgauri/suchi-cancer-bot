@@ -492,6 +492,8 @@ export class ChatService {
             safetyClassification: "red_flag",
             latencyMs: Date.now() - started,
             kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
+            locale: session.locale || dto.locale,
+            userText: dto.userText,
           }
         );
 
@@ -539,7 +541,9 @@ export class ChatService {
         [],
         {
           safetyClassification: "red_flag",
-          latencyMs: Date.now() - started
+          latencyMs: Date.now() - started,
+          locale: session.locale || dto.locale,
+          userText: dto.userText,
         }
       );
 
@@ -1204,6 +1208,8 @@ export class ChatService {
                 kbDocIds: Array.from(new Set(executionResult.mergedChunks.map(c => c.docId))),
                 evidenceQuality: executionResult.mergedChunks.length > 0 ? "strong" : "weak",
                 evidenceGatePassed: true,
+                locale: session.locale || dto.locale,
+                userText: dto.userText,
               }
             );
 
@@ -1359,6 +1365,8 @@ export class ChatService {
           evidenceQuality: 'insufficient',
           evidenceGatePassed: false,
           abstentionReason: gateResult.reasonCode || 'no_evidence',
+          locale: session.locale || dto.locale,
+          userText: dto.userText,
         }
       );
 
@@ -1455,6 +1463,8 @@ export class ChatService {
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: !gateResult.shouldAbstain,
           abstentionReason: gateResult.shouldAbstain ? gateResult.reason || undefined : undefined,
+          locale: session.locale || dto.locale,
+          userText: dto.userText,
         }
       );
 
@@ -1527,7 +1537,12 @@ export class ChatService {
           data: {
             sessionId: dto.sessionId,
             role: "assistant",
-            text: appendDisclaimer(clarifyingQuestion),
+            text: appendDisclaimer(
+              clarifyingQuestion,
+              session.locale || dto.locale,
+              false,
+              dto.userText
+            ),
             safetyClassification: "normal",
             kbDocIds: [],
             latencyMs: Date.now() - started,
@@ -1622,6 +1637,8 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: gateResult.reason || undefined,
+            locale: session.locale || dto.locale,
+            userText: dto.userText,
           }
         );
 
@@ -1839,6 +1856,8 @@ export class ChatService {
             kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
+            locale: session.locale || dto.locale,
+            userText: dto.userText,
           }
         );
 
@@ -2193,6 +2212,8 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
             abstentionReason: 'citation_validation_failed',
+            locale: session.locale || dto.locale,
+            userText: dto.userText,
           }
         );
 
@@ -2341,7 +2362,12 @@ export class ChatService {
               data: {
                 sessionId: dto.sessionId,
                 role: "assistant",
-                text: appendDisclaimer(clarifyingQuestion),
+                text: appendDisclaimer(
+                  clarifyingQuestion,
+                  session.locale || dto.locale,
+                  false,
+                  dto.userText
+                ),
                 safetyClassification: "normal",
                 kbDocIds: [],
                 latencyMs: Date.now() - started,
@@ -2401,6 +2427,8 @@ export class ChatService {
           kbDocIds,
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: true,
+          locale: session.locale || dto.locale,
+          userText: dto.userText,
         }
       );
 
@@ -2487,7 +2515,7 @@ export class ChatService {
 
       const assistant = await this.persistAssistantMessage(
         dto.sessionId, responseText, [], [],
-        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false }
+        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false, locale: session.locale || dto.locale, userText: dto.userText }
       );
       await this.analytics.emit("symptom_soft_redirect", { intent: intentResult.intent }, dto.sessionId);
 
@@ -2604,6 +2632,8 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: "citation_validation_failed",
+            locale: session.locale || dto.locale,
+            userText: dto.userText,
           }
         );
 
@@ -2649,6 +2679,8 @@ export class ChatService {
         kbDocIds,
         evidenceQuality: gateResult.quality,
         evidenceGatePassed: true,
+        locale: session.locale || dto.locale,
+        userText: dto.userText,
       }
     );
 
@@ -3104,6 +3136,10 @@ export class ChatService {
       evidenceQuality?: string;
       evidenceGatePassed?: boolean;
       abstentionReason?: string;
+      /** Session/request locale — the disclaimer engine's only source of bh/mai. */
+      locale?: string | null;
+      /** The user's own message — language fallback when nothing else is conclusive. */
+      userText?: string;
     }
   ): Promise<{ id: string; text: string }> {
     // PHASE 2.5+: Ensure citation markers are present in response text for LLM judge compliance
@@ -3119,7 +3155,12 @@ export class ChatService {
     // Phase 1: Disclaimer Engine — auto-append to every response
     const isEmergencyResponse = options.safetyClassification === "red_flag" ||
       options.safetyClassification === "mental_health_crisis";
-    finalText = appendDisclaimer(finalText, undefined, isEmergencyResponse);
+    finalText = appendDisclaimer(
+      finalText,
+      options.locale,
+      isEmergencyResponse,
+      options.userText
+    );
 
     // Review Copilot — second-pass review before delivery
     const reviewCtx: ReviewContext = {
