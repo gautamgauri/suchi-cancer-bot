@@ -21,6 +21,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import {
   ExecutionPlan,
   HospitalSearchResult,
+  HospitalSearchGeography,
   PlanStep,
   RetrievalStep,
   TemplateStep,
@@ -99,6 +100,8 @@ export interface PlanExecutionResult {
   errors: string[];
   /** Structured hospital results from HospitalDirectoryService (when hospital_search detected) */
   structuredHospitalResults?: HospitalSearchResult[] | null;
+  /** Geographic provenance of those results — which fallback rung produced them */
+  structuredHospitalGeography?: HospitalSearchGeography | null;
 }
 
 // ─── Service ───────────────────────────────────────────────────
@@ -258,6 +261,7 @@ export class PlanExecutorService {
       totalLatencyMs,
       errors,
       structuredHospitalResults: plan.structuredHospitalResults ?? null,
+      structuredHospitalGeography: plan.structuredHospitalGeography ?? null,
     };
   }
 
