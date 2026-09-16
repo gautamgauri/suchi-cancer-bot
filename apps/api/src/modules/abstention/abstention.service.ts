@@ -48,7 +48,16 @@ export class AbstentionService {
       /\b(confusion|confused|altered\s+sensorium|disoriented)\b/i,
       /\b(fainting|fainted|passed\s+out|unconscious)\b/i,
       /\b(rapidly\s+worsening|getting\s+worse\s+quickly|suddenly\s+worse)\b/i,
-      /\b(emergency|urgent|immediate|right\s+now)\b/i,
+      // Declaration of an emergency only — never a question about one.
+      // "this is an emergency" flags; "is this an emergency?" does not, and the
+      // word order alone separates them. A bare `emergency|urgent|immediate`
+      // match used to stand here, which meant anyone ASKING whether something
+      // was an emergency was told that it was, and the conversation was ended
+      // on them (#164). It was also negation-blind: "this is not urgent" fired.
+      // Every other pattern in this list describes a condition; that one
+      // described vocabulary, and so added nothing a symptom pattern did not
+      // already catch.
+      /\b(?:this|it)\s+is\s+(?!not\b)(?:an?\s+)?(?:emergency|urgent)\b/i,
       /\b(chest\s+pain|heart\s+attack|stroke)\b/i,
       // Febrile neutropenia - fever during chemo is oncology emergency
       /\b(fever|temperature|high\s+temp)\b.*\b(chemo|chemotherapy|treatment|during\s+treatment)\b/i,
