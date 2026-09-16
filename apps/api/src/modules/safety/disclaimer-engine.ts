@@ -74,7 +74,7 @@ function isDevanagariDominant(text: string): boolean {
   const prose = text
     .replace(/\[citation:[^\]]*\]/g, " ")
     .replace(/https?:\/\/\S+/g, " ");
-  const devanagari = (prose.match(/[ऀ-ॿ]/g) || []).length;
+  const devanagari = (prose.match(/[\u0900-\u097F]/g) || []).length;
   if (devanagari === 0) return false;
   const latin = (prose.match(/[A-Za-z]/g) || []).length;
   return devanagari >= latin;
