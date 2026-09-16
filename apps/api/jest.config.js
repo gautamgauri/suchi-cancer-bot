@@ -25,6 +25,20 @@ module.exports = {
   // in it ("No tests found").
   testPathIgnorePatterns: ["/node_modules/", AGENT_WORKTREES, "<rootDir>/dist/"],
   modulePathIgnorePatterns: [AGENT_WORKTREES, "<rootDir>/dist/"],
+  // Bound the worker pool. Jest defaults to (cores - 1) workers — 15 on a
+  // 16-core dev box — and every ts-jest worker builds its own TypeScript
+  // program and typechecker. That fan-out exhausted the WSL2 memory cap, and
+  // the kernel OOM-killer took down node (and with it the surrounding editor /
+  // agent session) instead of jest reporting an ordinary failure.
+  //
+  // 4 keeps a full run well inside the cap with headroom for the other tools
+  // sharing the VM. workerIdleMemoryLimit recycles a worker that creeps past
+  // 1GB rather than letting it grow until the OOM-killer fires.
+  //
+  // CI pins --runInBand (see the test:ci script) and is unaffected.
+  maxWorkers: 4,
+  workerIdleMemoryLimit: "1GB",
+
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.spec.ts"],
   coverageDirectory: "./coverage",
   testEnvironment: "node",
