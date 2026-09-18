@@ -285,11 +285,19 @@ export class ChatService {
       this.logger.warn(`Could not persist budget-exhaustion reply: ${persistErr?.message}`);
     }
 
+    // The optional fields are spelled out as `undefined` on purpose: this object
+    // joins `handleTurn`'s inferred return union from a different function, so
+    // TypeScript does not normalise the union's optional keys onto it, and
+    // callers that read e.g. `result.citations?.length` would stop compiling.
     return {
       sessionId: dto.sessionId,
       messageId,
       responseText,
       safety: { classification: "normal" as const, actions: [] },
+      citations: undefined,
+      citationConfidence: undefined,
+      retrievedChunks: undefined,
+      abstentionReason: undefined,
       error: "budget_exhausted_before_llm",
     };
   }
