@@ -210,8 +210,14 @@ describe("ChatService — slow-turn fallback must not escalate (issue #94)", () 
     jest.clearAllMocks();
   });
 
-  /** Burn 31s of virtual time inside the pre-RAG phase (budget guard trips at 30s). */
-  function stallPreRagPhase(ms = 31_000) {
+  /**
+   * Burn virtual time inside the pre-RAG phase until the budget guard trips.
+   * The guard fires at `turnBudgetMs(channel) - MIN_BUDGET_FOR_LLM_MS`; this
+   * session is on the `whatsapp` channel, which since issue #168 gets the 90s
+   * async-channel budget (no HTTP client waits on a WhatsApp turn), so the
+   * threshold is 75s rather than the 30s it was when this spec was written.
+   */
+  function stallPreRagPhase(ms = 76_000) {
     (empathy.detectEmotionalTone as jest.Mock).mockImplementation(async () => {
       clockOffset += ms;
       return { tone: "neutral" };
