@@ -65,6 +65,13 @@ export class ChatService {
   private readonly CACHE_TTL_MS = 60000; // 60 seconds
   /** Request budget so explain/fallback/urgent flows cannot stack multiple full-length LLM calls (controller is 55s) */
   private readonly REQUEST_BUDGET_MS = 45000;
+  /**
+   * Budget for turns that no HTTP client is waiting on. WhatsApp webhooks ACK
+   * first and run the turn detached (`void this.svc.processClaimed(...)` in
+   * whatsapp.controller.ts), so those turns are not bounded by the 55s
+   * ChatController timeout that REQUEST_BUDGET_MS is derived from — issue #168.
+   */
+  private readonly ASYNC_CHANNEL_BUDGET_MS = 90000;
   private readonly MIN_BUDGET_FOR_LLM_MS = 15000;
   /** Urgent/symptomatic path: hard deadline for LLM so we fall back to template quickly instead of 504 */
   private readonly URGENT_PATH_LLM_DEADLINE_MS = 15000;
@@ -201,7 +208,103 @@ export class ChatService {
     return session;
   }
 
+  /**
+   * Wall-clock budget for one turn, chosen by channel.
+   *
+   * The whole pipeline shares ONE budget (`requestDeadlineMs` below), so every
+   * pre-generation stage — safety, empathy, retrieval, decomposition,
+   * extraction — spends from the same pot as the LLM stage. When less than
+   * `MIN_BUDGET_FOR_LLM_MS` is left, `llmWithDeadline` throws and the turn
+   * produces no answer at all. On WhatsApp that throw surfaces to the patient
+   * as the generic failure reply (issue #168).
+   *
+   * 45s exists because the HTTP client behind `ChatController` gives up at 55s.
+   * WhatsApp turns have no such client, so holding them to the HTTP budget
+   * traded a slow-but-real answer for no answer.
+   */
+  private turnBudgetMs(channel?: string): number {
+    return channel === "whatsapp" ? this.ASYNC_CHANNEL_BUDGET_MS : this.REQUEST_BUDGET_MS;
+  }
+
+  /**
+   * True for the deadline errors `llmWithDeadline` throws once the turn's
+   * budget is gone. Aborts are excluded on purpose: an abort means the caller
+   * (`ChatController`) has already timed out and returns its own fallback.
+   */
+  private isBudgetExhaustionError(err: any, signal?: AbortSignal): boolean {
+    if (signal?.aborted) return false;
+    const message: string = err?.message ?? "";
+    return message.startsWith("LLM generation timeout:") && !message.includes("abort");
+  }
+
+  /**
+   * Last-resort reply for a turn whose budget ran out at the generation stage.
+   *
+   * The pre-RAG budget guard already degrades this way; every stage after RAG
+   * used to throw out of `handle()` instead, and the WhatsApp worker answered
+   * with `FALLBACK_REPLY` ("something went wrong on our side") — issue #168.
+   *
+   * Like the pre-RAG guard this is a *technical* timeout, not a clinical
+   * finding: it must use the technical-failure template (A3) and never the S2
+   * urgent-escalation template (issue #94).
+   */
+  private async budgetExhaustedResponse(dto: ChatDto, turnStarted: number, err: any) {
+    this.logger.warn(
+      `Request budget exhausted at the generation stage after ${Date.now() - turnStarted}ms ` +
+        `(channel=${dto.channel}): ${err?.message} — returning template response`,
+    );
+
+    const responseText = ResponseTemplates.A3({
+      isFirstMessage: false,
+      userText: dto.userText,
+      locale: dto.locale,
+    } as any);
+
+    this.analytics
+      .emit(
+        "turn_budget_exhausted",
+        { channel: dto.channel, stage: "generation", latencyMs: Date.now() - turnStarted, error: err?.message },
+        dto.sessionId,
+      )
+      .catch((e) => this.logger.warn(`Analytics emit failed: ${e.message}`));
+
+    let messageId: string | undefined;
+    try {
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: responseText,
+          safetyClassification: "normal",
+          latencyMs: Date.now() - turnStarted,
+        },
+      });
+      messageId = assistant.id;
+    } catch (persistErr: any) {
+      // Persisting is best-effort — the patient still gets the reply.
+      this.logger.warn(`Could not persist budget-exhaustion reply: ${persistErr?.message}`);
+    }
+
+    return {
+      sessionId: dto.sessionId,
+      messageId,
+      responseText,
+      safety: { classification: "normal" as const, actions: [] },
+      error: "budget_exhausted_before_llm",
+    };
+  }
+
   async handle(dto: ChatDto, signal?: AbortSignal) {
+    const turnStarted = Date.now();
+    try {
+      return await this.handleTurn(dto, signal);
+    } catch (err: any) {
+      if (!this.isBudgetExhaustionError(err, signal)) throw err;
+      return await this.budgetExhaustedResponse(dto, turnStarted, err);
+    }
+  }
+
+  private async handleTurn(dto: ChatDto, signal?: AbortSignal) {
     // ─── Phase 0: Input Cleanup (by modality, not channel) ────────────
     // Speech recognition output (the `voice` channel, or the web mic which
     // sends channel "web" + inputMode "voice") can stutter, duplicate words and
@@ -248,7 +351,7 @@ export class ChatService {
     );
 
     const started = Date.now();
-    const requestDeadlineMs = started + this.REQUEST_BUDGET_MS;
+    const requestDeadlineMs = started + this.turnBudgetMs(dto.channel);
 
     // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
     // This runs BEFORE any LLM or async call. Pure regex, zero cost.
