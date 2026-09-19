@@ -137,6 +137,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Issue #171: the turn timed out server-side, but the API still composed
+      // the helpline / 112 / 108 fallback above. Render it as the reply instead
+      // of the generic error overlay. Nothing was persisted for this turn, so
+      // it is not the feedback target and there is no greeting state to refresh.
+      if (response.error === "timeout") {
+        setSafetyBanner(null);
+        return;
+      }
+
       setLastMessageId(response.messageId);
 
       // Show sources disclosure on first assistant response (one-time)
