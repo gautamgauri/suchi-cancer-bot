@@ -36,6 +36,15 @@ import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { OutputVerifierService, VerificationResult } from "./output-verifier.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
+/**
+ * A line of chunk text that opens mid-word, i.e. on the tail of a word the
+ * chunker cut in half (issue #173). The whole first word must be lower-case
+ * ASCII: Devanagari has no case and never matches, and `mRNA`/`pH` carry an
+ * upper-case second character and never match either. No `g` flag — this is
+ * tested against many strings and `lastIndex` must not carry between them.
+ */
+const LEADING_FRAGMENT_PATTERN = /^[a-z]+(?:\s|$)/;
+
 // ─── Step Results ──────────────────────────────────────────────
 
 export interface RetrievalStepResult {
@@ -327,6 +336,14 @@ export class PlanExecutorService {
 
     const filledSections = new Map<string, string>();
     const filledIds: string[] = [];
+    // Content already emitted by an earlier retrieval section of this template.
+    // PSYCHOSOCIAL_SUPPORT declares "Coping Strategies" and "Support Groups &
+    // Communities" with the SAME retrievalIntent, so findChunksForIntent hands
+    // both the same chunks and both render byte-identical bodies — the reader
+    // got one five-bullet list printed twice under two headings, with ten
+    // citations covering five chunks (issue #173). Filling the second section is
+    // skipped; renderTemplate then drops the heading, since it is optional.
+    const emittedContent = new Set<string>();
 
     for (const section of template.sections) {
       if (section.source === "template" && section.staticContent) {
@@ -348,6 +365,16 @@ export class PlanExecutorService {
           const content = this.formatChunksAsContent(
             relevantChunks.slice(0, maxItems)
           );
+          if (content.trim() && emittedContent.has(content.trim())) {
+            this.logger.debug({
+              event: "duplicate_template_section_skipped",
+              templateId: step.templateId,
+              sectionId: section.id,
+              intent,
+            });
+            continue;
+          }
+          if (content.trim()) emittedContent.add(content.trim());
           filledSections.set(section.id, content);
           filledIds.push(section.id);
         }
@@ -460,6 +487,12 @@ export class PlanExecutorService {
    * along with the newline that followed them ran the heading straight into the
    * body ("Chemotherapy can cause side effects Chemotherapy not only kills…"), so
    * the heading is separated out and re-attached with a colon. See issue #67.
+   *
+   * The chunk text is ingest output, not prose written for a reader, so it is
+   * sanitised before any of it is quoted into a bullet (issue #173):
+   *   - ingest markup is removed (`stripIngestMarkup`), and
+   *   - a chunk that opens mid-sentence contributes from its first COMPLETE
+   *     sentence onward (`dropLeadingSentenceFragment`).
    */
   private extractSummary(content: string): string {
     // Strip heading markers and bold, but keep the line structure so a heading
@@ -467,20 +500,78 @@ export class PlanExecutorService {
     const lines = content
       .replace(/\r\n/g, "\n")
       .split("\n")
-      .map((line) => line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, "").replace(/\s+/g, " ").trim())
+      .map((line) =>
+        this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
+          .replace(/\s+/g, " ")
+          .trim()
+      )
       .filter((line) => line.length > 0);
 
     if (lines.length === 0) return "";
 
     // A short opening line with no terminal punctuation is a heading, not prose.
+    // One that opens mid-word is a chunk-boundary slice, not a heading either.
     const looksLikeHeading =
-      lines.length > 1 && lines[0].length <= 100 && !/[.!?:]$/.test(lines[0]);
+      lines.length > 1 &&
+      lines[0].length <= 100 &&
+      !/[.!?:]$/.test(lines[0]) &&
+      !LEADING_FRAGMENT_PATTERN.test(lines[0]);
     const heading = looksLikeHeading ? lines[0] : null;
-    const body = (looksLikeHeading ? lines.slice(1) : lines).join(" ").replace(/\s+/g, " ").trim();
+    const body = this.dropLeadingSentenceFragment(
+      (looksLikeHeading ? lines.slice(1) : lines).join(" ").replace(/\s+/g, " ").trim()
+    );
 
     const prefix = heading ? `${heading}: ` : "";
     const summary = this.firstSentenceOrTruncate(body);
     return summary ? `${prefix}${summary}` : heading || "";
+  }
+
+  /**
+   * Remove ingest markup from a line of chunk text (issue #173).
+   *
+   * Chunks are converted from source web pages, so they carry the page's markup.
+   * A caregiver asking how to give her mother courage was shown
+   * `Emotions and Cancer![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/…`
+   * in her reply: an NCI CMS image whose URL is site-relative and therefore
+   * resolves to nothing on this domain.
+   *
+   * Images go entirely — Suchi emits no images, so one in a bullet is always an
+   * artifact — including the unterminated form, which is what survives when a
+   * chunk boundary or the truncation below cuts the URL in half. Links keep
+   * their text and lose their target, because the text is the sentence the
+   * reader needs and the target is markup they cannot follow in a chat bubble.
+   */
+  private stripIngestMarkup(line: string): string {
+    return line
+      .replace(/!\[[^\]\n]*\]\([^)\n]*\)/g, "")
+      .replace(/!\[[^\]\n]*\]\([^)\n]*$/, "")
+      .replace(/!\[[^\]\n]*$/, "")
+      .replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
+      .replace(/\[([^\]\n]*)\]\([^)\n]*$/, "$1");
+  }
+
+  /**
+   * Drop a chunk's opening partial sentence (issue #173).
+   *
+   * Chunking splits documents on length, not on sentence boundaries, so a
+   * continuation chunk routinely starts mid-word — `rs experienced greater
+   * depressive symptoms…` is the tail of "caregivers", and `n your area, try a
+   * support group online.` is the tail of "in your area". Quoted into a bullet
+   * verbatim, both read as corrupted text.
+   *
+   * A body whose first word is entirely lower-case ASCII is such a slice: the
+   * knowledge base's own sentences open with a capital, and the test cannot fire
+   * on Devanagari (no case) or on lower-case-initial terms like `mRNA`/`pH`,
+   * whose second character is upper-case. The partial sentence is dropped and
+   * the chunk contributes from its first complete sentence; if it has none, it
+   * contributes nothing and `formatChunksAsContent` omits the bullet.
+   */
+  private dropLeadingSentenceFragment(body: string): string {
+    if (!LEADING_FRAGMENT_PATTERN.test(body)) return body;
+
+    const boundary = body.search(/[.!?]\s+\S/);
+    if (boundary === -1) return "";
+    return body.slice(boundary + 1).trim();
   }
 
   /** First sentence of `text`, or a word-boundary truncation when there is none. */

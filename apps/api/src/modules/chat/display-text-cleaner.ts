@@ -26,6 +26,7 @@
 import {
   stripCitationDebris,
   stripCitationMarkers,
+  stripMarkdownImages,
   stripPromptScaffolding,
 } from "../../common/text-cleaning";
 
@@ -37,5 +38,7 @@ import {
  */
 export function cleanResponseForDisplay(text: string): string {
   if (!text) return text;
-  return stripCitationDebris(stripPromptScaffolding(stripCitationMarkers(text)));
+  return stripCitationDebris(
+    stripPromptScaffolding(stripMarkdownImages(stripCitationMarkers(text)))
+  );
 }
