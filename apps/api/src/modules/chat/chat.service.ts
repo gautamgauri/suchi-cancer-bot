@@ -20,7 +20,7 @@ import { StructuredExtractorService, StructuredInfo } from "./structured-extract
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
-import { detectCancerType } from "./utils/cancer-type-detector";
+import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
 import { PatientStateService, PatientState } from "./patient-state.service";
@@ -2756,7 +2756,17 @@ export class ChatService {
     };
 
     const cancerKey = cancerType.toLowerCase();
-    const cancerTerms = essentialTerms[cancerKey] || [];
+
+    // Disease-consistency guard (issue #175): never splice cancer X's notes into
+    // an answer that is about cancer Y. If the answer names cancer types and the
+    // requested one is not among them, the type we were handed is stale/wrong —
+    // drop the disease-specific notes. The universal (disease-agnostic) notes
+    // below are still safe to add.
+    const typesNamedInResponse = detectCancerTypes(responseText);
+    const responseIsAboutAnotherCancer =
+      typesNamedInResponse.length > 0 && !typesNamedInResponse.includes(cancerKey);
+
+    const cancerTerms = responseIsAboutAnotherCancer ? [] : (essentialTerms[cancerKey] || []);
 
     // Check universal terms that match the current query type
     const applicableUniversalTerms = universalTerms.filter(t =>
