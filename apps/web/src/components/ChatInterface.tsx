@@ -129,11 +129,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
         ...(meta?.inputMode ? { inputMode: meta.inputMode } : {})
       });
 
+      const timedOut = response.error === "timeout";
+
       const assistantMessage: Message = {
         id: response.messageId,
         role: "assistant",
         text: response.responseText,
-        timestamp: new Date()
+        timestamp: new Date(),
+        // Nothing was stored for a timed-out turn, so the bubble carries no
+        // rateable message: hide its thumbs rather than let them rate the
+        // previous answer.
+        ...(timedOut ? { rateable: false } : {})
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -142,8 +148,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       // the helpline / 112 / 108 fallback above. Render it as the reply instead
       // of the generic error overlay. Nothing was persisted for this turn, so
       // it is not the feedback target and there is no greeting state to refresh.
-      if (response.error === "timeout") {
+      if (timedOut) {
         setSafetyBanner(null);
+        // Drop the previous answer as the feedback target too — otherwise the
+        // conversation feedback button rates that answer as if it were this
+        // reply.
+        setLastMessageId(null);
         return;
       }
 

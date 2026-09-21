@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -121,5 +121,80 @@ describe('ChatInterface — 55s turn timeout (issue #171)', () => {
     await sendQuestion();
 
     expect(await screen.findByText(GENERIC_ERROR)).toBeInTheDocument();
+  });
+
+  describe('feedback targeting when a timeout follows a real answer', () => {
+    const ANSWER_TEXT = 'Screening guidance depends on your age and family history.';
+
+    // First turn answers normally and is persisted as message-1; the second
+    // turn times out, and nothing is persisted for it.
+    const seedAnswerThenTimeout = () => {
+      let chatCalls = 0;
+      mocks.post.mockImplementation(async (url: string) => {
+        if (url !== '/chat') return { data: { id: 'feedback-1', createdAt: '2026-09-19T08:00:00.000Z' } };
+        chatCalls += 1;
+        if (chatCalls === 1) {
+          return {
+            data: {
+              sessionId: 'session-1',
+              messageId: 'message-1',
+              responseText: ANSWER_TEXT,
+              safety: { classification: 'normal', actions: [] },
+            },
+          };
+        }
+        throw axiosError(504, {
+          sessionId: 'session-1',
+          responseText: FALLBACK_TEXT,
+          safety: { classification: 'normal', actions: [] },
+          error: 'timeout',
+        });
+      });
+    };
+
+    const bubbleContaining = (container: HTMLElement, needle: string) => {
+      const bubble = Array.from(container.querySelectorAll<HTMLElement>('[role="assistant"]')).find(
+        (el) => el.textContent?.includes(needle)
+      );
+      expect(bubble).toBeDefined();
+      return bubble!;
+    };
+
+    const feedbackPosts = () => mocks.post.mock.calls.filter(([url]) => url === '/feedback');
+
+    it('offers no thumb rating on the non-persisted timeout bubble', async () => {
+      seedAnswerThenTimeout();
+
+      const { container } = render(<ChatInterface sessionId="session-1" onStartOver={vi.fn()} />);
+      await sendQuestion();
+      await sendQuestion();
+
+      const answered = bubbleContaining(container, ANSWER_TEXT);
+      expect(within(answered).getByLabelText('Thumbs up')).toBeInTheDocument();
+
+      const timedOut = bubbleContaining(container, '1800-22-1951');
+      expect(within(timedOut).queryByLabelText('Thumbs up')).toBeNull();
+      expect(within(timedOut).queryByLabelText('Thumbs down')).toBeNull();
+      // The rest of the toolbar (copy, listen) stays available.
+      expect(within(timedOut).getByLabelText('Copy message')).toBeInTheDocument();
+    });
+
+    it('does not rate the previous answer from the conversation feedback button', async () => {
+      seedAnswerThenTimeout();
+
+      const user = userEvent.setup();
+      render(<ChatInterface sessionId="session-1" onStartOver={vi.fn()} />);
+      await sendQuestion();
+      await sendQuestion();
+
+      await user.click(screen.getByLabelText('Provide feedback on conversation'));
+      await user.click(screen.getByRole('button', { name: /👍 Yes/ }));
+      await user.click(screen.getByRole('button', { name: 'Submit' }));
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(feedbackPosts()).toHaveLength(0);
+    });
   });
 });

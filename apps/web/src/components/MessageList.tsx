@@ -11,6 +11,12 @@ export interface Message {
   role: "user" | "assistant";
   text: string;
   timestamp?: Date;
+  /**
+   * False for a bubble the client composed itself, with no stored message
+   * behind it (the issue #171 timeout fallback). Rating such a bubble would
+   * attach the feedback to whatever answer came before it. Defaults to true.
+   */
+  rateable?: boolean;
 }
 
 interface MessageListProps {
@@ -126,6 +132,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, onFeedback }
               {message.role === "assistant" && (
                 <MessageActions
                   messageText={message.text}
+                  showFeedback={message.rateable !== false}
                   onFeedback={(rating) => onFeedback?.(message.id, rating)}
                 />
               )}
