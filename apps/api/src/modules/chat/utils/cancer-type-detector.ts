@@ -39,6 +39,37 @@ const cancerKeywords: Record<string, string> = {
 };
 
 /**
+ * Keywords that name a cancer by themselves — no "cancer" wording needed nearby.
+ * Everything else in the map is an organ or an anatomical adjective, which only
+ * identifies a disease when cancer wording sits next to it.
+ */
+const selfIdentifyingKeywords = new Set([
+  'melanoma',
+  'leukemia',
+  'leukaemia',
+  'lymphoma',
+  'sarcoma',
+  'skin cancer',
+]);
+
+const CANCER_WORD = String.raw`(?:cancers?|carcinomas?|tumou?rs?|malignanc(?:y|ies)|malignant|neoplasms?|\bca\b)`;
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * True when `keyword` is used to name a disease in `textLower` — i.e. cancer
+ * wording sits next to it ("stomach cancer", "cancer of the stomach",
+ * "Ca breast") rather than the organ merely being mentioned in passing
+ * ("stomach pain after chemo").
+ */
+function namedWithCancerContext(textLower: string, keyword: string): boolean {
+  const kw = `\\b${escapeRegExp(keyword)}\\b`;
+  const organThenCancer = new RegExp(`${kw}[\\s-]*${CANCER_WORD}`);
+  const cancerThenOrgan = new RegExp(`${CANCER_WORD}[\\s-]*(?:(?:of|in)[\\s-]+(?:the[\\s-]+)?)?${kw}`);
+  return organThenCancer.test(textLower) || cancerThenOrgan.test(textLower);
+}
+
+/**
  * Every cancer type named anywhere in a piece of text, in first-match order.
  * Used to check that a deterministic addendum is about the same disease as the
  * answer it is being appended to.
@@ -57,6 +88,26 @@ export function detectCancerTypes(text: string): string[] {
 }
 
 /**
+ * The cancer types the text explicitly identifies as the disease under
+ * discussion, in first-match order. A self-identifying disease name counts on
+ * its own; an organ only counts with cancer wording next to it.
+ */
+function detectExplicitCancerTypes(textLower: string): string[] {
+  const found: string[] = [];
+
+  for (const [keyword, cancerType] of Object.entries(cancerKeywords)) {
+    const explicit = selfIdentifyingKeywords.has(keyword)
+      ? textLower.includes(keyword)
+      : namedWithCancerContext(textLower, keyword);
+    if (explicit && !found.includes(cancerType)) {
+      found.push(cancerType);
+    }
+  }
+
+  return found;
+}
+
+/**
  * Detect the cancer type a turn is about.
  *
  * The *current message* wins: if the user names a cancer type now, that beats
@@ -65,15 +116,29 @@ export function detectCancerTypes(text: string): string[] {
  * session tag was returned first, so a session tagged `breast` answered a
  * prostate question with breast screening notes.)
  *
+ * A session tag records a diagnosis, so it takes an *explicit* naming to
+ * overturn it: "stomach cancer" replaces it, "stomach pain after chemo" does
+ * not — otherwise ordinary symptom wording would reframe retrieval and the
+ * answer around the wrong disease. With no session tag there is nothing to
+ * protect, so a bare organ or a lone misspelling ("prostrate") still picks a
+ * type.
+ *
  * @param userText User message text
  * @param sessionCancerType Optional cancer type from session (fallback only)
  */
 export function detectCancerType(userText: string, sessionCancerType?: string | null): string | null {
-  const fromMessage = detectCancerTypes(userText)[0];
-  if (fromMessage) {
-    return fromMessage;
+  const textLower = userText.toLowerCase();
+
+  const explicit = detectExplicitCancerTypes(textLower)[0];
+  if (explicit) {
+    return explicit;
   }
 
-  // Nothing named in this message — carry the session's type forward.
-  return sessionCancerType || null;
+  // Nothing explicitly named: keep the session's diagnosis rather than let an
+  // incidental organ mention overwrite it.
+  if (sessionCancerType) {
+    return sessionCancerType;
+  }
+
+  return detectCancerTypes(userText)[0] || null;
 }

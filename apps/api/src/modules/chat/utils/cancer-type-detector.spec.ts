@@ -22,6 +22,24 @@ describe("detectCancerType", () => {
     });
   });
 
+  describe("a session tag is only overturned by an explicit naming", () => {
+    it("keeps the session type when an organ is mentioned as a symptom", () => {
+      // A lung-cancer patient describing a side effect must not have the answer
+      // reframed around stomach cancer.
+      expect(detectCancerType("I have stomach pain after chemo", "lung")).toBe("lung");
+      expect(detectCancerType("my skin is dry and my mouth hurts", "lung")).toBe("lung");
+    });
+
+    it("switches when the message names the other cancer", () => {
+      expect(detectCancerType("is stomach cancer treatable?", "lung")).toBe("stomach");
+      expect(detectCancerType("cancer of the stomach — what is the treatment?", "lung")).toBe("stomach");
+    });
+
+    it("still picks up a bare organ when there is no session type to protect", () => {
+      expect(detectCancerType("stomach pain", null)).toBe("stomach");
+    });
+  });
+
   describe("the session tag remains the fallback", () => {
     it("is used when the message names no cancer type", () => {
       expect(detectCancerType("kya cancer ka ilaj sambhav hai?", "breast")).toBe("breast");
