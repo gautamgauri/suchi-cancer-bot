@@ -255,6 +255,112 @@ describe("PlanExecutorService — structured template composition", () => {
     });
   });
 
+  describe("required sections of a same-intent template (Codex review, PR #174)", () => {
+    /**
+     * SCHEME_APPLICATION_CHECKLIST declares THREE retrieval sections with the
+     * same retrievalIntent "schemes": scheme_overview and eligibility (both
+     * required) and additional_schemes (optional). findChunksForIntent hands
+     * all three the same chunks, so all three format byte-identically — the
+     * same shape as PSYCHOSOCIAL_SUPPORT's duplicate pair, but two of these
+     * sections are REQUIRED, and renderTemplate answers an unfilled required
+     * section with "_Information not available…_".
+     */
+    const PMJAY_OVERVIEW_CHUNK = [
+      "# Ayushman Bharat PM-JAY",
+      "",
+      "The scheme covers hospitalisation costs up to Rs 5 lakh per family per year at empanelled hospitals.",
+    ].join("\n");
+
+    const PMJAY_ELIGIBILITY_CHUNK = [
+      "# Who can apply",
+      "",
+      "Families listed in the SECC database are eligible, and the e-card is issued free of cost.",
+    ].join("\n");
+
+    function schemePlan(): ExecutionPlan {
+      const retrieve: RetrievalStep = {
+        type: "retrieve",
+        intent: "schemes",
+        query: "how do I apply for Ayushman Bharat for cancer treatment",
+        topK: 5,
+        stepId: "retrieve_schemes_0",
+      };
+      const template: TemplateStep = {
+        type: "template",
+        templateId: "scheme_application",
+        retrievalStepIds: ["retrieve_schemes_0"],
+        locale: "en",
+        stepId: "template_scheme_application",
+      };
+      return {
+        planId: "plan_test_schemes",
+        steps: [retrieve, template],
+        usesStructuredTemplate: true,
+        template: null as any,
+        signals: [],
+        reasoning: "test",
+        estimatedRetrievalCalls: 1,
+      } as unknown as ExecutionPlan;
+    }
+
+    /** The rendered body between `heading` and the next section heading. */
+    function sectionBody(text: string, heading: string): string {
+      const start = text.indexOf(heading);
+      if (start === -1) return "";
+      const rest = text.slice(start + heading.length);
+      const next = rest.search(/\n\*\*|\n---/);
+      return next === -1 ? rest : rest.slice(0, next);
+    }
+
+    async function schemeResponse(): Promise<string> {
+      buildExecutor([
+        chunk("kb_pmjay::chunk::1", "kb_pmjay", PMJAY_OVERVIEW_CHUNK),
+        chunk("kb_pmjay::chunk::2", "kb_pmjay", PMJAY_ELIGIBILITY_CHUNK),
+      ]);
+
+      const result = await executor.execute(
+        schemePlan(),
+        "how do I apply for Ayushman Bharat",
+        "en"
+      );
+      return result.responseText || "";
+    }
+
+    it("does not claim information is unavailable when the retrieval returned evidence", async () => {
+      const text = await schemeResponse();
+
+      expect(text).not.toContain("Information not available");
+    });
+
+    it("fills the required eligibility section from the retrieved chunks", async () => {
+      const text = await schemeResponse();
+
+      expect(text).toContain("**Eligibility Criteria**");
+      expect(visible(sectionBody(text, "**Eligibility Criteria**"))).toContain(
+        "Families listed in the SECC database are eligible"
+      );
+      expect(visible(sectionBody(text, "**Scheme Overview**"))).toContain(
+        "The scheme covers hospitalisation costs up to Rs 5 lakh"
+      );
+    });
+
+    it("still suppresses the optional duplicate section", async () => {
+      const text = await schemeResponse();
+
+      // additional_schemes is optional and would repeat the overview verbatim
+      // a third time — the defect issue #173 reported.
+      expect(text).not.toContain("**Other Financial Support**");
+    });
+
+    it("keeps the template's own scheme content intact", async () => {
+      const text = await schemeResponse();
+
+      expect(text).toContain("**Documents Required**");
+      expect(text).toContain("**How to Apply (Step by Step)**");
+      expect(text).toContain("**Helpline:** Call 14555 (toll-free)");
+    });
+  });
+
   it("emits a citation for every knowledge-base bullet it keeps", async () => {
     buildExecutor([
       chunk("doc-chemo::chunk::2", "doc-chemo", SIDE_EFFECTS_CHUNK_CONTENT),

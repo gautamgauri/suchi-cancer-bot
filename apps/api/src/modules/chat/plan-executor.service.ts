@@ -343,6 +343,14 @@ export class PlanExecutorService {
     // got one five-bullet list printed twice under two headings, with ten
     // citations covering five chunks (issue #173). Filling the second section is
     // skipped; renderTemplate then drops the heading, since it is optional.
+    //
+    // Only OPTIONAL sections may be dropped this way. A required section that is
+    // left unfilled is rendered by renderTemplate as "_Information not available
+    // for your specific case…_", so suppressing one would tell the reader the
+    // knowledge base had nothing while its evidence sits under the heading
+    // above. SCHEME_APPLICATION_CHECKLIST is exactly that shape: "Scheme
+    // Overview" and "Eligibility Criteria" are both required and both carry
+    // retrievalIntent "schemes" (Codex review, PR #174).
     const emittedContent = new Set<string>();
 
     for (const section of template.sections) {
@@ -365,7 +373,11 @@ export class PlanExecutorService {
           const content = this.formatChunksAsContent(
             relevantChunks.slice(0, maxItems)
           );
-          if (content.trim() && emittedContent.has(content.trim())) {
+          if (
+            content.trim() &&
+            !section.required &&
+            emittedContent.has(content.trim())
+          ) {
             this.logger.debug({
               event: "duplicate_template_section_skipped",
               templateId: step.templateId,
