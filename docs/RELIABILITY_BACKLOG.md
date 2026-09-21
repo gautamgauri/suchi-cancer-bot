@@ -359,6 +359,77 @@ weaknesses found while investigating, deliberately *not* changed here:
   Devanagari aliases to `INDIAN_CITIES`; pin both with tests next to
   `intent-classifier.romanized.spec.ts`.
 
+### P1-14. The urgency declaration pattern is both over- and under-inclusive — NEEDS SCCF REVIEW (new; surfaced by the Codex review of PR #165)
+
+- **What:** PR #165 (issue #164) replaced the bare vocabulary pattern
+  `/\b(emergency|urgent|immediate|right\s+now)\b/i` in
+  `AbstentionService.hasUrgencyIndicators()`
+  (`apps/api/src/modules/abstention/abstention.service.ts:60`) with a
+  declaration-only pattern:
+  `/\b(?:this|it)\s+is\s+(?!not\b)(?:an?\s+)?(?:emergency|urgent)\b/i`.
+  The new pattern keys on the *substring* `this is` / `it is`, which English
+  preserves inside indirect questions and which excludes several ordinary ways
+  of declaring an emergency. Verified by running all three detection layers
+  (`evaluateEmergencyFastPath`, `SafetyService.evaluate`,
+  `hasUrgencyIndicators`) against each input:
+
+  | input | fast path | SafetyService | `hasUrgencyIndicators` | wanted |
+  | --- | --- | --- | --- | --- |
+  | `Do you think this is an emergency?` | false | normal | **true** | false |
+  | `Can you tell me if this is urgent?` | false | normal | **true** | false |
+  | `Is this an emergency?` | false | normal | false | false |
+  | `I have an emergency` | false | normal | **false** | true |
+  | `we have an emergency` | false | normal | **false** | true |
+  | `it's an emergency` | false | normal | **false** | true |
+  | `this is a medical emergency` | false | normal | **false** | true |
+  | `this is an emergency` | false | normal | true | true |
+
+- **Impact (over-inclusive half):** the #164 production failure survives for
+  indirect phrasings. With `safetyResult.classification === "normal"`, the
+  urgency branch at `apps/api/src/modules/chat/chat.service.ts:368` returns the
+  S2 template with `actions: ["show_emergency_banner", "end_conversation"]`
+  (`chat.service.ts:510`, `chat.service.ts:556`) — so a worried user who asks
+  "do you think this is an emergency?" about a symptom no safety rule assesses
+  is still told it is one, and the chat is closed on them.
+- **Impact (under-inclusive half):** an explicit, symptom-free declaration of
+  an emergency now escalates nowhere. `EMERGENCY_PATTERNS`
+  (`apps/api/src/modules/safety/safety.rules.ts:54-78`) and the fast path's
+  `CRITICAL_PATTERNS`/`URGENT_PATTERNS`
+  (`apps/api/src/modules/safety/emergency-fast-path.ts:24-112`) are all
+  symptom- or helpline-scoped; neither has a generic declaration rule. Before
+  #165 the removed vocabulary pattern covered these four inputs. This is a
+  coverage regression introduced by #165, not a pre-existing gap.
+- **Why an agent must not fix it:** this is a safety keyword list and it
+  decides whether a turn ends in `end_conversation`. AGENTS.md §1.3 puts both
+  behind SCCF human/medical review, and the two halves pull in opposite
+  directions (one narrows escalation, one widens it) — that trade-off is a
+  clinical call, not a regex cleanup.
+- **Fix shape (proposal for review, not applied):**
+  1. Narrow the interrogative half with a lead-in exclusion, e.g. prefix the
+     existing pattern with
+     `(?<!\b(?:if|whether|think|thinks|know|knows|wonder|wondering|asking|ask|tell\s+me)\s)`.
+     Verified to flip both indirect questions to false while keeping
+     `this is an emergency`, `It is urgent, she is very weak` and
+     `this is an emergency, please help` true. Note the exclusion list is
+     enumerable and therefore incomplete — an alternative framing is "a
+     message that ends in `?` and contains no symptom match never escalates",
+     which is a policy statement rather than a word list.
+  2. Restore the declaration half by allowing the contraction, an adjective
+     slot, and a have-form, e.g.
+     `/…\b(?:this|it|that)(?:['’]s|\s+is)\s*(?!not\b)(?:an?\s+)?(?:real\s+|true\s+|medical\s+)?(?:emergency|urgent)\b/i`
+     plus
+     `/\b(?:i|we|he|she|they)\s+(?:have|has)\s+(?:an?\s+)?(?:medical\s+)?emergency\b/i`.
+     Verified to make all four missing declarations true without re-flagging
+     the negated or interrogative forms already pinned in
+     `abstention.service.spec.ts:126-139`.
+  3. Whichever shape SCCF approves ships with cases added to the existing
+     `it.each` blocks in
+     `apps/api/src/modules/abstention/abstention.service.spec.ts:119-159`.
+- **Decision needed:** SCCF confirms (a) that an indirect question about an
+  emergency must not escalate or end the conversation, and (b) that a bare
+  declaration of an emergency with no described symptom must escalate to S2.
+  Both are currently answered wrong, in opposite directions.
+
 ---
 
 ## P2 — track and schedule
@@ -701,3 +772,10 @@ no persistent database had recorded it).
    never reaches the hospital directory. Fixing it means editing detection
    patterns that sit next to the safety keyword lists (same `\b`-on-Devanagari
    root cause as QA0904-1) — the Devanagari term list needs SCCF review.
+15. P1-14: the urgency declaration pattern in `hasUrgencyIndicators()` is
+   wrong in both directions — indirect questions ("do you think this is an
+   emergency?") still escalate and end the conversation, while plain
+   declarations ("I have an emergency", "it's an emergency", "this is a
+   medical emergency") now escalate nowhere. SCCF decides both halves; the
+   candidate patterns are written out under P1-14 but must not be applied by
+   an agent (AGENTS.md §1.3 — safety keyword list + `end_conversation`).
