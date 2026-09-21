@@ -606,3 +606,26 @@ no persistent database had recorded it).
    assert — including red-flag ones — so this is an eval-owner + SCCF call,
    not an agent fix. Pinned by `eval/scripts/case-schema.test.ts` so the list
    cannot grow silently.
+13. **Privacy — the redacted user message is still recoverable from Git
+    history** (raised by Codex on PR #150; agents must not rewrite history).
+    PR #150 and commit `32849b4` remove the real caregiver message from the
+    *working tree*, which is all an agent may do. The message remains in the
+    committed history and is readable with an ordinary `git show`, e.g.
+    `git show 6ca440d:apps/api/src/modules/rag/cross-lingual.service.spec.ts`
+    (the parent of the redaction commit). Introduced 2026-09-05 by `2f6cc92`
+    (`docs/RELIABILITY_BACKLOG.md`) and `fd5cce2`, then re-copied into code by
+    `8cd14c1` (`rag/cross-lingual.service.spec.ts` + `.ts`) and `c346073` /
+    `d873db6` (`rag/kb-fts-query.spec.ts`, `kb-fts.spec.ts`,
+    `kb-fts-query.ts`). 46 commits sit on top of the earliest one on `main`.
+    Under AGENTS.md §1.5 + `docs/PRIVACY_RETENTION.md` the owner decides
+    whether a purge is warranted, and it is a human-only operation because it
+    needs: (a) `git filter-repo --replace-text` (or BFG) over `2f6cc92..main`
+    plus every unmerged branch, (b) a coordinated force-push and re-clone for
+    every collaborator and worktree, (c) GitHub support to expire cached PR
+    diffs and dangling blobs — the PR #150 and #143 diffs display the removed
+    line even after a rewrite — and (d) re-review of any fork. Cheaper
+    alternative if a rewrite is judged too costly: accept the residual
+    exposure, record it as an acknowledged privacy finding in
+    `docs/PRIVACY_RETENTION.md`, and rely on the process fix (no raw
+    transcripts in fixtures) to stop recurrence. **Needs the repository
+    owner's call; no agent should attempt either path.**
