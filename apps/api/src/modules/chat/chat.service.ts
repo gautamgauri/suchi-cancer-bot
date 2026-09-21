@@ -233,6 +233,19 @@ export class ChatService {
       throw new BadRequestException("Invalid sessionId");
     }
 
+    // Locale handed to the disclaimer engine. THIS TURN outranks the session,
+    // because Session.locale is written once at session creation and never
+    // refreshed: a WhatsApp contact who opens in Hindi and later writes in
+    // English keeps Session.locale "hi" for the whole TTL (whatsapp.service
+    // re-detects per message and updates only WhatsAppContact.locale), and an
+    // explicit Indic locale short-circuits detectLocale() before the response
+    // body is looked at — so the stale "hi" would put a Hindi disclaimer under
+    // an English reply. Falling back to session.locale keeps the bh/mai signal
+    // for callers that send no per-request locale (the web client sends none).
+    // A Devanagari body still wins over a request locale of "en" — that is
+    // detectLocale()'s precedence, not this expression's.
+    const disclaimerLocale = dto.locale || session.locale;
+
     const isFirstMessage = existingAssistantMessages === 0;
     const sessionCancerType = session.cancerType;
     let emotionalState = session.emotionalState as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
@@ -256,7 +269,7 @@ export class ChatService {
     if (emergencyFastPath.isEmergency) {
       const responseText = appendDisclaimer(
         emergencyFastPath.responseText!,
-        session.locale || dto.locale,
+        disclaimerLocale,
         true, // isEmergency
         dto.userText
       );
@@ -326,7 +339,7 @@ export class ChatService {
           role: "assistant",
           text: appendDisclaimer(
             safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
-            session.locale || dto.locale,
+            disclaimerLocale,
             safetyResult.classification === "red_flag",
             dto.userText
           ),
@@ -492,7 +505,7 @@ export class ChatService {
             safetyClassification: "red_flag",
             latencyMs: Date.now() - started,
             kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
-            locale: session.locale || dto.locale,
+            locale: disclaimerLocale,
             userText: dto.userText,
           }
         );
@@ -542,7 +555,7 @@ export class ChatService {
         {
           safetyClassification: "red_flag",
           latencyMs: Date.now() - started,
-          locale: session.locale || dto.locale,
+          locale: disclaimerLocale,
           userText: dto.userText,
         }
       );
@@ -1184,7 +1197,7 @@ export class ChatService {
             // Append disclaimer via existing engine
             phase3Response = appendDisclaimer(
               phase3Response,
-              session.locale || dto.locale,
+              disclaimerLocale,
               false,
               dto.userText
             );
@@ -1208,7 +1221,7 @@ export class ChatService {
                 kbDocIds: Array.from(new Set(executionResult.mergedChunks.map(c => c.docId))),
                 evidenceQuality: executionResult.mergedChunks.length > 0 ? "strong" : "weak",
                 evidenceGatePassed: true,
-                locale: session.locale || dto.locale,
+                locale: disclaimerLocale,
                 userText: dto.userText,
               }
             );
@@ -1365,7 +1378,7 @@ export class ChatService {
           evidenceQuality: 'insufficient',
           evidenceGatePassed: false,
           abstentionReason: gateResult.reasonCode || 'no_evidence',
-          locale: session.locale || dto.locale,
+          locale: disclaimerLocale,
           userText: dto.userText,
         }
       );
@@ -1463,7 +1476,7 @@ export class ChatService {
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: !gateResult.shouldAbstain,
           abstentionReason: gateResult.shouldAbstain ? gateResult.reason || undefined : undefined,
-          locale: session.locale || dto.locale,
+          locale: disclaimerLocale,
           userText: dto.userText,
         }
       );
@@ -1539,7 +1552,7 @@ export class ChatService {
             role: "assistant",
             text: appendDisclaimer(
               clarifyingQuestion,
-              session.locale || dto.locale,
+              disclaimerLocale,
               false,
               dto.userText
             ),
@@ -1637,7 +1650,7 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: gateResult.reason || undefined,
-            locale: session.locale || dto.locale,
+            locale: disclaimerLocale,
             userText: dto.userText,
           }
         );
@@ -1856,7 +1869,7 @@ export class ChatService {
             kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
-            locale: session.locale || dto.locale,
+            locale: disclaimerLocale,
             userText: dto.userText,
           }
         );
@@ -2212,7 +2225,7 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
             abstentionReason: 'citation_validation_failed',
-            locale: session.locale || dto.locale,
+            locale: disclaimerLocale,
             userText: dto.userText,
           }
         );
@@ -2364,7 +2377,7 @@ export class ChatService {
                 role: "assistant",
                 text: appendDisclaimer(
                   clarifyingQuestion,
-                  session.locale || dto.locale,
+                  disclaimerLocale,
                   false,
                   dto.userText
                 ),
@@ -2427,7 +2440,7 @@ export class ChatService {
           kbDocIds,
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: true,
-          locale: session.locale || dto.locale,
+          locale: disclaimerLocale,
           userText: dto.userText,
         }
       );
@@ -2515,7 +2528,7 @@ export class ChatService {
 
       const assistant = await this.persistAssistantMessage(
         dto.sessionId, responseText, [], [],
-        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false, locale: session.locale || dto.locale, userText: dto.userText }
+        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false, locale: disclaimerLocale, userText: dto.userText }
       );
       await this.analytics.emit("symptom_soft_redirect", { intent: intentResult.intent }, dto.sessionId);
 
@@ -2632,7 +2645,7 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: "citation_validation_failed",
-            locale: session.locale || dto.locale,
+            locale: disclaimerLocale,
             userText: dto.userText,
           }
         );
@@ -2679,7 +2692,7 @@ export class ChatService {
         kbDocIds,
         evidenceQuality: gateResult.quality,
         evidenceGatePassed: true,
-        locale: session.locale || dto.locale,
+        locale: disclaimerLocale,
         userText: dto.userText,
       }
     );

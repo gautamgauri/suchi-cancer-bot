@@ -338,6 +338,59 @@ describe("ChatService.handle — disclaimer language (#162)", () => {
     expect(trailingDisclaimer(result.responseText!)).not.toContain(EN_STANDARD);
   });
 
+  // A WhatsApp contact keeps one Session for the whole TTL, and Session.locale
+  // is written once when it is minted — whatsapp.service.ts re-detects the
+  // language of every message but refreshes only WhatsAppContact.locale. So a
+  // session opened in Hindi still reads locale "hi" on a later English turn,
+  // and the turn's own locale has to outrank it.
+  describe("a session that opened in Hindi and switched to English", () => {
+    it("takes the English disclaimer for an English answer", async () => {
+      const { chat } = await buildService({ locale: "hi", answer: ENGLISH_ANSWER });
+
+      const result = await chat.handle({
+        sessionId: "s1",
+        channel: "whatsapp",
+        locale: "en",
+        userText: "what is chemotherapy and how is it given",
+      });
+
+      expect(trailingDisclaimer(result.responseText!)).toContain(EN_STANDARD);
+      expect(trailingDisclaimer(result.responseText!)).not.toContain(HI_STANDARD);
+    });
+
+    it("still takes the Hindi disclaimer when the answer comes back in Devanagari", async () => {
+      // The request locale is "en" but the body is not: the body wins, exactly
+      // as it does for romanised Hinglish. Preferring the turn's locale must
+      // not undo that.
+      const { chat } = await buildService({ locale: "hi", answer: HINDI_ANSWER });
+
+      const result = await chat.handle({
+        sessionId: "s1",
+        channel: "whatsapp",
+        locale: "en",
+        userText: "what is chemotherapy and how is it given",
+      });
+
+      expect(trailingDisclaimer(result.responseText!)).toContain(HI_STANDARD);
+      expect(trailingDisclaimer(result.responseText!)).not.toContain(EN_STANDARD);
+    });
+
+    it("takes the English emergency disclaimer on the fast path", async () => {
+      const { chat } = await buildService({ locale: "hi", answer: ENGLISH_ANSWER });
+
+      const result = await chat.handle({
+        sessionId: "s1",
+        channel: "whatsapp",
+        locale: "en",
+        userText: "the bleeding won't stop",
+      });
+
+      expect(result.safety.classification).toBe("red_flag");
+      expect(trailingDisclaimer(result.responseText!)).toContain(EN_EMERGENCY);
+      expect(trailingDisclaimer(result.responseText!)).not.toContain(HI_EMERGENCY);
+    });
+  });
+
   it("emergency fast path with a Hindi locale keeps its Hindi emergency disclaimer (no regression)", async () => {
     // This path at chat.service.ts:257 always passed locale and userText; the
     // test exists to prove the precedence change did not disturb it.
