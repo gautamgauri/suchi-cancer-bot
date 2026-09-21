@@ -58,6 +58,18 @@ describe("detectCancerType", () => {
       expect(detectCancerType("larynx")).toBe("laryngeal");
     });
 
+    it("recognises oral cancer, a supported type with its own essential terms", () => {
+      expect(detectCancerType("oral cancer treatment", "breast")).toBe("oral");
+      expect(detectCancerType("mouth cancer ke lakshan", "breast")).toBe("oral");
+      expect(detectCancerType("oral cavity cancer")).toBe("oral");
+      expect(detectCancerTypes("Biopsy of the oral lesion confirms oral cancer")).toContain("oral");
+    });
+
+    it("does not read everyday 'oral'/'mouth' wording as oral cancer", () => {
+      expect(detectCancerType("can I take oral chemotherapy at home?", "breast")).toBe("breast");
+      expect(detectCancerTypes("temporal lobe changes and mouth sores")).toEqual([]);
+    });
+
     it("accepts common spelling variants", () => {
       expect(detectCancerType("prostrate")).toBe("prostate");
       expect(detectCancerType("leukaemia treatment")).toBe("leukemia");

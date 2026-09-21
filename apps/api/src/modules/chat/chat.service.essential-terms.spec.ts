@@ -29,6 +29,18 @@ const PROSTATE_ANSWER = [
   "**What to do next:** Consult an oncologist or urologist to understand the options available.",
 ].join("\n");
 
+// The same shape for an oral-cancer turn — the type most likely to reach this
+// injector on a stale session in Bihar, where oral cancer is the commonest
+// cancer in men.
+const ORAL_ANSWER = [
+  "**Important:** This information is for general educational purposes and is not a diagnosis.",
+  "",
+  "Treatment for oral cancer depends on the stage of the disease and the site of the lesion.",
+  "A biopsy confirms the diagnosis before surgery or radiotherapy is planned.",
+  "",
+  "**What to do next:** Consult an oncologist who treats oral cancer.",
+].join("\n");
+
 describe("injectEssentialTermsIfMissing — disease consistency (issue #175)", () => {
   it("does not splice breast screening notes into a prostate answer", () => {
     const out = inject(PROSTATE_ANSWER, "breast", "treatment");
@@ -48,6 +60,21 @@ describe("injectEssentialTermsIfMissing — disease consistency (issue #175)", (
     expect(out).toMatch(/Prostate biopsy/i);
     // Inserted above the closing section, not tacked on after it.
     expect(out.indexOf("Key points to be aware of")).toBeLessThan(out.indexOf("What to do next"));
+  });
+
+  it("does not splice breast screening notes into an oral-cancer answer", () => {
+    const out = inject(ORAL_ANSWER, "breast", "treatment");
+
+    expect(out).not.toMatch(/mammogra/i);
+    expect(out).not.toMatch(/breast/i);
+    expect(out).toBe(ORAL_ANSWER);
+  });
+
+  it("still appends the oral notes when the type is right", () => {
+    const out = inject(ORAL_ANSWER, "oral", "treatment");
+
+    expect(out).toMatch(/\*\*Key points to be aware of:\*\*/);
+    expect(out).toMatch(/tobacco and gutka/i);
   });
 
   it("keeps the disease-agnostic notes when the disease-specific ones are dropped", () => {

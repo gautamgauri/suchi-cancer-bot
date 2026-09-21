@@ -35,6 +35,11 @@ const cancerKeywords: Record<string, string> = {
   'laryngeal': 'laryngeal',
   'larynx': 'laryngeal',
   'head and neck': 'head and neck',
+  // Oral cancer is a supported type elsewhere in the pipeline (essential terms,
+  // hospital departments, execution planner) but was missing here, so an
+  // oral-cancer turn on a stale session got the other disease's notes (#177).
+  'oral': 'oral',
+  'mouth': 'oral',
   'sarcoma': 'sarcoma'
 };
 
@@ -52,7 +57,17 @@ const selfIdentifyingKeywords = new Set([
   'skin cancer',
 ]);
 
+/**
+ * Keywords whose bare form is ordinary clinical vocabulary ("oral chemotherapy",
+ * "mouth sores") — they never count as a cancer type on their own, not even as a
+ * mention, only with cancer wording attached.
+ */
+const requiresCancerContext = new Set(['oral', 'mouth']);
+
 const CANCER_WORD = String.raw`(?:cancers?|carcinomas?|tumou?rs?|malignanc(?:y|ies)|malignant|neoplasms?|\bca\b)`;
+// "oral cavity cancer" is the clinical phrasing for oral cancer; allow that one
+// bridging word between the organ and the cancer word.
+const BRIDGE = String.raw`(?:cavity[\s-]+)?`;
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -64,7 +79,7 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
  */
 function namedWithCancerContext(textLower: string, keyword: string): boolean {
   const kw = `\\b${escapeRegExp(keyword)}\\b`;
-  const organThenCancer = new RegExp(`${kw}[\\s-]*${CANCER_WORD}`);
+  const organThenCancer = new RegExp(`${kw}[\\s-]*${BRIDGE}${CANCER_WORD}`);
   const cancerThenOrgan = new RegExp(`${CANCER_WORD}[\\s-]*(?:(?:of|in)[\\s-]+(?:the[\\s-]+)?)?${kw}`);
   return organThenCancer.test(textLower) || cancerThenOrgan.test(textLower);
 }
@@ -79,7 +94,10 @@ export function detectCancerTypes(text: string): string[] {
   const found: string[] = [];
 
   for (const [keyword, cancerType] of Object.entries(cancerKeywords)) {
-    if (textLower.includes(keyword) && !found.includes(cancerType)) {
+    const mentioned = requiresCancerContext.has(keyword)
+      ? namedWithCancerContext(textLower, keyword)
+      : textLower.includes(keyword);
+    if (mentioned && !found.includes(cancerType)) {
       found.push(cancerType);
     }
   }
