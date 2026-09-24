@@ -592,6 +592,19 @@ describe("HospitalDirectoryService — North Bihar candidate set (real directory
   /** Bihar districts with no hospital of their own — all previously returned []. */
   const NORTH_BIHAR_CITIES = ["Darbhanga", "Samastipur", "Purnia", "Motihari"];
 
+  /**
+   * The subset for which HBCH Muzaffarpur is also the NEAREST centre.
+   *
+   * Purnia is deliberately not here. Under #99's state ranking HBCH led for
+   * every North Bihar district because it scored highest in Bihar; under
+   * distance ordering (#103) Purnia's nearest centre is Healing Touch
+   * Bhagalpur at ~77km, with HBCH ~160km away. That is the intended change —
+   * the answer to "where should I go from where I am" is no longer "wherever
+   * scores best in your state" — and the safety rule that keeps it honest is
+   * the capability filter, covered separately below.
+   */
+  const HBCH_IS_NEAREST = ["Darbhanga", "Samastipur", "Motihari"];
+
   let svc: HospitalDirectoryService;
 
   beforeAll(() => {
@@ -616,7 +629,7 @@ describe("HospitalDirectoryService — North Bihar candidate set (real directory
     }
   );
 
-  it.each(NORTH_BIHAR_CITIES)(
+  it.each(HBCH_IS_NEAREST)(
     "ranks HBCH&RC Muzaffarpur first for %s",
     (city) => {
       const results = svc.searchHospitals({
@@ -667,7 +680,10 @@ describe("HospitalDirectoryService — North Bihar candidate set (real directory
     });
   });
 
-  it("does not widen a city that does have hospitals of its own", () => {
+  it("puts a city's own centre first when the patient is in that city", () => {
+    // Under distance ordering the list is no longer truncated to the city — a
+    // patient in Muzaffarpur may well travel to Patna — but the centre in their
+    // own city is 0km away and so leads.
     const results = svc.searchHospitals({
       city: "Muzaffarpur",
       state: "Bihar",
@@ -675,43 +691,48 @@ describe("HospitalDirectoryService — North Bihar candidate set (real directory
       includeNational: false,
     });
     expect(results.length).toBeGreaterThan(0);
-    expect(results.every((h) => h.city === "Muzaffarpur")).toBe(true);
+    expect(results[0].city).toBe("Muzaffarpur");
+    expect(results[0].distance_km).toBeCloseTo(0, 0);
   });
 
-  it("orders the Darbhanga candidate set by directory score, not by proximity", () => {
+  it("orders the Darbhanga candidate set by distance, not by directory score", () => {
+    // This assertion is the exact inverse of the one #99 shipped. #99 could not
+    // rank by proximity because no record had coordinates; now they all do, and
+    // #103's product decision is that distance is the primary key.
     const results = svc.searchHospitals({
       city: "Darbhanga",
       state: "Bihar",
       maxResults: 5,
       includeNational: false,
     });
-    const scores = results.map((h) => h.score);
-    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+    const distances = results.map((h) => h.distance_km ?? Number.POSITIVE_INFINITY);
+    expect(distances).toEqual([...distances].sort((a, b) => a - b));
   });
 
   it.each(NORTH_BIHAR_CITIES)(
-    "reports the %s candidate set as a same-state widening, not an exact-city match",
+    "reports %s as distance-ordered, and every returned centre carries a measured distance",
     (city) => {
-      const { geography } = svc.searchHospitalsWithGeography({
+      const { results, geography } = svc.searchHospitalsWithGeography({
         city,
         state: "Bihar",
         maxResults: 3,
         includeNational: false,
       });
-      // HBCH is in Muzaffarpur, not in the patient's own city — the caller must
-      // be able to see that so it is never labelled a centre in <city>.
-      expect(geography.stage).toBe("state");
+      // All four cities are in the geocoded INDIAN_CITIES table and every
+      // hospital is geocoded, so the administrative rungs never run.
+      expect(geography.stage).toBe("distance");
       expect(geography.requestedCity).toBe(city);
+      results.forEach((h) => expect(typeof h.distance_km).toBe("number"));
     }
   );
 
-  it("reports an exact-city match for Muzaffarpur against the real directory", () => {
+  it("reports Muzaffarpur as distance-ordered too — a geocoded city never falls back to a state rung", () => {
     const { geography } = svc.searchHospitalsWithGeography({
       city: "Muzaffarpur",
       state: "Bihar",
       maxResults: 5,
       includeNational: false,
     });
-    expect(geography.stage).toBe("city");
+    expect(geography.stage).toBe("distance");
   });
 });
