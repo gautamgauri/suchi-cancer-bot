@@ -251,6 +251,45 @@ export function stripPromptScaffolding(text: string): string {
 }
 
 /**
+ * A markdown image, in the three shapes it arrives in (issue #173).
+ *
+ * Suchi never emits an image, so one in patient-facing text came from the
+ * knowledge base — the chunks are converted from source web pages and carry the
+ * page's markup. A caregiver's reply contained
+ * `![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/…`: an
+ * NCI CMS image whose site-relative URL resolves to nothing on this domain, and
+ * which the chat surface renders as literal text rather than as a picture.
+ *
+ * The whole image goes, alt text included: the alt text describes a stock photo
+ * the reader cannot see, so keeping it only moves the artifact. Complete form
+ * first, so what remains of an `![` opener is unterminated by definition; the
+ * unterminated forms are line-anchored and cannot run past a newline into the
+ * prose below.
+ */
+const MARKDOWN_IMAGE_PATTERN = /!\[[^\]\n]*\]\([^)\n]*\)/g;
+const UNTERMINATED_MARKDOWN_IMAGE_PATTERN = /!\[[^\]\n]*\]\([^)\n]*$/gm;
+const UNTERMINATED_IMAGE_ALT_PATTERN = /!\[[^\]\n]*$/gm;
+
+/**
+ * Remove markdown images from text about to be shown or spoken to a patient.
+ *
+ * The root cause of the reported leak is upstream, in the template path that
+ * quotes chunk text into bullets (`plan-executor.service.ts`, issue #173). This
+ * is the delivery-boundary net for every other path into the same bubble —
+ * the LLM can copy an image out of the evidence it is given just as easily —
+ * and it sits here, with the citation and scaffolding strips, because this is
+ * the one boundary all three patient surfaces pass through (issue #153).
+ */
+export function stripMarkdownImages(text: string): string {
+  if (!text) return text;
+
+  return text
+    .replace(MARKDOWN_IMAGE_PATTERN, "")
+    .replace(UNTERMINATED_MARKDOWN_IMAGE_PATTERN, "")
+    .replace(UNTERMINATED_IMAGE_ALT_PATTERN, "");
+}
+
+/**
  * Last-stop safety net for TTS-bound text (issue #87).
  *
  * Each voice surface already shapes markdown its own way — the condenser turns
@@ -297,6 +336,8 @@ export function stripResidualMarkdownForSpeech(text: string): string {
 export function cleanForSpeech(text: string): string {
   if (!text) return text;
   return stripResidualMarkdownForSpeech(
-    stripCitationDebris(stripPromptScaffolding(stripCitationMarkers(text)))
+    stripCitationDebris(
+      stripPromptScaffolding(stripMarkdownImages(stripCitationMarkers(text)))
+    )
   );
 }

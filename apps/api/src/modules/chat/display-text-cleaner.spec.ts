@@ -155,6 +155,44 @@ describe('cleanResponseForDisplay', () => {
     });
   });
 
+  describe('knowledge-base image markup (issue #173)', () => {
+    it('removes the source page image a chunk carried into the bullet', () => {
+      const text =
+        "- Emotions and Cancer![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/xnrzdm211/files/cgov_image/2023-11/iStock-1301700665.jpg) When you have cancer, you may feel a wide range of emotions.";
+
+      const cleaned = cleanResponseForDisplay(text);
+
+      expect(cleaned).not.toContain('![');
+      expect(cleaned).not.toContain('/sites/g/files/');
+      expect(cleaned).not.toContain('Sick woman lying in mans arms');
+      expect(cleaned).toContain('Emotions and Cancer');
+      expect(cleaned).toContain('you may feel a wide range of emotions.');
+    });
+
+    it('removes an image whose URL was cut off, without eating the next line', () => {
+      const text = [
+        '**Coping Strategies**',
+        "- Emotions and Cancer![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/xnrzdm211/files/iStock-1...",
+        '- Coping and support for young people: Cancer can create a sense of isolation.',
+      ].join('\n');
+
+      const cleaned = cleanResponseForDisplay(text);
+
+      expect(cleaned).not.toContain('![');
+      expect(cleaned).not.toContain('/sites/g/files/');
+      expect(cleaned).toContain('**Coping Strategies**');
+      expect(cleaned).toContain(
+        '- Coping and support for young people: Cancer can create a sense of isolation.'
+      );
+    });
+
+    it('leaves an ordinary markdown link alone — only images go', () => {
+      const text =
+        'See [the Indian Cancer Society](https://www.indiancancersociety.org) for support groups.';
+      expect(cleanResponseForDisplay(text)).toBe(text);
+    });
+  });
+
   describe('legitimate text is preserved', () => {
     it('leaves English punctuation and markdown untouched', () => {
       const text =
