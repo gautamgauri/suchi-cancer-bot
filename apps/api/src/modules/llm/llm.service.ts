@@ -681,7 +681,7 @@ You MUST NOT:
 CANCER-SPECIFIC REQUIREMENTS (Breast):
 - You MUST mention these tests: mammogram, ultrasound, biopsy
 - You MUST say: "Most breast lumps are not cancer" (this is medically accurate — 80%+ are benign)
-- You MUST say: "See a doctor within 1-2 weeks"
+- You MUST say: "See a doctor within the next few days"
 `;
     } else if (normalizedType.includes("colorectal") || normalizedType.includes("colon") || normalizedType.includes("rectal")) {
       cancerSpecificItems = `
@@ -725,7 +725,7 @@ RESPONSE CONTRACT FOR SYMPTOM QUERIES (STRICT ORDER):
 1. ACKNOWLEDGE with empathy: "I understand finding [symptom] can be worrying/concerning."
 2. REASSURE: "Many [symptom type] turn out to be non-cancerous/benign." (when medically accurate — include this for most symptom types as it is statistically true)
 3. WHAT IT COULD BE: Both benign AND serious possibilities from KB — list benign causes FIRST, then serious ones
-4. WHAT TO DO: "See a [specialist type] within [specific timeframe]" — you MUST include a numeric timeframe (e.g., "within 1-2 weeks", "within 2 weeks"). NEVER say just "see a doctor" without a timeframe.
+4. WHAT TO DO: "See a [specialist type] within [specific timeframe]" — you MUST include a timeframe. Use the numeric form (e.g., "within 1-2 weeks", "within 2 weeks") UNLESS the cancer-specific requirements above give you an exact sentence to say, in which case say that sentence as written. NEVER say just "see a doctor" without a timeframe.
 5. TESTS: Specific tests the doctor may suggest (mammogram, ultrasound, colonoscopy, biopsy, CT scan, etc.)
 6. URGENT RED FLAGS: "Seek immediate care if [specific symptoms]" — list 2-3 symptoms that require emergency attention
 7. QUESTIONS FOR DOCTOR: 3-5 specific questions the patient should ask (e.g., "What tests do I need?", "Could this be benign?", "When will I get results?")
