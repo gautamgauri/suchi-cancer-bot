@@ -6,6 +6,7 @@ import {
   WA_MAX_LEN,
   WA_MAX_MESSAGES,
 } from "./whatsapp-format";
+import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 
 describe("toWhatsAppMarkdown", () => {
   it("converts ** bold ** to WhatsApp *bold*", () => {
@@ -110,6 +111,32 @@ describe("splitForWhatsApp", () => {
 describe("formatForWhatsApp", () => {
   it("translates then splits", () => {
     expect(formatForWhatsApp("**hi** there")).toEqual(["*hi* there"]);
+  });
+
+  /**
+   * Issue #160 reached the patient on this channel too, on a plain abstention
+   * with no emergency content: the delivered bubble ended
+   * `…based on the evidence given.---` followed by the disclaimer. The
+   * horizontal-rule drop above (issue #116) is line-anchored, so once the
+   * display cleaner had eaten the paragraph break the `---` was no longer alone
+   * on its line and the rule survived into delivered text.
+   */
+  it("drops the separator when the reply carried a Sources block (issue #160)", () => {
+    const persisted =
+      "Therefore, I cannot answer your question based on the evidence given." +
+      "\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]" +
+      "\n\n---\n*This information is for general educational purposes only.*";
+
+    const delivered = formatForWhatsApp(cleanResponseForDisplay(persisted)).join("\n");
+
+    expect(delivered).not.toContain("---");
+    expect(delivered).not.toContain("given.---");
+    expect(delivered).toContain(
+      "Therefore, I cannot answer your question based on the evidence given.",
+    );
+    expect(delivered).toContain(
+      "\n\n*This information is for general educational purposes only.*",
+    );
   });
 });
 

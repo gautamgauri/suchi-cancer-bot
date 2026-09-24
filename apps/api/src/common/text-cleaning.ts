@@ -64,8 +64,25 @@ const NUMBERED_REF_PATTERN = /\s*\[\d{1,3}\]/g;
 /** A numbered reference truncated at end-of-text, e.g. a trailing `[12`. */
 const TRUNCATED_NUMBERED_REF_PATTERN = /\s*\[\d{1,3}$/;
 
-/** The raw "**Sources:** [citation:...]" section appended by citation repair. */
-const RAW_SOURCES_SECTION_PATTERN = /\n\n\*\*Sources:\*\*\s*(?:\[citation:[^[\]\n]*\]\s*)+/g;
+/**
+ * The raw "**Sources:** [citation:...]" section appended by citation repair.
+ *
+ * Whitespace is consumed BEFORE each marker, never after the last one, and the
+ * trailing run is horizontal only. `\s*` inside the repeated group also matched
+ * newlines, so after the final marker the strip swallowed the `\n\n` that
+ * separates the block from the disclaimer the Disclaimer Engine appends later
+ * (`safety/disclaimer-engine.ts`, template starts `"\n\n---\n*"`). The
+ * emergency footer then shipped glued to the last sentence, with the raw
+ * separator visible — `…changes in breast size/shape?---` — because markdown
+ * renders a `---` as a rule only when it is alone on its line (issue #160).
+ * Same family as the `\s*`-ate-a-line-break bug in `EMPTY_BOLD_PATTERN` (#135).
+ *
+ * Leading `\s*` per marker keeps the block itself fully consumed whether the
+ * markers arrive space-separated on one line (what the producers in
+ * `chat.service.ts` emit) or one per line.
+ */
+const RAW_SOURCES_SECTION_PATTERN =
+  /\n\n\*\*Sources:\*\*[ \t]*(?:\s*\[citation:[^[\]\n]*\])+[ \t]*/g;
 
 /**
  * A "**Sources:**" header left dangling at the end because every marker under

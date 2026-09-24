@@ -93,6 +93,70 @@ describe('cleanResponseForDisplay', () => {
       const text = 'Body of the answer.\n\n**Sources:** National Cancer Institute';
       expect(cleanResponseForDisplay(text)).toBe(text);
     });
+
+    /**
+     * Issue #160. The sources block is appended by the composite/escalated path
+     * and the Disclaimer Engine appends its footer AFTER it, so the persisted
+     * text is `...answer \n\n**Sources:** [markers] \n\n---\n*footer*`. The
+     * strip must take the block and nothing else: eating the paragraph break
+     * glues the emergency footer to the last sentence and ships the raw `---`,
+     * because markdown only renders a `---` that is alone on its line.
+     */
+    describe('the paragraph break before the appended disclaimer (issue #160)', () => {
+      const EMERGENCY_FOOTER =
+        '\n\n---\n*If this is a medical emergency, call 112 or 108 immediately. ' +
+        'This information does not replace emergency medical care.*';
+      const ANSWER = 'Have you noticed nipple discharge or changes in breast size/shape?';
+
+      it('keeps the break when a Sources block sits between the answer and the footer', () => {
+        const withSources =
+          ANSWER +
+          '\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).toBe(ANSWER + EMERGENCY_FOOTER);
+        expect(out).not.toContain('breast size/shape?---');
+        expect(out).toContain('\n\n---\n');
+      });
+
+      it('matches the control: the same text with no Sources block is unchanged', () => {
+        const out = cleanResponseForDisplay(ANSWER + EMERGENCY_FOOTER);
+
+        expect(out).toBe(ANSWER + EMERGENCY_FOOTER);
+      });
+
+      it('keeps the break for the standard disclaimer too, not only the emergency one', () => {
+        const standard =
+          '\n\n---\n*This information is for general educational purposes only and is not a ' +
+          'substitute for professional medical advice, diagnosis, or treatment.*';
+        const withSources =
+          'Therefore, I cannot answer your question based on the evidence given.' +
+          '\n\n**Sources:** [citation:doc1:chunk1]' +
+          standard;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).toBe(
+          'Therefore, I cannot answer your question based on the evidence given.' + standard,
+        );
+        expect(out).not.toContain('given.---');
+      });
+
+      it('still strips a Sources block whose markers are on their own lines', () => {
+        const withSources =
+          ANSWER +
+          '\n\n**Sources:**\n[citation:doc1:chunk1]\n[citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).not.toContain('Sources:');
+        expect(out).not.toContain('citation');
+        expect(out).toContain('\n\n---\n');
+      });
+    });
   });
 
   describe('Devanagari punctuation debris (issue #81, finding 3)', () => {
