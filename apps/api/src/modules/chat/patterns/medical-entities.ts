@@ -18,11 +18,18 @@ export interface PatternEntry {
   category: EntityCategory;
   synonyms?: string[];   // for normalized matching
   /**
-   * True when a match carries a clinical VALUE, not just a concept — e.g.
-   * "stage IV" or "18% survival". For these, grounding must compare the exact
-   * surface string: evidence that mentions "stage I" does NOT ground a
-   * response that asserts "stage IV". Concept-level grounding (running this
-   * same regex over the retrieved chunks) is therefore skipped for them.
+   * True when a match carries — or introduces — a clinical VALUE rather than
+   * only a concept: a stage, a percentage, a figure, a dose, a duration.
+   *
+   * For these, grounding must compare the exact surface string: evidence that
+   * mentions "stage I" does NOT ground a response asserting "stage IV", and
+   * evidence saying "survival depends on many factors" does NOT ground
+   * "the 5-year survival rate is about 92%". Concept-level grounding (running
+   * this same regex over the retrieved chunks) is therefore skipped for them.
+   *
+   * SAFETY FLAG. Omitting it on a pattern that can carry a number is how a
+   * fabricated prognosis figure reaches a patient. `medical-entities.spec.ts`
+   * fails the build if a pattern whose source contains `\d` is left unflagged.
    * See ResponseValidatorService and issues #167 / #166.
    */
   valueBearing?: boolean;
@@ -120,10 +127,14 @@ export const WARNING_SIGN_PATTERNS: PatternEntry[] = [
 // TIMELINE PATTERNS (10 patterns)
 // ============================================================================
 export const TIMELINE_PATTERNS: PatternEntry[] = [
-  { key: "weeks_range", label: "Weeks range", regex: /\b(\d+)\s*[-–to]\s*(\d+)\s*weeks?\b/gi, category: "timeline" },
-  { key: "days_range", label: "Days range", regex: /\b(\d+)\s*[-–to]\s*(\d+)\s*days?\b/gi, category: "timeline" },
-  { key: "within_weeks", label: "Within weeks", regex: /\bwithin\s*(\d+)\s*weeks?\b/gi, category: "timeline" },
-  { key: "within_days", label: "Within days", regex: /\bwithin\s*(\d+)\s*days?\b/gi, category: "timeline" },
+  // The four numeric timeframes are valueBearing: "within 2 weeks" must not be
+  // grounded by evidence that says "within 6 weeks". The validator does not
+  // read TIMELINE_PATTERNS today (only StructuredExtractorService does), but
+  // the flag is a property of the pattern, not of its current consumer.
+  { key: "weeks_range", label: "Weeks range", regex: /\b(\d+)\s*[-–to]\s*(\d+)\s*weeks?\b/gi, category: "timeline", valueBearing: true },
+  { key: "days_range", label: "Days range", regex: /\b(\d+)\s*[-–to]\s*(\d+)\s*days?\b/gi, category: "timeline", valueBearing: true },
+  { key: "within_weeks", label: "Within weeks", regex: /\bwithin\s*(\d+)\s*weeks?\b/gi, category: "timeline", valueBearing: true },
+  { key: "within_days", label: "Within days", regex: /\bwithin\s*(\d+)\s*days?\b/gi, category: "timeline", valueBearing: true },
   { key: "immediately", label: "Immediately", regex: /\b(immediately|right\s*away)\b/gi, category: "timeline" },
   { key: "as_soon_as_possible", label: "As soon as possible", regex: /\bas\s*soon\s*as\s*possible\b/gi, category: "timeline", synonyms: ["asap"] },
   { key: "promptly", label: "Promptly", regex: /\bpromptly\b/gi, category: "timeline" },
@@ -152,8 +163,17 @@ export const STAGING_PROGNOSIS_PATTERNS: PatternEntry[] = [
   { key: "stage", label: "Cancer stage", regex: /\bstage\s*[I1-4IV]+\b/gi, category: "staging_prognosis", valueBearing: true },
   { key: "staging", label: "Staging", regex: /\bstaging\b/gi, category: "staging_prognosis" },
   { key: "prognosis", label: "Prognosis", regex: /\bprognosis\b/gi, category: "staging_prognosis" },
-  { key: "survival_rate", label: "Survival rate", regex: /\bsurvival\s*(rate|percentage)?\b/gi, category: "staging_prognosis" },
+  // valueBearing: "survival rate" is the phrase a prognosis FIGURE hangs off.
+  // Grounding it at concept level let a chunk saying only "Survival depends on
+  // many factors" ground a draft asserting "the 5-year survival rate is about
+  // 92%". A bare "survival" still grounds against a bare "survival" — only the
+  // qualified form now demands the qualified form in the evidence.
+  { key: "survival_rate", label: "Survival rate", regex: /\bsurvival\s*(rate|percentage)?\b/gi, category: "staging_prognosis", valueBearing: true },
   { key: "survival_percent", label: "Survival percentage", regex: /\b\d+%\s*survival\b/gi, category: "staging_prognosis", valueBearing: true },
+  // survival_percent only fires on the "92% survival" word order. This catches
+  // the far commoner "survival rate is about 92%" so the FIGURE itself, not
+  // just the words around it, has to appear in the evidence.
+  { key: "survival_statistic", label: "Survival statistic", regex: /\bsurvival\s*(rate|percentage)?[^.;\n]{0,30}?\d{1,3}(\.\d+)?\s*%/gi, category: "staging_prognosis", valueBearing: true },
   { key: "metastasis", label: "Metastasis", regex: /\bmetastasis\b/gi, category: "staging_prognosis" },
   { key: "metastatic", label: "Metastatic", regex: /\bmetastatic\b/gi, category: "staging_prognosis" },
 ];
