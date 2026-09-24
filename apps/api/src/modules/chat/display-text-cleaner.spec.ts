@@ -156,6 +156,64 @@ describe('cleanResponseForDisplay', () => {
         expect(out).not.toContain('citation');
         expect(out).toContain('\n\n---\n');
       });
+
+      /**
+       * The shape `chat.service` actually persists on the escalated path, not a
+       * one-line reconstruction of it: the S2 escalation block, the literal
+       * `ESCALATION_RAG_SEPARATOR` (`chat.service.ts`), the grounded half with
+       * its own inline markers, the appended Sources block, then the footer.
+       * Pinned here because the bold escalation header runs through
+       * `EMPTY_BOLD_PATTERN` in the same pass — that pattern is the one that ate
+       * a line break in #135, and #160 is the same family one step later.
+       */
+      it('keeps every break in the composite escalated reply', () => {
+        const escalation = '**This could be serious.**\n\n**Call for help NOW:**\n- Call 108';
+        const separator = '\n\n**Information from trusted sources:**\n\n';
+        const grounded =
+          'Breast changes have many causes [citation:doc1:chunk1].\n' + ANSWER;
+        const persisted =
+          escalation +
+          separator +
+          grounded +
+          '\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(persisted);
+
+        expect(out).toBe(
+          escalation +
+            separator +
+            'Breast changes have many causes.\n' +
+            ANSWER +
+            EMERGENCY_FOOTER,
+        );
+        // The escalation header keeps its own break (#135) and the footer keeps
+        // the one before it (#160).
+        expect(out).toContain('serious.**\n\n**Call for help NOW:**');
+        expect(out).toContain('\n\n---\n');
+        expect(out).not.toContain('breast size/shape?---');
+      });
+
+      /**
+       * The WhatsApp report on #160 was a Hindi turn, and the disclaimer now
+       * arrives in the language of the reply (#162/#163). Devanagari has broken
+       * text cleaning in this repo before — `\b` is ASCII-only — so the break in
+       * front of a Devanagari disclaimer gets its own guard.
+       */
+      it('keeps the break in front of a Devanagari disclaimer', () => {
+        const hindiAnswer = 'स्तन कैंसर की जांच ४० वर्ष की आयु से शुरू होती है।';
+        const hindiDisclaimer =
+          '\n\n---\n*यह जानकारी केवल सामान्य शैक्षिक उद्देश्यों के लिए है और पेशेवर ' +
+          'चिकित्सा सलाह, निदान या उपचार का विकल्प नहीं है।*';
+        const persisted =
+          hindiAnswer + '\n\n**Sources:** [citation:doc1:chunk1]' + hindiDisclaimer;
+
+        const out = cleanResponseForDisplay(persisted);
+
+        expect(out).toBe(hindiAnswer + hindiDisclaimer);
+        expect(out).toContain('\n\n---\n');
+        expect(out).not.toContain('है।---');
+      });
     });
   });
 
