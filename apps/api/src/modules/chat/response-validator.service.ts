@@ -36,8 +36,17 @@ export class ResponseValidatorService {
   validate(responseText: string, retrievedChunks: EvidenceChunk[]): ValidationResult {
     const ungroundedEntities: UngroundedEntity[] = [];
 
-    // Combine all chunk content for searching
-    const allChunkContent = retrievedChunks.map(chunk => chunk.content.toLowerCase()).join(" ");
+    // Combine all chunk content for searching.
+    //
+    // Whitespace is collapsed to single spaces on BOTH sides of the comparison
+    // (here and on the extracted entity). Source chunks are markdown and the
+    // model's draft is line-wrapped, so an entity like "radiation therapy"
+    // routinely matches across a newline in one and a single space in the
+    // other. Comparing raw text made that a spurious "ungrounded entity" and
+    // blanked the whole answer — see #167.
+    const allChunkContent = this.normalizeWhitespace(
+      retrievedChunks.map(chunk => chunk.content).join(" ")
+    ).toLowerCase();
 
     // Reset all pattern indices before extraction
     resetPatternIndices(DIAGNOSTIC_TEST_PATTERNS);
@@ -117,27 +126,127 @@ export class ResponseValidatorService {
 
       let match;
       while ((match = pattern.exec(responseText)) !== null) {
-        const entity = match[0].trim();
-        const entityLower = entity.toLowerCase();
+        const entity = this.normalizeWhitespace(match[0]);
 
-        // Check if entity appears in any retrieved chunk
-        // Use word boundaries to avoid partial matches
-        const entityPattern = new RegExp(`\\b${this.escapeRegex(entityLower)}\\b`, "i");
-
-        if (!entityPattern.test(allChunkContent)) {
-          // Get context around the match (50 chars before and after)
-          const start = Math.max(0, match.index - 50);
-          const end = Math.min(responseText.length, match.index + match[0].length + 50);
-          const context = responseText.substring(start, end).replace(/\s+/g, " ").trim();
-
-          ungroundedEntities.push({
-            type,
-            entity,
-            context
-          });
+        if (this.isGrounded(entity, patternEntry, allChunkContent)) {
+          continue;
         }
+
+        // Get context around the match (50 chars before and after)
+        const start = Math.max(0, match.index - 50);
+        const end = Math.min(responseText.length, match.index + match[0].length + 50);
+        const context = this.normalizeWhitespace(responseText.substring(start, end));
+
+        ungroundedEntities.push({
+          type,
+          entity,
+          context
+        });
       }
     }
+  }
+
+  /**
+   * Decide whether an entity the model used is backed by the retrieved chunks.
+   *
+   * The gate's job is to catch a medical entity the evidence never mentions
+   * (#166). It is NOT meant to demand that the model echo the source's exact
+   * wording: requiring a verbatim surface match made the gate fire on
+   * "radiation therapy" when the chunk said "radiation", on "tumor markers"
+   * when the chunk said "tumor marker", and on "CT scan" when the chunk said
+   * "CT" — each of which blanked an otherwise well-grounded answer (#167).
+   *
+   * Grounding is therefore checked at the level of the ENTITY CONCEPT, using
+   * the very same detector on both sides:
+   *
+   *   1. the normalized surface string appears in the chunks, or
+   *   2. the pattern's canonical label appears in the chunks, or
+   *   3. one of the pattern's declared synonyms appears in the chunks, or
+   *   4. the pattern that fired on the response also fires on the chunks.
+   *
+   * (4) is the symmetric check and is what makes the gate wording-insensitive.
+   * It cannot manufacture grounding: if no chunk mentions the concept in ANY
+   * form the pattern recognises, the entity stays ungrounded and the caller
+   * abstains. With zero retrieved chunks every entity is ungrounded, which is
+   * exactly the behaviour #166 depends on.
+   *
+   * Value-bearing patterns (`stage IV`, `18% survival`) opt out of (4): for
+   * those, evidence about a DIFFERENT value must not ground the claim, so only
+   * an exact surface match counts.
+   */
+  private isGrounded(
+    entity: string,
+    patternEntry: PatternEntry,
+    allChunkContent: string
+  ): boolean {
+    if (!allChunkContent) {
+      return false;
+    }
+
+    const entityLower = entity.toLowerCase();
+
+    // (1) Exact (whitespace-normalized) surface form.
+    if (this.containsTerm(allChunkContent, entityLower)) {
+      return true;
+    }
+
+    // Value-bearing entities must match verbatim — no concept-level fallback.
+    if (patternEntry.valueBearing) {
+      return false;
+    }
+
+    // (2) Canonical label for this pattern.
+    if (this.containsTerm(allChunkContent, patternEntry.label.toLowerCase())) {
+      return true;
+    }
+
+    // (3) Declared synonyms ("radiotherapy" for radiation therapy, etc.).
+    for (const synonym of patternEntry.synonyms ?? []) {
+      if (this.containsTerm(allChunkContent, synonym.toLowerCase())) {
+        return true;
+      }
+    }
+
+    // (4) Same detector, run over the evidence.
+    return this.patternMatchesChunks(patternEntry, allChunkContent);
+  }
+
+  /**
+   * Word-boundary containment test for a literal term.
+   *
+   * `\b` is only applied where the adjacent character is a word character —
+   * a term such as "ca 19-9" or "18%" ends in a non-word character, and an
+   * unconditional trailing `\b` would never match there.
+   */
+  private containsTerm(haystack: string, term: string): boolean {
+    if (!term) {
+      return false;
+    }
+    const leading = /^\w/.test(term) ? "\\b" : "";
+    const trailing = /\w$/.test(term) ? "\\b" : "";
+    return new RegExp(`${leading}${this.escapeRegex(term)}${trailing}`, "i").test(haystack);
+  }
+
+  /**
+   * Run a pattern over the chunk text without disturbing the shared registry's
+   * regex state. The PatternEntry regexes are module-level singletons carrying
+   * the `g` flag, so `lastIndex` is rebuilt on a private copy rather than
+   * mutated here — otherwise this probe would silently skip matches in the
+   * extraction loop that is iterating the same object.
+   */
+  private patternMatchesChunks(patternEntry: PatternEntry, allChunkContent: string): boolean {
+    const probe = this.probeCache.get(patternEntry.key) ??
+      new RegExp(patternEntry.regex.source, patternEntry.regex.flags.replace(/g/g, ""));
+    this.probeCache.set(patternEntry.key, probe);
+    return probe.test(allChunkContent);
+  }
+
+  /** Non-global copies of the registry regexes, built lazily. */
+  private readonly probeCache = new Map<string, RegExp>();
+
+  /** Collapse every run of whitespace (including newlines) to a single space. */
+  private normalizeWhitespace(str: string): string {
+    return str.replace(/\s+/g, " ").trim();
   }
 
   /**

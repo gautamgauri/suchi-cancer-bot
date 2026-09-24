@@ -17,6 +17,15 @@ export interface PatternEntry {
   regex: RegExp;         // detection pattern (global, case-insensitive)
   category: EntityCategory;
   synonyms?: string[];   // for normalized matching
+  /**
+   * True when a match carries a clinical VALUE, not just a concept — e.g.
+   * "stage IV" or "18% survival". For these, grounding must compare the exact
+   * surface string: evidence that mentions "stage I" does NOT ground a
+   * response that asserts "stage IV". Concept-level grounding (running this
+   * same regex over the retrieved chunks) is therefore skipped for them.
+   * See ResponseValidatorService and issues #167 / #166.
+   */
+  valueBearing?: boolean;
 }
 
 // ============================================================================
@@ -140,11 +149,11 @@ export const TREATMENT_PATTERNS: PatternEntry[] = [
 // STAGING / PROGNOSIS PATTERNS (7 patterns)
 // ============================================================================
 export const STAGING_PROGNOSIS_PATTERNS: PatternEntry[] = [
-  { key: "stage", label: "Cancer stage", regex: /\bstage\s*[I1-4IV]+\b/gi, category: "staging_prognosis" },
+  { key: "stage", label: "Cancer stage", regex: /\bstage\s*[I1-4IV]+\b/gi, category: "staging_prognosis", valueBearing: true },
   { key: "staging", label: "Staging", regex: /\bstaging\b/gi, category: "staging_prognosis" },
   { key: "prognosis", label: "Prognosis", regex: /\bprognosis\b/gi, category: "staging_prognosis" },
   { key: "survival_rate", label: "Survival rate", regex: /\bsurvival\s*(rate|percentage)?\b/gi, category: "staging_prognosis" },
-  { key: "survival_percent", label: "Survival percentage", regex: /\b\d+%\s*survival\b/gi, category: "staging_prognosis" },
+  { key: "survival_percent", label: "Survival percentage", regex: /\b\d+%\s*survival\b/gi, category: "staging_prognosis", valueBearing: true },
   { key: "metastasis", label: "Metastasis", regex: /\bmetastasis\b/gi, category: "staging_prognosis" },
   { key: "metastatic", label: "Metastatic", regex: /\bmetastatic\b/gi, category: "staging_prognosis" },
 ];
