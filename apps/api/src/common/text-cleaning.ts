@@ -219,14 +219,124 @@ const CONTRACT_TITLE_PATTERN =
   /(^|\s)\*{0,2}RESPONSE CONTRACT(?: FOR [A-Z -]+)?(?: QUERIES)?\s*(?:\([^)\n]*\))?\s*:?\s*\*{0,2}\s*/g;
 
 /**
- * `Educational answer:` and its siblings are prompt SECTION LABELS
- * (`prompts/explain-mode.ts:24`, `prompts/navigate-mode.ts:16`,
- * `llm.service.ts:1034`), not reader-facing headings — the web escalation
- * banner already drops this one. The raw label survives in the stored text for
- * evaluation; it just stops being delivered.
+ * The prompt SECTION LABELS of the `"SAFE + USEFUL" RESPONSE CONTRACT`, built
+ * below into two passes each.
+ *
+ * WHY A LIST MARKER IS NEVER PART OF THE LABEL. The contract is a numbered
+ * list, and step 3 (`What to do next`) is deliberately kept — see below. A
+ * strip that also ate the `1.`, `2.` and `4.` of the steps it removes would
+ * hand the reader a list whose only surviving number is `3.`: a numbered list
+ * with no `1.` anywhere, which is the machine artifact issue #158 reports,
+ * recreated by the fix for #152. So the label goes and the marker stays, and
+ * an echoed contract still reads as `1. … 2. … 3. … 4. …`.
+ *
+ * WHY THE PASSES ARE ORDERED. `**Label: sentence.**` — the model bolding the
+ * whole line rather than just the label — has to be recognised as one span,
+ * because removing the label alone strands the closing `**` in the reader's
+ * bubble (`stripCitationDebris` only collapses EMPTY bold pairs). The
+ * whole-line pass therefore runs before the general one.
  */
-const SECTION_LABEL_PATTERN =
-  /(^|\s)\*{0,2}Educational answer\*{0,2}\s*[:：]\s*\*{0,2}\s*/gi;
+
+/** A line whose bold wrapper opens before the label and closes at end of line. */
+function boldedLabelLinePattern(labels: string, terminators: string, flags: string): RegExp {
+  return new RegExp(
+    // The list marker, if any, is captured and put back.
+    "(^|\\n)([ \\t]*(?:\\d{1,2}[.)]|[-*+](?=[ \\t]))?[ \\t]*)" +
+      "\\*\\*[ \\t]*(?:" + labels + ")[ \\t]*(?:\\(optional\\))?[ \\t]*" +
+      "[" + terminators + "][ \\t]*" +
+      // Not `**` here: that is the ordinary `**Label:** body` form, which the
+      // general pass below handles without touching the body's own markup.
+      "(?!\\*)([^\\n]*?)\\*\\*[ \\t]*(?=\\n|$)",
+    flags
+  );
+}
+
+/**
+ * The label itself, in the forms the model actually writes it.
+ *
+ * A LOOKBEHIND, not `(^|\s)`: a consuming group would eat the whitespace that
+ * separates this label from a second one immediately after it, and with no `m`
+ * flag `^` cannot re-anchor there, so `Label: Label: text` only ever lost its
+ * first label. Matching the boundary without consuming it makes the pass
+ * self-consistent and lets the replacement be the empty string.
+ *
+ * The trailing `\s*` is what keeps a label that had a paragraph to itself from
+ * leaving a third newline behind on the chat and WhatsApp surfaces, which
+ * (unlike `cleanForSpeech`) never collapse blank lines.
+ */
+function labelPattern(
+  labels: string,
+  terminators: string,
+  allowNewlineTerminator: boolean,
+  flags: string
+): RegExp {
+  return new RegExp(
+    "(?<=^|\\s)" +
+      "\\*{0,2}[ \\t]*(?:" + labels + ")[ \\t]*\\*{0,2}[ \\t]*" +
+      "(?:\\(optional\\))?[ \\t]*\\*{0,2}[ \\t]*" +
+      "(?:[" + terminators + "]" + (allowNewlineTerminator ? "|(?=\\n)" : "") + ")" +
+      "[ \\t]*\\*{0,2}\\s*",
+    flags
+  );
+}
+
+/**
+ * `Educational answer:` is a prompt SECTION LABEL (`prompts/explain-mode.ts:24`,
+ * `prompts/navigate-mode.ts:16`, `llm.service.ts:1034`), not a reader-facing
+ * heading — the web escalation banner already drops this one. The raw label
+ * survives in the stored text for evaluation; it just stops being delivered.
+ *
+ * Case-INSENSITIVE, which is why its terminator stays `:` only: under `i` a
+ * bare newline or an em dash would also match the ordinary prose "…here is an
+ * educational answer — …", and over-stripping is a regression.
+ */
+const SECTION_LABELS = "Educational answer";
+const SECTION_LABEL_PATTERN = labelPattern(SECTION_LABELS, ":：", false, "gi");
+const BOLDED_SECTION_LABEL_LINE_PATTERN = boldedLabelLinePattern(SECTION_LABELS, ":：", "gi");
+
+/**
+ * The OTHER step labels of the same `"SAFE + USEFUL" RESPONSE CONTRACT`
+ * (`prompts/explain-mode.ts:22-26`, `prompts/navigate-mode.ts:14-22`).
+ *
+ * `Educational answer` is step 2 of that contract and is already stripped
+ * above; step 1 (`What I understood`) and step 4 (`One clarifying question`)
+ * are written in the same place, in the same voice, and leak the same way. The
+ * live re-probe after PR #153 found `What I understood:` in the DELIVERED text
+ * of five scheduled runs — twice spliced, in English, into an otherwise
+ * Devanagari reply, which reads as a machine artifact rather than an opener.
+ * It survived because the two shipped patterns are shaped for the other leak:
+ * `SECTION_LABEL_PATTERN` enumerates only `Educational answer`, and
+ * `CONTRACT_HEADING_PATTERN` needs an `N.` prefix and an ALL-CAPS keyword,
+ * while the model delivers this one title-case and unnumbered.
+ *
+ * Same fail-CLOSED, labels-only bargain as everything else in this strip: the
+ * grounding sentence after the colon is kept, only the label goes.
+ *
+ * DELIBERATELY EXCLUDED: step 3, `What to do next`. That one IS reader-facing —
+ * `response-templates.ts:125` emits `**What to do next:**` as our own copy, the
+ * escalation reconciler and the clinical keyword enforcer both anchor on it,
+ * and a reader needs the signpost before a list of next steps. Stripping it
+ * would be over-stripping, which this function treats as a regression.
+ *
+ * CASING. Only the FIRST word has to stay capitalised for the exclusion this
+ * pattern needs — a lowercase `...let me restate what I understood: ...` is
+ * prose, not a label, and must survive. Every later word is free, so the
+ * title-case heading a model most often writes (`What I Understood:`,
+ * `One Clarifying Question:`) is covered at no cost to that guard.
+ *
+ * TERMINATORS. `:` / `：`, plus the em dash and the bare newline that
+ * `CONTRACT_HEADING_PATTERN` already accepts, because the model writes
+ * `**What I understood** — …` and a standalone `**What I understood**` heading
+ * line just as readily as it writes the colon.
+ */
+const CONTRACT_STEP_LABELS =
+  "What I [Uu]nderstood|One [Cc]larifying [Qq]uestion";
+const CONTRACT_STEP_LABEL_PATTERN = labelPattern(CONTRACT_STEP_LABELS, ":：—", true, "g");
+const BOLDED_CONTRACT_STEP_LABEL_LINE_PATTERN = boldedLabelLinePattern(
+  CONTRACT_STEP_LABELS,
+  ":：—",
+  "g"
+);
 
 /**
  * A machine salutation. The model has no name for the reader, so "Dear User" /
@@ -246,7 +356,14 @@ export function stripPromptScaffolding(text: string): string {
   return text
     .replace(CONTRACT_TITLE_PATTERN, "$1")
     .replace(CONTRACT_HEADING_PATTERN, "$1")
-    .replace(SECTION_LABEL_PATTERN, "$1")
+    // Whole-line bold first, so the closing `**` goes with the label that
+    // opened it instead of being stranded in the reader's bubble.
+    .replace(BOLDED_SECTION_LABEL_LINE_PATTERN, "$1$2$3")
+    .replace(BOLDED_CONTRACT_STEP_LABEL_LINE_PATTERN, "$1$2$3")
+    // The label patterns match their leading boundary with a lookbehind, so
+    // the replacement is empty and the boundary survives for the next match.
+    .replace(SECTION_LABEL_PATTERN, "")
+    .replace(CONTRACT_STEP_LABEL_PATTERN, "")
     .replace(MACHINE_SALUTATION_PATTERN, "$1");
 }
 
