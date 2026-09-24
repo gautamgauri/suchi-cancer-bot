@@ -20,7 +20,7 @@ Parse the mode from the argument. Default to `direct` if no argument is given.
 
 ## Phase 1: Automated Preflight (hard gate)
 
-Run ALL 8 checks below **sequentially** for `direct`, `gated`, and `preflight-only` modes. Track results in a table. If ANY check fails (not WARN), **stop immediately** — do NOT proceed to Phase 2 or deploy.
+Run ALL 9 checks below **sequentially** for `direct`, `gated`, and `preflight-only` modes. Track results in a table. If ANY check fails (not WARN), **stop immediately** — do NOT proceed to Phase 2 or deploy.
 
 ### Check 1: TypeScript Build
 
@@ -109,7 +109,39 @@ Cross-reference required env vars between `env.validation.ts` and `cloudbuild.ya
 
 Note: `PORT` and `NODE_ENV` are set by Cloud Run automatically, so exclude them from this check.
 
-### Check 9: Release Eval Gate (optional — only if `--with-eval-gate` flag is present in $ARGUMENTS)
+### Check 9: Unreviewed Clinical Prompt Gate (hard)
+
+Some changes ship a *mechanism* whose patient-facing *wording* is still held for SCCF
+medical review (AGENTS.md §1.3). Deploying the mechanism without the reviewed wording
+puts un-reviewed guidance in front of patients. This check refuses that combination.
+
+**Hospital distance (#148 mechanism / #149 + #159 wording):**
+
+```bash
+cd /home/gauta/suchi_repo && \
+  grep -c '(straight-line)' apps/api/src/modules/chat/chat.service.ts; \
+  grep -c 'STRAIGHT-LINE distance, already rounded' apps/api/src/modules/chat/chat.service.ts
+```
+
+- **PASS**: first count is `0` (mechanism not on main yet), or both counts are non-zero
+  (mechanism and its reviewed instruction landed together).
+- **FAIL**: first count is non-zero and second is `0`. The build renders
+  `~N km away (straight-line)` to the generator with **no instruction telling it the
+  figure is straight-line, to repeat it as written, and never to convert it into a
+  travel time or a road distance**. Nothing then stops the model turning ~50 km into
+  "about an hour's drive" for a patient in rural North Bihar where it is three.
+
+  Blocked until **PR #149** (distance-handling instruction) and **PR #159**
+  (cross-border travel caveat — a nearer centre across a state line means a different
+  state health scheme and referral paperwork) are reviewed by SCCF and merged.
+
+  Do NOT work around this by deleting the distance text. Either land #149 and #159, or
+  deploy a commit that predates the mechanism.
+
+This check is self-resolving: it arms itself when the mechanism lands and disarms when
+the reviewed wording lands. It needs no network and no `gh`.
+
+### Check 10: Release Eval Gate (optional — only if `--with-eval-gate` flag is present in $ARGUMENTS)
 
 This check runs the gold eval pack via the release gate module. **Skip this check entirely unless the user explicitly passed `--with-eval-gate`.**
 
