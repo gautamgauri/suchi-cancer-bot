@@ -193,6 +193,90 @@ describe("stripPromptScaffolding (issue #152)", () => {
     });
   });
 
+  /**
+   * The post-#153 live re-probe: the ALL-CAPS contract headings were gone, but
+   * `What I understood:` — step 1 of the same "SAFE + USEFUL" contract, and the
+   * direct sibling of the `Educational answer:` label the strip already removed
+   * — was still in the DELIVERED text of five scheduled runs.
+   */
+  describe("the \"SAFE + USEFUL\" contract step labels", () => {
+    // run runs/2026-09-20T18-00-31_seed1789907431, q02 (abstention/en).
+    const DELIVERED_GROUNDING_LABEL =
+      "Important: This information is for general educational purposes and is not a " +
+      "diagnosis. Please consult with your healthcare provider for accurate, personalized " +
+      "medical information. I understand receiving a cancer diagnosis can be overwhelming. " +
+      "What I understood: You are asking about the prognosis for a relative who has been " +
+      "diagnosed with lung cancer that has spread to other parts of the body. I cannot " +
+      "provide specific information about lung cancer prognosis.";
+
+    it("removes the delivered `What I understood:` label", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_GROUNDING_LABEL);
+
+      expect(cleaned).not.toContain("What I understood");
+    });
+
+    it("keeps the grounding sentence that followed the label", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_GROUNDING_LABEL);
+
+      expect(cleaned).toContain(
+        "You are asking about the prognosis for a relative who has been diagnosed"
+      );
+      expect(cleaned).toContain("I cannot provide specific information about lung cancer");
+      // The empathic opener and the disclaimer prefix are clinical wording.
+      expect(cleaned).toContain("I understand receiving a cancer diagnosis can be overwhelming.");
+      expect(cleaned).toContain(
+        "This information is for general educational purposes and is not a diagnosis."
+      );
+    });
+
+    it("removes the English label spliced into an otherwise Devanagari reply", () => {
+      const cleaned = stripPromptScaffolding(
+        "...medical information. What I understood: आप जानना चाहते हैं कि इलाज के दौरान टीका लगवाना सुरक्षित है या नहीं।"
+      );
+
+      expect(cleaned).not.toContain("What I understood");
+      expect(cleaned).toContain(
+        "आप जानना चाहते हैं कि इलाज के दौरान टीका लगवाना सुरक्षित है या नहीं।"
+      );
+    });
+
+    const STEP_LABELS = [
+      "What I understood:",
+      "**What I understood**:",
+      "**What I understood:**",
+      "1. **What I understood**:",
+      "1) What I understood:",
+      "One clarifying question:",
+      "**One clarifying question**:",
+      "4. **One clarifying question** (optional):",
+    ];
+
+    it.each(STEP_LABELS)("strips %s and keeps the words after it", (label) => {
+      expect(stripPromptScaffolding(`${label} Which tests has the doctor ordered?`)).toBe(
+        "Which tests has the doctor ordered?"
+      );
+    });
+
+    it("keeps `What to do next`, which is a reader-facing heading we emit ourselves", () => {
+      const text =
+        "**What to do next:**\n- Ask your doctor for a biopsy.\n- Call 1800-22-1951 for help.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps the same words used as lowercase prose rather than as a label", () => {
+      const text = "Let me restate what I understood: you want to know about screening.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("is idempotent on a step label", () => {
+      const once = stripPromptScaffolding("What I understood: You are asking about screening.");
+
+      expect(stripPromptScaffolding(once)).toBe(once);
+    });
+  });
+
   describe("at the shared delivery boundary", () => {
     it("cleanResponseForDisplay strips scaffolding for chat, voice and WhatsApp alike", () => {
       const raw =

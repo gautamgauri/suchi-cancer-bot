@@ -229,6 +229,37 @@ const SECTION_LABEL_PATTERN =
   /(^|\s)\*{0,2}Educational answer\*{0,2}\s*[:：]\s*\*{0,2}\s*/gi;
 
 /**
+ * The OTHER step labels of the same `"SAFE + USEFUL" RESPONSE CONTRACT`
+ * (`prompts/explain-mode.ts:22-26`, `prompts/navigate-mode.ts:14-22`).
+ *
+ * `Educational answer` is step 2 of that contract and is already stripped
+ * above; step 1 (`What I understood`) and step 4 (`One clarifying question`)
+ * are written in the same place, in the same voice, and leak the same way. The
+ * live re-probe after PR #153 found `What I understood:` in the DELIVERED text
+ * of five scheduled runs — twice spliced, in English, into an otherwise
+ * Devanagari reply, which reads as a machine artifact rather than an opener.
+ * It survived because the two shipped patterns are shaped for the other leak:
+ * `SECTION_LABEL_PATTERN` enumerates only `Educational answer`, and
+ * `CONTRACT_HEADING_PATTERN` needs an `N.` prefix and an ALL-CAPS keyword,
+ * while the model delivers this one title-case and unnumbered.
+ *
+ * Same fail-CLOSED, labels-only bargain as everything else in this strip: the
+ * grounding sentence after the colon is kept, only the label goes.
+ *
+ * DELIBERATELY EXCLUDED: step 3, `What to do next`. That one IS reader-facing —
+ * `response-templates.ts:125` emits `**What to do next:**` as our own copy, the
+ * escalation reconciler and the clinical keyword enforcer both anchor on it,
+ * and a reader needs the signpost before a list of next steps. Stripping it
+ * would be over-stripping, which this function treats as a regression.
+ *
+ * Case-sensitive, unlike `SECTION_LABEL_PATTERN`: these labels are ordinary
+ * English words in a sentence-shaped order, so a lowercase `...restate what I
+ * understood: ...` is prose, not a label, and must survive.
+ */
+const CONTRACT_STEP_LABEL_PATTERN =
+  /(^|\s)\*{0,2}\d{0,2}[.)]?[ \t]*\*{0,2}(?:What I understood|One clarifying question)[ \t]*\*{0,2}[ \t]*(?:\(optional\))?[ \t]*\*{0,2}[ \t]*[:：]\s*\*{0,2}[ \t]*/g;
+
+/**
  * A machine salutation. The model has no name for the reader, so "Dear User" /
  * "डियर यूजर" is scaffolding leaking through a template, never something a
  * person wrote to them.
@@ -247,6 +278,7 @@ export function stripPromptScaffolding(text: string): string {
     .replace(CONTRACT_TITLE_PATTERN, "$1")
     .replace(CONTRACT_HEADING_PATTERN, "$1")
     .replace(SECTION_LABEL_PATTERN, "$1")
+    .replace(CONTRACT_STEP_LABEL_PATTERN, "$1")
     .replace(MACHINE_SALUTATION_PATTERN, "$1");
 }
 
