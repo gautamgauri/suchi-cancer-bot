@@ -3451,6 +3451,8 @@ Present hospitals as "major treatment centres" or "cancer treatment centres." NE
 
 When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
 
+Where a distance is given it is a STRAIGHT-LINE distance, already rounded. Repeat it as written if you mention it. NEVER convert it into a travel time, a road distance, or a journey duration — the road route is longer and the time depends on connections this data does not contain.
+
 ${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
