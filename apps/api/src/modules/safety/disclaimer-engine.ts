@@ -48,21 +48,75 @@ const DISCLAIMERS: Record<SupportedLocale, { standard: string; safety: string }>
 };
 
 /**
- * Detect the user's language from the locale string or message content.
- * Falls back to "en" if unknown.
+ * Normalise an explicit locale string to a supported locale, or null when it
+ * carries no usable signal.
+ */
+function localeToSupported(locale?: string | null): SupportedLocale | null {
+  if (!locale) return null;
+  const lower = locale.toLowerCase();
+  if (lower.startsWith("hi")) return "hi";
+  if (lower.startsWith("bh") || lower === "bhojpuri") return "bh";
+  if (lower.startsWith("mai") || lower === "maithili") return "mai";
+  if (lower.startsWith("en")) return "en";
+  return null;
+}
+
+/**
+ * Is this text predominantly written in Devanagari?
+ *
+ * Deliberately stricter than the userText heuristic below. A response body is
+ * long and structured and carries machine artefacts — citation markers, source
+ * URLs — that are always Latin. Measuring Devanagari against *total* length
+ * would let that boilerplate drag a Hindi answer under the threshold, so we
+ * compare letters against letters and strip the artefacts first.
+ */
+function isDevanagariDominant(text: string): boolean {
+  const prose = text
+    .replace(/\[citation:[^\]]*\]/g, " ")
+    .replace(/https?:\/\/\S+/g, " ");
+  const devanagari = (prose.match(/[\u0900-\u097F]/g) || []).length;
+  if (devanagari === 0) return false;
+  const latin = (prose.match(/[A-Za-z]/g) || []).length;
+  return devanagari >= latin;
+}
+
+/**
+ * Detect the language the disclaimer should be written in.
+ *
+ * Order of precedence, and why:
+ *
+ * 1. An explicit *Indic* locale (hi/bh/mai). This is the only signal that can
+ *    tell Bhojpuri and Maithili apart from Hindi — they share a script, so no
+ *    amount of text inspection can recover the distinction.
+ * 2. The language of the RESPONSE. The disclaimer is glued to the bottom of the
+ *    body and its job is to be read by whoever can read that body. A Devanagari
+ *    answer takes a Devanagari disclaimer even when the question was typed in
+ *    romanised Hinglish — user-script detection returns "en" for that input, and
+ *    it is the answer, not the question, that the reader is looking at.
+ * 3. An explicit locale of "en". Unlike an Indic locale this is rarely a
+ *    declaration: it is the default, and on the WhatsApp channel it is itself
+ *    just derived from the absence of Devanagari in the incoming message. It
+ *    must not outrank an unmistakably Devanagari body, which is why it sits
+ *    below (2) rather than with (1).
+ * 4. The user's own text, the original fallback.
+ *
+ * Falls back to "en" if nothing is conclusive.
  */
 export function detectLocale(
   locale?: string | null,
-  userText?: string
+  userText?: string,
+  responseText?: string
 ): SupportedLocale {
-  // Check explicit locale first
-  if (locale) {
-    const lower = locale.toLowerCase();
-    if (lower.startsWith("hi")) return "hi";
-    if (lower.startsWith("bh") || lower === "bhojpuri") return "bh";
-    if (lower.startsWith("mai") || lower === "maithili") return "mai";
-    if (lower.startsWith("en")) return "en";
-  }
+  const explicit = localeToSupported(locale);
+
+  // 1. Explicit Indic locale — the only carrier of the bh/mai distinction.
+  if (explicit && explicit !== "en") return explicit;
+
+  // 2. Language of the response body.
+  if (responseText && isDevanagariDominant(responseText)) return "hi";
+
+  // 3. Explicit "en".
+  if (explicit) return explicit;
 
   // Heuristic: check for Devanagari script in user text
   if (userText) {
@@ -86,6 +140,9 @@ export function detectLocale(
  * @param isEmergency - Whether this is an emergency/safety response
  * @param userText - Original user text (for language detection fallback)
  * @returns The response text with disclaimer appended
+ *
+ * The language of `responseText` is used as a detection signal too, so the
+ * disclaimer is always readable next to the body it is attached to.
  */
 export function appendDisclaimer(
   responseText: string,
@@ -98,7 +155,8 @@ export function appendDisclaimer(
     return responseText;
   }
 
-  const detectedLocale = detectLocale(locale, userText);
+  // The response body is itself a first-class language signal — see detectLocale().
+  const detectedLocale = detectLocale(locale, userText, responseText);
   const disclaimers = DISCLAIMERS[detectedLocale] || DISCLAIMERS.en;
   const disclaimer = isEmergency ? disclaimers.safety : disclaimers.standard;
 
