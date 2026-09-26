@@ -70,6 +70,28 @@ describe("IntentClassifier - identify questions", () => {
     expect(result.confidence).toBe("high");
   });
 
+  // Issue #184: the bare question answered from 6 KB chunks; the same question
+  // with a trailing "I should look for" returned 0 chunks and 0 citations,
+  // because it classified as PERSONAL_SYMPTOMS and the Navigate soft-redirect
+  // branch in ChatService never calls RAG. Both phrasings must land on the same
+  // intent, which is the intent that is served from the knowledge base.
+  test("mouth cancer signs: trailing 'I should look for' keeps the KB-served intent", () => {
+    const bare = classifier.classify(
+      "What are the early signs of mouth cancer?",
+      mockEvidenceChunks,
+      mockGateResult,
+      "normal"
+    );
+    const withClause = classifier.classify(
+      "What are the early signs of mouth cancer I should look for?",
+      mockEvidenceChunks,
+      mockGateResult,
+      "normal"
+    );
+    expect(bare.intent).toBe("INFORMATIONAL_SYMPTOMS");
+    expect(withClause.intent).toBe(bare.intent);
+  });
+
   test("how do I know if I have cancer -> PERSONAL_SYMPTOMS", () => {
     const result = classifier.classify(
       "how do I know if I have cancer",
