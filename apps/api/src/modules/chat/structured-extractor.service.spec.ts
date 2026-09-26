@@ -369,6 +369,74 @@ describe("StructuredExtractorService", () => {
       // Bullets inside a block stay on consecutive lines (a markdown list).
       expect(fallback).toMatch(/\*\*Additional tests your doctor may recommend:\*\*\n- /);
     });
+
+    // ── Regression: issue #186 ───────────────────────────────────
+    // The three section labels were hardcoded English with no locale path, so a
+    // Hindi answer shipped an English heading and a bare test name under it:
+    //   "…मुँह के कैंसर के सामान्य लक्षण क्या होते हैं?
+    //    **Additional tests your doctor may recommend:**
+    //    - MRI"
+    // Same reader-facing class as #162 (English disclaimer on a Hindi reply),
+    // different code path. Until SCCF signs off on Hindi wording for these
+    // labels we emit nothing rather than English scaffolding.
+    describe("reply language (#186)", () => {
+      const hindiMissing = () => {
+        const chunks = [
+          createChunk(
+            "MRI and mammogram are diagnostic tests. Watch for a lump or mass in the breast. If symptoms persist for 2-4 weeks, see a doctor.",
+            "doc1",
+            "chunk2"
+          ),
+        ];
+        const extraction = service.extract(chunks);
+        return {
+          extraction,
+          missing: {
+            diagnosticTests: extraction.diagnosticTests.slice(0, 2),
+            warningSigns: extraction.warningSigns.slice(0, 2),
+            timelineMissing: true,
+          },
+        };
+      };
+
+      it("emits no English label block for a Hindi reply", () => {
+        const { missing, extraction } = hindiMissing();
+
+        const fallback = service.generateFallbackContent(missing, extraction, "hi");
+
+        expect(fallback).toBe("");
+        expect(fallback).not.toContain("Additional tests your doctor may recommend");
+        expect(fallback).not.toContain("Additional warning signs");
+        expect(fallback).not.toContain("When to seek care");
+      });
+
+      it.each(["bh", "mai"] as const)(
+        "emits no English label block for a %s reply",
+        locale => {
+          const { missing, extraction } = hindiMissing();
+
+          expect(service.generateFallbackContent(missing, extraction, locale)).toBe("");
+        }
+      );
+
+      it("still emits the English block for an English reply", () => {
+        const { missing, extraction } = hindiMissing();
+
+        const fallback = service.generateFallbackContent(missing, extraction, "en");
+
+        expect(fallback).toContain("**Additional tests your doctor may recommend:**");
+        expect(fallback).toContain("**Additional warning signs to be aware of:**");
+        expect(fallback).toContain("**When to seek care:**");
+      });
+
+      it("defaults to English when no locale is passed (existing callers)", () => {
+        const { missing, extraction } = hindiMissing();
+
+        expect(service.generateFallbackContent(missing, extraction)).toBe(
+          service.generateFallbackContent(missing, extraction, "en")
+        );
+      });
+    });
   });
 
   describe("formatForPrompt()", () => {

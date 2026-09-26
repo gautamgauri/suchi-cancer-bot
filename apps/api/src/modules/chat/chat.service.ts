@@ -27,7 +27,7 @@ import { PatientStateService, PatientState } from "./patient-state.service";
 // Phase 1 Agentic components
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
-import { appendDisclaimer } from "../safety/disclaimer-engine";
+import { appendDisclaimer, detectLocale } from "../safety/disclaimer-engine";
 import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
 import { reconcileAppendedAnswer } from "./escalation-reconciler";
 // Phase 2 Agentic components
@@ -2125,7 +2125,13 @@ export class ChatService {
           `Response incomplete: tests=${completenessResult.coverage.diagnosticTests.found}/${completenessResult.coverage.diagnosticTests.required}, ` +
           `signs=${completenessResult.coverage.warningSigns.found}/${completenessResult.coverage.warningSigns.required}`
         );
-        const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+        // Same locale signal the disclaimer uses (#163): the fallback block is
+        // spliced into this body, so it has to be readable next to it (#186).
+        const fallbackContent = this.structuredExtractor.generateFallbackContent(
+          completenessResult.missing,
+          extraction,
+          detectLocale(disclaimerLocale, dto.userText, responseText)
+        );
         if (fallbackContent) {
           // Try multiple insertion points (most specific first)
           const insertionPatterns = [
@@ -2242,7 +2248,7 @@ export class ChatService {
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -2443,7 +2449,7 @@ export class ChatService {
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
         let retryOrphanCount = retryExtractionResult.orphanCount;
@@ -3010,10 +3016,21 @@ export class ChatService {
    * Reapply essential-term / completeness fallback after any regeneration that replaces responseText.
    * Call after identify regeneration and citation regeneration so injected terms are not lost.
    */
-  private applyEssentialTermFallback(responseText: string, extraction: StructuredInfo, queryType: string): string {
+  private applyEssentialTermFallback(
+    responseText: string,
+    extraction: StructuredInfo,
+    queryType: string,
+    locale?: string | null,
+    userText?: string
+  ): string {
     const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
     if (completenessResult.meetsPolicy) return responseText;
-    const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+    // The block is written in the language of the body it is spliced into (#186).
+    const fallbackContent = this.structuredExtractor.generateFallbackContent(
+      completenessResult.missing,
+      extraction,
+      detectLocale(locale, userText, responseText)
+    );
     if (!fallbackContent) return responseText;
     const insertionPatterns = [
       /(\n\n\*\*Questions to Ask Your Doctor:\*\*)/i,
