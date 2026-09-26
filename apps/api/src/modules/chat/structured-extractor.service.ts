@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { SupportedLocale } from "../safety/disclaimer-engine";
 import {
   PatternEntry,
   DIAGNOSTIC_TEST_PATTERNS,
@@ -79,6 +80,39 @@ export const COMPLETENESS_POLICIES: Record<string, CompletenessPolicy> = {
   caregiver: { minDiagnosticTests: 1, minWarningSigns: 2, timelineRequired: false },
   navigation: { minDiagnosticTests: 1, minWarningSigns: 1, timelineRequired: false },
   general: { minDiagnosticTests: 2, minWarningSigns: 2, timelineRequired: false },
+};
+
+// ============================================================================
+// COMPLETENESS-FALLBACK LABELS (localized)
+// ============================================================================
+
+export interface FallbackLabels {
+  diagnosticTests: string;
+  warningSigns: string;
+  timeline: string;
+}
+
+/**
+ * Section labels for the completeness-fallback block, per reply language.
+ *
+ * These are patient-facing care copy: they introduce a list of diagnostic tests
+ * or warning signs. Under AGENTS.md §1.3 that copy needs SCCF review before it
+ * ships, so a locale is present here only once its wording has been signed off.
+ *
+ * A locale that is absent is NOT silently served English — see
+ * generateFallbackContent(). Appending an English heading to a Hindi reply is
+ * the defect this table exists to stop (issue #186): a Hindi-only reader was
+ * getting "**Additional tests your doctor may recommend:** - MRI" under an
+ * otherwise Hindi answer.
+ *
+ * TODO(#186): add hi / bh / mai entries once SCCF has approved the wording.
+ */
+export const FALLBACK_LABELS: Partial<Record<SupportedLocale, FallbackLabels>> = {
+  en: {
+    diagnosticTests: "**Additional tests your doctor may recommend:**",
+    warningSigns: "**Additional warning signs to be aware of:**",
+    timeline: "**When to seek care:**",
+  },
 };
 
 // Symptom qualifiers - broad symptoms require these nearby to count
@@ -424,12 +458,30 @@ export class StructuredExtractorService {
    * was being welded onto the last sentence of the generated answer
    * ("…and then selecting a therapy Additional tests your doctor may
    * recommend:"). See issue #69.
+   *
+   * The block is written in the language of the reply it will be spliced into.
+   * If we hold no SCCF-approved labels for that language we emit nothing rather
+   * than falling back to English: a Hindi-only reader was being shown an English
+   * heading followed by a bare "MRI" (issue #186), which is scaffolding they
+   * cannot read attached to an answer they can.
    */
-  generateFallbackContent(missing: MissingItems, extraction: StructuredInfo): string {
+  generateFallbackContent(
+    missing: MissingItems,
+    extraction: StructuredInfo,
+    locale: SupportedLocale = "en"
+  ): string {
+    const labels = FALLBACK_LABELS[locale];
+    if (!labels) {
+      this.logger.debug(
+        `Completeness fallback suppressed: no reviewed labels for locale "${locale}" (#186)`
+      );
+      return "";
+    }
+
     const blocks: string[] = [];
 
     if (missing.diagnosticTests.length > 0) {
-      const lines = ["**Additional tests your doctor may recommend:**"];
+      const lines = [labels.diagnosticTests];
       for (const test of missing.diagnosticTests.slice(0, 5)) {
         const ev = test.evidence[0];
         lines.push(`- ${test.label} [citation:${ev.docId}:${ev.chunkId}]`);
@@ -438,7 +490,7 @@ export class StructuredExtractorService {
     }
 
     if (missing.warningSigns.length > 0) {
-      const lines = ["**Additional warning signs to be aware of:**"];
+      const lines = [labels.warningSigns];
       for (const sign of missing.warningSigns.slice(0, 5)) {
         const ev = sign.evidence[0];
         lines.push(`- ${sign.label} [citation:${ev.docId}:${ev.chunkId}]`);
@@ -449,7 +501,7 @@ export class StructuredExtractorService {
     if (missing.timelineMissing && extraction.timeline !== null && extraction.timeline.evidence) {
       const ev = extraction.timeline.evidence;
       blocks.push(
-        `**When to seek care:** ${extraction.timeline.rawMatch} [citation:${ev.docId}:${ev.chunkId}]`
+        `${labels.timeline} ${extraction.timeline.rawMatch} [citation:${ev.docId}:${ev.chunkId}]`
       );
     }
 
