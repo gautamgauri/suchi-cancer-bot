@@ -205,6 +205,15 @@ export class ModeDetector {
       /\b(please\s+)?(tell|give|explain\s+to|show)\s+me\b/gi,
       /\bhelp\s+me\s+(understand|learn|know)\b/gi,
       /\blet\s+me\s+know\b/gi,
+      // Issue #184: a trailing clause that names what the ANSWER should cover —
+      // "…the early signs of mouth cancer I should look for?". The user is
+      // describing the scope of the question, not reporting anything about
+      // themselves, so the bare "I" inside it must not flip the turn to
+      // Navigate mode (which soft-redirects with no KB content). Measured on
+      // production: the same question without this clause retrieved 6 chunks.
+      // The INVERTED form is deliberately not matched — "should I look for a
+      // second opinion?", "should I check?" are genuine personal questions.
+      /\b(that\s+|which\s+)?i\s+should\s+(be\s+)?(look(ing)?|watch(ing)?)\s+(out\s+)?for\b/gi,
     ];
     const stripped = informationalFraming.reduce((t, p) => t.replace(p, " "), text);
 
