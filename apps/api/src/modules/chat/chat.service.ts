@@ -2091,7 +2091,17 @@ export class ChatService {
 
       // POST-PROCESSING: Check completeness and fill gaps if needed
       const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
-      
+
+      // Same locale signal the disclaimer uses (#163): the fallback block is
+      // spliced into this body, so it has to be readable next to it (#186).
+      const fallbackContent = completenessResult.meetsPolicy
+        ? ""
+        : this.structuredExtractor.generateFallbackContent(
+            completenessResult.missing,
+            extraction,
+            detectLocale(disclaimerLocale, dto.userText, responseText)
+          );
+
       // Structured logging for completeness outcomes (observability)
       this.logger.log({
         event: "completeness_check",
@@ -2116,7 +2126,9 @@ export class ChatService {
             required: completenessResult.coverage.timeline.required,
           },
         },
-        fallbackInserted: !completenessResult.meetsPolicy && completenessResult.missing.diagnosticTests.length + completenessResult.missing.warningSigns.length > 0,
+        // Reflects the block we actually built: a reply whose language has no
+        // reviewed labels yet gets none, and the log must not claim one (#186).
+        fallbackInserted: fallbackContent.length > 0,
         meetsPolicy: completenessResult.meetsPolicy,
       });
       
@@ -2124,13 +2136,6 @@ export class ChatService {
         this.logger.debug(
           `Response incomplete: tests=${completenessResult.coverage.diagnosticTests.found}/${completenessResult.coverage.diagnosticTests.required}, ` +
           `signs=${completenessResult.coverage.warningSigns.found}/${completenessResult.coverage.warningSigns.required}`
-        );
-        // Same locale signal the disclaimer uses (#163): the fallback block is
-        // spliced into this body, so it has to be readable next to it (#186).
-        const fallbackContent = this.structuredExtractor.generateFallbackContent(
-          completenessResult.missing,
-          extraction,
-          detectLocale(disclaimerLocale, dto.userText, responseText)
         );
         if (fallbackContent) {
           // Try multiple insertion points (most specific first)
