@@ -1299,7 +1299,8 @@ export class ChatService {
             const quickVerify = this.outputVerifier.quickVerify(
               phase3Response,
               executionResult.mergedChunks,
-              dto.userText
+              dto.userText,
+              disclaimerLocale
             );
             if (quickVerify.fixedContent) {
               phase3Response = quickVerify.fixedContent;
@@ -2526,7 +2527,8 @@ export class ChatService {
       const phase3Verification = this.outputVerifier.quickVerify(
         responseText,
         evidenceChunks,
-        dto.userText
+        dto.userText,
+        disclaimerLocale
       );
       if (phase3Verification.fixedContent) {
         responseText = phase3Verification.fixedContent;
