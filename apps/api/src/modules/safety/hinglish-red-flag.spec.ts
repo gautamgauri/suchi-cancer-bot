@@ -20,8 +20,11 @@ const ZW = "​"; // zero-width space
 describe("Issue #81 — Hinglish / Devanagari red flags", () => {
   const abstention = new AbstentionService();
 
-  // ── Heavy bleeding + dizziness after chemo: must reach the critical path ──
-  describe("post-chemo bleeding + dizziness escalates as critical", () => {
+  // ── Heavy / won't-stop bleeding + dizziness after chemo: critical ──
+  // Critical patterns are checked first, so a heavy-bleeding or won't-stop
+  // signal keeps the message critical even though bleeding + dizziness on its
+  // own is urgent (SCCF decision on #196).
+  describe("post-chemo HEAVY bleeding + dizziness escalates as critical", () => {
     it.each([
       [
         "issue sentence (romanised Hinglish)",
@@ -40,8 +43,8 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
         "कीमो के बाद ब्लीडिंग बहुत ज़्यादा है और चक्कर आ रहा है",
       ],
       [
-        "Hinglish, 'kemo' spelling + khoon",
-        "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
+        "Hinglish, heavy bleeding + chakkar in one sentence",
+        "bleeding bahut zyada ho rahi hai aur chakkar aa raha hai",
       ],
       [
         "Hinglish, 'kimo', bleeding rukti nahi",
@@ -50,22 +53,6 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
       [
         "Hinglish, intensifier before noun",
         "chemo ke 5 din baad bahut zyada bleeding ho rahi hai, sir ghoom raha hai",
-      ],
-      [
-        "mixed script",
-        "chemo ke baad bleeding ho rahi hai aur चक्कर आ रहा है",
-      ],
-      [
-        "code-mixed English dizziness",
-        "didi ko chemo ke baad bleeding ho rahi hai aur dizzy feel ho raha hai",
-      ],
-      [
-        "near-fainting (behoshi)",
-        "chemo ke baad khoon aa raha hai, behoshi jaisi lag rahi hai",
-      ],
-      [
-        "English, 'a lot' phrasing (no 'heavy' keyword)",
-        "my sister is very weak since chemo, today she is bleeding a lot and feels dizzy",
       ],
       [
         "WhatsApp elongation",
@@ -82,6 +69,63 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
       // The existing escalation response is reused, not new wording.
       expect(result.responseText).toContain("112");
       expect(result.responseText).toContain("108");
+    });
+
+    it("heavy bleeding + dizziness reports the heavy-bleeding rule, not the urgent cluster", () => {
+      const result = evaluateEmergencyFastPath("bleeding bahut zyada ho rahi hai aur chakkar aa raha hai");
+      expect(result.severity).toBe("critical");
+      expect(result.matchedPatterns).toContain("severe_bleeding_loanword_hinglish");
+      expect(result.matchedPatterns).not.toContain("bleeding_with_dizziness_multilingual");
+    });
+  });
+
+  // ── Plain bleeding + dizziness (no heavy / won't-stop signal): urgent ──
+  // SCCF decision on #196: urgent reply ("contact your care team today",
+  // 112/108 still shown, "go to Emergency if bleeding won't stop").
+  describe("post-chemo bleeding + dizziness WITHOUT a heavy signal escalates as urgent", () => {
+    it.each([
+      [
+        "Hinglish, 'kemo' spelling + khoon",
+        "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
+      ],
+      [
+        "Hinglish, loanword + chakkar",
+        "chemo ke baad bleeding ho rahi hai aur chakkar aa raha hai",
+      ],
+      [
+        "mixed script",
+        "chemo ke baad bleeding ho rahi hai aur चक्कर आ रहा है",
+      ],
+      [
+        "Devanagari",
+        "कीमो के बाद ब्लीडिंग हो रही है और चक्कर आ रहा है",
+      ],
+      [
+        "code-mixed English dizziness",
+        "didi ko chemo ke baad bleeding ho rahi hai aur dizzy feel ho raha hai",
+      ],
+      [
+        "near-fainting (behoshi)",
+        "chemo ke baad khoon aa raha hai, behoshi jaisi lag rahi hai",
+      ],
+      [
+        "English, 'a lot' phrasing (no 'heavy' keyword)",
+        "my sister is very weak since chemo, today she is bleeding a lot and feels dizzy",
+      ],
+      [
+        "zero-width obfuscation",
+        `chemo ke baad blee${ZW}ding ho rahi hai aur chak${ZW}kar aa raha hai`,
+      ],
+    ])("%s", (_variant, text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(true);
+      expect(result.severity).toBe("urgent");
+      expect(result.matchedPatterns).toContain("bleeding_with_dizziness_multilingual");
+      // The existing urgent response is reused: care team today, 112/108 shown.
+      expect(result.responseText).toContain("Contact your care team today");
+      expect(result.responseText).toContain("112");
+      expect(result.responseText).toContain("108");
+      expect(result.responseText).toContain("Bleeding that won't stop");
     });
   });
 
@@ -128,6 +172,11 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
       "chemo ke baad bukhar aa gaya hai",
       "कीमो के बाद बुखार आ गया",
       "my sister is bleeding a lot and feels dizzy",
+      // plain bleeding + dizziness is urgent on the fast path; the S2 layer
+      // must still see it
+      "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
+      "chemo ke baad bleeding ho rahi hai aur चक्कर आ रहा है",
+      "कीमो के बाद ब्लीडिंग हो रही है और चक्कर आ रहा है",
     ])("%p", (text) => {
       expect(abstention.hasUrgencyIndicators(text)).toBe(true);
     });

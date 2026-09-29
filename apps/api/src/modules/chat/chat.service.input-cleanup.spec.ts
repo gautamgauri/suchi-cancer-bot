@@ -247,4 +247,27 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
     expect(llm.generateWithCitations).not.toHaveBeenCalled();
   });
+
+  // #81 / SCCF decision on #196: bleeding + dizziness with no heavy or
+  // won't-stop signal takes the URGENT fast path, not the critical one.
+  it("rule layer: plain Hinglish bleeding + dizziness (no heavy signal) escalates as urgent on the fast path (#81)", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "whatsapp" });
+    const text = "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain";
+    const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: text });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: "emergency_fast_path_urgent",
+          detail: expect.stringContaining("bleeding_with_dizziness_multilingual"),
+        }),
+      }),
+    );
+    expect(result.responseText).toContain("Contact your care team today");
+    expect(result.responseText).toContain("112");
+    expect(result.responseText).toContain("108");
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
 });
