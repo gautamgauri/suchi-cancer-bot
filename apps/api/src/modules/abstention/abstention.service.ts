@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AbstentionReason } from "../evidence/evidence-gate.service";
 import { QueryType } from "../../config/trusted-sources.config";
+import { matchesIndicRedFlag } from "../safety/emergency-fast-path";
 
 @Injectable()
 export class AbstentionService {
@@ -76,7 +77,11 @@ export class AbstentionService {
       /\bvomit(ed|ing)?\s+blood\b/i
     ];
 
-    return urgencyPatterns.some(pattern => pattern.test(userText));
+    // Issue #81: the patterns above are `\b`-anchored English. The romanised
+    // Hindi / Devanagari red flags (heavy bleeding, bleeding + dizziness,
+    // fever during chemo) are shared with the emergency fast path so the two
+    // layers cannot disagree about the same sentence.
+    return urgencyPatterns.some(pattern => pattern.test(userText)) || matchesIndicRedFlag(userText);
   }
 
   /**

@@ -222,14 +222,29 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(persistedUserText(prisma)).toBe("tell me about chemo");
   });
 
-  it("rule layer: neither Hinglish text trips the emergency fast path, safety rules or urgency guard (the #81 coverage gap — documented, not fixed here)", async () => {
+  it("rule layer: the benign Hinglish awareness question trips no emergency fast path, safety rule or urgency guard", async () => {
     const { chat, prisma } = await buildService({ channel: "whatsapp" });
-    for (const text of [HINGLISH_BENIGN, HINGLISH_RED_FLAG]) {
-      prisma.safetyEvent.create.mockClear();
-      const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: text });
-      // No rule-based escalation fired: no SafetyEvent row, and the reply is not red-flag classified.
-      expect(prisma.safetyEvent.create).not.toHaveBeenCalled();
-      expect(result.safety.classification).toBe("normal");
-    }
+    const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: HINGLISH_BENIGN });
+    // No rule-based escalation fired: no SafetyEvent row, and the reply is not red-flag classified.
+    expect(prisma.safetyEvent.create).not.toHaveBeenCalled();
+    expect(result.safety.classification).toBe("normal");
+  });
+
+  // #81: this used to be pinned as a documented coverage gap (classified
+  // "normal", served chemo-prep content). It now takes the emergency fast path.
+  it("rule layer: the Hinglish post-chemo bleeding + dizziness report escalates on the fast path (#81)", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "whatsapp" });
+    const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: HINGLISH_RED_FLAG });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.actions).toEqual(["show_emergency_banner", "end_conversation"]);
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ type: "emergency_fast_path_critical" }) }),
+    );
+    expect(result.responseText).toContain("112");
+    expect(result.responseText).toContain("108");
+    // Fast path: no retrieval, no generation.
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
   });
 });
