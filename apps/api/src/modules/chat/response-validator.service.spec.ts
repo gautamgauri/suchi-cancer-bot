@@ -231,6 +231,93 @@ describe("ResponseValidatorService", () => {
     });
   });
 
+  /**
+   * Codex P1 on PR #179: distinct forms grouped under one registry entry must
+   * not cross-ground. `pet_scan` used to cover both PET and PET-CT through an
+   * optional `(-\s*CT)?` group, and check (2) accepted the entry's label
+   * ("PET scan") as evidence for ANY match of the pattern — so a chunk naming
+   * only a PET scan grounded a draft recommending a PET-CT. The same label
+   * route let "surgical procedure" ground "surgical removal".
+   *
+   * Direction matters: more specific evidence (PET-CT) may ground a less
+   * specific claim (PET scan); the reverse must abstain.
+   */
+  describe("#179 review — grouped variants must not cross-ground (Codex P1)", () => {
+    const petOnlyWithSeparateCt =
+      "A PET scan can show whether the disease has spread. A CT of the chest is also common.";
+
+    it("flags the PET-CT claim itself when the evidence names only a PET scan", () => {
+      const result = service.validate("A PET-CT scan may be ordered.", [
+        chunk("A PET scan can show whether the disease has spread."),
+      ]);
+
+      expect(result.shouldAbstain).toBe(true);
+      expect(names(result)).toContain("pet-ct scan");
+    });
+
+    it("does not ground a PET-CT claim on a PET scan plus an unrelated CT mention", () => {
+      const result = service.validate("A PET-CT scan may be ordered.", [
+        chunk(petOnlyWithSeparateCt),
+      ]);
+
+      expect(result.shouldAbstain).toBe(true);
+      expect(names(result)).toContain("pet-ct scan");
+    });
+
+    it.each([
+      ["PET - CT scan"],
+      ["PET -CT scan"],
+      ["PET/CT scan"],
+    ])("does not ground the spelling %s on PET-only evidence", (form) => {
+      const result = service.validate(`A ${form} may be ordered.`, [
+        chunk(petOnlyWithSeparateCt),
+      ]);
+
+      expect(result.shouldAbstain).toBe(true);
+    });
+
+    it("still grounds a PET-CT claim against evidence that names the PET-CT", () => {
+      const result = service.validate("A PET-CT scan may be ordered.", [
+        chunk("A PET-CT scan can show whether the disease has spread."),
+      ]);
+
+      expect(result.ungroundedEntities).toEqual([]);
+    });
+
+    it("grounds a PET-CT claim against evidence spelling it PET/CT", () => {
+      const result = service.validate("A PET-CT scan may be ordered.", [
+        chunk("A PET/CT scan can show whether the disease has spread."),
+      ]);
+
+      expect(result.ungroundedEntities).toEqual([]);
+    });
+
+    it("lets more specific PET-CT evidence ground a less specific PET scan claim", () => {
+      const result = service.validate("A PET scan may be ordered.", [
+        chunk("A PET-CT scan can show whether the disease has spread."),
+      ]);
+
+      expect(result.ungroundedEntities).toEqual([]);
+    });
+
+    it("does not let the label 'surgical procedure' ground a draft saying 'surgical removal'", () => {
+      const result = service.validate("Surgical removal may be considered.", [
+        chunk("A surgical procedure is one option for early disease."),
+      ]);
+
+      expect(result.shouldAbstain).toBe(true);
+      expect(names(result)).toContain("surgical removal");
+    });
+
+    it("still grounds 'surgical procedure' against evidence saying 'surgical procedure'", () => {
+      const result = service.validate("A surgical procedure may be considered.", [
+        chunk("A surgical procedure is one option for early disease."),
+      ]);
+
+      expect(result.ungroundedEntities).toEqual([]);
+    });
+  });
+
   describe("validate() is stateless across calls", () => {
     it("returns the same verdict when the same input is validated twice", () => {
       const text = "An MRI and a biopsy may be needed.";
