@@ -1,0 +1,162 @@
+/**
+ * Issue #81 — Hinglish / Devanagari red-flag coverage.
+ *
+ * A caregiver reporting heavy bleeding plus dizziness after chemo in romanised
+ * Hindi was classified `normal` by all three detection layers
+ * (`evaluateEmergencyFastPath`, `SafetyService.evaluate`,
+ * `AbstentionService.hasUrgencyIndicators`) and was served chemo-prep content,
+ * while the English twin escalated. The rule these tests pin down is the one
+ * in hindi-safety-regression.spec.ts: the SAME meaning must escalate whatever
+ * the script, spelling or mix.
+ *
+ * All text below is synthetic.
+ */
+
+import { evaluateEmergencyFastPath } from "./emergency-fast-path";
+import { AbstentionService } from "../abstention/abstention.service";
+
+const ZW = "​"; // zero-width space
+
+describe("Issue #81 — Hinglish / Devanagari red flags", () => {
+  const abstention = new AbstentionService();
+
+  // ── Heavy bleeding + dizziness after chemo: must reach the critical path ──
+  describe("post-chemo bleeding + dizziness escalates as critical", () => {
+    it.each([
+      [
+        "issue sentence (romanised Hinglish)",
+        "meri didi chemo ke baad se bahut kamjor hai, aaj bleeding bahut zyada ho gayi aur chakkar aa raha hai. kya karu??",
+      ],
+      [
+        "Devanagari counterpart",
+        "मेरी दीदी कीमो के बाद से बहुत कमजोर है, आज ब्लीडिंग बहुत ज़्यादा हो गई और चक्कर आ रहा है। क्या करूँ?",
+      ],
+      [
+        "Devanagari, khoon",
+        "कीमो के बाद मम्मी को खून बहुत ज़्यादा निकल रहा है और चक्कर आ रहे हैं",
+      ],
+      [
+        "Devanagari, decomposed nukta (NFD ज़)",
+        "कीमो के बाद ब्लीडिंग बहुत ज़्यादा है और चक्कर आ रहा है",
+      ],
+      [
+        "Hinglish, 'kemo' spelling + khoon",
+        "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
+      ],
+      [
+        "Hinglish, 'kimo', bleeding rukti nahi",
+        "kimo ke baad se bleeding rukti hi nahi, mummy ko chakkar aata hai",
+      ],
+      [
+        "Hinglish, intensifier before noun",
+        "chemo ke 5 din baad bahut zyada bleeding ho rahi hai, sir ghoom raha hai",
+      ],
+      [
+        "mixed script",
+        "chemo ke baad bleeding ho rahi hai aur चक्कर आ रहा है",
+      ],
+      [
+        "code-mixed English dizziness",
+        "didi ko chemo ke baad bleeding ho rahi hai aur dizzy feel ho raha hai",
+      ],
+      [
+        "near-fainting (behoshi)",
+        "chemo ke baad khoon aa raha hai, behoshi jaisi lag rahi hai",
+      ],
+      [
+        "English, 'a lot' phrasing (no 'heavy' keyword)",
+        "my sister is very weak since chemo, today she is bleeding a lot and feels dizzy",
+      ],
+      [
+        "WhatsApp elongation",
+        "chemo ke baad bleeding bahuttt zyada hai aur chakkarrr aa raha hai",
+      ],
+      [
+        "zero-width obfuscation",
+        `chemo ke baad blee${ZW}ding bahut zyada hai aur chak${ZW}kar aa raha hai`,
+      ],
+    ])("%s", (_variant, text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(true);
+      expect(result.severity).toBe("critical");
+      // The existing escalation response is reused, not new wording.
+      expect(result.responseText).toContain("112");
+      expect(result.responseText).toContain("108");
+    });
+  });
+
+  // ── Heavy bleeding alone (loanword "bleeding") matches the khoon rule ──
+  describe("heavy bleeding in Hinglish / Devanagari escalates as critical", () => {
+    it.each([
+      "bleeding bahut zyada ho rahi hai",
+      "bleeding bohot ho rahi hai",
+      "bleeding ruk nahi rahi",
+      "bleeding band hi nahi ho rahi",
+      "khoon rukta nahi hai",
+      "ब्लीडिंग बहुत ज़्यादा हो रही है",
+      "बहुत ज़्यादा ब्लीडिंग हो रही है",
+      "ब्लीडिंग रुक नहीं रही",
+      "खून बहुत ज्यादा निकल रहा है",
+    ])("%p", (text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(true);
+      expect(result.severity).toBe("critical");
+    });
+  });
+
+  // ── Fever during chemo (febrile neutropenia) — parity with chemo_fever_en ──
+  describe("fever after chemo in Hinglish / Devanagari escalates as urgent or higher", () => {
+    it.each([
+      "chemo ke baad bukhar aa gaya hai",
+      "kemo ke 7 din baad se bukhaar hai",
+      "papa ko bukhar hai, pichle hafte kimo hua tha",
+      "कीमो के बाद बुखार आ गया",
+      "तेज़ बुखार और उल्टी, पिछले हफ्ते कीमो हुई थी",
+      "fever aa raha hai chemo ke baad",
+    ])("%p", (text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(true);
+    });
+  });
+
+  // ── The S2 urgency layer agrees (defence in depth; intent classifier uses it) ──
+  describe("AbstentionService.hasUrgencyIndicators agrees", () => {
+    it.each([
+      "meri didi chemo ke baad se bahut kamjor hai, aaj bleeding bahut zyada ho gayi aur chakkar aa raha hai. kya karu??",
+      "मेरी दीदी कीमो के बाद से बहुत कमजोर है, आज ब्लीडिंग बहुत ज़्यादा हो गई और चक्कर आ रहा है। क्या करूँ?",
+      "bleeding ruk nahi rahi",
+      "chemo ke baad bukhar aa gaya hai",
+      "कीमो के बाद बुखार आ गया",
+      "my sister is bleeding a lot and feels dizzy",
+    ])("%p", (text) => {
+      expect(abstention.hasUrgencyIndicators(text)).toBe(true);
+    });
+  });
+
+  // ── False-positive guards: benign Hinglish must stay non-emergency ──
+  describe("benign phrasing does NOT escalate", () => {
+    it.each([
+      // acceptance criterion from the issue
+      "breast cancer ke early symptoms kya hote hain?",
+      // "chakkar" = trip / errand / hassle, not dizziness
+      "report ke liye hospital ke bahut chakkar lagane pade",
+      "blood test ke liye do baar chakkar lagaya, report kab aayegi?",
+      "chemo ke chakkar mein naukri chhoot gayi",
+      "Ayushman card ke chakkar mein pareshan hain",
+      "insurance ke chakkar kaatne padte hain",
+      // blood tests / counts are not bleeding
+      "blood test report bahut late aayi",
+      "chemo se pehle blood test zaroori hai kya?",
+      // anaemia question (khoon ki kami) is not a bleeding report
+      "khoon ki kami se chakkar aata hai kya?",
+      // tiny amount of bleeding
+      "bleeding bahut kam hai ab",
+      "कीमो से पहले क्या खाना चाहिए?",
+      "मुझे कब और कितनी बार पैप स्मियर टेस्ट करवाना चाहिए?",
+    ])("%p", (text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(false);
+      expect(abstention.hasUrgencyIndicators(text)).toBe(false);
+    });
+  });
+});
