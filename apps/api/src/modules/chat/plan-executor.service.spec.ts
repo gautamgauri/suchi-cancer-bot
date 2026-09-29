@@ -359,6 +359,133 @@ describe("PlanExecutorService — structured template composition", () => {
       expect(text).toContain("**How to Apply (Step by Step)**");
       expect(text).toContain("**Helpline:** Call 14555 (toll-free)");
     });
+
+    /**
+     * Issue #158. A knowledge-base document is itself a numbered list of
+     * sections (`### 1. …`, `### 2. …`, see kb/en/99_local_navigation/
+     * cancer-treatment-costs-india.md). The chunker cuts it on length, so a
+     * continuation chunk opens on `### 4. …`. Each chunk is quoted as ONE bullet
+     * (`- <heading>: <first sentence>`), so the source document's section number
+     * came along verbatim: the reply showed `- 4. Other Accredited Hospitals …`
+     * under "Scheme Overview" and again under "Eligibility Criteria", with no
+     * 1–3 anywhere. Items 1–3 are sibling sections living in OTHER chunks — they
+     * were never in this bullet, so nothing is lost by dropping the number; the
+     * number simply has no list to belong to once the chunk is a bullet.
+     *
+     * All hospital names below are synthetic.
+     */
+    describe("a chunk's own list numbering (#158)", () => {
+      /** Continuation chunk that opens on section 4 of a numbered document. */
+      const NUMBERED_SECTION_CHUNK = [
+        "### 4. Other Accredited Hospitals with Surgical Oncology",
+        "",
+        "- **Example Cancer Hospital, Patna**: NABH accredited (synthetic entry).",
+        "- **Sample Oncology Centre, Patna**: NABH accredited (synthetic entry).",
+      ].join("\n");
+
+      /** Numbered line with a trailing colon — not recognised as a heading. */
+      const NUMBERED_COLON_LINE_CHUNK = [
+        "4. **Other Accredited Hospitals with Surgical Oncology:**",
+        "- **Example Cancer Hospital, Patna**: NABH accredited (synthetic entry).",
+      ].join("\n");
+
+      /** Heading followed by the document's own numbered steps. */
+      const NUMBERED_STEPS_CHUNK = [
+        "### How to get the e-card",
+        "",
+        "1. Visit the nearest Common Service Centre with your Aadhaar card.",
+        "2. The operator checks your name on the beneficiary list.",
+      ].join("\n");
+
+      /** Devanagari section numbering. */
+      const DEVANAGARI_NUMBERED_CHUNK = [
+        "### ४. अन्य मान्यता प्राप्त अस्पताल",
+        "",
+        "उदाहरण कैंसर अस्पताल, पटना में सर्जिकल ऑन्कोलॉजी उपलब्ध है।",
+      ].join("\n");
+
+      async function responseFor(content: string): Promise<string> {
+        buildExecutor([chunk("kb_synthetic::chunk::7", "kb_synthetic", content)]);
+        const result = await executor.execute(
+          schemePlan(),
+          "how much will treatment cost under Ayushman Bharat",
+          "en"
+        );
+        return visible(result.responseText || "");
+      }
+
+      /** Bullets rendered under a retrieval section. */
+      function retrievalBullets(text: string): string[] {
+        return [
+          sectionBody(text, "**Scheme Overview**"),
+          sectionBody(text, "**Eligibility Criteria**"),
+        ]
+          .join("\n")
+          .split("\n")
+          .filter((line) => line.startsWith("- "));
+      }
+
+      it("does not open a bullet with the source document's section number", async () => {
+        const text = await responseFor(NUMBERED_SECTION_CHUNK);
+
+        expect(text).not.toContain("- 4. Other Accredited Hospitals");
+        for (const bullet of retrievalBullets(text)) {
+          expect(bullet).not.toMatch(/^- \d{1,2}[.)]\s/);
+        }
+      });
+
+      it("keeps the heading and the first entry the number was attached to", async () => {
+        const text = await responseFor(NUMBERED_SECTION_CHUNK);
+
+        expect(text).toContain(
+          "- Other Accredited Hospitals with Surgical Oncology: Example Cancer Hospital, Patna: NABH accredited (synthetic entry)."
+        );
+      });
+
+      it("does not reduce a numbered first line to a bare `4.` bullet", async () => {
+        // The first-sentence cut stopped at the `.` of `4.`, so the whole bullet
+        // was `- 4.` plus a citation — the chunk's content never reached the reader.
+        const text = await responseFor(NUMBERED_COLON_LINE_CHUNK);
+
+        for (const bullet of retrievalBullets(text)) {
+          expect(bullet.trim()).not.toMatch(/^- \d{1,2}[.)]?$/);
+        }
+        expect(text).toContain("Other Accredited Hospitals with Surgical Oncology:");
+        expect(text).toContain("Example Cancer Hospital, Patna: NABH accredited (synthetic entry).");
+      });
+
+      it("quotes the first step's words rather than its bare number", async () => {
+        const text = await responseFor(NUMBERED_STEPS_CHUNK);
+
+        expect(text).not.toContain("How to get the e-card: 1.");
+        expect(text).toContain(
+          "How to get the e-card: Visit the nearest Common Service Centre with your Aadhaar card."
+        );
+      });
+
+      it("drops Devanagari section numbering too", async () => {
+        const text = await responseFor(DEVANAGARI_NUMBERED_CHUNK);
+
+        expect(text).not.toContain("- ४.");
+        expect(text).toContain(
+          "अन्य मान्यता प्राप्त अस्पताल: उदाहरण कैंसर अस्पताल, पटना में सर्जिकल ऑन्कोलॉजी उपलब्ध है।"
+        );
+      });
+
+      it("leaves numbers that are content, not list markers, untouched", async () => {
+        const text = await responseFor(
+          [
+            "### Coverage",
+            "",
+            "1.5 lakh families in the district hold an e-card (synthetic figure).",
+          ].join("\n")
+        );
+
+        expect(text).toContain(
+          "Coverage: 1.5 lakh families in the district hold an e-card (synthetic figure)."
+        );
+      });
+    });
   });
 
   it("emits a citation for every knowledge-base bullet it keeps", async () => {
