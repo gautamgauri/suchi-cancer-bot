@@ -113,3 +113,70 @@ describe("completeness fallback — reply language (issue #186)", () => {
     expect(out.startsWith(ENGLISH_REPLY)).toBe(true);
   });
 });
+
+/**
+ * PR #187 review (Codex P2) — Romanized Hinglish. detectLocale() only sees
+ * Devanagari, and WhatsApp labels every all-Latin message "en", so a Hinglish
+ * reply resolved to "en" and still got the English headings. The repo directs
+ * Romanized-Hindi queries to Hinglish replies (response-language.ts), so this is
+ * a supported non-English reply and must be treated like the Hindi one above:
+ * there are no reviewed Hinglish labels, so no block at all.
+ *
+ * All text below is synthetic.
+ */
+describe("completeness fallback — Romanized Hinglish reply (PR #187 review)", () => {
+  const HINGLISH_QUESTION = "kya tambaku chhodne ke baad bhi muh ke cancer ka khatra rehta hai?";
+
+  const HINGLISH_REPLY = [
+    "Tambaku chhodne ke baad bhi muh ke cancer ka khatra kuch saal tak bana rehta hai, lekin yeh dheere dheere kam hota hai.",
+    "",
+    "Kya aap jaanna chahenge ki muh ke cancer ke aam lakshan kya hote hain?",
+  ].join("\n");
+
+  it("does not append English section headings to a Hinglish reply (no locale)", () => {
+    const out = apply(HINGLISH_REPLY, null, HINGLISH_QUESTION);
+
+    expect(out).not.toContain("Additional tests your doctor may recommend");
+    expect(out).not.toContain("Additional warning signs");
+    expect(out).not.toContain("When to seek care");
+    expect(out).toBe(HINGLISH_REPLY);
+  });
+
+  it("does not append them when the channel labelled the all-Latin message en (WhatsApp)", () => {
+    expect(apply(HINGLISH_REPLY, "en", HINGLISH_QUESTION)).toBe(HINGLISH_REPLY);
+  });
+
+  it("still appends the English block when a Hinglish question got an English reply", () => {
+    const out = apply(ENGLISH_REPLY, "en", HINGLISH_QUESTION);
+
+    expect(out).toContain("**Additional tests your doctor may recommend:**");
+    expect(out.startsWith(ENGLISH_REPLY)).toBe(true);
+  });
+
+  it("does not misclassify an English reply that carries a stray Hindi word", () => {
+    const STRAY = [
+      "The risk of oral cancer stays raised for some years after quitting tobacco, but it falls over time.",
+      "Some people describe a sore that will not heal as a 'chhala' (छाला), and that is worth mentioning to a doctor.",
+      "",
+      "Would you like to know the common symptoms of oral cancer?",
+    ].join("\n");
+
+    const out = apply(STRAY, "en", "Is there still a risk after quitting tobacco?");
+
+    expect(out).toContain("**Additional tests your doctor may recommend:**");
+    expect(out.startsWith(STRAY)).toBe(true);
+  });
+
+  it("does not misclassify an English reply that carries a stray Romanized marker", () => {
+    const STRAY = [
+      "The risk of oral cancer stays raised for some years after quitting tobacco, but it falls over time.",
+      "Many patients call ongoing mouth pain 'dard', and it is fine to describe it to your doctor that way.",
+      "",
+      "Would you like to know the common symptoms of oral cancer?",
+    ].join("\n");
+
+    const out = apply(STRAY, "en", "Is there still a risk after quitting tobacco?");
+
+    expect(out).toContain("**Additional tests your doctor may recommend:**");
+  });
+});
