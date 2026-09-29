@@ -271,6 +271,32 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(llm.generateWithCitations).not.toHaveBeenCalled();
   });
 
+  // QA0904-1: the Hindi child-on-treatment severe headache + blurred vision
+  // report used to return `normal` from every rule layer. It now takes the
+  // URGENT fast path (parity with English severe_symptom_en /
+  // sudden_sensory_loss_en), which keeps the conversation open.
+  it("rule layer: the QA0904-1 Hindi headache + blurred vision report escalates as urgent on the fast path", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "web" });
+    const text = "बच्चे को कैंसर है, इलाज के दौरान उसे तेज़ सिरदर्द और धुंधला दिखने लगा है। क्या यह खतरनाक है?";
+    const result = await chat.handle({ sessionId: "wa-session", channel: "web", locale: "hi", userText: text });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.actions).toEqual(["show_emergency_banner"]);
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: "emergency_fast_path_urgent",
+          detail: expect.stringContaining("headache_with_vision_change_multilingual"),
+        }),
+      }),
+    );
+    expect(result.responseText).toContain("Contact your care team today");
+    expect(result.responseText).toContain("112");
+    expect(result.responseText).toContain("108");
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
+
   // Owner decision on #196: a fast-path URGENT turn keeps the banner but leaves
   // the conversation open. Critical still ends it (asserted above).
   it("fast-path urgent: banner + SafetyEvent, but no end_conversation (#196)", async () => {
