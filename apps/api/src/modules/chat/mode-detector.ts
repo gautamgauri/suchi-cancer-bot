@@ -213,7 +213,10 @@ export class ModeDetector {
       // production: the same question without this clause retrieved 6 chunks.
       // The INVERTED form is deliberately not matched — "should I look for a
       // second opinion?", "should I check?" are genuine personal questions.
-      /\b(that\s+|which\s+)?i\s+should\s+(be\s+)?(look(ing)?|watch(ing)?)\s+(out\s+)?for\b/gi,
+      // ANCHORED to the end of the text (only trailing ?/./!/whitespace may
+      // follow): a continuation after "for" can carry the only personal signal
+      // ("…I should look for after finding a lump?") and must stay personal.
+      /\b(that\s+|which\s+)?i\s+should\s+(be\s+)?(look(ing)?|watch(ing)?)\s+(out\s+)?for(?=[\s?.!]*$)/gi,
     ];
     const stripped = informationalFraming.reduce((t, p) => t.replace(p, " "), text);
 
