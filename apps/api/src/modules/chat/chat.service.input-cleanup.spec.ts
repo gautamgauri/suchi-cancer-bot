@@ -270,4 +270,51 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
     expect(llm.generateWithCitations).not.toHaveBeenCalled();
   });
+
+  // Owner decision on #196: a fast-path URGENT turn keeps the banner but leaves
+  // the conversation open. Critical still ends it (asserted above).
+  it("fast-path urgent: banner + SafetyEvent, but no end_conversation (#196)", async () => {
+    const { chat, prisma } = await buildService({ channel: "web" });
+    const result = await chat.handle({
+      sessionId: "wa-session",
+      channel: "web",
+      locale: "en",
+      userText: "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
+    });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.actions).toEqual(["show_emergency_banner"]);
+    expect(result.safety.actions).not.toContain("end_conversation");
+    expect((result.safety as any).bannerText).toContain("Contact your care team today");
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ type: "emergency_fast_path_urgent" }) }),
+    );
+  });
+
+  it("fast-path urgent then a critical message in the same session: the next turn still escalates critical (#196)", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "web" });
+
+    const first = await chat.handle({
+      sessionId: "wa-session",
+      channel: "web",
+      locale: "en",
+      userText: "chemo ke baad bleeding ho rahi hai aur chakkar aa raha hai",
+    });
+    expect(first.safety.actions).not.toContain("end_conversation");
+
+    const second = await chat.handle({
+      sessionId: "wa-session",
+      channel: "web",
+      locale: "en",
+      userText: "ab bleeding ruk nahi rahi",
+    });
+
+    expect(second.safety.classification).toBe("red_flag");
+    expect(second.safety.actions).toEqual(["show_emergency_banner", "end_conversation"]);
+    expect(second.responseText).toContain("This sounds like a medical emergency");
+    const types = prisma.safetyEvent.create.mock.calls.map((c: any) => c[0].data.type);
+    expect(types).toEqual(["emergency_fast_path_urgent", "emergency_fast_path_critical"]);
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
 });

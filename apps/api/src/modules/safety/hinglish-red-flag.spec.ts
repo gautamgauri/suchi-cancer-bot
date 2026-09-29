@@ -62,6 +62,24 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
         "zero-width obfuscation",
         `chemo ke baad blee${ZW}ding bahut zyada hai aur chak${ZW}kar aa raha hai`,
       ],
+      // Owner decision on #196: these two are critical signals in their own
+      // right, so bleeding + either one is critical, not the urgent cluster.
+      [
+        "near-fainting (behoshi jaisi) + khoon",
+        "chemo ke baad khoon aa raha hai, behoshi jaisi lag rahi hai",
+      ],
+      [
+        "English, 'a lot' phrasing (no 'heavy' keyword)",
+        "my sister is very weak since chemo, today she is bleeding a lot and feels dizzy",
+      ],
+      [
+        "English, 'so much' + chakkar",
+        "chemo ke baad she is bleeding so much, chakkar aa raha hai",
+      ],
+      [
+        "English, 'lots of blood' + dizzy",
+        "there is lots of blood and she feels dizzy",
+      ],
     ])("%s", (_variant, text) => {
       const result = evaluateEmergencyFastPath(text);
       expect(result.isEmergency).toBe(true);
@@ -105,14 +123,6 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
         "didi ko chemo ke baad bleeding ho rahi hai aur dizzy feel ho raha hai",
       ],
       [
-        "near-fainting (behoshi)",
-        "chemo ke baad khoon aa raha hai, behoshi jaisi lag rahi hai",
-      ],
-      [
-        "English, 'a lot' phrasing (no 'heavy' keyword)",
-        "my sister is very weak since chemo, today she is bleeding a lot and feels dizzy",
-      ],
-      [
         "zero-width obfuscation",
         `chemo ke baad blee${ZW}ding ho rahi hai aur chak${ZW}kar aa raha hai`,
       ],
@@ -141,6 +151,44 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
       "बहुत ज़्यादा ब्लीडिंग हो रही है",
       "ब्लीडिंग रुक नहीं रही",
       "खून बहुत ज्यादा निकल रहा है",
+    ])("%p", (text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(true);
+      expect(result.severity).toBe("critical");
+    });
+  });
+
+  // ── English heavy bleeding without the words heavy / severe / uncontrolled ──
+  describe("English 'bleeding a lot' and close variants escalate as critical", () => {
+    it.each([
+      "she is bleeding a lot",
+      "my father is bleeding so much from the nose",
+      "he has been bleeding too much since yesterday",
+      "she is bleeding really a lot",
+      "bleeding heavily after chemo",
+      "the wound is bleeding profusely",
+      "there is lots of blood on the bedsheet",
+      "she lost a lot of blood",
+      "so much blood is coming out",
+    ])("%p", (text) => {
+      const result = evaluateEmergencyFastPath(text);
+      expect(result.isEmergency).toBe(true);
+      expect(result.severity).toBe("critical");
+      expect(result.matchedPatterns).toContain("severe_bleeding_en_2");
+    });
+  });
+
+  // ── Fainting / near-fainting: "behoshi" is critical, like "behosh" and
+  // English "fainting" (unconscious_hinglish / unconscious_en) ──
+  describe("behoshi (fainting / near-fainting) escalates as critical", () => {
+    it.each([
+      "mummy ko behoshi aa gayi",
+      "behoshi jaisi lag rahi hai",
+      "papa behoshi mein hain, jawab nahi de rahe",
+      "use behoshee aa rahi hai",
+      "बेहोशी आ गई",
+      "मम्मी को बेहोशी जैसी लग रही है",
+      `mummy ko beho${ZW}shi aa gayi`,
     ])("%p", (text) => {
       const result = evaluateEmergencyFastPath(text);
       expect(result.isEmergency).toBe(true);
@@ -177,6 +225,11 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
       "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
       "chemo ke baad bleeding ho rahi hai aur चक्कर आ रहा है",
       "कीमो के बाद ब्लीडिंग हो रही है और चक्कर आ रहा है",
+      // new critical signals (owner decision on #196)
+      "she is bleeding so much",
+      "there is lots of blood on the bedsheet",
+      "mummy ko behoshi aa gayi",
+      "बेहोशी आ गई",
     ])("%p", (text) => {
       expect(abstention.hasUrgencyIndicators(text)).toBe(true);
     });
@@ -202,6 +255,18 @@ describe("Issue #81 — Hinglish / Devanagari red flags", () => {
       "bleeding bahut kam hai ab",
       "कीमो से पहले क्या खाना चाहिए?",
       "मुझे कब और कितनी बार पैप स्मियर टेस्ट करवाना चाहिए?",
+      // "a lot" / "lots of blood" that is not a bleeding report
+      "chemo helped her a lot",
+      "I have read a lot about bleeding risks during chemo",
+      "lots of blood tests before chemo, is that normal?",
+      "they took a lot of blood for tests today",
+      "does she need so much blood pressure medicine?",
+      "he needed a lot of blood transfusions last year",
+      // "behoshi" meaning anaesthesia, not fainting
+      "operation se pehle behoshi ki dawai dete hain kya?",
+      "behoshi ka injection kaun deta hai?",
+      "surgery se pehle behoshi ke doctor se milna hai",
+      "ऑपरेशन से पहले बेहोशी की दवा दी जाती है क्या?",
     ])("%p", (text) => {
       const result = evaluateEmergencyFastPath(text);
       expect(result.isEmergency).toBe(false);
