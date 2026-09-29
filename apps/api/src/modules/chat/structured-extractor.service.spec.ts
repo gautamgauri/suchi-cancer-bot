@@ -1,4 +1,8 @@
-import { StructuredExtractorService, COMPLETENESS_POLICIES } from "./structured-extractor.service";
+import {
+  StructuredExtractorService,
+  COMPLETENESS_POLICIES,
+  resolveFallbackLocale,
+} from "./structured-extractor.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
 describe("StructuredExtractorService", () => {
@@ -436,6 +440,50 @@ describe("StructuredExtractorService", () => {
           service.generateFallbackContent(missing, extraction, "en")
         );
       });
+
+      it("emits no English label block for a Romanized Hinglish reply (PR #187 review)", () => {
+        const { missing, extraction } = hindiMissing();
+
+        expect(service.generateFallbackContent(missing, extraction, "hinglish")).toBe("");
+      });
+    });
+  });
+
+  // PR #187 review (Codex P2): detectLocale() is Devanagari-only, so a Romanized
+  // Hinglish reply came back "en". Synthetic text only.
+  describe("resolveFallbackLocale()", () => {
+    const HINGLISH_Q = "mujhe muh ke cancer ke baare mein batao";
+    const HINGLISH_BODY = "Muh ke cancer ka sabse bada karan tambaku hai. Kya aap aur jaanna chahenge?";
+    const ENGLISH_Q = "What causes oral cancer?";
+    const ENGLISH_BODY = "The main cause of oral cancer is tobacco use. Would you like to know more?";
+
+    it("classifies a Romanized Hinglish body as hinglish, even under an explicit en locale", () => {
+      expect(resolveFallbackLocale(null, HINGLISH_Q, HINGLISH_BODY)).toBe("hinglish");
+      expect(resolveFallbackLocale("en", HINGLISH_Q, HINGLISH_BODY)).toBe("hinglish");
+      expect(resolveFallbackLocale("en", undefined, HINGLISH_BODY)).toBe("hinglish");
+    });
+
+    it("keeps en for an English body, including one answering a Hinglish question", () => {
+      expect(resolveFallbackLocale("en", ENGLISH_Q, ENGLISH_BODY)).toBe("en");
+      expect(resolveFallbackLocale(null, HINGLISH_Q, ENGLISH_BODY)).toBe("en");
+    });
+
+    it("keeps en when an English answer to an English question quotes a Hindi word", () => {
+      const withDevanagari = `${ENGLISH_BODY} A mouth ulcer is called a छाला in Hindi.`;
+      const withMarker = `${ENGLISH_BODY} Some people call this pain 'dard'.`;
+
+      expect(resolveFallbackLocale("en", ENGLISH_Q, withDevanagari)).toBe("en");
+      expect(resolveFallbackLocale("en", ENGLISH_Q, withMarker)).toBe("en");
+    });
+
+    it("does not let Latin citation markers or URLs decide the language", () => {
+      const cited = `${HINGLISH_BODY} [citation:doc1:chunk1] https://www.cancer.gov/types/head-and-neck`;
+      expect(resolveFallbackLocale("en", HINGLISH_Q, cited)).toBe("hinglish");
+    });
+
+    it("leaves Devanagari and explicit Indic locales to detectLocale()", () => {
+      expect(resolveFallbackLocale(null, HINGLISH_Q, "मुँह के कैंसर का मुख्य कारण तंबाकू है।")).toBe("hi");
+      expect(resolveFallbackLocale("bh", HINGLISH_Q, HINGLISH_BODY)).toBe("bh");
     });
   });
 

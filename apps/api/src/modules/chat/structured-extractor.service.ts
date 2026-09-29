@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
-import { SupportedLocale } from "../safety/disclaimer-engine";
+import { SupportedLocale, detectLocale } from "../safety/disclaimer-engine";
+import { selectResponseLanguage } from "./utils/response-language";
 import {
   PatternEntry,
   DIAGNOSTIC_TEST_PATTERNS,
@@ -86,6 +87,52 @@ export const COMPLETENESS_POLICIES: Record<string, CompletenessPolicy> = {
 // COMPLETENESS-FALLBACK LABELS (localized)
 // ============================================================================
 
+/**
+ * The language a completeness-fallback block would be written in. It is the
+ * disclaimer's SupportedLocale plus "hinglish": Romanized Hindi is a supported
+ * reply language (see utils/response-language.ts) that detectLocale() cannot
+ * see, because it only recognises Devanagari.
+ */
+export type FallbackLocale = SupportedLocale | "hinglish";
+
+/**
+ * Resolve the language of the reply the fallback block will be spliced into.
+ *
+ * Starts from detectLocale() — the disclaimer's signal (#163), which already
+ * handles explicit Indic locales and Devanagari bodies. Its "en" is not
+ * trustworthy for an all-Latin body, though: WhatsApp labels every all-Latin
+ * message "en", and a Romanized Hinglish reply has no Devanagari to detect. So
+ * an "en" result is only accepted once the body is not Hinglish by the same
+ * selectResponseLanguage() rule that decides a Hinglish reply is wanted.
+ *
+ * A body counts as Hinglish only when the question was not plainly English
+ * too. selectResponseLanguage() treats any single Devanagari character or
+ * Romanized marker ("dard", "hai") as Hinglish; that is right for a short user
+ * message but would misfire on an English answer that quotes one Hindi word.
+ * An English question gets an English answer (response-language contract), so
+ * a stray word in that answer must not strip its fallback.
+ */
+export function resolveFallbackLocale(
+  locale: string | null | undefined,
+  userText: string | undefined,
+  responseText: string
+): FallbackLocale {
+  const detected = detectLocale(locale, userText, responseText);
+  if (detected !== "en") return detected;
+
+  // Citation markers and URLs are machine artefacts, always Latin — judge prose.
+  const prose = responseText
+    .replace(/\[citation:[^\]]*\]/g, " ")
+    .replace(/https?:\/\/\S+/g, " ");
+  if (
+    selectResponseLanguage(prose) === "hinglish" &&
+    selectResponseLanguage(userText ?? "") !== "en"
+  ) {
+    return "hinglish";
+  }
+  return "en";
+}
+
 export interface FallbackLabels {
   diagnosticTests: string;
   warningSigns: string;
@@ -105,9 +152,11 @@ export interface FallbackLabels {
  * getting "**Additional tests your doctor may recommend:** - MRI" under an
  * otherwise Hindi answer.
  *
- * TODO(#186): add hi / bh / mai entries once SCCF has approved the wording.
+ * TODO(#186): add hi / bh / mai / hinglish entries once SCCF has approved the
+ * wording. No reviewed Hinglish labels exist anywhere in the codebase either,
+ * so a Romanized Hinglish reply is suppressed the same way (PR #187 review).
  */
-export const FALLBACK_LABELS: Partial<Record<SupportedLocale, FallbackLabels>> = {
+export const FALLBACK_LABELS: Partial<Record<FallbackLocale, FallbackLabels>> = {
   en: {
     diagnosticTests: "**Additional tests your doctor may recommend:**",
     warningSigns: "**Additional warning signs to be aware of:**",
@@ -468,7 +517,7 @@ export class StructuredExtractorService {
   generateFallbackContent(
     missing: MissingItems,
     extraction: StructuredInfo,
-    locale: SupportedLocale = "en"
+    locale: FallbackLocale = "en"
   ): string {
     const labels = FALLBACK_LABELS[locale];
     if (!labels) {

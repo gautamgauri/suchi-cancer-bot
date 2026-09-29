@@ -16,7 +16,7 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
-import { StructuredExtractorService, StructuredInfo } from "./structured-extractor.service";
+import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
@@ -27,7 +27,7 @@ import { PatientStateService, PatientState } from "./patient-state.service";
 // Phase 1 Agentic components
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
-import { appendDisclaimer, detectLocale } from "../safety/disclaimer-engine";
+import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
 import { reconcileAppendedAnswer } from "./escalation-reconciler";
 // Phase 2 Agentic components
@@ -2092,14 +2092,15 @@ export class ChatService {
       // POST-PROCESSING: Check completeness and fill gaps if needed
       const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
 
-      // Same locale signal the disclaimer uses (#163): the fallback block is
-      // spliced into this body, so it has to be readable next to it (#186).
+      // The disclaimer's locale signal (#163) plus Romanized Hinglish, which it
+      // cannot see: the fallback block is spliced into this body, so it has to
+      // be readable next to it (#186).
       const fallbackContent = completenessResult.meetsPolicy
         ? ""
         : this.structuredExtractor.generateFallbackContent(
             completenessResult.missing,
             extraction,
-            detectLocale(disclaimerLocale, dto.userText, responseText)
+            resolveFallbackLocale(disclaimerLocale, dto.userText, responseText)
           );
 
       // Structured logging for completeness outcomes (observability)
@@ -3034,7 +3035,7 @@ export class ChatService {
     const fallbackContent = this.structuredExtractor.generateFallbackContent(
       completenessResult.missing,
       extraction,
-      detectLocale(locale, userText, responseText)
+      resolveFallbackLocale(locale, userText, responseText)
     );
     if (!fallbackContent) return responseText;
     const insertionPatterns = [
