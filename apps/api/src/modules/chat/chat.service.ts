@@ -431,7 +431,11 @@ export class ChatService {
         responseText: assistant.text,
         safety: {
           classification: "red_flag" as const,
-          actions: ["show_emergency_banner", "end_conversation"],
+          // Owner decision (#196): urgent keeps the banner but leaves the
+          // conversation open; critical still ends it.
+          actions: emergencyFastPath.severity === "critical"
+            ? ["show_emergency_banner", "end_conversation"]
+            : ["show_emergency_banner"],
           // Nothing is appended on the fast path, so the banner block is the
           // whole reply (issue #111).
           bannerText: assistant.text,

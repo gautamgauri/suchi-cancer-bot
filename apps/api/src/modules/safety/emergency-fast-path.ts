@@ -8,6 +8,8 @@
  * Supports: English, Hindi, Bhojpuri, and mixed-language (Hinglish) inputs.
  */
 
+import { normalizeForMatch } from "./text-normalizer";
+
 export interface EmergencyFastPathResult {
   isEmergency: boolean;
   severity: "critical" | "urgent" | "none";
@@ -17,11 +19,105 @@ export interface EmergencyFastPathResult {
   confidence: number;
 }
 
+/** Anything with a `.test(text)` — a RegExp, or a compound rule built from several. */
+interface Matcher {
+  test(text: string): boolean;
+}
+
+// ─── Issue #81: romanised-Hindi / Devanagari building blocks ─────────────
+//
+// Devanagari has no `\b` in JS regex (it is ASCII-only), so Devanagari pieces
+// are written without word boundaries, as in the Hindi patterns below.
+// The nukta in ज़ may arrive precomposed (U+095B) or decomposed (ज + U+093C);
+// NFC always decomposes it, so both spellings are accepted.
+
+/** Hinglish "very / too much" — but not "bahut kam" (very little) / "zyada nahi" (not much). */
+const HI_MUCH = String.raw`(?:bahut|bohot|bahot|bhot|bht|zyada|jyada|jada|zyaada|jyaada|jaada|zada)\b(?!\s+(?:kam|nahi|nahin|nhi)\b)`;
+const DV_ZYADA = "(?:ज़?|ज़)्यादा";
+/** Devanagari "very / too much", with the same "very little / not much" exclusion. */
+const DV_MUCH = `(?:बहुत|${DV_ZYADA}|जादा)(?!\\s*(?:कम|नहीं))`;
+const DV_BLEED = "(?:खून|ब्लीडिंग|रक्तस्राव)";
+
+/** "bleeding bahut zyada", "khoon aaj bahut" — noun then intensifier within two words. */
+const SEVERE_BLEEDING_LOANWORD_HINGLISH = new RegExp(`\\b(?:bleeding|khoon|khun)\\b(?:\\s+\\S+){0,2}?\\s+${HI_MUCH}`, "i");
+/** "bahut zyada bleeding" — intensifier then the loanword. */
+const SEVERE_BLEEDING_LOANWORD_HINGLISH_PRE = new RegExp(`\\b${HI_MUCH}\\s+(?:\\S+\\s+)?bleeding\\b`, "i");
+/** "ब्लीडिंग बहुत ज़्यादा", "खून बहुत ज्यादा निकल रहा" — covers what severe_bleeding_hi misses. */
+const SEVERE_BLEEDING_HI_2 = new RegExp(`${DV_BLEED}(?:\\s+\\S+)?\\s*${DV_MUCH}`);
+/** "बहुत ज़्यादा ब्लीडिंग", "बहुत खून बह गया". */
+const SEVERE_BLEEDING_HI_2_PRE = new RegExp(`${DV_MUCH}\\s*(?:\\S+\\s*)?(?:ब्लीडिंग|रक्तस्राव)|${DV_MUCH}\\s*खून\\s*(?:आ|बह|निकल|गिर)`);
+/** "bleeding ruk nahi rahi", "khoon rukta nahi", "bleeding band hi nahi ho rahi". */
+const BLEEDING_NOT_STOPPING_HINGLISH_2 = /\b(?:bleeding|khoon|khun)\s+(?:ruk|band|thum|tham)\w*\s+(?:hi\s+)?(?:nahi|nahin|nhi|na)\b/i;
+/** "ब्लीडिंग रुक नहीं रही", "खून बंद ही नहीं हो रहा". */
+const BLEEDING_NOT_STOPPING_HI_2 = new RegExp(`${DV_BLEED}\\s*(?:रुक|बंद|थम)\\S*\\s*(?:ही\\s*)?नहीं`);
+
+/**
+ * English heavy bleeding said without heavy / severe / uncontrolled:
+ * "bleeding a lot / so much / too much / heavily / profusely", "lots of blood",
+ * "lost a lot of blood". "Blood" followed by test / pressure / transfusion …,
+ * or preceded by took / drew (a blood draw), is not a bleeding report.
+ */
+const SEVERE_BLEEDING_EN_2 =
+  /\bbleeding\s+(?:(?:really|very|quite|so)\s+)?(?:a\s+lot|so\s+much|too\s+much|lots|heavily|profusely)\b|(?<!\b(?:took|take|takes|taken|taking|drew|draw|draws|drawn|drawing)\s)\b(?:a\s+lot\s+of|lots\s+of|so\s+much|too\s+much)\s+blood\b(?!\s+(?:test|work|report|count|sugar|pressure|draw|sample|transfusion|donation|bank|group|cell)\w*)/i;
+
+/**
+ * "behoshi" (fainting / near-fainting), which unconscious_hinglish's
+ * `\bbehosh\b` misses. Critical like "behosh" and English "fainting".
+ * "behoshi ki dawai / ka injection / ke doctor" is anaesthesia, not fainting.
+ */
+const BEHOSHI_HINGLISH =
+  /\bbehosh(?:i|ee|y)\b(?!\s+(?:ki|ka|ke|wali|wala|vali|vala)\s+(?:dawai|dawaai|dawa|davai|dava|dvai|injection|sui|goli|doctor|daktar|medicine|specialist)\b)/i;
+/** "बेहोशी आ गई", "बेहोशी जैसी" — but not "बेहोशी की दवा / का इंजेक्शन". */
+const BEHOSHI_HI = /बेहोशी(?!\s*(?:की|का|के|वाली|वाला)\s*(?:दवा|दवाई|इंजेक्शन|सुई|डॉक्टर|डाक्टर))/;
+
+/**
+ * Any report of bleeding, in any script. Excludes "khoon ki kami / jaanch / test"
+ * (anaemia, blood test) — those are about blood, not bleeding.
+ */
+const ANY_BLEEDING: Matcher[] = [
+  /\bbleed\w*|\bh(?:a)?emorrhag\w*/i,
+  /\b(?:khoon|khun)\b(?!\s+(?:ki|ka|ke)\s+(?:kami|jaanch|janch|jach|test|report|group)\b)/i,
+  /\bblood\s+(?:aa|a)\s+(?:raha|rahi|rahe|rha|rhi|gaya|gayi|gya|gyi)\b|\bblood\s+(?:nikal|beh|bah|gir)\w*/i,
+  /खून(?!\s*(?:की|का|के)\s*(?:कमी|जा[ंँ]च|टेस्ट|रिपोर्ट))|ब्लीडिंग|रक्तस्राव/,
+];
+
+/**
+ * Dizziness / near-fainting, in any script. "chakkar" only counts in its
+ * dizziness sense ("chakkar aa raha", "chakkar khake gir gayi", "sir chakra
+ * raha") — never as a trip or hassle ("chakkar lagana", "ke chakkar mein").
+ */
+const ANY_DIZZINESS: Matcher[] = [
+  /\bchakk?a?r\s+(?:sa\s+|se\s+|bhi\s+)?(?:aa?|aata|ata|aati|ati|aate|ate|aaya|aya|aayi|ayi|aaye|aye|aane|ane)\b/i,
+  /\bchakk?a?r\s+kha\w*/i,
+  /\b(?:sir|sar)\s+(?:chakra|chakara|chakkar|ghum|ghoom)\w*/i,
+  /\baa?nkh\w*\s+(?:ke\s+)?(?:aage|samne|saamne)\s+andhera/i,
+  /\bbehosh\w*/i,
+  /\b(?:dizz\w*|light[-\s]?headed\w*|giddy|giddiness|vertigo)\b/i,
+  /\b(?:feel|feels|feeling|felt)\s+(?:like\s+)?faint\w*|\bfaint(?:ed|ing)?\b|\bpass(?:ed|ing)?\s+out\b/i,
+  /चक्कर\s*(?:सा\s*|से\s*)?(?:आ|खा)|सिर\s*(?:घूम|चकरा)|बेहोश|आ[ँं]ख\S*\s*(?:के\s*)?(?:आगे|सामने)\s*अंधेरा/,
+];
+
+/** Bleeding AND dizziness / near-fainting in the same message (issue #81). */
+const BLEEDING_WITH_DIZZINESS: Matcher = {
+  test: (text: string) => ANY_BLEEDING.some((m) => m.test(text)) && ANY_DIZZINESS.some((m) => m.test(text)),
+};
+
+const CHEMO_TERM = "(?:\\b(?:chemo\\w*|kimo|kemo|keemo)\\b|कीमो)";
+const FEVER_TERM = "(?:\\b(?:bukh?aa?r|fever)\\b|बुखार)";
+/**
+ * Fever with chemo in either order, any script — parity with chemo_fever_en,
+ * which only saw English "chemo … fever" (issue #81 comment: Devanagari fever
+ * with treatment context matched nothing).
+ */
+const CHEMO_FEVER_MULTILINGUAL = new RegExp(`${CHEMO_TERM}[\\s\\S]*${FEVER_TERM}|${FEVER_TERM}[\\s\\S]*${CHEMO_TERM}`, "i");
+/** "तेज़ बुखार" / "बहुत बुखार" — high_fever_hi only saw the intensifier AFTER बुखार. */
+const HIGH_FEVER_HI_PRE = new RegExp("(?:ते(?:ज़?|ज़)|बहुत)\\s*बुखार");
+
 /**
  * Critical emergency patterns — life-threatening, route to 108/112 immediately.
  * Each entry: [regex, human-readable label for logging]
  */
-const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
+const CRITICAL_PATTERNS: Array<[Matcher, string]> = [
   // English — bleeding
   [/\b(uncontrolled|severe|heavy|massive|won'?t stop)\s+(bleeding|hemorrhag)/i, "severe_bleeding_en"],
   [/\bbleeding\s+(won'?t|doesn'?t|does not|will not)\s+stop/i, "bleeding_wont_stop_en"],
@@ -82,6 +178,24 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
   [/\bseene?\s*(mein|me)\s*(bahut|zyada)?\s*(zyada|tez)\s*(dard|pain)/i, "chest_pain_hinglish"],
   [/\bseene?\s*(mein|me)\s*bahut\s+tez\s*(dard|pain)/i, "chest_pain_hinglish_combo"],
 
+  // Issue #81 — heavy bleeding said with the loanword "bleeding", or with a
+  // not-stopping verb the patterns above do not spell ("rukti nahi", "band hi
+  // nahi"). Same meaning, same (critical) path as the khoon rules above.
+  [SEVERE_BLEEDING_LOANWORD_HINGLISH, "severe_bleeding_loanword_hinglish"],
+  [SEVERE_BLEEDING_LOANWORD_HINGLISH_PRE, "severe_bleeding_loanword_hinglish_pre"],
+  [SEVERE_BLEEDING_HI_2, "severe_bleeding_hi_2"],
+  [SEVERE_BLEEDING_HI_2_PRE, "severe_bleeding_hi_2_pre"],
+  [BLEEDING_NOT_STOPPING_HINGLISH_2, "bleeding_not_stopping_hinglish_2"],
+  [BLEEDING_NOT_STOPPING_HI_2, "bleeding_not_stopping_hi_2"],
+  // Owner decision on #196: English "bleeding a lot" and "behoshi" are
+  // critical, so bleeding + either one is critical, not the urgent cluster.
+  [SEVERE_BLEEDING_EN_2, "severe_bleeding_en_2"],
+  [BEHOSHI_HINGLISH, "unconscious_hinglish_2"],
+  [BEHOSHI_HI, "unconscious_hi_3"],
+
+  // Bleeding + dizziness without a heavy / won't-stop signal is URGENT, not
+  // critical — see BLEEDING_WITH_DIZZINESS in URGENT_PATTERNS below.
+
   // Explicit emergency keywords
   [/\b(108|112)\s*(call|bula|phone)/i, "emergency_number_request"],
   [/\b(ambulance|एम्बुलेंस)\s*(bula|call|chahiye|bhej)/i, "ambulance_request"],
@@ -90,7 +204,7 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
 /**
  * Urgent patterns — needs medical attention soon but not immediately life-threatening.
  */
-const URGENT_PATTERNS: Array<[RegExp, string]> = [
+const URGENT_PATTERNS: Array<[Matcher, string]> = [
   // English
   [/\bfever\s+(above|over|more than)\s*(101|102|103|38|39)\b/i, "high_fever_en"],
   [/\b(chemo|chemotherapy)\s*.*\b(fever|infection|neutropeni)/i, "chemo_fever_en"],
@@ -109,7 +223,55 @@ const URGENT_PATTERNS: Array<[RegExp, string]> = [
   // Hinglish
   [/\b(bukhar|bukhaar)\s*(bahut|zyada|tez)\b/i, "high_fever_hinglish"],
   [/\b(bahut|zyada|tez)\s*(dard|pain|sujan|swelling)\b/i, "severe_symptom_hinglish"],
+
+  // Issue #81 — fever during chemo in romanised Hindi / Devanagari / either order
+  [CHEMO_FEVER_MULTILINGUAL, "chemo_fever_multilingual"],
+  [HIGH_FEVER_HI_PRE, "high_fever_hi_pre"],
+
+  // Issue #81 — bleeding together with dizziness / near-fainting, each signal
+  // in any script; both must be present. SCCF decision (#196): urgent — the
+  // reply says contact the care team today, still shows 112/108, and says go
+  // to Emergency if bleeding won't stop. Heavy or won't-stop bleeding stays
+  // critical: CRITICAL_PATTERNS run first, so "bleeding bahut zyada … chakkar
+  // aa raha" never reaches this rule.
+  [BLEEDING_WITH_DIZZINESS, "bleeding_with_dizziness_multilingual"],
 ];
+
+/** The matchers added for issue #81, shared with AbstentionService.hasUrgencyIndicators. */
+const ISSUE_81_MATCHERS: Matcher[] = [
+  SEVERE_BLEEDING_LOANWORD_HINGLISH,
+  SEVERE_BLEEDING_LOANWORD_HINGLISH_PRE,
+  SEVERE_BLEEDING_HI_2,
+  SEVERE_BLEEDING_HI_2_PRE,
+  BLEEDING_NOT_STOPPING_HINGLISH_2,
+  BLEEDING_NOT_STOPPING_HI_2,
+  SEVERE_BLEEDING_EN_2,
+  BEHOSHI_HINGLISH,
+  BEHOSHI_HI,
+  BLEEDING_WITH_DIZZINESS,
+  CHEMO_FEVER_MULTILINGUAL,
+];
+
+/**
+ * Test a matcher against the raw text AND its normalized copy (zero-width
+ * characters removed, WhatsApp letter-elongation collapsed, NFC). Matching
+ * either keeps this strictly broader than matching the raw text alone.
+ */
+function matchesEither(m: Matcher, raw: string, normalized: string): boolean {
+  return m.test(raw) || (normalized !== raw && m.test(normalized));
+}
+
+/**
+ * True when the message reports a romanised-Hindi / Devanagari red flag added
+ * for issue #81 (heavy bleeding, bleeding + dizziness, fever during chemo).
+ * Used by the S2 urgency layer so it agrees with the fast path.
+ */
+export function matchesIndicRedFlag(userText: string): boolean {
+  const raw = (userText ?? "").trim();
+  if (!raw) return false;
+  const normalized = normalizeForMatch(raw);
+  return ISSUE_81_MATCHERS.some((m) => matchesEither(m, raw, normalized));
+}
 
 /**
  * Emergency response template — structured, India-focused, multilingual-ready.
@@ -170,11 +332,14 @@ function buildEmergencyResponse(severity: "critical" | "urgent", matchedPatterns
  */
 export function evaluateEmergencyFastPath(userText: string): EmergencyFastPathResult {
   const text = userText.trim();
+  // Issue #81: also match a normalized copy, so zero-width characters and
+  // WhatsApp elongation ("bahuttt", "chakkarrr") cannot hide a red flag.
+  const normalized = normalizeForMatch(text);
   const matchedPatterns: string[] = [];
 
   // Check critical patterns first
   for (const [regex, label] of CRITICAL_PATTERNS) {
-    if (regex.test(text)) {
+    if (matchesEither(regex, text, normalized)) {
       matchedPatterns.push(label);
     }
   }
@@ -191,7 +356,7 @@ export function evaluateEmergencyFastPath(userText: string): EmergencyFastPathRe
 
   // Check urgent patterns
   for (const [regex, label] of URGENT_PATTERNS) {
-    if (regex.test(text)) {
+    if (matchesEither(regex, text, normalized)) {
       matchedPatterns.push(label);
     }
   }
