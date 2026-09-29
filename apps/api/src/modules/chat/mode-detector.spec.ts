@@ -62,6 +62,27 @@ describe("ModeDetector - identify questions", () => {
         ModeDetector.detectMode("I have a sore in my mouth — what signs should I look for?"),
       ).toBe("navigate");
     });
+
+    // PR #185 review (Codex P1): the exemption applies only when the clause
+    // truly ends the question. A continuation after "for" can carry the only
+    // personal signal and must keep the turn in NAVIGATE.
+    test("'I should look for' followed by a personal continuation -> NAVIGATE", () => {
+      expect(
+        ModeDetector.detectMode("What are the signs of cancer I should look for after finding a lump?"),
+      ).toBe("navigate");
+      expect(
+        ModeDetector.detectMode("What are the signs of mouth cancer I should look for since I have a lump in my mouth?"),
+      ).toBe("navigate");
+      expect(
+        ModeDetector.detectMode("What are the signs of oral cancer I should watch out for, given a sore that won't heal?"),
+      ).toBe("navigate");
+    });
+
+    test("a truly trailing clause still routes EXPLAIN with trailing punctuation/whitespace", () => {
+      expect(ModeDetector.detectMode("What are the early signs of mouth cancer I should look for?  ")).toBe("explain");
+      expect(ModeDetector.detectMode("What are the early signs of mouth cancer I should look for")).toBe("explain");
+      expect(ModeDetector.detectMode("What are the early signs of mouth cancer I should look for?!")).toBe("explain");
+    });
   });
 
   describe("hasPersonalDiagnosisSignal", () => {
@@ -93,6 +114,16 @@ describe("ModeDetector - identify questions", () => {
       expect(ModeDetector.hasPersonalDiagnosisSignal("do I have")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("can I tell")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("should I check")).toBe(true);
+    });
+
+    // PR #185 review (Codex P1): only a clause that ends the text is exempt.
+    test("an 'I should look for' clause with a continuation IS a personal signal", () => {
+      expect(
+        ModeDetector.hasPersonalDiagnosisSignal("the signs of cancer I should look for after finding a lump"),
+      ).toBe(true);
+      expect(
+        ModeDetector.hasPersonalDiagnosisSignal("signs I should watch out for now that a sore won't heal?"),
+      ).toBe(true);
     });
 
     test("detects someone-specific references", () => {

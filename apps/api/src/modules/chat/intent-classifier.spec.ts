@@ -92,6 +92,19 @@ describe("IntentClassifier - identify questions", () => {
     expect(withClause.intent).toBe(bare.intent);
   });
 
+  // PR #185 review (Codex P1): the #184 exemption must only cover a clause that
+  // ENDS the question. When the question continues with a personal report after
+  // "for", the turn must still get the PERSONAL_SYMPTOMS soft redirect.
+  test("'I should look for' followed by a personal continuation stays PERSONAL_SYMPTOMS", () => {
+    const result = classifier.classify(
+      "What are the signs of cancer I should look for after finding a lump?",
+      mockEvidenceChunks,
+      mockGateResult,
+      "normal"
+    );
+    expect(result.intent).toBe("PERSONAL_SYMPTOMS");
+  });
+
   test("how do I know if I have cancer -> PERSONAL_SYMPTOMS", () => {
     const result = classifier.classify(
       "how do I know if I have cancer",
