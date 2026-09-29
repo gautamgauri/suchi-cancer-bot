@@ -52,6 +52,25 @@ const BLEEDING_NOT_STOPPING_HINGLISH_2 = /\b(?:bleeding|khoon|khun)\s+(?:ruk|ban
 const BLEEDING_NOT_STOPPING_HI_2 = new RegExp(`${DV_BLEED}\\s*(?:रुक|बंद|थम)\\S*\\s*(?:ही\\s*)?नहीं`);
 
 /**
+ * English heavy bleeding said without heavy / severe / uncontrolled:
+ * "bleeding a lot / so much / too much / heavily / profusely", "lots of blood",
+ * "lost a lot of blood". "Blood" followed by test / pressure / transfusion …,
+ * or preceded by took / drew (a blood draw), is not a bleeding report.
+ */
+const SEVERE_BLEEDING_EN_2 =
+  /\bbleeding\s+(?:(?:really|very|quite|so)\s+)?(?:a\s+lot|so\s+much|too\s+much|lots|heavily|profusely)\b|(?<!\b(?:took|take|takes|taken|taking|drew|draw|draws|drawn|drawing)\s)\b(?:a\s+lot\s+of|lots\s+of|so\s+much|too\s+much)\s+blood\b(?!\s+(?:test|work|report|count|sugar|pressure|draw|sample|transfusion|donation|bank|group|cell)\w*)/i;
+
+/**
+ * "behoshi" (fainting / near-fainting), which unconscious_hinglish's
+ * `\bbehosh\b` misses. Critical like "behosh" and English "fainting".
+ * "behoshi ki dawai / ka injection / ke doctor" is anaesthesia, not fainting.
+ */
+const BEHOSHI_HINGLISH =
+  /\bbehosh(?:i|ee|y)\b(?!\s+(?:ki|ka|ke|wali|wala|vali|vala)\s+(?:dawai|dawaai|dawa|davai|dava|dvai|injection|sui|goli|doctor|daktar|medicine|specialist)\b)/i;
+/** "बेहोशी आ गई", "बेहोशी जैसी" — but not "बेहोशी की दवा / का इंजेक्शन". */
+const BEHOSHI_HI = /बेहोशी(?!\s*(?:की|का|के|वाली|वाला)\s*(?:दवा|दवाई|इंजेक्शन|सुई|डॉक्टर|डाक्टर))/;
+
+/**
  * Any report of bleeding, in any script. Excludes "khoon ki kami / jaanch / test"
  * (anaemia, blood test) — those are about blood, not bleeding.
  */
@@ -168,6 +187,11 @@ const CRITICAL_PATTERNS: Array<[Matcher, string]> = [
   [SEVERE_BLEEDING_HI_2_PRE, "severe_bleeding_hi_2_pre"],
   [BLEEDING_NOT_STOPPING_HINGLISH_2, "bleeding_not_stopping_hinglish_2"],
   [BLEEDING_NOT_STOPPING_HI_2, "bleeding_not_stopping_hi_2"],
+  // Owner decision on #196: English "bleeding a lot" and "behoshi" are
+  // critical, so bleeding + either one is critical, not the urgent cluster.
+  [SEVERE_BLEEDING_EN_2, "severe_bleeding_en_2"],
+  [BEHOSHI_HINGLISH, "unconscious_hinglish_2"],
+  [BEHOSHI_HI, "unconscious_hi_3"],
 
   // Bleeding + dizziness without a heavy / won't-stop signal is URGENT, not
   // critical — see BLEEDING_WITH_DIZZINESS in URGENT_PATTERNS below.
@@ -221,6 +245,9 @@ const ISSUE_81_MATCHERS: Matcher[] = [
   SEVERE_BLEEDING_HI_2_PRE,
   BLEEDING_NOT_STOPPING_HINGLISH_2,
   BLEEDING_NOT_STOPPING_HI_2,
+  SEVERE_BLEEDING_EN_2,
+  BEHOSHI_HINGLISH,
+  BEHOSHI_HI,
   BLEEDING_WITH_DIZZINESS,
   CHEMO_FEVER_MULTILINGUAL,
 ];
