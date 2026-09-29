@@ -232,8 +232,15 @@ describe("QA0904-1 — headache + blurred vision / very weak", () => {
       // glasses-related eyestrain, headache + blur, no treatment context
       "purana chashma lagane se dhundhla dikhta hai aur sir dard hota hai",
       "glasses ke bina blurry dikhta hai aur headache hota hai",
-      // vision alone
+      // vision alone, including with a negated headache
       "dhundhla dikhta hai kabhi kabhi",
+      "No headache, but blurry vision since the eye drops",
+      "sir dard nahi hai, bas thoda dhundhla dikhta hai",
+      "सिरदर्द नहीं है, बस धुंधला दिखता है",
+      // "dhul" (washed) is not "dhundhla"
+      "kapde dhul gaye, sir dard hai",
+      // "कैंसर" ends in सर but is not "head"
+      "कैंसर में दर्द है और धुंधला दिख रहा",
       // "dhoondh" = search, not blur
       "hospital dhundh raha hoon, sir dard hai",
       // "Sir" as a form of address
