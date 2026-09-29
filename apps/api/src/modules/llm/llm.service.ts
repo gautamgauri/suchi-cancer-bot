@@ -168,6 +168,21 @@ interface GenerationBudget {
   attemptsLeft: number;
 }
 
+/**
+ * Google AI API schemas spell `type` in lower case ("object"); the Vertex AI
+ * SDK's SchemaType enum is upper case ("OBJECT"). Convert recursively so one
+ * schema definition serves both backends.
+ */
+function toVertexSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(toVertexSchema);
+  if (!schema || typeof schema !== "object") return schema;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+    out[key] = key === "type" && typeof value === "string" ? value.toUpperCase() : toVertexSchema(value);
+  }
+  return out;
+}
+
 /** What one Gemini generation attempt yields, before truncation is judged. */
 interface GeminiAttempt {
   text: string;
@@ -1218,6 +1233,112 @@ CITATION FORMAT:
     const result = await this.callGeminiLLM(systemPrompt, userPrompt, maxTokens, true);
     if (!result) throw new Error("Gemini returned no output");
     return result;
+  }
+
+  /**
+   * One Gemini call in JSON mode against a response schema — for small
+   * classifiers (e.g. the shadow safety classifier) that need a structured
+   * verdict fast and cheaply rather than a chat answer.
+   *
+   * Differences from callGeminiLLM, all deliberate:
+   * - a single attempt: no truncation retry, no fallback chain;
+   * - the caller's own (short) timeout, enforced by aborting the request;
+   * - `responseMimeType: application/json` + `responseSchema`, caller-set
+   *   temperature, and thinking switched off (or minimal where the model
+   *   cannot turn it off) so latency stays low;
+   * - nothing is sent to observability/Langfuse — callers decide what, if
+   *   anything, is recorded about the input.
+   *
+   * Throws on missing credentials, timeout, API error or empty output; callers
+   * own the failure policy.
+   */
+  async generateStructuredJson(opts: {
+    systemInstruction: string;
+    userPrompt: string;
+    /** Schema in Google AI API form (lowercase `type` values). */
+    responseSchema: Record<string, unknown>;
+    temperature: number;
+    maxOutputTokens: number;
+    timeoutMs: number;
+    /** Defaults to GEMINI_MODEL. */
+    model?: string;
+  }): Promise<{ text: string; model: string; finishReason: string | null }> {
+    if (!this.geminiApiKey && !this.geminiProject) {
+      throw new Error("Gemini is not configured (no GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT)");
+    }
+    const modelName = opts.model || this.geminiModel;
+    const isThinkingModel = GEMINI_THINKING_MODEL_PATTERN.test(modelName);
+    // Flash-class thinking models accept a zero budget (thinking off); Pro
+    // models reject 0, so they get the smallest budget they accept.
+    const thinkingBudget = /pro/i.test(modelName) ? 128 : 0;
+
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        controller.abort();
+        reject(new Error("GEMINI_STRUCTURED_TIMEOUT"));
+      }, opts.timeoutMs);
+      timeoutId.unref?.();
+    });
+
+    const call = async (): Promise<{ text: string; finishReason: string | null }> => {
+      if (this.geminiApiKey) {
+        const generationConfig = {
+          temperature: opts.temperature,
+          maxOutputTokens: opts.maxOutputTokens + (isThinkingModel ? thinkingBudget : 0),
+          responseMimeType: "application/json",
+          responseSchema: opts.responseSchema,
+          ...(isThinkingModel ? { thinkingConfig: { thinkingBudget } } : {}),
+        } as Record<string, unknown>;
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const client = new GoogleGenerativeAI(this.geminiApiKey);
+        const model = client.getGenerativeModel(
+          { model: modelName, systemInstruction: opts.systemInstruction, generationConfig: generationConfig as never },
+          { timeout: opts.timeoutMs },
+        );
+        const r = await model.generateContent(
+          { contents: [{ role: "user", parts: [{ text: opts.userPrompt }] }] },
+          { signal: controller.signal },
+        );
+        return {
+          text: r.response.text() || "",
+          finishReason: r.response.candidates?.[0]?.finishReason ?? null,
+        };
+      }
+
+      // Vertex AI: same request, but its schema enum spells types in upper case.
+      const generationConfig = {
+        temperature: opts.temperature,
+        maxOutputTokens: opts.maxOutputTokens + (isThinkingModel ? thinkingBudget : 0),
+        responseMimeType: "application/json",
+        responseSchema: toVertexSchema(opts.responseSchema),
+        ...(isThinkingModel ? { thinkingConfig: { thinkingBudget } } : {}),
+      } as Record<string, unknown>;
+      const { VertexAI } = await import("@google-cloud/vertexai");
+      const vertexAI = new VertexAI({ project: this.geminiProject, location: this.geminiLocation });
+      const model = vertexAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: opts.systemInstruction,
+        generationConfig: generationConfig as never,
+      });
+      const r = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: opts.userPrompt }] }],
+      });
+      const candidate = r.response.candidates?.[0];
+      return {
+        text: (candidate?.content?.parts ?? []).map((p) => p.text ?? "").join(""),
+        finishReason: candidate?.finishReason ?? null,
+      };
+    };
+
+    try {
+      const result = await Promise.race([call(), timeoutPromise]);
+      if (!result.text) throw new Error("Gemini returned no output");
+      return { ...result, model: modelName };
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**

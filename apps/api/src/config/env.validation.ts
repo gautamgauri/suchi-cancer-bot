@@ -47,6 +47,20 @@ export const envSchema = z.object({
   // captions, which must happen in a repo checkout and go through review.
   // Both Cloud Build pipelines set this to "false" explicitly.
   YOUTUBE_INGEST_ENABLED: z.string().optional().default('false'),
+  // AI safety classifier — SHADOW MODE ONLY (docs/safety-classifier.md).
+  // When "true", a Gemini classifier labels a sample of inbound messages for
+  // red-flag urgency and the verdict is only logged/compared with the rules
+  // (event `safety_classifier_shadow`). It never changes a response. There is
+  // deliberately no enforcing switch: that is Phase 2 and needs SCCF sign-off.
+  SAFETY_CLASSIFIER_SHADOW_ENABLED: z.string().optional().default('false'),
+  // Fraction of messages classified when enabled (0..1) — the cost control.
+  SAFETY_CLASSIFIER_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional().default(1),
+  // Hard per-call timeout; a timeout is a no-op (rules still apply).
+  SAFETY_CLASSIFIER_TIMEOUT_MS: z.coerce.number().int().min(250).max(10000).optional().default(3000),
+  // Cap on concurrent in-flight classifier calls; extra messages are skipped.
+  SAFETY_CLASSIFIER_MAX_IN_FLIGHT: z.coerce.number().int().min(1).max(500).optional().default(16),
+  // Model override (defaults to GEMINI_MODEL). Use a Flash-class model.
+  SAFETY_CLASSIFIER_MODEL: z.string().optional(),
   // Review Copilot
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
   // Social post publishing (all optional — platforms without credentials are silently skipped)
