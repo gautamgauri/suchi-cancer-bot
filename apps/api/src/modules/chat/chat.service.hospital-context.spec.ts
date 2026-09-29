@@ -126,36 +126,156 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     expect(block).toContain("--- Major cancer centres ---");
   });
 
-  // ── Prompt-instruction boundary (PR #99 re-review) ─────────────────────
+  // ── Cross-border travel caveat (SCCF review, from #159) ────────────────
   //
   // AGENTS.md §1.3: prompt changes under chat/ go through SCCF human/medical
-  // review in their own labelled PR. This PR is the structural half — stage
-  // headings and data. The instruction that told the model not to describe a
-  // cross-border fallback as "nearby" and not to state or estimate a travel
-  // time was split out to its own labelled SCCF-review PR; this block must
-  // stay free of it until that review lands.
-  it("carries no un-reviewed proximity instruction to the model, on any rung", () => {
-    const rungs: [HospitalSearchGeography["stage"], string, string][] = [
-      ["adjacent_state", "Kishanganj", "Bihar"],
-      ["unfiltered", "Jaipur", "Rajasthan"],
-      ["city", "Patna", "Bihar"],
-      ["state", "Darbhanga", "Bihar"],
-      ["none", "", ""],
-    ];
-    for (const [stage, city, state] of rungs) {
-      const block = build(
-        [hospital({ city: "Siliguri", state: "West Bengal" })],
-        geo(stage, city || null, state || null)
-      );
+  // review in their own labelled PR. This is that change, combined with the
+  // distance instruction below into one paragraph and one review item.
+  //
+  // On the adjacent-state and unfiltered rungs the block hands the model
+  // centres that can be 300–400 km from the patient, and a heading is easy to
+  // paraphrase away. Without the instruction there is nothing stopping the
+  // generator calling Siliguri "close by" to someone in Kishanganj, or
+  // inventing a journey time the directory holds no data for.
+  it("tells the model not to call a cross-border fallback nearby", () => {
+    const block = build(
+      [hospital({ city: "Siliguri", state: "West Bengal" })],
+      geo("adjacent_state", "Kishanganj", "Bihar")
+    );
+    expect(block).toContain("The directory has no cancer centre in Kishanganj.");
+    expect(block).toContain('Do NOT describe them as "nearby"');
+    expect(block).toContain("do NOT state or estimate a travel time or distance");
+  });
+
+  // "no cancer centre serves X directly" can read to a patient as "you cannot
+  // be treated"; the softened form states only what the directory holds.
+  it("does not use the old 'serves X directly' phrasing, or IMPORTANT:", () => {
+    const block = build(
+      [hospital({ city: "Siliguri", state: "West Bengal" })],
+      geo("adjacent_state", "Kishanganj", "Bihar")
+    );
+    expect(block).not.toContain("serves Kishanganj directly");
+    expect(block).not.toContain("IMPORTANT:");
+  });
+
+  it("carries the same instruction on the unfiltered rung", () => {
+    const block = build(
+      [hospital({ city: "Kolkata", state: "West Bengal" })],
+      geo("unfiltered", "Jaipur", "Rajasthan")
+    );
+    expect(block).toContain("The directory has no cancer centre in Jaipur.");
+    expect(block).toContain('Do NOT describe them as "nearby"');
+  });
+
+  it("does not carry it when the centres really are in the patient's city or state", () => {
+    for (const stage of ["city", "state", "distance", "none"] as const) {
+      const block = build([hospital()], geo(stage, "Darbhanga", "Bihar"));
+      expect(block).not.toContain("The directory has no cancer centre in");
       expect(block).not.toContain("Do NOT describe them as");
-      expect(block).not.toContain("do NOT state or estimate a travel time");
-      expect(block).not.toContain("no cancer centre in the directory serves");
     }
   });
 
-  it("keeps the only travel language on the heading, where the rung puts it", () => {
-    // adjacent_state and unfiltered disclose the widening in the heading
-    // itself — that is the structural half and it stays here.
+  it("carries no travel paragraph at all where the centres are local", () => {
+    for (const stage of ["city", "state", "none"] as const) {
+      const block = build([hospital()], geo(stage, "Darbhanga", "Bihar"));
+      expect(block).not.toContain("STRAIGHT-LINE");
+      expect(block).not.toContain("nearest first");
+    }
+  });
+
+  it("keeps the national-referral example region-neutral (East India scope)", () => {
+    const block = build([hospital()], geo("state", "Ranchi", "Jharkhand"));
+    expect(block).toContain("patients from this region also travel to");
+    expect(block).not.toContain("patients from Bihar");
+  });
+
+  // #159 review: the caveat said "listed above" but was interpolated before
+  // the list, so the model was pointed at a list that had not appeared yet.
+  it("points at the list in the direction it actually is", () => {
+    const block = build(
+      [hospital({ city: "Siliguri", state: "West Bengal" })],
+      geo("adjacent_state", "Kishanganj", "Bihar")
+    );
+    expect(block).toContain("The centres listed below are in other districts or states");
+    expect(block).not.toContain("listed above");
+    expect(block.indexOf("The centres listed below")).toBeLessThan(
+      block.indexOf("--- Centres in neighbouring states")
+    );
+  });
+
+  // ── Distance rung (SCCF sign-off 2026-09-30) ───────────────────────────
+  //
+  // Owner direction: centres go in km order and state does not matter. Order
+  // is not a ranking; distances are said as "about N km" with a note that the
+  // journey is longer; a centre across a state line gets a confirm-your-scheme
+  // prompt with no assertion either way.
+  describe("distance-rung paragraph", () => {
+    const ordered = (): string =>
+      build(
+        [
+          hospital({ distance_km: 40 }),
+          hospital({ id: "h-2", city: "Siliguri", state: "West Bengal", distance_km: 90 }),
+        ],
+        geo("distance", "Kishanganj", "Bihar")
+      );
+    const paragraph = (): string =>
+      ordered()
+        .split("\n\n")
+        .find((p) => p.includes("nearest first")) ?? "";
+
+    it("keeps km order regardless of state, and says order is not a ranking", () => {
+      const p = paragraph();
+      expect(p).toContain(
+        "The nearest-centres list below is ordered by distance from Kishanganj, nearest first, regardless of state. Keep that order."
+      );
+      expect(p).toContain("It is not a ranking of quality or suitability");
+      expect(ordered().indexOf("nearest first")).toBeLessThan(
+        ordered().indexOf("--- Nearest cancer centres to Kishanganj")
+      );
+    });
+
+    it("never lets a distance become a travel time, or 'straight-line' reach the patient", () => {
+      const p = paragraph();
+      expect(p).toContain('say "about N km" (or "within 10 km") and add that the road or rail journey is longer');
+      expect(p).toContain('do not use the word "straight-line" with the patient');
+      expect(p).toContain("NEVER state or estimate a travel time, a road distance, or a journey duration");
+    });
+
+    // Deploy preflight check 9 (.claude/commands/deploy.md) greps for this.
+    it("keeps the phrase deploy check 9 looks for", () => {
+      expect(paragraph()).toContain("STRAIGHT-LINE distance, already rounded");
+    });
+
+    it("prompts a scheme check for a centre in another state, without asserting acceptance", () => {
+      const p = paragraph();
+      expect(p).toContain("For any centre in a state other than Bihar, name its state");
+      expect(p).toContain("whether their PM-JAY card or Bihar state scheme is accepted there");
+      expect(p).toContain("Do not say whether it will or will not be accepted unless");
+    });
+
+    it("uses the patient's own state, not a hard-coded one (East India scope)", () => {
+      const block = build([hospital({ distance_km: 30 })], geo("distance", "Ranchi", "Jharkhand"));
+      expect(block).toContain("a state other than Jharkhand");
+      expect(block).toContain("Jharkhand state scheme");
+      expect(block).not.toContain("Bihar state scheme");
+    });
+
+    it("is a single paragraph", () => {
+      expect(paragraph()).not.toContain("\n");
+    });
+
+    it("appears on the distance rung only", () => {
+      for (const stage of ["city", "state", "adjacent_state", "unfiltered", "none"] as const) {
+        expect(build([hospital()], geo(stage, "Darbhanga", "Bihar"))).not.toContain(
+          "nearest first"
+        );
+      }
+    });
+  });
+
+  it("keeps the structural travel language on the heading too", () => {
+    // The heading disclosure from #99 is unchanged: the instruction is
+    // additional to it, not a replacement for it.
     expect(
       build(
         [hospital({ city: "Siliguri", state: "West Bengal" })],
@@ -229,8 +349,10 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
 
     it("says nothing at all when no distance was measured", () => {
       const block = build([hospital()], geo("distance", "Patna", "Bihar"));
-      expect(block).not.toContain("km away");
-      expect(block).not.toContain("within 10 km");
+      // Match the data-line label, not the instruction paragraph, which quotes
+      // "within 10 km" as the phrase the model may use.
+      expect(block).not.toContain("km away (straight-line)");
+      expect(block).not.toContain("| within 10 km (straight-line)");
     });
 
     it("heads a distance-ordered list by the city it is ordered from", () => {
@@ -238,19 +360,28 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
     });
   });
 
-  // ── Prompt-instruction boundary (PR #148 review, P1) ───────────────────
+  // ── Distance-handling instruction (SCCF review) ────────────────────────
   //
-  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF medical review
-  // in their own labelled PR. The distance-handling instruction that belongs
-  // with this feature was split out; this block must stay free of it until
-  // that review lands.
-  it("carries no un-reviewed distance instruction to the model", () => {
+  // AGENTS.md §1.3: prompt changes under chat/ go through SCCF human/medical
+  // review in their own labelled PR. This is that change. It exists because
+  // the block now carries kilometre figures, and without an instruction the
+  // model is free to call a 90km centre "nearby" or to turn "~50 km" into
+  // "about an hour away" — a journey time this data cannot support, on roads
+  // it knows nothing about, to a patient deciding where to travel for
+  // treatment.
+  //
+  // The full wording is pinned in "distance-rung paragraph" above; this keeps
+  // the guard present even when only national referral centres were found.
+  it("tells the model a distance must not become a travel time, even with no regional list", () => {
     const block = build(
-      [hospital({ distance_km: 52 })],
+      [hospital({ distance_km: 520, national_referral: true })],
       geo("distance", "Patna", "Bihar")
     );
-    expect(block).not.toContain("STRAIGHT-LINE distance, already rounded");
-    expect(block).not.toContain("NEVER convert it into a travel time");
+    expect(block).toContain("STRAIGHT-LINE distance, already rounded");
+    expect(block).toContain(
+      "NEVER state or estimate a travel time, a road distance, or a journey duration"
+    );
+    expect(block).not.toContain("nearest first");
   });
 
   // ── Capability label (PR #148 review, P1) ──────────────────────────────
