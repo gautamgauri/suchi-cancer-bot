@@ -349,8 +349,10 @@ describe("ChatService — hospital context block heading (PR #99 review)", () =>
 
     it("says nothing at all when no distance was measured", () => {
       const block = build([hospital()], geo("distance", "Patna", "Bihar"));
-      expect(block).not.toContain("km away");
-      expect(block).not.toContain("within 10 km");
+      // Match the data-line label, not the instruction paragraph, which quotes
+      // "within 10 km" as the phrase the model may use.
+      expect(block).not.toContain("km away (straight-line)");
+      expect(block).not.toContain("| within 10 km (straight-line)");
     });
 
     it("heads a distance-ordered list by the city it is ordered from", () => {
