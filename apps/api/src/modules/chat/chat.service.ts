@@ -34,6 +34,7 @@ import { reconcileAppendedAnswer } from "./escalation-reconciler";
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
 import { CrossLingualService } from "../rag/cross-lingual.service";
+import { scopeEvidenceToPregnancyScenario } from "../rag/scenario-section-filter";
 // Phase 3 Agentic components
 import {
   ExecutionPlannerService,
@@ -488,7 +489,9 @@ export class ChatService {
         this.logger.warn(`Early RAG retrieval failed: ${earlyRagError.message} — continuing without citations`);
       }
     }
-    
+    // #126: the urgent path composes from these chunks directly.
+    earlyEvidenceChunks = this.scopeEvidenceToScenario(earlyEvidenceChunks, dto.userText, dto.sessionId, "early");
+
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Use template system for urgent symptoms (S2 template) but include RAG content if available
       // Reuse isFirstMessage from message count fetched at start
@@ -1217,6 +1220,10 @@ export class ChatService {
       }
     }
 
+    // 4.6. #126: a pregnancy question that does not ask about breastfeeding must
+    // not be composed from lactation sections (verbatim cut, no rewording).
+    evidenceChunks = this.scopeEvidenceToScenario(evidenceChunks, dto.userText, dto.sessionId, "primary");
+
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 5. Intent classification (moved before evidence gate to provide context)
@@ -1442,7 +1449,7 @@ export class ChatService {
       const cancerType = detectCancerType(dto.userText, sessionCancerType);
       const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
       if (expandedChunks.length > evidenceChunks.length) {
-        evidenceChunks = expandedChunks;
+        evidenceChunks = this.scopeEvidenceToScenario(expandedChunks, dto.userText, dto.sessionId, "expansion"); // #126
         // Re-run evidence gate with expanded chunks
         gateResult = await this.evidenceGate.validateEvidence(
           evidenceChunks,
@@ -2953,6 +2960,35 @@ export class ChatService {
 
     // Fallback: append at end
     return responseText + addendum;
+  }
+
+  /**
+   * Issue #126: evidence applicability by scenario. A question about pregnancy
+   * that does not ask about breastfeeding gets the lactation sections cut out of
+   * its evidence (verbatim section removal — no text is written), and chunks
+   * that are only about lactation are dropped.
+   */
+  private scopeEvidenceToScenario<T extends { chunkId: string; docId?: string; content: string; document?: { title?: string | null } | null }>(
+    chunks: T[],
+    userText: string,
+    sessionId: string,
+    stage: string
+  ): T[] {
+    if (!chunks || chunks.length === 0) return chunks;
+    const result = scopeEvidenceToPregnancyScenario(chunks, userText);
+    if (result.trimmedChunkIds.length > 0 || result.droppedChunkIds.length > 0) {
+      this.logger.log({
+        event: "scenario_section_filter_applied",
+        scenario: "pregnancy_not_nursing",
+        sessionId,
+        stage,
+        // Ids only — no query text (it can be the patient's own words).
+        trimmedChunkIds: result.trimmedChunkIds.slice(0, 6),
+        droppedChunkIds: result.droppedChunkIds.slice(0, 6),
+        kept: result.chunks.length,
+      });
+    }
+    return result.chunks;
   }
 
   private passesIdentifyRubric(text: string): { ok: boolean; missing: string[] } {
