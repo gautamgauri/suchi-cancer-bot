@@ -42,7 +42,13 @@ export const DIAGNOSTIC_TEST_PATTERNS: PatternEntry[] = [
   // Imaging tests
   { key: "ct_scan", label: "CT scan", regex: /\b(CT|CAT)\s*(scan|scanning)?\b/gi, category: "diagnostic_test", synonyms: ["ct", "cat scan", "computed tomography"] },
   { key: "mri", label: "MRI", regex: /\bMRI\b/gi, category: "diagnostic_test", synonyms: ["magnetic resonance imaging"] },
-  { key: "pet_scan", label: "PET scan", regex: /\bPET\s*(-\s*CT)?\s*(scan)?\b/gi, category: "diagnostic_test", synonyms: ["pet-ct", "positron emission tomography"] },
+  // PET and PET-CT are separate entries: they are different studies, and one
+  // entry covering both through an optional `(-\s*CT)?` group let evidence
+  // naming only a PET scan ground a draft recommending a PET-CT (#179, Codex
+  // P1). pet_scan's "pet-ct"/"pet/ct" synonyms are deliberately one-way: they
+  // only let more specific PET-CT evidence ground a plain PET claim.
+  { key: "pet_scan", label: "PET scan", regex: /\bPET(?!\s*[-\/]\s*CT\b)\s*(scan)?\b/gi, category: "diagnostic_test", synonyms: ["pet-ct", "pet/ct", "positron emission tomography"] },
+  { key: "pet_ct", label: "PET-CT scan", regex: /\bPET\s*[-\/]\s*CT\s*(scan)?\b/gi, category: "diagnostic_test", synonyms: ["pet-ct", "pet/ct"] },
   { key: "xray", label: "X-ray", regex: /\bX-?ray\b/gi, category: "diagnostic_test", synonyms: ["x ray", "radiograph"] },
   { key: "chest_xray", label: "Chest X-ray", regex: /\bchest\s*X-?ray\b/gi, category: "diagnostic_test", synonyms: ["chest x ray"] },
   { key: "mammogram", label: "Mammogram", regex: /\bmammogram\b/gi, category: "diagnostic_test", synonyms: ["mammography"] },

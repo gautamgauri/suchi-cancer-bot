@@ -165,7 +165,8 @@ export class ResponseValidatorService {
    * the very same detector on both sides:
    *
    *   1. the normalized surface string appears in the chunks, or
-   *   2. the pattern's canonical label appears in the chunks, or
+   *   2. the pattern's canonical label appears in the chunks and names the
+   *      same concept (see labelGrounds), or
    *   3. one of the pattern's declared synonyms appears in the chunks, or
    *   4. the pattern fires on the chunks on the SAME CONCEPT the draft used.
    *
@@ -207,8 +208,8 @@ export class ResponseValidatorService {
       return false;
     }
 
-    // (2) Canonical label for this pattern.
-    if (this.containsTerm(allChunkContent, patternEntry.label.toLowerCase())) {
+    // (2) Canonical label for this pattern — on the same concept only.
+    if (this.labelGrounds(entity, patternEntry, allChunkContent)) {
       return true;
     }
 
@@ -221,6 +222,35 @@ export class ResponseValidatorService {
 
     // (4) Same detector, run over the evidence, on the same concept.
     return this.evidenceUsesSameConcept(entity, patternEntry, allChunkContent);
+  }
+
+  /**
+   * Check (2): does the evidence contain the pattern's canonical label, AND
+   * does that label name the concept the draft actually used?
+   *
+   * A label is not an explicit equivalence for every form its pattern
+   * matches. When the label is itself one of the pattern's own surface forms
+   * (e.g. "Surgical procedure" for /surgical (resection|removal|procedure)/)
+   * it is just one branch, and must pass the same concept-core test as any
+   * other evidence match — otherwise evidence saying "surgical procedure"
+   * grounds a draft saying "surgical removal" (#179, Codex P1). A label the
+   * pattern does NOT match (e.g. "Fine needle aspiration" for /FNA/) is a
+   * declared expansion of the whole entry and still grounds it, as do the
+   * entry's synonyms in check (3).
+   */
+  private labelGrounds(
+    entity: string,
+    patternEntry: PatternEntry,
+    allChunkContent: string
+  ): boolean {
+    const label = patternEntry.label;
+    if (!this.containsTerm(allChunkContent, label.toLowerCase())) {
+      return false;
+    }
+    if (!this.matchesWholeString(label, patternEntry)) {
+      return true;
+    }
+    return this.conceptCore(label, patternEntry) === this.conceptCore(entity, patternEntry);
   }
 
   /**
@@ -245,8 +275,9 @@ export class ResponseValidatorService {
    * A PatternEntry regex is a detector for a family of surface forms, and that
    * family is not always one concept. `surgical_procedure` is
    * `/\bsurgical\s*(resection|removal|procedure)\b/` — three different things
-   * behind one key. `pet_scan` is `/\bPET\s*(-\s*CT)?\s*(scan)?\b/`, which,
-   * being case-insensitive, also matches the household animal. So "the pattern
+   * behind one key. `pet_scan` matches `PET`, which, being case-insensitive,
+   * also matches the household animal. (It used to cover PET-CT too, through
+   * an optional group; that is now its own `pet_ct` entry.) So "the pattern
    * matches the evidence somewhere" is far too weak a grounding test: it lets
    * evidence about resection ground a claim about removal, and a chunk that
    * happens to contain "pet" ground a PET scan.
