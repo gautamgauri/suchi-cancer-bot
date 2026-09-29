@@ -34,6 +34,11 @@ describe("detectCancerType — Hindi / Hinglish disease sites (#170)", () => {
     expect(detectCancerTypes("मुँह में छाले")).toEqual([]);
   });
 
+  it("an organ word inside a longer Devanagari word does not count (प्रमुख = 'major', not मुख = 'mouth')", () => {
+    expect(detectCancerTypes("भारत में प्रमुख कैंसर कौन से हैं?")).toEqual([]);
+    expect(detectCancerType("भारत में प्रमुख कैंसर कौन से हैं?", "lung")).toBe("lung");
+  });
+
   it("detectExplicitCancerTypes lists every site the message itself names", () => {
     const sites = detectExplicitCancerTypes("मुँह के कैंसर और फेफड़ों के कैंसर में क्या फर्क है?");
     expect(sites).toHaveLength(2);

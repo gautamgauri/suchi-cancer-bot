@@ -21,6 +21,7 @@ import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
 import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
+import { askedDiseaseSites, scopeChunksToAskedSites } from "../rag/disease-site-scope";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
 import { PatientStateService, PatientState } from "./patient-state.service";
@@ -359,6 +360,15 @@ export class ChatService {
 
     const isFirstMessage = existingAssistantMessages === 0;
     const sessionCancerType = session.cancerType;
+    // Issue #170: retrieval is steered by the cancer type of THIS turn. A site the
+    // user names now (in English, Hindi or Hinglish) beats the session tag, which
+    // is sticky and can be stale — a WhatsApp conversation tagged `lung` answered
+    // a later mouth-cancer question from lung documents. The session tag is still
+    // the fallback when the message names no site (#175 semantics).
+    const turnCancerType = detectCancerType(dto.userText, sessionCancerType);
+    // Sites the message itself asks about; evidence about a different site is
+    // not allowed to answer it (see scopeEvidenceToAskedSites).
+    const askedSites = askedDiseaseSites(dto.userText);
     let emotionalState = session.emotionalState as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
     const userContext = session.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
 
@@ -481,9 +491,14 @@ export class ChatService {
     let earlyEvidenceChunks: any[] = [];
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Quick RAG retrieval for urgent cases to support citations
-      // Reuse sessionCancerType from session fetched at start
+      // The turn's cancer type, not the (possibly stale) session tag (#170)
       try {
-        earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, earlyQueryType);
+        earlyEvidenceChunks = this.scopeEvidenceToAskedSites(
+          await this.rag.retrieveWithMetadata(dto.userText, 6, turnCancerType, earlyQueryType),
+          askedSites,
+          dto.sessionId,
+          "early"
+        );
       } catch (earlyRagError: any) {
         this.logger.warn(`Early RAG retrieval failed: ${earlyRagError.message} — continuing without citations`);
       }
@@ -1118,7 +1133,7 @@ export class ChatService {
 
     // TIMING: Track RAG retrieval time
     const ragStarted = Date.now();
-    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: sessionCancerType });
+    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: turnCancerType });
     let evidenceChunks: any[] = [];
     if (earlyEvidenceChunks.length > 0) {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
@@ -1127,7 +1142,7 @@ export class ChatService {
       // ─── Phase 2: Multi-call retrieval for complex queries ──────────
       // Build session context for the query decomposer
       const sessionCtx: SessionContext = {
-        cancerType: sessionCancerType,
+        cancerType: turnCancerType,
         district: null, // TODO: extract from session when available
         budgetConcern: false, // TODO: detect and persist
         userContext,
@@ -1177,10 +1192,11 @@ export class ChatService {
           : dto.userText;
 
         if (mightBeIdentifyQuestion) {
-          const cancerType = detectCancerType(dto.userText, sessionCancerType);
-          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, cancerType, undefined, undefined, queryType);
+          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, turnCancerType, undefined, undefined, queryType);
         } else {
-          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, sessionCancerType, queryType);
+          // #170: was `sessionCancerType` — a stale tag rewrote a mouth-cancer
+          // query into "... lung cancer prevention".
+          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, turnCancerType, queryType);
         }
 
         if (crossLingualResult.detectedLanguage !== "en") {
@@ -1195,6 +1211,9 @@ export class ChatService {
       this.logger.error(`RAG retrieval failed: ${ragError.message} — continuing with empty evidence`);
       evidenceChunks = [];
     } }
+    // #170: evidence about a different disease site than the one the user named
+    // may not answer the question (early chunks were already scoped above).
+    evidenceChunks = this.scopeEvidenceToAskedSites(evidenceChunks, askedSites, dto.sessionId, "primary");
     const ragMs = Date.now() - ragStarted;
     this.observability.endSpan(ragSpan, {
       chunksReturned: evidenceChunks.length,
@@ -1228,7 +1247,7 @@ export class ChatService {
       { status: 'ok', approvedChunks: evidenceChunks, reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
       { hasGenerallyAsking },
-      { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
+      { userContext, emotionalState, cancerType: turnCancerType } // Pass session context (emotionalState already updated above)
     );
 
     // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
@@ -1251,7 +1270,7 @@ export class ChatService {
     // Check if this query benefits from the Phase 3 planning path
     // (Navigation, Schemes, Psychosocial with structured template matches)
     const sessionCtxForPlanner: SessionContext = {
-      cancerType: sessionCancerType,
+      cancerType: turnCancerType,
       district: null,
       budgetConcern: false,
       userContext,
@@ -1439,8 +1458,12 @@ export class ChatService {
 
     // If evidence is weak or insufficient, try expanded retrieval
     if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
-      const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
+      const expandedChunks = this.scopeEvidenceToAskedSites(
+        await this.rag.retrieveWithExpansion(dto.userText, 6, turnCancerType, undefined, undefined, queryType),
+        askedSites,
+        dto.sessionId,
+        "expansion"
+      );
       if (expandedChunks.length > evidenceChunks.length) {
         evidenceChunks = expandedChunks;
         // Re-run evidence gate with expanded chunks
@@ -1714,7 +1737,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             false,
-            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent, patientState },
+            { hasGenerallyAsking, cancerType: turnCancerType, emotionalState, intent: intentResult.intent, patientState },
             undefined,
             obsTrace?.id
           ),
@@ -2053,7 +2076,7 @@ export class ChatService {
 
       // Detect cancer type for cancer-type-specific responses
       // Always detect from query text — not just for identify questions — so essential term injection works
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
+      const cancerType = turnCancerType;
 
       // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
       const extractionStarted = Date.now();
@@ -2669,7 +2692,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         false,
-        { emotionalState, cancerType: sessionCancerType, patientState },
+        { emotionalState, cancerType: turnCancerType, patientState },
         undefined,
         obsTrace?.id
       ),
@@ -2702,7 +2725,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           false,
-          { emotionalState, cancerType: sessionCancerType, patientState },
+          { emotionalState, cancerType: turnCancerType, patientState },
           undefined,
           obsTrace?.id
         );
@@ -2862,6 +2885,35 @@ export class ChatService {
    * standard terms that users expect for a given cancer type.
    * This is a deterministic safety net — no LLM call needed.
    */
+  /**
+   * Issue #170: drop evidence whose source document is about a different
+   * disease site than the one the user's message names. Zero chunks left is the
+   * intended safe failure — the evidence gate then abstains instead of letting
+   * lung content answer a mouth-cancer question.
+   */
+  private scopeEvidenceToAskedSites<T extends { chunkId?: string; docId?: string; document?: { title?: string | null } | null }>(
+    chunks: T[],
+    askedSites: string[],
+    sessionId: string,
+    stage: string
+  ): T[] {
+    if (!chunks || chunks.length === 0 || askedSites.length === 0) return chunks;
+    const { kept, dropped } = scopeChunksToAskedSites(chunks, askedSites);
+    if (dropped.length > 0) {
+      this.logger.log({
+        event: "disease_site_scope_applied",
+        sessionId,
+        stage,
+        askedSites,
+        kept: kept.length,
+        dropped: dropped.length,
+        // Ids only — no query text (it can be the patient's own words).
+        droppedDocIds: Array.from(new Set(dropped.map((c) => c.docId))).slice(0, 6),
+      });
+    }
+    return kept;
+  }
+
   private injectEssentialTermsIfMissing(responseText: string, cancerType: string | null, queryType: string): string {
     if (!cancerType) return responseText;
 
