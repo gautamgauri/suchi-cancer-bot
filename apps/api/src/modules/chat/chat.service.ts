@@ -3428,14 +3428,30 @@ export class ChatService {
         ? `--- ${this.regionalCentresHeading(geography)} ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
         : "";
 
-    // NOTE: the instruction that told the model not to call a cross-border
-    // fallback "nearby" and not to invent a travel time lived here. It is a
-    // prompt change under chat/, so AGENTS.md §1.3 sends it through SCCF
-    // human/medical review in its own labelled PR rather than riding along
-    // with this structural one (PR #99 re-review). Until that lands, the only
-    // thing this block says about distance is what the stage heading says:
-    // "may involve significant travel" on the adjacent-state rung, "travel
-    // distance not established" on the unfiltered one.
+    // Travel and distance guidance, as one paragraph placed before the list.
+    //
+    // REQUIRES SCCF REVIEW — a prompt change under chat/ (AGENTS.md §1.3).
+    // Combines #159 (cross-border caveat) and #181 (straight-line distance).
+    //
+    // The caveat applies only when the search widened past the patient's own
+    // state; the heading alone is easy for a generator to paraphrase away. It
+    // says "listed below" because the list follows this paragraph (#159
+    // review). The two sentences never contradict each other: kilometre
+    // figures are attached only on the `distance` rung, and the caveat's rungs
+    // (`adjacent_state`, `unfiltered`) carry none.
+    const travelCaveat =
+      regional.length > 0 &&
+      (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")
+        ? `IMPORTANT: no cancer centre in the directory serves ${geography.requestedCity ?? geography.resolvedState ?? "the patient's stated location"} directly. The centres listed below are in other districts or states and may involve significant travel. Do NOT describe them as "nearby" or "close by", and do NOT state or estimate a travel time or distance. `
+        : "";
+    // On the distance rung the whole pool is already sorted by kilometres and
+    // no state rung runs; keep the model from regrouping it by state (owner
+    // direction, 2026-09-30: order by km, state does not matter).
+    const distanceOrder =
+      regional.length > 0 && geography?.stage === "distance"
+        ? "The nearest-centres list below is ordered by straight-line distance, nearest first, whatever state each centre is in. Present them in that order. "
+        : "";
+    const travelAndDistance = `${travelCaveat}${distanceOrder}Where a distance is given it is a STRAIGHT-LINE distance, already rounded. Repeat it as written if you mention it. NEVER convert it into a travel time, a road distance, or a journey duration — the road route is longer and the time depends on connections this data does not contain.`;
 
     const nationalBlock =
       national.length > 0
@@ -3451,7 +3467,7 @@ Present hospitals as "major treatment centres" or "cancer treatment centres." NE
 
 When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
 
-Where a distance is given it is a STRAIGHT-LINE distance, already rounded. Repeat it as written if you mention it. NEVER convert it into a travel time, a road distance, or a journey duration — the road route is longer and the time depends on connections this data does not contain.
+${travelAndDistance}
 
 ${combinedBlocks}
 
