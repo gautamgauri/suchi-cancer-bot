@@ -169,10 +169,8 @@ const CRITICAL_PATTERNS: Array<[Matcher, string]> = [
   [BLEEDING_NOT_STOPPING_HINGLISH_2, "bleeding_not_stopping_hinglish_2"],
   [BLEEDING_NOT_STOPPING_HI_2, "bleeding_not_stopping_hi_2"],
 
-  // Issue #81 — bleeding together with dizziness / near-fainting (possible
-  // haemorrhage or shock during treatment). Each signal may be spelled in any
-  // script; both must be present.
-  [BLEEDING_WITH_DIZZINESS, "bleeding_with_dizziness_multilingual"],
+  // Bleeding + dizziness without a heavy / won't-stop signal is URGENT, not
+  // critical — see BLEEDING_WITH_DIZZINESS in URGENT_PATTERNS below.
 
   // Explicit emergency keywords
   [/\b(108|112)\s*(call|bula|phone)/i, "emergency_number_request"],
@@ -205,6 +203,14 @@ const URGENT_PATTERNS: Array<[Matcher, string]> = [
   // Issue #81 — fever during chemo in romanised Hindi / Devanagari / either order
   [CHEMO_FEVER_MULTILINGUAL, "chemo_fever_multilingual"],
   [HIGH_FEVER_HI_PRE, "high_fever_hi_pre"],
+
+  // Issue #81 — bleeding together with dizziness / near-fainting, each signal
+  // in any script; both must be present. SCCF decision (#196): urgent — the
+  // reply says contact the care team today, still shows 112/108, and says go
+  // to Emergency if bleeding won't stop. Heavy or won't-stop bleeding stays
+  // critical: CRITICAL_PATTERNS run first, so "bleeding bahut zyada … chakkar
+  // aa raha" never reaches this rule.
+  [BLEEDING_WITH_DIZZINESS, "bleeding_with_dizziness_multilingual"],
 ];
 
 /** The matchers added for issue #81, shared with AbstentionService.hasUrgencyIndicators. */
