@@ -1851,8 +1851,14 @@ export class ChatService {
         /\bhow.{0,10}(staging|staged)\b/i,
 
         // Hindi/Hinglish general information queries (need full structured response, not 2-3 sentences)
-        /\b(jaankari|jankari|information)\b.*\b(cancer|kैंसर)\b/i,
-        /\b(cancer|कैंसर)\b.*\b(jaankari|jankari|information)\b/i,
+        // The Devanagari halves are separate, boundary-free regexes: JS `\b` is
+        // ASCII-only, so the old `\b(cancer|कैंसर)\b` never matched Hindi
+        // script (and one copy spelled it with a Latin "k", "kैंसर"). Either
+        // script may appear on either side ("कैंसर ki jankari").
+        /\b(jaankari|jankari|information)\b.*(\bcancer\b|कैंसर)/i,
+        /(\bcancer\b|कैंसर).*\b(jaankari|jankari|information)\b/i,
+        /(जानकारी).*(\bcancer\b|कैंसर)/i,
+        /(\bcancer\b|कैंसर).*(जानकारी)/i,
         /\b(baare mein|bare me|ke baare)\b.*\b(cancer)\b/i,
         /\b(cancer)\b.*\b(baare mein|bare me|ke baare)\b/i,
         // Hinglish causes/prevention queries
@@ -1871,8 +1877,12 @@ export class ChatService {
         /\bis this\b.{0,20}\b(cancer|carcinoma|tumor|tumour|leukemia|lymphoma|melanoma|sarcoma)\b/i,
 
         // Hinglish post-diagnosis queries ("doctor ne bola cancer hai", "ab kya karna chahiye")
-        /\b(bola|bataya|kaha)\b.*\b(cancer|kैंसर)\b/i,
-        /\b(cancer|kैंसर)\b.*\b(bola|bataya|kaha)\b/i,
+        // Devanagari "told": fenced on both sides because कहा is the stem of
+        // कहाँ ("where") — "कैंसर का इलाज कहाँ होता है" is not "doctor said cancer".
+        /\b(bola|bataya|kaha)\b.*(\bcancer\b|कैंसर)/i,
+        /(\bcancer\b|कैंसर).*\b(bola|bataya|kaha)\b/i,
+        /(?<![ऀ-ॿ])(बोला|बोले|बोली|बताया|बताई|बताए|कहा|कही|कहे)(?![ऀ-ॿ]).*(\bcancer\b|कैंसर)/i,
+        /(\bcancer\b|कैंसर).*(?<![ऀ-ॿ])(बोला|बोले|बोली|बताया|बताई|बताए|कहा|कही|कहे)(?![ऀ-ॿ])/i,
         /\b(ab kya|kya karna|kya karein|kya kare|kya hoga|aage kya)\b/i,
         // Hinglish curability/treatability ("theek ho sakta hai", "ilaaj ho sakta hai", "cure ho sakta")
         /\b(theek|thik|cure|ilaaj|ilaj)\b.*\b(ho sakta|hota hai|ho jata|possible|mumkin)\b/i,
