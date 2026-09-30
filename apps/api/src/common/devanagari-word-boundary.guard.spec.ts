@@ -23,7 +23,8 @@ const SRC_ROOT = path.resolve(__dirname, "..");
 const DEVANAGARI = /[ऀ-ॿ]/;
 
 /**
- * Sites deliberately left for a follow-up. Each entry is an exact count: fixing
+ * Sites deliberately left for a follow-up. Each entry is an exact count of
+ * offending `\b` tokens (a `\b(…)\b` group counts twice): fixing
  * one must lower the number here, and adding one fails the test.
  */
 const KNOWN_UNFIXED: Record<string, { count: number; why: string }> = {
@@ -40,7 +41,7 @@ const KNOWN_UNFIXED: Record<string, { count: number; why: string }> = {
   // "**Important:** …" disclaimer to Hindi replies (the auto-fix is
   // English-only and runs before the localised appendDisclaimer), contrary to
   // #162. Needs a decision on the verifier's disclaimer auto-fix first.
-  "modules/chat/output-verifier.service.ts": { count: 1, why: "auto-fix disclaimer is English-only" },
+  "modules/chat/output-verifier.service.ts": { count: 2, why: "auto-fix disclaimer is English-only" },
 };
 
 function listSourceFiles(dir: string): string[] {
