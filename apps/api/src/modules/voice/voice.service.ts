@@ -13,7 +13,10 @@ import {
   TtsProvider,
 } from './interfaces/speech-provider.interface';
 import { VoiceRequestDto, VoiceResponse } from './dto';
-import { detectLocation } from '../chat/utils/location-detector';
+import {
+  detectLocation,
+  LOCATION_CONFIDENCE_FOR_GEOGRAPHY,
+} from '../chat/utils/location-detector';
 import { cleanResponseForDisplay } from '../chat/display-text-cleaner';
 
 @Injectable()
@@ -263,13 +266,19 @@ export class VoiceService {
     try {
       const location = detectLocation(transcript);
       if (location) {
+        const persisted = location.confidence >= LOCATION_CONFIDENCE_FOR_GEOGRAPHY;
         this.logger.log({
           event: 'voice_location_detected',
           sessionId,
           city: location.city,
           state: location.state,
           confidence: location.confidence,
+          persisted,
         });
+
+        // Session.city outlives this turn, so a low-confidence guess (fuzzy
+        // spelling, bare homograph) is logged but never written.
+        if (!persisted) return;
 
         // Update session with detected location (fire-and-forget)
         this.prisma.session
