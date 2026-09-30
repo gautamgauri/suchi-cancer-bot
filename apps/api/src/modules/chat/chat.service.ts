@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, Optional } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
@@ -48,6 +48,7 @@ import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
 import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
+import { SafetyClassifierShadowService } from "../safety-classifier/safety-classifier-shadow.service";
 
 /**
  * Joins the safety escalation block and the appended RAG answer on the urgent
@@ -105,6 +106,9 @@ export class ChatService {
     // Review Copilot
     private readonly reviewService: ReviewService,
     private readonly observability: ObservabilityService,
+    // AI safety classifier, shadow mode only (docs/safety-classifier.md). Optional
+    // so test harnesses that don't provide it keep working.
+    @Optional() private readonly safetyClassifierShadow?: SafetyClassifierShadowService,
   ) {}
 
   /**
@@ -367,7 +371,7 @@ export class ChatService {
       this.logger.warn(`Analytics emit failed: ${err.message}`)
     );
 
-    await this.prismaRetry("handle:createUserMsg", () =>
+    const userMessage = await this.prismaRetry("handle:createUserMsg", () =>
       this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } })
     );
 
@@ -377,6 +381,11 @@ export class ChatService {
     // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
     // This runs BEFORE any LLM or async call. Pure regex, zero cost.
     const emergencyFastPath = evaluateEmergencyFastPath(dto.userText);
+    // Shadow-mode AI safety classifier: fire-and-forget, NOT awaited, never
+    // throws, and nothing it returns is read here — the rules alone decide this
+    // turn. No-op unless SAFETY_CLASSIFIER_SHADOW_ENABLED=true.
+    // TODO(Phase 2, REQUIRES SCCF SIGN-OFF): add-only enforcement. Not built.
+    void this.safetyClassifierShadow?.observe({ sessionId: dto.sessionId, messageId: userMessage?.id, userText: dto.userText, channel: dto.channel, userContext, fastPath: emergencyFastPath });
     if (emergencyFastPath.isEmergency) {
       const responseText = appendDisclaimer(
         emergencyFastPath.responseText!,
