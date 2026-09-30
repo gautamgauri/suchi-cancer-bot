@@ -85,6 +85,53 @@ function namedWithCancerContext(textLower: string, keyword: string): boolean {
 }
 
 /**
+ * Hindi (Devanagari) and Hinglish (romanised) site names, issue #170: a Hindi
+ * question about "मुँह के कैंसर" (mouth cancer) named no type the detector could
+ * read, so a session tagged `lung` from earlier turns steered retrieval and the
+ * reply was about the lungs. Each pattern only matches the organ WITH cancer
+ * wording next to it ("मुँह के कैंसर", "munh ka cancer") — a bare "मुँह में छाले"
+ * (mouth ulcers) or "पेट में दर्द" (stomach ache) is not a diagnosis.
+ *
+ * Devanagari has no \b in JS regex, so the organ alternations are explicit, and
+ * both spellings of each nukta letter are accepted (precomposed ड़ U+095C and
+ * ड + ़ U+0921 U+093C), as are anusvara/chandrabindu variants (मुंह / मुँह).
+ */
+const HI_CANCER = String.raw`(?:कैंसर|कैन्सर)`;
+const HI_POSTPOSITION = String.raw`\s*(?:का|के|की)?\s*`;
+const RD = "(?:ड़|ड़)"; // ड़ precomposed | decomposed
+// Word start: not preceded by a Devanagari character ("प्रमुख कैंसर" = "major
+// cancer" must not read as मुख / mouth).
+const HI_START = "(?<![ऀ-ॿ])";
+const hi = (organ: string) => new RegExp(`${HI_START}(?:${organ})${HI_POSTPOSITION}${HI_CANCER}`);
+const indicSitePatterns: Array<[RegExp, string]> = [
+  [hi("मुँह|मुंह|मुह|मुख"), "oral"],
+  [hi(`फेफ${RD}(?:े|ों|ा)?`), "lung"],
+  [hi("स्तन"), "breast"],
+  [hi("पेट|आमाशय"), "stomach"],
+  [hi("लिवर|यकृत|जिगर"), "liver"],
+  [hi("गुर्दे|गुर्दा|किडनी"), "kidney"],
+  [hi("प्रोस्टेट"), "prostate"],
+  [hi("दिमाग|मस्तिष्क|ब्रेन"), "brain"],
+  [hi("गर्भाशय\\s*ग्रीवा|सर्वाइकल"), "cervical"],
+  [hi("गले|गला"), "head and neck"],
+  // Romanised Hindi
+  [/\b(?:munh|muh|mooh|munha)\s*(?:ka|ke|ki)?\s*cancer\b/, "oral"],
+  [/\b(?:phephde|phephdon|phephda|fefde|fefdon|fefda)\s*(?:ka|ke|ki)?\s*cancer\b/, "lung"],
+  [/\bpet\s*(?:ka|ke|ki)\s*cancer\b/, "stomach"],
+  [/\b(?:gale|gala)\s*(?:ka|ke|ki)\s*cancer\b/, "head and neck"],
+];
+
+function detectIndicCancerTypes(textLower: string): string[] {
+  const found: string[] = [];
+  for (const [pattern, cancerType] of indicSitePatterns) {
+    if (pattern.test(textLower) && !found.includes(cancerType)) {
+      found.push(cancerType);
+    }
+  }
+  return found;
+}
+
+/**
  * Every cancer type named anywhere in a piece of text, in first-match order.
  * Used to check that a deterministic addendum is about the same disease as the
  * answer it is being appended to.
@@ -101,6 +148,9 @@ export function detectCancerTypes(text: string): string[] {
       found.push(cancerType);
     }
   }
+  for (const cancerType of detectIndicCancerTypes(textLower)) {
+    if (!found.includes(cancerType)) found.push(cancerType);
+  }
 
   return found;
 }
@@ -108,9 +158,11 @@ export function detectCancerTypes(text: string): string[] {
 /**
  * The cancer types the text explicitly identifies as the disease under
  * discussion, in first-match order. A self-identifying disease name counts on
- * its own; an organ only counts with cancer wording next to it.
+ * its own; an organ only counts with cancer wording next to it. Hindi and
+ * Hinglish site names count the same way (issue #170).
  */
-function detectExplicitCancerTypes(textLower: string): string[] {
+export function detectExplicitCancerTypes(text: string): string[] {
+  const textLower = text.toLowerCase();
   const found: string[] = [];
 
   for (const [keyword, cancerType] of Object.entries(cancerKeywords)) {
@@ -120,6 +172,9 @@ function detectExplicitCancerTypes(textLower: string): string[] {
     if (explicit && !found.includes(cancerType)) {
       found.push(cancerType);
     }
+  }
+  for (const cancerType of detectIndicCancerTypes(textLower)) {
+    if (!found.includes(cancerType)) found.push(cancerType);
   }
 
   return found;
