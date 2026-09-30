@@ -19,8 +19,15 @@ export interface EvidenceChunk {
   similarity?: number;
   /** Raw vector cosine similarity (before hybrid blending) */
   vecSim?: number;
-  /** Raw lexical/FTS similarity (before hybrid blending) */
+  /**
+   * ABSOLUTE lexical/FTS score, 0-1 — `absoluteLexicalScore(lexRank)`
+   * (kb-fts.sql.ts). Not relative to the other rows of the result set: a
+   * set-max-normalised value made the best lexical row 1.0 on every turn, which
+   * graded off-topic keyword hits as strong evidence. Safe to gate on.
+   */
   lexSim?: number;
+  /** Raw ts_rank_cd from the lexical arm (0 / absent when FTS did not return this chunk). Diagnostics. */
+  lexRank?: number;
 }
 
 /**
@@ -28,6 +35,10 @@ export interface EvidenceChunk {
  * Avoids the dilution problem where hybrid score = 0.55*vec + 0.45*lex
  * penalises semantic-only matches when FTS returns nothing (lexSim=0).
  * Falls back to similarity if raw scores aren't available (keyword-only path).
+ *
+ * `lexSim` must be ABSOLUTE (see EvidenceChunk.lexSim). RagService sets it from
+ * the raw ts_rank_cd; the hybrid `similarity` keeps the set-relative lexical
+ * value for ordering, and that one must never reach this function as lexSim.
  */
 export function getGateScore(chunk: EvidenceChunk): number {
   if (chunk.vecSim !== undefined || chunk.lexSim !== undefined) {

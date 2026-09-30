@@ -102,6 +102,46 @@ export const KB_FTS_SEARCH_SQL = `
 `;
 
 /**
+ * Raw `ts_rank_cd` value at which a chunk counts as a FULL lexical match (1.0)
+ * for evidence GATING.
+ *
+ * WHY AN ABSOLUTE SCALE: the lexical arm used to hand the gate only
+ * `lexRank / max(lexRank in this result set)`. That is fine for ORDERING, but it
+ * means the best lexical row is always 1.0 — including when every row is an
+ * off-topic chunk that merely shares two content words with the question. The
+ * evidence gate took max(vecSim, lexSim) > 0.7 as "strong", so any turn on which
+ * the lexical arm returned a row was graded strong/high-confidence and the
+ * weak-evidence paths (query expansion, LOW_SCORE) never ran.
+ *
+ * WHAT THE RAW NUMBER MEANS: KB_FTS_SEARCH_SQL calls ts_rank_cd with no
+ * normalisation flags and unweighted ('D' = 0.1) lexemes, so each cover — a
+ * minimal span containing a query conjunction — contributes
+ * (span words / sum of 1/weight) / (1 + gap), i.e. 0.1 for two query terms
+ * side by side, less as they drift apart, summed over the chunk. Chunks are
+ * bounded (~1400 chars at ingest), so the raw value is comparable across turns.
+ *
+ * CALIBRATION (PGlite, synthetic KB-shaped chunks, `evidence-gate` spec + the
+ * harness in the fix PR): chunks that are ABOUT the question scored 0.26–0.51;
+ * chunks that only share a couple of words with it scored 0.001–0.15. 0.4 puts
+ * the gate's strong line (> 0.7) at raw ≈ 0.28 — above every off-topic sample
+ * with margin, below most on-topic ones — so lexical evidence can still carry a
+ * turn on its own when many query terms co-occur tightly, but a single
+ * incidental co-occurrence no longer can.
+ */
+export const KB_FTS_RANK_SATURATION = 0.4;
+
+/**
+ * Map a raw ts_rank_cd from KB_FTS_SEARCH_SQL to a 0–1 lexical score that does
+ * NOT depend on what else the query returned. Used for gating only; hybrid
+ * ORDERING still uses the set-relative value.
+ */
+export function absoluteLexicalScore(rawRank: number | null | undefined): number {
+  const raw = Number(rawRank);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return Math.min(1, raw / KB_FTS_RANK_SATURATION);
+}
+
+/**
  * Schema probe: is the table there, is the expression index there, is it VALID
  * (an interrupted CREATE INDEX CONCURRENTLY leaves an invalid index the planner
  * ignores), and is it over the expression the query uses? Also reports whether a
