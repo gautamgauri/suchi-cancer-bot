@@ -57,6 +57,26 @@ import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
  */
 export const ESCALATION_RAG_SEPARATOR = "\n\n**Information from trusted sources:**\n\n";
 
+type PersistCitation = { docId: string; chunkId: string; position: number; citationText: string };
+
+type PersistAssistantOptions = {
+  safetyClassification: string;
+  latencyMs: number;
+  kbDocIds?: string[];
+  evidenceQuality?: string;
+  evidenceGatePassed?: boolean;
+  abstentionReason?: string;
+  /** Session/request locale — the disclaimer engine's only source of bh/mai. */
+  locale?: string | null;
+  /** The user's own message — language fallback when nothing else is conclusive. */
+  userText?: string;
+  /**
+   * Safety/escalation replies: if the write still fails after prismaRetry, log
+   * and return the reply text with `id: undefined` instead of throwing.
+   */
+  bestEffort?: boolean;
+};
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -130,6 +150,62 @@ export class ChatService {
         }
         throw err;
       }
+    }
+  }
+
+  /**
+   * Persist an emergency / safety / crisis reply WITHOUT ever losing it.
+   *
+   * These templates are the replies a patient most needs to see. A failed DB
+   * write (pool exhaustion past prismaRetry, Cloud SQL blip) used to throw out
+   * of handle() and the user got a 500 / generic error instead of emergency
+   * numbers. Now the write is retried, and if it still fails we log at error
+   * level and return `undefined` — the caller still returns the template text.
+   * Same contract as budgetExhaustedResponse.
+   */
+  private async persistSafetyReply(
+    label: string,
+    data: {
+      sessionId: string;
+      text: string;
+      safetyClassification: string;
+      policyRulesFired?: string[];
+      latencyMs: number;
+    },
+    safetyEvent?: { type: string; detail?: string },
+  ): Promise<string | undefined> {
+    let messageId: string | undefined;
+    try {
+      const assistant = await this.prismaRetry(`${label}:createMsg`, () =>
+        this.prisma.message.create({ data: { ...data, role: "assistant" } }),
+      );
+      messageId = assistant.id;
+    } catch (err: any) {
+      this.logger.error(
+        `[safety-persist] ${label}: could not persist assistant reply for session ${data.sessionId} — returning it to the user anyway: ${err?.message}`,
+      );
+    }
+    if (safetyEvent) await this.recordSafetyEvent(label, data.sessionId, messageId, safetyEvent);
+    return messageId;
+  }
+
+  /** Best-effort SafetyEvent write (retried; logged, never thrown). messageId is nullable in the schema. */
+  private async recordSafetyEvent(
+    label: string,
+    sessionId: string,
+    messageId: string | undefined,
+    event: { type: string; detail?: string },
+  ): Promise<void> {
+    try {
+      await this.prismaRetry(`${label}:safetyEvent`, () =>
+        this.prisma.safetyEvent.create({
+          data: { sessionId, messageId: messageId ?? null, type: event.type, detail: event.detail },
+        }),
+      );
+    } catch (err: any) {
+      this.logger.error(
+        `[safety-persist] ${label}: could not record SafetyEvent "${event.type}" for session ${sessionId}: ${err?.message}`,
+      );
     }
   }
 
@@ -367,9 +443,18 @@ export class ChatService {
       this.logger.warn(`Analytics emit failed: ${err.message}`)
     );
 
-    await this.prismaRetry("handle:createUserMsg", () =>
-      this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } })
-    );
+    // If the user's message cannot be stored, still run the deterministic
+    // emergency/safety gates below and deliver their templates; the error is
+    // re-thrown only once we know this is not a safety turn.
+    let userMsgPersistError: unknown;
+    try {
+      await this.prismaRetry("handle:createUserMsg", () =>
+        this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } })
+      );
+    } catch (err: any) {
+      userMsgPersistError = err;
+      this.logger.error(`[safety-persist] could not persist user message for session ${dto.sessionId}: ${err?.message}`);
+    }
 
     const started = Date.now();
     const requestDeadlineMs = started + this.turnBudgetMs(dto.channel);
@@ -385,25 +470,20 @@ export class ChatService {
         dto.userText
       );
 
-      const assistant = await this.prisma.message.create({
-        data: {
+      const messageId = await this.persistSafetyReply(
+        "emergencyFastPath",
+        {
           sessionId: dto.sessionId,
-          role: "assistant",
           text: responseText,
-          safetyClassification: emergencyFastPath.severity === "critical" ? "red_flag" : "red_flag",
+          safetyClassification: "red_flag",
           policyRulesFired: emergencyFastPath.matchedPatterns,
           latencyMs: Date.now() - started,
         },
-      });
-
-      await this.prisma.safetyEvent.create({
-        data: {
-          sessionId: dto.sessionId,
-          messageId: assistant.id,
+        {
           type: `emergency_fast_path_${emergencyFastPath.severity}`,
           detail: emergencyFastPath.matchedPatterns.join(","),
         },
-      });
+      );
 
       this.analytics
         .emit(
@@ -427,8 +507,8 @@ export class ChatService {
 
       return {
         sessionId: dto.sessionId,
-        messageId: assistant.id,
-        responseText: assistant.text,
+        messageId,
+        responseText,
         safety: {
           classification: "red_flag" as const,
           // Owner decision (#196): urgent keeps the banner but leaves the
@@ -438,7 +518,7 @@ export class ChatService {
             : ["show_emergency_banner"],
           // Nothing is appended on the fast path, so the banner block is the
           // whole reply (issue #111).
-          bannerText: assistant.text,
+          bannerText: responseText,
         },
       };
     }
@@ -448,31 +528,29 @@ export class ChatService {
     this.observability.endSpan(safetySpan, { classification: safetyResult.classification, rulesFired: safetyResult.rulesFired, blocked: safetyResult.classification !== 'normal' });
 
     if (safetyResult.classification !== "normal") {
-      const assistant = await this.prisma.message.create({
-        data: {
+      const safetyText = appendDisclaimer(
+        safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
+        disclaimerLocale,
+        safetyResult.classification === "red_flag",
+        dto.userText
+      );
+      const messageId = await this.persistSafetyReply(
+        "safetyTemplate",
+        {
           sessionId: dto.sessionId,
-          role: "assistant",
-          text: appendDisclaimer(
-            safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
-            disclaimerLocale,
-            safetyResult.classification === "red_flag",
-            dto.userText
-          ),
+          text: safetyText,
           safetyClassification: safetyResult.classification,
           policyRulesFired: safetyResult.rulesFired,
-          latencyMs: Date.now() - started
-        }
-      });
-
-      await this.prisma.safetyEvent.create({
-        data: { sessionId: dto.sessionId, messageId: assistant.id, type: safetyResult.classification, detail: safetyResult.rulesFired.join(",") }
-      });
+          latencyMs: Date.now() - started,
+        },
+        { type: safetyResult.classification, detail: safetyResult.rulesFired.join(",") },
+      );
 
       this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err =>
         this.logger.warn(`Analytics emit failed: ${err.message}`)
       );
 
-      return { sessionId: dto.sessionId, messageId: assistant.id, responseText: assistant.text, safety: { classification: safetyResult.classification, actions: safetyResult.actions, bannerText: assistant.text } };
+      return { sessionId: dto.sessionId, messageId, responseText: safetyText, safety: { classification: safetyResult.classification, actions: safetyResult.actions, bannerText: safetyText } };
     }
 
     // 1.5. Check for urgent red flags (but retrieve RAG first to include citations)
@@ -622,11 +700,13 @@ export class ChatService {
             kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
             locale: disclaimerLocale,
             userText: dto.userText,
+            bestEffort: true,
           }
         );
 
-        await this.prisma.safetyEvent.create({
-          data: { sessionId: dto.sessionId, messageId: assistant.id, type: "red_flag", detail: "urgency_indicators_detected" }
+        await this.recordSafetyEvent("urgentRag", dto.sessionId, assistant.id, {
+          type: "red_flag",
+          detail: "urgency_indicators_detected",
         });
 
         this.analytics.emit("safety_triggered", { classification: "red_flag", rules: ["urgency_indicators_detected"] }, dto.sessionId).catch(err => 
@@ -672,11 +752,13 @@ export class ChatService {
           latencyMs: Date.now() - started,
           locale: disclaimerLocale,
           userText: dto.userText,
+          bestEffort: true,
         }
       );
 
-      await this.prisma.safetyEvent.create({
-        data: { sessionId: dto.sessionId, messageId: assistant.id, type: "red_flag", detail: "urgency_indicators_detected" }
+      await this.recordSafetyEvent("urgentTemplate", dto.sessionId, assistant.id, {
+        type: "red_flag",
+        detail: "urgency_indicators_detected",
       });
 
       await this.analytics.emit("safety_triggered", { classification: "red_flag", rules: ["urgency_indicators_detected"], intent: templateResult.intent }, dto.sessionId);
@@ -703,12 +785,18 @@ export class ChatService {
     }
 
     // Update session with extracted context and emotional state
+    // Best-effort: this runs before the mental-health crisis check, so a failed
+    // context write must not stop MH1 from reaching the user.
     if (contextResult.context || contextResult.cancerType || emotionalToneResult.tone !== "neutral") {
-      await this.greetingFlow.updateSessionContext(dto.sessionId, {
-        userContext: contextResult.context,
-        cancerType: contextResult.cancerType,
-        emotionalState: emotionalToneResult.tone,
-      });
+      try {
+        await this.greetingFlow.updateSessionContext(dto.sessionId, {
+          userContext: contextResult.context,
+          cancerType: contextResult.cancerType,
+          emotionalState: emotionalToneResult.tone,
+        });
+      } catch (err: any) {
+        this.logger.warn(`Could not update session context for ${dto.sessionId}: ${err?.message}`);
+      }
     }
 
     // 1.6.3. Mental health support check (after safety, before greeting flow)
@@ -729,25 +817,17 @@ export class ChatService {
         locale: session.locale || dto.locale,
       });
 
-      const assistant = await this.prisma.message.create({
-        data: {
+      // Crisis event is logged for monitoring; a failed write never withholds MH1.
+      const crisisMessageId = await this.persistSafetyReply(
+        "mentalHealthCrisis",
+        {
           sessionId: dto.sessionId,
-          role: "assistant",
           text: crisisResponse,
           safetyClassification: "mental_health_crisis",
           latencyMs: Date.now() - started,
         },
-      });
-
-      // Log crisis event for monitoring
-      await this.prisma.safetyEvent.create({
-        data: {
-          sessionId: dto.sessionId,
-          messageId: assistant.id,
-          type: "mental_health_crisis",
-          detail: mentalHealthNeed.keywords.join(","),
-        },
-      });
+        { type: "mental_health_crisis", detail: mentalHealthNeed.keywords.join(",") },
+      );
       this.flagSessionForReview(dto.sessionId, "distress").catch(() => {});
 
       this.analytics.emit("mental_health_crisis_detected", {
@@ -758,7 +838,7 @@ export class ChatService {
 
       return {
         sessionId: dto.sessionId,
-        messageId: assistant.id,
+        messageId: crisisMessageId,
         responseText: crisisResponse,
         safety: { classification: "mental_health_crisis" as const, actions: ["show_crisis_resources"] },
       };
@@ -790,14 +870,11 @@ export class ChatService {
         });
       }
 
-      const assistant = await this.prisma.message.create({
-        data: {
-          sessionId: dto.sessionId,
-          role: "assistant",
-          text: mentalHealthResponse,
-          safetyClassification: "mental_health_support",
-          latencyMs: Date.now() - started,
-        },
+      const supportMessageId = await this.persistSafetyReply("mentalHealthSupport", {
+        sessionId: dto.sessionId,
+        text: mentalHealthResponse,
+        safetyClassification: "mental_health_support",
+        latencyMs: Date.now() - started,
       });
 
       this.analytics.emit("mental_health_support_provided", {
@@ -809,11 +886,16 @@ export class ChatService {
 
       return {
         sessionId: dto.sessionId,
-        messageId: assistant.id,
+        messageId: supportMessageId,
         responseText: mentalHealthResponse,
         safety: { classification: "mental_health_support" as const, actions: [] },
       };
     }
+
+    // Past the safety / escalation / crisis gates: this is an ordinary turn, and
+    // without the user's message on record the normal pipeline (history,
+    // citations, review) cannot run — fail the way it always has.
+    if (userMsgPersistError) throw userMsgPersistError;
 
     // 1.6.5. Check for greeting flow interruption (before greeting check)
     // If user sends non-greeting message during active greeting flow, complete it silently
@@ -3265,21 +3347,24 @@ export class ChatService {
   private async persistAssistantMessage(
     sessionId: string,
     text: string,
-    citations: Array<{ docId: string; chunkId: string; position: number; citationText: string }>,
+    citations: PersistCitation[],
+    evidenceChunks: any[],
+    options: PersistAssistantOptions & { bestEffort: true }
+  ): Promise<{ id: string | undefined; text: string }>;
+  private async persistAssistantMessage(
+    sessionId: string,
+    text: string,
+    citations: PersistCitation[],
+    evidenceChunks: any[],
+    options: PersistAssistantOptions
+  ): Promise<{ id: string; text: string }>;
+  private async persistAssistantMessage(
+    sessionId: string,
+    text: string,
+    citations: PersistCitation[],
     evidenceChunks: any[], // EvidenceChunk[] - using any to avoid type complexity
-    options: {
-      safetyClassification: string;
-      latencyMs: number;
-      kbDocIds?: string[];
-      evidenceQuality?: string;
-      evidenceGatePassed?: boolean;
-      abstentionReason?: string;
-      /** Session/request locale — the disclaimer engine's only source of bh/mai. */
-      locale?: string | null;
-      /** The user's own message — language fallback when nothing else is conclusive. */
-      userText?: string;
-    }
-  ): Promise<{ id: string; text: string }> {
+    options: PersistAssistantOptions
+  ): Promise<{ id: string | undefined; text: string }> {
     // PHASE 2.5+: Ensure citation markers are present in response text for LLM judge compliance
     // The judge looks for [citation:docId:chunkId] markers in the response text
     let finalText = text;
@@ -3322,7 +3407,36 @@ export class ChatService {
       }
     }
 
-    // Create the message (with retry for transient pool exhaustion)
+    // Create the message (with retry for transient pool exhaustion).
+    // bestEffort (safety/escalation replies): a write that still fails is
+    // logged and the reply text is returned without an id — never thrown.
+    let assistant: { id: string; text: string };
+    try {
+      assistant = await this.persistAssistantRow(sessionId, finalText, citations, evidenceChunks, options);
+    } catch (err: any) {
+      if (!options.bestEffort) throw err;
+      this.logger.error(
+        `[safety-persist] could not persist ${options.safetyClassification} reply for session ${sessionId} — returning it to the user anyway: ${err?.message}`,
+      );
+      return { id: undefined, text: finalText };
+    }
+
+    // Persist review record (non-blocking)
+    this.reviewService.persistRecord(assistant.id, sessionId, reviewResult).catch(err =>
+      this.logger.warn(`ReviewRecord persist failed: ${err.message}`)
+    );
+
+    return { id: assistant.id, text: assistant.text };
+  }
+
+  /** Message row + citations for persistAssistantMessage. Throws on failure. */
+  private async persistAssistantRow(
+    sessionId: string,
+    finalText: string,
+    citations: PersistCitation[],
+    evidenceChunks: any[],
+    options: PersistAssistantOptions,
+  ): Promise<{ id: string; text: string }> {
     const assistant = await this.prismaRetry("persist:createMsg", () =>
       this.prisma.message.create({
         data: {
@@ -3358,12 +3472,7 @@ export class ChatService {
       );
     }
 
-    // Persist review record (non-blocking)
-    this.reviewService.persistRecord(assistant.id, sessionId, reviewResult).catch(err =>
-      this.logger.warn(`ReviewRecord persist failed: ${err.message}`)
-    );
-
-    return { id: assistant.id, text: assistant.text };
+    return assistant;
   }
 
   /**
