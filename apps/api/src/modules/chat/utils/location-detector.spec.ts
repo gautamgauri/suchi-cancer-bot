@@ -1,4 +1,8 @@
-import { detectLocation } from './location-detector';
+import {
+  detectLocation,
+  detectLocationForGeography,
+  LOCATION_CONFIDENCE_FOR_GEOGRAPHY,
+} from './location-detector';
 
 describe('detectLocation', () => {
   describe('exact match with context', () => {
@@ -154,6 +158,77 @@ describe('detectLocation', () => {
       expect(result).toEqual(expect.objectContaining({
         city: 'Prayagraj',
       }));
+    });
+  });
+
+  // Each of these once produced a Bihar city the user never named, and since
+  // #148 that city ordered the hospital list by distance from it.
+  describe('false cities (regression)', () => {
+    it.each([
+      // "at are" matched an unanchored "at\s+(\w+)" → Arrah via alias "ara"
+      ['What are the best hospitals for cancer treatment?'],
+      // Hinglish past tense "aa gaya" → Gaya
+      ['Report aa gaya hai, ab kaun sa hospital jaayein?'],
+      // "bukhar" (fever) fuzzy-matched Buxar
+      ['mujhe bukhar aur kamzori hai, kaunsa hospital'],
+      // "papa" fuzzy-matched Patna
+      ['Papa ko cancer hai, kya karein, hospital batao'],
+      // verb "gaya" followed by the genitive "ki" is not a place
+      ['pata chal gaya ki cancer hai, ab kya karein'],
+      // "hunger" is one edit from Munger
+      ['I have no hunger since chemo started'],
+      // "kya" is two edits from "gaya"
+      ['kya chemo ke baad baal wapas aate hain?'],
+    ])('%s → null', (text) => {
+      expect(detectLocation(text)).toBeNull();
+    });
+
+    it('prefers the city named exactly over a fuzzy guess elsewhere ("kya Patna me …")', () => {
+      expect(detectLocation('kya Patna me koi accha cancer hospital hai?')).toEqual({
+        city: 'Patna',
+        state: 'Bihar',
+        confidence: 1.0,
+      });
+    });
+
+    it('does not fuzzy-match short words at all', () => {
+      // "patan" is one edit from "patna" but only five letters long
+      expect(detectLocation('from patan')).toBeNull();
+    });
+  });
+
+  describe('real cities that must still be found', () => {
+    it.each([
+      ['main Gaya se hoon', 'Gaya'],
+      ['main gaya se hoon', 'Gaya'],
+      ['I live in Arrah', 'Arrah'],
+      ['hum Ara me rehte hain', 'Arrah'],
+      ['Patna me hospital batao', 'Patna'],
+      ['from Muzaffarpur', 'Muzaffarpur'],
+      ['Bhagalpur ke paas koi hospital hai?', 'Bhagalpur'],
+      ['Gaya ke paas koi hospital hai?', 'Gaya'],
+      ['We are near Bodh Gaya', 'Gaya'],
+      ['I am from Muzzafarpur', 'Muzaffarpur'],
+      ['Patna से हूँ', 'Patna'],
+    ])('%s → %s (confident enough for geography)', (text, city) => {
+      const result = detectLocation(text);
+      expect(result?.city).toBe(city);
+      expect(result!.confidence).toBeGreaterThanOrEqual(LOCATION_CONFIDENCE_FOR_GEOGRAPHY);
+      expect(detectLocationForGeography(text)?.city).toBe(city);
+    });
+
+    it('still fuzzy-matches a long misspelling, but below the geography threshold', () => {
+      const result = detectLocation('I live in Muzafferpur');
+      expect(result?.city).toBe('Muzaffarpur');
+      expect(result!.confidence).toBeLessThan(LOCATION_CONFIDENCE_FOR_GEOGRAPHY);
+      expect(detectLocationForGeography('I live in Muzafferpur')).toBeNull();
+    });
+
+    it('treats a capitalised mid-sentence "Gaya" as weak evidence only', () => {
+      const result = detectLocation('Report aa Gaya hai');
+      expect(result?.city).toBe('Gaya');
+      expect(result!.confidence).toBeLessThan(LOCATION_CONFIDENCE_FOR_GEOGRAPHY);
+      expect(detectLocationForGeography('Report aa Gaya hai')).toBeNull();
     });
   });
 });
