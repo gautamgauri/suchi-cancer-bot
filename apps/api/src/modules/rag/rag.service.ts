@@ -9,7 +9,7 @@ import { isTrustedSource, getSourceConfig, TRUSTED_SOURCES } from "../../config/
 import { QueryTypeClassifier } from "./query-type.classifier";
 import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer-topics";
 import { PatientState } from "../chat/patient-state.service";
-import { KB_FTS_SEARCH_SQL, isFtsSchemaError } from "./kb-fts.sql";
+import { KB_FTS_SEARCH_SQL, absoluteLexicalScore, isFtsSchemaError } from "./kb-fts.sql";
 import { buildKbFtsQuery } from "./kb-fts-query";
 import { dropReferenceChunks } from "./reference-chunk-filter";
 import { KbFtsHealthService } from "./kb-fts-health.service";
@@ -749,14 +749,18 @@ export class RagService {
         return [];
       }
 
-      // Calculate max lexRank for normalization (guard against zero)
-      const maxLexRank = Math.max(...results.map(r => r.lexRank), 0.01);
+      // Set-relative normalisation (best row = 1.0) is kept for hybrid ORDERING
+      // only. The gate must not see it: it made every turn with ≥1 lexical row
+      // look like strong evidence. `lexRank` carries the raw ts_rank_cd so the
+      // hybrid merge can derive an absolute gating score (absoluteLexicalScore).
+      const maxLexRank = Math.max(...results.map(r => Number(r.lexRank) || 0), 0.01);
 
       return this.withoutReferenceChunks(results.map(r => ({
         chunkId: r.id,
         docId: r.docId,
         content: r.content,
-        similarity: r.lexRank / maxLexRank, // Normalized lexical similarity (0-1)
+        similarity: (Number(r.lexRank) || 0) / maxLexRank, // Set-relative (0-1) — ordering only
+        lexRank: Number(r.lexRank) || 0,                   // Raw ts_rank_cd — absolute
         document: {
           title: r.title,
           url: r.url || undefined,
@@ -815,10 +819,18 @@ export class RagService {
     }
 
     // Merge and score
+    // Two lexical values per chunk, on purpose:
+    //  - lexRel: rank / best rank in THIS result set. Used for hybrid ordering,
+    //    exactly as before.
+    //  - lexRank: raw ts_rank_cd, turned into the absolute `lexSim` that leaves
+    //    this method for gating (EvidenceGateService.getGateScore, the reranker's
+    //    gating). The set-relative value is 1.0 for the best row even when every
+    //    row is off-topic, so it must not be used to decide "strong evidence".
     const chunkMap = new Map<string, {
       chunk: EvidenceChunk;
       vecSim: number;
-      lexSim: number;
+      lexRel: number;
+      lexRank: number;
     }>();
 
     // Process vector results
@@ -827,21 +839,25 @@ export class RagService {
       chunkMap.set(chunk.chunkId, {
         chunk,
         vecSim,
-        lexSim: 0 // Will be filled if FTS also found this chunk
+        lexRel: 0, // Will be filled if FTS also found this chunk
+        lexRank: 0
       });
     }
 
     // Process FTS results
     for (const chunk of ftsChunks) {
-      const lexSim = chunk.similarity || 0; // Already normalized
+      const lexRel = chunk.similarity || 0; // Set-relative (see fullTextSearchWithMetadata)
+      const lexRank = chunk.lexRank || 0;
       const existing = chunkMap.get(chunk.chunkId);
       if (existing) {
-        existing.lexSim = lexSim;
+        existing.lexRel = lexRel;
+        existing.lexRank = lexRank;
       } else {
         chunkMap.set(chunk.chunkId, {
           chunk,
           vecSim: 0,
-          lexSim
+          lexRel,
+          lexRank
         });
       }
     }
@@ -858,9 +874,10 @@ export class RagService {
     // Calculate hybrid scores with dynamic weights
     const scored = Array.from(chunkMap.values()).map(item => ({
       chunk: item.chunk,
-      finalScore: wVec * item.vecSim + wLex * item.lexSim,
+      finalScore: wVec * item.vecSim + wLex * item.lexRel,
       vecSim: item.vecSim,
-      lexSim: item.lexSim
+      lexSim: absoluteLexicalScore(item.lexRank),
+      lexRank: item.lexRank
     }));
 
     // Sort by finalScore descending
@@ -870,8 +887,9 @@ export class RagService {
     const hybridChunks = scored.map(s => ({
       ...s.chunk,
       similarity: s.finalScore,
-      vecSim: s.vecSim,  // Preserve for reranker gating
-      lexSim: s.lexSim   // Preserve for reranker gating
+      vecSim: s.vecSim,  // Preserve for evidence + reranker gating
+      lexSim: s.lexSim,  // ABSOLUTE lexical score — evidence + reranker gating
+      lexRank: s.lexRank // Raw ts_rank_cd, diagnostics
     }));
 
     // Step 1: Cross-encoder reranking with intent-based gating
@@ -916,6 +934,13 @@ export class RagService {
       crossEncoderEnabled: this.reranker.isEnabled(),
       top3TrustedCount: top3Trusted,
       topScore: reranked[0]?.similarity || 0,
+      // What the evidence gate will see for the top chunk (absolute scores).
+      topGate: {
+        vecSim: reranked[0]?.vecSim ?? null,
+        lexSim: reranked[0]?.lexSim ?? null,
+        lexRank: reranked[0]?.lexRank ?? null,
+      },
+      maxLexRank: Math.max(0, ...(ftsChunks as EvidenceChunk[]).map(c => c.lexRank || 0)),
       top3SourceTypes: reranked.slice(0, 3).map(c => c.document.sourceType),
       timingMs: {
         search: searchMs,        // Vector + FTS parallel search (includes embedding)
