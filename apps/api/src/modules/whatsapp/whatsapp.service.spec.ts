@@ -2,6 +2,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
 import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppService } from "./whatsapp.service";
 import { MetaWebhookBody } from "./whatsapp.types";
+import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
 
 /**
  * Stand-in for the `AnalyticsEvent` table backing the inbound ledger. The store
@@ -135,6 +136,11 @@ describe("WhatsAppService", () => {
       expect(msgs).toEqual([
         { wamid: "wamid.1", from: "919876543210", text: "hello", profileName: "Asha" },
       ]);
+    });
+
+    it("bounds inbound text to MAX_USER_TEXT_LENGTH (this path skips ChatDto)", () => {
+      const msgs = svc.parseInbound(textWebhook("wamid.long", "919876543210", "x".repeat(MAX_USER_TEXT_LENGTH + 500)));
+      expect(msgs[0].text).toHaveLength(MAX_USER_TEXT_LENGTH);
     });
 
     it("ignores statuses-only events", () => {
