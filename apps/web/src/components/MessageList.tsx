@@ -1,9 +1,8 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import { SuchiAvatar } from "./SuchiAvatar";
-import { Citation, CitationData } from "./Citation";
 import { MessageActions } from "./MessageActions";
-import { parseCitations, splitTextWithCitations, toCitationData } from "../utils/citationParser";
+import { removeCitationMarkers } from "../utils/citationParser";
 import { formatRelativeTime } from "../utils/timeUtils";
 
 export interface Message {
@@ -25,70 +24,24 @@ interface MessageListProps {
 }
 
 export const MessageList: React.FC<MessageListProps> = ({ messages, onFeedback }) => {
-  const renderMessageWithCitations = (text: string) => {
-    const citations = parseCitations(text);
-    const parts = splitTextWithCitations(text);
-    const citationMap = new Map<string, CitationData>();
-
-    // Build citation map
-    citations.forEach((citation) => {
-      const key = `${citation.docId}:${citation.chunkId}`;
-      if (!citationMap.has(key)) {
-        citationMap.set(key, toCitationData(citation, citationMap.size));
-      }
-    });
-
-    return (
-      <div>
-        {parts.map((part, index) => {
-          if (part.type === "citation" && part.citation) {
-            const key = `${part.citation.docId}:${part.citation.chunkId}`;
-            const citationData = citationMap.get(key);
-            if (citationData) {
-              const citationIndex = Array.from(citationMap.keys()).indexOf(key);
-              return (
-                <Citation
-                  key={`citation-${index}`}
-                  citation={citationData}
-                  index={citationIndex}
-                />
-              );
-            }
-          }
-          return (
-            <ReactMarkdown key={`text-${index}`}>
-              {part.content}
-            </ReactMarkdown>
-          );
-        })}
-        {citations.length > 0 && (
-          <div style={styles.sourcesSection}>
-            <div style={styles.sourcesHeader}>
-              Sources ({citations.length})
-            </div>
-            <div style={styles.sourcesList}>
-              {Array.from(citationMap.values()).map((citation, index) => (
-                <div key={index} style={styles.sourceItem}>
-                  <span style={styles.sourceNumber}>[{index + 1}]</span>
-                  <span style={styles.sourceTitle}>{citation.title}</span>
-                  {citation.url && (
-                    <a
-                      href={citation.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={styles.sourceLink}
-                    >
-                      View →
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  /**
+   * Assistant text is rendered as markdown with every citation marker removed.
+   *
+   * Citations are an audit artifact (#54): the API strips `[citation:…]`
+   * markers before the response leaves the server, and the structured
+   * `citations` array it returns carries only doc/chunk ids — no title or URL
+   * a reader could follow. So there is nothing verifiable to show per answer,
+   * and this component deliberately shows no per-answer source list (#90).
+   *
+   * The strip here is the client's fail-closed backstop (#68): if a marker ever
+   * reaches the client — complete, unterminated or truncated — it is dropped
+   * rather than rendered as "[1]" / "Source 1" pointing at nothing.
+   */
+  const renderAssistantText = (text: string) => (
+    <div>
+      <ReactMarkdown>{removeCitationMarkers(text)}</ReactMarkdown>
+    </div>
+  );
 
   return (
     <div style={styles.container} role="log" aria-live="polite" aria-label="Chat messages">
@@ -119,7 +72,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, onFeedback }
             <div style={styles.messageContentWrapper}>
               <div style={message.role === "user" ? getUserMessageStyles() : getAssistantMessageStyles()}>
                 {message.role === "assistant" ? (
-                  renderMessageWithCitations(message.text)
+                  renderAssistantText(message.text)
                 ) : (
                   <div>{message.text}</div>
                 )}
@@ -206,49 +159,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "var(--color-text-muted)",
     marginTop: "4px",
     marginLeft: "4px"
-  },
-  sourcesSection: {
-    marginTop: "12px",
-    paddingTop: "10px",
-    borderTop: "1px dashed var(--color-border)",
-    opacity: 0.85
-  },
-  sourcesHeader: {
-    fontSize: "var(--font-size-xs)",
-    fontWeight: "500",
-    color: "var(--color-text-muted)",
-    marginBottom: "6px",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.5px"
-  },
-  sourcesList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px"
-  },
-  sourceItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    fontSize: "var(--font-size-xs)",
-    color: "var(--color-text-muted)"
-  },
-  sourceNumber: {
-    fontWeight: "500",
-    color: "var(--color-text-secondary)",
-    fontSize: "var(--font-size-xs)"
-  },
-  sourceTitle: {
-    flex: 1,
-    whiteSpace: "nowrap" as const,
-    overflow: "hidden",
-    textOverflow: "ellipsis" as const
-  },
-  sourceLink: {
-    color: "var(--color-text-secondary)",
-    textDecoration: "none",
-    fontSize: "10px",
-    opacity: 0.8
   }
 };
 
