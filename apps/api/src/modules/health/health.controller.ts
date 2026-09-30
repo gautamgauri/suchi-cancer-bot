@@ -1,6 +1,10 @@
 import { Controller, Get, HttpException, HttpStatus } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { HealthService } from "./health.service";
 
+// Probes (Cloud Run, uptime checks, deploy gate) arrive from shared Google
+// addresses and must never be answered with 429.
+@SkipThrottle()
 @Controller("health")
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}

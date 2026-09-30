@@ -42,7 +42,7 @@ export class VoiceController {
   ) {}
 
   @Post("respond")
-  @Throttle({ default: { limit: 10, ttl: 60 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseInterceptors(
     FileInterceptor("audio", {
       limits: { fileSize: 2 * 1024 * 1024 },
@@ -87,7 +87,7 @@ export class VoiceController {
    * Used by the web frontend "Listen" button for high-quality server-side TTS.
    */
   @Post("tts")
-  @Throttle({ default: { limit: 20, ttl: 60 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async textToSpeech(@Body() dto: TtsRequestDto): Promise<TtsResponse> {
     if (!dto.text || dto.text.trim().length === 0) {
       throw new BadRequestException("Text is required");

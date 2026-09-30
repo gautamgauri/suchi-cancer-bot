@@ -12,10 +12,15 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { RawBodyRequest } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { WhatsAppService } from "./whatsapp.service";
 import { MetaWebhookBody } from "./whatsapp.types";
 
+// Meta delivers every user's messages from a small pool of Meta addresses and
+// bursts on redelivery. Throttling by IP would 429 real patients and make Meta
+// back off the whole webhook. POST is authenticated by X-Hub-Signature-256.
+@SkipThrottle()
 @Controller("whatsapp")
 export class WhatsAppController {
   constructor(private readonly svc: WhatsAppService) {}

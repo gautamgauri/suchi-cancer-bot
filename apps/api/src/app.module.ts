@@ -1,7 +1,9 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { envSchema } from "./config/env.validation";
+import { ClientIpThrottlerGuard } from "./common/guards/client-ip-throttler.guard";
 
 import { PrismaModule } from "./modules/prisma/prisma.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
@@ -56,6 +58,12 @@ import { DistributionModule } from "./modules/distribution/distribution.module";
     WhatsAppModule,
     DistributionModule,
     ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
-  ]
+  ],
+  providers: [
+    // Without a bound guard ThrottlerModule is inert: every @Throttle in the app
+    // did nothing. Tracks by real client IP behind Cloud Run's front end — see
+    // ClientIpThrottlerGuard / TRUSTED_PROXY_HOPS and `trust proxy` in main.ts.
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
+  ],
 })
 export class AppModule {}
