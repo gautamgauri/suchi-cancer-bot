@@ -45,6 +45,13 @@ import { EvidenceChunk } from "../evidence/evidence-gate.service";
  */
 const LEADING_FRAGMENT_PATTERN = /^[a-z]+(?:\s|$)/;
 
+/**
+ * The list marker that opens a line of chunk text: an ordinal (`4.`, `4)`,
+ * `४.`) or a bullet (`-`, `*`, `+`, `•`), followed by whitespace (issue #158).
+ * The whitespace is required, so a figure such as `1.5 lakh` is not a marker.
+ */
+const LEADING_LIST_MARKER_PATTERN = /^(?:[0-9०-९]{1,2}[.)]|[-*+•])\s+/;
+
 // ─── Step Results ──────────────────────────────────────────────
 
 export interface RetrievalStepResult {
@@ -505,10 +512,20 @@ export class PlanExecutorService {
    *   - ingest markup is removed (`stripIngestMarkup`), and
    *   - a chunk that opens mid-sentence contributes from its first COMPLETE
    *     sentence onward (`dropLeadingSentenceFragment`).
+   *
+   * Each line's own list marker is removed as well (issue #158). Knowledge-base
+   * documents are numbered lists of sections (`### 4. Other Accredited
+   * Hospitals…`), and the chunker cuts them on length, so a continuation chunk
+   * opens on section 4 of a list whose 1–3 live in OTHER chunks. The chunk is
+   * re-emitted as one `- ` bullet, so the source's `4.` reached the reader as
+   * `- 4. …` — a list starting at 4 with no 1–3 anywhere — and, when that line
+   * was not taken as a heading, the first-sentence cut stopped at its `.` and
+   * the bullet was the bare `4.`. Only the marker goes; the words stay.
    */
   private extractSummary(content: string): string {
-    // Strip heading markers and bold, but keep the line structure so a heading
-    // stays a distinct line rather than colliding with the paragraph beneath it.
+    // Strip heading markers, bold and list markers, but keep the line structure
+    // so a heading stays a distinct line rather than colliding with the
+    // paragraph beneath it.
     const lines = content
       .replace(/\r\n/g, "\n")
       .split("\n")
@@ -516,6 +533,7 @@ export class PlanExecutorService {
         this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
           .replace(/\s+/g, " ")
           .trim()
+          .replace(LEADING_LIST_MARKER_PATTERN, "")
       )
       .filter((line) => line.length > 0);
 
@@ -590,8 +608,10 @@ export class PlanExecutorService {
   private firstSentenceOrTruncate(text: string): string {
     if (!text) return "";
 
-    // Take first sentence or first 150 chars
-    const firstSentenceMatch = text.match(/^[^.!?]+[.!?]/);
+    // Take first sentence or first 150 chars. A sentence ends at a terminator
+    // followed by whitespace or the end, so the `.` of `1.5 lakh` does not cut
+    // the bullet down to `1.` (issue #158).
+    const firstSentenceMatch = text.match(/^[\s\S]+?[.!?](?=\s|$)/);
     if (firstSentenceMatch && firstSentenceMatch[0].length <= 200) {
       return firstSentenceMatch[0].trim();
     }
