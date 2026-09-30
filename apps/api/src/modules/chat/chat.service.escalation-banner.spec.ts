@@ -149,11 +149,6 @@ describe("ChatService — escalation banner text (issue #111)", () => {
             extractContextFromMessage: jest
               .fn()
               .mockResolvedValue({ context: undefined, cancerType: undefined, confidence: 0 }),
-            needsGreetingFlow: jest.fn().mockResolvedValue(false),
-            getGreetingStep: jest.fn().mockResolvedValue(0),
-            isGreetingFlowInProgress: jest.fn().mockResolvedValue(false),
-            handleGreetingFlowInterruption: jest.fn().mockResolvedValue(undefined),
-            parseGreetingResponse: jest.fn(),
             updateSessionContext: jest.fn().mockResolvedValue(undefined),
           },
         },
