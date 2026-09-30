@@ -940,7 +940,7 @@ export class RagService {
         lexSim: reranked[0]?.lexSim ?? null,
         lexRank: reranked[0]?.lexRank ?? null,
       },
-      maxLexRank: ftsChunks.reduce((m, c) => Math.max(m, c.lexRank || 0), 0),
+      maxLexRank: Math.max(0, ...(ftsChunks as EvidenceChunk[]).map(c => c.lexRank || 0)),
       top3SourceTypes: reranked.slice(0, 3).map(c => c.document.sourceType),
       timingMs: {
         search: searchMs,        // Vector + FTS parallel search (includes embedding)

@@ -80,7 +80,7 @@ export class EvidenceGateService {
 
   /**
    * Check if RAG has strong matches (Rule B1)
-   * Strong = gateScore > 0.7 OR top 3 chunks from trusted sources
+   * Strong = a top-3 chunk with gateScore > 0.7 OR top 3 chunks from trusted sources
    * Uses max(vecSim, lexSim) to avoid hybrid score dilution when FTS misses.
    */
   hasStrongMatches(chunks: EvidenceChunk[]): boolean {
@@ -88,11 +88,17 @@ export class EvidenceGateService {
       return false;
     }
 
-    // Check if top chunk has high gateScore (> 0.7)
-    // Uses raw max(vecSim, lexSim) instead of hybrid score to avoid dilution
-    const topChunk = chunks[0];
-    const topGateScore = getGateScore(topChunk);
-    if (topGateScore > 0.7) {
+    // Check if one of the top 3 chunks has a high gateScore (> 0.7).
+    // Uses raw max(vecSim, lexSim) instead of hybrid score to avoid dilution.
+    //
+    // Top 3, not chunks[0]: hybrid ORDERING still blends the set-relative lexical
+    // score (best lexical row = 1.0), so an incidental lexical hit can sit above a
+    // strong vector match (0.45 × 1.0 beats 0.55 × 0.78 on long queries). While
+    // lexSim was also set-relative that chunk "carried" the gate; now that lexSim
+    // is absolute it no longer does, and looking only at chunks[0] would demote
+    // turns whose strong passage is ranked second. Same window as the trusted rule.
+    const top3GateScore = Math.max(...chunks.slice(0, 3).map(getGateScore));
+    if (top3GateScore > 0.7) {
       return true;
     }
 
