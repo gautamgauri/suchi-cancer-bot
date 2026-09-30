@@ -91,6 +91,14 @@ export class VoiceWsGateway
       return;
     }
 
+    // A repeat audio:start must not orphan the previous recognizer stream
+    // (it would stay open and billed until Google's own deadline).
+    if (session.streamingSession) {
+      this.logger.warn({ event: 'ws_audio_restart', clientId: client.id });
+      session.streamingSession.destroy();
+      session.streamingSession = null;
+    }
+
     session.sessionId = data.sessionId;
     session.locale = data.locale || 'hi-IN';
 
@@ -139,9 +147,17 @@ export class VoiceWsGateway
 
     this.clearIdleTimer(client.id);
 
+    // Detach this turn's stream so a new audio:start during the pipeline
+    // gets its own stream and our cleanup below cannot destroy it.
+    const streamingSession = session.streamingSession;
+    const sessionId = session.sessionId;
+    const locale = session.locale;
+    session.streamingSession = null;
+
     try {
-      // Get final STT result
-      const sttResult = await session.streamingSession.end();
+      // Wait for the recognizer to flush: the transcript is every final
+      // utterance of the turn, joined in order.
+      const sttResult = await streamingSession.end();
       client.emit('stt:final', {
         transcript: sttResult.transcript,
         confidence: sttResult.confidence,
@@ -156,9 +172,9 @@ export class VoiceWsGateway
       // Run pipeline (Chat → TTS → GCS)
       const pipelineResult =
         await this.voiceService.handleVoiceRequestFromTranscript(
-          session.sessionId,
+          sessionId,
           sttResult.transcript,
-          session.locale,
+          locale,
         );
 
       client.emit('response', {
@@ -181,9 +197,8 @@ export class VoiceWsGateway
         message: 'Failed to process voice request',
       });
     } finally {
-      // Cleanup streaming session, allow new stream
-      session.streamingSession?.destroy();
-      session.streamingSession = null;
+      // Cleanup this turn's stream (idempotent)
+      streamingSession.destroy();
     }
   }
 
@@ -213,6 +228,7 @@ export class VoiceWsGateway
       if (session.idleTimer) clearTimeout(session.idleTimer);
       if (session.maxTimer) clearTimeout(session.maxTimer);
       session.streamingSession?.destroy();
+      session.streamingSession = null;
       this.clients.delete(clientId);
     }
   }
