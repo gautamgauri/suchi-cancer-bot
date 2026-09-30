@@ -55,7 +55,7 @@ const sendQuestion = async () => {
   const input = screen.getByPlaceholderText('Type your message...');
   await user.type(input, 'My child is on treatment and has a severe headache.');
   await user.keyboard('{Enter}');
-  // Settle the greeting-state refresh promises so assertions run quiet.
+  // Settle pending promises so assertions run quiet.
   await act(async () => {
     await Promise.resolve();
   });
@@ -70,16 +70,6 @@ describe('ChatInterface — 55s turn timeout (issue #171)', () => {
       suchi_sources_disclosure_seen: 'true',
     });
     Element.prototype.scrollIntoView = vi.fn();
-    mocks.get.mockResolvedValue({
-      data: {
-        sessionId: 'session-1',
-        createdAt: '2026-09-19T07:56:06.000Z',
-        greetingCompleted: true,
-        currentGreetingStep: null,
-        userContext: null,
-        cancerType: null,
-      },
-    });
   });
 
   it('renders the helpline/emergency fallback instead of the generic error', async () => {

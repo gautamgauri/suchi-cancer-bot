@@ -55,40 +55,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
   const [conversationEnded, setConversationEnded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [greetingStep, setGreetingStep] = useState<number | null>(null);
-  const [greetingCompleted, setGreetingCompleted] = useState<boolean>(false);
   const [showSourcesDisclosure, setShowSourcesDisclosure] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
-    // Check session state to coordinate with backend greeting flow
-    const checkSessionState = async () => {
-      try {
-        const sessionInfo = await apiService.getSession(sessionId);
-        setGreetingCompleted(sessionInfo.greetingCompleted);
-        setGreetingStep(sessionInfo.currentGreetingStep);
-        
-        // Only show welcome modal if greeting is completed and user hasn't seen it
-        // This prevents duplicate greeting experiences
-        if (sessionInfo.greetingCompleted) {
-          const hasSeenWelcome = localStorage.getItem("suchi_welcome_seen");
-          if (!hasSeenWelcome && messages.length === 0) {
-            setShowWelcome(true);
-          }
-        }
-      } catch (err) {
-        // If session check fails, fall back to old behavior
-        console.warn("Failed to check session state:", err);
-        const hasSeenWelcome = localStorage.getItem("suchi_welcome_seen");
-        if (!hasSeenWelcome && messages.length === 0) {
-          setShowWelcome(true);
-        }
-      }
-    };
-    
-    checkSessionState();
+    const hasSeenWelcome = localStorage.getItem("suchi_welcome_seen");
+    if (!hasSeenWelcome && messages.length === 0) {
+      setShowWelcome(true);
+    }
   }, [sessionId, messages.length]);
 
   const scrollToBottom = () => {
@@ -147,7 +123,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       // Issue #171: the turn timed out server-side, but the API still composed
       // the helpline / 112 / 108 fallback above. Render it as the reply instead
       // of the generic error overlay. Nothing was persisted for this turn, so
-      // it is not the feedback target and there is no greeting state to refresh.
+      // it is not the feedback target.
       if (timedOut) {
         setSafetyBanner(null);
         // Drop the previous answer as the feedback target too — otherwise the
@@ -164,15 +140,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       if (!hasSeenSourcesDisclosure) {
         setShowSourcesDisclosure(true);
         localStorage.setItem("suchi_sources_disclosure_seen", "true");
-      }
-
-      // Update greeting state after message
-      try {
-        const sessionInfo = await apiService.getSession(sessionId);
-        setGreetingCompleted(sessionInfo.greetingCompleted);
-        setGreetingStep(sessionInfo.currentGreetingStep);
-      } catch (err) {
-        // Ignore errors updating greeting state
       }
 
       // Handle safety events
@@ -256,24 +223,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
             classification={safetyBanner.classification}
             message={safetyBanner.message}
           />
-        </div>
-      )}
-
-      {greetingStep !== null && greetingStep > 0 && greetingStep < 3 && !greetingCompleted && (
-        <div style={styles.greetingIndicator}>
-          <div style={styles.greetingProgress}>
-            <span style={styles.greetingProgressText}>
-              Getting started {greetingStep} of 2
-            </span>
-            <div style={styles.greetingProgressBar}>
-              <div 
-                style={{
-                  ...styles.greetingProgressFill,
-                  width: `${(greetingStep / 2) * 100}%`
-                }}
-              />
-            </div>
-          </div>
         </div>
       )}
 
@@ -458,33 +407,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   bannerContainer: {
     padding: "16px 20px",
     backgroundColor: "var(--color-surface)"
-  },
-  greetingIndicator: {
-    padding: "12px 20px",
-    backgroundColor: "var(--color-surface-alt)",
-    borderBottom: "1px solid var(--color-border)"
-  },
-  greetingProgress: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px"
-  },
-  greetingProgressText: {
-    fontSize: "var(--font-size-sm)",
-    color: "var(--color-text-secondary)",
-    fontWeight: "500"
-  },
-  greetingProgressBar: {
-    width: "100%",
-    height: "4px",
-    backgroundColor: "var(--color-border)",
-    borderRadius: "2px",
-    overflow: "hidden"
-  },
-  greetingProgressFill: {
-    height: "100%",
-    backgroundColor: "var(--color-primary)",
-    transition: "width 0.3s ease"
   },
   chatContainer: {
     flex: 1,

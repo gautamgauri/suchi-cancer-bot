@@ -70,15 +70,6 @@ export interface FeedbackResponse {
   createdAt: string;
 }
 
-export interface SessionInfo {
-  sessionId: string;
-  createdAt: string;
-  greetingCompleted: boolean;
-  currentGreetingStep: number | null;
-  userContext: string | null;
-  cancerType: string | null;
-}
-
 /**
  * The API answers a 55-second turn timeout with HTTP 504 whose *body* is still
  * user-facing: `chat.controller.ts` composes the Indian Cancer Society helpline
@@ -117,11 +108,6 @@ function timeoutFallbackFrom(err: unknown): ChatResponse | null {
 export const apiService = {
   async createSession(data: CreateSessionRequest): Promise<CreateSessionResponse> {
     const response = await api.post<CreateSessionResponse>("/sessions", data);
-    return response.data;
-  },
-
-  async getSession(sessionId: string): Promise<SessionInfo> {
-    const response = await api.get<SessionInfo>(`/sessions/${sessionId}`);
     return response.data;
   },
 
