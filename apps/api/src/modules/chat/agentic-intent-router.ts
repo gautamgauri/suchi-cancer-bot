@@ -139,7 +139,11 @@ const NAVIGATION_PATTERNS: RegExp[] = [
   /\b(hospital|doctor|treatment)\s+(in|near|at)\s+\w+/i,
   /\b(patna|bihar|delhi|mumbai|kolkata|chennai|bangalore|hyderabad|gaya|muzaffarpur|bhagalpur)\b.*\b(hospital|doctor|cancer|oncolog)/i,
   // Hindi
-  /\b(कौन\s*सा|सबसे\s*अच्छा|नज़दीकी)\s*(हॉस्पिटल|अस्पताल|डॉक्टर)\b/i,
+  // NO \b around Devanagari: JS `\b` is ASCII-only, so the old
+  // boundary-guarded form never matched and "कौन सा अस्पताल" never routed here.
+  // The left fence stops "कौन" matching inside a longer word; the nukta in
+  // नज़दीकी may arrive precomposed (U+095B), decomposed, or be dropped.
+  /(?<![ऀ-ॿ])(कौन\s*सा|सबसे\s*अच्छा|न(?:ज\u093C?|\u095B)दीकी)\s*(हॉस्पिटल|अस्पताल|डॉक्टर)/,
   /बायोप्सी\s*(रिपोर्ट)?\s*(आया|आई|मिला)/i,
   /आगे\s*क्या\s*(करना|करें|होगा)/i,
   // Hinglish

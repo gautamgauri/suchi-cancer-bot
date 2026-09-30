@@ -111,6 +111,30 @@ describe("AgenticIntentRouter", () => {
     });
   });
 
+  describe("classifyFastPath — Hindi-script provider choice (no ASCII-only \\b)", () => {
+    // The Devanagari pattern used to be wrapped in `\b…\b`. JS `\b` is
+    // ASCII-only, so it never matched and these never routed to NAVIGATION.
+    test.each([
+      "कौन सा अस्पताल अच्छा है",
+      "पटना में कौन सा अस्पताल सही रहेगा?",
+      "कौनसा हॉस्पिटल ठीक है",
+      "सबसे अच्छा डॉक्टर कौन है",
+      "नज़दीकी अस्पताल बताइए",
+      "नजदीकी अस्पताल बताइए",
+      "न\u095Bदीकी अस्पताल बताइए",
+    ])("classifies as NAVIGATION: %s", (text) => {
+      expect(classifyFastPath(text)?.category).toBe("NAVIGATION");
+    });
+
+    test.each([
+      "कैंसर क्या होता है?",
+      "कौन सा खाना खाना चाहिए?",
+      "अस्पताल में कीमो कितने दिन चलती है?",
+    ])("does not route a plain Hindi question to NAVIGATION: %s", (text) => {
+      expect(classifyFastPath(text)?.category).not.toBe("NAVIGATION");
+    });
+  });
+
   describe("classifyFastPath — returns null for ambiguous", () => {
     const ambiguousCases = [
       "What is cancer?",

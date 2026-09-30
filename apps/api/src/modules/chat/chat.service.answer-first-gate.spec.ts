@@ -287,3 +287,41 @@ describe("Answer-first definitional gate — claim-verification questions (issue
     expect(llm.generateWithCitations).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The Hindi/Hinglish "general information" and "doctor said cancer" cues that
+ * force the full structured response used `\b(cancer|कैंसर)\b` — dead for
+ * Hindi script, since JS `\b` is ASCII-only — and two copies spelled it
+ * "kैंसर" (Latin k). Hindi-script requests for information about cancer took
+ * the 2-3 sentence definitional path the cues exist to prevent.
+ */
+describe("Answer-first definitional gate — Hindi-script structured-response cues", () => {
+  const chunks = () => makeChunks(Q04_PROD_SIMILARITIES);
+
+  async function route(userText: string) {
+    const { service, llm } = await buildService({ userContext: "general", chunks: chunks() });
+    await service.handle({ sessionId: "session1", userText, channel: "web" } as any);
+    return {
+      definitional: llm.generateDefinitionalResponse.mock.calls.length,
+      full: llm.generateWithCitations.mock.calls.length,
+    };
+  }
+
+  test.each([
+    "मुझे कैंसर के बारे में जानकारी चाहिए",
+    "कैंसर की जानकारी दीजिए",
+    "कैंसर ki jankari chahiye",
+    "डॉक्टर ने बताया कि कैंसर है",
+  ])("%s → full structured response, not answer-first", async (text) => {
+    expect(await route(text)).toEqual({ definitional: 0, full: 1 });
+  });
+
+  test.each([
+    // Controls: a Hindi definitional question keeps the answer-first path, and
+    // कहाँ ("where") is not the "told" cue कहा.
+    "बायोप्सी क्या होती है?",
+    "कैंसर का इलाज कहाँ होता है?",
+  ])("control: %s keeps the answer-first path", async (text) => {
+    expect(await route(text)).toEqual({ definitional: 1, full: 0 });
+  });
+});
