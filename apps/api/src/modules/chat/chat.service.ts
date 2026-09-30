@@ -188,11 +188,10 @@ export class ChatService {
       status: string;
       userContext: string | null;
       cancerType: string | null;
-      greetingCompleted: boolean;
       emotionalState: string | null;
     }>>`
       SELECT id, "createdAt", channel, locale, "userType", status,
-             "userContext", "cancerType", "greetingCompleted", "emotionalState"
+             "userContext", "cancerType", "emotionalState"
       FROM "Session"
       WHERE id = ${sessionId}
       LIMIT 1
@@ -689,8 +688,8 @@ export class ChatService {
       };
     }
 
-    // 1.6. Extract context and emotional state from message (even if greeting is bypassed)
-    // This ensures we capture context silently for evaluation compatibility
+    // 1.6. Extract context and emotional state from message silently (rule-based).
+    // The stored userContext/cancerType feed IntentClassifier and RAG on later turns.
     // Parallelize context extraction and emotional tone detection
     const [contextResult, emotionalToneResult] = await Promise.all([
       this.greetingFlow.extractContextFromMessage(dto.userText),
@@ -711,7 +710,7 @@ export class ChatService {
       });
     }
 
-    // 1.6.3. Mental health support check (after safety, before greeting flow)
+    // 1.6.3. Mental health support check (after safety, before greeting)
     // Detect if user needs mental health support - crisis takes highest priority
     const mentalHealthNeed = this.empathyDetector.detectMentalHealthNeed(dto.userText);
 
@@ -815,199 +814,9 @@ export class ChatService {
       };
     }
 
-    // 1.6.5. Check for greeting flow interruption (before greeting check)
-    // If user sends non-greeting message during active greeting flow, complete it silently
-    const isGreetingFlowInProgress = await this.greetingFlow.isGreetingFlowInProgress(dto.sessionId);
-    const isSkipRequest = /\b(skip|skip this|not now|later|just answer|help me|I have a question)\b/i.test(dto.userText);
-    
-    if (isGreetingFlowInProgress && !GreetingDetector.isGreeting(dto.userText)) {
-      // User is interrupting greeting flow with a question or skip request
-      // Complete the flow silently using extracted context
-      await this.greetingFlow.handleGreetingFlowInterruption(
-        dto.sessionId,
-        contextResult,
-        emotionalToneResult.tone
-      );
-      
-      // If it's a skip request, add a brief acknowledgment
-      if (isSkipRequest) {
-        // Continue to process the message normally, but flow is now complete
-        this.logger.log(`Greeting flow skipped by user for session ${dto.sessionId}`);
-      } else {
-        // Medical query during greeting - complete flow silently and continue
-        this.logger.log(`Greeting flow interrupted by medical query for session ${dto.sessionId}`);
-      }
-    }
-
-    // 1.7. Check for greeting (after safety and urgency checks, before RAG)
-    // Handle interactive greeting flow if needed
-    const needsGreeting = await this.greetingFlow.needsGreetingFlow(dto.sessionId);
-    if (needsGreeting && GreetingDetector.isGreeting(dto.userText)) {
-      const greetingStep = await this.greetingFlow.getGreetingStep(dto.sessionId);
-      
-      if (greetingStep === 1) {
-        // First greeting question
-        const greetingText = ResponseTemplates.interactiveGreetingStep1(emotionalToneResult.tone);
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: greetingText,
-            safetyClassification: "normal",
-            latencyMs: Date.now() - started
-          }
-        });
-
-        // Update explicit step state
-        await this.greetingFlow.updateSessionContext(dto.sessionId, {
-          currentGreetingStep: 1,
-        });
-
-        await this.analytics.emit("greeting_response", { step: 1, emotionalTone: emotionalToneResult.tone }, dto.sessionId);
-
-        return {
-          sessionId: dto.sessionId,
-          messageId: assistant.id,
-          responseText: assistant.text,
-          safety: { classification: "normal" as const, actions: [] }
-        };
-      } else if (greetingStep === 2) {
-        // Parse user response and ask for cancer type
-        const parseResult = await this.greetingFlow.parseGreetingResponse(dto.userText, 1);
-        
-        if (parseResult.context) {
-          await this.greetingFlow.updateSessionContext(dto.sessionId, {
-            userContext: parseResult.context,
-            emotionalState: parseResult.emotionalTone,
-          });
-        }
-
-        if (parseResult.nextStep === 2) {
-          // Need cancer type
-          // Reuse session fetched at start
-          const greetingText = ResponseTemplates.interactiveGreetingStep2(
-            parseResult.context || session?.userContext || "general",
-            parseResult.emotionalTone || emotionalToneResult.tone
-          );
-          const assistant = await this.prisma.message.create({
-            data: {
-              sessionId: dto.sessionId,
-              role: "assistant",
-              text: greetingText,
-              safetyClassification: "normal",
-              latencyMs: Date.now() - started
-            }
-          });
-
-          // Update explicit step state
-          await this.greetingFlow.updateSessionContext(dto.sessionId, {
-            userContext: parseResult.context,
-            emotionalState: parseResult.emotionalTone,
-            currentGreetingStep: 2,
-          });
-
-          await this.analytics.emit("greeting_response", { step: 2, context: parseResult.context }, dto.sessionId);
-
-          return {
-            sessionId: dto.sessionId,
-            messageId: assistant.id,
-            responseText: assistant.text,
-            safety: { classification: "normal" as const, actions: [] }
-          };
-        } else if (parseResult.nextStep === 3) {
-          // Complete greeting flow
-          await this.greetingFlow.updateSessionContext(dto.sessionId, {
-            userContext: parseResult.context,
-            cancerType: parseResult.cancerType,
-            emotionalState: parseResult.emotionalTone,
-            greetingCompleted: true,
-            currentGreetingStep: 3,
-          });
-
-          const greetingText = ResponseTemplates.greetingComplete(
-            parseResult.context || "general",
-            parseResult.cancerType,
-            parseResult.emotionalTone || emotionalToneResult.tone
-          );
-          const assistant = await this.prisma.message.create({
-            data: {
-              sessionId: dto.sessionId,
-              role: "assistant",
-              text: greetingText,
-              safetyClassification: "normal",
-              latencyMs: Date.now() - started
-            }
-          });
-
-          await this.analytics.emit("greeting_completed", { 
-            context: parseResult.context, 
-            cancerType: parseResult.cancerType 
-          }, dto.sessionId);
-
-          return {
-            sessionId: dto.sessionId,
-            messageId: assistant.id,
-            responseText: assistant.text,
-            safety: { classification: "normal" as const, actions: [] }
-          };
-        }
-      } else if (greetingStep === 3) {
-        // Parse cancer type response and complete
-        const parseResult = await this.greetingFlow.parseGreetingResponse(dto.userText, 2);
-        
-        await this.greetingFlow.updateSessionContext(dto.sessionId, {
-          cancerType: parseResult.cancerType,
-          emotionalState: parseResult.emotionalTone,
-          greetingCompleted: true,
-          currentGreetingStep: 3,
-        });
-
-        // Reuse session fetched at start
-        const greetingText = ResponseTemplates.greetingComplete(
-          session?.userContext || "general",
-          parseResult.cancerType,
-          parseResult.emotionalTone || emotionalToneResult.tone
-        );
-        const assistant = await this.prisma.message.create({
-          data: {
-            sessionId: dto.sessionId,
-            role: "assistant",
-            text: greetingText,
-            safetyClassification: "normal",
-            latencyMs: Date.now() - started
-          }
-        });
-
-        await this.analytics.emit("greeting_completed", { 
-          context: session?.userContext, 
-          cancerType: parseResult.cancerType 
-        }, dto.sessionId);
-
-        return {
-          sessionId: dto.sessionId,
-          messageId: assistant.id,
-          responseText: assistant.text,
-          safety: { classification: "normal" as const, actions: [] }
-        };
-      }
-    }
-
-    // 1.7.5. Check for skip request even if not in greeting flow
-    // Allow users to explicitly skip greeting if they send skip keywords
-    // Re-check greeting state after potential interruption handling
-    const stillNeedsGreeting = await this.greetingFlow.needsGreetingFlow(dto.sessionId);
-    const stillInProgress = await this.greetingFlow.isGreetingFlowInProgress(dto.sessionId);
-    if (isSkipRequest && stillNeedsGreeting && !stillInProgress) {
-      // User wants to skip greeting - mark as completed with general context
-      await this.greetingFlow.updateSessionContext(dto.sessionId, {
-        userContext: "general",
-        greetingCompleted: true,
-        currentGreetingStep: 3,
-      });
-      this.logger.log(`Greeting flow skipped by user request for session ${dto.sessionId}`);
-    }
-
-    // Fallback to old greeting handling if not in interactive flow
+    // 1.7. Greeting (after safety, urgency and mental-health checks, before RAG).
+    // A bare greeting gets the one-line G1 template on the first turn and G2
+    // afterwards (TemplateSelector chooses by isFirstMessage).
     if (GreetingDetector.isGreeting(dto.userText)) {
       // Reuse isFirstMessage from message count fetched at start
 
