@@ -16,7 +16,7 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
-import { StructuredExtractorService, StructuredInfo } from "./structured-extractor.service";
+import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
@@ -2095,7 +2095,18 @@ export class ChatService {
 
       // POST-PROCESSING: Check completeness and fill gaps if needed
       const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
-      
+
+      // The disclaimer's locale signal (#163) plus Romanized Hinglish, which it
+      // cannot see: the fallback block is spliced into this body, so it has to
+      // be readable next to it (#186).
+      const fallbackContent = completenessResult.meetsPolicy
+        ? ""
+        : this.structuredExtractor.generateFallbackContent(
+            completenessResult.missing,
+            extraction,
+            resolveFallbackLocale(disclaimerLocale, dto.userText, responseText)
+          );
+
       // Structured logging for completeness outcomes (observability)
       this.logger.log({
         event: "completeness_check",
@@ -2120,7 +2131,9 @@ export class ChatService {
             required: completenessResult.coverage.timeline.required,
           },
         },
-        fallbackInserted: !completenessResult.meetsPolicy && completenessResult.missing.diagnosticTests.length + completenessResult.missing.warningSigns.length > 0,
+        // Reflects the block we actually built: a reply whose language has no
+        // reviewed labels yet gets none, and the log must not claim one (#186).
+        fallbackInserted: fallbackContent.length > 0,
         meetsPolicy: completenessResult.meetsPolicy,
       });
       
@@ -2129,7 +2142,6 @@ export class ChatService {
           `Response incomplete: tests=${completenessResult.coverage.diagnosticTests.found}/${completenessResult.coverage.diagnosticTests.required}, ` +
           `signs=${completenessResult.coverage.warningSigns.found}/${completenessResult.coverage.warningSigns.required}`
         );
-        const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
         if (fallbackContent) {
           // Try multiple insertion points (most specific first)
           const insertionPatterns = [
@@ -2246,7 +2258,7 @@ export class ChatService {
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -2447,7 +2459,7 @@ export class ChatService {
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
         let retryOrphanCount = retryExtractionResult.orphanCount;
@@ -3014,10 +3026,21 @@ export class ChatService {
    * Reapply essential-term / completeness fallback after any regeneration that replaces responseText.
    * Call after identify regeneration and citation regeneration so injected terms are not lost.
    */
-  private applyEssentialTermFallback(responseText: string, extraction: StructuredInfo, queryType: string): string {
+  private applyEssentialTermFallback(
+    responseText: string,
+    extraction: StructuredInfo,
+    queryType: string,
+    locale?: string | null,
+    userText?: string
+  ): string {
     const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
     if (completenessResult.meetsPolicy) return responseText;
-    const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+    // The block is written in the language of the body it is spliced into (#186).
+    const fallbackContent = this.structuredExtractor.generateFallbackContent(
+      completenessResult.missing,
+      extraction,
+      resolveFallbackLocale(locale, userText, responseText)
+    );
     if (!fallbackContent) return responseText;
     const insertionPatterns = [
       /(\n\n\*\*Questions to Ask Your Doctor:\*\*)/i,
