@@ -47,7 +47,6 @@ import { ReviewContext } from "../review/review-checks";
 import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
-import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
 
 /**
  * Joins the safety escalation block and the appended RAG answer on the urgent
@@ -56,6 +55,14 @@ import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
  * apps/web/src/utils/escalationText.ts — change both or neither.
  */
 export const ESCALATION_RAG_SEPARATOR = "\n\n**Information from trusted sources:**\n\n";
+
+/**
+ * Abstention reason for a Navigate-Mode personal-symptom turn (issue #166).
+ * That path uses no KB content, so it may not carry symptom guidance; it
+ * delivers the existing SafeFallbackResponse under this code instead. Distinct
+ * so an SCCF-approved bounded response (#53) can be routed to it alone.
+ */
+export const PERSONAL_SYMPTOM_NO_KB_BACKING = "PERSONAL_SYMPTOM_NO_KB_BACKING";
 
 @Injectable()
 export class ChatService {
@@ -2621,40 +2628,83 @@ export class ChatService {
       this.flagSessionForReview(dto.sessionId, "symptom_query").catch(() => {});
     }
 
-    // Navigate Mode: FR-JOURNEY-003 soft redirect for PERSONAL_SYMPTOMS — no RAG, no diagnostic content
+    // Navigate Mode: FR-JOURNEY-003 redirect for PERSONAL_SYMPTOMS — no RAG, no diagnostic content.
+    //
+    // Issue #166: this branch deliberately uses no KB content, so anything it
+    // says is, by construction, not KB-backed. It used to have the LLM free-write
+    // symptom guidance (SYMPTOM_SOFT_REDIRECT_PROMPT: "many possible causes…",
+    // "see a doctor soon", and the model itself deciding whether the symptom
+    // "sounds urgent"), falling back to navigateModeFrame — which carries
+    // unreviewed timeframes and reassurance. Both are medical guidance without
+    // KB backing, which CLAUDE.md forbids.
+    //
+    // Engineering guard only: deliver the existing no-medical-content fallback.
+    // Red flags never reach this line — the emergency fast path, the safety
+    // classifier and the urgency guard (S2 escalation) all return earlier, and
+    // work with zero chunks. A bounded, SCCF-approved symptom navigation response
+    // (#53 / #157) can be routed here by PERSONAL_SYMPTOM_NO_KB_BACKING without
+    // touching any other abstention path.
     if (mode === "navigate" && intentResult.intent === "PERSONAL_SYMPTOMS") {
       // FR-REVIEW-001: flag for human review
       this.flagSessionForReview(dto.sessionId, "symptom_query").catch(() => {});
 
-      // Generate empathetic soft redirect without any KB symptom content
-      let responseText: string;
-      try {
-        // Reply in the user's dominant language (English / Hindi / Hinglish).
-        responseText = await this.llmWithDeadline(requestDeadlineMs, "symptom-soft-redirect", () =>
-          this.llm.generate(buildSymptomSoftRedirectPrompt(dto.userText), "", dto.userText),
-          signal
-        );
-        if (!responseText) throw new Error("empty");
-      } catch {
-        responseText = ResponseTemplates.navigateModeFrame(dto.userText);
-      }
+      const reasonCode = PERSONAL_SYMPTOM_NO_KB_BACKING;
+      let responseText = this.abstention.generateSafeFallbackResponse(reasonCode, queryType);
 
       if (dto.channel === 'voice') responseText = stripForVoice(responseText);
 
+      this.logger.warn({
+        event: "personal_symptom_abstained",
+        sessionId: dto.sessionId,
+        reasonCode,
+        // Separates "retrieval found nothing" from "retrieval found evidence
+        // this path does not use" (issue #166, question 2).
+        retrievedChunkCount: evidenceChunks.length,
+        gateStatus: gateResult.status,
+      });
+
       const assistant = await this.persistAssistantMessage(
         dto.sessionId, responseText, [], [],
-        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false, locale: disclaimerLocale, userText: dto.userText }
+        {
+          safetyClassification: "normal",
+          latencyMs: Date.now() - started,
+          kbDocIds: [],
+          evidenceQuality: "insufficient",
+          evidenceGatePassed: false,
+          abstentionReason: reasonCode,
+          locale: disclaimerLocale,
+          userText: dto.userText,
+        }
       );
-      await this.analytics.emit("symptom_soft_redirect", { intent: intentResult.intent }, dto.sessionId);
+      await this.analytics.emit("abstention_response", {
+        reason: reasonCode,
+        intent: intentResult.intent,
+        queryType,
+        path: "symptom_soft_redirect",
+        retrievedChunkCount: evidenceChunks.length,
+      }, dto.sessionId);
+      // Kept so existing dashboards on this path keep counting it.
+      await this.analytics.emit("symptom_soft_redirect", { intent: intentResult.intent, abstained: true }, dto.sessionId);
 
       return {
         sessionId: dto.sessionId,
         messageId: assistant.id,
         responseText: assistant.text,
         safety: { classification: "normal" as const, actions: [] },
+        abstentionReason: reasonCode,
         citations: [],
         citationConfidence: undefined,
-        retrievedChunks: []
+        // What retrieval found — none of it is in the reply (no citations), but
+        // an abstention must not look like a retrieval miss.
+        retrievedChunks: evidenceChunks.slice(0, 6).map(chunk => ({
+          docId: chunk.docId,
+          chunkId: chunk.chunkId,
+          sourceType: chunk.document.sourceType,
+          isTrustedSource: chunk.document.isTrustedSource,
+          similarity: chunk.similarity,
+          vecSim: (chunk as any).vecSim,
+          lexSim: (chunk as any).lexSim
+        }))
       };
     }
 
