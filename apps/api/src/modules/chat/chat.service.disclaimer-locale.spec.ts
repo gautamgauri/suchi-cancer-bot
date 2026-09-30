@@ -422,4 +422,53 @@ describe("ChatService.handle — disclaimer language (#162)", () => {
     expect(trailingDisclaimer(result.responseText!)).toContain(EN_EMERGENCY);
     expect(trailingDisclaimer(result.responseText!)).not.toContain(HI_EMERGENCY);
   });
+
+  /**
+   * Issue #188 — the English "**Important:**" preamble that trailingDisclaimer()
+   * above deliberately ignores. It comes from the phase-3 output verifier's
+   * has_disclaimer auto-fix, which was language-blind, so a Hindi reader got
+   * English clinical safety wording glued to the TOP of a Hindi answer. Third
+   * path of the same reader-facing class: #163 fixed the append, #187 the
+   * completeness fallback's headings, this one the prepend.
+   *
+   * These assert the whole delivered reply, preamble included.
+   */
+  describe("phase-3 verifier auto-fix language (#188)", () => {
+    // Same Hindi body, but carrying the Latin gloss real replies carry — that
+    // is what makes MEDICAL_CONTENT_PATTERNS fire and reach the auto-fix.
+    const HINDI_ANSWER_WITH_GLOSS = HINDI_ANSWER.replace(
+      "कीमोथेरेपी एक ऐसा इलाज है",
+      "कीमोथेरेपी (chemotherapy) एक ऐसा इलाज है"
+    );
+    const EN_PREPEND = "**Important:**";
+
+    it("a Hindi reply carries no English disclaimer block anywhere", async () => {
+      const { chat } = await buildService({ locale: "hi", answer: HINDI_ANSWER_WITH_GLOSS });
+
+      const result = await chat.handle({
+        sessionId: "s1",
+        channel: "whatsapp",
+        locale: "hi",
+        userText: "कीमोथेरेपी क्या होती है और यह कैसे दी जाती है",
+      });
+
+      expect(result.responseText).not.toContain(EN_PREPEND);
+      expect(result.responseText).not.toContain(EN_STANDARD);
+      expect(result.responseText).toContain(HI_STANDARD);
+    });
+
+    it("an English reply still carries the English disclaimer", async () => {
+      const { chat } = await buildService({ locale: "en", answer: ENGLISH_ANSWER });
+
+      const result = await chat.handle({
+        sessionId: "s1",
+        channel: "whatsapp",
+        locale: "en",
+        userText: "what is chemotherapy and how is it given",
+      });
+
+      expect(result.responseText).toContain(EN_STANDARD);
+      expect(result.responseText).not.toContain(HI_STANDARD);
+    });
+  });
 });

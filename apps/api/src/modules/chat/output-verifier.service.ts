@@ -20,7 +20,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { VerifyCheck } from "./execution-planner.service";
-import { hasDisclaimer } from "../safety/disclaimer-engine";
+import { appendDisclaimer, detectLocale, hasDisclaimer } from "../safety/disclaimer-engine";
 import { normalizeForMatch } from "../safety/text-normalizer";
 
 // ─── Interfaces ────────────────────────────────────────────────
@@ -141,7 +141,8 @@ export class OutputVerifierService {
     content: string,
     evidenceChunks: EvidenceChunk[],
     checks: VerifyCheck[],
-    userText: string
+    userText: string,
+    locale?: string | null
   ): VerificationResult {
     const violations: PolicyViolation[] = [];
     let fixedContent: string | null = null;
@@ -159,7 +160,12 @@ export class OutputVerifierService {
           this.checkNoDosage(workingContent, violations);
           break;
         case "has_disclaimer": {
-          const disclaimerResult = this.checkHasDisclaimer(workingContent, violations);
+          const disclaimerResult = this.checkHasDisclaimer(
+            workingContent,
+            violations,
+            userText,
+            locale
+          );
           if (disclaimerResult.fixed) {
             workingContent = disclaimerResult.content;
             fixedContent = workingContent;
@@ -220,13 +226,15 @@ export class OutputVerifierService {
   quickVerify(
     content: string,
     evidenceChunks: EvidenceChunk[],
-    userText: string
+    userText: string,
+    locale?: string | null
   ): VerificationResult {
     return this.verify(
       content,
       evidenceChunks,
       ["no_diagnosis", "no_prognosis", "no_dosage", "has_disclaimer"],
-      userText
+      userText,
+      locale
     );
   }
 
@@ -291,7 +299,9 @@ export class OutputVerifierService {
 
   private checkHasDisclaimer(
     content: string,
-    violations: PolicyViolation[]
+    violations: PolicyViolation[],
+    userText?: string,
+    locale?: string | null
   ): { fixed: boolean; content: string } {
     // Check if content has medical information that needs a disclaimer.
     // Strip the bot's self-description first so "cancer care navigation
@@ -314,10 +324,19 @@ export class OutputVerifierService {
       return { fixed: false, content };
     }
 
-    // Auto-fix: prepend disclaimer
-    const disclaimer =
-      "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n";
-    const fixedContent = disclaimer + content;
+    // Auto-fix. The disclaimer must be readable by whoever can read the body it
+    // is attached to (#162, #188), so a non-English reply gets the approved
+    // template for its language from the disclaimer engine — appended, which is
+    // the shape those templates are written in — rather than this English block
+    // prepended. The body itself is a language signal, so a Devanagari answer to
+    // a romanised question is still caught. English replies keep the existing
+    // prepended wording unchanged.
+    const detectedLocale = detectLocale(locale, userText, content);
+    const fixedContent =
+      detectedLocale === "en"
+        ? "**Important:** This information is for general educational purposes and is not a diagnosis. Please consult with your healthcare provider for accurate, personalized medical information.\n\n" +
+          content
+        : appendDisclaimer(content, locale, false, userText);
 
     violations.push({
       check: "has_disclaimer",
