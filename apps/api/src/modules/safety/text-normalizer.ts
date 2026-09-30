@@ -48,3 +48,27 @@ export function normalizeForMatch(text: string | null | undefined): string {
   for (const [re, canonical] of ROMANIZED_MEDICAL) t = t.replace(re, canonical);
   return t.replace(/\s+/g, " ").trim();
 }
+
+/**
+ * Casual-English canonical form for SELF-HARM / crisis matching only:
+ * apostrophes dropped, then "wanna" → "want to", "gonna" → "going to",
+ * "dont" → "do not", "cant" → "cannot", "im" → "i am", "my self" → "myself".
+ * So "I wanna die", "i dont want to live", "im going to end things" and
+ * "hurt my self" reach the same patterns as their textbook spellings.
+ *
+ * Callers match patterns against BOTH normalizeForMatch(text) and this form,
+ * so it can only widen what fires, never narrow it. Input is expected to be
+ * the output of normalizeForMatch (smart quotes already straightened).
+ */
+export function canonicalizeCasualEnglish(text: string): string {
+  return text
+    .replace(/'/g, "")
+    .replace(/\bwanna\b/gi, "want to")
+    .replace(/\bgonna\b/gi, "going to")
+    .replace(/\bdont\b/gi, "do not")
+    .replace(/\bdoesnt\b/gi, "does not")
+    .replace(/\bcant\b/gi, "cannot")
+    .replace(/\bim\b/gi, "i am")
+    .replace(/\bive\b/gi, "i have")
+    .replace(/\bmy\s+self\b/gi, "myself");
+}
