@@ -3432,14 +3432,11 @@ export class ChatService {
         ? `--- ${this.regionalCentresHeading(geography)} ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
         : "";
 
-    // NOTE: the instruction that told the model not to call a cross-border
-    // fallback "nearby" and not to invent a travel time lived here. It is a
-    // prompt change under chat/, so AGENTS.md §1.3 sends it through SCCF
-    // human/medical review in its own labelled PR rather than riding along
-    // with this structural one (PR #99 re-review). Until that lands, the only
-    // thing this block says about distance is what the stage heading says:
-    // "may involve significant travel" on the adjacent-state rung, "travel
-    // distance not established" on the unfiltered one.
+    // Travel and distance guidance: one paragraph, placed before the list.
+    // Supersedes #159 (cross-border caveat) and #181 (straight-line distance).
+    //
+    // SCCF sign-off: Gautam Gauri, SCCF Director, 2026-09-30 (AGENTS.md §1.3).
+    const travelAndDistance = this.travelAndDistanceGuidance(geography, regional.length > 0);
 
     const nationalBlock =
       national.length > 0
@@ -3453,12 +3450,60 @@ The following hospitals are from the Suchi Navigator structured database (verifi
 
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
-When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
+When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from this region also travel to [TMH/AIIMS]."
 
-${combinedBlocks}
+${travelAndDistance ? `${travelAndDistance}\n\n` : ""}${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
 === END HOSPITAL DATA ===`;
+  }
+
+  /**
+   * The travel-and-distance paragraph for the hospital block, by search rung.
+   * Empty on rungs where the centres really are local (`city`, `state`) or no
+   * location was given.
+   *
+   * - `distance`: the patient's city is geocoded and the whole pool is sorted
+   *   by km with no state rung (owner direction 2026-09-30: km order, state
+   *   does not matter). Order is not a ranking. Figures are straight-line, so
+   *   the model says "about N km" and that the road or rail journey is longer,
+   *   never a travel time and never the word "straight-line" (a literal
+   *   translation means nothing to a rural Hindi speaker). A centre across a
+   *   state line may not take the patient's card: West Bengal runs Swasthya
+   *   Sathi rather than PM-JAY, and it holds the nearest centres for Seemanchal.
+   *   So the model names the state and tells the patient to confirm, without
+   *   asserting acceptance unless the record says so.
+   * - `adjacent_state` / `unfiltered`: the city is known but not geocoded (1 of
+   *   46 table entries today), so there are no km figures. "The directory has
+   *   no cancer centre in X" replaces "no centre serves X directly", which can
+   *   read to a patient as "you cannot be treated".
+   *
+   * `STRAIGHT-LINE distance, already rounded` is matched by deploy preflight
+   * check 9 (.claude/commands/deploy.md) and must stay while the block renders
+   * kilometre figures.
+   */
+  private travelAndDistanceGuidance(
+    geography: HospitalSearchGeography | null | undefined,
+    hasRegional: boolean
+  ): string {
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+
+    if (geography?.stage === "distance") {
+      const order = hasRegional
+        ? `The nearest-centres list below is ordered by distance from ${city ?? "the patient's location"}, nearest first, regardless of state. Keep that order. It is not a ranking of quality or suitability; use each centre's Tier, Departments and Notes for that. `
+        : "";
+      const otherState = state ? `a state other than ${state}` : "a state other than the patient's own";
+      const scheme = state ? `${state} state scheme` : "state scheme";
+      return `${order}Each distance is a STRAIGHT-LINE distance, already rounded. If you mention one, say "about N km" (or "within 10 km") and add that the road or rail journey is longer; do not use the word "straight-line" with the patient. NEVER state or estimate a travel time, a road distance, or a journey duration. For any centre in ${otherState}, name its state and tell the patient to confirm with that hospital, before travelling, whether their PM-JAY card or ${scheme} is accepted there. Do not say whether it will or will not be accepted unless that centre's PMJAY field or Navigation notes say so.`;
+    }
+
+    if (hasRegional && (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")) {
+      const where = city ?? state ?? "the patient's stated location";
+      return `The directory has no cancer centre in ${where}. The centres listed below are in other districts or states and may involve significant travel. Do NOT describe them as "nearby" or "close by", and do NOT state or estimate a travel time or distance.`;
+    }
+
+    return "";
   }
 
   /**
