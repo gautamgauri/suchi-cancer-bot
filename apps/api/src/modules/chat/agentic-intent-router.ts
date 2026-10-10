@@ -144,6 +144,11 @@ const NAVIGATION_PATTERNS: RegExp[] = [
   /आगे\s*क्या\s*(करना|करें|होगा)/i,
   // Hinglish
   /\b(kaun\s*sa|sabse\s*acha|nearest)\s*(hospital|doctor)\b/i,
+  // Hinglish, hospital named before the question word: "... hospital kaun sa hai"
+  /\b(hospital|aspatal|doctor|centre|center)\b.{0,40}\bkaun\s*s[aie]\b/i,
+  // Hinglish / Hindi proximity: "Darbhanga ke paas", "X ke nazdeek", "X ke aas-paas" (#212)
+  /\b\w+\s+ke\s+(paas|pas|nazd[ie]+k|najd[ie]+k|aas[-\s]*paas)\b.*\b(hospital|aspatal|doctor|oncolog|ilaj|treatment|cancer)/i,
+  /\S+\s+के\s+(पास|नज़दीक|नजदीक|आस-पास|आसपास)/,
   /\b(biopsy|report)\s*(aaya|aa\s*gaya|mil\s*gaya)\b/i,
   /\baage\s*kya\s*(karna|kare|hoga)\b/i,
 ];
