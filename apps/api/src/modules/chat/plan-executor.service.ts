@@ -45,6 +45,12 @@ import { EvidenceChunk } from "../evidence/evidence-gate.service";
  */
 const LEADING_FRAGMENT_PATTERN = /^[a-z]+(?:\s|$)/;
 
+/**
+ * Shared empty set for a section that must not be emptied by cross-section
+ * bullet suppression — a REQUIRED section (see `executeTemplateStep`).
+ */
+const NO_SUPPRESSION: ReadonlySet<string> = new Set<string>();
+
 // ─── Step Results ──────────────────────────────────────────────
 
 export interface RetrievalStepResult {
@@ -351,7 +357,20 @@ export class PlanExecutorService {
     // above. SCHEME_APPLICATION_CHECKLIST is exactly that shape: "Scheme
     // Overview" and "Eligibility Criteria" are both required and both carry
     // retrievalIntent "schemes" (Codex review, PR #174).
-    const emittedContent = new Set<string>();
+    //
+    // The suppression is per BULLET, not per section body (issue #214).
+    // HOSPITAL_VISIT_PREP's two retrieval sections carry DIFFERENT intents —
+    // "navigation" and "schemes" — so they are filled from two different
+    // retrieval steps whose chunk lists overlap without being identical. A
+    // whole-body comparison saw two unequal strings and printed both, so the
+    // Bihar accreditation chunk was listed under "Hospital / Treatment Centre
+    // Information" and again under "Financial Support Options". Comparing
+    // bullets shows the shared chunk once, under the first heading that claimed
+    // it, while each section keeps the evidence that is only its own (PM-JAY
+    // stays under the financial heading). An optional section left with no
+    // bullets of its own is not filled, so renderTemplate drops its heading —
+    // the same outcome #173 produced for a wholly duplicated section.
+    const emittedBullets = new Set<string>();
 
     for (const section of template.sections) {
       if (section.source === "template" && section.staticContent) {
@@ -371,13 +390,11 @@ export class PlanExecutorService {
         if (relevantChunks.length > 0) {
           const maxItems = section.maxItems || 5;
           const content = this.formatChunksAsContent(
-            relevantChunks.slice(0, maxItems)
+            relevantChunks.slice(0, maxItems),
+            section.required ? NO_SUPPRESSION : emittedBullets,
+            emittedBullets
           );
-          if (
-            content.trim() &&
-            !section.required &&
-            emittedContent.has(content.trim())
-          ) {
+          if (!content.trim()) {
             this.logger.debug({
               event: "duplicate_template_section_skipped",
               templateId: step.templateId,
@@ -386,7 +403,6 @@ export class PlanExecutorService {
             });
             continue;
           }
-          if (content.trim()) emittedContent.add(content.trim());
           filledSections.set(section.id, content);
           filledIds.push(section.id);
         }
@@ -462,8 +478,18 @@ export class PlanExecutorService {
    * chunk rows carrying the same text (e.g. stale chunk rows left behind by an
    * earlier ingest run) — those reached the reader as the same sentence printed
    * twice in a row. See issue #67.
+   *
+   * `suppress` carries the fingerprints already shown under an EARLIER section
+   * of the same template, so a chunk retrieved for two intents is printed once
+   * (issue #214); pass {@link NO_SUPPRESSION} for a required section, which may
+   * never be emptied this way. Every bullet this call keeps is added to
+   * `record` for the sections that come after it.
    */
-  private formatChunksAsContent(chunks: EvidenceChunk[]): string {
+  private formatChunksAsContent(
+    chunks: EvidenceChunk[],
+    suppress: ReadonlySet<string> = NO_SUPPRESSION,
+    record: Set<string> = new Set()
+  ): string {
     if (chunks.length === 0) return "";
 
     const lines: string[] = [];
@@ -474,7 +500,7 @@ export class PlanExecutorService {
       if (!summary) continue;
 
       const fingerprint = summary.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-      if (seenSummaries.has(fingerprint)) {
+      if (seenSummaries.has(fingerprint) || suppress.has(fingerprint)) {
         this.logger.debug({
           event: "duplicate_chunk_summary_skipped",
           chunkId: chunk.chunkId,
@@ -484,6 +510,7 @@ export class PlanExecutorService {
         continue;
       }
       seenSummaries.add(fingerprint);
+      record.add(fingerprint);
 
       const citation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
       lines.push(`- ${summary} ${citation}`);
@@ -513,7 +540,9 @@ export class PlanExecutorService {
       .replace(/\r\n/g, "\n")
       .split("\n")
       .map((line) =>
-        this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
+        this.stripListMarkers(
+          this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
+        )
           .replace(/\s+/g, " ")
           .trim()
       )
@@ -560,6 +589,33 @@ export class PlanExecutorService {
       .replace(/!\[[^\]\n]*$/, "")
       .replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
       .replace(/\[([^\]\n]*)\]\([^)\n]*$/, "$1");
+  }
+
+  /**
+   * Drop a line's leading markdown list marker (issue #214).
+   *
+   * Parts of the knowledge base are deep-research reports, and their structure
+   * survives chunking: a chunk opens on a numbered report section and the lines
+   * under it are a bullet list. `extractSummary` re-attaches that opening line
+   * to the body with a colon, so the reader was handed the document's own
+   * scaffolding — `4. Other Accredited Hospitals with Surgical Oncology: -
+   * Savera Cancer and Multispeciality Hospital, Patna: NABH Recommended` — where
+   * a hospital name belonged.
+   *
+   * Only an ordinal or bullet at the START of a line goes, and the marker must
+   * be followed by whitespace: that is what makes it list scaffolding rather
+   * than prose. `2.5 lakh` and `20 May 2025` keep their digits, and a hyphen
+   * used as a dash mid-sentence is untouched. The loop handles a nested marker
+   * (`- 4. …`), which the chunker produces when it slices into a sub-list.
+   */
+  private stripListMarkers(line: string): string {
+    let out = line;
+    for (let i = 0; i < 3; i++) {
+      const next = out.replace(/^\s*(?:[-*•+]|\(?\d{1,2}[.)])\s+/, "");
+      if (next === out) break;
+      out = next;
+    }
+    return out;
   }
 
   /**
