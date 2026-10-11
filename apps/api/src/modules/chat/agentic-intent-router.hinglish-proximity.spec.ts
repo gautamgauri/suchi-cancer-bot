@@ -32,6 +32,24 @@ describe("agentic router: Hinglish proximity hospital questions (#212)", () => {
     }
   });
 
+  // "X ke paas Y hai" is also the Hindi possession form ("papa has cancer"), and
+  // "kaun sa" follows many nouns. None of these asks where to go. (Synthetic.)
+  const possession = [
+    "mere papa ke paas cancer ki report aayi hai, iska matlab kya hai?",
+    "mummy ke paas cancer hai kya ye chhune se failta hai",
+    "mere bhai ke paas biopsy report hai, kya ye cancer hai?",
+    "mere pati ke paas paise nahi hain, cancer ka ilaj kaise hoga?",
+    "papa ke paas cancer hai, kaun sa test hoga?",
+    "doctor ne kaun sa test karne ko bola, biopsy kya hoti hai?",
+    "hospital me kaun si dawai di jaati hai chemo ke liye?",
+    "मेरे पिता के पास कैंसर की रिपोर्ट है, क्या मतलब है?",
+  ];
+
+  it.each(possession)("does not read the possession form as a place question: %s", (q) => {
+    const r = classifyAgenticIntent(q, "GENERAL_EDUCATION" as any, "high");
+    expect(r.category).not.toBe("NAVIGATION");
+  });
+
   it("routes the Darbhanga radiotherapy question to the geocoded directory, nearest capable centre first", () => {
     const dir = new HospitalDirectoryService();
     dir.onModuleInit();
