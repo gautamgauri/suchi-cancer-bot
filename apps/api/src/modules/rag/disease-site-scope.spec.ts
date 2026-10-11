@@ -106,4 +106,12 @@ describe("scopeChunksToAskedSites (#170)", () => {
     const multi = chunk("multi::1", "Lung Cancer and Oral Cancer: Shared Risk Factors");
     expect(scopeChunksToAskedSites([multi], ["oral"]).kept).toEqual([multi]);
   });
+
+  it("a uterine-cancer question keeps the endometrial documents (same clinical family)", () => {
+    const endometrial = chunk("endometrial_treatment::2", "Endometrial Cancer Treatment (PDQ®) - NCI");
+    const uterine = chunk("uterine_patient::1", "Uterine Cancer—Patient Version - NCI");
+    const { kept, dropped } = scopeChunksToAskedSites([endometrial, uterine, LUNG_PREVENTION], ["uterine"]);
+    expect(kept.map((c) => c.chunkId)).toEqual(["endometrial_treatment::2", "uterine_patient::1"]);
+    expect(dropped.map((c) => c.chunkId)).toEqual(["lung_prevention::3"]);
+  });
 });

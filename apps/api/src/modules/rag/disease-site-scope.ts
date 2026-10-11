@@ -27,8 +27,14 @@ import { detectExplicitCancerTypes } from "../chat/utils/cancer-type-detector";
  * Sites that are one clinical family for the purpose of this check: the oral
  * cavity PDQ is titled "Oral Cavity, Oropharynx, Hypopharynx, & Larynx Cancer"
  * and tagged `head and neck` in the manifest, so an oral question must keep it.
+ * Endometrial cancer is the common form of uterine cancer: the KB's uterine
+ * documents are mostly titled "Endometrial ..." (11 of 15), so a "uterine
+ * cancer" question must keep them rather than fall back to the sarcoma PDQs.
  */
-const SITE_FAMILIES: string[][] = [["oral", "head and neck", "laryngeal", "oropharyngeal"]];
+const SITE_FAMILIES: string[][] = [
+  ["oral", "head and neck", "laryngeal", "oropharyngeal"],
+  ["uterine", "endometrial"],
+];
 
 /** Every site in the same family as `site` (including itself). */
 export function siteFamilyMembers(site: string): string[] {
