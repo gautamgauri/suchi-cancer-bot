@@ -107,8 +107,11 @@ steps:
       - '300'
       - '--min-instances'
       - '0'
+      # Two instances x connection_limit=5 (in the database-url secret) = 10 of the
+      # db-f1-micro's 25 connections. Ten instances x the old 20-connection pool
+      # pushed the instance into swap on 2026-10-10/12 with no real user traffic.
       - '--max-instances'
-      - '10'
+      - '2'
       - '--port'
       - '8080'
       - '--add-cloudsql-instances'
