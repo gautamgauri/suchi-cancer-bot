@@ -533,10 +533,20 @@ export class PlanExecutorService {
    *   - ingest markup is removed (`stripIngestMarkup`), and
    *   - a chunk that opens mid-sentence contributes from its first COMPLETE
    *     sentence onward (`dropLeadingSentenceFragment`).
+   *
+   * Each line's own list marker is removed as well (issue #158). Knowledge-base
+   * documents are numbered lists of sections (`### 4. Other Accredited
+   * Hospitals…`), and the chunker cuts them on length, so a continuation chunk
+   * opens on section 4 of a list whose 1–3 live in OTHER chunks. The chunk is
+   * re-emitted as one `- ` bullet, so the source's `4.` reached the reader as
+   * `- 4. …` — a list starting at 4 with no 1–3 anywhere — and, when that line
+   * was not taken as a heading, the first-sentence cut stopped at its `.` and
+   * the bullet was the bare `4.`. Only the marker goes; the words stay.
    */
   private extractSummary(content: string): string {
-    // Strip heading markers and bold, but keep the line structure so a heading
-    // stays a distinct line rather than colliding with the paragraph beneath it.
+    // Strip heading markers, bold and list markers, but keep the line structure
+    // so a heading stays a distinct line rather than colliding with the
+    // paragraph beneath it.
     const lines = content
       .replace(/\r\n/g, "\n")
       .split("\n")
@@ -608,11 +618,13 @@ export class PlanExecutorService {
    * than prose. `2.5 lakh` and `20 May 2025` keep their digits, and a hyphen
    * used as a dash mid-sentence is untouched. The loop handles a nested marker
    * (`- 4. …`), which the chunker produces when it slices into a sub-list.
+   * Devanagari digits (`४.`) are ordinals too: Hindi documents number their
+   * sections the same way (issue #158).
    */
   private stripListMarkers(line: string): string {
     let out = line;
     for (let i = 0; i < 3; i++) {
-      const next = out.replace(/^\s*(?:[-*•+]|\(?\d{1,2}[.)])\s+/, "");
+      const next = out.replace(/^\s*(?:[-*•+]|\(?[0-9०-९]{1,2}[.)])\s+/, "");
       if (next === out) break;
       out = next;
     }
@@ -647,8 +659,10 @@ export class PlanExecutorService {
   private firstSentenceOrTruncate(text: string): string {
     if (!text) return "";
 
-    // Take first sentence or first 150 chars
-    const firstSentenceMatch = text.match(/^[^.!?]+[.!?]/);
+    // Take first sentence or first 150 chars. A sentence ends at a terminator
+    // followed by whitespace or the end, so the `.` of `1.5 lakh` does not cut
+    // the bullet down to `1.` (issue #158).
+    const firstSentenceMatch = text.match(/^[\s\S]+?[.!?](?=\s|$)/);
     if (firstSentenceMatch && firstSentenceMatch[0].length <= 200) {
       return firstSentenceMatch[0].trim();
     }
