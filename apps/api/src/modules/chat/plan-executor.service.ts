@@ -35,6 +35,7 @@ import {
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { OutputVerifierService, VerificationResult } from "./output-verifier.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { normaliseDepartment } from "./hospital-directory.service";
 
 /**
  * A line of chunk text that opens mid-word, i.e. on the tail of a word the
@@ -50,6 +51,52 @@ const LEADING_FRAGMENT_PATTERN = /^[a-z]+(?:\s|$)/;
  * bullet suppression — a REQUIRED section (see `executeTemplateStep`).
  */
 const NO_SUPPRESSION: ReadonlySet<string> = new Set<string>();
+
+/**
+ * A chunk summary that is the source document's own apparatus, not information
+ * for a patient (issue #218). The PDQ summaries open with a paragraph about the
+ * editorial board that wrote them, and the Bihar research report opens with a
+ * preamble about itself; both score for a hospital question because they sit
+ * in the documents that answer it, and both were rendered as bullets under
+ * "Hospital / Treatment Centre Information". Matched against the extracted
+ * summary, case-insensitively; deliberately narrow so that KB prose is never
+ * dropped for merely mentioning a report.
+ */
+const DOCUMENT_BOILERPLATE_PATTERNS: RegExp[] = [
+  /\beditorial board\b/i,
+  /^(?:based|drawing) on (?:comprehensive|extensive|detailed|thorough) research\b/i,
+  /\bthe following report (?:details|describes|summari[sz]es|presents|lists)\b/i,
+  /^this (?:report|document|summary|pdq (?:summary|cancer information summary))\b/i,
+  /^(?:about|what is) (?:this )?pdq\b/i,
+  /^(?:updated|last (?:updated|modified|reviewed))\b/i,
+];
+
+/**
+ * Plain words for a canonical department name, for the directory-rendered
+ * hospital section. Anything not listed falls back to the title-cased name.
+ */
+const DEPARTMENT_PLAIN_NAMES: Record<string, string> = {
+  radiation_oncology: "Radiotherapy",
+  medical_oncology: "Chemotherapy (medical oncology)",
+  surgical_oncology: "Cancer surgery",
+  head_and_neck: "Head and neck cancer care",
+  gynaec_oncology: "Gynaecological cancer care",
+  hemato_oncology: "Blood cancer care",
+  pediatric_oncology: "Children's cancer care",
+  palliative_care: "Palliative care",
+  bone_marrow_transplant: "Bone marrow transplant",
+  nuclear_medicine: "Nuclear medicine",
+  neuro_oncology: "Brain and nerve cancer care",
+  uro_oncology: "Urological cancer care",
+};
+
+/**
+ * The sentence the LLM path is instructed to end every hospital answer with
+ * (chat.service.ts, buildHospitalContextBlock). The template path has no LLM,
+ * so it appends the same sentence itself.
+ */
+const HOSPITAL_CONFIRMATION_SENTENCE =
+  "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment.";
 
 // ─── Step Results ──────────────────────────────────────────────
 
@@ -196,7 +243,9 @@ export class PlanExecutorService {
         templateStep,
         stepResults,
         mergedChunks,
-        locale
+        locale,
+        plan.structuredHospitalResults ?? null,
+        plan.structuredHospitalGeography ?? null
       );
       stepResults.set(templateStep.stepId, result);
       responseText = result.renderedContent;
@@ -328,7 +377,9 @@ export class PlanExecutorService {
     step: TemplateStep,
     stepResults: Map<string, StepResult>,
     mergedChunks: EvidenceChunk[],
-    locale: string
+    locale: string,
+    hospitals: HospitalSearchResult[] | null = null,
+    geography: HospitalSearchGeography | null = null
   ): TemplateStepResult {
     const template = TEMPLATE_REGISTRY[step.templateId];
     if (!template) {
@@ -378,6 +429,32 @@ export class PlanExecutorService {
         // Static content — use as-is
         filledSections.set(section.id, section.staticContent);
         filledIds.push(section.id);
+      } else if (
+        section.source === "retrieval" &&
+        section.retrievalIntent === "navigation" &&
+        hospitals &&
+        hospitals.length > 0
+      ) {
+        // The planner has already looked the patient's need up in the verified,
+        // geocoded directory and ranked the results by capability and distance
+        // (#148, #200). Until #218 this section ignored that and quoted whatever
+        // knowledge-base chunks the navigation retrieval returned, so a Darbhanga
+        // question was answered with Patna centres from a research report while
+        // HBCH Muzaffarpur, first in the directory results, was never shown.
+        const content = this.renderHospitalDirectorySection(
+          hospitals,
+          geography,
+          section.maxItems || 5
+        );
+        filledSections.set(section.id, content);
+        filledIds.push(section.id);
+        this.logger.debug({
+          event: "template_section_from_directory",
+          templateId: step.templateId,
+          sectionId: section.id,
+          hospitalCount: hospitals.length,
+          stage: geography?.stage ?? null,
+        });
       } else if (section.source === "retrieval") {
         // Fill from retrieval results
         const intent = section.retrievalIntent || "education";
@@ -500,6 +577,16 @@ export class PlanExecutorService {
       const summary = this.extractSummary(chunk.content);
       if (!summary) continue;
 
+      if (DOCUMENT_BOILERPLATE_PATTERNS.some((p) => p.test(summary))) {
+        this.logger.debug({
+          event: "boilerplate_chunk_summary_skipped",
+          chunkId: chunk.chunkId,
+          docId: chunk.docId,
+          summary: summary.substring(0, 80),
+        });
+        continue;
+      }
+
       const fingerprint = summary.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
       if (seenSummaries.has(fingerprint) || suppress.has(fingerprint)) {
         this.logger.debug({
@@ -518,6 +605,128 @@ export class PlanExecutorService {
     }
 
     return lines.join("\n");
+  }
+
+  /**
+   * Render the hospital section of a navigation template from the directory
+   * results the planner attached to the plan (issue #218).
+   *
+   * Deterministic, no LLM. The wording follows the rules the LLM path is
+   * instructed with in `ChatService.buildHospitalContextBlock` and
+   * `travelAndDistanceGuidance` (SCCF sign-off recorded there, 2026-09-30):
+   *   - the order is the directory's order, nearest first on the distance rung,
+   *     and is not presented as a ranking of quality;
+   *   - a distance is "about N km" rounded to 10 km, or "within 10 km", never
+   *     a travel time or a road distance, and the word "straight-line" is never
+   *     shown to the patient; one line says the road or rail journey is longer;
+   *   - a centre in another state is named with its state and the patient is
+   *     told to confirm whether their card or state scheme is accepted there;
+   *   - PM-JAY status is stated only as the record has it; unverified says so;
+   *   - national referral centres are mentioned as places patients from the
+   *     region also travel to, not as recommendations;
+   *   - the section ends with the same confirmation sentence the LLM path must
+   *     end with.
+   * Headings are localised by renderTemplate; the bullets are English, like
+   * every other template section today.
+   */
+  private renderHospitalDirectorySection(
+    hospitals: HospitalSearchResult[],
+    geography: HospitalSearchGeography | null,
+    maxItems: number
+  ): string {
+    const regional = hospitals.filter((h) => h.national_referral !== true).slice(0, maxItems);
+    const national = hospitals.filter((h) => h.national_referral === true);
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+    const required = (geography?.requiredDepartments ?? []).map(normaliseDepartment);
+    const needs = required.map((d) => this.departmentPlainName(d).toLowerCase()).join(", ");
+
+    const lines: string[] = [];
+
+    // Lead line, by the rung that produced the candidates.
+    if (regional.length === 0) {
+      if (geography?.capabilityUnavailable === true) {
+        lines.push(
+          `The directory lists no centre near ${city ?? state ?? "your location"} that offers ${needs || "the treatment asked about"}.`
+        );
+      }
+    } else {
+      switch (geography?.stage) {
+        case "distance":
+          lines.push(
+            `${city ? `Nearest cancer centres to ${city}` : "Nearest cancer centres"}, nearest first. Distances are approximate; the road or rail journey is longer.`
+          );
+          break;
+        case "city":
+          lines.push(city ? `Cancer centres in ${city}.` : "Cancer centres.");
+          break;
+        case "state":
+          lines.push(state ? `Cancer centres in ${state}.` : "Cancer centres.");
+          break;
+        case "adjacent_state":
+        case "unfiltered":
+          lines.push(
+            `The directory has no cancer centre in ${city ?? state ?? "your stated location"}. The centres below are in other districts or states and may involve significant travel.`
+          );
+          break;
+        default:
+          lines.push("Major cancer centres.");
+      }
+    }
+
+    for (const h of regional) {
+      const parts: string[] = [];
+      const title =
+        h.short_name && h.short_name !== h.name ? `**${h.short_name}** (${h.name})` : `**${h.name}**`;
+      parts.push(`${title}, ${h.city}, ${h.state}.`);
+
+      if (geography?.stage === "distance" && typeof h.distance_km === "number") {
+        parts.push(
+          h.distance_km < 10 ? "Within 10 km." : `About ${Math.round(h.distance_km / 10) * 10} km away.`
+        );
+      }
+
+      const canonical = (h.departments ?? []).map(normaliseDepartment);
+      if (required.length > 0) {
+        const offered = required.filter((d) => canonical.includes(d)).map((d) => this.departmentPlainName(d));
+        if (offered.length > 0) parts.push(`${offered.join(", ")} available.`);
+      } else if (canonical.length > 0) {
+        parts.push(`Departments: ${canonical.map((d) => this.departmentPlainName(d)).join(", ")}.`);
+      }
+
+      if (h.pmjay_empanelled === true) parts.push("PM-JAY empanelled.");
+      else if (h.pmjay_empanelled === false) parts.push("Not PM-JAY empanelled.");
+      else parts.push("PM-JAY status not verified; confirm with the hospital.");
+
+      if (state && h.state && h.state !== state) {
+        parts.push(
+          `This centre is in ${h.state}; before travelling, confirm with the hospital whether your PM-JAY card or ${state} state scheme is accepted there.`
+        );
+      }
+
+      if (h.contact?.phone) parts.push(`Phone: ${h.contact.phone}.`);
+
+      lines.push(`- ${parts.join(" ")}`);
+    }
+
+    if (national.length > 0) {
+      lines.push(
+        `For complex or specialised care, patients from this region also travel to: ${national
+          .map((h) => `${h.short_name || h.name} (${h.city})`)
+          .join("; ")}.`
+      );
+    }
+
+    lines.push(HOSPITAL_CONFIRMATION_SENTENCE);
+    return lines.join("\n");
+  }
+
+  /** Plain words for a canonical department name; title case otherwise. */
+  private departmentPlainName(canonical: string): string {
+    return (
+      DEPARTMENT_PLAIN_NAMES[canonical] ??
+      canonical.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    );
   }
 
   /**
