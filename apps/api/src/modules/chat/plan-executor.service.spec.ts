@@ -361,6 +361,156 @@ describe("PlanExecutorService — structured template composition", () => {
     });
   });
 
+  describe("navigation checklist built from a research-document chunk (#214)", () => {
+    /**
+     * HOSPITAL_VISIT_PREP declares TWO retrieval sections with DIFFERENT
+     * intents — hospital_info ("navigation") and financial_support
+     * ("schemes") — so the planner issues two retrievals for the same user
+     * text and each section is filled from its own step's chunks.
+     *
+     * The Bihar accreditation document is a numbered deep-research report, so
+     * its chunks open with a section ordinal ("4. Other Accredited Hospitals
+     * with Surgical Oncology") above a markdown bullet list. That chunk scores
+     * for both intents, and because the two sections' chunk lists overlap
+     * without being identical, the whole-content duplicate check could not see
+     * it: the same hospital line was printed under the hospital heading and
+     * again under "Financial Support Options" (issue #214, prod revision
+     * suchi-api-00425-hm4).
+     */
+    const ACCREDITED_HOSPITALS_CHUNK = [
+      "### 4. Other Accredited Hospitals with Surgical Oncology",
+      "",
+      "- **Savera Cancer and Multispeciality Hospital, Patna**: NABH Recommended (20 May 2025).",
+      "- **Ford Hospital and Research Centre, Patna**: NABH Entry Level.",
+    ].join("\n");
+
+    const RADIOTHERAPY_CHUNK = [
+      "### 2. Centres with Radiation Oncology",
+      "",
+      "- **Mahavir Cancer Sansthan, Patna**: Departments include Linear Accelerators, HDR Brachytherapy, IMRT and IGRT.",
+    ].join("\n");
+
+    const PMJAY_CHUNK = [
+      "# Ayushman Bharat PM-JAY",
+      "",
+      "The scheme covers hospitalisation costs up to Rs 5 lakh per family per year at empanelled hospitals.",
+    ].join("\n");
+
+    function hospitalPlan(): ExecutionPlan {
+      const retrieveNavigation: RetrievalStep = {
+        type: "retrieve",
+        intent: "navigation",
+        query: "Patna mein radiotherapy kahan hoti hai",
+        topK: 5,
+        stepId: "retrieve_navigation_0",
+      };
+      const retrieveSchemes: RetrievalStep = {
+        type: "retrieve",
+        intent: "schemes",
+        query: "Patna mein radiotherapy kahan hoti hai",
+        topK: 5,
+        stepId: "retrieve_schemes_1",
+      };
+      const template: TemplateStep = {
+        type: "template",
+        templateId: "hospital_visit_prep",
+        retrievalStepIds: ["retrieve_navigation_0", "retrieve_schemes_1"],
+        locale: "en",
+        stepId: "template_hospital_visit_prep",
+      };
+      return {
+        planId: "plan_test_navigation",
+        steps: [retrieveNavigation, retrieveSchemes, template],
+        usesStructuredTemplate: true,
+        template: null as any,
+        signals: [],
+        reasoning: "test",
+        estimatedRetrievalCalls: 2,
+      } as unknown as ExecutionPlan;
+    }
+
+    /** The rendered body between `heading` and the next section heading. */
+    function sectionBody(text: string, heading: string): string {
+      const start = text.indexOf(heading);
+      if (start === -1) return "";
+      const rest = text.slice(start + heading.length);
+      const next = rest.search(/\n\*\*|\n---/);
+      return next === -1 ? rest : rest.slice(0, next);
+    }
+
+    /**
+     * Each intent returns its own chunk list, overlapping on the accreditation
+     * chunk — the shape that defeats the whole-content duplicate check.
+     */
+    async function navigationResponse(): Promise<string> {
+      buildExecutor([]);
+      retrievalTool.retrieve.mockImplementation(async ({ intent }: { intent: string }) => {
+        const chunks =
+          intent === "schemes"
+            ? [
+                chunk("kb_bihar_nabh::chunk::4", "kb_bihar_nabh", ACCREDITED_HOSPITALS_CHUNK, 0.82),
+                chunk("kb_pmjay::chunk::1", "kb_pmjay", PMJAY_CHUNK, 0.7),
+              ]
+            : [
+                chunk("kb_bihar_nabh::chunk::4", "kb_bihar_nabh", ACCREDITED_HOSPITALS_CHUNK, 0.82),
+                chunk("kb_bihar_nabh::chunk::2", "kb_bihar_nabh", RADIOTHERAPY_CHUNK, 0.75),
+              ];
+        return { chunks, query: "patna", intent, count: chunks.length, latencyMs: 1 };
+      });
+
+      const result = await executor.execute(
+        hospitalPlan(),
+        "Patna mein radiotherapy kahan hoti hai",
+        "en"
+      );
+      return result.responseText || "";
+    }
+
+    it("does not print the research document's section numbering or list marker", async () => {
+      const text = visible(await navigationResponse());
+
+      // The reported line, verbatim.
+      expect(text).not.toContain(
+        "4. Other Accredited Hospitals with Surgical Oncology: - Savera"
+      );
+      expect(text).not.toContain("4. Other Accredited Hospitals");
+      expect(text).not.toContain(": - Savera");
+      // The hospital itself still reaches the reader.
+      expect(text).toContain("Savera Cancer and Multispeciality Hospital");
+    });
+
+    it("lists the hospital once, under the hospital heading only", async () => {
+      const text = visible(await navigationResponse());
+
+      const occurrences =
+        text.split("Savera Cancer and Multispeciality Hospital").length - 1;
+      expect(occurrences).toBe(1);
+
+      expect(
+        sectionBody(text, "**Hospital / Treatment Centre Information**")
+      ).toContain("Savera Cancer and Multispeciality Hospital");
+      expect(
+        sectionBody(text, "**Financial Support Options**")
+      ).not.toContain("Savera Cancer and Multispeciality Hospital");
+    });
+
+    it("keeps the financial section's own scheme evidence", async () => {
+      const text = visible(await navigationResponse());
+
+      expect(sectionBody(text, "**Financial Support Options**")).toContain(
+        "The scheme covers hospitalisation costs up to Rs 5 lakh"
+      );
+    });
+
+    it("keeps the template's own checklist content intact", async () => {
+      const text = await navigationResponse();
+
+      expect(text).toContain("**Documents to Carry**");
+      expect(text).toContain("**Questions to Ask Your Doctor**");
+      expect(text).toContain("**Practical Tips**");
+    });
+  });
+
   it("emits a citation for every knowledge-base bullet it keeps", async () => {
     buildExecutor([
       chunk("doc-chemo::chunk::2", "doc-chemo", SIDE_EFFECTS_CHUNK_CONTENT),
