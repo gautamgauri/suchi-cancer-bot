@@ -638,6 +638,230 @@ describe("PlanExecutorService — structured template composition", () => {
     });
   });
 
+  describe("hospital section rendered from the directory, not from chunks (#218)", () => {
+    /**
+     * Prod, 2026-10-12: "Darbhanga ke paas radiotherapy wala cancer hospital
+     * kaun sa hai?" was routed to NAVIGATION (#213) and the planner ranked
+     * HBCH Muzaffarpur first, but the HOSPITAL_VISIT_PREP template filled its
+     * hospital section from the navigation retrieval's chunks: a PDQ
+     * editorial-board paragraph, the research report's preamble, and Patna
+     * centres. Muzaffarpur never appeared.
+     */
+    const EDITORIAL_BOARD_CHUNK = [
+      "## About This PDQ Summary",
+      "",
+      "PDQ® Cancer Genetics Editorial Board: This Editorial Board consists of experts in the fields of genetics, clinical oncology, epidemiology, psychology, and the social sciences.",
+    ].join("\n");
+
+    const REPORT_PREAMBLE_CHUNK = [
+      "# Cancer Treatment Centres in Bihar",
+      "",
+      "Based on comprehensive research into the healthcare landscape of Bihar, the following report details the cancer treatment centers that hold National accreditation.",
+    ].join("\n");
+
+    const IGIMS_CHUNK = [
+      "### 1. State Cancer Institute",
+      "",
+      "- **IGIMS (State Cancer Institute), Patna**: Indira Gandhi Institute of Medical Sciences (IGIMS), Sheikhpura in Patna is a state government tertiary hospital with a dedicated oncology department.",
+    ].join("\n");
+
+    const PMJAY_CHUNK = [
+      "# Ayushman Bharat PM-JAY",
+      "",
+      "The scheme covers hospitalisation costs up to Rs 5 lakh per family per year at empanelled hospitals.",
+    ].join("\n");
+
+    function hospital(partial: Record<string, unknown>) {
+      return {
+        id: "x",
+        name: "X",
+        short_name: "X",
+        city: "Patna",
+        state: "Bihar",
+        type: "Government",
+        tier: "A",
+        departments: ["medical_oncology"],
+        cost_tier: "Low",
+        pmjay_empanelled: true,
+        ncg_member: false,
+        contact: { phone: null, address: null },
+        key_doctors: [],
+        notes: "",
+        navigation_notes: [],
+        score: 1,
+        ...partial,
+      };
+    }
+
+    const HBCH = hospital({
+      id: "hbch-muzaffarpur",
+      name: "Homi Bhabha Cancer Hospital & Research Centre",
+      short_name: "HBCH Muzaffarpur",
+      city: "Muzaffarpur",
+      departments: ["medical_oncology", "surgical_oncology", "radiation_oncology"],
+      distance_km: 58.4,
+    });
+    const MAHAVIR = hospital({
+      id: "mahavir",
+      name: "Mahavir Cancer Sansthan",
+      short_name: "Mahavir Cancer Sansthan",
+      departments: ["Radiotherapy", "Medical Oncology"],
+      pmjay_empanelled: null,
+      distance_km: 73.2,
+      contact: { phone: "0612-2253957", address: null },
+    });
+    const SILIGURI = hospital({
+      id: "nbmch",
+      name: "North Bengal Medical College",
+      short_name: "NBMCH Siliguri",
+      city: "Siliguri",
+      state: "West Bengal",
+      departments: ["radiation_oncology"],
+      pmjay_empanelled: false,
+      distance_km: 191,
+    });
+    const TMH = hospital({
+      id: "tmh",
+      name: "Tata Memorial Hospital",
+      short_name: "TMH Mumbai",
+      city: "Mumbai",
+      state: "Maharashtra",
+      departments: ["radiation_oncology", "medical_oncology", "surgical_oncology"],
+      national_referral: true,
+    });
+
+    const DARBHANGA_GEOGRAPHY = {
+      stage: "distance" as const,
+      requestedCity: "Darbhanga",
+      resolvedState: "Bihar",
+      requiredDepartments: ["radiation_oncology"],
+    };
+
+    function navigationPlan(withDirectory: boolean): ExecutionPlan {
+      const retrieveNavigation: RetrievalStep = {
+        type: "retrieve",
+        intent: "navigation",
+        query: "Darbhanga ke paas radiotherapy wala cancer hospital kaun sa hai?",
+        topK: 5,
+        stepId: "retrieve_navigation_0",
+      };
+      const retrieveSchemes: RetrievalStep = {
+        type: "retrieve",
+        intent: "schemes",
+        query: "Darbhanga ke paas radiotherapy wala cancer hospital kaun sa hai?",
+        topK: 5,
+        stepId: "retrieve_schemes_1",
+      };
+      const template: TemplateStep = {
+        type: "template",
+        templateId: "hospital_visit_prep",
+        retrievalStepIds: ["retrieve_navigation_0", "retrieve_schemes_1"],
+        locale: "en",
+        stepId: "template_hospital_visit_prep",
+      };
+      return {
+        planId: "plan_test_218",
+        steps: [retrieveNavigation, retrieveSchemes, template],
+        usesStructuredTemplate: true,
+        template: null as any,
+        signals: ["location_mentioned", "hospital_search"],
+        reasoning: "test",
+        estimatedRetrievalCalls: 2,
+        structuredHospitalResults: withDirectory ? [HBCH, MAHAVIR, SILIGURI, TMH] : null,
+        structuredHospitalGeography: withDirectory ? DARBHANGA_GEOGRAPHY : null,
+      } as unknown as ExecutionPlan;
+    }
+
+    function sectionBody(text: string, heading: string): string {
+      const start = text.indexOf(heading);
+      if (start === -1) return "";
+      const rest = text.slice(start + heading.length);
+      const next = rest.search(/\n\*\*|\n---/);
+      return next === -1 ? rest : rest.slice(0, next);
+    }
+
+    async function respond(withDirectory: boolean): Promise<string> {
+      buildExecutor([]);
+      retrievalTool.retrieve.mockImplementation(async ({ intent }: { intent: string }) => {
+        const chunks =
+          intent === "schemes"
+            ? [chunk("kb_pmjay::chunk::1", "kb_pmjay", PMJAY_CHUNK, 0.7)]
+            : [
+                chunk("kb_pdq_genetics::chunk::0", "kb_pdq_genetics", EDITORIAL_BOARD_CHUNK, 0.81),
+                chunk("kb_bihar_nabh::chunk::0", "kb_bihar_nabh", REPORT_PREAMBLE_CHUNK, 0.8),
+                chunk("kb_bihar_nabh::chunk::1", "kb_bihar_nabh", IGIMS_CHUNK, 0.78),
+              ];
+        return { chunks, query: "darbhanga", intent, count: chunks.length, latencyMs: 1 };
+      });
+      const result = await executor.execute(
+        navigationPlan(withDirectory),
+        "Darbhanga ke paas radiotherapy wala cancer hospital kaun sa hai?",
+        "en"
+      );
+      return visible(result.responseText || "");
+    }
+
+    const HOSPITAL_HEADING = "**Hospital / Treatment Centre Information**";
+
+    it("lists the directory's nearest capable centre first, with its distance", async () => {
+      const body = sectionBody(await respond(true), HOSPITAL_HEADING);
+      expect(body).toContain("HBCH Muzaffarpur");
+      expect(body.indexOf("HBCH Muzaffarpur")).toBeLessThan(body.indexOf("Mahavir Cancer Sansthan"));
+      expect(body).toContain("About 60 km away");
+      expect(body).toContain("Radiotherapy available");
+      expect(body).toContain("PM-JAY empanelled");
+    });
+
+    it("does not fill the hospital section from knowledge-base chunks when the directory answered", async () => {
+      const body = sectionBody(await respond(true), HOSPITAL_HEADING);
+      expect(body).not.toContain("IGIMS");
+      expect(body).not.toContain("Editorial Board");
+      expect(body).not.toContain("Based on comprehensive research");
+    });
+
+    it("never shows a travel time, a road distance or the word straight-line", async () => {
+      const text = await respond(true);
+      expect(text).not.toMatch(/straight-line/i);
+      expect(text).not.toMatch(/\b(hours?|minutes?|drive|driving|by road)\b/i);
+      expect(text).toContain("the road or rail journey is longer");
+    });
+
+    it("names the state of a centre across the border and asks the patient to confirm their scheme", async () => {
+      const body = sectionBody(await respond(true), HOSPITAL_HEADING);
+      expect(body).toContain("NBMCH Siliguri");
+      expect(body).toContain("This centre is in West Bengal");
+      expect(body).toContain("Bihar state scheme is accepted there");
+      expect(body).toContain("Not PM-JAY empanelled");
+    });
+
+    it("states unverified PM-JAY status as unverified and shows a phone number when the record has one", async () => {
+      const body = sectionBody(await respond(true), HOSPITAL_HEADING);
+      expect(body).toContain("PM-JAY status not verified; confirm with the hospital");
+      expect(body).toContain("Phone: 0612-2253957");
+    });
+
+    it("mentions national referral centres separately and ends with the confirmation sentence", async () => {
+      const body = sectionBody(await respond(true), HOSPITAL_HEADING);
+      expect(body).toContain("patients from this region also travel to: TMH Mumbai (Mumbai)");
+      expect(body).toContain(
+        "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
+      );
+    });
+
+    it("keeps the financial section on its own scheme evidence", async () => {
+      const text = await respond(true);
+      expect(sectionBody(text, "**Financial Support Options**")).toContain("Rs 5 lakh");
+    });
+
+    it("falls back to the chunks when the plan carries no directory results, still without boilerplate", async () => {
+      const body = sectionBody(await respond(false), HOSPITAL_HEADING);
+      expect(body).toContain("IGIMS");
+      expect(body).not.toContain("Editorial Board");
+      expect(body).not.toContain("Based on comprehensive research");
+      expect(body).not.toContain("HBCH Muzaffarpur");
+    });
+  });
+
   it("emits a citation for every knowledge-base bullet it keeps", async () => {
     buildExecutor([
       chunk("doc-chemo::chunk::2", "doc-chemo", SIDE_EFFECTS_CHUNK_CONTENT),
