@@ -41,21 +41,16 @@ on:
         required: false
         default: 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
 
-  # Nightly schedule (runs at 2 AM UTC)
+  # Nightly schedule (runs at 2 AM UTC = 7:30 AM IST, before the day's traffic)
   schedule:
     - cron: '0 2 * * *'
 
-  # On PRs touching RAG/evidence modules
-  pull_request:
-    paths:
-      - 'apps/api/src/modules/rag/**'
-      - 'apps/api/src/modules/evidence/**'
-      - 'apps/api/src/modules/citations/**'
-      - 'apps/api/src/config/trusted-sources.config.ts'
-      - 'eval/cases/tier1/**'
-      - 'eval/**/*.ts'
-      - 'eval/ci/**'
-      - '.github/workflows/eval-tier1.yml'
+  # No pull_request trigger. This workflow sends ~70 real chat requests to the LIVE
+  # API; it does not exercise the PR's code at all (the PR is not deployed), and on
+  # 2026-10-12 a PR-triggered run was the only traffic on production while 18 of its
+  # 29 chat requests timed out and pushed the db-f1-micro instance into swap. Run it
+  # by hand (workflow_dispatch) against a candidate revision URL when a RAG change
+  # needs checking before merge.
 
 env:
   # Notification recipient. Kept in one place; masked from logs at job start.
