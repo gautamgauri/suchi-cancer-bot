@@ -1,4 +1,8 @@
-import { StructuredExtractorService, COMPLETENESS_POLICIES } from "./structured-extractor.service";
+import {
+  StructuredExtractorService,
+  COMPLETENESS_POLICIES,
+  resolveFallbackLocale,
+} from "./structured-extractor.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
 describe("StructuredExtractorService", () => {
@@ -368,6 +372,118 @@ describe("StructuredExtractorService", () => {
       expect(fallback).toContain("\n\n**Additional warning signs to be aware of:**");
       // Bullets inside a block stay on consecutive lines (a markdown list).
       expect(fallback).toMatch(/\*\*Additional tests your doctor may recommend:\*\*\n- /);
+    });
+
+    // ── Regression: issue #186 ───────────────────────────────────
+    // The three section labels were hardcoded English with no locale path, so a
+    // Hindi answer shipped an English heading and a bare test name under it:
+    //   "…मुँह के कैंसर के सामान्य लक्षण क्या होते हैं?
+    //    **Additional tests your doctor may recommend:**
+    //    - MRI"
+    // Same reader-facing class as #162 (English disclaimer on a Hindi reply),
+    // different code path. Until SCCF signs off on Hindi wording for these
+    // labels we emit nothing rather than English scaffolding.
+    describe("reply language (#186)", () => {
+      const hindiMissing = () => {
+        const chunks = [
+          createChunk(
+            "MRI and mammogram are diagnostic tests. Watch for a lump or mass in the breast. If symptoms persist for 2-4 weeks, see a doctor.",
+            "doc1",
+            "chunk2"
+          ),
+        ];
+        const extraction = service.extract(chunks);
+        return {
+          extraction,
+          missing: {
+            diagnosticTests: extraction.diagnosticTests.slice(0, 2),
+            warningSigns: extraction.warningSigns.slice(0, 2),
+            timelineMissing: true,
+          },
+        };
+      };
+
+      it("emits no English label block for a Hindi reply", () => {
+        const { missing, extraction } = hindiMissing();
+
+        const fallback = service.generateFallbackContent(missing, extraction, "hi");
+
+        expect(fallback).toBe("");
+        expect(fallback).not.toContain("Additional tests your doctor may recommend");
+        expect(fallback).not.toContain("Additional warning signs");
+        expect(fallback).not.toContain("When to seek care");
+      });
+
+      it.each(["bh", "mai"] as const)(
+        "emits no English label block for a %s reply",
+        locale => {
+          const { missing, extraction } = hindiMissing();
+
+          expect(service.generateFallbackContent(missing, extraction, locale)).toBe("");
+        }
+      );
+
+      it("still emits the English block for an English reply", () => {
+        const { missing, extraction } = hindiMissing();
+
+        const fallback = service.generateFallbackContent(missing, extraction, "en");
+
+        expect(fallback).toContain("**Additional tests your doctor may recommend:**");
+        expect(fallback).toContain("**Additional warning signs to be aware of:**");
+        expect(fallback).toContain("**When to seek care:**");
+      });
+
+      it("defaults to English when no locale is passed (existing callers)", () => {
+        const { missing, extraction } = hindiMissing();
+
+        expect(service.generateFallbackContent(missing, extraction)).toBe(
+          service.generateFallbackContent(missing, extraction, "en")
+        );
+      });
+
+      it("emits no English label block for a Romanized Hinglish reply (PR #187 review)", () => {
+        const { missing, extraction } = hindiMissing();
+
+        expect(service.generateFallbackContent(missing, extraction, "hinglish")).toBe("");
+      });
+    });
+  });
+
+  // PR #187 review (Codex P2): detectLocale() is Devanagari-only, so a Romanized
+  // Hinglish reply came back "en". Synthetic text only.
+  describe("resolveFallbackLocale()", () => {
+    const HINGLISH_Q = "mujhe muh ke cancer ke baare mein batao";
+    const HINGLISH_BODY = "Muh ke cancer ka sabse bada karan tambaku hai. Kya aap aur jaanna chahenge?";
+    const ENGLISH_Q = "What causes oral cancer?";
+    const ENGLISH_BODY = "The main cause of oral cancer is tobacco use. Would you like to know more?";
+
+    it("classifies a Romanized Hinglish body as hinglish, even under an explicit en locale", () => {
+      expect(resolveFallbackLocale(null, HINGLISH_Q, HINGLISH_BODY)).toBe("hinglish");
+      expect(resolveFallbackLocale("en", HINGLISH_Q, HINGLISH_BODY)).toBe("hinglish");
+      expect(resolveFallbackLocale("en", undefined, HINGLISH_BODY)).toBe("hinglish");
+    });
+
+    it("keeps en for an English body, including one answering a Hinglish question", () => {
+      expect(resolveFallbackLocale("en", ENGLISH_Q, ENGLISH_BODY)).toBe("en");
+      expect(resolveFallbackLocale(null, HINGLISH_Q, ENGLISH_BODY)).toBe("en");
+    });
+
+    it("keeps en when an English answer to an English question quotes a Hindi word", () => {
+      const withDevanagari = `${ENGLISH_BODY} A mouth ulcer is called a छाला in Hindi.`;
+      const withMarker = `${ENGLISH_BODY} Some people call this pain 'dard'.`;
+
+      expect(resolveFallbackLocale("en", ENGLISH_Q, withDevanagari)).toBe("en");
+      expect(resolveFallbackLocale("en", ENGLISH_Q, withMarker)).toBe("en");
+    });
+
+    it("does not let Latin citation markers or URLs decide the language", () => {
+      const cited = `${HINGLISH_BODY} [citation:doc1:chunk1] https://www.cancer.gov/types/head-and-neck`;
+      expect(resolveFallbackLocale("en", HINGLISH_Q, cited)).toBe("hinglish");
+    });
+
+    it("leaves Devanagari and explicit Indic locales to detectLocale()", () => {
+      expect(resolveFallbackLocale(null, HINGLISH_Q, "मुँह के कैंसर का मुख्य कारण तंबाकू है।")).toBe("hi");
+      expect(resolveFallbackLocale("bh", HINGLISH_Q, HINGLISH_BODY)).toBe("bh");
     });
   });
 
