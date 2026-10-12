@@ -144,6 +144,16 @@ const NAVIGATION_PATTERNS: RegExp[] = [
   /आगे\s*क्या\s*(करना|करें|होगा)/i,
   // Hinglish
   /\b(kaun\s*sa|sabse\s*acha|nearest)\s*(hospital|doctor)\b/i,
+  // Hinglish, hospital named before the question word: "... hospital kaun sa hai".
+  // "kaun sa" must close the question (hai/hoga/?/end): "hospital me kaun si dawai
+  // di jaati hai" is a treatment question, and "doctor ne kaun sa test" is not a
+  // place question at all, so "doctor" is not in the head.
+  /\b(hospital|aspatal|centre|center)\b.{0,40}\bkaun\s*s[aie]\s*(hai|hain|hoga|\?|$)/i,
+  // Hinglish / Hindi proximity: "Darbhanga ke paas", "X ke nazdeek", "X ke aas-paas" (#212).
+  // "X ke paas Y hai" is also the possession form ("papa ke paas cancer hai"), so
+  // the tail must seek a place: a facility word, or ilaj/treatment with kahan.
+  /\b\w+\s+ke\s+(paas|pas|nazd[ie]+k|najd[ie]+k|aas[-\s]*paas)\b.*\b(hospital|aspatal|centre|center|oncolog|(?:ilaj|treatment)\b.*\b(?:kahan|kaha|kidhar))/i,
+  /\S+\s+के\s+(पास|नज़दीक|नजदीक|आस-पास|आसपास).*(अस्पताल|हॉस्पिटल|कहाँ|कहां|किधर)/,
   /\b(biopsy|report)\s*(aaya|aa\s*gaya|mil\s*gaya)\b/i,
   /\baage\s*kya\s*(karna|kare|hoga)\b/i,
 ];
