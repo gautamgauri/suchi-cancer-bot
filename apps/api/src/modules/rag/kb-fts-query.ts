@@ -167,6 +167,7 @@ const HINGLISH_FUNCTION_WORDS = new Set<string>([
   "kya", "kyaa", "kyu", "kyun", "kyon", "kaise", "kese", "kaisa", "kaisi", "kaisey", "kab", "kabhi", "kahan", "kaha",
   "kahaan", "kahin", "kitna", "kitni", "kitne", "kaun", "kon", "kaunsa", "kaunsi", "kaunse", "konsa", "konsi",
   // adverbs / quantifiers / filler
+  "ek", // "one"/"a" — like English "one"/"a" (issue #182: 'ek' & 'cancer' was a lexical hit)
   "ab", "abhi", "phir", "fir", "bas", "bahut", "bohot", "bhut", "bahot", "thoda", "thodi", "thode", "zyada", "jyada",
   "jada", "kam", "sirf", "bilkul", "shayad", "shaayad", "jaldi", "turant", "achha", "accha", "acha", "theek", "thik",
   "sahi", "haan", "han", "ha", "nai", "nope", "bata", "batao", "bataiye", "bataye", "batayen", "batana", "batai",

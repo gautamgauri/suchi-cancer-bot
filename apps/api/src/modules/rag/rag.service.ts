@@ -11,6 +11,7 @@ import { detectCrossCancerTopic, DetectedCrossCancerTopic } from "./cross-cancer
 import { PatientState } from "../chat/patient-state.service";
 import { KB_FTS_SEARCH_SQL, isFtsSchemaError } from "./kb-fts.sql";
 import { buildKbFtsQuery } from "./kb-fts-query";
+import { stripRetrievalNoise } from "./retrieval-query-noise";
 import { dropReferenceChunks } from "./reference-chunk-filter";
 import { KbFtsHealthService } from "./kb-fts-health.service";
 
@@ -38,6 +39,10 @@ export class RagService {
    * Future: topK, expansion terms, and scoring factors will be read from that file.
    */
   async retrieveWithMetadata(query: string, topK = 6, cancerType?: string | null, queryType?: string, intent?: string): Promise<EvidenceChunk[]> {
+    // Issue #182: search for what the message is ABOUT — not the bot's name or an
+    // answer-length directive ("ek line me" made 'line' & 'cancer' a lexical hit on
+    // every first-line-therapy chunk). Only the retrieval text changes.
+    query = stripRetrievalNoise(query);
     try {
       // Step 0: Check for cross-cancer topics (e.g., smoking, obesity, HPV)
       // These topics span multiple cancer types and need diversified retrieval
