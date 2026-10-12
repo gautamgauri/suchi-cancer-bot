@@ -222,7 +222,8 @@ export class PlanExecutorService {
         responseText,
         mergedChunks,
         verifyStep.checks,
-        userText
+        userText,
+        locale
       );
 
       const verifyResult: VerifyStepResult = {

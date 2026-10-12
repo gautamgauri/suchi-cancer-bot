@@ -770,4 +770,96 @@ describe("OutputVerifierService", () => {
       expect(result.fixedContent).toBeNull();
     });
   });
+
+  // ─── Issue #188 — the auto-fix must speak the reply's language ──
+  //
+  // The has_disclaimer auto-fix used to prepend one hard-coded ENGLISH block to
+  // any body that lacked a disclaimer, so a Hindi answer was delivered with
+  // English clinical safety wording glued to the top. Same reader-facing class
+  // as #162 and #186, but a third code path: #163 only touched appendDisclaimer()
+  // (the tail) and #187 only touched the completeness fallback's headings.
+  //
+  // These tests assert only *which existing approved template* is selected — no
+  // disclaimer wording is defined or changed here. Markers come from
+  // safety/disclaimer-engine.ts.
+
+  describe("has_disclaimer auto-fix language (#188)", () => {
+    const EN_PREPEND = "**Important:**";
+    const EN_STANDARD = "educational purposes";
+    const HI_STANDARD = "शैक्षिक उद्देश्यों";
+    const BH_STANDARD = "जानकारी खातिर बा";
+
+    // A Hindi myth-busting answer of the shape the model actually returns: a
+    // Devanagari body carrying the usual Latin artefacts — an English gloss and
+    // citation markers — which is what trips MEDICAL_CONTENT_PATTERNS and so
+    // reaches the auto-fix at all (seed 1790490627, q02 [myth/hi]).
+    const HINDI_ANSWER =
+      "ताड़ी और देसी शराब पीने से कैंसर (cancer) का खतरा कम नहीं होता। शराब किसी भी रूप में " +
+      "खतरा बढ़ाती है, और यह मुँह, गले तथा लिवर से जुड़ी हुई है। [citation:alcohol-cancer-risk:chunk2]";
+
+    const ENGLISH_ANSWER =
+      "Alcohol in any form raises cancer risk, including mouth, throat and liver cancer.";
+
+    test("Hindi body with locale 'hi': no English block, Hindi disclaimer instead", () => {
+      const result = verifier.quickVerify(HINDI_ANSWER, [], "क्या ताड़ी पीने से कैंसर नहीं होता?", "hi");
+
+      expect(result.fixedContent).not.toBeNull();
+      expect(result.fixedContent).not.toContain(EN_PREPEND);
+      expect(result.fixedContent).not.toContain(EN_STANDARD);
+      expect(result.fixedContent).toContain(HI_STANDARD);
+      // The Hindi body itself is untouched and still leads the reply.
+      expect(result.fixedContent!.startsWith(HINDI_ANSWER)).toBe(true);
+    });
+
+    test("Hindi body reached with locale 'en' (romanised question): the body's language wins", () => {
+      // The WhatsApp channel derives locale "en" from a Latin-script question,
+      // but the reader is looking at a Devanagari answer.
+      const result = verifier.quickVerify(
+        HINDI_ANSWER,
+        [],
+        "kya tadi peene se cancer nahi hota?",
+        "en"
+      );
+
+      expect(result.fixedContent).not.toBeNull();
+      expect(result.fixedContent).not.toContain(EN_PREPEND);
+      expect(result.fixedContent).toContain(HI_STANDARD);
+    });
+
+    test("Hindi body with no locale at all: still the Hindi disclaimer", () => {
+      const result = verifier.quickVerify(HINDI_ANSWER, [], "क्या ताड़ी पीने से कैंसर नहीं होता?");
+
+      expect(result.fixedContent).not.toContain(EN_PREPEND);
+      expect(result.fixedContent).toContain(HI_STANDARD);
+    });
+
+    test("locale 'bh' with an English body takes the Bhojpuri disclaimer", () => {
+      const result = verifier.quickVerify(ENGLISH_ANSWER, [], "tadi se cancer hola ka", "bh");
+
+      expect(result.fixedContent).not.toContain(EN_PREPEND);
+      expect(result.fixedContent).toContain(BH_STANDARD);
+    });
+
+    test("English body with locale 'en': the existing English prepend is unchanged", () => {
+      const result = verifier.quickVerify(
+        ENGLISH_ANSWER,
+        [],
+        "does country liquor prevent cancer",
+        "en"
+      );
+
+      expect(result.fixedContent).not.toBeNull();
+      expect(result.fixedContent!.startsWith(EN_PREPEND)).toBe(true);
+      expect(result.fixedContent).toContain(ENGLISH_ANSWER);
+    });
+
+    test("verify() threads the locale through to the has_disclaimer check", () => {
+      const result = verifier.verify(HINDI_ANSWER, [], ["has_disclaimer"], "कैंसर", "hi");
+
+      expect(result.violations.map((v) => v.check)).toContain("has_disclaimer");
+      expect(result.violations[0].autoFixed).toBe(true);
+      expect(result.fixedContent).not.toContain(EN_PREPEND);
+      expect(result.fixedContent).toContain(HI_STANDARD);
+    });
+  });
 });
