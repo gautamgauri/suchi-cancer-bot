@@ -139,7 +139,7 @@ const ENGLISH_STOPWORDS = new Set<string>([
  * *about*; `MEDICAL_TERM` guards the ones it knows, and kb-fts-query.spec.ts
  * pins the rest.
  */
-const HINGLISH_FUNCTION_WORDS = new Set<string>([
+export const HINGLISH_FUNCTION_WORDS: ReadonlySet<string> = new Set<string>([
   // copula / auxiliaries
   "hai", "hain", "hu", "hun", "hoon", "ho", "hoga", "hogi", "honge", "hogaa", "hota", "hoti", "hote", "hona", "hone",
   "tha", "thi", "the", "thay", "raha", "rahi", "rahe", "rha", "rhi", "rhe", "gaya", "gayi", "gaye", "gya",

@@ -1,8 +1,14 @@
 /**
- * Location entity extractor — detects Indian city names from voice transcripts.
- * Uses exact match, fuzzy Levenshtein matching (distance ≤ 2), and context patterns.
- * Follows the same pattern as cancer-type-detector.ts.
+ * Location entity extractor — detects Indian city names from chat and voice text.
+ * Uses exact alias match, locative context cues, and (for long words in a place
+ * position only) fuzzy Levenshtein matching.
+ *
+ * The detected city drives hospital distance ordering, so a false positive is
+ * not harmless: "What are the best hospitals" once read as Arrah ("at are"),
+ * "report aa gaya hai" as Gaya, "bukhar" as Buxar. See detectLocation.
  */
+
+import { HINGLISH_FUNCTION_WORDS } from '../../rag/kb-fts-query';
 
 export interface LocationResult {
   city: string;
@@ -84,14 +90,67 @@ const INDIAN_CITIES: CityEntry[] = [
   { canonical: 'Thiruvananthapuram', state: 'Kerala', aliases: ['thiruvananthapuram', 'trivandrum'], coords: [8.4882, 76.9476] },
 ];
 
-/** Context patterns that precede city names */
-const CONTEXT_PATTERNS = [
-  /(?:from|in|near|at|lives?\s+in|living\s+in|reside\s+in|based\s+in|staying\s+in)\s+(\w+)/gi,
-  // Hindi patterns: से (se), में (mein), का (ka)
-  /(\w+)\s+(?:se|से|mein|में|ka|का)\b/gi,
-  // "I am from X" / "main X se hoon"
-  /(?:main|mein|hum)\s+(\w+)\s+(?:se|ka|ki|ke)\b/gi,
-];
+/**
+ * Confidence a detected city must reach before anything ACTS on it — orders the
+ * hospital directory by distance, prints a "~N km away" figure, heads a list
+ * "Nearest cancer centres to <city>", or is persisted to Session.city.
+ *
+ * 0.9 admits exactly two kinds of evidence: a city named with a locative cue
+ * ("from Patna", "Patna me", "main Gaya se hoon") and an unambiguous city name
+ * standing on its own ("Muzaffarpur breast cancer"). Everything below it — a
+ * fuzzy spelling match, a homograph like "Gaya" that is only capitalised — is
+ * returned by `detectLocation` for logging but must never drive geography: a
+ * wrong city is worse than no city, because it sends the patient to centres
+ * measured from somewhere they are not.
+ */
+export const LOCATION_CONFIDENCE_FOR_GEOGRAPHY = 0.9;
+
+/** Word tokens: Latin runs and Devanagari runs (JS `\w`/`\b` do not see Devanagari). */
+const TOKEN_RE = /[A-Za-z]+|[ऀ-ॿ]+/g;
+
+/** A cue immediately BEFORE a word that marks it as a place ("from X", "in X"). */
+const BEFORE_CUES = new Set(['from', 'in', 'near', 'at', 'around', 'nearby']);
+
+/**
+ * A locative cue immediately AFTER a word ("X se", "X me", "X district").
+ * Strong enough to make even a homograph ("gaya") a place.
+ */
+const STRONG_AFTER_CUES = new Set([
+  'se', 'me', 'mein', 'mai', 'main', 'mei', 'district', 'zila', 'jila', 'jile', 'city',
+  'sheher', 'shahar', 'से', 'में', 'मे', 'जिला', 'जिले',
+]);
+
+/**
+ * A genitive / associative cue after a word ("X ka hospital", "X ke paas",
+ * "X wale"). Good evidence for an unambiguous city name, NOT for a homograph:
+ * "pata chal gaya ki cancer hai" is a verb followed by "ki", not Gaya.
+ */
+const WEAK_AFTER_CUES = new Set(['ka', 'ki', 'ke', 'wala', 'wale', 'wali', 'का', 'की', 'के', 'वाले', 'वाला']);
+
+/**
+ * City aliases that are also ordinary words. "gaya" is the Hinglish past tense
+ * of "to go" ("report aa gaya hai"); "ara" is too short and common a syllable
+ * to trust bare. These only count as the city with a locative cue. Any alias
+ * that is also a Hinglish function word is treated the same way.
+ */
+const LOCATION_HOMOGRAPHS = new Set(['gaya', 'gayaa', 'ara']);
+
+/**
+ * Words that sit one or two edits from a city alias and must never be
+ * fuzzy-matched to it: "bukhar" (fever) → Buxar, "hunger" → Munger,
+ * "branch" → Ranchi. Hinglish function words are covered separately.
+ */
+const FUZZY_NOISE_WORDS = new Set([
+  'bukhar', 'bukhaar', 'kamzori', 'hunger', 'danger', 'branch', 'finger', 'ginger', 'burger',
+]);
+
+/** Fuzzy matching is only attempted on words at least this long. */
+const MIN_FUZZY_LENGTH = 6;
+
+/** Is `lower` a word that can never be fuzzy-matched to a city? */
+function isNonPlaceWord(lower: string): boolean {
+  return HINGLISH_FUNCTION_WORDS.has(lower) || FUZZY_NOISE_WORDS.has(lower);
+}
 
 /**
  * Compute Levenshtein distance between two strings.
@@ -116,46 +175,43 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-/**
- * Try to find a city match for a given word using exact alias match or fuzzy matching.
- */
-function matchCity(word: string): { entry: CityEntry; confidence: number } | null {
-  const lower = word.toLowerCase();
-
-  // Skip very short words (likely not city names)
-  if (lower.length < 3) return null;
-
-  // 1. Exact alias match
+/** Exact match of a (lower-cased) word or phrase against canonical names and aliases. */
+function exactCity(lower: string): CityEntry | null {
   for (const entry of INDIAN_CITIES) {
-    if (entry.aliases.includes(lower) || entry.canonical.toLowerCase() === lower) {
-      return { entry, confidence: 1.0 };
+    if (entry.canonical.toLowerCase() === lower || entry.aliases.includes(lower)) {
+      return entry;
     }
   }
+  return null;
+}
 
-  // 2. Fuzzy match (Levenshtein distance ≤ 2)
-  let bestMatch: { entry: CityEntry; distance: number } | null = null;
-
+/**
+ * Fuzzy match a single Latin word. Only long words (≥ 6 letters) are tried —
+ * short Hinglish words sit within two edits of too many short city names
+ * (kya→gaya, papa→patna) — and the allowed distance scales with length.
+ */
+function fuzzyCity(lower: string): { entry: CityEntry; distance: number } | null {
+  if (lower.length < MIN_FUZZY_LENGTH || !/^[a-z]+$/.test(lower) || isNonPlaceWord(lower)) {
+    return null;
+  }
+  const maxDistance = lower.length >= 8 ? 2 : 1;
+  let best: { entry: CityEntry; distance: number } | null = null;
   for (const entry of INDIAN_CITIES) {
     for (const alias of [entry.canonical.toLowerCase(), ...entry.aliases]) {
-      // Only fuzzy match if word length is similar (within 3 chars)
-      if (Math.abs(alias.length - lower.length) > 2) continue;
-
+      if (alias.includes(' ') || Math.abs(alias.length - lower.length) > 2) continue;
       const dist = levenshtein(lower, alias);
-      if (dist <= 2 && dist > 0) {
-        if (!bestMatch || dist < bestMatch.distance) {
-          bestMatch = { entry, distance: dist };
-        }
+      if (dist > 0 && dist <= maxDistance && (!best || dist < best.distance)) {
+        best = { entry, distance: dist };
       }
     }
   }
-
-  if (bestMatch) {
-    const confidence = bestMatch.distance === 1 ? 0.8 : 0.6;
-    return { entry: bestMatch.entry, confidence };
-  }
-
-  return null;
+  return best;
 }
+
+/** Longest multi-word alias, in tokens ("bokaro steel city"). */
+const MAX_ALIAS_TOKENS = Math.max(
+  ...INDIAN_CITIES.flatMap((e) => e.aliases.map((a) => a.split(' ').length))
+);
 
 /**
  * Resolve the coordinates of a known city, using the same canonical
@@ -202,46 +258,112 @@ export function resolveStateForCity(city: string | null | undefined): string | n
   return null;
 }
 
+interface Token {
+  raw: string;
+  lower: string;
+  index: number;
+}
+
+/** True when a token opens a sentence, so its capital letter says nothing. */
+function isSentenceInitial(text: string, index: number): boolean {
+  const before = text.slice(0, index).trimEnd();
+  return before.length === 0 || /[.!?।\n]$/.test(before);
+}
+
 /**
  * Detect location (Indian city) from text transcript.
+ *
+ * Every word is scored and the strongest candidate wins (earliest on a tie), so
+ * a city named exactly anywhere beats a fuzzy guess elsewhere in the sentence.
+ *
+ * Confidence ladder:
+ * - 1.0  exact name with a locative cue ("from Arrah", "Patna me", "Gaya se"),
+ *        or a multi-word alias ("Bodh Gaya", "New Delhi")
+ * - 0.9  unambiguous exact name standing alone ("Muzaffarpur breast cancer"),
+ *        or a capitalised homograph with a genitive cue ("Gaya ke paas")
+ * - 0.8  fuzzy, one edit, with a cue ("from Muzafferpur")
+ * - 0.6  fuzzy, two edits, with a cue; or a homograph that is merely
+ *        capitalised mid-sentence ("... aa Gaya hai")
+ *
+ * Only results at or above {@link LOCATION_CONFIDENCE_FOR_GEOGRAPHY} may drive
+ * hospital geography or be persisted — use {@link detectLocationForGeography}.
+ *
+ * Devanagari city names are not in the table yet; a Devanagari cue after a
+ * Latin city name ("Patna से") is understood.
+ *
  * @param text - The transcribed text to analyze
  * @returns LocationResult if a city is detected, null otherwise
  */
 export function detectLocation(text: string): LocationResult | null {
   if (!text || text.trim().length === 0) return null;
 
-  // 1. Try context-pattern extraction first (higher confidence)
-  for (const pattern of CONTEXT_PATTERNS) {
-    // Reset regex state
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
+  const tokens: Token[] = [];
+  for (const m of text.matchAll(TOKEN_RE)) {
+    tokens.push({ raw: m[0], lower: m[0].toLowerCase(), index: m.index ?? 0 });
+  }
 
-    while ((match = pattern.exec(text)) !== null) {
-      const candidate = match[1];
-      const cityMatch = matchCity(candidate);
-      if (cityMatch) {
-        return {
-          city: cityMatch.entry.canonical,
-          state: cityMatch.entry.state,
-          confidence: cityMatch.confidence,
-        };
+  let best: { entry: CityEntry; confidence: number } | null = null;
+  const consider = (entry: CityEntry, confidence: number): void => {
+    if (!best || confidence > best.confidence) best = { entry, confidence };
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    // Multi-word aliases first ("bodh gaya" must not be read as a bare "gaya").
+    let phraseLen = 0;
+    for (let n = Math.min(MAX_ALIAS_TOKENS, tokens.length - i); n >= 2; n--) {
+      const phrase = tokens.slice(i, i + n).map((t) => t.lower).join(' ');
+      const entry = exactCity(phrase);
+      if (entry) {
+        consider(entry, 1.0);
+        phraseLen = n;
+        break;
       }
     }
-  }
+    if (phraseLen > 0) {
+      i += phraseLen - 1;
+      continue;
+    }
 
-  // 2. Fallback: scan all words for city names
-  const words = text.split(/[\s,;.!?]+/).filter((w) => w.length >= 3);
-  for (const word of words) {
-    const cityMatch = matchCity(word);
-    if (cityMatch) {
-      // Slightly lower confidence for non-contextual matches
-      return {
-        city: cityMatch.entry.canonical,
-        state: cityMatch.entry.state,
-        confidence: Math.max(0.5, cityMatch.confidence - 0.1),
-      };
+    const tok = tokens[i];
+    const prev = tokens[i - 1]?.lower;
+    const next = tokens[i + 1]?.lower;
+    const beforeCue = prev !== undefined && BEFORE_CUES.has(prev);
+    const strongCue = beforeCue || (next !== undefined && STRONG_AFTER_CUES.has(next));
+    const weakCue = next !== undefined && WEAK_AFTER_CUES.has(next);
+
+    const exact = exactCity(tok.lower);
+    if (exact) {
+      const homograph = LOCATION_HOMOGRAPHS.has(tok.lower) || HINGLISH_FUNCTION_WORDS.has(tok.lower);
+      if (!homograph) {
+        consider(exact, strongCue || weakCue ? 1.0 : 0.9);
+      } else {
+        const capitalised = /^[A-Z]/.test(tok.raw);
+        if (strongCue) consider(exact, 1.0);
+        else if (capitalised && weakCue) consider(exact, 0.9);
+        else if (capitalised && !isSentenceInitial(text, tok.index)) consider(exact, 0.6);
+        // Otherwise it is the verb ("aa gaya"), not the city.
+      }
+      continue;
+    }
+
+    // Fuzzy only where the sentence says a place goes here.
+    if (strongCue || weakCue) {
+      const fuzzy = fuzzyCity(tok.lower);
+      if (fuzzy) consider(fuzzy.entry, fuzzy.distance === 1 ? 0.8 : 0.6);
     }
   }
 
-  return null;
+  if (!best) return null;
+  const { entry, confidence } = best as { entry: CityEntry; confidence: number };
+  return { city: entry.canonical, state: entry.state, confidence };
+}
+
+/**
+ * {@link detectLocation}, but only when the result is confident enough to act
+ * on (≥ {@link LOCATION_CONFIDENCE_FOR_GEOGRAPHY}). Callers that order hospitals
+ * by distance, print distances, or persist the city must use this.
+ */
+export function detectLocationForGeography(text: string): LocationResult | null {
+  const result = detectLocation(text);
+  return result && result.confidence >= LOCATION_CONFIDENCE_FOR_GEOGRAPHY ? result : null;
 }

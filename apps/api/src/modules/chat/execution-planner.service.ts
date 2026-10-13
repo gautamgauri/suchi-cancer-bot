@@ -27,7 +27,7 @@ import {
   HospitalDirectoryService,
   HospitalSearchGeography,
 } from "./hospital-directory.service";
-import { detectLocation } from "./utils/location-detector";
+import { detectLocationForGeography } from "./utils/location-detector";
 
 // ─── Hospital Search Result (mirrored from HospitalDirectoryService) ──────────
 
@@ -340,7 +340,13 @@ export class ExecutionPlannerService {
     let structuredHospitalResults: HospitalSearchResult[] | null = null;
     let structuredHospitalGeography: HospitalSearchGeography | null = null;
     if (detected.hospitalSearch && category === "NAVIGATION" && this.hospitalDirectory.isLoaded()) {
-      const locationResult = detectLocation(userText);
+      // Only a city the patient actually named (confidence >=
+      // LOCATION_CONFIDENCE_FOR_GEOGRAPHY) may reach the directory: it orders
+      // the list by distance from that city, prints "~N km away" and heads it
+      // "Nearest cancer centres to <city>". A weaker guess (fuzzy spelling,
+      // bare homograph like "gaya") falls back to the no-location ordering —
+      // no city is safer than the wrong one.
+      const locationResult = detectLocationForGeography(userText);
       const cancerType = this.extractCancerType(userText);
       // What the patient said they need done, independent of cancer type. This
       // is what makes the directory's hard capability filter reachable from the
