@@ -15,6 +15,7 @@ import {
   KB_FTS_PROBE_SQL,
   KB_FTS_SEARCH_SQL,
   KbFtsProbeRow,
+  absoluteLexicalScore,
   isFtsSchemaError,
 } from "./kb-fts.sql";
 
@@ -344,13 +345,34 @@ describe("KB full-text search (issue #92)", () => {
     expect(chunks[0].chunkId).toBe("chunk-hpv");
     expect(chunks[0].document.title).toBe("Cervical cancer screening");
     expect(chunks[0].document.isTrustedSource).toBe(true);
-    // similarity is lexRank normalized against the top hit
+    // similarity is lexRank normalized against the top hit (ordering only) …
     expect(chunks[0].similarity).toBeCloseTo(1, 5);
     for (const chunk of chunks) {
       expect(chunk.similarity).toBeGreaterThan(0);
       expect(chunk.similarity).toBeLessThanOrEqual(1);
+      // … and the raw ts_rank_cd rides along for absolute gating.
+      expect(chunk.lexRank).toBeGreaterThan(0);
     }
     expect(ftsHealth.getHealth().schemaFailureCount).toBe(0);
+  });
+
+  it("an incidental lexical hit is the set's best row (1.0 relative) but scores low on the absolute scale", async () => {
+    const ftsHealth = new KbFtsHealthService(db.asPrisma());
+    await ftsHealth.probe();
+    const rag = ragServiceOn(db, ftsHealth);
+
+    // Only chunk-followup shares words with this (synthetic) question, and only two.
+    const offTopic = await (rag as any).fullTextSearchWithMetadata("district hospital parking charges", 6);
+    expect(offTopic.map((c: any) => c.chunkId)).toEqual(["chunk-followup"]);
+    expect(offTopic[0].similarity).toBeCloseTo(1, 5); // what the gate used to see
+    expect(absoluteLexicalScore(offTopic[0].lexRank)).toBeLessThan(0.7);
+
+    // A question the chunk is actually about ranks higher on the SAME absolute scale.
+    const onTopic = await (rag as any).fullTextSearchWithMetadata(
+      "abnormal screening result colposcopy follow-up at the district hospital", 6
+    );
+    expect(onTopic[0].chunkId).toBe("chunk-followup");
+    expect(onTopic[0].lexRank).toBeGreaterThan(offTopic[0].lexRank);
   });
 
   it("reports 'ok' from the boot probe on a correctly migrated database", async () => {

@@ -258,6 +258,29 @@ describe("EvidenceGateService - hybrid score dilution fix", () => {
   });
 });
 
+describe("EvidenceGateService — strong-match rule looks at the top 3 gate scores", () => {
+  const service = new EvidenceGateService({} as any);
+  const chunk = (id: string, vecSim: number, lexSim: number, isTrustedSource = false): EvidenceChunk => ({
+    chunkId: id, docId: `doc-${id}`, content: "synthetic",
+    document: { title: id, sourceType: isTrustedSource ? "02_nci_core" : "unknown_blog", source: null, citation: null, isTrustedSource },
+    similarity: 0.5, vecSim, lexSim,
+  });
+
+  test("a strong passage ranked 2nd behind an incidental lexical row still counts", () => {
+    expect(service.hasStrongMatches([chunk("lex", 0, 0.05), chunk("vec", 0.78, 0)])).toBe(true);
+  });
+
+  test("a strong passage ranked 4th does not", () => {
+    expect(service.hasStrongMatches([
+      chunk("a", 0.4, 0.1), chunk("b", 0.4, 0.1), chunk("c", 0.4, 0.1), chunk("d", 0.9, 0),
+    ])).toBe(false);
+  });
+
+  test("an absolute lexSim above 0.7 is strong on its own (many query terms, tight covers)", () => {
+    expect(service.hasStrongMatches([chunk("lex", 0.5, 0.9)])).toBe(true);
+  });
+});
+
 // FR-CHAT-009 — treatment query with < 2 sources should abstain
 // (treatment requires minPassages=2, minSources=2 from trusted-sources.config)
 describe("EvidenceGateService — treatment evidence threshold (FR-CHAT-009)", () => {

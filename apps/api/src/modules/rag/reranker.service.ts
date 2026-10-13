@@ -9,7 +9,7 @@ type RerankerProvider = 'voyage' | 'cohere' | 'jina' | 'none';
  */
 export interface ScoredChunk extends EvidenceChunk {
   vecSim?: number;  // Raw vector similarity (0-1)
-  lexSim?: number;  // Raw lexical/FTS similarity (0-1)
+  lexSim?: number;  // ABSOLUTE lexical score (0-1), absoluteLexicalScore(ts_rank_cd) — not rank/best-rank
 }
 
 /**
