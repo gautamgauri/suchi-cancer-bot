@@ -2203,7 +2203,13 @@ export class ChatService {
 
       // Cancer-type-aware essential term injection — ensures key diagnostic terms
       // appear in the response even if RAG chunks didn't contain them explicitly
-      responseText = this.injectEssentialTermsIfMissing(responseText, cancerType, queryType);
+      responseText = this.injectEssentialTermsIfMissing(
+        responseText,
+        cancerType,
+        queryType,
+        disclaimerLocale,
+        dto.userText
+      );
 
       // Clinical keyword enforcement — patient-state-aware mandatory term checks
       responseText = this.clinicalKeywordEnforcer.enforce(responseText, cancerType, patientState);
@@ -2939,12 +2945,45 @@ export class ChatService {
     return kept;
   }
 
-  private injectEssentialTermsIfMissing(responseText: string, cancerType: string | null, queryType: string): string {
+  /**
+   * Append the essential-terms addendum (#175) to a reply that is missing the
+   * key terms for its cancer type.
+   *
+   * The heading and every note below are hardcoded English, and the insertion
+   * patterns are English headings too — so on a Hindi reply nothing matched and
+   * the English block was appended at the end of an answer the reader cannot
+   * read it in (issue #222; same reader-facing defect as #186, different path).
+   * This is patient-facing care copy, so under AGENTS.md §1.3 it cannot be
+   * translated here without SCCF review. We therefore do what #187 did for the
+   * completeness fallback: emit nothing for a non-English reply rather than
+   * emit English.
+   *
+   * TODO(#222): inject localized notes once SCCF has approved the wording for
+   * hi / bh / mai / hinglish.
+   */
+  private injectEssentialTermsIfMissing(
+    responseText: string,
+    cancerType: string | null,
+    queryType: string,
+    locale?: string | null,
+    userText?: string
+  ): string {
     if (!cancerType) return responseText;
 
     // Inject for diagnosis/symptoms/screening/caregiver/treatment queries
     const relevantQueryTypes = ['diagnosis', 'symptoms', 'screening', 'general', 'caregiver', 'treatment', 'sideEffects'];
     if (!relevantQueryTypes.includes(queryType)) return responseText;
+
+    // Language of the reply this block would be spliced into. resolveFallbackLocale()
+    // is the signal #187 already threads through: detectLocale() plus the
+    // Romanized-Hinglish case detectLocale() cannot see.
+    const replyLocale = resolveFallbackLocale(locale, userText, responseText);
+    if (replyLocale !== "en") {
+      this.logger?.debug(
+        `Essential-terms addendum suppressed: no reviewed notes for locale "${replyLocale}" (#222)`
+      );
+      return responseText;
+    }
 
     const lower = responseText.toLowerCase();
 
