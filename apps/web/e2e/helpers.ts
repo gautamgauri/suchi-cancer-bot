@@ -77,7 +77,7 @@ export async function selectRole(
 }
 
 /**
- * Stub session creation/lookup so UI-only tests get an interactive chat shell
+ * Stub session creation so UI-only tests get an interactive chat shell
  * without a backend. Chat responses (POST /chat) are deliberately NOT stubbed:
  * tests that assert on real answers must keep hitting the deployed API in CI.
  */
@@ -93,25 +93,6 @@ export async function stubSessionApi(page: Page, sessionId = 'e2e-stub-session')
       status: 201,
       contentType: 'application/json',
       body: JSON.stringify({ sessionId, createdAt }),
-    });
-  });
-
-  await page.route('**/sessions/*', async (route) => {
-    if (route.request().method() !== 'GET') {
-      await route.fallback();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        sessionId,
-        createdAt,
-        greetingCompleted: true,
-        currentGreetingStep: null,
-        userContext: null,
-        cancerType: null,
-      }),
     });
   });
 }

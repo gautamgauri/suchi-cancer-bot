@@ -1,10 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { EmpathyDetector, EmotionalTone } from "./empathy-detector";
+import { EmotionalTone } from "./empathy-detector";
 import { detectCancerType } from "./utils/cancer-type-detector";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
-import { LlmService } from "../llm/llm.service";
-import { GREETING_CONTEXT_PROMPT } from "../llm/prompts";
 
 export type UserContext = "general" | "patient" | "caregiver" | "post_diagnosis";
 
@@ -14,68 +12,28 @@ export interface ContextExtractionResult {
   confidence: number;
 }
 
-export interface GreetingResponseParseResult {
-  context?: UserContext;
-  cancerType?: string;
-  nextStep?: number;
-  emotionalTone?: EmotionalTone;
-}
-
+/**
+ * Silent, rule-based session context extraction.
+ *
+ * Every non-emergency turn runs extractContextFromMessage() and persists what it
+ * finds (userContext, cancerType, emotionalState) via updateSessionContext().
+ * Those Session columns feed IntentClassifier, the query decomposer and the
+ * execution planner on later turns.
+ *
+ * The file keeps its historical name: it used to also host an interactive
+ * two-step greeting questionnaire, which never ran in production and was
+ * removed.
+ */
 @Injectable()
 export class GreetingFlowService {
-  private readonly logger = new Logger(GreetingFlowService.name);
-
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly empathyDetector: EmpathyDetector,
-    private readonly llmService?: LlmService
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Check if greeting flow is needed for this session
-   * Uses raw SQL to avoid schema drift issues
-   */
-  async needsGreetingFlow(sessionId: string): Promise<boolean> {
-    // Use raw SQL to only select columns that definitely exist
-    const sessions = await this.prisma.$queryRaw<Array<{
-      greetingCompleted: boolean;
-    }>>`
-      SELECT "greetingCompleted"
-      FROM "Session"
-      WHERE id = ${sessionId}
-      LIMIT 1
-    `;
-
-    const session = sessions[0];
-    if (!session) {
-      return false;
-    }
-
-    // If greeting already completed, no need for flow
-    if (session.greetingCompleted) {
-      return false;
-    }
-
-    // Check message count - if first message, might need greeting
-    const messageCount = await this.prisma.message.count({
-      where: { sessionId },
-    });
-
-    // If no messages yet, greeting flow might be needed
-    // But we'll check in chat service if it's actually a greeting
-    return messageCount === 0;
-  }
-
-  /**
-   * Extract context from user message (hybrid: rules first, LLM fallback)
-   * This is called even when greeting flow is bypassed to extract context silently
+   * Extract context and cancer type from a user message (rule-based only —
+   * no LLM call, so no hidden latency before the main flow).
    */
   async extractContextFromMessage(userText: string): Promise<ContextExtractionResult> {
-    // Rule-based extraction first
-    const ruleBasedResult = this.extractContextWithRules(userText);
-
-    // Rule-based only — no LLM fallback to avoid hidden latency before main flow
-    return ruleBasedResult;
+    return this.extractContextWithRules(userText);
   }
 
   /**
@@ -127,90 +85,6 @@ export class GreetingFlowService {
   }
 
   /**
-   * LLM-based context extraction (fallback for ambiguous cases)
-   */
-  private async extractContextWithLLM(userText: string): Promise<ContextExtractionResult> {
-    if (!this.llmService) {
-      throw new Error("LLM service not available");
-    }
-
-    const systemPrompt = GREETING_CONTEXT_PROMPT;
-
-    const userPrompt = `Analyze this user message and extract context and cancer type:
-
-"${userText}"
-
-Return the JSON object with context, cancerType, and confidence.`;
-
-    try {
-      const response = await this.llmService.generate(systemPrompt, "", userPrompt);
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const result = JSON.parse(jsonMatch[0]);
-        return {
-          context: result.context || undefined,
-          cancerType: result.cancerType || undefined,
-          confidence: result.confidence || 0.5,
-        };
-      }
-      return { confidence: 0.3 };
-    } catch (error) {
-      this.logger.warn(`LLM context extraction failed: ${error.message}`);
-      return { confidence: 0.3 };
-    }
-  }
-
-  /**
-   * Parse user response to greeting questions
-   */
-  async parseGreetingResponse(
-    userText: string,
-    currentStep: number
-  ): Promise<GreetingResponseParseResult> {
-    // Extract context and emotional tone
-    const contextResult = await this.extractContextFromMessage(userText);
-    const emotionalToneResult = await this.empathyDetector.detectEmotionalTone(userText);
-
-    let nextStep: number | undefined;
-
-    // Step 1: User selects context type
-    if (currentStep === 1) {
-      if (contextResult.context) {
-        // If context is patient, caregiver, or post_diagnosis, ask for cancer type
-        if (["patient", "caregiver", "post_diagnosis"].includes(contextResult.context)) {
-          nextStep = 2;
-        } else {
-          // General context, no need for cancer type
-          nextStep = 3; // Complete
-        }
-      } else {
-        // Couldn't determine context, ask again
-        nextStep = 1;
-      }
-    }
-    // Step 2: User provides cancer type
-    else if (currentStep === 2) {
-      if (contextResult.cancerType) {
-        nextStep = 3; // Complete
-      } else {
-        // Couldn't determine cancer type, ask again or allow "not sure"
-        if (/\b(not sure|don't know|unsure|general|any)\b/i.test(userText)) {
-          nextStep = 3; // Complete without specific cancer type
-        } else {
-          nextStep = 2; // Ask again
-        }
-      }
-    }
-
-    return {
-      context: contextResult.context,
-      cancerType: contextResult.cancerType,
-      nextStep,
-      emotionalTone: emotionalToneResult.tone,
-    };
-  }
-
-  /**
    * Update session context using raw SQL to avoid schema drift issues
    */
   async updateSessionContext(
@@ -219,8 +93,6 @@ Return the JSON object with context, cancerType, and confidence.`;
       userContext?: UserContext;
       cancerType?: string;
       emotionalState?: EmotionalTone;
-      greetingCompleted?: boolean;
-      currentGreetingStep?: number;
     }
   ): Promise<void> {
     // Build SET clause dynamically based on what fields are provided
@@ -239,153 +111,12 @@ Return the JSON object with context, cancerType, and confidence.`;
       updates.push(`"emotionalState" = $${values.length + 1}`);
       values.push(context.emotionalState);
     }
-    if (context.greetingCompleted !== undefined) {
-      updates.push(`"greetingCompleted" = $${values.length + 1}`);
-      values.push(context.greetingCompleted);
-    }
 
     if (updates.length === 0) return; // Nothing to update
 
-    // Try with currentGreetingStep first (if provided)
-    if (context.currentGreetingStep !== undefined) {
-      try {
-        await this.prisma.$executeRawUnsafe(
-          `UPDATE "Session" SET ${updates.join(', ')}, "currentGreetingStep" = $${values.length + 1} WHERE id = $${values.length + 2}`,
-          ...values, context.currentGreetingStep, sessionId
-        );
-        return;
-      } catch (error: any) {
-        // Column might not exist, try without it
-        this.logger.warn(`Update with currentGreetingStep failed, trying without: ${error.message?.substring(0, 60)}`);
-      }
-    }
-
-    // Update without currentGreetingStep
     await this.prisma.$executeRawUnsafe(
       `UPDATE "Session" SET ${updates.join(', ')} WHERE id = $${values.length + 1}`,
       ...values, sessionId
     );
-  }
-
-  /**
-   * Get current greeting step for session
-   * Uses explicit currentGreetingStep if available, otherwise infers from state
-   * Uses raw SQL to avoid schema drift issues
-   */
-  async getGreetingStep(sessionId: string): Promise<number> {
-    // Use raw SQL to only select columns that definitely exist
-    const sessions = await this.prisma.$queryRaw<Array<{
-      greetingCompleted: boolean;
-      userContext: string | null;
-      cancerType: string | null;
-    }>>`
-      SELECT "greetingCompleted", "userContext", "cancerType"
-      FROM "Session"
-      WHERE id = ${sessionId}
-      LIMIT 1
-    `;
-
-    const session = sessions[0];
-    if (!session || session.greetingCompleted) {
-      return 0; // No greeting flow needed
-    }
-
-    // Infer from message history and session state
-    const messages = await this.prisma.message.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: "asc" },
-      select: { role: true },
-    });
-
-    const assistantMessages = messages.filter((m) => m.role === "assistant");
-
-    // If no assistant messages yet, we're at step 1
-    if (assistantMessages.length === 0) {
-      return 1;
-    }
-
-    // If we have context but no cancer type, we're at step 2
-    if (session.userContext && !session.cancerType) {
-      if (["patient", "caregiver", "post_diagnosis"].includes(session.userContext)) {
-        return 2;
-      }
-    }
-
-    // Otherwise, greeting should be complete
-    return 3;
-  }
-
-  /**
-   * Check if greeting flow is in progress (not completed but has started)
-   * Uses raw SQL to avoid schema drift issues
-   */
-  async isGreetingFlowInProgress(sessionId: string): Promise<boolean> {
-    // Use raw SQL to only select columns that definitely exist
-    const sessions = await this.prisma.$queryRaw<Array<{
-      greetingCompleted: boolean;
-    }>>`
-      SELECT "greetingCompleted"
-      FROM "Session"
-      WHERE id = ${sessionId}
-      LIMIT 1
-    `;
-
-    const session = sessions[0];
-    if (!session) {
-      return false;
-    }
-
-    // If greeting is already completed, flow is not in progress
-    if (session.greetingCompleted) {
-      return false;
-    }
-
-    // Check if there are assistant messages (indicates flow has started)
-    const messageCount = await this.prisma.message.count({
-      where: { sessionId, role: "assistant" },
-    });
-    return messageCount > 0;
-  }
-
-  /**
-   * Handle greeting flow interruption - complete flow silently using extracted context
-   */
-  /**
-   * Handle greeting flow interruption - complete flow silently using extracted context
-   * Uses raw SQL to avoid schema drift issues
-   */
-  async handleGreetingFlowInterruption(
-    sessionId: string,
-    contextResult: ContextExtractionResult,
-    emotionalTone?: EmotionalTone
-  ): Promise<void> {
-    // Use raw SQL to only select columns that definitely exist
-    const sessions = await this.prisma.$queryRaw<Array<{
-      greetingCompleted: boolean;
-      userContext: string | null;
-      cancerType: string | null;
-      emotionalState: string | null;
-    }>>`
-      SELECT "greetingCompleted", "userContext", "cancerType", "emotionalState"
-      FROM "Session"
-      WHERE id = ${sessionId}
-      LIMIT 1
-    `;
-
-    const session = sessions[0];
-    if (!session || session.greetingCompleted) {
-      return; // Not in greeting flow
-    }
-
-    // Complete the greeting flow silently
-    await this.updateSessionContext(sessionId, {
-      userContext: (contextResult.context || session.userContext || "general") as UserContext,
-      cancerType: contextResult.cancerType || session.cancerType,
-      emotionalState: emotionalTone || (session.emotionalState as EmotionalTone),
-      greetingCompleted: true,
-      currentGreetingStep: 3,
-    });
-
-    this.logger.log(`Greeting flow completed silently due to interruption for session ${sessionId}`);
   }
 }

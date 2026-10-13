@@ -3,12 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const sendMessage = vi.fn();
-const getSession = vi.fn();
 
 vi.mock('../../services/api', () => ({
   apiService: {
     sendMessage: (...args: unknown[]) => sendMessage(...args),
-    getSession: (...args: unknown[]) => getSession(...args),
     createSession: vi.fn(),
     submitFeedback: vi.fn(),
   },
@@ -63,8 +61,7 @@ const sendQuestion = async () => {
   const input = screen.getByPlaceholderText('Type your message...');
   await user.type(input, 'I found a hard lump. Is this an emergency?');
   await user.keyboard('{Enter}');
-  // ChatInterface refreshes greeting state after every reply; settle those
-  // promises here so the assertions below run against a quiet component.
+  // Settle pending promises so the assertions below run against a quiet component.
   await act(async () => {
     await Promise.resolve();
   });
@@ -82,14 +79,6 @@ describe('ChatInterface — emergency banner (issue #111)', () => {
     // jsdom does not implement scrollIntoView; ChatInterface calls it on every
     // new message.
     Element.prototype.scrollIntoView = vi.fn();
-    getSession.mockResolvedValue({
-      sessionId: 'session-1',
-      createdAt: '2026-09-10T00:00:00.000Z',
-      greetingCompleted: true,
-      currentGreetingStep: null,
-      userContext: null,
-      cancerType: null,
-    });
   });
 
   it('shows only the escalation block in the banner, never the appended answer', async () => {
