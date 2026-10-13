@@ -12,6 +12,7 @@
  */
 
 import { LlmService } from "./llm.service";
+import { PatientState } from "../chat/patient-state.service";
 
 const generateContent = jest.fn();
 const getGenerativeModel = jest.fn(() => ({ generateContent }));
@@ -349,5 +350,72 @@ describe("LlmService — thinkingConfig is gated by model support", () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(await (service as any).callGeminiLLM("system", "user", 1200, true)).toBe(COMPLETE);
+  });
+});
+
+/**
+ * The breast symptom contract carries a clinical decision, not a default.
+ *
+ * Every other cancer type in `getSymptomaticContract()` tells the model to say
+ * "within 1-2 weeks". Breast says "within the next few days" because a new
+ * breast lump was reviewed on its own and given a tighter window — Gautam's
+ * decision of 24 September 2026, recorded against the 16 September SCCF packet
+ * (`docs/sccf-review/2026-09-16-lump-escalation-review.md`, section 5 option B,
+ * question 2), and pending Dr. Amit's confirmation.
+ *
+ * These assertions exist so the tighter window cannot be quietly reverted to
+ * the 1-2 week default by someone normalising the contracts, and so the
+ * reassurance that carries it is not dropped on its own.
+ */
+describe("symptomatic contract — breast urgency window", () => {
+  function contractFor(cancerType: string): string {
+    const service = new LlmService(
+      makeConfig() as never,
+      makeObservability() as never
+    );
+    return service.getPatientStateContract(PatientState.SYMPTOMATIC, cancerType);
+  }
+
+  /**
+   * Only the cancer-specific block. The general contract that follows it keeps
+   * "within 1-2 weeks" as the example of a numeric timeframe, which is correct
+   * and must not be asserted away.
+   */
+  function cancerBlockFor(cancerType: string): string {
+    // The cancer block is interpolated AFTER the general contract, so it runs
+    // from its own heading to the end of the string.
+    const contract = contractFor(cancerType);
+    const start = contract.indexOf("CANCER-SPECIFIC REQUIREMENTS");
+    expect(start).toBeGreaterThan(-1);
+    return contract.slice(start);
+  }
+
+  it("tells the model to say the few-days window for a breast lump", () => {
+    const block = cancerBlockFor("breast");
+
+    expect(block).toContain('You MUST say: "See a doctor within the next few days"');
+    // The 1-2 week default must not survive in the breast block itself.
+    expect(block).not.toContain("within 1-2 weeks");
+  });
+
+  it("keeps the benign reassurance alongside the tighter window", () => {
+    // Shortening the window without this line would read as alarming.
+    expect(contractFor("breast")).toContain('"Most breast lumps are not cancer"');
+  });
+
+  it.each(["lung", "colorectal"])(
+    "leaves %s on the 1-2 week default — only breast was reviewed",
+    (cancerType) => {
+      expect(cancerBlockFor(cancerType)).toContain("within 1-2 weeks");
+    }
+  );
+
+  it("permits the exact sentence in place of a numeric timeframe", () => {
+    // Step 4 of the contract otherwise mandates a NUMERIC timeframe, which
+    // "the next few days" is not; without the carve-out the two instructions
+    // contradict each other and the model picks one.
+    const contract = contractFor("breast");
+
+    expect(contract).toContain("UNLESS the cancer-specific requirements above give you an exact sentence");
   });
 });
