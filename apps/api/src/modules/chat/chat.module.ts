@@ -23,6 +23,7 @@ import { ExecutionPlannerService } from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { HospitalDirectoryService } from "./hospital-directory.service";
+import { SafetyClassifierModule } from "../safety-classifier/safety-classifier.module";
 
 @Module({
   imports: [
@@ -35,7 +36,8 @@ import { HospitalDirectoryService } from "./hospital-directory.service";
     CitationModule,
     AbstentionModule,
     PrismaModule,
-    ReviewModule
+    ReviewModule,
+    SafetyClassifierModule
   ],
   controllers: [ChatController],
   providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService, PatientStateService, ExecutionPlannerService, PlanExecutorService, OutputVerifierService, HospitalDirectoryService],
