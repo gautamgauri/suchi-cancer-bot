@@ -213,4 +213,78 @@ describe('VoiceWsGateway', () => {
     // Should NOT have timed out yet
     expect(mockSocket.disconnect).not.toHaveBeenCalled();
   });
+  it('destroys the previous stream when audio:start is sent again', () => {
+    const first = { write: jest.fn(), end: jest.fn(), destroy: jest.fn() };
+    const second = { write: jest.fn(), end: jest.fn(), destroy: jest.fn() };
+    (voiceStreamService.createStream as jest.Mock)
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second);
+
+    gateway.handleConnection(mockSocket);
+    gateway.handleAudioStart(mockSocket, { sessionId: 'session-123' });
+    gateway.handleAudioStart(mockSocket, { sessionId: 'session-123' });
+
+    expect(first.destroy).toHaveBeenCalledTimes(1);
+    expect(second.destroy).not.toHaveBeenCalled();
+    expect((gateway as any).clients.get('test-socket-id').streamingSession).toBe(second);
+  });
+
+  it('destroys the active stream on disconnect', () => {
+    gateway.handleConnection(mockSocket);
+    gateway.handleAudioStart(mockSocket, { sessionId: 'session-123' });
+    gateway.handleDisconnect(mockSocket);
+    expect(mockStreamingSession.destroy).toHaveBeenCalled();
+  });
+
+  it('sends the whole multi-sentence transcript to the chat pipeline', async () => {
+    gateway.handleConnection(mockSocket);
+    gateway.handleAudioStart(mockSocket, { sessionId: 'session-123', locale: 'en-IN' });
+    (mockStreamingSession.end as jest.Mock).mockResolvedValue({
+      transcript: 'I have a lump. It is bleeding.',
+      confidence: 0.9,
+      languageCode: 'en-IN',
+    });
+
+    await gateway.handleAudioEnd(mockSocket);
+
+    expect(voiceService.handleVoiceRequestFromTranscript).toHaveBeenCalledWith(
+      'session-123',
+      'I have a lump. It is bleeding.',
+      'en-IN',
+    );
+  });
+
+  it('does not destroy a stream started while the previous turn was in the pipeline', async () => {
+    const first = {
+      write: jest.fn(),
+      end: jest.fn().mockResolvedValue({ transcript: 'Hello', confidence: 1, languageCode: 'en-IN' }),
+      destroy: jest.fn(),
+    };
+    const second = { write: jest.fn(), end: jest.fn(), destroy: jest.fn() };
+    (voiceStreamService.createStream as jest.Mock)
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second);
+
+    let release!: () => void;
+    (voiceService.handleVoiceRequestFromTranscript as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () =>
+            resolve({ messageId: 'm', responseText: 'r', voiceText: 'r', audioUrl: null, safety: {}, chatMs: 1, ttsMs: 1 });
+        }),
+    );
+
+    gateway.handleConnection(mockSocket);
+    gateway.handleAudioStart(mockSocket, { sessionId: 'session-123' });
+    const ending = gateway.handleAudioEnd(mockSocket);
+    await Promise.resolve();
+    await Promise.resolve();
+    gateway.handleAudioStart(mockSocket, { sessionId: 'session-123' });
+    release();
+    await ending;
+
+    expect(first.destroy).toHaveBeenCalled();
+    expect(second.destroy).not.toHaveBeenCalled();
+    expect((gateway as any).clients.get('test-socket-id').streamingSession).toBe(second);
+  });
 });
