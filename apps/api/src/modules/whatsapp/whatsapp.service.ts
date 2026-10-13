@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChatService } from "../chat/chat.service";
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
+import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
 import { SessionsService } from "../sessions/sessions.service";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
@@ -108,7 +109,10 @@ export class WhatsAppService {
         for (const m of value.messages) {
           const text = extractText(m);
           if (!m.id || !m.from || !text) continue; // unsupported types (image/audio/...) skipped in v1
-          out.push({ wamid: m.id, from: m.from, text, profileName: nameByWaId.get(m.from) });
+          // Meta caps inbound text at 4096 chars today; bound it here too, since
+          // this path never passes ChatDto's @MaxLength (can't 400 a webhook).
+          const bounded = text.length > MAX_USER_TEXT_LENGTH ? text.slice(0, MAX_USER_TEXT_LENGTH) : text;
+          out.push({ wamid: m.id, from: m.from, text: bounded, profileName: nameByWaId.get(m.from) });
         }
       }
     }

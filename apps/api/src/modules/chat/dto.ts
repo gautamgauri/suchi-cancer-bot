@@ -1,4 +1,15 @@
-import { IsIn, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+
+/**
+ * Longest user message accepted on any channel: 4096 characters, the same
+ * ceiling Meta enforces on an inbound WhatsApp text, so every channel accepts
+ * the same maximum. It comfortably fits a pasted pathology / lab report
+ * (typically 1-4k characters) while bounding what a single request can push
+ * into retrieval embedding and the LLM prompt. Over-length web/app requests
+ * get a 400 from the global ValidationPipe; WhatsApp inbound bypasses this DTO
+ * and is truncated to the same value in WhatsAppService.parseInbound.
+ */
+export const MAX_USER_TEXT_LENGTH = 4096;
 
 /** Channels that may enter the chat pipeline. Kept in sync with the @IsIn list below. */
 export type ChatChannel = "web" | "app" | "whatsapp" | "voice";
@@ -18,5 +29,9 @@ export class ChatDto {
    * rewritten ("didi" -> "di", "papa" -> "pa", issue #115).
    */
   @IsOptional() @IsIn(["typed", "voice"]) inputMode?: InputMode;
-  @IsString() userText!: string;
+  @IsString()
+  @MaxLength(MAX_USER_TEXT_LENGTH, {
+    message: `userText must be at most ${MAX_USER_TEXT_LENGTH} characters — please shorten your message or split it into parts.`,
+  })
+  userText!: string;
 }

@@ -15,6 +15,7 @@ import {
 import { VoiceRequestDto, VoiceResponse } from './dto';
 import { detectLocation } from '../chat/utils/location-detector';
 import { cleanResponseForDisplay } from '../chat/display-text-cleaner';
+import { MAX_USER_TEXT_LENGTH } from '../chat/dto';
 
 @Injectable()
 export class VoiceService {
@@ -198,7 +199,8 @@ export class VoiceService {
       sessionId,
       channel: 'voice',
       locale: locale.startsWith('en') ? 'en' : 'hi',
-      userText: transcript,
+      // STT output never passes ChatDto; bound it like every other channel.
+      userText: transcript.slice(0, MAX_USER_TEXT_LENGTH),
     });
     const chatMs = Date.now() - chatStarted;
 

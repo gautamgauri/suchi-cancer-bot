@@ -9,7 +9,7 @@ import { SessionsService } from "./sessions.service";
 export class SessionsController {
   constructor(private readonly sessions: SessionsService) {}
   @Post()
-  @Throttle({ default: { limit: 30, ttl: 60 } })
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async create(@Body() dto: CreateSessionDto, @Req() req: Request) {
     // Extract client IP (handle proxies like Cloud Run)
     const forwardedFor = req.headers["x-forwarded-for"];
@@ -31,7 +31,7 @@ export class SessionsController {
   }
 
   @Get(":sessionId")
-  @Throttle({ default: { limit: 60, ttl: 60 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async getSession(@Param("sessionId") sessionId: string) {
     return this.sessions.getSession(sessionId);
   }

@@ -2,12 +2,19 @@ import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
+import { TRUSTED_PROXY_HOPS } from "./common/guards/client-ip-throttler.guard";
 
 async function bootstrap() {
   // rawBody: true exposes req.rawBody (Buffer) for WhatsApp webhook
   // X-Hub-Signature-256 HMAC verification (§16 / FR-WA-005).
-  const app = await NestFactory.create(AppModule, { cors: true, rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true, rawBody: true });
+  // Cloud Run puts exactly one trusted hop (Google Front End) in front of the
+  // container. Trusting that one hop makes req.ip the real client (rightmost
+  // X-Forwarded-For entry) instead of the front end's address, without trusting
+  // client-supplied entries further left. Rate limiting depends on this.
+  app.set("trust proxy", TRUSTED_PROXY_HOPS);
   app.use(helmet());
   app.setGlobalPrefix("v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));

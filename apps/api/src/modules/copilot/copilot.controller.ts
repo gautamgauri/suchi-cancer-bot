@@ -1,7 +1,11 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { BasicAuthGuard } from '../../common/guards/basic-auth.guard';
 import { CopilotService } from './copilot.service';
 import { CreateSessionDto, ApproveDto, RejectDto } from './copilot.dto';
 
+// Operator-only: returns stored user message text and drives LLM calls
+// (diagnose/plan/execute/compare). Same Basic auth as /review and /admin.
+@UseGuards(BasicAuthGuard)
 @Controller('copilot')
 export class CopilotController {
   constructor(private readonly copilot: CopilotService) {}

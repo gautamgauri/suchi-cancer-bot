@@ -12,7 +12,7 @@ export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
   @Post()
-  @Throttle({ default: { limit: 20, ttl: 60 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async send(@Body() dto: ChatDto) {
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => {
