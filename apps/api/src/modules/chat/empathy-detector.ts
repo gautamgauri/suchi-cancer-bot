@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { LlmService } from "../llm/llm.service";
 import { EMPATHY_ANALYZER_PROMPT } from "../llm/prompts";
-import { normalizeForMatch } from "../safety/text-normalizer";
+import { canonicalizeCasualEnglish, normalizeForMatch } from "../safety/text-normalizer";
+import { SELF_HARM_PATTERNS_EXTENDED } from "../safety/safety.rules";
 
 export type EmotionalTone = "anxious" | "calm" | "urgent" | "sad" | "neutral";
 
@@ -19,6 +20,15 @@ export interface MentalHealthNeedResult {
   category: MentalHealthCategory;
   keywords: string[];
 }
+
+/**
+ * Body parts / physical symptoms that turn "bahut takleef" (a lot of trouble)
+ * into a physical complaint rather than emotional distress.
+ */
+const PHYSICAL_CONTEXT_HL =
+  "(?:saa?ns\\w*|swaa?s|shwaa?s|breath\\w*|pet|seen[ae]|chhati|chhaati|chati|sir|sar|pair|pairon|haath|kamar|gala|gale|peshab|pishab|latrine|dard|ulti|pain|bukh?aa?r|fever|khoon|khun|daant|aankh|jodo|ghutn\\w*)";
+const PHYSICAL_CONTEXT_DV =
+  "(?:सा[ंँ]स|श्वास|पेट|सीन|छाती|सिर(?!्फ)|पैर|हाथ|कमर|गले|गला|पेशाब|दर्द|उल्टी|बुखार|खून|दांत|आ[ंँ]ख|घुटन)";
 
 @Injectable()
 export class EmpathyDetector {
@@ -95,6 +105,9 @@ export class EmpathyDetector {
     /\b(marna chahta|marna chahti|jeena nahi chahta|jeena nahi chahti)\b/i,
     /(खुद को|अपने आप को)\s*(मार|नुकसान|ख़त्म|खत्म)/,
     /(मरना चाहता|मरना चाहती|जीना नहीं चाहता|जीना नहीं चाहती)/,
+    // Sep 2026 classifier review — same additions as SafetyService, so the two
+    // layers agree (Hindi / Hinglish stems both genders, casual English).
+    ...SELF_HARM_PATTERNS_EXTENDED,
   ];
 
   // Mental health support patterns (non-crisis)
@@ -136,7 +149,13 @@ export class EmpathyDetector {
     /\bis there any point\b/i,
     // Hindi / Hinglish emotional distress
     /\bmujhe koi umeed nahi\b/i,
-    /\bbahut takleef\b/i,
+    // "bahut takleef" is emotional distress only when no body part / symptom is
+    // named within ~25 chars either side: "saans lene me bahut takleef" is a
+    // breathing emergency, not a mental-health turn (Sep 2026 review).
+    new RegExp(
+      String.raw`(?<!\b${PHYSICAL_CONTEXT_HL}\b[\s\S]{0,25})\bbahut takleef\b(?![\s\S]{0,25}\b${PHYSICAL_CONTEXT_HL}\b)`,
+      "i",
+    ),
     /\bkoi fayda nahi\b/i,
     /\bthak gaya\b/i,
     /\bthak gayi\b/i,
@@ -147,7 +166,7 @@ export class EmpathyDetector {
     /\bparivar ko takleef\b/i,
     // Hindi script
     /मुझे\s*कोई\s*उम्मीद\s*नहीं/i,
-    /बहुत\s*तकलीफ/i,
+    new RegExp(`(?<!${PHYSICAL_CONTEXT_DV}[\\s\\S]{0,25})बहुत\\s*तकलीफ(?![\\s\\S]{0,25}${PHYSICAL_CONTEXT_DV})`),
     /कोई\s*फ़ायदा\s*नहीं/i,
     /थक\s*गय[ाी]/i,
     /अब\s*नहीं\s*होता/i,
@@ -195,9 +214,13 @@ export class EmpathyDetector {
     const matchedKeywords: string[] = [];
 
     // Check crisis patterns first (highest priority)
-    const crisisMatches = EmpathyDetector.CRISIS_PATTERNS.filter((pattern) => pattern.test(text));
+    // Crisis is also tested on the casual-English canonical form ("wanna",
+    // "dont", "im", "my self") — strictly widening.
+    const casual = canonicalizeCasualEnglish(text);
+    const crisisMatches = EmpathyDetector.CRISIS_PATTERNS.filter((pattern) => pattern.test(text) || pattern.test(casual));
     if (crisisMatches.length > 0) {
       matchedKeywords.push(...this.extractKeywords(text, EmpathyDetector.CRISIS_PATTERNS));
+      if (matchedKeywords.length === 0) matchedKeywords.push(...this.extractKeywords(casual, EmpathyDetector.CRISIS_PATTERNS));
       return {
         needsSupport: true,
         isCrisis: true,

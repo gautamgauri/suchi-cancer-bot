@@ -9,6 +9,7 @@
  */
 
 import { normalizeForMatch } from "./text-normalizer";
+import { INDIC_CRITICAL_PATTERNS, INDIC_URGENT_PATTERNS } from "./indic-red-flags";
 
 export interface EmergencyFastPathResult {
   isEmergency: boolean;
@@ -333,6 +334,12 @@ const CRITICAL_PATTERNS: Array<[Matcher, string]> = [
   // Bleeding + dizziness without a heavy / won't-stop signal is URGENT, not
   // critical — see BLEEDING_WITH_DIZZINESS in URGENT_PATTERNS below.
 
+  // Sep 2026 classifier review — romanised / Devanagari twins of the English
+  // critical rules above (vomiting blood, blood in stool / urine, bleeding
+  // won't stop, breathing difficulty with a gap, choking, heart attack,
+  // unconscious, seizure, collapsed, sudden numbness). See indic-red-flags.ts.
+  ...INDIC_CRITICAL_PATTERNS,
+
   // Explicit emergency keywords
   [/\b(108|112)\s*(call|bula|phone)/i, "emergency_number_request"],
   [/\b(ambulance|एम्बुलेंस)\s*(bula|call|chahiye|bhej)/i, "ambulance_request"],
@@ -386,6 +393,10 @@ const URGENT_PATTERNS: Array<[Matcher, string]> = [
   [SEVERE_SYMPTOM_HI_2, "severe_symptom_hi_2"],
   // "bahut kamzor" is urgent ONLY with a second signal; alone it stays normal.
   [WEAKNESS_WITH_SECOND_SIGNAL, "weakness_with_second_signal_multilingual"],
+
+  // Sep 2026 classifier review — plain reported chest pain and high fever
+  // (intensifier before the noun, or a reading >= 101 °F), romanised / Devanagari.
+  ...INDIC_URGENT_PATTERNS,
 ];
 
 /** The matchers added for issue #81, shared with AbstentionService.hasUrgencyIndicators. */

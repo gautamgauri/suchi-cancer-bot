@@ -4,6 +4,8 @@
  * NOT PART OF THE REPAIRABLE SURFACE. Safety patterns must never be modified
  * by the autoresearch loop. See repairable/manifest.json → constraints.safetyInvariant.
  */
+import { INDIC_CRITICAL_PATTERNS } from "./indic-red-flags";
+
 export type SafetyClassification = "normal" | "refusal" | "red_flag" | "self_harm";
 
 export const RULES = {
@@ -48,10 +50,93 @@ export const SELF_HARM_PATTERNS = [
   /\bjeene\s+ka\s+mann?\s+nahi\b/i,
   /\bjeena\s+nahi\b/i,
   /\bsab\s+khatam\b/i,
+  // Sep 2026 classifier review — see SELF_HARM_PATTERNS_EXTENDED below.
+  ...buildExtendedSelfHarmPatterns(),
 ];
 
+/**
+ * Suicidal ideation that no layer caught (Sep 2026 classifier review): Hindi /
+ * Hinglish stems in both gendered verb forms (chahta / chahti), and casual
+ * English. English entries are written against the canonical form from
+ * canonicalizeCasualEnglish ("wanna" → "want to", "dont" → "do not",
+ * "im" → "i am", "my self" → "myself"); callers test both forms.
+ *
+ * Shared with EmpathyDetector.CRISIS_PATTERNS so both layers agree.
+ *
+ * Deliberate limits (documented for SCCF review):
+ *  - First person only in English ("i want to die", not "someone who wants to
+ *    die"): a caregiver asking how to support someone is not ended with a
+ *    crisis template. Existing /suicid(e|al)/ still fires on any mention.
+ *  - "mar jaun / मर जाऊं" alone is NOT matched: "agar main mar jaun to bacchon
+ *    ka kya hoga" is end-of-life planning; "kaash main mar jaun" is.
+ *  - "jaan de dungi" is matched, except right after "... ke liye" ("maa ke
+ *    liye jaan de dungi" = devotion, not intent).
+ *  - "nahi jee sakti" needs "ab / aur" before it ("ab aur nahi jee sakti"),
+ *    so "uske bina nahi jee sakti" (grief) is left to the empathy layer.
+ */
+function buildExtendedSelfHarmPatterns(): RegExp[] {
+  // Devanagari: no `\b` (ASCII-only in JS); nukta letters accept both forms.
+  const DV_KH = "(?:ख\\u093C?|\\u0959)"; // ख / ख़
+  const DV_KHAYAL = `${DV_KH}्याल`;
+  const DV_ZINDAGI = "(?:ज\\u093C?|\\u095B)ि(?:ं|न्)दगी";
+  const DV_KHATAM = `${DV_KH}(?:त्म|तम)`;
+  const HL_NOT = "(?:nahi|nahin|nhi|nai|na)";
+  const HL_KHAYAL = "(?:khaa?yal|khyal|khayaal|vichar|vichaar|soch)";
+  return [
+    // ── English (canonical form) ──
+    /\bi\s+(?:really\s+|just\s+|only\s+|honestly\s+)?(?:want|wanted|wish)\s+to\s+die\b/i,
+    /\b(?:i\s+)?do\s+not\s+(?:really\s+)?want\s+to\s+(?:live|be\s+alive|exist|wake\s+up)\b(?!\s+(?:in|at|with|near|there|here|alone|like\s+that)\b)/i,
+    /\bi\s+(?:am\s+going|want|plan|am\s+planning)\s+to\s+(?:end\s+(?:things|everything|it\s+all|my\s+life|it(?=\s*(?:[.!?,]|$)))|kill\s+myself|hurt\s+myself)/i,
+    /\bi\s+(?:wish\s+i\s+(?:was|were)\s+dead|should\s+just\s+die)\b/i,
+
+    // ── Devanagari ──
+    // "आत्महत्या करना चाहती हूँ", "ख़ुदकुशी का ख्याल", "आत्महत्या के विचार"
+    new RegExp(
+      `(?:आत्म\\s*हत्या|${DV_KH}ुद\\s*कुशी)\\s*(?:कर|का\\s*(?:मन|${DV_KHAYAL}|विचार)|के\\s*(?:${DV_KHAYAL}|विचार)|की\\s*(?:कोशिश|सोच))`,
+    ),
+    // "मुझे मरना है", "मरना चाहती" (मरना चाह is above)
+    /मरना\s*(?:है|हैं)/,
+    // "मर जाना है / चाहती", "मर जाने का मन", "मरने का मन करता है"
+    /मर\s*जाना\s*(?:है|चाह)|मर\s*जाने\s*(?:का|को)\s*(?:मन|दिल)/,
+    new RegExp(`मरने\\s*(?:का|के|को)\\s*(?:मन|दिल|${DV_KHAYAL}|विचार)`),
+    /(?:काश|बस)\s*(?:मैं\s*)?मर\s*जा/,
+    // "जान देना चाहती हूँ", "अपनी जान दे दूंगी / ले लूंगी" (not "… के लिए जान दे दूंगी")
+    /जान\s*(?:देना|देने|लेना|लेने)\s*(?:चाह|का\s*मन|है)/,
+    /(?<!लिए\s*(?:अपनी\s*)?)(?:अपनी\s*)?जान\s*(?:दे\s*दू|ले\s*लू)/,
+    // "मैं अब और नहीं जी सकती", "अब जी नहीं पाऊंगी"
+    /(?:अब|और)\s*(?:\S+\s*)?(?:नहीं\s*जी\s*(?:सकत|पा)|जी\s*नहीं\s*(?:सकत|पा))/,
+    // "ज़िंदगी ख़त्म करना चाहता हूँ"
+    new RegExp(`${DV_ZINDAGI}\\s*(?:\\S+\\s*)?${DV_KHATAM}\\s*कर`),
+
+    // ── Hinglish ──
+    new RegExp(
+      String.raw`\b(?:aa?tma?\s*hatya|khud\s*k?h?ushi|suicide)\s+(?:kar\w*|kr\w*|ka\s+(?:mann?|${HL_KHAYAL})|ke\s+${HL_KHAYAL}|ki\s+(?:koshish|soch))`,
+      "i",
+    ),
+    // "mujhe marna hai", "marna chahti hoon" (male chahta is above)
+    /\bmarna\s+(?:hai|h|he|hain|chah\w*)\b/i,
+    // "main mar jana chahti hun", "mar jaane ka man"
+    /\bmar\s+(?:jana|jaana|jaane|jane)\s+(?:hai|h|chah\w*|ka\s+mann?|ko\s+mann?)\b/i,
+    /\b(?:kaash|kash|bas)\s+(?:main\s+|mai\s+|mein\s+)?mar\s+ja\w*/i,
+    new RegExp(String.raw`\bmarne\s+(?:ka|ke|ko)\s+(?:mann?|dil|${HL_KHAYAL})\b`, "i"),
+    // "jaan dena chahti hoon", "jaan de dungi" (not "maa ke liye jaan de dungi")
+    /\bjaan\s+(?:dena|deni|dene|lena|leni|lene)\s+(?:chah\w*|ka\s+mann?|hai)\b/i,
+    /(?<!\b(?:liye|lie|khatir|khaatir)\s+(?:apni\s+)?)\b(?:apni\s+)?jaan\s+(?:de|le)\s+(?:du|doon|dun|dunga|dungi|doonga|doongi|lu|loon|lun|lunga|lungi|loonga|loongi)\b/i,
+    // "ab aur nahi jee sakti", "ab ji nahi paungi"
+    new RegExp(
+      String.raw`\b(?:ab|aur)\s+(?:\S+\s+)?(?:${HL_NOT}\s+(?:jee|ji|jii)\s+(?:sak|pa)\w*|(?:jee|ji|jii)\s+${HL_NOT}\s+(?:sak|pa)\w*)`,
+      "i",
+    ),
+    // "zindagi khatam karna chahta hoon", "apni zindagi khatam kar lungi"
+    /\b(?:zindagi|zindgi|jindagi|jindgi|zindagee)\s+(?:\S+\s+)?(?:khatam|khatm|khtm|khatma)\s+(?:kar|kr)\w*/i,
+  ];
+}
+
+/** The Sep 2026 additions on their own — shared with EmpathyDetector and used by tests. */
+export const SELF_HARM_PATTERNS_EXTENDED: RegExp[] = buildExtendedSelfHarmPatterns();
+
 // ─── Emergency patterns (English + Hindi + Hinglish) ─────────────────
-export const EMERGENCY_PATTERNS = [
+export const EMERGENCY_PATTERNS: Array<{ test(text: string): boolean }> = [
   // English
   /vomiting blood/i,
   /uncontrolled bleeding/i,
@@ -59,7 +144,7 @@ export const EMERGENCY_PATTERNS = [
   /can'?t breathe/i,
   /faint(ed|ing)/i,
   /coughing\s+(up\s+)?blood/i,
-  /blood\s+in\s+(?:his|her|my|the|their|your\s+)?(stool|urine|vomit)/i,
+  /blood\s+in\s+(?:(?:his|her|my|the|their|your)\s+)?(stool|urine|vomit)/i,
   /seizure/i,
   /unconscious/i,
   /collapsed/i,
@@ -75,6 +160,9 @@ export const EMERGENCY_PATTERNS = [
   /\bkhoon\s*(ki|ka)\s*ulti\b/i,
   /\bsaans?\s*nahi\b/i,
   /\bbehosh\b/i,
+  // Sep 2026 classifier review — the critical-tier romanised / Devanagari
+  // twins the fast path also runs (defence in depth; see indic-red-flags.ts).
+  ...INDIC_CRITICAL_PATTERNS.map(([m]) => m),
 ];
 
 // ─── Diagnosis patterns (expanded with Hindi/Hinglish) ───────────────

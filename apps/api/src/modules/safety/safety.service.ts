@@ -12,7 +12,7 @@ import {
   ALTERNATIVE_ONLY_PATTERNS,
 } from "./safety.rules";
 import { SafetyResult, TEMPLATES } from "./safety.templates";
-import { normalizeForMatch } from "./text-normalizer";
+import { canonicalizeCasualEnglish, normalizeForMatch } from "./text-normalizer";
 
 @Injectable()
 export class SafetyService {
@@ -21,7 +21,10 @@ export class SafetyService {
     // characters, smart quotes, or spacing variants (Cluster C principle).
     const t = normalizeForMatch(userText);
     // Priority order matters: most critical first
-    if (SELF_HARM_PATTERNS.some((re) => re.test(t))) return TEMPLATES.selfHarm();
+    // Self-harm is also tested on the casual-English canonical form ("wanna",
+    // "dont", "im", "my self"), so it can only widen what fires.
+    const casual = canonicalizeCasualEnglish(t);
+    if (SELF_HARM_PATTERNS.some((re) => re.test(t) || re.test(casual))) return TEMPLATES.selfHarm();
     if (EMERGENCY_PATTERNS.some((re) => re.test(t))) return TEMPLATES.emergency(RULES.EMERGENCY);
     if (STOP_TREATMENT_PATTERNS.some((re) => re.test(t))) return TEMPLATES.misinfo(RULES.MISINFO_STOP_TREATMENT);
     if (ALTERNATIVE_ONLY_PATTERNS.some((re) => re.test(t))) return TEMPLATES.misinfo(RULES.MISINFO_ALTERNATIVE_ONLY);
