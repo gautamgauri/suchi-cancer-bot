@@ -167,53 +167,83 @@ function detectSignals(userText: string, sessionContext?: SessionContext): Detec
   const lower = userText.toLowerCase();
   const signals: string[] = [];
 
+  // Every signal is matched twice: a Latin/Hinglish regex with `\b` word
+  // boundaries, and a Devanagari regex WITHOUT `\b`. JavaScript's `\b` is
+  // ASCII-only — a space and a Devanagari letter are both "non-word" to it — so
+  // a boundary-guarded Devanagari alternative can never match Hindi script. Until this was split,
+  // every Devanagari alternative below was dead code: a Hindi-script Ayushman
+  // or "गरीब हूँ" hospital question reached the directory with
+  // pmjayRequired=false and affordabilityTier="any" (same bug family as the
+  // Hindi safety-keyword misses, issue #30). Where a bare Devanagari word would
+  // be a substring of an unrelated word, it is fenced with
+  // `(?<![ऀ-ॿ])` / `(?![ऀ-ॿ])` instead of `\b`. Nukta letters (ज़, फ़, ग़)
+  // accept the precomposed, decomposed and nukta-less spellings: `lower` is not
+  // NFC-normalised.
   const budgetConcern =
     sessionContext?.budgetConcern ||
-    /\b(budget|afford|cost|paisa|paise|kharcha|खर्च|पैसा|गरीब|free|muft|मुफ्त)\b/i.test(lower);
+    /\b(budget|afford|cost|paisa|paise|kharcha|free|muft)\b/i.test(lower) ||
+    /(खर्च|पैस[ाे]|ग\u093C?रीब|\u095Aरीब|मुफ\u093C?्त|मु\u095E्त)/.test(lower);
   if (budgetConcern) signals.push("budget_concern");
 
   const locationMentioned =
     /\b(patna|gaya|muzaffarpur|ranchi|delhi|mumbai|kolkata|lucknow|bihar|jharkhand|up|uttar pradesh)\b/i.test(lower) ||
-    /\b(district|city|state|शहर|जिला|राज्य)\b/i.test(lower);
+    /\b(district|city|state)\b/i.test(lower) ||
+    /(शहर|ज\u093C?िल[ाे]|\u095Bिल[ाे]|राज्य)/.test(lower);
   if (locationMentioned) signals.push("location_mentioned");
 
+  // Devanagari deliberately omits the Latin list's bare "aaya"/"aa gaya" twins
+  // (आया / आ गई): "came" is in half of all Hindi sentences ("बुखार आया"), and
+  // report_received alone routes to the BIOPSY_NEXT_STEPS template. A report
+  // counts only when the report/biopsy/pathology word itself is present.
   const reportReceived =
-    /\b(report|biopsy|pathology|रिपोर्ट|बायोप्सी|result|aa gaya|आ गई|aaya|आया)\b/i.test(lower);
+    /\b(report|biopsy|pathology|result|aa gaya|aaya)\b/i.test(lower) ||
+    /(रिपोर्ट|बायोप्सी|पैथोलॉजी)/.test(lower);
   if (reportReceived) signals.push("report_received");
 
+  // Bare आगे ("ahead/further") is NOT a next-steps cue in Devanagari: it is
+  // part of ordinary phrasing ("आगे का इलाज", "गांठ आगे बढ़ रही है"). It counts
+  // only as "आगे क्या" (what next). "क्या करें/करूँ/करना" is the Devanagari
+  // "kya kare/kya karna".
   const nextSteps =
-    /\b(next|aage|आगे|kya kare|क्या करें|what now|what should|kya karna)\b/i.test(lower);
+    /\b(next|aage|kya kare|what now|what should|kya karna)\b/i.test(lower) ||
+    /(आगे\s*क्या|अब\s*क्या\s*कर|क्या\s*कर(?:ें|े|ूं|ूँ|ना)(?![ऀ-ॿ]))/.test(lower);
   if (nextSteps) signals.push("next_steps");
 
+  // डर is fenced on the left so the loanword "अंडर" (under) is not fear.
+  // "चिंता की बात" ("is it something to worry about?") is a symptom question,
+  // and "चिंता मत करो" is reassurance being quoted — neither is distress.
   const emotionalDistress =
-    /\b(scared|fear|afraid|darr|डर|anxious|worried|tension|चिंता|helpless|hopeless)\b/i.test(lower);
+    /\b(scared|fear|afraid|darr|anxious|worried|tension|helpless|hopeless)\b/i.test(lower) ||
+    /((?<![ऀ-ॿ])डर|चिंतित|चिंता(?!\s*(?:की|वाली)\s*बात)(?!\s*(?:मत|न|ना|नहीं)(?![ऀ-ॿ]))|घबरा(?!\s*(?:ओ|इए|इये)?\s*मत))/.test(lower);
   if (emotionalDistress) signals.push("emotional_distress");
 
-  // The Devanagari alternatives are matched WITHOUT `\b`. JavaScript's `\b` is
-  // ASCII-only, so `\bअस्पताल\b` never fires: a space and अ are both non-word
-  // characters to it, so there is no boundary between them. This gate therefore
-  // rejected every Hindi-script hospital question outright — which, with the
-  // capability requirement now resolved inside this branch, would have left the
-  // Devanagari half of the treatment-need extractor permanently unreachable.
-  // Same bug family as the Hindi safety-keyword misses (issue #30). Only this
-  // signal is repaired here; the other `\b`-guarded Devanagari alternatives in
-  // this function have the same latent defect and are left untouched.
+  // The Devanagari alternatives are matched WITHOUT `\b` (see the note at the
+  // top of this function). This one was repaired first, with the treatment-need
+  // extractor below, because the hospital search gate made its Devanagari half
+  // unreachable (PR #148).
   const hospitalSearch =
     /\b(hospital|clinic|centre|center|dispensary|kaun sa|best|acha)\b/i.test(lower) ||
     /(अस्पताल|कौन सा|अच्छा)/.test(lower);
   if (hospitalSearch) signals.push("hospital_search");
 
   const chemoPrepare =
-    /\b(chemo|chemotherapy|कीमो)\b/i.test(lower) &&
-    /\b(prepare|ready|day|first|pehla|पहला|तैयारी|tayari|kaise)\b/i.test(lower);
+    (/\b(chemo|chemotherapy)\b/i.test(lower) || /कीमो/.test(lower)) &&
+    (/\b(prepare|ready|day|first|pehla|tayari|kaise)\b/i.test(lower) ||
+      /(पहल[ाीे](?![ऀ-ॿ])|तैयारी)/.test(lower));
   if (chemoPrepare) signals.push("chemo_prepare");
 
   const secondOpinion =
-    /\b(second opinion|दूसरी राय|dusri|another doctor|aur ek doctor)\b/i.test(lower);
+    /\b(second opinion|dusri|another doctor|aur ek doctor)\b/i.test(lower) ||
+    /दूसरी\s*राय/.test(lower);
   if (secondOpinion) signals.push("second_opinion");
 
+  // schemeQuery feeds pmjayRequired, which restricts the hospital list to
+  // PM-JAY empanelled centres. So Devanagari is kept to scheme words, not bare
+  // कार्ड ("आधार कार्ड" is ID, not a scheme), and "इलाज/उपचार की योजना"
+  // (treatment plan) is not a government scheme.
   const schemeQuery =
-    /\b(ayushman|scheme|योजना|आयुष्मान|PMJAY|government|सरकारी|sarkari|card kaise|कार्ड)\b/i.test(lower);
+    /\b(ayushman|scheme|PMJAY|government|sarkari|card kaise)\b/i.test(lower) ||
+    /(आयुष्मान|सरकारी|गोल्डन\s*कार्ड|(?<!(?:इलाज|उपचार)\s*(?:की|का)\s*)योजना)/.test(lower);
   if (schemeQuery) signals.push("scheme_query");
 
   return {
