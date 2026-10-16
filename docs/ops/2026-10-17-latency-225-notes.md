@@ -121,7 +121,7 @@ Not recommended now: raising `--max-instances`. g1-small allows more connections
 3. Degrades are visible, not silent: `jsonPayload.message:"Request budget exhausted"` or `textPayload:"early RAG exceeded"`. Count them: they are graceful templates, not 504s.
 4. Cold start: with min 1 there should be no `Starting new instance` log on the first request after a quiet hour. Before applying, measure one with `textPayload:"Nest application successfully started"` against the container start time.
 
-Sequential probe used for the section 3 baseline (8 turns, tier-1 questions, one at a time). It is the same kind of traffic the nightly eval sends: `node probe.js <api-url> 8`. The script is in the PR description.
+Sequential probe used for the section 3 baseline (8 turns, tier-1 questions, one at a time). It is the same kind of traffic the nightly eval sends: It is a one-session-per-question loop over `POST /v1/sessions` and `POST /v1/chat`, the same flow as `eval/runner/api-client.ts`, with no concurrency.
 
 ## 8. Requires SCCF review (not done here)
 
