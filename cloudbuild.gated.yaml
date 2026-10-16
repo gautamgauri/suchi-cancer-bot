@@ -127,10 +127,20 @@ steps:
       # request-scoped CPU the instance is throttled while the turn runs and the
       # pipeline times out (issues #115/#116/#117). Keep CPU allocated always.
       - '--no-cpu-throttling'
+      # Matches cloudbuild.yaml (issue #225; the max-instances cap is #217,
+      # which only reached the simple pipeline) EXCEPT min-instances: this
+      # deploys a no-traffic candidate revision, and a warm candidate would be
+      # billed on top of the serving one. Promote, then set min-instances on
+      # the serving revision (docs/ops/2026-10-17-latency-225-notes.md).
+      - '--timeout'
+      - '300'
       - '--min-instances'
       - '0'
+      - '--cpu-boost'
+      - '--concurrency'
+      - '20'
       - '--max-instances'
-      - '10'
+      - '2'
       - '--port'
       - '8080'
       - '--tag'
