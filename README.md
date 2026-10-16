@@ -236,3 +236,14 @@ The script provides clear pass/fail indicators:
 - Frontend uses sessionStorage to persist consent state
 - Vector embeddings use `EMBEDDING_API_KEY`
 - Review Copilot operational guide: [`docs/REVIEW_COPILOT_RUNBOOK.md`](docs/REVIEW_COPILOT_RUNBOOK.md)
+
+## Licence
+
+The **source code** in this repository is licensed under the [Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE).
+
+What the licence does **not** cover:
+
+- **Knowledge-base content** (`kb/` and the documents it indexes). Much of this material was written by other organisations: guidelines, hospital information, talk transcripts. It stays under its original copyright and terms, and is not relicensed here.
+- **The names "Suchi" and "Suchitra Cancer Care Foundation".** Under section 6 of the licence, they are not licensed for use. Forks must not present themselves as SCCF's Suchi.
+
+Suchi gives health information, not medical advice. If you deploy a fork for patients, you are responsible for its clinical review and safety.

@@ -26,5 +26,6 @@
   },
   "dependencies": {
     "@google-cloud/vertexai": "^1.10.4"
-  }
+  },
+  "license": "Apache-2.0"
 }
