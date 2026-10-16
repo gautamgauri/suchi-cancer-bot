@@ -105,11 +105,23 @@ steps:
       - '--no-cpu-throttling'
       - '--timeout'
       - '300'
+      # One warm instance so the first visitor after an idle spell does not pay a
+      # cold start (issue #225). CPU is always allocated (above), so this is
+      # billed 24/7: about US$50 (~Rs 4,200) a month at list price, less the
+      # hours an instance is already up. Set back to 0 to stop that spend.
       - '--min-instances'
-      - '0'
+      - '1'
+      - '--cpu-boost'
+      # 80 (the default) meant a second instance was only started at ~48
+      # concurrent requests, so every burst queued on ONE instance's 5-connection
+      # Prisma pool (issue #225). 20 spreads a burst over both instances.
+      - '--concurrency'
+      - '20'
       # Two instances x connection_limit=5 (in the database-url secret) = 10 of the
       # db-f1-micro's 25 connections. Ten instances x the old 20-connection pool
       # pushed the instance into swap on 2026-10-10/12 with no real user traffic.
+      # (suchi-db is db-g1-small since 2026-10-15; the cap is kept until the
+      # post-resize numbers are in — issue #225.)
       - '--max-instances'
       - '2'
       - '--port'
