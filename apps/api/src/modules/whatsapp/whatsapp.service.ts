@@ -103,14 +103,41 @@ export class WhatsAppService {
     throw new ForbiddenException("WhatsApp webhook verification failed");
   }
 
-  /** POST signature check (FR-WA-005): HMAC-SHA256 of the raw body with META_APP_SECRET. */
+  /**
+   * POST signature check (FR-WA-005): HMAC-SHA256 of the raw body with
+   * META_APP_SECRET. Still fails closed — but says why.
+   *
+   * A dropped or rotated `META_APP_SECRET` rejects every inbound message at
+   * this gate, before parsing, before the ledger, before anything else leaves a
+   * trace. There is no global exception filter in this app, so the resulting
+   * 403s carry no application log naming the WhatsApp webhook: from the outside
+   * it is indistinguishable from a channel that simply stopped answering
+   * (issue #231). Never logs the secret, the signature or the body.
+   */
   verifySignature(rawBody: Buffer | undefined, signatureHeader: string | undefined): boolean {
     const secret = process.env.META_APP_SECRET;
-    if (!secret || !rawBody || !signatureHeader) return false; // fail closed
+    if (!secret) {
+      this.logger.error("WhatsApp webhook rejected: META_APP_SECRET not configured");
+      return false;
+    }
+    if (!rawBody || !signatureHeader) {
+      // Most likely an unsigned probe of the public endpoint, not a fault.
+      this.logger.warn(
+        `WhatsApp webhook rejected: ${!rawBody ? "raw body unavailable" : "x-hub-signature-256 header missing"}`,
+      );
+      return false;
+    }
     const expected = "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
     const a = Buffer.from(signatureHeader);
     const b = Buffer.from(expected);
-    return a.length === b.length && timingSafeEqual(a, b);
+    const ok = a.length === b.length && timingSafeEqual(a, b);
+    if (!ok) {
+      this.logger.error(
+        "WhatsApp webhook rejected: x-hub-signature-256 does not match META_APP_SECRET — " +
+          "inbound messages are being dropped at the signature gate",
+      );
+    }
+    return ok;
   }
 
   // ---------------------------------------------------------------------------

@@ -127,6 +127,30 @@ describe("WhatsAppService", () => {
       delete process.env.META_APP_SECRET;
       expect(svc.verifySignature(Buffer.from("x"), sign("x", APP_SECRET))).toBe(false);
     });
+
+    // Issue #231: with no global exception filter, a rejection here 403s the
+    // batch with nothing in the logs naming the WhatsApp webhook — a rotated
+    // app secret looks identical to a channel that just went quiet.
+    it("logs why a rejection happened, without leaking the secret or the body", () => {
+      const errorLog = jest.spyOn(svc["logger"], "error").mockImplementation(() => undefined);
+
+      expect(svc.verifySignature(Buffer.from('{"a":2}'), sign('{"a":1}', APP_SECRET))).toBe(false);
+
+      expect(errorLog).toHaveBeenCalledTimes(1);
+      const logged = String(errorLog.mock.calls[0][0]);
+      expect(logged).toMatch(/does not match META_APP_SECRET/);
+      expect(logged).not.toContain(APP_SECRET);
+      expect(logged).not.toContain('{"a":2}');
+    });
+
+    it("names a missing app secret as the reason", () => {
+      const errorLog = jest.spyOn(svc["logger"], "error").mockImplementation(() => undefined);
+      delete process.env.META_APP_SECRET;
+
+      expect(svc.verifySignature(Buffer.from("x"), "sha256=whatever")).toBe(false);
+
+      expect(String(errorLog.mock.calls[0][0])).toMatch(/META_APP_SECRET not configured/);
+    });
   });
 
   describe("parseInbound", () => {
