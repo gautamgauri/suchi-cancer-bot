@@ -27,6 +27,30 @@ function isUniqueViolation(err: any): boolean {
   return err?.code === "P2002" || err?.code === "23505";
 }
 
+/**
+ * Raised when a reply could not be handed to the Graph API — missing outbound
+ * credentials or a non-2xx send.
+ *
+ * This exists because `sendText` used to swallow both cases (a `warn`/`error`
+ * log and an early `return`), so `processOne` went on to mark the inbound
+ * ledger row `processed` for a turn that delivered nothing. A channel sending
+ * zero replies was therefore indistinguishable from a healthy one in the only
+ * durable record we keep — which is how the live number could answer nobody
+ * for weeks without the ledger showing it (issue #231).
+ *
+ * `partsSent` is how many chunks made it out before the failure, so the caller
+ * can tell "nothing was delivered" from "the patient got a truncated reply".
+ */
+export class WhatsAppDeliveryError extends Error {
+  constructor(
+    message: string,
+    readonly partsSent: number,
+  ) {
+    super(message);
+    this.name = "WhatsAppDeliveryError";
+  }
+}
+
 @Injectable()
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
@@ -174,8 +198,23 @@ export class WhatsAppService {
     return { claimed };
   }
 
-  /** Close out a ledger row. Best-effort: a bookkeeping failure must not affect the reply. */
-  private async markLedger(wamid: string, status: "processed" | "failed", error?: string): Promise<void> {
+  /**
+   * Close out a ledger row. Best-effort: a bookkeeping failure must not affect
+   * the reply.
+   *
+   * `status:"processed"` means the reply was accepted by the Graph API, not
+   * merely that the chat turn returned — `sendText` throws on a failed send, so
+   * the catch in `processOne` records `failed` instead. `failedStage` says
+   * which half broke, so "the pipeline is down" and "the pipeline ran but the
+   * outbound channel is dead" are distinguishable without Cloud Run logs
+   * (issue #231).
+   */
+  private async markLedger(
+    wamid: string,
+    status: "processed" | "failed",
+    error?: string,
+    failedStage?: "pipeline" | "delivery",
+  ): Promise<void> {
     try {
       const existing = await this.prisma.analyticsEvent.findUnique({
         where: { id: inboundLedgerId(wamid) },
@@ -189,6 +228,7 @@ export class WhatsAppService {
             completedAt: new Date().toISOString(),
             // Error class/message only — never the user's text.
             ...(error ? { error: error.slice(0, 200) } : {}),
+            ...(failedStage ? { failedStage } : {}),
           },
         },
       });
@@ -265,8 +305,14 @@ export class WhatsAppService {
       await this.sendText(msg.from, cleanResponseForDisplay(result.responseText));
       await this.markLedger(msg.wamid, "processed");
     } catch (err: any) {
+      const delivery = err instanceof WhatsAppDeliveryError;
       this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
-      await this.markLedger(msg.wamid, "failed", err?.message);
+      await this.markLedger(msg.wamid, "failed", err?.message, delivery ? "delivery" : "pipeline");
+      // A delivery failure means the outbound channel itself is down (missing
+      // or rejected credentials, Graph outage). Pushing the fallback down the
+      // same channel cannot reach the patient, and after a partial send it
+      // would leave them a truncated answer followed by an apology.
+      if (delivery) return;
       await this.sendText(msg.from, FALLBACK_REPLY).catch(() => undefined);
     }
   }
@@ -304,16 +350,24 @@ export class WhatsAppService {
   // Outbound (FR-WA-010)
   // ---------------------------------------------------------------------------
 
+  /**
+   * Hand a reply to the Graph API. Throws `WhatsAppDeliveryError` if anything
+   * stops it reaching Meta — callers must not treat a return-without-send as
+   * success (issue #231).
+   */
   async sendText(to: string, text: string): Promise<void> {
     const phoneNumberId = process.env.META_WABA_PHONE_NUMBER_ID;
     const token = process.env.META_WABA_TOKEN;
     if (!phoneNumberId || !token) {
-      this.logger.warn("WhatsApp outbound skipped — META_WABA_PHONE_NUMBER_ID / META_WABA_TOKEN not configured");
-      return;
+      throw new WhatsAppDeliveryError(
+        "WhatsApp outbound not configured — META_WABA_PHONE_NUMBER_ID / META_WABA_TOKEN missing",
+        0,
+      );
     }
     const version = process.env.WHATSAPP_GRAPH_VERSION ?? "v21.0";
     const url = `https://graph.facebook.com/${version}/${phoneNumberId}/messages`;
 
+    let partsSent = 0;
     for (const body of formatForWhatsApp(text)) {
       const res = await fetch(url, {
         method: "POST",
@@ -328,9 +382,14 @@ export class WhatsAppService {
       });
       if (!res.ok) {
         const errText = await res.text().catch(() => `HTTP ${res.status}`);
-        this.logger.error(`WhatsApp send failed (${res.status}): ${errText.slice(0, 200)}`);
-        return; // stop sending further parts on failure
+        // Stop sending further parts, and surface it — a 401/403 on the system
+        // user token silently kills every reply on the live number.
+        throw new WhatsAppDeliveryError(
+          `WhatsApp send failed (${res.status}): ${errText.slice(0, 200)}`,
+          partsSent,
+        );
       }
+      partsSent++;
     }
   }
 }
