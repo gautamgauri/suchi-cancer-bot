@@ -127,6 +127,30 @@ describe("WhatsAppService", () => {
       delete process.env.META_APP_SECRET;
       expect(svc.verifySignature(Buffer.from("x"), sign("x", APP_SECRET))).toBe(false);
     });
+
+    // Issue #231: with no global exception filter, a rejection here 403s the
+    // batch with nothing in the logs naming the WhatsApp webhook — a rotated
+    // app secret looks identical to a channel that just went quiet.
+    it("logs why a rejection happened, without leaking the secret or the body", () => {
+      const errorLog = jest.spyOn(svc["logger"], "error").mockImplementation(() => undefined);
+
+      expect(svc.verifySignature(Buffer.from('{"a":2}'), sign('{"a":1}', APP_SECRET))).toBe(false);
+
+      expect(errorLog).toHaveBeenCalledTimes(1);
+      const logged = String(errorLog.mock.calls[0][0]);
+      expect(logged).toMatch(/does not match META_APP_SECRET/);
+      expect(logged).not.toContain(APP_SECRET);
+      expect(logged).not.toContain('{"a":2}');
+    });
+
+    it("names a missing app secret as the reason", () => {
+      const errorLog = jest.spyOn(svc["logger"], "error").mockImplementation(() => undefined);
+      delete process.env.META_APP_SECRET;
+
+      expect(svc.verifySignature(Buffer.from("x"), "sha256=whatever")).toBe(false);
+
+      expect(String(errorLog.mock.calls[0][0])).toMatch(/META_APP_SECRET not configured/);
+    });
   });
 
   describe("parseInbound", () => {
@@ -327,6 +351,100 @@ describe("WhatsAppService", () => {
       ledger.update.mockRejectedValue(new Error("update failed"));
       await svc.processInbound([{ wamid: "w1", from: "9199", text: "hi" }]);
       expect(svc.sendText).toHaveBeenCalledWith("9199", "Here is some info.");
+    });
+  });
+
+  /**
+   * Issue #231: the 27 Oct QA run got zero pipeline replies on the live number
+   * for four messages plus a burst, and nothing in the ledger said so — a turn
+   * whose reply never left the box was recorded exactly like a delivered one,
+   * because `sendText` logged and returned instead of throwing. These tests
+   * pin the outbound failure down as an observable, non-silent event.
+   */
+  describe("outbound delivery failures", () => {
+    let fetchMock: jest.Mock;
+
+    beforeEach(() => {
+      // The suite-wide stub makes sendText a no-op; these tests need the real one.
+      (svc.sendText as jest.Mock).mockRestore();
+      fetchMock = jest.fn();
+      jest.spyOn(global, "fetch").mockImplementation(fetchMock as any);
+    });
+
+    const okResponse = () => ({ ok: true, status: 200, text: async () => "{}" });
+    const rejectedResponse = () => ({
+      ok: false,
+      status: 401,
+      text: async () => '{"error":{"message":"Invalid OAuth access token"}}',
+    });
+
+    it("throws instead of reporting success when outbound credentials are missing", async () => {
+      delete process.env.META_WABA_TOKEN;
+      // Asserted by name rather than by class so this fails on the old
+      // log-and-return behaviour instead of failing to compile.
+      await expect(svc.sendText("9199", "hello")).rejects.toThrow(/not configured/);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("throws when the Graph API rejects the send", async () => {
+      fetchMock.mockResolvedValue(rejectedResponse());
+      await expect(svc.sendText("9199", "hello")).rejects.toThrow(/WhatsApp send failed \(401\)/);
+    });
+
+    it("reports how many parts were delivered before a mid-reply failure", async () => {
+      // Long enough that formatForWhatsApp splits it across two messages.
+      const long = "A sentence about chemotherapy side effects.\n".repeat(120);
+      fetchMock.mockResolvedValueOnce(okResponse()).mockResolvedValueOnce(rejectedResponse());
+
+      const err = await svc.sendText("9199", long).catch((e) => e);
+
+      expect(err?.name).toBe("WhatsAppDeliveryError");
+      expect(err.partsSent).toBe(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("marks the ledger failed at the delivery stage when the reply never left the box", async () => {
+      fetchMock.mockResolvedValue(rejectedResponse());
+
+      await svc.processInbound([{ wamid: "wa-231", from: "9199", text: "hi" }]);
+
+      expect(chat.handle).toHaveBeenCalledTimes(1); // the pipeline itself ran fine
+      expect(ledger.rows.get(inboundLedgerId("wa-231")).payload).toEqual(
+        expect.objectContaining({ status: "failed", failedStage: "delivery" }),
+      );
+    });
+
+    it("does not push the fallback reply down an outbound channel that just failed", async () => {
+      fetchMock.mockResolvedValue(rejectedResponse());
+
+      await svc.processInbound([{ wamid: "wa-231-fb", from: "9199", text: "hi" }]);
+
+      // One attempt for the real reply; no second attempt for FALLBACK_REPLY.
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("still marks the ledger processed when delivery succeeds", async () => {
+      fetchMock.mockResolvedValue(okResponse());
+
+      await svc.processInbound([{ wamid: "wa-231-ok", from: "9199", text: "hi" }]);
+
+      expect(ledger.rows.get(inboundLedgerId("wa-231-ok")).payload).toEqual(
+        expect.objectContaining({ status: "processed" }),
+      );
+      expect(ledger.rows.get(inboundLedgerId("wa-231-ok")).payload).not.toHaveProperty("failedStage");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("a pipeline failure is still attributed to the pipeline, not to delivery", async () => {
+      chat.handle.mockRejectedValue(new Error("boom"));
+      fetchMock.mockResolvedValue(okResponse());
+
+      await svc.processInbound([{ wamid: "wa-231-pipe", from: "9199", text: "hi" }]);
+
+      expect(ledger.rows.get(inboundLedgerId("wa-231-pipe")).payload).toEqual(
+        expect.objectContaining({ status: "failed", failedStage: "pipeline" }),
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(1); // the fallback still goes out
     });
   });
 
