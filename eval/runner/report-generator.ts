@@ -9,6 +9,7 @@ function redactConfigSecrets(config: EvaluationConfig): EvaluationConfig {
   const redacted: EvaluationConfig = JSON.parse(JSON.stringify(config));
   if (redacted.deepseekConfig?.apiKey) redacted.deepseekConfig.apiKey = "REDACTED";
   if (redacted.openAiConfig?.apiKey) redacted.openAiConfig.apiKey = "REDACTED";
+  if (redacted.xiaomiConfig?.apiKey) redacted.xiaomiConfig.apiKey = "REDACTED";
   if ((redacted as any).authBearer) (redacted as any).authBearer = "REDACTED";
   return redacted;
 }

@@ -24,8 +24,8 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
   const useSecretManager = await isSecretManagerAvailable();
   
   // Check if environment variables are already set - if so, skip Secret Manager to avoid unnecessary warnings
-  const hasEnvVars = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY;
-  
+  const hasEnvVars = process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY || process.env.XIAOMI_API_KEY;
+
   if (useSecretManager && !hasEnvVars) {
     try {
       const secretNames = [
@@ -34,6 +34,8 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
         "eval-llm-provider",
         "deepseek-model",
         "openai-model",
+        "xiaomi-api-key",
+        "xiaomi-model",
       ];
       secrets = await getSecrets(secretNames);
       console.log("✓ Loaded secrets from Google Cloud Secret Manager");
@@ -55,8 +57,8 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
   const envConfig: Partial<EvaluationConfig> = {
     apiBaseUrl: process.env.EVAL_API_BASE_URL || config.apiBaseUrl || "http://localhost:3001",
     authBearer: process.env.EVAL_AUTH_BEARER || config.authBearer, // Optional bearer token for API auth
-    llmProvider: (process.env.EVAL_LLM_PROVIDER || secrets["eval-llm-provider"] || config.llmProvider || "openai") as "vertex_ai" | "openai" | "deepseek",
-    fallbackLlmProvider: (process.env.EVAL_FALLBACK_LLM_PROVIDER || config.fallbackLlmProvider || "vertex_ai") as "vertex_ai" | "openai" | "deepseek",
+    llmProvider: (process.env.EVAL_LLM_PROVIDER || secrets["eval-llm-provider"] || config.llmProvider || "openai") as EvaluationConfig["llmProvider"],
+    fallbackLlmProvider: (process.env.EVAL_FALLBACK_LLM_PROVIDER || config.fallbackLlmProvider || "vertex_ai") as EvaluationConfig["fallbackLlmProvider"],
     timeoutMs: parseInt(process.env.EVAL_TIMEOUT_MS || String(config.timeoutMs || 60000), 10),
     retries: parseInt(process.env.EVAL_RETRIES || String(config.retries || 2), 10),
     // Bounded judge retries on 429/5xx/timeout before a case goes unscored (issue #110).
@@ -101,6 +103,33 @@ export async function loadConfig(configPath?: string): Promise<EvaluationConfig>
       model: process.env.DEEPSEEK_MODEL || secrets["deepseek-model"] || config.deepseekConfig?.model || "deepseek-chat",
       apiKey: deepseekApiKey,
       baseURL: process.env.DEEPSEEK_BASE_URL || config.deepseekConfig?.baseURL || "https://api.deepseek.com/v1",
+    };
+  }
+
+  // Xiaomi MiMo config — judge only (issue #226), loaded when primary or fallback.
+  //
+  // The defaults below are the pay-as-you-go endpoint and a model ID taken from
+  // third-party integration docs; neither has been confirmed against this
+  // project's Xiaomi plan (issue #226 step 2). A Token Plan account uses a
+  // regional base URL (e.g. https://token-plan-sgp.xiaomimimo.com/v1) and `tp-`
+  // keys, so set XIAOMI_BASE_URL and XIAOMI_MODEL explicitly rather than relying
+  // on these.
+  if (
+    envConfig.llmProvider === "xiaomi" ||
+    config.llmProvider === "xiaomi" ||
+    envConfig.fallbackLlmProvider === "xiaomi"
+  ) {
+    const xiaomiApiKey = process.env.XIAOMI_API_KEY || secrets["xiaomi-api-key"] || config.xiaomiConfig?.apiKey || "";
+
+    if (!xiaomiApiKey) {
+      console.warn("⚠ WARNING: XIAOMI_API_KEY is not set. LLM judge checks will fail.");
+      console.warn("  Set XIAOMI_API_KEY environment variable or ensure Secret Manager is accessible.");
+    }
+
+    envConfig.xiaomiConfig = {
+      model: process.env.XIAOMI_MODEL || secrets["xiaomi-model"] || config.xiaomiConfig?.model || "mimo-v2.5",
+      apiKey: xiaomiApiKey,
+      baseURL: process.env.XIAOMI_BASE_URL || config.xiaomiConfig?.baseURL || "https://api.xiaomimimo.com/v1",
     };
   }
 
