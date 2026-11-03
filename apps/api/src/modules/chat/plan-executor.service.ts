@@ -72,6 +72,37 @@ const DOCUMENT_BOILERPLATE_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Template section intents whose content must be about money (issue #220).
+ */
+const FINANCIAL_SECTION_INTENTS = new Set(["schemes"]);
+
+/**
+ * A knowledge-base document that profiles hospitals rather than money: the
+ * Bihar accreditation report, the treatment-centre lists, the hospital
+ * directory (issue #220). Matched against the document id and title together,
+ * because the chunk carries no document-type field. A chunk from one of these
+ * is never financial-support evidence, even when the profile happens to
+ * mention a cost — the hospital section is where it belongs, and since #219
+ * that section is rendered from the geocoded directory instead.
+ */
+const HOSPITAL_PROFILE_DOC_PATTERN =
+  /(?:hospital|treatment[\s_-]?cent(?:er|re)|cancer[\s_-]?cent(?:er|re)|nabh|accredited|directory)/i;
+
+/**
+ * Text that actually carries financial-assistance information: a named scheme
+ * or fund, an aid/charity/waiver word, or a price (issue #220). A chunk that
+ * matches none of these is not evidence for "Financial Support Options",
+ * whatever the embedding scored it at.
+ */
+const FINANCIAL_TOPIC_PATTERNS: RegExp[] = [
+  /\b(?:pm-?jay|ayushman|aarogya|arogya|cghs|esic|rashtriya arogya nidhi|yojana)\b/i,
+  /\b(?:relief fund|discretionary fund|corpus fund|patient fund)\b/i,
+  /\b(?:scheme|insurance|empanel|subsidi[sz]|waiv|concession|reimburs|grant|donation|charit|ngo|crowdfunding|welfare)\b/i,
+  /\bfinancial (?:aid|assistance|support|help|counsell?or)\b/i,
+  /(?:₹|\brs\.?\s*\d|\b\d+\s*(?:lakh|crore)\b|\bfree of cost\b|\bno cost\b|\bcosts?\b|\bcharges\b|\bfees?\b|\bexpenses?\b|\bafford)/i,
+];
+
+/**
  * Plain words for a canonical department name, for the directory-rendered
  * hospital section. Anything not listed falls back to the title-cased name.
  */
@@ -464,11 +495,19 @@ export class PlanExecutorService {
           mergedChunks,
           stepResults
         );
+        const sectionChunks = FINANCIAL_SECTION_INTENTS.has(intent)
+          ? this.keepFinancialChunks(
+              relevantChunks,
+              step.templateId,
+              section.id,
+              section.required
+            )
+          : relevantChunks;
 
-        if (relevantChunks.length > 0) {
+        if (sectionChunks.length > 0) {
           const maxItems = section.maxItems || 5;
           const content = this.formatChunksAsContent(
-            relevantChunks.slice(0, maxItems),
+            sectionChunks.slice(0, maxItems),
             section.required ? NO_SUPPRESSION : emittedBullets,
             emittedBullets
           );
@@ -545,6 +584,71 @@ export class PlanExecutorService {
 
     // Fallback: return all chunks (the template will use what's available)
     return allChunks;
+  }
+
+  /**
+   * Keep only the chunks that are actually about paying for treatment, for a
+   * section whose intent is financial (issue #220).
+   *
+   * The retrieval that fills "Financial Support Options" runs on the patient's
+   * own words, so "Patna mein radiotherapy kahan hoti hai" scores the Bihar
+   * hospital profiles — IGIMS, AIIMS Patna, Mahavir Cancer Sansthan, the Savera
+   * NABH note — above every scheme document, and when the plan carries no
+   * schemes step at all `findChunksForIntent` falls back to the merged list,
+   * which for a navigation question is nothing but hospital text. Either way the
+   * reader was handed four hospital descriptions under a money heading: no
+   * PM-JAY, no state relief fund, no charity desk.
+   *
+   * A chunk is kept when its document is not a hospital profile AND its text
+   * names a scheme, a fund, an aid word or a price. Dropping every candidate is
+   * the correct outcome for an OPTIONAL section — `renderTemplate` then omits
+   * the heading, which is what the issue asks for ("be dropped rather than
+   * padded with off-topic hospital text").
+   *
+   * A REQUIRED section may not be emptied this way: `renderTemplate` would
+   * print "_Information not available for your specific case…_" under a heading
+   * the template promised to fill (SCHEME_APPLICATION_CHECKLIST's "Scheme
+   * Overview" and "Eligibility Criteria" are both required and both carry this
+   * intent). There the unfiltered chunks are kept, the same precedent
+   * `NO_SUPPRESSION` sets for cross-section bullet suppression.
+   */
+  private keepFinancialChunks(
+    chunks: EvidenceChunk[],
+    templateId: string,
+    sectionId: string,
+    required: boolean
+  ): EvidenceChunk[] {
+    const kept = chunks.filter((c) => this.isFinancialSupportChunk(c));
+    if (kept.length === chunks.length) return kept;
+
+    if (kept.length === 0 && required) {
+      this.logger.debug({
+        event: "off_topic_financial_chunks_kept_for_required_section",
+        templateId,
+        sectionId,
+        chunkCount: chunks.length,
+      });
+      return chunks;
+    }
+
+    this.logger.debug({
+      event: "off_topic_financial_chunks_dropped",
+      templateId,
+      sectionId,
+      dropped: chunks
+        .filter((c) => !this.isFinancialSupportChunk(c))
+        .map((c) => c.chunkId),
+      kept: kept.length,
+    });
+    return kept;
+  }
+
+  /** Whether a chunk is evidence about paying for treatment (issue #220). */
+  private isFinancialSupportChunk(chunk: EvidenceChunk): boolean {
+    const document = `${chunk.docId} ${chunk.document?.title ?? ""}`;
+    if (HOSPITAL_PROFILE_DOC_PATTERN.test(document)) return false;
+    const text = chunk.content || "";
+    return FINANCIAL_TOPIC_PATTERNS.some((p) => p.test(text));
   }
 
   /**

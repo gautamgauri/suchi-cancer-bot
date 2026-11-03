@@ -29,6 +29,17 @@ import {
 } from "./hospital-directory.service";
 import { detectLocation } from "./utils/location-detector";
 
+/**
+ * Topic words appended to the query of a retrieval that fills a template's
+ * financial-support section (issue #220). See `queryForTemplateSection`.
+ */
+const SCHEMES_SECTION_QUERY_TERMS = [
+  "financial assistance",
+  "government scheme",
+  "PM-JAY",
+  "Ayushman Bharat",
+];
+
 // ─── Hospital Search Result (mirrored from HospitalDirectoryService) ──────────
 
 /** Re-exported so the executor/chat layer imports one hospital type surface. */
@@ -401,7 +412,7 @@ export class ExecutionPlannerService {
         steps.push({
           type: "retrieve",
           intent,
-          query: userText,
+          query: this.queryForTemplateSection(intent, userText),
           cancerType: sessionContext?.cancerType,
           topK: 5,
           stepId,
@@ -415,7 +426,7 @@ export class ExecutionPlannerService {
         steps.push({
           type: "retrieve",
           intent: "schemes",
-          query: userText,
+          query: this.queryForTemplateSection("schemes", userText),
           topK: 4,
           stepId,
         });
@@ -594,6 +605,31 @@ export class ExecutionPlannerService {
     // Education with multiple signals benefits from planning
     const detected = detectSignals(userText);
     return detected.signals.length >= 2;
+  }
+
+  /**
+   * The query for the retrieval that fills one template section.
+   *
+   * A template's sections ask about different things, but every section's
+   * retrieval ran on the patient's raw words, so the financial-support section
+   * of the navigation checklist searched for "radiotherapy in Patna" and got
+   * hospital profiles (issue #220). `RetrievalToolService` adds one intent term
+   * on top, which is not enough to pull a scheme document past four centres the
+   * patient's own city and treatment named directly.
+   *
+   * For a financial section the topic words are appended to the user text —
+   * kept, not replaced, so the cancer type and the state still steer the
+   * search towards the schemes that apply to this patient. Terms already in the
+   * question are not repeated. Other intents are unchanged.
+   */
+  private queryForTemplateSection(intent: string, userText: string): string {
+    if (intent !== "schemes") return userText;
+
+    const lower = userText.toLowerCase();
+    const missing = SCHEMES_SECTION_QUERY_TERMS.filter(
+      (term) => !lower.includes(term.toLowerCase())
+    );
+    return missing.length > 0 ? `${userText} ${missing.join(" ")}` : userText;
   }
 
   /**
