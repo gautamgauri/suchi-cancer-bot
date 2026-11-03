@@ -149,6 +149,21 @@ jobs:
           EVAL_LLM_PROVIDER: ${{ secrets.EVAL_LLM_PROVIDER || 'vertex_ai' }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Xiaomi MiMo — optional JUDGE provider (issue #226), inert until
+          # EVAL_LLM_PROVIDER is set to `xiaomi`. The fallback stays vertex_ai
+          # (default.json), so a Xiaomi outage degrades to the Gemini judge
+          # rather than leaving every check unscored.
+          #
+          # This workflow reads GitHub repository secrets, not Secret Manager:
+          # XIAOMI_API_KEY must exist as a repo secret for the switch to work.
+          # XIAOMI_MODEL/XIAOMI_BASE_URL are not secrets, but are read the same
+          # way so the endpoint can be corrected without a code change — a Token
+          # Plan account uses a regional host (token-plan-<region>.xiaomimimo.com)
+          # instead of the pay-as-you-go default. Empty values fall through to
+          # the defaults in eval/config/loader.ts.
+          XIAOMI_API_KEY: ${{ secrets.XIAOMI_API_KEY }}
+          XIAOMI_MODEL: ${{ secrets.XIAOMI_MODEL }}
+          XIAOMI_BASE_URL: ${{ secrets.XIAOMI_BASE_URL }}
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0202543132' }}
         run: |
           npm run eval:tier1
