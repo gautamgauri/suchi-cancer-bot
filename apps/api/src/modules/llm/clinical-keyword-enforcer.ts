@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PatientState } from "../chat/patient-state.service";
+import { resolveFallbackLocale } from "../chat/structured-extractor.service";
 
 /**
  * A single keyword enforcement rule.
@@ -10,7 +11,13 @@ export interface KeywordRule {
   patientState: string; // 'symptomatic' | 'informational' | 'post_diagnosis' | 'caregiver' | 'any'
   required: string[];   // at least one must be present
   synonyms: Record<string, string[]>; // term -> acceptable alternatives
-  injection?: string;   // sentence to append if ALL required terms are missing
+  /**
+   * Sentence to append if ALL required terms are missing.
+   *
+   * Hardcoded ENGLISH patient-facing clinical copy — it is only ever spliced
+   * into an English reply (issue #224). See `enforce()`.
+   */
+  injection?: string;
 }
 
 /**
@@ -111,15 +118,32 @@ export class ClinicalKeywordEnforcerService {
   /**
    * Enforce clinical keyword rules on a response.
    *
+   * Every `injection` sentence in the rule table above is hardcoded English,
+   * and `appendBeforeDisclaimer()` only knows English insertion patterns — so on
+   * a Hindi reply the English sentence landed at the very end of an answer the
+   * reader cannot read it in (issue #224; same reader-facing defect as #186 and
+   * #222, third path). This is patient-facing clinical copy, so under
+   * AGENTS.md §1.3 it cannot be translated here without SCCF review. We
+   * therefore do what #187/#223 did: emit nothing for a non-English reply
+   * rather than emit English. Synonym swaps are unaffected — they only
+   * normalize a clinical term the reply already contains.
+   *
+   * TODO(#224): inject localized sentences once SCCF has approved the wording
+   * for hi / bh / mai / hinglish.
+   *
    * @param responseText  — the response to check / modify
    * @param cancerType    — detected cancer type (e.g. "breast", "lung"), or null
    * @param patientState  — patient journey state from PatientStateService
+   * @param locale        — the turn's locale signal (session/DTO), if known
+   * @param userText      — the user's message, for Romanized-Hinglish detection
    * @returns the (possibly modified) response text
    */
   enforce(
     responseText: string,
     cancerType: string | null,
     patientState: PatientState,
+    locale?: string | null,
+    userText?: string,
   ): string {
     if (!responseText || responseText.trim().length === 0) {
       return responseText;
@@ -138,15 +162,32 @@ export class ClinicalKeywordEnforcerService {
       return responseText;
     }
 
+    // Language of the reply the injection sentences would be spliced into.
+    // resolveFallbackLocale() is the signal #187 already threads through:
+    // detectLocale() plus the Romanized-Hinglish case detectLocale() cannot see.
+    const replyLocale = resolveFallbackLocale(locale, userText, responseText);
+    const injectionAllowed = replyLocale === "en";
+
     let modified = responseText;
     const injections: string[] = [];
+    let suppressed = 0;
 
     for (const rule of applicableRules) {
-      const result = this.applyRule(modified, rule);
+      const result = this.applyRule(modified, rule, injectionAllowed);
       modified = result.text;
       if (result.injected) {
         injections.push(result.injected);
       }
+      if (result.suppressed) {
+        suppressed += 1;
+      }
+    }
+
+    if (suppressed > 0) {
+      this.logger.debug(
+        `Clinical keyword injection suppressed for ${suppressed} rule(s): ` +
+          `no reviewed wording for locale "${replyLocale}" (#224)`,
+      );
     }
 
     if (injections.length > 0) {
@@ -164,12 +205,15 @@ export class ClinicalKeywordEnforcerService {
   /**
    * Apply a single keyword rule.
    *
-   * Returns the (possibly modified) text and any injection sentence that was appended.
+   * Returns the (possibly modified) text, any injection sentence that was
+   * appended, and whether an injection was withheld because the reply is not in
+   * a language we hold approved wording for (#224).
    */
   private applyRule(
     text: string,
     rule: KeywordRule,
-  ): { text: string; injected: string | null } {
+    injectionAllowed: boolean,
+  ): { text: string; injected: string | null; suppressed: boolean } {
     const lower = text.toLowerCase();
 
     // Check each required term: is the canonical term or any synonym present?
@@ -200,11 +244,14 @@ export class ClinicalKeywordEnforcerService {
     // Only inject if ALL required terms are missing (none present, not even synonyms)
     // If at least one required term (or synonym) was found, don't inject
     if (allMissing.length === rule.required.length && rule.injection) {
+      if (!injectionAllowed) {
+        return { text, injected: null, suppressed: true };
+      }
       text = this.appendBeforeDisclaimer(text, rule.injection);
-      return { text, injected: rule.injection };
+      return { text, injected: rule.injection, suppressed: false };
     }
 
-    return { text, injected: null };
+    return { text, injected: null, suppressed: false };
   }
 
   /**
