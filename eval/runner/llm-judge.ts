@@ -28,6 +28,17 @@ const DEEPSEEK_PRICING = {
   "deepseek-reasoner": { input: 0.00000055, output: 0.0000022 },
 };
 
+// Xiaomi MiMo pricing — JUDGE ONLY (issue #226).
+// These rates come from third-party listings of the MiMo models, NOT from a
+// first-party Xiaomi rate card for this project's plan, so treat the reported
+// cost as indicative until issue #226 step 2 confirms the plan's pricing.
+// A model with no entry here is NOT priced from a sibling model's rate: its
+// tokens are still logged, with the cost reported as unknown rather than
+// invented (see callXiaomi).
+const XIAOMI_PRICING = {
+  "mimo-v2.5": { input: 0.000000119, output: 0.000000238 },
+};
+
 // Gemini pricing for Vertex AI (as of Jan 2026)
 const GEMINI_PRICING = {
   "gemini-2.0-flash-001": { input: 0.000000075, output: 0.0000003 },
@@ -42,6 +53,7 @@ export class LLMJudge {
   private config: EvaluationConfig;
   private openaiClient?: OpenAI;
   private deepseekClient?: OpenAI;
+  private xiaomiClient?: OpenAI;
   private costLog: DeepseekCostLog[] = [];
   private totalCost: number = 0;
   private fallbackUsedCount: number = 0;
@@ -69,6 +81,21 @@ export class LLMJudge {
       }
     }
 
+    // Xiaomi MiMo — OpenAI-compatible, judge only (issue #226). Initialised when
+    // it is the primary OR the fallback: unlike DeepSeek above, a fallback-only
+    // Xiaomi must have a client or isFallbackAvailable() can never be true.
+    if (config.llmProvider === "xiaomi" || config.fallbackLlmProvider === "xiaomi") {
+      if (config.xiaomiConfig?.apiKey && config.xiaomiConfig.apiKey.trim().length > 0) {
+        this.xiaomiClient = new OpenAI({
+          apiKey: config.xiaomiConfig.apiKey,
+          baseURL: config.xiaomiConfig.baseURL || "https://api.xiaomimimo.com/v1",
+        });
+      } else {
+        console.warn("⚠ Xiaomi client not initialized: XIAOMI_API_KEY is missing or empty in config.");
+        console.warn("  Set XIAOMI_API_KEY environment variable or ensure Secret Manager is accessible.");
+      }
+    }
+
     // Log fallback configuration
     if (config.fallbackLlmProvider) {
       console.log(`📋 Fallback LLM: ${config.fallbackLlmProvider} (${config.vertexAiConfig?.model || 'gemini-2.0-flash-001'})`);
@@ -87,6 +114,8 @@ export class LLMJudge {
       return !!this.openaiClient;
     } else if (this.config.fallbackLlmProvider === "deepseek") {
       return !!this.deepseekClient;
+    } else if (this.config.fallbackLlmProvider === "xiaomi") {
+      return !!this.xiaomiClient;
     }
     return false;
   }
@@ -99,6 +128,8 @@ export class LLMJudge {
       return !!this.openaiClient;
     } else if (this.config.llmProvider === "deepseek") {
       return !!this.deepseekClient;
+    } else if (this.config.llmProvider === "xiaomi") {
+      return !!this.xiaomiClient;
     } else if (this.config.llmProvider === "vertex_ai") {
       return !!this.config.vertexAiConfig;
     }
@@ -527,6 +558,8 @@ export class LLMJudge {
       return this.callOpenAI(prompt, judgeConfig);
     } else if (this.config.llmProvider === "deepseek") {
       return this.callDeepseek(prompt, judgeConfig);
+    } else if (this.config.llmProvider === "xiaomi") {
+      return this.callXiaomi(prompt, judgeConfig);
     } else if (this.config.llmProvider === "vertex_ai") {
       return this.callVertexAI(prompt, judgeConfig);
     } else {
@@ -549,6 +582,8 @@ export class LLMJudge {
       return this.callOpenAI(prompt, judgeConfig);
     } else if (fallback === "deepseek") {
       return this.callDeepseek(prompt, judgeConfig);
+    } else if (fallback === "xiaomi") {
+      return this.callXiaomi(prompt, judgeConfig);
     } else {
       throw new Error(`Unsupported fallback LLM provider: ${fallback}`);
     }
@@ -629,6 +664,64 @@ export class LLMJudge {
 
       // Log cost for visibility
       console.log(`  💰 Deepseek: ${usage.total_tokens} tokens, $${estimatedCost.toFixed(6)} (running total: $${this.totalCost.toFixed(4)})`);
+    }
+
+    return response.choices[0]?.message?.content || "{}";
+  }
+
+  /**
+   * Call Xiaomi MiMo API (OpenAI-compatible) — judge only (issue #226)
+   */
+  private async callXiaomi(prompt: string, _judgeConfig: LLMJudgeConfig): Promise<string> {
+    if (!this.xiaomiClient) {
+      throw new Error("Xiaomi client not initialized. Provide XIAOMI_API_KEY in config.");
+    }
+
+    const model = this.config.xiaomiConfig?.model || "mimo-v2.5";
+
+    const response = await this.xiaomiClient.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: "You are a medical response evaluator. Return only valid JSON.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.1, // Lower temperature for more deterministic outputs
+      response_format: { type: "json_object" },
+    });
+
+    // Track token usage and estimated cost
+    const usage = response.usage;
+    if (usage) {
+      const pricing = XIAOMI_PRICING[model as keyof typeof XIAOMI_PRICING];
+      const estimatedCost = pricing
+        ? usage.prompt_tokens * pricing.input + usage.completion_tokens * pricing.output
+        : 0;
+
+      const costEntry: DeepseekCostLog = {
+        timestamp: new Date().toISOString(),
+        model,
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        estimatedCost,
+      };
+
+      this.costLog.push(costEntry);
+      this.totalCost += estimatedCost;
+
+      // Log cost for visibility. With no published rate for this model we report
+      // the tokens and say the cost is unknown, rather than price it off a
+      // sibling model and under-report the judge spend.
+      const costText = pricing
+        ? `$${estimatedCost.toFixed(6)} (running total: $${this.totalCost.toFixed(4)})`
+        : `cost unknown (no rate for ${model}; running total: $${this.totalCost.toFixed(4)})`;
+      console.log(`  💰 Xiaomi: ${usage.total_tokens} tokens, ${costText}`);
     }
 
     return response.choices[0]?.message?.content || "{}";

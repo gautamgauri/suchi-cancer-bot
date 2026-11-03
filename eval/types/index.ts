@@ -281,8 +281,8 @@ export interface EvaluationReport {
 export interface EvaluationConfig {
   apiBaseUrl: string;
   authBearer?: string; // Optional bearer token for API authentication
-  llmProvider: "vertex_ai" | "openai" | "deepseek";
-  fallbackLlmProvider?: "vertex_ai" | "openai" | "deepseek"; // Backup if primary fails
+  llmProvider: "vertex_ai" | "openai" | "deepseek" | "xiaomi";
+  fallbackLlmProvider?: "vertex_ai" | "openai" | "deepseek" | "xiaomi"; // Backup if primary fails
   vertexAiConfig?: {
     project: string;
     location: string;
@@ -293,6 +293,16 @@ export interface EvaluationConfig {
     apiKey: string;
   };
   deepseekConfig?: {
+    model: string;
+    apiKey: string;
+    baseURL?: string;
+  };
+  /**
+   * Xiaomi MiMo — judge only (issue #226). Never used for patient-facing
+   * generation: that would need a separate decision on data handling,
+   * Hindi/Hinglish quality and SCCF clinical review.
+   */
+  xiaomiConfig?: {
     model: string;
     apiKey: string;
     baseURL?: string;

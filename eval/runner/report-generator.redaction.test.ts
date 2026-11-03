@@ -23,12 +23,14 @@ const SECRET_PATHS: ReadonlyArray<readonly string[]> = [
   ["authBearer"],
   ["openAiConfig", "apiKey"],
   ["deepseekConfig", "apiKey"],
+  ["xiaomiConfig", "apiKey"],
 ];
 
 const SENTINELS = {
   authBearer: "sentinel-bearer-2f9c1a",
   openAi: "sk-sentinel-openai-7b41d0",
   deepseek: "sk-sentinel-deepseek-3e88fa",
+  xiaomi: "sk-sentinel-xiaomi-9c20be",
 } as const;
 
 function makeConfig(): EvaluationConfig {
@@ -40,6 +42,7 @@ function makeConfig(): EvaluationConfig {
     vertexAiConfig: { project: "proj", location: "us-central1", model: "gemini-2.5-flash" },
     openAiConfig: { model: "gpt-x", apiKey: SENTINELS.openAi },
     deepseekConfig: { model: "deepseek-chat", apiKey: SENTINELS.deepseek, baseURL: "https://ds.invalid" },
+    xiaomiConfig: { model: "mimo-v2.5", apiKey: SENTINELS.xiaomi, baseURL: "https://xm.invalid" },
     timeoutMs: 1000,
     retries: 0,
     parallel: false,
@@ -66,6 +69,12 @@ describe("ReportGenerator — config secret redaction", () => {
   it("redacts the OpenAI API key", () => {
     const report = new ReportGenerator().generateReport(makeResults(), makeConfig());
     expect(report.config.openAiConfig?.apiKey).toBe("REDACTED");
+  });
+
+  it("redacts the Xiaomi MiMo API key (issue #226 — judge-only provider)", () => {
+    const report = new ReportGenerator().generateReport(makeResults(), makeConfig());
+    expect(report.config.xiaomiConfig?.apiKey).toBe("REDACTED");
+    expect(report.config.xiaomiConfig?.apiKey).not.toBe(SENTINELS.xiaomi);
   });
 
   it("redacts authBearer", () => {
@@ -124,6 +133,7 @@ describe("ReportGenerator — config secret redaction", () => {
     };
     const report = new ReportGenerator().generateReport(makeResults(), bare);
     expect(report.config.deepseekConfig).toBeUndefined();
+    expect(report.config.xiaomiConfig).toBeUndefined();
     expect(report.config.openAiConfig).toBeUndefined();
     expect((report.config as any).authBearer).toBeUndefined();
   });

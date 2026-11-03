@@ -34,4 +34,21 @@ describe("eval default config — the judge must be able to run", () => {
     expect(config.llmProvider).not.toBe("deepseek");
     expect(config.fallbackLlmProvider).not.toBe("deepseek");
   });
+
+  it("does not default either provider slot to xiaomi", () => {
+    // Xiaomi MiMo is wired up as an OPTIONAL judge (issue #226) and no key is
+    // stored yet. Defaulting a provider slot to it here would route the nightly
+    // judge at a credential that does not exist, and a judge that cannot run
+    // marks every check unscored.
+    expect(config.llmProvider).not.toBe("xiaomi");
+    expect(config.fallbackLlmProvider).not.toBe("xiaomi");
+  });
+
+  it("ships a Xiaomi config block with no key committed", () => {
+    // The block exists so operators can see the expected shape; the key must
+    // come from XIAOMI_API_KEY or Secret Manager, never from the repo
+    // (AGENTS.md §1.4 — no secrets in code).
+    expect(config.xiaomiConfig).toBeDefined();
+    expect(config.xiaomiConfig.apiKey).toBe("");
+  });
 });

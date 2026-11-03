@@ -16,6 +16,11 @@
     "apiKey": "",
     "baseURL": "https://api.deepseek.com/v1"
   },
+  "xiaomiConfig": {
+    "model": "mimo-v2.5",
+    "apiKey": "",
+    "baseURL": "https://api.xiaomimimo.com/v1"
+  },
   "timeoutMs": 240000,
   "retries": 4,
   "parallel": false,
