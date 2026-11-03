@@ -34,6 +34,42 @@ describe("ExecutionPlannerService", () => {
       expect(intents).toContain("schemes");
     });
 
+    test("the financial section's retrieval searches for money, not for the hospital question (#220)", () => {
+      const plan = planner.plan(
+        "Patna mein radiotherapy kahan hoti hai",
+        "NAVIGATION",
+        undefined,
+        "en"
+      );
+
+      const retrievals = stepsOfType<RetrievalStep>(plan.steps, "retrieve");
+      const schemes = retrievals.find((r) => r.intent === "schemes");
+      expect(schemes).toBeDefined();
+      // The patient's words are kept — the state and the treatment still steer
+      // the search — but the topic words are what make it a schemes query.
+      expect(schemes!.query).toContain("Patna mein radiotherapy kahan hoti hai");
+      expect(schemes!.query).toContain("financial assistance");
+      expect(schemes!.query).toContain("Ayushman Bharat");
+
+      // The hospital section's own retrieval is untouched.
+      const navigation = retrievals.find((r) => r.intent === "navigation");
+      expect(navigation!.query).toBe("Patna mein radiotherapy kahan hoti hai");
+    });
+
+    test("does not repeat a topic word the patient already used (#220)", () => {
+      const plan = planner.plan(
+        "Ayushman Bharat card se cancer ka ilaj free hota hai kya?",
+        "SCHEMES",
+        undefined,
+        "en"
+      );
+
+      const schemes = stepsOfType<RetrievalStep>(plan.steps, "retrieve").find(
+        (r) => r.intent === "schemes"
+      );
+      expect(schemes!.query.match(/Ayushman Bharat/gi)?.length).toBe(1);
+    });
+
     test("schemes query → template plan with scheme retrieval", () => {
       const plan = planner.plan(
         "How to apply for Ayushman Bharat card?",

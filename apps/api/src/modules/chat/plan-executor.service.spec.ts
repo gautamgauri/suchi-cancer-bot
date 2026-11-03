@@ -862,6 +862,267 @@ describe("PlanExecutorService — structured template composition", () => {
     });
   });
 
+  describe("financial section filled with hospital-description chunks (#220)", () => {
+    /**
+     * Prod, suchi-api-00429-zzn (main @ e1172ef): after #219 the hospital
+     * section renders from the geocoded directory, but the section below it,
+     * "Financial Support Options" / "आर्थिक सहायता के विकल्प", was still filled
+     * from whatever the schemes retrieval returned. For a Patna or Darbhanga
+     * radiotherapy question that is four hospital profiles — IGIMS, AIIMS
+     * Patna, Mahavir Cancer Sansthan, the Savera NABH note — and not one word
+     * about money: no PM-JAY, no Bihar CM relief fund, no charity desk.
+     */
+    const IGIMS_CHUNK = [
+      "### 1. State Cancer Institute",
+      "",
+      "- **IGIMS (State Cancer Institute), Patna**: Indira Gandhi Institute of Medical Sciences, Sheikhpura, is a state government tertiary hospital with a dedicated oncology department.",
+    ].join("\n");
+
+    const AIIMS_CHUNK = [
+      "### 3. AIIMS Patna",
+      "",
+      "- **AIIMS Patna**: The All India Institute of Medical Sciences at Phulwari Sharif runs radiation oncology and medical oncology services.",
+    ].join("\n");
+
+    const MAHAVIR_CHUNK = [
+      "### 2. Centres with Radiation Oncology",
+      "",
+      "- **Mahavir Cancer Sansthan, Patna**: Departments include Linear Accelerators, HDR Brachytherapy, IMRT and IGRT.",
+    ].join("\n");
+
+    const SAVERA_NABH_CHUNK = [
+      "### 4. Other Accredited Hospitals with Surgical Oncology",
+      "",
+      "- **Savera Cancer and Multispeciality Hospital, Patna**: NABH Recommended (20 May 2025).",
+    ].join("\n");
+
+    const PMJAY_CHUNK = [
+      "# Ayushman Bharat PM-JAY",
+      "",
+      "The scheme covers hospitalisation costs up to Rs 5 lakh per family per year at empanelled hospitals.",
+    ].join("\n");
+
+    const CMRF_CHUNK = [
+      "## Chief Minister's Relief Fund (Bihar)",
+      "",
+      "Patients can apply to the Bihar Chief Minister's Relief Fund through the district magistrate's office with an income certificate and the hospital's treatment estimate.",
+    ].join("\n");
+
+    /** A chunk about treatment itself: on no reading is it financial help. */
+    const RADIOTHERAPY_EDUCATION_CHUNK = [
+      "## External beam radiation therapy",
+      "",
+      "External beam radiation therapy is delivered from a machine outside the body over several weeks of daily sessions.",
+    ].join("\n");
+
+    function hospitalChunk(
+      chunkId: string,
+      docId: string,
+      content: string,
+      similarity: number
+    ): EvidenceChunk {
+      const c = chunk(chunkId, docId, content, similarity);
+      c.document.title = "NABH Accredited Cancer Treatment Centers in Bihar";
+      c.document.sourceType = "99_local_navigation";
+      return c;
+    }
+
+    /**
+     * The directory results #219 made the hospital section render from. They
+     * matter here because that path records NO bullets, so the per-bullet
+     * suppression of #214 no longer claims the hospital chunks before the
+     * financial section is filled — which is why #220 surfaced only after #219
+     * landed.
+     */
+    const PATNA_DIRECTORY = [
+      {
+        id: "mahavir",
+        name: "Mahavir Cancer Sansthan",
+        short_name: "Mahavir Cancer Sansthan",
+        city: "Patna",
+        state: "Bihar",
+        type: "Trust",
+        tier: "B",
+        departments: ["radiation_oncology"],
+        cost_tier: "Low",
+        pmjay_empanelled: true,
+        ncg_member: false,
+        contact: { phone: null, address: null },
+        key_doctors: [],
+        notes: "",
+        navigation_notes: [],
+        score: 1,
+      },
+    ];
+
+    const PATNA_GEOGRAPHY = {
+      stage: "city" as const,
+      requestedCity: "Patna",
+      resolvedState: "Bihar",
+      requiredDepartments: ["radiation_oncology"],
+    };
+
+    function plan(withSchemesStep: boolean, withDirectory = false): ExecutionPlan {
+      const retrieveNavigation: RetrievalStep = {
+        type: "retrieve",
+        intent: "navigation",
+        query: "Patna mein radiotherapy kahan hoti hai",
+        topK: 5,
+        stepId: "retrieve_navigation_0",
+      };
+      const retrieveSchemes: RetrievalStep = {
+        type: "retrieve",
+        intent: "schemes",
+        query: "Patna mein radiotherapy kahan hoti hai financial assistance",
+        topK: 5,
+        stepId: "retrieve_schemes_1",
+      };
+      const steps = withSchemesStep
+        ? [retrieveNavigation, retrieveSchemes]
+        : [retrieveNavigation];
+      const template: TemplateStep = {
+        type: "template",
+        templateId: "hospital_visit_prep",
+        retrievalStepIds: steps.map((s) => s.stepId),
+        locale: "en",
+        stepId: "template_hospital_visit_prep",
+      };
+      return {
+        planId: "plan_test_220",
+        steps: [...steps, template],
+        usesStructuredTemplate: true,
+        template: null as any,
+        signals: ["location_mentioned", "hospital_search"],
+        reasoning: "test",
+        estimatedRetrievalCalls: steps.length,
+        structuredHospitalResults: withDirectory ? PATNA_DIRECTORY : null,
+        structuredHospitalGeography: withDirectory ? PATNA_GEOGRAPHY : null,
+      } as unknown as ExecutionPlan;
+    }
+
+    function sectionBody(text: string, heading: string): string {
+      const start = text.indexOf(heading);
+      if (start === -1) return "";
+      const rest = text.slice(start + heading.length);
+      const next = rest.search(/\n\*\*|\n---/);
+      return next === -1 ? rest : rest.slice(0, next);
+    }
+
+    const FINANCIAL_HEADING = "**Financial Support Options**";
+
+    /**
+     * @param schemeChunks what the schemes retrieval returns
+     * @param withSchemesStep false reproduces the other route into the same
+     *   defect: no schemes step in the plan, so `findChunksForIntent` falls
+     *   back to the merged chunk list — all of it navigation text.
+     */
+    async function respond(
+      schemeChunks: EvidenceChunk[],
+      withSchemesStep = true
+    ): Promise<string> {
+      buildExecutor([]);
+      retrievalTool.retrieve.mockImplementation(async ({ intent }: { intent: string }) => {
+        const chunks =
+          intent === "schemes"
+            ? schemeChunks
+            : [
+                hospitalChunk("kb_bihar_nabh::chunk::1", "kb_en_bihar_nabh_cancer_centers_v1", IGIMS_CHUNK, 0.8),
+                hospitalChunk("kb_bihar_nabh::chunk::3", "kb_en_bihar_nabh_cancer_centers_v1", AIIMS_CHUNK, 0.78),
+              ];
+        return { chunks, query: "patna", intent, count: chunks.length, latencyMs: 1 };
+      });
+      const result = await executor.execute(
+        plan(withSchemesStep),
+        "Patna mein radiotherapy kahan hoti hai",
+        "en"
+      );
+      return visible(result.responseText || "");
+    }
+
+    /** The four hospital profiles of the report, verbatim from prod. */
+    const HOSPITAL_PROFILE_CHUNKS = [
+      hospitalChunk("kb_bihar_nabh::chunk::1", "kb_en_bihar_nabh_cancer_centers_v1", IGIMS_CHUNK, 0.8),
+      hospitalChunk("kb_bihar_nabh::chunk::3", "kb_en_bihar_nabh_cancer_centers_v1", AIIMS_CHUNK, 0.78),
+      hospitalChunk("kb_bihar_nabh::chunk::2", "kb_en_bihar_nabh_cancer_centers_v1", MAHAVIR_CHUNK, 0.76),
+      hospitalChunk("kb_bihar_nabh::chunk::4", "kb_en_bihar_nabh_cancer_centers_v1", SAVERA_NABH_CHUNK, 0.74),
+    ];
+
+    it("does not put hospital descriptions under the financial heading", async () => {
+      const text = await respond(HOSPITAL_PROFILE_CHUNKS);
+      const body = sectionBody(text, FINANCIAL_HEADING);
+
+      expect(body).not.toContain("IGIMS");
+      expect(body).not.toContain("AIIMS Patna");
+      expect(body).not.toContain("Mahavir Cancer Sansthan");
+      expect(body).not.toContain("Savera Cancer and Multispeciality Hospital");
+    });
+
+    it("drops the financial heading entirely when retrieval found nothing about money", async () => {
+      const text = await respond(HOSPITAL_PROFILE_CHUNKS);
+
+      expect(text).not.toContain(FINANCIAL_HEADING);
+      // The rest of the checklist is untouched.
+      expect(text).toContain("**Documents to Carry**");
+      expect(text).toContain("**Questions to Ask Your Doctor**");
+      expect(text).toContain("**Practical Tips**");
+    });
+
+    it("drops the heading in Hindi too, with the hospital section rendered from the directory (#219)", async () => {
+      buildExecutor([]);
+      retrievalTool.retrieve.mockResolvedValue({
+        chunks: HOSPITAL_PROFILE_CHUNKS,
+        query: "patna",
+        intent: "schemes",
+        count: HOSPITAL_PROFILE_CHUNKS.length,
+        latencyMs: 1,
+      });
+      const result = await executor.execute(
+        plan(true, true),
+        "Patna mein radiotherapy kahan hoti hai",
+        "hi"
+      );
+      const text = result.responseText || "";
+
+      expect(text).not.toContain("आर्थिक सहायता के विकल्प");
+      expect(text).not.toContain("Savera Cancer and Multispeciality Hospital");
+      // The directory still answers the hospital question.
+      expect(text).toContain("Mahavir Cancer Sansthan");
+    });
+
+    it("keeps the scheme and relief-fund evidence when retrieval does find it", async () => {
+      const text = await respond([
+        hospitalChunk("kb_bihar_nabh::chunk::1", "kb_en_bihar_nabh_cancer_centers_v1", IGIMS_CHUNK, 0.82),
+        chunk("kb_pmjay::chunk::1", "kb_en_pmjay_ayushman_bharat_cancer_v1", PMJAY_CHUNK, 0.7),
+        chunk("kb_ngo::chunk::5", "kb_en_india_cancer_ngo_financial_assistance_v1", CMRF_CHUNK, 0.68),
+      ]);
+      const body = sectionBody(text, FINANCIAL_HEADING);
+
+      expect(body).toContain("The scheme covers hospitalisation costs up to Rs 5 lakh");
+      expect(body).toContain("Chief Minister's Relief Fund");
+      expect(body).not.toContain("IGIMS");
+    });
+
+    it("drops an on-source chunk that is simply not about money", async () => {
+      const text = await respond([
+        chunk("kb_rt::chunk::2", "kb_en_radiotherapy_basics_v1", RADIOTHERAPY_EDUCATION_CHUNK, 0.72),
+      ]);
+
+      expect(text).not.toContain(FINANCIAL_HEADING);
+      expect(text).not.toContain("External beam radiation therapy is delivered");
+    });
+
+    it("does not pad the section from the merged chunks when the plan has no schemes step", async () => {
+      const text = await respond([], false);
+
+      expect(text).not.toContain(FINANCIAL_HEADING);
+      // The navigation chunks still fill the hospital section above it — they
+      // are only wrong under the money heading.
+      expect(sectionBody(text, "**Hospital / Treatment Centre Information**")).toContain(
+        "Indira Gandhi Institute of Medical Sciences"
+      );
+    });
+  });
+
   it("emits a citation for every knowledge-base bullet it keeps", async () => {
     buildExecutor([
       chunk("doc-chemo::chunk::2", "doc-chemo", SIDE_EFFECTS_CHUNK_CONTENT),
