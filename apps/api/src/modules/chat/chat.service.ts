@@ -2205,8 +2205,16 @@ export class ChatService {
       // appear in the response even if RAG chunks didn't contain them explicitly
       responseText = this.injectEssentialTermsIfMissing(responseText, cancerType, queryType);
 
-      // Clinical keyword enforcement — patient-state-aware mandatory term checks
-      responseText = this.clinicalKeywordEnforcer.enforce(responseText, cancerType, patientState);
+      // Clinical keyword enforcement — patient-state-aware mandatory term checks.
+      // The locale signal goes with it: its injection sentences are English-only
+      // copy and must not be spliced into a non-English reply (#224).
+      responseText = this.clinicalKeywordEnforcer.enforce(
+        responseText,
+        cancerType,
+        patientState,
+        disclaimerLocale,
+        dto.userText,
+      );
 
       // Validate response for ungrounded medical entities
       // For informational/general queries, don't abstain on ungrounded entities - allow response with warning
