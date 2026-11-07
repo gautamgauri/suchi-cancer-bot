@@ -47,6 +47,17 @@ import { normaliseDepartment } from "./hospital-directory.service";
 const LEADING_FRAGMENT_PATTERN = /^[a-z]+(?:\s|$)/;
 
 /**
+ * Compare two pieces of chunk text for "is this the same title?" purposes
+ * (issue #240): case, punctuation and whitespace all vary between a manifest
+ * title and the source page's own rendering of it (`(PDQ®)–Patient Version`,
+ * an en-dash where the manifest has a hyphen). Letters and digits of ANY script
+ * are kept, so a Devanagari title folds the same way an English one does.
+ */
+function foldTitleText(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+/**
  * Shared empty set for a section that must not be emptied by cross-section
  * bullet suppression — a REQUIRED section (see `executeTemplateStep`).
  */
@@ -574,7 +585,11 @@ export class PlanExecutorService {
     const seenSummaries = new Set<string>();
     for (const chunk of chunks) {
       // Extract a clean summary from the chunk content
-      const summary = this.extractSummary(chunk.content);
+      const summary = this.extractSummary(
+        chunk.content,
+        chunk.document?.title,
+        chunk.document?.source
+      );
       if (!summary) continue;
 
       if (DOCUMENT_BOILERPLATE_PATTERNS.some((p) => p.test(summary))) {
@@ -739,7 +754,9 @@ export class PlanExecutorService {
    *
    * The chunk text is ingest output, not prose written for a reader, so it is
    * sanitised before any of it is quoted into a bullet (issue #173):
-   *   - ingest markup is removed (`stripIngestMarkup`), and
+   *   - ingest markup is removed (`stripIngestMarkup`),
+   *   - the document's own title block is dropped, so a bullet is never a
+   *     catalogue entry (`dropDocumentTitleBlock`, issue #240), and
    *   - a chunk that opens mid-sentence contributes from its first COMPLETE
    *     sentence onward (`dropLeadingSentenceFragment`).
    *
@@ -752,21 +769,29 @@ export class PlanExecutorService {
    * was not taken as a heading, the first-sentence cut stopped at its `.` and
    * the bullet was the bare `4.`. Only the marker goes; the words stay.
    */
-  private extractSummary(content: string): string {
+  private extractSummary(
+    content: string,
+    documentTitle?: string,
+    documentSource?: string | null
+  ): string {
     // Strip heading markers, bold and list markers, but keep the line structure
     // so a heading stays a distinct line rather than colliding with the
     // paragraph beneath it.
-    const lines = content
-      .replace(/\r\n/g, "\n")
-      .split("\n")
-      .map((line) =>
-        this.stripListMarkers(
-          this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
+    const lines = this.dropDocumentTitleBlock(
+      content
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .map((line) =>
+          this.stripListMarkers(
+            this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
+          )
+            .replace(/\s+/g, " ")
+            .trim()
         )
-          .replace(/\s+/g, " ")
-          .trim()
-      )
-      .filter((line) => line.length > 0);
+        .filter((line) => line.length > 0),
+      documentTitle,
+      documentSource
+    );
 
     if (lines.length === 0) return "";
 
@@ -785,6 +810,74 @@ export class PlanExecutorService {
     const prefix = heading ? `${heading}: ` : "";
     const summary = this.firstSentenceOrTruncate(body);
     return summary ? `${prefix}${summary}` : heading || "";
+  }
+
+  /**
+   * Drop the leading lines of a chunk that are the document's own title block
+   * (issue #240).
+   *
+   * The NCI ingest writes each document as `# {manifest title}` followed by the
+   * scraped page (`scripts/nci-ingestion/process_content.py:164`), and the page
+   * opens with its own H1 restating that title. So chunk 0 of an NCI document
+   * begins with two lines of catalogue apparatus before any prose. Handed to
+   * `extractSummary` as-is, the first became the bullet's heading and the second
+   * its body: a caregiver asking how to give her frightened mother courage was
+   * shown `Advances in Lung Cancer Research - NCI: Advances in Lung Cancer
+   * Research …` under "Coping Strategies". Worse, a title block long enough to
+   * fill the 150-character bullet budget meant the document's actual prose never
+   * reached the reader at all — which is what happened to the PDQ chunk in the
+   * same reply.
+   *
+   * Only the LEADING run is dropped: the scan stops at the first line that is
+   * not a restatement, so a title-like phrase occurring later in the chunk is
+   * untouched. A line counts as a restatement when its folded text equals one of
+   * the title's forms, or extends one at a word boundary (the PDQ H1 adds
+   * `(PDQ®)–Patient Version`), or is extended by one (the page H1 drops the
+   * manifest's ` - NCI` source suffix). Matching is only attempted from four
+   * characters up, so a one-word opening line is never swallowed by a long
+   * title that happens to start with the same word.
+   *
+   * A chunk that is nothing BUT its title block yields no lines, so
+   * `extractSummary` returns "" and `formatChunksAsContent` omits the bullet
+   * entirely — the correct outcome, since a document name is not information.
+   */
+  private dropDocumentTitleBlock(
+    lines: string[],
+    documentTitle?: string,
+    documentSource?: string | null
+  ): string[] {
+    const title = foldTitleText(documentTitle || "");
+    if (!title) return lines;
+
+    // The manifest titles NCI documents `<name> - <source>`; the page's own H1
+    // carries the name without that suffix.
+    const variants = new Set<string>([title]);
+    if (documentSource) {
+      const source = foldTitleText(documentSource);
+      if (source && title.endsWith(` ${source}`)) {
+        variants.add(title.slice(0, -(source.length + 1)).trim());
+      }
+    }
+
+    const isRestatement = (line: string): boolean => {
+      const folded = foldTitleText(line);
+      if (folded.length < 4) return false;
+      for (const variant of variants) {
+        if (!variant) continue;
+        if (
+          folded === variant ||
+          folded.startsWith(`${variant} `) ||
+          variant.startsWith(`${folded} `)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    let start = 0;
+    while (start < lines.length && isRestatement(lines[start])) start++;
+    return start === 0 ? lines : lines.slice(start);
   }
 
   /**
