@@ -13,7 +13,13 @@ import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 
-function chunk(chunkId: string, docId: string, content: string, similarity = 0.8): EvidenceChunk {
+function chunk(
+  chunkId: string,
+  docId: string,
+  content: string,
+  similarity = 0.8,
+  document: Partial<EvidenceChunk["document"]> = {}
+): EvidenceChunk {
   return {
     chunkId,
     docId,
@@ -26,6 +32,7 @@ function chunk(chunkId: string, docId: string, content: string, similarity = 0.8
       source: "NCI",
       citation: "National Cancer Institute",
       isTrustedSource: true,
+      ...document,
     },
   };
 }
@@ -252,6 +259,128 @@ describe("PlanExecutorService — structured template composition", () => {
       expect(text).toContain("**Support Helplines**");
       expect(text).toContain("**For Caregivers**");
       expect(text).toContain("**Vandrevala Foundation**: 9999666555");
+    });
+  });
+
+  describe("a document's own title block quoted as template content (#240)", () => {
+    /**
+     * A caregiver asked how to give her frightened mother courage and the
+     * PSYCHOSOCIAL_SUPPORT template's "Coping Strategies" section came back
+     * holding knowledge-base document NAMES instead of coping guidance.
+     *
+     * The NCI ingest writes every document as `# {manifest title}` followed by
+     * the scraped page, which opens with the page's own H1 restating that title
+     * (`scripts/nci-ingestion/process_content.py:164`). So chunk 0 of an NCI
+     * document is a title block, and `extractSummary` took its first line as a
+     * heading and the restatement as the body — delivering
+     * `Advances in Lung Cancer Research - NCI: Advances in Lung Cancer Research …`
+     * to the patient. The second chunk's title block filled the whole 150-char
+     * bullet budget, so the document's actual prose never reached her at all.
+     *
+     * The titles are the ones the live run delivered (seed 1794076201, q03);
+     * `Advances in Lung Cancer Research - NCI` is `kb/manifest.json`'s title for
+     * `kb_en_nci_types_lung_research_v1`.
+     */
+    const LUNG_RESEARCH_TITLE_BLOCK = [
+      "# Advances in Lung Cancer Research - NCI",
+      "",
+      "Advances in Lung Cancer Research",
+      "",
+      "NCI-funded researchers are studying new ways to prevent, detect and treat lung cancer.",
+    ].join("\n");
+
+    /** The PDQ H1 restates the title with a `(PDQ®)–Patient Version` suffix. */
+    const NSCLC_TITLE_BLOCK = [
+      "# Non-Small Cell Lung Cancer Treatment - NCI",
+      "",
+      "Non-Small Cell Lung Cancer Treatment (PDQ®)–Patient Version",
+      "",
+      "General Information About Non-Small Cell Lung Cancer",
+      "",
+      "Non-small cell lung cancer is a disease in which malignant cells form in the tissues of the lung.",
+    ].join("\n");
+
+    function psychosocialPlan(): ExecutionPlan {
+      const retrieve: RetrievalStep = {
+        type: "retrieve",
+        intent: "psychosocial",
+        query: "मेरी माँ को कैंसर है और वह बहुत डरी हुई हैं, मैं उन्हें कैसे हिम्मत दूँ?",
+        topK: 5,
+        stepId: "retrieve_psychosocial_0",
+      };
+      const template: TemplateStep = {
+        type: "template",
+        templateId: "psychosocial_support",
+        retrievalStepIds: ["retrieve_psychosocial_0"],
+        locale: "en",
+        stepId: "template_psychosocial_support",
+      };
+      return {
+        planId: "plan_test_psychosocial_240",
+        steps: [retrieve, template],
+        usesStructuredTemplate: true,
+        template: null as any,
+        signals: [],
+        reasoning: "test",
+        estimatedRetrievalCalls: 1,
+      } as unknown as ExecutionPlan;
+    }
+
+    async function titleBlockResponse(): Promise<string> {
+      buildExecutor([
+        chunk("kb_lung_research::chunk::0", "kb_lung_research", LUNG_RESEARCH_TITLE_BLOCK, 0.8, {
+          title: "Advances in Lung Cancer Research - NCI",
+        }),
+        chunk("kb_nsclc::chunk::0", "kb_nsclc", NSCLC_TITLE_BLOCK, 0.7, {
+          title: "Non-Small Cell Lung Cancer Treatment - NCI",
+        }),
+      ]);
+
+      const result = await executor.execute(
+        psychosocialPlan(),
+        "how do I give my mother courage",
+        "en"
+      );
+      return visible(result.responseText || "");
+    }
+
+    it("does not deliver the document's manifest title as section content", async () => {
+      const text = await titleBlockResponse();
+
+      expect(text).not.toContain("Advances in Lung Cancer Research - NCI");
+      expect(text).not.toContain("Non-Small Cell Lung Cancer Treatment - NCI");
+    });
+
+    it("does not deliver the page H1 that restates the title either", async () => {
+      const text = await titleBlockResponse();
+
+      // Both forms of the restatement: bare, and with the PDQ audience suffix.
+      expect(text).not.toContain("Advances in Lung Cancer Research");
+      expect(text).not.toContain("(PDQ®)–Patient Version");
+    });
+
+    it("delivers the document's actual prose the title block had crowded out", async () => {
+      const text = await titleBlockResponse();
+
+      expect(text).toContain(
+        "NCI-funded researchers are studying new ways to prevent, detect and treat lung cancer."
+      );
+      expect(text).toContain(
+        "General Information About Non-Small Cell Lung Cancer: Non-small cell lung cancer is a disease in which malignant cells form in the tissues of the lung."
+      );
+    });
+
+    it("still cites every bullet it keeps", async () => {
+      buildExecutor([
+        chunk("kb_lung_research::chunk::0", "kb_lung_research", LUNG_RESEARCH_TITLE_BLOCK, 0.8, {
+          title: "Advances in Lung Cancer Research - NCI",
+        }),
+      ]);
+
+      const result = await executor.execute(psychosocialPlan(), "courage", "en");
+      expect(result.responseText || "").toContain(
+        "[citation:kb_lung_research:kb_lung_research::chunk::0]"
+      );
     });
   });
 
