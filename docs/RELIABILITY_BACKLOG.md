@@ -430,7 +430,14 @@ weaknesses found while investigating, deliberately *not* changed here:
   declaration of an emergency with no described symptom must escalate to S2.
   Both are currently answered wrong, in opposite directions.
 
-### P1-15. The landing-site contact form discards every message (new; found adding analytics)
+### P1-15. The landing-site contact form discards every message (new; found adding analytics) — FIX BUILT, NOT DEPLOYED (branch `feat/contact-form-delivery`)
+
+- **Fix (built, unit/HTTP-tested only, no real send):** `POST /v1/contact`
+  (`apps/api/src/modules/contact/`) emails each message through the existing
+  `EmailService`; the homepage form posts to it and shows success only on a 2xx.
+  Recipients are `CONTACT_FORM_TO` / `CONTACT_FORM_CC` from Secret Manager; until
+  they exist the endpoint returns 503 and the form offers the published address.
+  Stays open until a real submission is confirmed in the team inbox.
 
 - **What:** the homepage "Contact Us" form (`apps/landing/src/pages/index.astro`,
   `#contact-form` and its inline `<script>`) calls `preventDefault()`, hides the
@@ -537,6 +544,26 @@ and https://suchitracancercare.org/about/safety/ returned 404 on 2026-11-12. The
 short disclaimer banner still shows on every page, so the full disclaimer is the
 missing piece. Fix by adding the page (its wording needs SCCF review) or by pointing
 the link at an existing one.
+
+### P2-11. `@Throttle` limits on chat/sessions/voice are inert: no `ThrottlerGuard` is registered (new; found building the contact form)
+
+`app.module.ts` configures `ThrottlerModule`, and `chat.controller.ts`,
+`sessions.controller.ts` and `voice.controller.ts` carry `@Throttle(...)`, but no
+`ThrottlerGuard` is bound (no `APP_GUARD`, no `@UseGuards(ThrottlerGuard)`), so
+none of those limits is enforced. If it is switched on, two things need fixing
+first: `@nestjs/throttler` 6.x reads `ttl` in **milliseconds** (the decorators
+pass `ttl: 60`, i.e. 60 ms), and the default tracker uses `req.ip`, which behind
+Cloud Run is the front end, not the visitor (see `contactClientIp()` in
+`modules/contact/contact-request.ts`). `POST /v1/contact` does not rely on the
+throttler; it has its own limiter.
+
+### P2-12. `SMTP_*` variables are not declared in `env.validation.ts` (new)
+
+`EmailService` reads `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and
+`SMTP_FROM` straight from `process.env`; none is in the zod schema, against the
+convention in AGENTS.md §3. `SMTP_FROM` is also absent from both Cloud Build
+files, so production uses the code default sender, which Gmail SMTP rewrites to
+the authenticated account.
 
 ---
 

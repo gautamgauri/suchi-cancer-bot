@@ -22,6 +22,7 @@
 | Article drafts + queue | GCS `suchi-navigator-state` bucket | Gautam, Divya |
 | Hospital directory | GCS + committed to git (`hospitals.json`) | Gautam, Divya, Nisha |
 | Langfuse traces | Langfuse US cloud (third-party) | Gautam |
+| Website contact form (name, reply email, message) | **Not stored by the API.** Emailed once via the SMTP account (`EmailService`) to `CONTACT_FORM_TO` + `CONTACT_FORM_CC`; lives on in those mailboxes and in the SMTP account's Sent folder. Logs carry only an outcome and a random request id (`modules/contact/`, spec-pinned). | The recipients |
 
 ---
 

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import VideoCard from '../components/VideoCard.astro';
 import videosData from '../content/videos.json';
+import { CONTACT_API_URL, CONTACT_FALLBACK_EMAIL } from '../config/contact';
 
 const featuredVideos = videosData.videos.filter(v => v.featured).slice(0, 3);
 const cancerTypes = videosData.cancerTypes;
@@ -351,7 +352,7 @@ const base = import.meta.env.BASE_URL;
             A volunteer or doctor from SCCF will reply within 2–3 working days.
           </p>
 
-          <form id="contact-form">
+          <form id="contact-form" data-endpoint={CONTACT_API_URL}>
             <div class="form-group">
               <label for="name" class="form-label">Full Name</label>
               <input
@@ -361,6 +362,7 @@ const base = import.meta.env.BASE_URL;
                 class="form-input"
                 placeholder="Your name"
                 autocomplete="name"
+                maxlength="100"
                 required
               />
             </div>
@@ -374,6 +376,7 @@ const base = import.meta.env.BASE_URL;
                 class="form-input"
                 placeholder="you@example.com"
                 autocomplete="email"
+                maxlength="254"
                 required
               />
             </div>
@@ -386,18 +389,41 @@ const base = import.meta.env.BASE_URL;
                 class="form-textarea"
                 rows="4"
                 placeholder="Tell us how we can help..."
+                maxlength="5000"
                 required
               ></textarea>
+            </div>
+
+            <!-- Spam trap: hidden from people and screen readers; bots fill it in. -->
+            <div class="form-trap" aria-hidden="true">
+              <label for="website">Leave this field empty</label>
+              <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
             </div>
 
             <div class="form-helper">
               <p>We cannot help in emergencies, but we can suggest questions to ask your doctor or help you understand information.</p>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-full">Send Message</button>
+            <div class="form-error" id="form-error" role="alert"></div>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+
+            <button type="submit" class="btn btn-primary btn-full" id="contact-submit">Send Message</button>
+
+            <p class="form-recipients">
+              Your message goes by email to the SCCF team. The website does not keep a copy.
+              <a href={`${base}privacy/`}>Privacy notice</a>
+            </p>
           </form>
 
-          <div class="form-success" id="form-success" style="display: none;">
+          <template id="form-error-fallback">
+            <p>
+              You can also email us at
+              <a href={`mailto:${CONTACT_FALLBACK_EMAIL}`}>{CONTACT_FALLBACK_EMAIL}</a>.
+              What you typed is still in the form.
+            </p>
+          </template>
+
+          <div class="form-success" id="form-success" tabindex="-1" style="display: none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
               <polyline points="22 4 12 14.01 9 11.01"/>
@@ -413,13 +439,101 @@ const base = import.meta.env.BASE_URL;
 </BaseLayout>
 
 <script>
-  const form = document.getElementById('contact-form') as HTMLFormElement;
+  // Sends the contact form to the API, which emails it to the SCCF team.
+  // Success is shown ONLY after a 2xx; on any failure the typed text stays in
+  // the form and the published email address is offered instead.
+  const form = document.getElementById('contact-form') as HTMLFormElement | null;
   const success = document.getElementById('form-success');
+  const errorBox = document.getElementById('form-error');
+  const status = document.getElementById('form-status');
+  const submitButton = document.getElementById('contact-submit') as HTMLButtonElement | null;
+  const fallback = document.getElementById('form-error-fallback') as HTMLTemplateElement | null;
+  const readyAt = performance.now();
+  const TIMEOUT_MS = 20000;
+  const BUTTON_LABEL = submitButton?.textContent ?? 'Send Message';
 
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    form.style.display = 'none';
-    if (success) success.style.display = 'flex';
+  const ERRORS: Record<string, string> = {
+    CONTACT_TOO_FAST: 'That was quick. Please wait a moment, then press Send again.',
+    CONTACT_RATE_LIMITED: 'Too many messages have come from this connection. Please try again later.',
+    CONTACT_TOO_LARGE: 'Your message is too long. Please shorten it and try again.',
+    CONTACT_INVALID: 'Please check your name, email address and message, then try again.',
+  };
+  const GENERIC_ERROR = "Sorry, your message didn't send.";
+
+  function showError(text: string) {
+    if (!errorBox) return;
+    const lead = document.createElement('p');
+    lead.textContent = text;
+    errorBox.replaceChildren(lead, ...(fallback ? [fallback.content.cloneNode(true)] : []));
+  }
+
+  async function errorText(res: Response): Promise<string> {
+    try {
+      const body = await res.json();
+      if (typeof body?.code === 'string' && ERRORS[body.code]) return ERRORS[body.code];
+    } catch {
+      /* not JSON */
+    }
+    return res.status === 400 ? ERRORS.CONTACT_INVALID : GENERIC_ERROR;
+  }
+
+  let sending = false;
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (sending) return;
+    sending = true;
+
+    errorBox?.replaceChildren();
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Sending…';
+    }
+    if (status) status.textContent = 'Sending your message…';
+
+    const data = new FormData(form);
+    const payload = {
+      name: String(data.get('name') ?? ''),
+      email: String(data.get('email') ?? ''),
+      message: String(data.get('message') ?? ''),
+      website: String(data.get('website') ?? ''),
+      elapsedMs: Math.round(performance.now() - readyAt),
+    };
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
+    let sent = false;
+    try {
+      const res = await fetch(form.dataset.endpoint ?? '', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      if (res.ok) {
+        sent = true;
+        form.reset();
+        form.style.display = 'none';
+        if (success) {
+          success.style.display = 'flex';
+          success.focus();
+        }
+        // Analytics (if enabled and allowed) counts the enquiry. No field values.
+        document.dispatchEvent(new CustomEvent('sccf:analytics', { detail: { event: 'contact_enquiry', method: 'form' } }));
+      } else {
+        showError(await errorText(res));
+      }
+    } catch {
+      showError(GENERIC_ERROR);
+    } finally {
+      window.clearTimeout(timer);
+      if (status) status.textContent = '';
+      if (!sent && submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = BUTTON_LABEL;
+      }
+      sending = sent;
+    }
   });
 </script>
 
@@ -977,6 +1091,61 @@ const base = import.meta.env.BASE_URL;
     color: var(--color-text-secondary);
     margin: 0;
     line-height: 1.5;
+  }
+
+  .form-trap {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .form-error:not(:empty) {
+    background: var(--color-danger-bg);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    padding: 0.875rem;
+    margin-bottom: 1rem;
+  }
+
+  /* :global — the first paragraph is created by the script, without Astro's scope attribute. */
+  .form-error :global(p) {
+    font-size: var(--text-sm);
+    color: var(--color-danger-text);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .form-error :global(p + p) {
+    margin-top: 0.5rem;
+  }
+
+  .form-error :global(a) {
+    color: var(--color-danger-text);
+    text-decoration: underline;
+  }
+
+  /* Stays rendered (an undisplayed live region may not be announced). */
+  .form-status {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin: 0 0 0.75rem;
+  }
+
+  .form-status:empty {
+    margin: 0;
+  }
+
+  .form-recipients {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    margin: 0.75rem 0 0;
+    line-height: 1.5;
+  }
+
+  .form-recipients a {
+    text-decoration: underline;
   }
 
   .form-success {
