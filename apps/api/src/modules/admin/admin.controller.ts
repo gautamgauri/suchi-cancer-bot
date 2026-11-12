@@ -5,6 +5,7 @@ import { SchedulerOidcGuard } from "../../common/guards/scheduler-oidc.guard";
 import { AdminService } from "./admin.service";
 import { DailyReportService } from "../analytics/daily-report.service";
 import { OpsMetricsService } from "../analytics/ops-metrics.service";
+import { CommsMetricsService, parseCommsMetricsRange } from "../analytics/comms-metrics.service";
 import { EmailService } from "../email/email.service";
 import { generateMarkdownReport } from "../analytics/report-generator";
 import { NavigatorApproveService, HospitalUpdates } from "./navigator-approve.service";
@@ -38,6 +39,7 @@ export class AdminController {
     private readonly analyticsAdmin: AnalyticsAdminService,
     private readonly learningNote: LearningNoteService,
     private readonly opsMetrics: OpsMetricsService,
+    private readonly commsMetrics: CommsMetricsService,
   ) {}
 
   @UseGuards(BasicAuthGuard)
@@ -523,6 +525,18 @@ ${noteHtml}
   @Get("ops-metrics")
   async getOpsMetrics() {
     return this.opsMetrics.collect();
+  }
+
+  // ─── Comms metrics feed (external system of record pulls this) ───────────
+  // Per-day counts by channel for an IST date range: numbers, dates and
+  // channel names only, small cells (1–4) suppressed. Never use daily-report
+  // as a feed — it carries patient query text. Contract: comms-metrics.service.ts.
+
+  @UseGuards(BasicAuthGuard)
+  @Get("comms-metrics")
+  async getCommsMetrics(@Query("from") from?: string, @Query("to") to?: string) {
+    const range = parseCommsMetricsRange(from, to);
+    return this.commsMetrics.collect(range);
   }
 
   // ─── Learning Note (FR-LEARN-001) — first Monday of each month ───────────
