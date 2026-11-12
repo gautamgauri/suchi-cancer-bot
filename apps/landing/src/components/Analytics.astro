@@ -1,0 +1,318 @@
+---
+/**
+ * GA4 with Consent Mode, loaded only after the visitor allows it.
+ *
+ * Rendered by BaseLayout only when src/config/analytics.ts holds a valid ID.
+ * Until the visitor clicks "Allow analytics", gtag.js is not requested and no
+ * event is sent: Google's script is injected only on consent ("basic" consent
+ * mode), and advertising storage stays denied for good.
+ *
+ * Events (same vocabulary as Diksha's site, lowercase snake_case):
+ *   ask_suchi_click        outbound click to chat.suchitracancercare.org
+ *                          (nothing inside the chat app is instrumented)
+ *   outbound_social_click  click to a social platform, param `platform`
+ *   contact_enquiry        mailto: an @suchitracancercare.org address
+ *                          (`method: email`) or submit of a form tagged
+ *                          data-analytics-event="contact_enquiry"
+ *                          (`method: form`)
+ *   volunteer_click, newsletter_signup, donate_click
+ *                          only via an explicit data-analytics-event
+ *                          attribute; nothing on the site uses them today
+ *
+ * Only the `platform` and `method` params are ever sent. Never page text, link
+ * text, form values or search/filter text. Query strings are stripped from
+ * page_location / page_referrer, except utm_* campaign tags.
+ */
+import { GA_MEASUREMENT_ID } from '../config/analytics';
+---
+
+<div
+  id="analytics-consent"
+  class="consent-notice"
+  data-ga-id={GA_MEASUREMENT_ID}
+  role="region"
+  aria-label="Analytics cookies"
+  hidden
+>
+  <p class="consent-text">
+    May we count your visit? With your permission we use Google Analytics cookies to see
+    how people find this site and which links they use. We use no advertising cookies and
+    never record what you type.
+  </p>
+  <div class="consent-actions">
+    <button type="button" class="consent-btn" data-consent="granted">Allow analytics</button>
+    <button type="button" class="consent-btn" data-consent="denied">No thanks</button>
+  </div>
+</div>
+
+<script>
+  type Consent = 'granted' | 'denied';
+
+  const STORAGE_KEY = 'sccf_analytics_consent';
+  const EVENTS = new Set([
+    'ask_suchi_click',
+    'outbound_social_click',
+    'contact_enquiry',
+    'volunteer_click',
+    'newsletter_signup',
+    'donate_click',
+  ]);
+  const SOCIAL_PLATFORMS: Record<string, string> = {
+    'instagram.com': 'instagram',
+    'youtube.com': 'youtube',
+    'youtu.be': 'youtube',
+    'facebook.com': 'facebook',
+    'x.com': 'x',
+    'twitter.com': 'x',
+    'linkedin.com': 'linkedin',
+    'whatsapp.com': 'whatsapp',
+    'wa.me': 'whatsapp',
+  };
+  const ASK_SUCHI_HOST = 'chat.suchitracancercare.org';
+  const OWN_EMAIL_DOMAIN = '@suchitracancercare.org';
+  const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+  const notice = document.getElementById('analytics-consent');
+  const gaId = notice?.dataset.gaId ?? '';
+  let loaded = false;
+  let returnFocusTo: HTMLElement | null = null;
+
+  function readConsent(): Consent | null {
+    try {
+      const v = localStorage.getItem(STORAGE_KEY);
+      return v === 'granted' || v === 'denied' ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeConsent(v: Consent) {
+    try {
+      localStorage.setItem(STORAGE_KEY, v);
+    } catch {
+      /* storage blocked: the choice applies to this page view only */
+    }
+  }
+
+  // The standard gtag shim: gtag.js expects Arguments objects in dataLayer.
+  function gtag(..._args: unknown[]) {
+    const w = window as any;
+    w.dataLayer = w.dataLayer || [];
+    // eslint-disable-next-line prefer-rest-params
+    w.dataLayer.push(arguments);
+  }
+
+  // Path plus utm_* only: filter/search query strings never leave the page.
+  function cleanUrl(raw: string): string {
+    try {
+      const url = new URL(raw);
+      const kept = new URLSearchParams();
+      for (const key of UTM_KEYS) {
+        const value = url.searchParams.get(key);
+        if (value) kept.set(key, value);
+      }
+      const qs = kept.toString();
+      return url.origin + url.pathname + (qs ? `?${qs}` : '');
+    } catch {
+      return '';
+    }
+  }
+
+  function loadAnalytics() {
+    if (!gaId) return;
+    (window as any)[`ga-disable-${gaId}`] = false;
+    if (loaded) {
+      // Re-allowed after a withdrawal on this same page.
+      gtag('consent', 'update', { analytics_storage: 'granted' });
+      return;
+    }
+    loaded = true;
+
+    gtag('consent', 'default', {
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+    });
+    gtag('set', 'ads_data_redaction', true);
+    gtag('consent', 'update', { analytics_storage: 'granted' });
+    gtag('set', {
+      page_location: cleanUrl(location.href),
+      page_referrer: document.referrer ? cleanUrl(document.referrer) : '',
+    });
+    gtag('js', new Date());
+    gtag('config', gaId, {
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
+      // Host-only cookie: never shared with chat.suchitracancercare.org.
+      cookie_domain: 'none',
+    });
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`;
+    document.head.appendChild(script);
+  }
+
+  function withdraw() {
+    if (loaded) {
+      gtag('consent', 'update', { analytics_storage: 'denied' });
+      // Stop gtag sending anything more from this page, cookieless or not.
+      (window as any)[`ga-disable-${gaId}`] = true;
+    }
+    document.cookie
+      .split(';')
+      .map((c) => c.split('=')[0].trim())
+      .filter((name) => name === '_ga' || name.startsWith('_ga_'))
+      .forEach((name) => {
+        document.cookie = `${name}=; Max-Age=0; path=/`;
+      });
+  }
+
+  function track(name: string | undefined, params: { platform?: string; method?: string } = {}) {
+    if (!name || !EVENTS.has(name) || !loaded || readConsent() !== 'granted') return;
+    const safe: Record<string, string> = {};
+    if (params.platform) safe.platform = params.platform;
+    if (params.method) safe.method = params.method;
+    gtag('event', name, safe);
+  }
+
+  function classifyClick(target: Element): { name: string; platform?: string; method?: string } | null {
+    const tagged = target.closest<HTMLElement>('[data-analytics-event]');
+    if (tagged && !(tagged instanceof HTMLFormElement)) {
+      return {
+        name: tagged.dataset.analyticsEvent ?? '',
+        platform: tagged.dataset.analyticsPlatform,
+      };
+    }
+
+    const link = target.closest<HTMLAnchorElement>('a[href]');
+    if (!link) return null;
+
+    const href = link.getAttribute('href') ?? '';
+    if (href.toLowerCase().startsWith('mailto:')) {
+      return href.toLowerCase().includes(OWN_EMAIL_DOMAIN) ? { name: 'contact_enquiry', method: 'email' } : null;
+    }
+
+    let url: URL;
+    try {
+      url = new URL(link.href);
+    } catch {
+      return null;
+    }
+    if (url.hostname === ASK_SUCHI_HOST) return { name: 'ask_suchi_click' };
+
+    const host = url.hostname.replace(/^(www|m)\./, '');
+    for (const [domain, platform] of Object.entries(SOCIAL_PLATFORMS)) {
+      if (host === domain || host.endsWith(`.${domain}`)) {
+        return { name: 'outbound_social_click', platform };
+      }
+    }
+    return null;
+  }
+
+  function showNotice(fromButton?: HTMLElement) {
+    if (!notice) return;
+    notice.hidden = false;
+    if (fromButton) {
+      returnFocusTo = fromButton;
+      notice.querySelector<HTMLButtonElement>('[data-consent]')?.focus();
+    }
+  }
+
+  function choose(choice: Consent) {
+    writeConsent(choice);
+    if (notice) notice.hidden = true;
+    if (choice === 'granted') loadAnalytics();
+    else withdraw();
+    returnFocusTo?.focus();
+    returnFocusTo = null;
+  }
+
+  if (notice && gaId) {
+    notice.addEventListener('click', (event) => {
+      const button = (event.target as Element).closest<HTMLElement>('[data-consent]');
+      const choice = button?.dataset.consent;
+      if (choice === 'granted' || choice === 'denied') choose(choice);
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-analytics-preferences]').forEach((button) => {
+      button.hidden = false;
+      button.addEventListener('click', () => showNotice(button));
+    });
+
+    document.addEventListener('click', (event) => {
+      const hit = classifyClick(event.target as Element);
+      if (hit) track(hit.name, hit);
+    });
+
+    document.addEventListener(
+      'submit',
+      (event) => {
+        const form = event.target;
+        if (form instanceof HTMLFormElement && form.dataset.analyticsEvent) {
+          track(form.dataset.analyticsEvent, { method: 'form' });
+        }
+      },
+      true,
+    );
+
+    const consent = readConsent();
+    if (consent === 'granted') loadAnalytics();
+    else if (consent === null) showNotice();
+  }
+</script>
+
+<style>
+  .consent-notice {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1000;
+    max-width: 26rem;
+    padding: 1rem 1.125rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+
+  .consent-notice[hidden] {
+    display: none;
+  }
+
+  .consent-text {
+    margin: 0 0 0.75rem;
+  }
+
+  .consent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* Both choices carry equal visual weight. */
+  .consent-btn {
+    font: inherit;
+    font-weight: 600;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-primary);
+    background: var(--color-bg);
+    color: var(--color-primary-dark);
+    cursor: pointer;
+  }
+
+  .consent-btn:hover {
+    background: var(--color-bg-teal);
+  }
+
+  .consent-btn:focus-visible {
+    outline: 3px solid var(--color-primary-light);
+    outline-offset: 2px;
+  }
+</style>
