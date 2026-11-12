@@ -430,6 +430,20 @@ weaknesses found while investigating, deliberately *not* changed here:
   declaration of an emergency with no described symptom must escalate to S2.
   Both are currently answered wrong, in opposite directions.
 
+### P1-15. The landing-site contact form discards every message (new; found adding analytics)
+
+- **What:** the homepage "Contact Us" form (`apps/landing/src/pages/index.astro`,
+  `#contact-form` and its inline `<script>`) calls `preventDefault()`, hides the
+  form and shows "We've received your message. We'll reply within 2–3 working
+  days." Nothing is sent or stored, so a patient or caregiver who writes in hears
+  nothing and believes SCCF has their question.
+- **Why P1:** a silent failure on a patient-facing channel that tells the visitor
+  the opposite of what happened.
+- **Decision needed (owner):** wire it to a real destination, or replace it with
+  the existing `mailto:info@suchitracancercare.org` link until then. Analytics
+  deliberately does not count this form as `contact_enquiry` until it delivers
+  (`apps/landing/README.md`).
+
 ---
 
 ## P2 — track and schedule
@@ -514,6 +528,15 @@ but the same shape still exists elsewhere in
 `keywordSearchWithMetadata`, and the `.catch(() => [])` wrappers in
 `hybridSearchWithMetadata`) and in other modules. Worth a sweep: any retrieval
 arm whose empty result can mean "broken" should say which.
+
+### P2-10. Footer "Safety & Medical Disclaimer" link is a 404 (new; found adding analytics)
+
+`apps/landing/src/components/Footer.astro` links every page to `/about/safety/`,
+but no such page is built (`apps/landing/dist/about/` holds only `index.html`),
+and https://suchitracancercare.org/about/safety/ returned 404 on 2026-11-12. The
+short disclaimer banner still shows on every page, so the full disclaimer is the
+missing piece. Fix by adding the page (its wording needs SCCF review) or by pointing
+the link at an existing one.
 
 ---
 

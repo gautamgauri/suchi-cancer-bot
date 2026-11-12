@@ -1,0 +1,132 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { isAnalyticsConfigured } from '../config/analytics';
+
+// Keep every sentence here true of the site as built. The analytics section
+// switches with src/config/analytics.ts, so the page is accurate whether or
+// not a GA4 ID is set.
+---
+
+<BaseLayout title="Privacy" description="What happens to information when you visit the Suchitra Cancer Care Foundation website.">
+  <section class="page-hero">
+    <div class="page-hero-inner">
+      <h1>Privacy</h1>
+      <p class="hero-subtitle">What happens to information when you visit this website</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container privacy-body">
+      <p>
+        This page covers suchitracancercare.org only. It was last updated in November 2026.
+      </p>
+
+      <h2>Analytics</h2>
+      {isAnalyticsConfigured ? (
+        <>
+          <p>
+            We use Google Analytics to see how people find this site, for example from our social
+            media posts, and which links they use. It stays switched off until you choose
+            “Allow analytics” in the notice on the page. Before that, no analytics script loads and
+            nothing is sent to Google Analytics.
+          </p>
+          <p>If you allow it, Google Analytics, a service run by Google, collects for us:</p>
+          <ul>
+            <li>the pages you view, including any campaign tags (starting <code>utm_</code>) in the link that brought you here</li>
+            <li>your approximate region and the type of device and browser, as Google Analytics reports them</li>
+            <li>clicks on links to the Ask Suchi chat, to our social media pages and to our email address</li>
+          </ul>
+          <p>
+            It does not collect anything you type into this site, and we use no advertising cookies.
+            The Google Analytics cookies (named <code>_ga</code>) belong to this website alone.
+          </p>
+          <p>
+            You can change your mind at any time with “Cookie preferences” at the bottom of every
+            page. Choosing “No thanks” stops analytics straight away and deletes its cookies. Your
+            browser remembers your choice so that we don’t ask on every page.
+          </p>
+        </>
+      ) : (
+        <p>This website does not currently use analytics or advertising cookies.</p>
+      )}
+
+      <h2>Other services our pages use</h2>
+      <p>
+        Our pages load fonts from Google Fonts, and some show video thumbnails from YouTube. As with
+        any request a browser makes, these services receive your device’s IP address and basic
+        browser details. A video only starts loading from YouTube when you press play, and from
+        then on YouTube’s own privacy policy applies to the player.
+      </p>
+
+      <h2>The Ask Suchi chat</h2>
+      <p>
+        Ask Suchi, at chat.suchitracancercare.org, is a separate service and is not covered by this
+        page. Nothing you do in the chat is measured by this website’s analytics. The chat shows its
+        own notice when you open it.
+      </p>
+
+      <h2>Questions</h2>
+      <p>
+        Write to us at <a href="mailto:info@suchitracancercare.org">info@suchitracancercare.org</a>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .privacy-body {
+    max-width: 46rem;
+  }
+
+  /* Same hero as the About page (its styles are scoped there). */
+  .page-hero {
+    background: linear-gradient(135deg, #134e4a 0%, #0f172a 100%);
+    color: white;
+    padding: 4rem 1.5rem;
+    text-align: center;
+  }
+
+  .page-hero-inner {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .page-hero h1 {
+    color: white;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.125rem;
+    color: #e2e8f0;
+    font-style: italic;
+    margin: 0 auto;
+  }
+
+  .section {
+    padding: 3rem 1rem 4rem;
+  }
+
+  .container {
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .privacy-body h2 {
+    margin: 2rem 0 0.75rem;
+  }
+
+  .privacy-body p {
+    margin-bottom: 1rem;
+    line-height: 1.65;
+  }
+
+  .privacy-body ul {
+    padding-left: 1.25rem;
+    margin: 0 0 1rem;
+  }
+
+  .privacy-body li {
+    margin-bottom: 0.4rem;
+  }
+</style>

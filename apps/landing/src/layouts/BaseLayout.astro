@@ -54,6 +54,8 @@ const ogImage = new URL(`${base}og-image.png`, Astro.site);
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
+  {isAnalyticsConfigured && <Analytics />}
+
   <Header />
 
   <main>
@@ -61,7 +63,5 @@ const ogImage = new URL(`${base}og-image.png`, Astro.site);
   </main>
 
   <Footer />
-
-  {isAnalyticsConfigured && <Analytics />}
 </body>
 </html>

@@ -2,28 +2,39 @@
 /**
  * GA4 with Consent Mode, loaded only after the visitor allows it.
  *
- * Rendered by BaseLayout only when src/config/analytics.ts holds a valid ID.
+ * Rendered by BaseLayout (first in <body>, so keyboard and screen-reader users
+ * reach it before the page) only when src/config/analytics.ts holds a valid ID.
  * Until the visitor clicks "Allow analytics", gtag.js is not requested and no
  * event is sent: Google's script is injected only on consent ("basic" consent
  * mode), and advertising storage stays denied for good.
  *
- * Events (same vocabulary as Diksha's site, lowercase snake_case):
+ * Custom events (same vocabulary as Diksha's site, lowercase snake_case):
  *   ask_suchi_click        outbound click to chat.suchitracancercare.org
  *                          (nothing inside the chat app is instrumented)
  *   outbound_social_click  click to a social platform, param `platform`
  *   contact_enquiry        mailto: an @suchitracancercare.org address
- *                          (`method: email`) or submit of a form tagged
+ *                          (`method: email`), or submit of a form tagged
  *                          data-analytics-event="contact_enquiry"
- *                          (`method: form`)
+ *                          (`method: form`). The homepage form is NOT tagged:
+ *                          it does not deliver messages yet.
  *   volunteer_click, newsletter_signup, donate_click
  *                          only via an explicit data-analytics-event
  *                          attribute; nothing on the site uses them today
+ * Left and middle clicks both count.
  *
- * Only the `platform` and `method` params are ever sent. Never page text, link
- * text, form values or search/filter text. Query strings are stripped from
- * page_location / page_referrer, except utm_* campaign tags.
+ * What this code controls: custom events carry only `platform` / `method`, and
+ * page_location / page_referrer are reduced to path + utm_* tags. It cannot
+ * control what GA4 adds by itself. Page views always carry the page path and
+ * title (which name the topic, e.g. /cancer-types/breast-cancer/) plus GA4's
+ * own approximate location and device data, and Enhanced Measurement, if left
+ * on in the GA4 data stream, adds its own events (outbound link URLs, form
+ * start/submit with the page URL, site search terms, downloads). Those
+ * toggles live in GA4 Admin, not in page code, so turning them off is a
+ * mandatory setup step: see apps/landing/README.md.
  */
 import { GA_MEASUREMENT_ID } from '../config/analytics';
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <div
@@ -37,7 +48,7 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
   <p class="consent-text">
     May we count your visit? With your permission we use Google Analytics cookies to see
     how people find this site and which links they use. We use no advertising cookies and
-    never record what you type.
+    never record what you type. <a href={`${base}privacy/`}>Privacy notice</a>
   </p>
   <div class="consent-actions">
     <button type="button" class="consent-btn" data-consent="granted">Allow analytics</button>
@@ -45,9 +56,8 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
   </div>
 </div>
 
-<script>
-  type Consent = 'granted' | 'denied';
-
+<script is:inline>
+(() => {
   const STORAGE_KEY = 'sccf_analytics_consent';
   const EVENTS = new Set([
     'ask_suchi_click',
@@ -57,7 +67,7 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
     'newsletter_signup',
     'donate_click',
   ]);
-  const SOCIAL_PLATFORMS: Record<string, string> = {
+  const SOCIAL_PLATFORMS = {
     'instagram.com': 'instagram',
     'youtube.com': 'youtube',
     'youtu.be': 'youtube',
@@ -71,13 +81,14 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
   const ASK_SUCHI_HOST = 'chat.suchitracancercare.org';
   const OWN_EMAIL_DOMAIN = '@suchitracancercare.org';
   const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
   const notice = document.getElementById('analytics-consent');
   const gaId = notice?.dataset.gaId ?? '';
   let loaded = false;
-  let returnFocusTo: HTMLElement | null = null;
+  let returnFocusTo = null;
 
-  function readConsent(): Consent | null {
+  function readStoredConsent() {
     try {
       const v = localStorage.getItem(STORAGE_KEY);
       return v === 'granted' || v === 'denied' ? v : null;
@@ -86,24 +97,27 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
     }
   }
 
-  function writeConsent(v: Consent) {
+  function writeStoredConsent(v) {
     try {
       localStorage.setItem(STORAGE_KEY, v);
     } catch {
-      /* storage blocked: the choice applies to this page view only */
+      /* storage blocked: the in-memory choice below covers this page only */
     }
   }
 
+  // The choice in force on THIS page. With storage blocked it still applies
+  // here, and later pages fail closed (ask again).
+  let consent = readStoredConsent();
+
   // The standard gtag shim: gtag.js expects Arguments objects in dataLayer.
-  function gtag(..._args: unknown[]) {
-    const w = window as any;
+  function gtag() {
+    const w = window;
     w.dataLayer = w.dataLayer || [];
-    // eslint-disable-next-line prefer-rest-params
     w.dataLayer.push(arguments);
   }
 
   // Path plus utm_* only: filter/search query strings never leave the page.
-  function cleanUrl(raw: string): string {
+  function cleanUrl(raw) {
     try {
       const url = new URL(raw);
       const kept = new URLSearchParams();
@@ -120,7 +134,7 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
 
   function loadAnalytics() {
     if (!gaId) return;
-    (window as any)[`ga-disable-${gaId}`] = false;
+    window[`ga-disable-${gaId}`] = false;
     if (loaded) {
       // Re-allowed after a withdrawal on this same page.
       gtag('consent', 'update', { analytics_storage: 'granted' });
@@ -158,7 +172,7 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
     if (loaded) {
       gtag('consent', 'update', { analytics_storage: 'denied' });
       // Stop gtag sending anything more from this page, cookieless or not.
-      (window as any)[`ga-disable-${gaId}`] = true;
+      window[`ga-disable-${gaId}`] = true;
     }
     document.cookie
       .split(';')
@@ -169,16 +183,16 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
       });
   }
 
-  function track(name: string | undefined, params: { platform?: string; method?: string } = {}) {
-    if (!name || !EVENTS.has(name) || !loaded || readConsent() !== 'granted') return;
-    const safe: Record<string, string> = {};
+  function track(name, params = {}) {
+    if (!name || !EVENTS.has(name) || !loaded || consent !== 'granted') return;
+    const safe = {};
     if (params.platform) safe.platform = params.platform;
     if (params.method) safe.method = params.method;
     gtag('event', name, safe);
   }
 
-  function classifyClick(target: Element): { name: string; platform?: string; method?: string } | null {
-    const tagged = target.closest<HTMLElement>('[data-analytics-event]');
+  function classifyClick(target) {
+    const tagged = target.closest('[data-analytics-event]');
     if (tagged && !(tagged instanceof HTMLFormElement)) {
       return {
         name: tagged.dataset.analyticsEvent ?? '',
@@ -186,7 +200,7 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
       };
     }
 
-    const link = target.closest<HTMLAnchorElement>('a[href]');
+    const link = target.closest('a[href]');
     if (!link) return null;
 
     const href = link.getAttribute('href') ?? '';
@@ -194,7 +208,7 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
       return href.toLowerCase().includes(OWN_EMAIL_DOMAIN) ? { name: 'contact_enquiry', method: 'email' } : null;
     }
 
-    let url: URL;
+    let url;
     try {
       url = new URL(link.href);
     } catch {
@@ -211,39 +225,73 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
     return null;
   }
 
-  function showNotice(fromButton?: HTMLElement) {
+  function onLinkActivate(event) {
+    const hit = event.target instanceof Element ? classifyClick(event.target) : null;
+    if (hit) track(hit.name, hit);
+  }
+
+  function showNotice(fromButton) {
     if (!notice) return;
     notice.hidden = false;
     if (fromButton) {
       returnFocusTo = fromButton;
-      notice.querySelector<HTMLButtonElement>('[data-consent]')?.focus();
+      notice.querySelector('[data-consent]')?.focus();
     }
   }
 
-  function choose(choice: Consent) {
-    writeConsent(choice);
-    if (notice) notice.hidden = true;
+  // Close the notice and put focus somewhere sensible, never on <body>: back
+  // on the "Cookie preferences" button if that opened it, else on the first
+  // focusable element after the notice (the site logo link).
+  function closeNotice() {
+    if (!notice) return;
+    const hadFocus = notice.contains(document.activeElement);
+    notice.hidden = true;
+    const target =
+      returnFocusTo ??
+      Array.from(document.querySelectorAll(FOCUSABLE)).find(
+        (el) =>
+          !notice.contains(el) &&
+          notice.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING &&
+          el.getClientRects().length > 0,
+      );
+    returnFocusTo = null;
+    if (hadFocus || document.activeElement === document.body) target?.focus({ preventScroll: true });
+  }
+
+  function choose(choice) {
+    consent = choice;
+    writeStoredConsent(choice);
+    closeNotice();
     if (choice === 'granted') loadAnalytics();
     else withdraw();
-    returnFocusTo?.focus();
-    returnFocusTo = null;
   }
 
   if (notice && gaId) {
     notice.addEventListener('click', (event) => {
-      const button = (event.target as Element).closest<HTMLElement>('[data-consent]');
+      const button = event.target.closest('[data-consent]');
       const choice = button?.dataset.consent;
       if (choice === 'granted' || choice === 'denied') choose(choice);
     });
 
-    document.querySelectorAll<HTMLElement>('[data-analytics-preferences]').forEach((button) => {
-      button.hidden = false;
-      button.addEventListener('click', () => showNotice(button));
+    // Escape hides the notice for this page without recording a choice.
+    notice.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeNotice();
     });
 
-    document.addEventListener('click', (event) => {
-      const hit = classifyClick(event.target as Element);
-      if (hit) track(hit.name, hit);
+    // This script runs at the top of <body>, before the footer is parsed.
+    const wirePreferences = () => {
+      document.querySelectorAll('[data-analytics-preferences]').forEach((button) => {
+        button.hidden = false;
+        button.addEventListener('click', () => showNotice(button));
+      });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wirePreferences);
+    else wirePreferences();
+
+    document.addEventListener('click', onLinkActivate);
+    // Middle-click opens links in a new tab; count it too.
+    document.addEventListener('auxclick', (event) => {
+      if (event.button === 1) onLinkActivate(event);
     });
 
     document.addEventListener(
@@ -257,10 +305,20 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
       true,
     );
 
-    const consent = readConsent();
+    // A withdrawal (or cleared storage) in another tab applies here too.
+    window.addEventListener('storage', (event) => {
+      if (event.key !== null && event.key !== STORAGE_KEY) return;
+      const value = event.key === null ? null : event.newValue;
+      if (value !== 'granted') {
+        consent = value === 'denied' ? 'denied' : null;
+        withdraw();
+      }
+    });
+
     if (consent === 'granted') loadAnalytics();
     else if (consent === null) showNotice();
   }
+})();
 </script>
 
 <style>
@@ -289,6 +347,11 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
     margin: 0 0 0.75rem;
   }
 
+  .consent-text a {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+  }
+
   .consent-actions {
     display: flex;
     flex-wrap: wrap;
@@ -311,8 +374,10 @@ import { GA_MEASUREMENT_ID } from '../config/analytics';
     background: var(--color-bg-teal);
   }
 
-  .consent-btn:focus-visible {
-    outline: 3px solid var(--color-primary-light);
+  /* #0d655e on white is about 7:1, well above the 3:1 focus-indicator minimum. */
+  .consent-btn:focus-visible,
+  .consent-text a:focus-visible {
+    outline: 3px solid var(--color-primary-dark);
     outline-offset: 2px;
   }
 </style>

@@ -37,6 +37,7 @@ const base = import.meta.env.BASE_URL;
           <li><a href={`${base}about/`}>About Suchi</a></li>
           <li><a href={`${base}about/`}>About SCCF</a></li>
           <li><a href={`${base}about/safety/`}>Safety &amp; Medical Disclaimer</a></li>
+          <li><a href={`${base}privacy/`}>Privacy</a></li>
           {isAnalyticsConfigured && (
             <li><button type="button" class="footer-link-button" data-analytics-preferences hidden>Cookie preferences</button></li>
           )}
@@ -180,6 +181,11 @@ const base = import.meta.env.BASE_URL;
 
   .footer-link-button:hover {
     color: #4de2c1;
+  }
+
+  .footer-link-button:focus-visible {
+    outline: 2px solid #4de2c1;
+    outline-offset: 2px;
   }
 
   /* Bottom */

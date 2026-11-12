@@ -14,13 +14,50 @@ Deployed to GitHub Pages by `.github/workflows/deploy-landing.yml` on every push
   Signals and ad personalisation are off, and the `_ga` cookie is host-only, so it is
   never sent to `chat.suchitracancercare.org`. "Cookie preferences" in the footer
   reopens the notice to withdraw consent.
-- **Events** (`src/components/Analytics.astro`, delegated listeners):
-  `ask_suchi_click` (outbound click to the chat; the chat app itself is not
-  instrumented), `outbound_social_click` (`platform`), `contact_enquiry` (`method`:
-  `email` or `form`), plus `volunteer_click`, `newsletter_signup` and `donate_click`
-  for any element tagged `data-analytics-event="…"`. Only `platform` and `method` are
-  sent. Never page text, form values or search/filter text, and query strings are
-  stripped from page URLs except `utm_*`.
+- **Custom events** (`src/components/Analytics.astro`, delegated listeners, left and
+  middle clicks): `ask_suchi_click` (outbound click to the chat; the chat app itself
+  is not instrumented), `outbound_social_click` (`platform`), `contact_enquiry`
+  (`method: email`, for mailto links to an @suchitracancercare.org address), plus
+  `volunteer_click`, `newsletter_signup` and `donate_click` for any element tagged
+  `data-analytics-event="…"`.
+- **The homepage contact form is deliberately not tracked.** Its script only shows a
+  thank-you message; nothing is sent or stored (see `docs/RELIABILITY_BACKLOG.md`).
+  Tag it with `data-analytics-event="contact_enquiry"` (sends `method: form`) only
+  once it really delivers messages.
+- **What leaves the page, exactly.** Our custom events carry only `platform` or
+  `method`, never page text, form values or search/filter text. Our code sets
+  `page_location` and `page_referrer` to the path plus any `utm_*` tags, dropping
+  other query strings such as the `/watch/?cancer=…` filters. GA4 itself always adds
+  the page path and title (which name the topic, e.g. `/cancer-types/breast-cancer/`)
+  and its own approximate location and device data. **Anything beyond that depends on
+  the GA4 property settings below, which page code cannot override.**
+
+### Mandatory GA4 setup, before the ID goes in
+
+In GA4 Admin, for SCCF's own property:
+
+1. **Data streams → (web stream) → Enhanced measurement:** keep *Page views* and
+   *Scrolls*. Under *Page views → Show advanced settings*, turn **off** "Page changes
+   based on browser history events". Turn **off** *Outbound clicks* (it would send
+   every outbound `link_url`; our own events already cover the links that matter),
+   *Site search*, *Form interactions* (it sends the form's destination URL),
+   *Video engagement* and *File downloads* (it sends link text).
+2. **Data streams → (web stream) → Redact data:** turn on email redaction and
+   query-parameter redaction for `prompt`, `cancer` and `situation`. This is a second
+   line of defence for anything that slips past step 1.
+3. **Data collection:** Google Signals **off**; *Granular location and device data
+   collection* **off**; ads personalisation **off**. Do not link Google Ads.
+4. **Data retention:** 2 months (the minimum).
+
+Then paste the `G-…` ID into `src/config/analytics.ts` in a PR. Check DebugView: no
+hits before "Allow analytics", then only GA4's automatic events (`page_view`,
+`session_start`, `first_visit`, `user_engagement`), `scroll` and the custom events
+above.
+
+Code-side defence: no outbound link on the site carries a health topic in its URL.
+The watch pages' "Ask Suchi about this video" link used to append
+`?prompt=<video title and cancer type>`; the chat never read it, so it was removed.
+Keep it that way: don't put health topics in outbound URLs.
 
 ## UTM convention for social posts
 
