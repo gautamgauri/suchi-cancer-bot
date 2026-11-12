@@ -1,4 +1,6 @@
 ---
+import { isAnalyticsConfigured } from '../config/analytics';
+
 const currentYear = new Date().getFullYear();
 const base = import.meta.env.BASE_URL;
 ---
@@ -35,6 +37,10 @@ const base = import.meta.env.BASE_URL;
           <li><a href={`${base}about/`}>About Suchi</a></li>
           <li><a href={`${base}about/`}>About SCCF</a></li>
           <li><a href={`${base}about/safety/`}>Safety &amp; Medical Disclaimer</a></li>
+          <li><a href={`${base}privacy/`}>Privacy</a></li>
+          {isAnalyticsConfigured && (
+            <li><button type="button" class="footer-link-button" data-analytics-preferences hidden>Cookie preferences</button></li>
+          )}
         </ul>
       </div>
 
@@ -44,6 +50,7 @@ const base = import.meta.env.BASE_URL;
           <li><a href="https://chat.suchitracancercare.org" target="_blank" rel="noopener">Ask Suchi</a></li>
           <li><a href={`${base}watch/`}>Watch</a></li>
           <li><a href="https://www.youtube.com/channel/UCI242a2_VRTCdCbpXzyeW4w" target="_blank" rel="noopener">YouTube Channel</a></li>
+          <li><a href="https://www.instagram.com/suchitracancercare/" target="_blank" rel="noopener">Instagram</a></li>
           <li><a href="mailto:info@suchitracancercare.org">Email Us</a></li>
         </ul>
       </div>
@@ -155,6 +162,30 @@ const base = import.meta.env.BASE_URL;
 
   .footer-nav-list a:hover {
     color: #4de2c1;
+  }
+
+  .footer-link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 0.875rem;
+    color: #a6b0d4;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .footer-link-button[hidden] {
+    display: none;
+  }
+
+  .footer-link-button:hover {
+    color: #4de2c1;
+  }
+
+  .footer-link-button:focus-visible {
+    outline: 2px solid #4de2c1;
+    outline-offset: 2px;
   }
 
   /* Bottom */

@@ -1,6 +1,8 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Analytics from '../components/Analytics.astro';
+import { isAnalyticsConfigured } from '../config/analytics';
 import '../styles/global.css';
 
 export interface Props {
@@ -52,6 +54,8 @@ const ogImage = new URL(`${base}og-image.png`, Astro.site);
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@400;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
+  {isAnalyticsConfigured && <Analytics />}
+
   <Header />
 
   <main>
