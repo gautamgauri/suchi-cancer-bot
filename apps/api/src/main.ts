@@ -3,11 +3,14 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
+import { corsOptionsDelegate } from "./modules/contact/contact-request";
 
 async function bootstrap() {
   // rawBody: true exposes req.rawBody (Buffer) for WhatsApp webhook
   // X-Hub-Signature-256 HMAC verification (§16 / FR-WA-005).
-  const app = await NestFactory.create(AppModule, { cors: true, rawBody: true });
+  // CORS: same as the former `cors: true` for every route except /v1/contact,
+  // which only the landing site's origins may call (see contact-request.ts).
+  const app = await NestFactory.create(AppModule, { cors: corsOptionsDelegate, rawBody: true });
   app.use(helmet());
   app.setGlobalPrefix("v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));

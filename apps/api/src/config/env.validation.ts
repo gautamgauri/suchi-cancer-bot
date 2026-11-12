@@ -47,6 +47,11 @@ export const envSchema = z.object({
   // captions, which must happen in a repo checkout and go through review.
   // Both Cloud Build pipelines set this to "false" explicitly.
   YOUTUBE_INGEST_ENABLED: z.string().optional().default('false'),
+  // Public website contact form (POST /v1/contact). Recipients come only from
+  // here, never from the request. Unset/empty/malformed ⇒ 503, nothing sent.
+  // Cloud Build reads both from Secret Manager, so no address is in the repo.
+  CONTACT_FORM_TO: z.string().optional(), // one address
+  CONTACT_FORM_CC: z.string().optional(), // zero or more, separated by commas, semicolons or spaces
   // Review Copilot
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
   // Social post publishing (all optional — platforms without credentials are silently skipped)

@@ -13,10 +13,13 @@
  *                          (nothing inside the chat app is instrumented)
  *   outbound_social_click  click to a social platform, param `platform`
  *   contact_enquiry        mailto: an @suchitracancercare.org address
- *                          (`method: email`), or submit of a form tagged
- *                          data-analytics-event="contact_enquiry"
- *                          (`method: form`). The homepage form is NOT tagged:
- *                          it does not deliver messages yet.
+ *                          (`method: email`), or the homepage form after the
+ *                          API confirmed delivery with a 2xx (`method: form`,
+ *                          via a `sccf:analytics` document event, see
+ *                          pages/index.astro). A form tagged
+ *                          data-analytics-event="contact_enquiry" counts on
+ *                          submit instead; use that only for forms that cannot
+ *                          fail.
  *   volunteer_click, newsletter_signup, donate_click
  *                          only via an explicit data-analytics-event
  *                          attribute; nothing on the site uses them today
@@ -304,6 +307,18 @@ const base = import.meta.env.BASE_URL;
       },
       true,
     );
+
+    // Page scripts report confirmed outcomes (e.g. a contact message the API
+    // accepted) with: document.dispatchEvent(new CustomEvent('sccf:analytics',
+    // { detail: { event, method?, platform? } })). Same allow-list and params.
+    document.addEventListener('sccf:analytics', (event) => {
+      const detail = event.detail || {};
+      if (typeof detail.event !== 'string') return;
+      track(detail.event, {
+        method: typeof detail.method === 'string' ? detail.method : undefined,
+        platform: typeof detail.platform === 'string' ? detail.platform : undefined,
+      });
+    });
 
     // A withdrawal (or cleared storage) in another tab applies here too.
     window.addEventListener('storage', (event) => {

@@ -17,13 +17,10 @@ Deployed to GitHub Pages by `.github/workflows/deploy-landing.yml` on every push
 - **Custom events** (`src/components/Analytics.astro`, delegated listeners, left and
   middle clicks): `ask_suchi_click` (outbound click to the chat; the chat app itself
   is not instrumented), `outbound_social_click` (`platform`), `contact_enquiry`
-  (`method: email`, for mailto links to an @suchitracancercare.org address), plus
+  (`method: email` for mailto links to an @suchitracancercare.org address; `method:
+  form` only after the API confirms a contact-form message was delivered), plus
   `volunteer_click`, `newsletter_signup` and `donate_click` for any element tagged
   `data-analytics-event="…"`.
-- **The homepage contact form is deliberately not tracked.** Its script only shows a
-  thank-you message; nothing is sent or stored (see `docs/RELIABILITY_BACKLOG.md`).
-  Tag it with `data-analytics-event="contact_enquiry"` (sends `method: form`) only
-  once it really delivers messages.
 - **What leaves the page, exactly.** Our custom events carry only `platform` or
   `method`, never page text, form values or search/filter text. Our code sets
   `page_location` and `page_referrer` to the path plus any `utm_*` tags, dropping
@@ -58,6 +55,16 @@ Code-side defence: no outbound link on the site carries a health topic in its UR
 The watch pages' "Ask Suchi about this video" link used to append
 `?prompt=<video title and cancer type>`; the chat never read it, so it was removed.
 Keep it that way: don't put health topics in outbound URLs.
+
+## Contact form
+
+The homepage form posts to the API (`POST /v1/contact` on suchi-api;
+`src/config/contact.ts`), which emails the message to the SCCF team and keeps no
+copy. Who receives it is server config (`CONTACT_FORM_TO`, `CONTACT_FORM_CC` in
+Secret Manager), never part of this site. Until those are set the API answers 503 and
+the form shows an error with the published address, `info@suchitracancercare.org`.
+The success message appears only after a 2xx. Deploy the API before relying on the
+form.
 
 ## UTM convention for social posts
 

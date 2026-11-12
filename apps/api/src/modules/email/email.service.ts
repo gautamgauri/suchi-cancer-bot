@@ -4,6 +4,8 @@ import * as nodemailer from 'nodemailer';
 export interface EmailOptions {
   to: string;
   cc?: string;
+  /** Reply-To header (e.g. the website visitor on a contact-form email). */
+  replyTo?: string;
   subject: string;
   text?: string;
   html?: string;
@@ -52,6 +54,7 @@ export class EmailService {
         from,
         to: options.to,
         cc: options.cc,
+        replyTo: options.replyTo,
         subject: options.subject,
         text: options.text,
         html: options.html,
