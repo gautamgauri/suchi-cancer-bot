@@ -614,7 +614,7 @@ describe("ChatService drains safety writes on shutdown (PR #202)", () => {
     });
     await svc.handle({ sessionId: "00000000-0000-4000-8000-000000000008", channel: "web", locale: LOCALE, userText: EMERGENCY } as any);
     expect(created).toEqual([]);
-    const draining = svc.onModuleDestroy();
+    const draining = svc.beforeApplicationShutdown();
     release();
     await draining;
     expect(created).toEqual(["message:user", "message:assistant", expect.stringMatching(/^safetyEvent:emergency_fast_path_/)]);
@@ -629,14 +629,14 @@ describe("ChatService drains safety writes on shutdown (PR #202)", () => {
     });
     await svc.handle({ sessionId: "00000000-0000-4000-8000-000000000009", channel: "web", locale: LOCALE, userText: EMERGENCY } as any);
     const started = Date.now();
-    await svc.onModuleDestroy();
+    await svc.beforeApplicationShutdown();
     expect(Date.now() - started).toBeLessThan(3_500);
   }, 10_000);
 
   it("returns at once with nothing pending", async () => {
     const svc = buildService({});
     const started = Date.now();
-    await svc.onModuleDestroy();
+    await svc.beforeApplicationShutdown();
     expect(Date.now() - started).toBeLessThan(50);
   });
 });

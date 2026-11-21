@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { BadRequestException, Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { BadRequestException, BeforeApplicationShutdown, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
@@ -136,7 +136,7 @@ type PersistAssistantOptions = {
 };
 
 @Injectable()
-export class ChatService implements OnModuleDestroy {
+export class ChatService implements BeforeApplicationShutdown {
   private readonly logger = new Logger(ChatService.name);
   // In-memory session cache with 60s TTL
   private readonly sessionCache = new Map<string, { data: any; expires: number }>();
@@ -229,11 +229,13 @@ export class ChatService implements OnModuleDestroy {
 
   /**
    * On shutdown (main.ts enables Nest's shutdown hooks), give pending safety
-   * writes a short time to land. Nest destroys this module before the Prisma
-   * module it depends on, so the connection is still open. Never throws and
-   * never waits longer than SHUTDOWN_DRAIN_MS.
+   * writes a short time to land. This runs in beforeApplicationShutdown, and
+   * PrismaService disconnects in onApplicationShutdown, which Nest runs only
+   * after every beforeApplicationShutdown hook. So the connection is still
+   * open here (review N1). Never throws and never waits longer than
+   * SHUTDOWN_DRAIN_MS.
    */
-  async onModuleDestroy(): Promise<void> {
+  async beforeApplicationShutdown(): Promise<void> {
     const pending = this.backgroundWrites.size;
     if (pending === 0) return;
     try {
