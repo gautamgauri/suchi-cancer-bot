@@ -112,7 +112,7 @@ The non-negotiable layer. Per `AGENTS.md` §1.3, none of this may be changed wit
 | Human review queue (flag → list → mark reviewed) | 🟡 Partial | L1 | `review-queue.service.ts` + `modules/review/review.service.spec.ts`, `review-checks.spec.ts`. Queue *size* is now instrumented (§8); the flag→review→outcome loop has never been exercised on real flagged traffic. |
 | Retention: >90d conversation data deleted, eval sessions preserved, FK-safe order, batched | ✅ Proven | L1 | `modules/admin/retention.service.spec.ts` — see `docs/PRIVACY_RETENTION.md` |
 | Admin endpoints gated (`BasicAuthGuard`) / scheduler endpoints gated (`SchedulerOidcGuard`) | 🟡 Partial | L1 | Guards applied consistently in `admin.controller.ts`; no dedicated fail-closed spec for the admin guard itself. |
-| Daily report metrics + email | 🟠 Built, unverified | — | `analytics/daily-report.service.ts` + `scripts/generate-daily-report.ts`; no spec, and no recorded prod send. |
+| Daily report metrics + email | 🟠 Built, unverified | — | `analytics/daily-report.service.ts` + `apps/api/src/scripts/generate-daily-report.ts`; no spec, and no recorded prod send. |
 
 ## 7. Eval & quality engine
 
@@ -134,7 +134,7 @@ Closes issues [#61](https://github.com/gautamgauri/suchi-cancer-bot/issues/61), 
 | `active_users_7d` collector | ✅ Proven | L1 | `modules/analytics/ops-metrics.service.spec.ts`. **Reported as sessions, not distinct humans** — web/PWA carries no durable identity, so the caveat ships with the number; `distinctWhatsappContacts` is the only true per-person count. |
 | `review_queue_size` collector | ✅ Proven | L1 | Same spec — asserts the queue is the *unreviewed* subset, never the flagged total |
 | `safety_events_30d` collector | ✅ Proven | L1 | Same spec — type + count only; no message text, detail or session id leaves the collector |
-| `tier1_eval_status` collector | ✅ Proven | L1 | `modules/analytics/tier1-eval-status.spec.ts` — reads the latest `eval-tier1.yml` conclusion from the GitHub Actions REST API (public repo, no credentials, no new env var). Served by `GET /v1/admin/ops-metrics` as `tier1EvalStatus` and by `scripts/ops-metrics.ts` from the *same* collector, so the two cannot disagree. The `gh` shell-out is gone. Every failure path degrades to *unavailable*, never to a green or a zero — asserted per path. Issue [#63](https://github.com/gautamgauri/suchi-cancer-bot/issues/63). |
+| `tier1_eval_status` collector | ✅ Proven | L1 | `modules/analytics/tier1-eval-status.spec.ts` — reads the latest `eval-tier1.yml` conclusion from the GitHub Actions REST API (public repo, no credentials, no new env var). Served by `GET /v1/admin/ops-metrics` as `tier1EvalStatus` and by `apps/api/src/scripts/ops-metrics.ts` from the *same* collector, so the two cannot disagree. The `gh` shell-out is gone. Every failure path degrades to *unavailable*, never to a green or a zero — asserted per path. Issue [#63](https://github.com/gautamgauri/suchi-cancer-bot/issues/63). |
 | Eval traffic excluded from every figure | ✅ Proven | L1 | Spec asserts `isEval: false` on every query. This matters more than the numbers: ~86% of `/v1/chat` traffic is the eval runner. |
 | Collector reachable **in production** | 🟠 Built, unverified | — | `GET /v1/admin/ops-metrics` is **inert until deployed**. And the Ops Center's `collect_usage()` reads `~/bodh-ai-ops/manual/suchi.json` only — it has no HTTP transport — so today the script fills that file and the endpoint is the durable path for later. |
 

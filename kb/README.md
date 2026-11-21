@@ -8,7 +8,7 @@ The Knowledge Base uses a "Gold Stack" organization to prevent "citation smoothi
 
 1. **Review the structure**: See [`docs/KB_GOLD_STACK.md`](../docs/KB_GOLD_STACK.md)
 2. **Check examples**: See [`manifest.goldstack.example.json`](./manifest.goldstack.example.json)
-3. **Migrate**: Follow [`docs/KB_MIGRATION_GUIDE.md`](../docs/KB_MIGRATION_GUIDE.md)
+3. **Migrate**: Follow [`docs/archive/KB_MIGRATION_GUIDE.md`](../docs/archive/KB_MIGRATION_GUIDE.md)
 
 ## Folder Structure
 
@@ -157,7 +157,7 @@ Make sure to track license for each source:
 ## Questions?
 
 - Structure: See [`docs/KB_GOLD_STACK.md`](../docs/KB_GOLD_STACK.md)
-- Migration: See [`docs/KB_MIGRATION_GUIDE.md`](../docs/KB_MIGRATION_GUIDE.md)
+- Migration: See [`docs/archive/KB_MIGRATION_GUIDE.md`](../docs/archive/KB_MIGRATION_GUIDE.md)
 - Folder details: See [`docs/KB_FOLDER_STRUCTURE.md`](../docs/KB_FOLDER_STRUCTURE.md)
 
 

@@ -82,7 +82,7 @@ Next run of daily-publisher posts approved packs to platforms (Instagram, Twitte
 ```
 
 ### Editorial Quality Gate & Regenerate-on-Fail Loop
-Before a pack is written to GCS, each generated channel variant is evaluated by the [Editorial Quality Scorer](file:///c:/Users/gauta/suchi_repo/distribution/editorial-scorer.ts) on a 100-point scale across five core Suchi Editorial Principles:
+Before a pack is written to GCS, each generated channel variant is evaluated by the [Editorial Quality Scorer](../distribution/editorial-scorer.ts) on a 100-point scale across five core Suchi Editorial Principles:
 1. **Human-First**: Avoids starting with a clinical definition; opens with a human observation.
 2. **India-Grounded**: Focuses on local habits, regional tobacco types (e.g. gutka, khaini), or PM-JAY/Ayushman Bharat.
 3. **Practical**: Provides clear, actionable timeframes and next steps.

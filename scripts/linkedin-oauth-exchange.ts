@@ -17,7 +17,7 @@
  *   #    destination for the token — it is never printed by default
  *   LINKEDIN_CLIENT_ID=xxx LINKEDIN_CLIENT_SECRET=yyy \
  *     ts-node scripts/linkedin-oauth-exchange.ts exchange --code AQT... \
- *       --to-secret-manager linkedin-access-token
+ *       --to-secret-manager LINKEDIN_ACCESS_TOKEN
  *
  *   # 3. list the organisation pages this token may post for (needs
  *   #    r_organization_social) and print the LINKEDIN_AUTHOR_URN to use
@@ -390,7 +390,7 @@ function printUrl(parsed: ParsedArgs): void {
   console.log("(the page may 404 — that is fine, you only need the `code` query param).");
   console.log("The code is valid for 30 minutes. Then run:\n");
   console.log("  ts-node scripts/linkedin-oauth-exchange.ts exchange --code <code> \\");
-  console.log("    --to-secret-manager linkedin-access-token\n");
+  console.log("    --to-secret-manager LINKEDIN_ACCESS_TOKEN\n");
 }
 
 async function exchange(parsed: ParsedArgs): Promise<void> {
@@ -516,7 +516,7 @@ async function orgs(parsed: ParsedArgs): Promise<void> {
   for (const row of rows) console.log(renderOrgRow(row));
   console.log(`\nPosting needs one of: ${POSTING_ROLES.join(", ")}.`);
   console.log("Use the SCCF URN verbatim as LINKEDIN_AUTHOR_URN:\n");
-  console.log("  printf %s 'urn:li:organization:<id>' | gcloud secrets versions add linkedin-author-urn \\");
+  console.log("  printf %s 'urn:li:organization:<id>' | gcloud secrets versions add LINKEDIN_AUTHOR_URN \\");
   console.log(`    --data-file=- --project=${GCP_PROJECT}\n`);
 }
 
