@@ -750,3 +750,65 @@ describe("ChatService urgency path on a long message (PR #202, review B2)", () =
     expect(result.responseText).toContain("Synthetic educational answer");
   });
 });
+
+describe("ChatService above the 20,000 character ceiling (PR #202, review N3)", () => {
+  // No length is refused. handle() cuts at the ceiling, so a phrase inside
+  // the first 20,000 characters is answered. Synthetic text.
+  const FILLER = "I have some questions about my treatment plan. ";
+  const sessionRow = {
+    id: "s",
+    createdAt: new Date(0),
+    channel: "web",
+    locale: "en",
+    userType: null,
+    status: "active",
+    userContext: null,
+    cancerType: null,
+    greetingCompleted: true,
+    emotionalState: "neutral",
+  };
+  const rows = () => ({
+    create: jest.fn(async (args: any) => ({ id: args?.data?.id ?? "row", ...(args?.data ?? {}) })),
+    update: jest.fn(async () => ({})),
+    count: jest.fn(async () => 0),
+    findMany: jest.fn(async () => []),
+  });
+  const build = () =>
+    buildService({
+      $queryRaw: jest.fn(async () => [sessionRow]),
+      message: rows(),
+      safetyEvent: rows(),
+      analyticsEvent: rows(),
+      session: rows(),
+    });
+
+  beforeEach(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("a 30,000 character message with an emergency phrase at the start gets the template", async () => {
+    const text = EMERGENCY + ". " + FILLER.repeat(700);
+    expect(text.length).toBeGreaterThan(30_000);
+    const result: any = await build().handle({
+      sessionId: "00000000-0000-4000-8000-00000000000d",
+      channel: "web",
+      locale: LOCALE,
+      userText: text,
+    } as any);
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.responseText).toContain("112");
+  });
+
+  it("a phrase only beyond 20,000 characters is outside the ceiling (known limit)", async () => {
+    const text = FILLER.repeat(450) + " " + SELF_HARM;
+    expect(text.indexOf(SELF_HARM)).toBeGreaterThan(20_000);
+    const svc: any = build();
+    jest.spyOn(svc.greetingFlow, "isGreetingFlowInProgress").mockRejectedValue(new Error("PAST_SAFETY_GATES"));
+    await expect(
+      svc.handle({ sessionId: "00000000-0000-4000-8000-00000000000e", channel: "web", locale: LOCALE, userText: text }),
+    ).rejects.toThrow("PAST_SAFETY_GATES");
+  });
+});

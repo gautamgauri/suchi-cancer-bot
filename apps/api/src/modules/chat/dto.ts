@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, IsUUID } from "class-validator";
 
 /**
  * Longest user message the pipeline works on downstream of the safety screen:
@@ -16,10 +16,12 @@ import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 export const MAX_USER_TEXT_LENGTH = 4096;
 
 /**
- * Abuse ceiling: only a web or app request longer than this gets a 400, and
- * WhatsApp and voice text is cut to it. Far above MAX_USER_TEXT_LENGTH, and
- * small enough that Devanagari at the limit (3 bytes a character) stays inside
- * the default 100 kB JSON body limit.
+ * Abuse ceiling on every channel: ChatService.handle cuts longer text to this
+ * length before screening. No request is refused for its length, since a 400
+ * reaches the patient as a generic error even when the first line is an
+ * emergency (PR #202, review N3). The Express JSON body limit (100 kB) stays
+ * the hard bound on a web request. Devanagari at this length (3 bytes a
+ * character) still fits inside it.
  */
 export const MAX_USER_TEXT_HARD_LIMIT = 20_000;
 
@@ -59,8 +61,5 @@ export class ChatDto {
    */
   @IsOptional() @IsIn(["typed", "voice"]) inputMode?: InputMode;
   @IsString()
-  @MaxLength(MAX_USER_TEXT_HARD_LIMIT, {
-    message: `userText must be at most ${MAX_USER_TEXT_HARD_LIMIT} characters. Please shorten your message or split it into parts.`,
-  })
   userText!: string;
 }

@@ -27,13 +27,11 @@ describe("ChatDto.userText length bound", () => {
     expect(dto.userText).toHaveLength(MAX_USER_TEXT_HARD_LIMIT);
   });
 
-  it("rejects only text above the abuse ceiling, with a 400 and a readable message", async () => {
+  // Review N3: no length is refused. ChatService cuts at the ceiling instead.
+  it("accepts text above the abuse ceiling, which ChatService then cuts", async () => {
     expect(MAX_USER_TEXT_HARD_LIMIT).toBeGreaterThanOrEqual(4 * MAX_USER_TEXT_LENGTH);
-    const err = await validate({ ...base, userText: "a".repeat(MAX_USER_TEXT_HARD_LIMIT + 1) }).catch((e) => e);
-    expect(err).toBeInstanceOf(BadRequestException);
-    expect(err.getStatus()).toBe(400);
-    const messages: string[] = (err.getResponse() as any).message;
-    expect(messages.join(" ")).toMatch(/userText must be at most 20000 characters/);
+    const dto = await validate({ ...base, userText: "a".repeat(30_000) });
+    expect(dto.userText).toHaveLength(30_000);
   });
 
   it("the abuse ceiling in Devanagari still fits the default 100 kB JSON body limit", () => {
