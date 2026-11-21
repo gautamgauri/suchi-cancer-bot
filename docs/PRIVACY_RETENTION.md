@@ -13,7 +13,7 @@
 | Data | Where stored | Who can access |
 |---|---|---|
 | Conversation messages (user queries + assistant responses) | PostgreSQL `message` table | Gautam (DB access), future: admin panel read-only |
-| Session metadata (channel, locale, cancerType, emotionalState, and the city, region and country code derived from the client IP address) | PostgreSQL `session` table | Gautam |
+| Session metadata (channel, locale, cancerType, emotionalState, and the city, region and country code derived from the client IP address) | PostgreSQL `session` table | The maintainer |
 | Safety events (classification, rule fired, session/message ID) | PostgreSQL `safetyEvent` table | Gautam |
 | Feedback (thumbs up/down, free-text) | PostgreSQL `feedback` table | Gautam |
 | Voice audio (STT input) | **Not persisted** — transcribed and discarded | N/A |
