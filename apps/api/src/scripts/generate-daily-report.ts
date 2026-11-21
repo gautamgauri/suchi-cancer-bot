@@ -10,6 +10,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { tallySessionsBySource } from '../modules/analytics/daily-report.service';
 
 // Inline the service logic to avoid NestJS bootstrap overhead
 interface DailyReportMetrics {
@@ -32,6 +33,7 @@ interface DailyReportMetrics {
   userContextBreakdown: Array<{ context: string; count: number }>;
   cancerTypeBreakdown: Array<{ cancerType: string; count: number }>;
   geoBreakdown: Array<{ country: string; count: number }>;
+  sessionsBySource: Array<{ source: string; count: number }>;
 }
 
 async function generateMetrics(prisma: PrismaClient, from: Date, to: Date): Promise<DailyReportMetrics> {
@@ -210,6 +212,17 @@ async function generateMetrics(prisma: PrismaClient, from: Date, to: Date): Prom
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
+  // Sessions started in the window, by source. Same tally and cap as the
+  // emailed report (DailyReportService). Eval sessions are left out using
+  // the isEval flag on the session_created payload.
+  const sessionCreatedEvents = await prisma.analyticsEvent.findMany({
+    where: { createdAt: { gte: from, lt: to }, eventName: 'session_created' },
+    select: { payload: true },
+  });
+  const sessionsBySource = tallySessionsBySource(
+    sessionCreatedEvents.map(e => e.payload).filter(p => !(p as any)?.isEval),
+  );
+
   return {
     dateRange: { from, to },
     totalQueries,
@@ -234,6 +247,7 @@ async function generateMetrics(prisma: PrismaClient, from: Date, to: Date): Prom
     userContextBreakdown,
     cancerTypeBreakdown,
     geoBreakdown,
+    sessionsBySource,
   };
 }
 
@@ -342,6 +356,14 @@ function generateMarkdownReport(metrics: DailyReportMetrics): string {
     lines.push('### Cancer Types');
     metrics.cancerTypeBreakdown.slice(0, 5).forEach(c => {
       lines.push(`- ${c.cancerType}: ${c.count}`);
+    });
+    lines.push('');
+  }
+
+  if (metrics.sessionsBySource.length > 0) {
+    lines.push('### Sessions Started, by Source');
+    metrics.sessionsBySource.forEach(s => {
+      lines.push(`- ${s.source}: ${s.count}`);
     });
     lines.push('');
   }

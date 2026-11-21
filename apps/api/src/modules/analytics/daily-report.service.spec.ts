@@ -1,13 +1,20 @@
-import { DailyReportService, NO_SOURCE_LABEL, tallySessionsBySource } from "./daily-report.service";
+import {
+  DailyReportService,
+  NO_SOURCE_LABEL,
+  SOURCE_REPORT_LIMIT,
+  otherSourcesLabel,
+  tallySessionsBySource,
+} from "./daily-report.service";
 import { generateMarkdownReport } from "./report-generator";
 
 describe("tallySessionsBySource", () => {
-  it("counts by src, falls back to utm source, then to none", () => {
+  it("counts by src, falls back to utm source, then to channel or none", () => {
     const result = tallySessionsBySource([
       { channel: "web", src: "site-article" },
       { channel: "web", src: "site-article", utmSource: "instagram" },
       { channel: "web", src: "yt" },
       { channel: "web", utmSource: "instagram" },
+      { channel: "web" },
       { channel: "web" },
       { channel: "whatsapp" },
       null,
@@ -15,9 +22,60 @@ describe("tallySessionsBySource", () => {
     expect(result).toEqual([
       { source: NO_SOURCE_LABEL, count: 3 },
       { source: "site-article", count: 2 },
+      { source: "channel:whatsapp", count: 1 },
       { source: "utm:instagram", count: 1 },
       { source: "yt", count: 1 },
     ]);
+  });
+
+  it("keeps WhatsApp sessions apart from untagged web sessions", () => {
+    const result = tallySessionsBySource([
+      { channel: "whatsapp" },
+      { channel: "whatsapp" },
+      { channel: "web" },
+      {},
+    ]);
+    expect(result).toEqual([
+      { source: NO_SOURCE_LABEL, count: 2 },
+      { source: "channel:whatsapp", count: 2 },
+    ]);
+  });
+
+  it("prefers a code over the channel when a non-web session carries one", () => {
+    expect(tallySessionsBySource([{ channel: "whatsapp", src: "qr-poster" }])).toEqual([
+      { source: "qr-poster", count: 1 },
+    ]);
+  });
+
+  it("prints the top 20 sources and folds the rest into one other line", () => {
+    // 25 codes. code-00 has 30 sessions, code-01 has 29, and so on down to code-24 with 6.
+    const payloads: unknown[] = [];
+    for (let i = 0; i < 25; i++) {
+      const code = `code-${String(i).padStart(2, "0")}`;
+      for (let n = 0; n < 30 - i; n++) payloads.push({ channel: "web", src: code });
+    }
+    const result = tallySessionsBySource(payloads);
+    expect(result).toHaveLength(SOURCE_REPORT_LIMIT + 1);
+    expect(result[0]).toEqual({ source: "code-00", count: 30 });
+    expect(result[19]).toEqual({ source: "code-19", count: 11 });
+    // code-20 to code-24 hold 10 + 9 + 8 + 7 + 6 sessions.
+    expect(result[20]).toEqual({ source: otherSourcesLabel(5), count: 40 });
+    expect(result[20].source).toBe("other (5 codes)");
+    const total = result.reduce((n, r) => n + r.count, 0);
+    expect(total).toBe(payloads.length);
+  });
+
+  it("does not add an other line at exactly the limit", () => {
+    const payloads = Array.from({ length: SOURCE_REPORT_LIMIT }, (_, i) => ({ src: `c${i}` }));
+    const result = tallySessionsBySource(payloads);
+    expect(result).toHaveLength(SOURCE_REPORT_LIMIT);
+    expect(result.some((r) => r.source.startsWith("other"))).toBe(false);
+  });
+
+  it("names a single folded code in the singular", () => {
+    const payloads = Array.from({ length: SOURCE_REPORT_LIMIT + 1 }, (_, i) => ({ src: `c${i}` }));
+    const result = tallySessionsBySource(payloads);
+    expect(result[SOURCE_REPORT_LIMIT]).toEqual({ source: "other (1 code)", count: 1 });
   });
 
   it("never echoes a stored value that fails the code rule", () => {

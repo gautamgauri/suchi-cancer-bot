@@ -69,26 +69,53 @@ export interface DailyReportMetrics {
   sessionsBySource: Array<{ source: string; count: number }>;
 }
 
-/** Label used when a session carries no attribution code. */
+/** Label used when a web session (or one with no recorded channel) carries no attribution code. */
 export const NO_SOURCE_LABEL = '(none)';
+
+/** Most source lines printed in the report. The rest fold into one "other" line. */
+export const SOURCE_REPORT_LIMIT = 20;
+
+/** Label for the folded remainder, e.g. `other (7 codes)`. */
+export function otherSourcesLabel(codes: number): string {
+  return `other (${codes} code${codes === 1 ? '' : 's'})`;
+}
 
 /**
  * Tally session_created payloads by source. `src` wins. A session with only
- * a utm_source is counted as `utm:<value>`. Values are re-checked with the
- * same rule used on write, so nothing odd from older rows is echoed.
+ * a utm_source is counted as `utm:<value>`. A session with neither is
+ * counted by its channel as `channel:<name>` when that channel is not web,
+ * so WhatsApp sessions do not mix with untagged web sessions under
+ * `(none)`. Values are re-checked with the same rule used on write, so
+ * nothing odd from older rows is echoed. Labels with a colon, space or
+ * bracket cannot clash with a code, since codes allow none of those.
+ *
+ * The top `limit` sources are returned by count. Any beyond that are
+ * folded into a single `other (n codes)` entry carrying their total.
  */
-export function tallySessionsBySource(payloads: unknown[]): Array<{ source: string; count: number }> {
+export function tallySessionsBySource(
+  payloads: unknown[],
+  limit: number = SOURCE_REPORT_LIMIT,
+): Array<{ source: string; count: number }> {
   const counts = new Map<string, number>();
   for (const p of payloads) {
     const obj = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>;
     const src = normalizeSourceCode(obj.src);
     const utm = normalizeSourceCode(obj.utmSource);
-    const key = src ?? (utm ? `utm:${utm}` : NO_SOURCE_LABEL);
+    const channel = normalizeSourceCode(obj.channel);
+    const key =
+      src ??
+      (utm ? `utm:${utm}` : channel && channel !== 'web' ? `channel:${channel}` : NO_SOURCE_LABEL);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return Array.from(counts.entries())
+  const sorted = Array.from(counts.entries())
     .map(([source, count]) => ({ source, count }))
     .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source));
+  if (sorted.length <= limit) return sorted;
+  const rest = sorted.slice(limit);
+  return [
+    ...sorted.slice(0, limit),
+    { source: otherSourcesLabel(rest.length), count: rest.reduce((n, r) => n + r.count, 0) },
+  ];
 }
 
 @Injectable()
