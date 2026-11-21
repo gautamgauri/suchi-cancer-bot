@@ -403,3 +403,60 @@ describe("ChatService — urgent guidance does not wait on a slow database (issu
     expect(URGENT_EARLY_RAG_DEADLINE_MS).toBeLessThanOrEqual(10_000);
   });
 });
+
+describe("ChatService — 'normal' is reported only after every safety screen (issue #221)", () => {
+  beforeEach(() => {
+    clockOffset = 0;
+    const realNow = Date.now.bind(Date);
+    dateNowSpy = jest.spyOn(Date, "now").mockImplementation(() => realNow() + clockOffset);
+  });
+
+  afterEach(() => {
+    dateNowSpy.mockRestore();
+    jest.clearAllMocks();
+  });
+
+  /** Captures what `progress` held while the session-context write was in flight. */
+  async function runWithContextWrite(crisis: boolean) {
+    const { service } = await buildService({ channel: "web" });
+    const progress: TurnProgress = {};
+    const seen: Array<TurnProgress["safety"]> = [];
+    const svc = service as any;
+    // A non-neutral tone makes the turn write session context, which is the
+    // slow I/O that sits between the safety module and the mental-health screen.
+    svc.empathyDetector.detectEmotionalTone.mockResolvedValue({ tone: "sad" });
+    svc.greetingFlow.updateSessionContext.mockImplementation(async () => {
+      seen.push(progress.safety);
+    });
+    if (crisis) {
+      svc.empathyDetector.detectMentalHealthNeed.mockReturnValue({
+        needsSupport: true,
+        isCrisis: true,
+        category: "crisis",
+        keywords: ["synthetic-crisis-marker"],
+      });
+    }
+    const result: any = await service.handle(
+      { sessionId: "session1", userText: EXPLAIN_QUERY, channel: "web" } as any,
+      undefined,
+      progress,
+    );
+    return { progress, seen, result };
+  }
+
+  it("does not claim 'normal' while the mental-health screen has yet to run", async () => {
+    const { progress, seen, result } = await runWithContextWrite(true);
+
+    // A 504 raised during the context write must say "not assessed".
+    expect(seen).toEqual([undefined]);
+    expect(result.safety.classification).toBe("mental_health_crisis");
+    expect(progress.safety).toEqual({ classification: "mental_health_crisis", source: "mental_health" });
+  });
+
+  it("records 'normal' once the mental-health screen has concluded without a crisis", async () => {
+    const { progress, seen } = await runWithContextWrite(false);
+
+    expect(seen).toEqual([undefined]);
+    expect(progress.safety).toEqual({ classification: "normal", source: "safety_module" });
+  });
+});

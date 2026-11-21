@@ -59,7 +59,11 @@ import type { SafetyClassification } from "../safety/safety.rules";
  * all, instead of a hardcoded "normal" (issue #221).
  */
 export interface TurnProgress {
-  /** Absent means no safety assessment had been made when the turn was cut off. */
+  /**
+   * Absent means no safety assessment had been made when the turn was cut off.
+   * "normal" is set only after the safety module, the urgency indicators and
+   * the mental-health screen have all concluded.
+   */
   safety?: {
     classification: SafetyClassification | "mental_health_crisis";
     /** Which stage concluded it. */
@@ -512,7 +516,13 @@ export class ChatService {
 
     const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
     const safetyResult = this.safety.evaluate(dto.userText);
-    if (progress) progress.safety = { classification: safetyResult.classification, source: "safety_module" };
+    // Only a non-normal verdict is final at this point. "normal" is recorded
+    // further down, once the urgency and mental-health screens have concluded
+    // too. Recorded here, a turn cut off before the mental-health screen would
+    // be reported as assessed normal although a crisis screen had not yet run.
+    if (progress && safetyResult.classification !== "normal") {
+      progress.safety = { classification: safetyResult.classification, source: "safety_module" };
+    }
     this.observability.endSpan(safetySpan, { classification: safetyResult.classification, rulesFired: safetyResult.rulesFired, blocked: safetyResult.classification !== 'normal' });
 
     if (safetyResult.classification !== "normal") {
@@ -796,6 +806,12 @@ export class ChatService {
     // 1.6.3. Mental health support check (after safety, before greeting flow)
     // Detect if user needs mental health support - crisis takes highest priority
     const mentalHealthNeed = this.empathyDetector.detectMentalHealthNeed(dto.userText);
+
+    // Every rule-based safety screen has now concluded. This is the first
+    // point at which the turn can be reported as assessed normal (#221).
+    if (progress && !progress.safety && !mentalHealthNeed.isCrisis) {
+      progress.safety = { classification: "normal", source: "safety_module" };
+    }
 
     if (mentalHealthNeed.isCrisis) {
       if (progress) progress.safety = { classification: "mental_health_crisis", source: "mental_health" };
