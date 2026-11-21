@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LiteYouTube from '../../components/LiteYouTube.astro';
 import videosData from '../../content/videos.json';
+import { chatUrlFor } from '../../lib/chat-link';
 
 export function getStaticPaths() {
   return videosData.videos.map((video) => ({
@@ -11,13 +12,13 @@ export function getStaticPaths() {
 }
 
 const { video } = Astro.props;
-const botUrl = "https://chat.suchitracancercare.org";
+const botUrl = chatUrlFor(Astro.url.pathname);
 
 // Create a prefilled prompt for the "Ask Suchi" button
 const suchiPrompt = encodeURIComponent(
   `I just watched the video "${video.title}" on SCCF. Can you summarize the key points and tell me what questions I should ask my doctor about ${video.cancerTypes[0] || 'this topic'}?`
 );
-const suchiUrlWithPrompt = `${botUrl}?prompt=${suchiPrompt}`;
+const suchiUrlWithPrompt = `${botUrl}&prompt=${suchiPrompt}`;
 
 // Find related videos (same cancer type or situation)
 const relatedVideos = videosData.videos

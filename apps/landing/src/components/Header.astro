@@ -1,5 +1,7 @@
 ---
-const botUrl = "https://chat.suchitracancercare.org";
+import { chatUrlFor } from '../lib/chat-link';
+
+const botUrl = chatUrlFor(Astro.url.pathname);
 const base = import.meta.env.BASE_URL;
 const currentPath = Astro.url.pathname;
 
