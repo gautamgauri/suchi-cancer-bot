@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Logger } from "@nestjs/common";
 import { ChatService } from "./chat.service";
+import { boundUserText } from "./dto";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
@@ -50,7 +51,15 @@ const BASELINE_PATH = path.join(FIXTURE_DIR, "safety-path-baseline.json");
 /** Thrown by the first ordinary-pipeline step, to mark "went past every safety gate". */
 const PAST_GATES = "PAST_SAFETY_GATES";
 
-type Variant = { name: string; channel: string; inputMode?: string; locale?: string; priorAssistant: number };
+type Variant = {
+  name: string;
+  channel: string;
+  inputMode?: string;
+  locale?: string;
+  /** Session.locale. The disclaimer falls back to it when the request has none. */
+  sessionLocale?: string;
+  priorAssistant: number;
+};
 const VARIANTS: Variant[] = [
   // Web typed, first message, no request locale (the web client sends none).
   { name: "web-typed-first", channel: "web", priorAssistant: 0 },
@@ -58,7 +67,41 @@ const VARIANTS: Variant[] = [
   { name: "whatsapp-hi-later", channel: "whatsapp", locale: "hi", priorAssistant: 2 },
   // Spoken input: the cleanVoiceInput preprocessing branch.
   { name: "web-voice-first", channel: "web", inputMode: "voice", priorAssistant: 0 },
+  // No request locale, so the session's locale decides the disclaimer language.
+  { name: "web-session-hi", channel: "web", sessionLocale: "hi", priorAssistant: 1 },
+  { name: "web-session-bh", channel: "web", sessionLocale: "bh", priorAssistant: 0 },
 ];
+
+/**
+ * Probes added in code (review of PR #202), all synthetic.
+ *
+ * Long messages with the safety phrase beyond MAX_USER_TEXT_LENGTH (4096):
+ * main screens the whole message, and so must this branch (review B1).
+ *
+ * Overlaps that trip more than one screen without the fast path, so that
+ * any change to the order of precedence changes a reply: the safety module
+ * with urgency, and urgency with the mental-health screen.
+ */
+const EN_FILLER = "I have some questions about my treatment plan. ";
+const HI_FILLER = "मेरे इलाज के बारे में कुछ सवाल हैं। ";
+const EXTRA_PROBES: Array<{ source: string; text: string }> = [
+  { source: "long", text: EN_FILLER.repeat(200) + " I want to kill myself" },
+  { source: "long", text: EN_FILLER.repeat(200) + " I am coughing up blood right now" },
+  { source: "long", text: EN_FILLER.repeat(200) + " I don't want to live anymore" },
+  { source: "long", text: HI_FILLER.repeat(400) + " सांस नहीं आ रही" },
+  { source: "long", text: HI_FILLER.repeat(400) + " जीने का मन नहीं है" },
+  { source: "overlap", text: "how much painkiller should I take, the pain is severe" },
+  { source: "overlap", text: "is it safe to stop chemo, she has been confused since yesterday" },
+  { source: "overlap", text: "do I have cancer, I am breathless" },
+  { source: "overlap", text: "I feel so alone and the pain is severe" },
+  { source: "overlap", text: "I feel hopeless and I am confused" },
+];
+const ALL_PROBES = [...PROBES, ...EXTRA_PROBES];
+
+/** How a probe is named in the baseline file. Long probes by length and hash. */
+function probeKey(text: string): string {
+  return text.length <= 300 ? text : `${text.length} chars, sha1 ${createHash("sha1").update(text).digest("hex")}`;
+}
 
 function makeRecordingPrisma(sessionRow: any, priorAssistant: number) {
   const calls: Array<{ model: string; method: string; args: any }> = [];
@@ -150,12 +193,17 @@ async function drain(svc: any) {
 
 function normaliseRows(calls: Array<{ model: string; method: string; args: any }>, sessionId: string) {
   const assistantIds = new Set<string>();
+  // Intended difference from main (PR #202): the stored user message is cut
+  // to MAX_USER_TEXT_LENGTH. The reply and every verdict use the whole text.
   const byModel: Record<string, any[]> = {};
   const scrub = (v: any): any => JSON.parse(JSON.stringify(v ?? null).split(sessionId).join("SESSION"));
   for (const c of calls) {
     if (c.model === "message" && c.method === "count") continue; // a read
     const args = scrub(c.args);
     if (c.model === "message" && c.method === "create") {
+      if (args.data.role === "user" && typeof args.data.text === "string") {
+        args.data.text = boundUserText(args.data.text);
+      }
       if (args.data.id) assistantIds.add(args.data.id);
       delete args.data.id;
       delete args.data.latencyMs;
@@ -173,6 +221,24 @@ function normaliseRows(calls: Array<{ model: string; method: string; args: any }
     .map((k) => [k, byModel[k]]);
 }
 
+/**
+ * Write order across tables, pinned where it is meant to equal main's.
+ *
+ * `turnRows` always: the user message, then the reply, then the SafetyEvent.
+ *
+ * `allWrites` only for turns that take the ordinary or urgency path, which
+ * PR #202 leaves in place. Deterministic safety replies now write behind the
+ * reply, so their analytics and session-context writes may interleave
+ * differently from main's. That is timing, not content.
+ */
+function writeOrder(calls: Array<{ model: string; method: string; args: any }>, ordinaryOrUrgency: boolean) {
+  const label = (c: { model: string; method: string; args: any }) =>
+    c.model === "message" && c.method === "create" ? `message.create:${c.args?.data?.role}` : `${c.model}.${c.method}`;
+  const writes = calls.filter((c) => c.method !== "count" && c.method !== "findMany" && c.method !== "findUnique" && c.method !== "findFirst");
+  const turnRows = writes.filter((c) => (c.model === "message" || c.model === "safetyEvent") && c.method === "create").map(label);
+  return ordinaryOrUrgency ? { turnRows, allWrites: writes.map(label) } : { turnRows };
+}
+
 /** JSON with object keys sorted at every level. Array order still counts. */
 function canonicalJson(value: unknown): string {
   return JSON.stringify(value, (_key, v) =>
@@ -188,7 +254,7 @@ async function runProbe(text: string, variant: Variant) {
     id: sessionId,
     createdAt: new Date(0),
     channel: variant.channel,
-    locale: "en",
+    locale: variant.sessionLocale ?? "en",
     userType: null,
     status: "active",
     userContext: null,
@@ -219,7 +285,14 @@ async function runProbe(text: string, variant: Variant) {
     outcome = { kind: err?.message === PAST_GATES ? "past_gates" : "error", message: err?.message };
   }
   await drain(svc);
-  const record = { outcome, rows: normaliseRows(calls, sessionId) };
+  const urgencyPath = calls.some(
+    (c) => c.model === "safetyEvent" && c.method === "create" && c.args?.data?.detail === "urgency_indicators_detected",
+  );
+  const record = {
+    outcome,
+    rows: normaliseRows(calls, sessionId),
+    order: writeOrder(calls, outcome.kind !== "reply" || urgencyPath),
+  };
   // Keys are sorted first, so the order of fields in an insert does not count.
   const digest = createHash("sha256").update(canonicalJson(record)).digest("hex");
   const label = outcome.kind === "reply" ? `reply:${outcome.classification}` : outcome.kind;
@@ -235,14 +308,14 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
   });
   afterAll(() => jest.restoreAllMocks());
 
-  it(`replays ${PROBES.length} probes x ${VARIANTS.length} variants against the baseline`, async () => {
+  it(`replays ${ALL_PROBES.length} probes x ${VARIANTS.length} variants against the baseline`, async () => {
     const results: Array<{ text: string; variant: string; label: string; digest: string }> = [];
     const records: Record<string, any> = {};
-    for (const p of PROBES) {
+    for (const p of ALL_PROBES) {
       for (const v of VARIANTS) {
         const r = await runProbe(p.text, v);
-        results.push({ text: p.text, variant: v.name, label: r.label, digest: r.digest });
-        records[`${v.name}::${p.text}`] = r.record;
+        results.push({ text: probeKey(p.text), variant: v.name, label: r.label, digest: r.digest });
+        records[`${v.name}::${probeKey(p.text)}`] = r.record;
       }
     }
 
@@ -281,5 +354,12 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
     ]) {
       expect(labels).toContain(l);
     }
-  }, 120_000);
+    // Every long probe gets a safety reply, as on main, whatever its length.
+    const longKeys = new Set(EXTRA_PROBES.filter((p) => p.source === "long").map((p) => probeKey(p.text)));
+    for (const r of results.filter((x) => longKeys.has(x.text))) {
+      expect({ probe: r.text, variant: r.variant, label: r.label }).toEqual(
+        expect.objectContaining({ label: expect.stringMatching(/^reply:(red_flag|self_harm|mental_health_crisis)$/) }),
+      );
+    }
+  }, 240_000);
 });
