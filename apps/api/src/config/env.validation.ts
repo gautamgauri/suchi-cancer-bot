@@ -69,7 +69,7 @@ export const envSchema = z.object({
   WHATSAPP_VERIFY_TOKEN:     z.string().optional(), // arbitrary secret echoed in the GET verification handshake
   WHATSAPP_GRAPH_VERSION:    z.string().optional().default("v21.0"), // Graph API version (matches social-post.service)
   WHATSAPP_SESSION_TTL_HOURS: z.coerce.number().optional().default(24), // inactivity window before a fresh session (FR-WA-009)
-  WHATSAPP_STALE_MESSAGE_MINUTES: z.coerce.number().optional().default(30), // inbound older than this gets a fixed "please resend" note and no pipeline run, unless the safety checks flag it. 0 disables
+  WHATSAPP_STALE_MESSAGE_MINUTES: z.coerce.number().optional().default(0), // OFF by default (0). When > 0, inbound older than this many minutes gets a fixed "please resend" note and no pipeline run, unless the safety checks flag it. Keep equal to DEFAULT_STALE_MESSAGE_MINUTES in whatsapp-notices.ts
   // Observability (Langfuse)
   LANGFUSE_ENABLED: z.coerce.boolean().optional().default(false),
   LANGFUSE_PUBLIC_KEY: z.string().optional(),

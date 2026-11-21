@@ -8,6 +8,7 @@ import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
 import { EmpathyDetector } from "../chat/empathy-detector";
+import { correctMedicalSpelling } from "../chat/input-cleaner";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
@@ -320,6 +321,15 @@ export class WhatsAppService {
    * No safety logic lives in this module.
    */
   private flaggedBySafetyChecks(text: string): boolean {
+    // ChatService.handleTurn rewrites typed input (every WhatsApp message:
+    // channel "whatsapp", no voice inputMode) with correctMedicalSpelling
+    // before any check, so "kemotherapy" is matched as "chemotherapy". Check
+    // both the raw and the corrected text, so the guard is never blind to
+    // something the pipeline would escalate.
+    return [text, correctMedicalSpelling(text)].some((t) => this.tripsAnySafetyCheck(t));
+  }
+
+  private tripsAnySafetyCheck(text: string): boolean {
     if (evaluateEmergencyFastPath(text).isEmergency) return true;
     if (this.safety.evaluate(text).classification !== "normal") return true;
     if (this.abstention.hasUrgencyIndicators(text)) return true;
@@ -440,5 +450,11 @@ function extractText(m: MetaMessage): string | null {
     return (m.interactive?.button_reply?.title || m.interactive?.list_reply?.title)?.trim() || null;
   }
   if (m.type === "button") return m.button?.text?.trim() || null;
+  // A typed caption on media is the sender's words. It runs the normal
+  // pipeline (and the safety checks). Only caption-less media gets the
+  // typed-messages notice.
+  if (m.type === "image") return m.image?.caption?.trim() || null;
+  if (m.type === "video") return m.video?.caption?.trim() || null;
+  if (m.type === "document") return m.document?.caption?.trim() || null;
   return null;
 }

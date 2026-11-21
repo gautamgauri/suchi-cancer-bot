@@ -1,6 +1,7 @@
 import { EmpathyDetector } from "../chat/empathy-detector";
 import { AbstentionService } from "../abstention/abstention.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { envSchema } from "../../config/env.validation";
 import { SafetyService } from "../safety/safety.service";
 import { inboundLedgerId, WhatsAppService } from "./whatsapp.service";
 import {
@@ -98,6 +99,46 @@ describe("WhatsApp fixed notices", () => {
       expect(svc.parseInbound(webhook([{ id: "w1", from: CONTACT_A, type }]))).toEqual([]);
     });
 
+    it.each(["image", "video", "document"] as const)("reads a %s caption as the message text", (type) => {
+      const out = svc.parseInbound(
+        webhook([{ id: "w1", from: CONTACT_A, type, [type]: { caption: "  synthetic caption  " } } as MetaMessage]),
+      );
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ text: "synthetic caption" });
+      expect(out[0].unsupportedType).toBeUndefined();
+    });
+
+    it("treats a blank caption as no caption: the typed-messages notice", async () => {
+      await svc.processInbound(
+        svc.parseInbound(webhook([{ id: "w1", from: CONTACT_A, type: "image", image: { caption: "   " } }])),
+      );
+      expect(chat.handle).not.toHaveBeenCalled();
+      expect(sendText).toHaveBeenCalledWith(CONTACT_A, UNSUPPORTED_TYPE_NOTICE);
+    });
+
+    it("runs a captioned image carrying an emergency phrase through the pipeline", async () => {
+      // Probe from emergency-fast-path.spec.ts.
+      const caption = "I can't breathe properly";
+      await svc.processInbound(
+        svc.parseInbound(webhook([{ id: "w1", from: CONTACT_A, type: "image", image: { caption }, timestamp: secondsAgo(5) }])),
+      );
+      expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: caption }));
+      expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, UNSUPPORTED_TYPE_NOTICE);
+    });
+
+    it("runs a stale captioned emergency image through the pipeline when the guard is on", async () => {
+      process.env.WHATSAPP_STALE_MESSAGE_MINUTES = "30";
+      const caption = "I can't breathe properly";
+      await svc.processInbound(
+        svc.parseInbound(
+          webhook([{ id: "w1", from: CONTACT_A, type: "image", image: { caption }, timestamp: secondsAgo(7 * 3600) }]),
+        ),
+      );
+      expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: caption }));
+      expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, UNSUPPORTED_TYPE_NOTICE);
+    });
+
     it("still drops a text message whose body is blank", () => {
       expect(svc.parseInbound(webhook([{ id: "w1", from: CONTACT_A, type: "text", text: { body: "   " } }]))).toEqual([]);
     });
@@ -175,7 +216,33 @@ describe("WhatsApp fixed notices", () => {
     });
   });
 
+  describe("stale guard default", () => {
+    it("is off when WHATSAPP_STALE_MESSAGE_MINUTES is unset: a day-old message runs the pipeline", async () => {
+      await svc.processInbound(
+        svc.parseInbound(
+          webhook([{ id: "w1", from: CONTACT_A, type: "text", text: { body: "synthetic question" }, timestamp: secondsAgo(24 * 3600) }]),
+        ),
+      );
+      expect(chat.handle).toHaveBeenCalledTimes(1);
+      expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+    });
+
+    it("zod and the runtime agree on the default, including an empty string", () => {
+      const field = envSchema.innerType().shape.WHATSAPP_STALE_MESSAGE_MINUTES;
+      expect(field.parse(undefined)).toBe(0);
+      expect(field.parse("")).toBe(0);
+      expect(staleThresholdMs({})).toBe(0);
+      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "" })).toBe(0);
+      expect(field.parse("45") * 60_000).toBe(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "45" }));
+    });
+  });
+
   describe("stale messages", () => {
+    // The guard ships disabled. These tests switch it on explicitly.
+    beforeEach(() => {
+      process.env.WHATSAPP_STALE_MESSAGE_MINUTES = "30";
+    });
+
     const text = (id: string, from: string, ageSeconds?: number): MetaMessage => ({
       id,
       from,
@@ -302,6 +369,55 @@ describe("WhatsApp fixed notices", () => {
         expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
       });
 
+      // Second-round review: pin each of the four checks with a probe that
+      // trips ONLY that check, so disabling any one of them fails a test.
+      const fastPath = (t: string) => evaluateEmergencyFastPath(t).isEmergency;
+      const rules = (t: string) => new SafetyService().evaluate(t).classification;
+      const urgency = (t: string) => new AbstentionService().hasUrgencyIndicators(t);
+      const mh = (t: string) => new EmpathyDetector().detectMentalHealthNeed(t).needsSupport;
+
+      const expectStalePipelineRun = async (body: string) => {
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", body)])));
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      };
+
+      it("fast path only (Hinglish bleeding): runs the pipeline", async () => {
+        const probe = "bahut khoon aa raha hai";
+        expect(fastPath(probe)).toBe(true);
+        expect(rules(probe)).toBe("normal");
+        expect(urgency(probe)).toBe(false);
+        expect(mh(probe)).toBe(false);
+        await expectStalePipelineRun(probe);
+      });
+
+      it.each([
+        ["emergency", "saans nahi aa rahi", "red_flag"],
+        ["self-harm", "mujhe jeena nahi hai", "self_harm"],
+      ])("safety rules only (%s): runs the pipeline", async (_label, probe, classification) => {
+        expect(fastPath(probe)).toBe(false);
+        expect(rules(probe)).toBe(classification);
+        expect(urgency(probe)).toBe(false);
+        expect(mh(probe)).toBe(false);
+        await expectStalePipelineRun(probe);
+      });
+
+      // The pipeline applies correctMedicalSpelling to typed input before any
+      // check. The guard must see what the pipeline sees.
+      it.each([
+        "fever during kemotherapy",
+        "kemotherapy ke baad tez bukhar",
+        "fever during tretment",
+        "should i stop kemotherapy",
+        "do i have canser",
+      ])(
+        "misspelt %p passes every check raw but is flagged after spelling correction: runs the pipeline",
+        async (probe) => {
+          expect(fastPath(probe) || rules(probe) !== "normal" || urgency(probe) || mh(probe)).toBe(false);
+          await expectStalePipelineRun(probe);
+        },
+      );
+
       it("an ordinary stale message still gets the notice", async () => {
         await svc.processInbound(svc.parseInbound(webhook([staleText("w1", "synthetic question")])));
 
@@ -378,11 +494,11 @@ describe("WhatsApp fixed notices", () => {
       expect(chat.handle).toHaveBeenCalledTimes(1);
     });
 
-    it("falls back to 30 minutes on a missing, negative or non-numeric value", () => {
-      expect(staleThresholdMs({})).toBe(30 * 60_000);
-      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "" })).toBe(30 * 60_000);
-      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "-5" })).toBe(30 * 60_000);
-      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "soon" })).toBe(30 * 60_000);
+    it("falls back to the default (off) on a missing, empty, negative or non-numeric value", () => {
+      expect(staleThresholdMs({})).toBe(0);
+      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "" })).toBe(0);
+      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "-5" })).toBe(0);
+      expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "soon" })).toBe(0);
       expect(staleThresholdMs({ WHATSAPP_STALE_MESSAGE_MINUTES: "45" })).toBe(45 * 60_000);
     });
 
@@ -405,7 +521,38 @@ describe("WhatsApp fixed notices", () => {
     it("stays bounded when many contacts write in", () => {
       const limiter = new NoticeLimiter(1000, 3);
       for (let i = 0; i < 10; i++) expect(limiter.tryAcquire(`c${i}`, "stale", i)).toBe(true);
-      expect((limiter as any).lastSent.size).toBeLessThanOrEqual(3);
+      expect(limiter.size).toBeLessThanOrEqual(3);
+    });
+
+    it("forgets an expired entry on lookup, well below the size cap", () => {
+      const limiter = new NoticeLimiter(1000);
+      limiter.tryAcquire(CONTACT_A, "stale", 0);
+      limiter.tryAcquire(CONTACT_B, "stale", 10);
+      expect(limiter.size).toBe(2);
+      // Both expired. The next lookup, for anyone, drops them.
+      limiter.tryAcquire("910000000003", "stale", 5000);
+      expect(limiter.size).toBe(1);
+    });
+
+    it("re-acquiring an expired contact replaces its entry", () => {
+      const limiter = new NoticeLimiter(1000);
+      limiter.tryAcquire(CONTACT_A, "stale", 0);
+      expect(limiter.tryAcquire(CONTACT_A, "stale", 1500)).toBe(true);
+      expect(limiter.size).toBe(1);
+    });
+
+    it("holds no raw contact id: keys are salted hashes", () => {
+      const limiter = new NoticeLimiter(1000);
+      limiter.tryAcquire(CONTACT_A, "stale", 0);
+      limiter.tryAcquire(CONTACT_A, "unsupported_type", 0);
+      for (const key of limiter.keys()) {
+        expect(key).toMatch(/^[0-9a-f]{64}$/);
+        expect(key).not.toContain(CONTACT_A);
+      }
+      // A second process (new salt) derives different keys for the same contact.
+      const other = new NoticeLimiter(1000);
+      other.tryAcquire(CONTACT_A, "stale", 0);
+      expect(other.keys()).not.toContain(limiter.keys()[0]);
     });
   });
 });

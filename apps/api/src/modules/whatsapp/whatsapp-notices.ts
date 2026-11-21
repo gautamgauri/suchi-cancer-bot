@@ -14,6 +14,7 @@
 // The strings are fixed and carry no medical content. They are never produced
 // by the LLM. Any change to them needs the owner's approval.
 
+import { createHash, randomBytes } from "node:crypto";
 import { InboundMessage } from "./whatsapp.types";
 
 export type NoticeKind = "unsupported_type" | "stale";
@@ -50,12 +51,18 @@ export const NOTICE_MESSAGE_TYPES: ReadonlySet<string> = new Set([
 /** One notice of each kind per contact inside this window. */
 export const NOTICE_COOLDOWN_MS = 6 * 3_600_000;
 
-export const DEFAULT_STALE_MESSAGE_MINUTES = 30;
+/**
+ * Off by default. Whether Meta keeps the original `timestamp` on a message it
+ * redelivers after an outage is unverified, so the guard's premise is
+ * unproven. Enable it only after a live test (see the PR #248 description).
+ * Must agree with the default in env.validation.ts.
+ */
+export const DEFAULT_STALE_MESSAGE_MINUTES = 0;
 
 /**
  * Age beyond which an inbound message is not run through the pipeline, from
- * WHATSAPP_STALE_MESSAGE_MINUTES. 0 switches the guard off. A missing, negative
- * or non-numeric value falls back to the default.
+ * WHATSAPP_STALE_MESSAGE_MINUTES. 0 switches the guard off. A missing, empty,
+ * negative or non-numeric value falls back to the default (off).
  */
 export function staleThresholdMs(env: NodeJS.ProcessEnv = process.env): number {
   const raw = env.WHATSAPP_STALE_MESSAGE_MINUTES;
@@ -101,7 +108,13 @@ export function noticeKindFor(
  * so the worst case is one extra notice per instance.
  */
 export class NoticeLimiter {
+  /**
+   * Keyed on a salted SHA-256 of the contact id, so no phone number sits in
+   * memory here. The salt is random per process, which is enough: the map
+   * never leaves the process and never needs to match across instances.
+   */
   private readonly lastSent = new Map<string, number>();
+  private readonly salt = randomBytes(16);
 
   constructor(
     private readonly cooldownMs: number = NOTICE_COOLDOWN_MS,
@@ -110,9 +123,13 @@ export class NoticeLimiter {
 
   /** True, and the slot is taken, when this contact has not had this notice inside the window. */
   tryAcquire(waId: string, kind: NoticeKind, nowMs: number = Date.now()): boolean {
-    const key = `${kind}:${waId}`;
+    this.dropExpired(nowMs);
+    const key = this.keyFor(waId, kind);
     const last = this.lastSent.get(key);
-    if (last !== undefined && nowMs - last < this.cooldownMs) return false;
+    if (last !== undefined) {
+      if (nowMs - last < this.cooldownMs) return false;
+      this.lastSent.delete(key); // expired: forget it before re-adding
+    }
     if (this.lastSent.size >= this.maxEntries) this.prune(nowMs);
     this.lastSent.set(key, nowMs);
     return true;
@@ -120,7 +137,33 @@ export class NoticeLimiter {
 
   /** Give the slot back when the notice could not be sent, so the next message may try again. */
   release(waId: string, kind: NoticeKind): void {
-    this.lastSent.delete(`${kind}:${waId}`);
+    this.lastSent.delete(this.keyFor(waId, kind));
+  }
+
+  /** Number of entries held. For tests. */
+  get size(): number {
+    return this.lastSent.size;
+  }
+
+  /** The map keys. For tests, to prove no raw contact id is held. */
+  keys(): string[] {
+    return [...this.lastSent.keys()];
+  }
+
+  private keyFor(waId: string, kind: NoticeKind): string {
+    return createHash("sha256").update(this.salt).update(`${kind}:${waId}`).digest("hex");
+  }
+
+  /**
+   * Entries are re-inserted on every acquire, so the map is in time order and
+   * expired entries sit at the front. Drop them there, so a contact who never
+   * writes again is forgotten once the cooldown passes.
+   */
+  private dropExpired(nowMs: number): void {
+    for (const [key, at] of this.lastSent) {
+      if (nowMs - at < this.cooldownMs) break;
+      this.lastSent.delete(key);
+    }
   }
 
   private prune(nowMs: number): void {

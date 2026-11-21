@@ -41,6 +41,10 @@ export interface MetaMessage {
     list_reply?: { id?: string; title?: string };
   };
   button?: { text?: string; payload?: string };
+  /** Media objects. Only the optional typed caption is read. */
+  image?: { caption?: string };
+  video?: { caption?: string };
+  document?: { caption?: string };
 }
 
 /** Normalised inbound message after parsing — the only shape the rest of the channel deals with. */
@@ -49,7 +53,12 @@ export interface InboundMessage {
   from: string;
   text: string;
   profileName?: string;
-  /** When the sender wrote it, in epoch seconds, if Meta supplied a usable `timestamp`. */
+  /**
+   * Meta's `timestamp` in epoch seconds, if it supplied a usable one. Meta's
+   * webhook reference calls it the time the webhook was triggered. Whether a
+   * message redelivered after an outage keeps its original time or carries a
+   * new one is unverified. Do not read it as the time the sender wrote it.
+   */
   sentAt?: number;
   /**
    * Meta message type ("audio", "image", ...) when the message carries no text
