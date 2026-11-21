@@ -1,3 +1,6 @@
+import { EmpathyDetector } from "../chat/empathy-detector";
+import { AbstentionService } from "../abstention/abstention.service";
+import { SafetyService } from "../safety/safety.service";
 import { WhatsAppController } from "./whatsapp.controller";
 import { WhatsAppService } from "./whatsapp.service";
 import { MetaWebhookBody } from "./whatsapp.types";
@@ -131,7 +134,7 @@ describe("WhatsApp rapid-sequential inbound (issue #94)", () => {
       create: jest.fn(async () => ({ id: `sess-${++sessionSeq}`, createdAt: new Date() })),
     };
 
-    svc = new WhatsAppService(prisma, chat, sessions);
+    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
     jest.spyOn(svc, "sendText").mockImplementation(async (to: string, text: string) => {
       sent.push({ to, text });
       return 1;
