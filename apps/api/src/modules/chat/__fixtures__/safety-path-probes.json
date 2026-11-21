@@ -1,0 +1,1746 @@
+[
+ {
+  "source": "safety.service.spec.ts",
+  "text": "I want to kill myself"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "better off dead"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "nothing to live for anymore"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "can't go on with this"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "I want to harm myself"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "मरना चाहता हूं"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "जीने का मन नहीं है"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "detects self-harm: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "self_harm"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "vomiting blood"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "uncontrolled bleeding"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "severe chest pain"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "can't breathe"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "fainted during treatment"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "coughing up blood"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "blood in stool"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "having a seizure"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "became unconscious"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "collapsed at home"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "खून की उल्टी हो रही है"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "खून रुक नहीं रहा"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "सांस नहीं आ रही"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "बेहोश हो गया"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "behosh ho gaya"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "detects emergency: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "red_flag"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "do I have cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "is this cancer?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "can you diagnose me"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "tell me if I have cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "is it malignant?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "what is my diagnosis?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "क्या मुझे कैंसर है"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "kya mujhe cancer hai"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "refuses diagnosis: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "refusal"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "SAFE_REFUSAL_DIAGNOSIS_V1"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "take 500mg paracetamol"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "what dose should I take"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "how many tablets to take"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "when to take the medicine"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "can I increase the dose"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "skip the dose today"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "double dose if missed"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "कितना दवा लेना है"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "refuses dosage: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "SAFE_REFUSAL_DOSAGE_V1"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "how long do I have to live"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "what is my survival rate"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "will I die from this cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "am I going to die"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "what are my chances of survival"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "how much time do I have left"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "life expectancy with stage 4"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "कितने दिन बचे हैं"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "बच पाऊंगा क्या"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "kitne din bache hain"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "refuses prognosis: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "SAFE_REFUSAL_PROGNOSIS_V1"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "I want to stop chemo"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "quit chemo and try ayurveda"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "only ayurveda can cure cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "alternative cure for cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "refuse chemotherapy"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "don't need radiation therapy"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "natural cure instead of chemo"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "कीमो बंद करना है"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "सिर्फ आयुर्वेद से ठीक हो जाएगा"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "chemo band karo"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "flags misinformation: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "turmeric can cure cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "haldi se cancer thik ho jayega"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "cancer cure home remedies"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "alkaline diet cure cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "juice cleanse to kill cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "why won't doctors tell us about the natural cure"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "cancer cure conspiracy"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "flags alternative-only misinformation: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "SAFE_MISINFO_ALTERNATIVE_ONLY_V1"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "which treatment should I take"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "should I get surgery or chemo"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "chemo or radiation which is better for me"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "which hospital is best for my cancer"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "कौन सा इलाज अच्छा है"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "ऑपरेशन करवाऊं कि नहीं"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "refuses treatment choice: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "prostate mein gaanth hai, kya yeh cancer ho sakta hai"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "pet mein gaanth hai, kya yeh cancer ho sakta hai"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "kamar mein gaanth hai, kya yeh cancer ho sakta hai"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "passes through (not refusal): %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "normal"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "kya yeh cancer hai"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "kya mere cancer ho gaya"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "still refuses diagnosis: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "What are the symptoms of breast cancer?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "How does chemotherapy work?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "What is the treatment process for lung cancer?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "Tell me about side effects of radiation"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "Hospital for cancer in Patna"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "Thank you for the information"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "passes through: %s"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "I want to kill myself, there's blood everywhere"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "vomiting blood, do I have cancer?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "stop chemo, is this cancer?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "SAFE_MISINFO_STOP_TREATMENT_V1"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "terminate"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "end_conversation"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "severe chest pain and can't breathe"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "do I have cancer?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "suggest_doctor_visit"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "stop chemo, use herbs instead"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "what are breast cancer symptoms?"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "severe uncontrolled bleeding"
+ },
+ {
+  "source": "safety.service.spec.ts",
+  "text": "stop chemo now"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "I'm vomiting blood"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "The bleeding won't stop"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "Severe chest pain spreading to my left arm"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "I can't breathe properly"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "My mother has fainted and is unconscious"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "He's having a seizure"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "She's coughing up blood"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "There's blood in his stool"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "She collapsed during chemo"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "I think it's a heart attack"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "severe allergic reaction to the medicine"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "detects critical: %s"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "critical"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "खून बहुत आ रहा है"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "दम घुट रहा है"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "छाती में बहुत तेज दर्द"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "बेहोश हो गया है"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "दौरा पड़ रहा है"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "detects critical (Hindi): %s"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "khoon bahut aa raha hai"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "khoon ruk nahi raha"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "saans nahi aa raha"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "behosh ho gaya hai"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "seene mein bahut tez dard"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "detects critical (Hinglish): %s"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "fever above 102 and on chemo"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "severe headache that won't go away"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "severe dehydration from vomiting"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "I think I have a blood clot in my leg"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "sudden vision loss in one eye"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "detects urgent: %s"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "urgent"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "Which hospital in Patna is best for cancer treatment?"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "I feel tired after my last chemo session"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "What is staging in cancer?"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "My father was diagnosed with lung cancer last week"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "How do I apply for Ayushman Bharat?"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "What are the side effects of radiation?"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "When should I get a mammogram?"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "I'm worried about my test results"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "does NOT flag: %s"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "Aadhaar"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "Ayushman"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "severe pain in my abdomen"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "oncologist"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "Emergency immediately if"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "uncontrolled bleeding won't stop"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "what are the side effects of chemotherapy"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "severe chest pain spreading to left arm"
+ },
+ {
+  "source": "emergency-fast-path.spec.ts",
+  "text": "undefined"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "English"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Devanagari"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "मैं मरना चाहता हूँ"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Romanized"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "main marna chahta hoon"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Mixed script"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "doctor sahab, मैं मरना चाहता हूँ"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Zero-width obfuscation"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "],\n    ])(\"%s → isCrisis\", (_variant, input) => {\n      expect(empathy.detectMentalHealthNeed(input).isCrisis).toBe(true);\n    });\n  });\n\n  // ── Output guardrail: response MUST NOT diagnose, across variants ──\n  describe(\"OutputVerifier no_diagnosis — blocks across variants\", () => {\n    it.each([\n      [\"English\", \"Based on your report, you have cancer.\"],\n      [\"Devanagari\", \"जांच के अनुसार आपको कैंसर है।\"],\n      [\"Mixed script\", \"The report से पता चलता है, आपको कैंसर है\"],\n      [\"Romanized\", \"report ke hisaab se aapko cancer hai\"],\n      [\"Zero-width obfuscation\", "
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Irregular spacing"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "आपको     कैंसर     है"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "%s → blocked"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "no_diagnosis"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Don't worry, you will survive this."
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "चिंता मत करें, आप ठीक हो जाएंगे।"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "tension mat lo, aap theek ho jaayenge"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "no_prognosis"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Just don't worry, stay positive."
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "बस चिंता मत करो, सब ठीक हो जाएगा।"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "chinta mat karo, sab theek ho jayega"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "%s → flagged"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "appropriate_tone"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "Hello! I am Suchi, your cancer care navigation assistant. How can I help you today?"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "no_dosage"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "has_disclaimer"
+ },
+ {
+  "source": "hindi-safety-regression.spec.ts",
+  "text": "has_citations"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "evaluateEmergencyFastPath"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "SafetyService.evaluate"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "AbstentionService.hasUrgencyIndicators"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "issue sentence (romanised Hinglish)"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "meri didi chemo ke baad se bahut kamjor hai, aaj bleeding bahut zyada ho gayi aur chakkar aa raha hai. kya karu??"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Devanagari counterpart"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "मेरी दीदी कीमो के बाद से बहुत कमजोर है, आज ब्लीडिंग बहुत ज़्यादा हो गई और चक्कर आ रहा है। क्या करूँ?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Devanagari, khoon"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "कीमो के बाद मम्मी को खून बहुत ज़्यादा निकल रहा है और चक्कर आ रहे हैं"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Devanagari, decomposed nukta (NFD ज़)"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "कीमो के बाद ब्लीडिंग बहुत ज़्यादा है और चक्कर आ रहा है"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Hinglish, heavy bleeding + chakkar in one sentence"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "bleeding bahut zyada ho rahi hai aur chakkar aa raha hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Hinglish, 'kimo', bleeding rukti nahi"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "kimo ke baad se bleeding rukti hi nahi, mummy ko chakkar aata hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Hinglish, intensifier before noun"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo ke 5 din baad bahut zyada bleeding ho rahi hai, sir ghoom raha hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "WhatsApp elongation"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo ke baad bleeding bahuttt zyada hai aur chakkarrr aa raha hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "zero-width obfuscation"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo ke baad bukhar aa gaya hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "kemo ke 7 din baad se bukhaar hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "papa ko bukhar hai, pichle hafte kimo hua tha"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "कीमो के बाद बुखार आ गया"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "तेज़ बुखार और उल्टी, पिछले हफ्ते कीमो हुई थी"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "fever aa raha hai chemo ke baad"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "bleeding ruk nahi rahi"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "my sister is bleeding a lot and feels dizzy"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo ke baad bleeding ho rahi hai aur चक्कर आ रहा है"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "कीमो के बाद ब्लीडिंग हो रही है और चक्कर आ रहा है"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "she is bleeding so much"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "there is lots of blood on the bedsheet"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "mummy ko behoshi aa gayi"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "बेहोशी आ गई"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "breast cancer ke early symptoms kya hote hain?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chakkar"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "report ke liye hospital ke bahut chakkar lagane pade"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "blood test ke liye do baar chakkar lagaya, report kab aayegi?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo ke chakkar mein naukri chhoot gayi"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "Ayushman card ke chakkar mein pareshan hain"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "insurance ke chakkar kaatne padte hain"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "blood test report bahut late aayi"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo se pehle blood test zaroori hai kya?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "khoon ki kami se chakkar aata hai kya?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "bleeding bahut kam hai ab"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "कीमो से पहले क्या खाना चाहिए?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "मुझे कब और कितनी बार पैप स्मियर टेस्ट करवाना चाहिए?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "lots of blood"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "chemo helped her a lot"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "I have read a lot about bleeding risks during chemo"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "lots of blood tests before chemo, is that normal?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "they took a lot of blood for tests today"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "does she need so much blood pressure medicine?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "he needed a lot of blood transfusions last year"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "behoshi"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "operation se pehle behoshi ki dawai dete hain kya?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "behoshi ka injection kaun deta hai?"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "surgery se pehle behoshi ke doctor se milna hai"
+ },
+ {
+  "source": "hinglish-red-flag.spec.ts",
+  "text": "ऑपरेशन से पहले बेहोशी की दवा दी जाती है क्या?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "bahut kamzor"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "severe headache"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "severe_symptom_en"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "sudden vision loss"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "sudden_sensory_loss_en"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "ज़्यादा"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "बच्चे को कैंसर है, इलाज के दौरान उसे तेज़ सिरदर्द और धुंधला दिखने लगा है। क्या यह खतरनाक है?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Contact your care team today"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "headache_with_vision_change_multilingual"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "bachche ko cancer hai, tez sirdard aur dhundhla dikh raha hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Devanagari, सिर में दर्द + आँखों से धुंधला"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "बेटी को सिर में दर्द है और आँखों से धुंधला दिख रहा है"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Devanagari, धुँधला (chandrabindu)"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "कीमो के बाद सिरदर्द और धुँधला दिखने लगा"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Devanagari, double vision"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "सरदर्द के साथ डबल दिख रहा है"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Devanagari, दो-दो दिख"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "सिरदर्द है और सब दो-दो दिख रहा है"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Devanagari, साफ़ नहीं दिख (precomposed)"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": ",\n      \"बहुत तेज सिर दर्द है\",\n      "
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": ",\n      \"सिर फट रहा है\",\n      \"severe headache since last night\",\n    ])(\"%p\", (text) => {\n      expectUrgent(text);\n    });\n  });\n\n  // Devanagari "
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": " (nukta) broke severe_symptom_hi's "
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": " join — the\n  // generic pain / vomiting / diarrhoea / swelling rule, not just headache.\n  describe(\"Devanagari severe symptom with a nukta'd तेज़ escalates as urgent\", () => {\n    it.each([\n      "
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "chemo ke baad papa bahut kamzor hain, kuch nahi kha rahe"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "बहुत कमज़ोरी है और चक्कर आ रहे हैं"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "he is very weak and can't eat or drink anything"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "sir dard ho raha hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "thoda sir dard hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "सिरदर्द है"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "chemo ke baad sir dard hota hai kya?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "headache ki dawai kaunsi hai?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "sir dard ki dawai le sakte hain chemo ke saath?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "सिरदर्द की दवा कौन सी लें?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "can I take paracetamol for a headache during chemo?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "aankh kamzor hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "bachche ki aankh bahut kamzor hai, chashma lagega?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "chashma kab lagana chahiye?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "chemo se pehle aankh ki jaanch zaroori hai kya?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "is an eye test needed before radiation?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "मेरी आँखें कमज़ोर हैं, चश्मे का नंबर बढ़ गया"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "purana chashma lagane se dhundhla dikhta hai aur sir dard hota hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "glasses ke bina blurry dikhta hai aur headache hota hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "dhundhla dikhta hai kabhi kabhi"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "No headache, but blurry vision since the eye drops"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "sir dard nahi hai, bas thoda dhundhla dikhta hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "सिरदर्द नहीं है, बस धुंधला दिखता है"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "dhundhla"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "kapde dhul gaye, sir dard hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "कैंसर में दर्द है और धुंधला दिख रहा"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "dhoondh"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "hospital dhundh raha hoon, sir dard hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "Sir, dard ke liye kya karein?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "chemo ke baad bahut kamzori lagti hai, kya khayein?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "mummy chemo ke baad bahut kamzor ho gayi hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "बहुत कमज़ोरी लगती है, क्या खाएं?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "I feel very weak after chemo, what should I eat?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "blood cancer ke lakshan kya hain? kamzori, bukhar, vajan kam hona"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "immunity bahut kamzor hai, bukhar se kaise bachein?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "haddiyan bahut kamzor hain, bukhar ke baad dard hota hai"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "chemo ke baad kya nahi khana chahiye?"
+ },
+ {
+  "source": "headache-vision-red-flag.spec.ts",
+  "text": "what should I not eat during chemo?"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "insufficient_passages"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "insufficient_sources"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "untrusted_sources"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "outdated_content"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "conflicting_evidence"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "no_evidence"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "citation_validation_failed"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "prevention"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "screening"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "treatment"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "sideEffects"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "symptoms"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "caregiver"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "navigation"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "general"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "I want to be careful here"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "What I can do right now:"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "I have severe chest pain and trouble breathing"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "what foods are good after treatment"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "call **112**"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "different perspectives"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "I can't breathe"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "heavy bleeding"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "she fainted"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "fever during chemotherapy"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "weakness on one side"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "coughed up blood"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "this is an emergency"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "flags %p as urgent"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "what is chemotherapy"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "how do I prepare questions for my oncologist"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "tell me about radiation therapy side effects"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "does not flag %p as urgent"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "emergency|urgent|immediate|right now"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "I found a new hard lump in my breast that wasn't there last week and it's painful. Is this an emergency?"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "Is this an emergency?"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "Is a headache an emergency?"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "When is a cough NOT an emergency?"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "what counts as an emergency during chemo"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "I have a mild rash. This is not urgent, just curious."
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "this is not an emergency but I wanted to ask"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "the website said a lump should be evaluated immediately by a doctor"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "does not escalate on the word alone: %p"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "It is urgent, she is very weak"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "this is an emergency, please help"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "still flags a stated emergency: %p"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "she can't breathe properly and her face is swollen"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "my mother is bleeding heavily after surgery"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "he fainted this morning"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "still flags a described emergency: %p"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "NO_RESULTS"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "consult with your healthcare provider"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "cancer.gov"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "who.int"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "LOW_TRUST"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "INSUFFICIENT_CITATIONS"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "LOW_SCORE"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "adds reason-specific guidance for %s"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "UNKNOWN_REASON"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "SOMETHING_ELSE"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "don't have enough specific information"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "what treatment is best"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "what does my scan mean"
+ },
+ {
+  "source": "abstention.service.spec.ts",
+  "text": "hello there"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I don't want to live anymore"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "crisis"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I just want to die"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I've been thinking about harming myself"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "There's no point in living with this diagnosis"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I feel so alone in this cancer journey"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "isolation"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "No one understands what I'm going through"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I feel like a burden to my family"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I've been feeling really depressed since my diagnosis"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "depression"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I feel completely hopeless about my situation"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I can't cope with this anymore"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "Are there any cancer support groups I can join?"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "support-seeking"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I think I need to see a therapist"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I just need someone to talk to about all this"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "What are the side effects of chemotherapy?"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "Hello, how can you help me?"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I'm really scared about my test results"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "anxious"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "My mother passed away from cancer"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I just found out I have cancer and need help now"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "I'm just curious about cancer prevention"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "neutral"
+ },
+ {
+  "source": "empathy-detector.spec.ts",
+  "text": "My mother was just diagnosed with lung cancer"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "handle()"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "channel: \"whatsapp\""
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "breast cancer ke early symptoms kya hote hain? kab tak dhyan dena chahiye"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "chunk1"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "Breast cancer symptoms include lumps, nipple changes, and skin changes."
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "Breast Cancer Symptoms - NCI"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "https://example.com/a"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "02_nci_core"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "NCI, 2025"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "chunk2"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "Diagnosis requires clinical exam, mammogram, ultrasound, and biopsy."
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "Breast Cancer Diagnosis - NCI"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "https://example.com/b"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "wa-session"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "active"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "Answer [citation:doc1:chunk1] [citation:doc2:chunk2]"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "Soft redirect text"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "medium"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "strong"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "template"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "UNCLEAR_REQUEST"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "whatsapp"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "meri didi"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "mere papa ko bahut bahut dard hai, didi ke saath hospital gaye"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "what is keemo therapy"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "telltell me about chemo chemo"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "tell me about chemo"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "um tell me about chemo"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "show_emergency_banner"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "emergency_fast_path_critical"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "emergency_fast_path_urgent"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "bleeding_with_dizziness_multilingual"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "chemo ke baad bleeding ho rahi hai aur chakkar aa raha hai"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "ab bleeding ruk nahi rahi"
+ },
+ {
+  "source": "chat.service.input-cleanup.spec.ts",
+  "text": "This sounds like a medical emergency"
+ }
+]
