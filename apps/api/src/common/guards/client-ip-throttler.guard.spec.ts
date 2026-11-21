@@ -6,7 +6,6 @@ import { SkipThrottle, Throttle, ThrottlerModule } from "@nestjs/throttler";
 import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { AddressInfo } from "net";
 import { ClientIpThrottlerGuard, resolveClientIp, TRUSTED_PROXY_HOPS } from "./client-ip-throttler.guard";
-import { AppModule } from "../../app.module";
 
 describe("resolveClientIp", () => {
   it("uses the rightmost X-Forwarded-For entry (the one Cloud Run's front end appended)", () => {
@@ -30,7 +29,35 @@ describe("resolveClientIp", () => {
 });
 
 describe("AppModule binds the throttler guard globally", () => {
-  it("registers ClientIpThrottlerGuard as APP_GUARD", () => {
+  // AppModule's decorator calls ConfigModule.forRoot, which validates the
+  // environment the moment the file is loaded. With DATABASE_URL and the admin
+  // credentials unset (CI has no .env) that validation rejects, and the
+  // unhandled rejection failed whichever test happened to be running. So the
+  // module is loaded here, under placeholder values, and the environment is
+  // put back afterwards.
+  const REQUIRED_ENV = ["DATABASE_URL", "ADMIN_BASIC_USER", "ADMIN_BASIC_PASS"] as const;
+
+  async function loadAppModule(): Promise<any> {
+    const before = { ...process.env };
+    for (const key of REQUIRED_ENV) {
+      if (!process.env[key]) process.env[key] = "placeholder-for-spec";
+    }
+    try {
+      const { AppModule } = await import("../../app.module");
+      return AppModule;
+    } finally {
+      for (const key of Object.keys(process.env)) {
+        if (!(key in before)) delete process.env[key];
+      }
+      for (const key of REQUIRED_ENV) {
+        if (before[key] === undefined) delete process.env[key];
+        else process.env[key] = before[key];
+      }
+    }
+  }
+
+  it("registers ClientIpThrottlerGuard as APP_GUARD", async () => {
+    const AppModule = await loadAppModule();
     const providers: any[] = Reflect.getMetadata("providers", AppModule) ?? [];
     expect(providers).toContainEqual({ provide: APP_GUARD, useClass: ClientIpThrottlerGuard });
     // sanity: not relying on per-controller @UseGuards
