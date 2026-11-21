@@ -24,8 +24,10 @@ import { OutputVerifierService } from "./output-verifier.service";
  * phrase from the safety, emergency, abstention, empathy and input-cleanup
  * specs through the real safety, abstention, empathy, greeting-context and
  * template code over a healthy in-memory database, and compares the outcome
- * with a baseline captured from the branch BEFORE the reorder
- * (`__fixtures__/safety-path-baseline.json`).
+ * with a baseline captured from code WITHOUT the reorder
+ * (`__fixtures__/safety-path-baseline.json`). The current baseline was
+ * captured from `ChatService` as it stands on main at f9bfaeb, which holds
+ * #228's turn-deadline and progress changes but none of PR #202.
  *
  * For each probe and variant the record holds the reply text, classification,
  * actions and banner, whether a message id came back, every row written
@@ -171,6 +173,15 @@ function normaliseRows(calls: Array<{ model: string; method: string; args: any }
     .map((k) => [k, byModel[k]]);
 }
 
+/** JSON with object keys sorted at every level. Array order still counts. */
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, v[k]]))
+      : v,
+  );
+}
+
 async function runProbe(text: string, variant: Variant) {
   const sessionId = `00000000-0000-4000-8000-${createHash("sha1").update(text + variant.name).digest("hex").slice(0, 12)}`;
   const sessionRow = {
@@ -209,7 +220,8 @@ async function runProbe(text: string, variant: Variant) {
   }
   await drain(svc);
   const record = { outcome, rows: normaliseRows(calls, sessionId) };
-  const digest = createHash("sha256").update(JSON.stringify(record)).digest("hex");
+  // Keys are sorted first, so the order of fields in an insert does not count.
+  const digest = createHash("sha256").update(canonicalJson(record)).digest("hex");
   const label = outcome.kind === "reply" ? `reply:${outcome.classification}` : outcome.kind;
   return { label, digest, record };
 }
@@ -232,6 +244,11 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
         results.push({ text: p.text, variant: v.name, label: r.label, digest: r.digest });
         records[`${v.name}::${p.text}`] = r.record;
       }
+    }
+
+    // Diagnostic: write every full record (not only digests) for a diff.
+    if (process.env.SAFETY_BASELINE_DUMP) {
+      fs.writeFileSync(process.env.SAFETY_BASELINE_DUMP, JSON.stringify(records, null, 1) + "\n");
     }
 
     if (process.env.SAFETY_BASELINE_CAPTURE === "1") {
