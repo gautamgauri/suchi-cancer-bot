@@ -1,5 +1,5 @@
 import { ExecutionContext, Injectable, Logger, SetMetadata } from "@nestjs/common";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerGuard, ThrottlerLimitDetail } from "@nestjs/throttler";
 import { BlockList, isIP } from "node:net";
 import { isUrgentSafetyText } from "../../modules/chat/deterministic-safety";
 
@@ -117,6 +117,11 @@ export const SafetyRoute = () => SetMetadata(SAFETY_ROUTE_KEY, true);
 /** At most one resolution log line per instance in this window. */
 export const RESOLUTION_LOG_INTERVAL_MS = 5 * 60_000;
 
+/** Window for the safety-message cap. */
+export const SAFETY_BYPASS_TTL_MS = 60_000;
+/** Safety messages per address per window that may pass a route's spent limit. */
+export const SAFETY_BYPASS_LIMIT = 300;
+
 /**
  * Global rate-limit guard (bound as APP_GUARD in app.module.ts).
  *
@@ -124,13 +129,9 @@ export const RESOLUTION_LOG_INTERVAL_MS = 5 * 60_000;
  *   front end do not all share the load balancer's bucket.
  * - Only applies to HTTP. The voice WebSocket gateway would otherwise hit
  *   ThrottlerGuard's HTTP-only request/response handling.
- * - Never rate-limits a safety reply on a @SafetyRoute (see above).
+ * - On a @SafetyRoute it fails open on an untrusted address, and lets an
+ *   emergency, self-harm or crisis message through a spent limit (see below).
  */
-/** Window for the safety-message cap. */
-export const SAFETY_BYPASS_TTL_MS = 60_000;
-/** Safety messages per address per window that skip the route's limit. */
-export const SAFETY_BYPASS_LIMIT = 300;
-
 @Injectable()
 export class ClientIpThrottlerGuard extends ThrottlerGuard {
   /** SAFETY_BYPASS_LIMIT. Static so a spec can lower it. */
@@ -147,29 +148,44 @@ export class ClientIpThrottlerGuard extends ThrottlerGuard {
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== "http") return true;
     if (await super.shouldSkip(context)) return true;
-
-    const safetyRoute = this.reflector.getAllAndOverride<boolean>(SAFETY_ROUTE_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!safetyRoute) return false;
-
-    const req = context.switchToHttp().getRequest();
-    const ip = resolveClientAddress(req).ip;
+    if (!this.isSafetyRoute(context)) return false;
     // Fail open: a bucket keyed on a private or Google address would be
     // shared by every user, and a patient must not be refused for that.
-    if (isUntrustedClientAddress(ip)) return true;
-    // A message that would get the emergency, self-harm or crisis template
-    // skips the route's limit. These turns use no retrieval or LLM. They have
-    // their own, much larger cap per address, so a flood of them is still
-    // stopped. Past that cap the request is handed back to the route's normal
-    // limit, which answers 429 with Retry-After only if that limit is used up too.
+    return isUntrustedClientAddress(resolveClientAddress(context.switchToHttp().getRequest()).ip);
+  }
+
+  /**
+   * Called only when the route's limit is spent and the request would be
+   * refused. A message that would get the emergency, self-harm or crisis
+   * template is let through instead, up to SAFETY_BYPASS_LIMIT such messages
+   * per address a minute. These turns use no retrieval or LLM.
+   *
+   * The safety screen runs here only for a request that would otherwise be
+   * refused, so a request within its limit pays for one screen, in the
+   * pipeline, as on main (review N2). Past the safety cap the 429 stands, with
+   * its Retry-After header.
+   */
+  protected async throwThrottlingException(context: ExecutionContext, detail: ThrottlerLimitDetail): Promise<void> {
+    if (await this.letSafetyMessageThrough(context)) {
+      // The request goes ahead, so it must not carry the refusal's header.
+      context.switchToHttp().getResponse()?.removeHeader?.("Retry-After");
+      return;
+    }
+    return super.throwThrottlingException(context, detail);
+  }
+
+  private isSafetyRoute(context: ExecutionContext): boolean {
+    return !!this.reflector.getAllAndOverride<boolean>(SAFETY_ROUTE_KEY, [context.getHandler(), context.getClass()]);
+  }
+
+  private async letSafetyMessageThrough(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() !== "http" || !this.isSafetyRoute(context)) return false;
+    const req = context.switchToHttp().getRequest();
     const body = req?.body;
     if (!isUrgentSafetyText(body?.userText, body?.channel, body?.inputMode)) return false;
-    // Blocked for the rest of the window once the cap is passed. With no
-    // block time the storage would reset the count on the next hit.
+    // Blocked for the rest of the window once the cap is passed.
     const { isBlocked } = await this.storageService.increment(
-      `safety-bypass:${ip}`,
+      `safety-bypass:${resolveClientAddress(req).ip}`,
       SAFETY_BYPASS_TTL_MS,
       ClientIpThrottlerGuard.safetyBypassLimit,
       SAFETY_BYPASS_TTL_MS,

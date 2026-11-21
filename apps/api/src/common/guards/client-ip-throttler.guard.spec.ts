@@ -16,6 +16,8 @@ import {
   resolveClientIp,
   TRUSTED_PROXY_HOPS,
 } from "./client-ip-throttler.guard";
+import { PerKeyThrottlerStorage } from "./per-key-throttler-storage";
+import * as deterministicSafety from "../../modules/chat/deterministic-safety";
 
 describe("resolveClientIp", () => {
   it("uses the rightmost X-Forwarded-For entry (the one Cloud Run's front end appended)", () => {
@@ -168,7 +170,8 @@ class TestController {
 }
 
 @Module({
-  imports: [ThrottlerModule.forRoot({ throttlers: [{ ttl: 60_000, limit: 100 }] })],
+  // The same storage as production (review N6).
+  imports: [ThrottlerModule.forRoot({ throttlers: [{ ttl: 60_000, limit: 100 }], storage: new PerKeyThrottlerStorage() })],
   controllers: [TestController],
   providers: [{ provide: APP_GUARD, useClass: ClientIpThrottlerGuard }],
 })
@@ -254,15 +257,15 @@ describe("ClientIpThrottlerGuard over HTTP (trust proxy = 1, as in main.ts)", ()
     expect(await post(ip, text)).toBe(201);
   });
 
-  it("safety messages have their own cap, and past it go back to the route's normal limit", async () => {
+  it("safety messages pass a spent limit up to their own cap, then get 429 with Retry-After", async () => {
     const before = ClientIpThrottlerGuard.safetyBypassLimit;
     ClientIpThrottlerGuard.safetyBypassLimit = 3;
     try {
       const ip = "198.51.100.70";
-      for (let i = 0; i < 3; i++) expect(await post(ip, "I am coughing up blood right now")).toBe(201);
-      // Over the safety cap: the route's own limit (1 a minute) still has room once.
-      expect(await post(ip, "I am coughing up blood right now")).toBe(201);
-      // Now both are used up, so the flood is stopped with 429 and Retry-After.
+      // The first uses the route's own limit (1 a minute). The next three are
+      // refused by it and let through by the safety cap.
+      for (let i = 0; i < 4; i++) expect(await post(ip, "I am coughing up blood right now")).toBe(201);
+      // Both are now used up, so the flood is stopped.
       const res = await fetch(`${base}/t/chat`, {
         method: "POST",
         headers: { "x-forwarded-for": ip, "content-type": "application/json" },
@@ -272,6 +275,30 @@ describe("ClientIpThrottlerGuard over HTTP (trust proxy = 1, as in main.ts)", ()
       expect(res.headers.get("retry-after")).not.toBeNull();
     } finally {
       ClientIpThrottlerGuard.safetyBypassLimit = before;
+    }
+  });
+
+  // Review N2: the screen can be slow on some inputs, so the guard runs it
+  // only for a request that the route's limit would refuse.
+  it("does not screen a request that is within its limit", async () => {
+    const screen = jest.spyOn(deterministicSafety, "isUrgentSafetyText");
+    try {
+      const ip = "198.51.100.80";
+      expect(await post(ip, "I am coughing up blood right now")).toBe(201);
+      expect(screen).not.toHaveBeenCalled();
+      // The next one is over the limit, so it is screened, and let through.
+      expect(await post(ip, "I am coughing up blood right now")).toBe(201);
+      expect(screen).toHaveBeenCalledTimes(1);
+      // A let-through request does not carry the refusal's Retry-After header.
+      const res = await fetch(`${base}/t/chat`, {
+        method: "POST",
+        headers: { "x-forwarded-for": ip, "content-type": "application/json" },
+        body: JSON.stringify({ channel: "web", userText: "I want to kill myself" }),
+      });
+      expect(res.status).toBe(201);
+      expect(res.headers.get("retry-after")).toBeNull();
+    } finally {
+      screen.mockRestore();
     }
   });
 
