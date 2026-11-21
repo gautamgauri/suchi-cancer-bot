@@ -10,7 +10,14 @@ import { AbstentionService } from "../abstention/abstention.service";
 import { EmpathyDetector } from "../chat/empathy-detector";
 import { correctMedicalSpelling } from "../chat/input-cleaner";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
-import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
+import {
+  CAPTION_MEDIA_TYPES,
+  NOTICE_MESSAGE_TYPES,
+  NOTICE_TEXT,
+  NoticeLimiter,
+  noticeKindFor,
+  parseSentAt,
+} from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
 const FALLBACK_REPLY =
@@ -212,7 +219,7 @@ export class WhatsAppService {
             sentAt: parseSentAt(m.timestamp),
           };
           if (text) {
-            out.push({ ...base, text });
+            out.push({ ...base, text, ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}) });
           } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
             // No readable text (voice note, image, document, ...). Kept so the
             // sender gets the fixed "typed messages only" notice. Never reaches
@@ -265,7 +272,9 @@ export class WhatsAppService {
               status: "received",
               receivedAt: new Date().toISOString(),
               textLength: msg.text.length,
-              ...(msg.unsupportedType ? { messageType: msg.unsupportedType } : {}),
+              ...(msg.unsupportedType || msg.captionMediaType
+                ? { messageType: msg.unsupportedType ?? msg.captionMediaType }
+                : {}),
               ...(msg.sentAt ? { sentAt: new Date(msg.sentAt * 1000).toISOString() } : {}),
             },
           },
@@ -306,7 +315,7 @@ export class WhatsAppService {
     error?: string,
     failedStage?: "pipeline" | "delivery",
     delivery?: { partsSent?: number; httpStatus?: number; metaErrorCode?: number },
-    notice?: { notice: string; noticeSent: boolean },
+    notice?: { notice: string; noticeSent: boolean } | { captionNote: true; captionNoteSent: boolean },
   ): Promise<void> {
     try {
       const existing = await this.prisma.analyticsEvent.findUnique({
@@ -327,7 +336,9 @@ export class WhatsAppService {
             ...(delivery?.httpStatus !== undefined ? { httpStatus: delivery.httpStatus } : {}),
             ...(delivery?.metaErrorCode !== undefined ? { metaErrorCode: delivery.metaErrorCode } : {}),
             // A notice row is "processed" even when the cooldown suppressed the
-            // reply. noticeSent says whether anything went out.
+            // reply. noticeSent says whether anything went out. A captioned
+            // attachment row carries captionNote and captionNoteSent instead:
+            // status and partsSent still describe the answer itself.
             ...(notice ?? {}),
           },
         },
@@ -422,6 +433,32 @@ export class WhatsAppService {
   }
 
   /**
+   * After the pipeline has answered a captioned image, video or document, tell
+   * the sender the attachment itself was not read. Called only once the answer
+   * was accepted by Meta, so it never comes before or in place of it. At most
+   * one per contact inside the cooldown. Never throws: a failed note frees its
+   * slot and leaves the turn recorded as processed, with no fallback reply.
+   * Returns the ledger fields, or undefined for a message without a caption.
+   */
+  private async sendCaptionNote(
+    msg: InboundMessage,
+  ): Promise<{ captionNote: true; captionNoteSent: boolean } | undefined> {
+    if (!msg.captionMediaType) return undefined;
+    if (!this.noticeLimiter.tryAcquire(msg.from, "caption_media")) {
+      return { captionNote: true, captionNoteSent: false };
+    }
+    try {
+      await this.sendText(msg.from, NOTICE_TEXT.caption_media);
+      return { captionNote: true, captionNoteSent: true };
+    } catch (err: any) {
+      this.noticeLimiter.release(msg.from, "caption_media");
+      // The delivery error carries the HTTP status and Meta's code only.
+      this.logger.warn(`Failed to send the caption note for WhatsApp message ${msg.wamid}: ${err?.message}`);
+      return { captionNote: true, captionNoteSent: false };
+    }
+  }
+
+  /**
    * The synchronous, text-only checks `ChatService.handle` runs before the LLM,
    * in its order, called here unchanged. True when any one of them would send
    * the turn to a safety, urgent or mental-health template:
@@ -473,7 +510,9 @@ export class WhatsAppService {
       // must strip them itself or raw `[citation:...]` ids reach the patient
       // (issue #116). The raw text stays in the DB for evaluation.
       const partsSent = await this.sendText(msg.from, cleanResponseForDisplay(result.responseText));
-      await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent });
+      // Only after the answer was accepted, and never after a degraded reply.
+      const captionNote = result.error ? undefined : await this.sendCaptionNote(msg);
+      await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent }, captionNote);
     } catch (err: any) {
       const delivery = err instanceof WhatsAppDeliveryError;
       this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
