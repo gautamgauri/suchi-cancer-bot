@@ -396,17 +396,30 @@ export class WhatsAppService {
 
     let partsSent = 0;
     for (const body of formatForWhatsApp(text)) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to,
-          type: "text",
-          text: { preview_url: true, body },
-        }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to,
+            type: "text",
+            text: { preview_url: true, body },
+          }),
+        });
+      } catch (err: any) {
+        // DNS, TLS or connection failure: fetch rejects before any HTTP
+        // response exists. The reply did not leave the box, so this is a
+        // delivery failure like a non-2xx send. Left as a native error it was
+        // recorded as failedStage "pipeline" and the fallback was pushed down
+        // the same dead channel.
+        throw new WhatsAppDeliveryError(
+          `WhatsApp send failed (network): ${String(err?.message ?? err).slice(0, 200)}`,
+          partsSent,
+        );
+      }
       if (!res.ok) {
         const errText = await res.text().catch(() => `HTTP ${res.status}`);
         // Stop sending further parts, and surface it — a 401/403 on the system

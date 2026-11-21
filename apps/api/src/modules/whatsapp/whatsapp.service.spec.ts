@@ -423,6 +423,39 @@ describe("WhatsAppService", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it("classifies a transport failure (fetch rejects) as a delivery failure", async () => {
+      fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+      const err = await svc.sendText("9199", "hello").catch((e) => e);
+
+      expect(err?.name).toBe("WhatsAppDeliveryError");
+      expect(err.partsSent).toBe(0);
+      expect(err.message).toMatch(/WhatsApp send failed \(network\): fetch failed/);
+    });
+
+    it("keeps the count of delivered parts when the transport fails mid-reply", async () => {
+      const long = "A sentence about chemotherapy side effects.\n".repeat(120);
+      fetchMock.mockResolvedValueOnce(okResponse()).mockRejectedValueOnce(new TypeError("fetch failed"));
+
+      const err = await svc.sendText("9199", long).catch((e) => e);
+
+      expect(err?.name).toBe("WhatsAppDeliveryError");
+      expect(err.partsSent).toBe(1);
+    });
+
+    it("records a transport failure at the delivery stage and sends no fallback", async () => {
+      fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+      await svc.processInbound([{ wamid: "wa-231-net", from: "9199", text: "hi" }]);
+
+      expect(chat.handle).toHaveBeenCalledTimes(1);
+      expect(ledger.rows.get(inboundLedgerId("wa-231-net")).payload).toEqual(
+        expect.objectContaining({ status: "failed", failedStage: "delivery" }),
+      );
+      // One attempt for the real reply. No second attempt for the fallback.
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it("still marks the ledger processed when delivery succeeds", async () => {
       fetchMock.mockResolvedValue(okResponse());
 
