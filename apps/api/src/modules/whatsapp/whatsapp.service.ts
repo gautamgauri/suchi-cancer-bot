@@ -4,7 +4,13 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ChatService } from "../chat/chat.service";
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { SessionsService } from "../sessions/sessions.service";
+import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { SafetyService } from "../safety/safety.service";
+import { AbstentionService } from "../abstention/abstention.service";
+import { EmpathyDetector } from "../chat/empathy-detector";
+import { correctMedicalSpelling } from "../chat/input-cleaner";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
+import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
 const FALLBACK_REPLY =
@@ -103,6 +109,9 @@ export class WhatsAppService {
    */
   private readonly contactQueues = new Map<string, Promise<void>>();
 
+  /** Per-contact cooldown for the fixed notices (see whatsapp-notices.ts). */
+  private readonly noticeLimiter = new NoticeLimiter();
+
   /** Pause before the single retry of a first part that failed transiently. */
   retryDelayMs = 1_000;
 
@@ -110,6 +119,9 @@ export class WhatsAppService {
     private readonly prisma: PrismaService,
     private readonly chat: ChatService,
     private readonly sessions: SessionsService,
+    private readonly safety: SafetyService,
+    private readonly abstention: AbstentionService,
+    private readonly empathy: EmpathyDetector,
   ) {}
 
   /** True only when every Meta credential is present — otherwise the channel fails safe. */
@@ -191,9 +203,22 @@ export class WhatsAppService {
         }
 
         for (const m of value.messages) {
+          if (!m.id || !m.from) continue;
           const text = extractText(m);
-          if (!m.id || !m.from || !text) continue; // unsupported types (image/audio/...) skipped in v1
-          out.push({ wamid: m.id, from: m.from, text, profileName: nameByWaId.get(m.from) });
+          const base = {
+            wamid: m.id,
+            from: m.from,
+            profileName: nameByWaId.get(m.from),
+            sentAt: parseSentAt(m.timestamp),
+          };
+          if (text) {
+            out.push({ ...base, text });
+          } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
+            // No readable text (voice note, image, document, ...). Kept so the
+            // sender gets the fixed "typed messages only" notice. Never reaches
+            // ChatService. Reactions, stickers and empty texts are still dropped.
+            out.push({ ...base, text: "", unsupportedType: m.type });
+          }
         }
       }
     }
@@ -240,6 +265,8 @@ export class WhatsAppService {
               status: "received",
               receivedAt: new Date().toISOString(),
               textLength: msg.text.length,
+              ...(msg.unsupportedType ? { messageType: msg.unsupportedType } : {}),
+              ...(msg.sentAt ? { sentAt: new Date(msg.sentAt * 1000).toISOString() } : {}),
             },
           },
         });
@@ -269,6 +296,9 @@ export class WhatsAppService {
    * which half broke, so "the pipeline is down" and "the pipeline ran but the
    * outbound channel is dead" are distinguishable without Cloud Run logs
    * (issue #231).
+   *
+   * `notice` marks a row answered with a fixed notice (see whatsapp-notices.ts)
+   * on both the success and the failure path.
    */
   private async markLedger(
     wamid: string,
@@ -276,6 +306,7 @@ export class WhatsAppService {
     error?: string,
     failedStage?: "pipeline" | "delivery",
     delivery?: { partsSent?: number; httpStatus?: number; metaErrorCode?: number },
+    notice?: { notice: string; noticeSent: boolean },
   ): Promise<void> {
     try {
       const existing = await this.prisma.analyticsEvent.findUnique({
@@ -295,6 +326,9 @@ export class WhatsAppService {
             ...(delivery?.partsSent !== undefined ? { partsSent: delivery.partsSent } : {}),
             ...(delivery?.httpStatus !== undefined ? { httpStatus: delivery.httpStatus } : {}),
             ...(delivery?.metaErrorCode !== undefined ? { metaErrorCode: delivery.metaErrorCode } : {}),
+            // A notice row is "processed" even when the cooldown suppressed the
+            // reply. noticeSent says whether anything went out.
+            ...(notice ?? {}),
           },
         },
       });
@@ -344,9 +378,79 @@ export class WhatsAppService {
     return next;
   }
 
+  /**
+   * Answer a message that must not run the pipeline with a fixed notice: one
+   * with no readable text, or one delivered long after it was sent (Meta
+   * redelivers its queue after an outage). Returns false for an ordinary
+   * message. At most one notice of each kind per contact inside the cooldown,
+   * so a burst of photos or a redelivered backlog produces one reply. Uses the
+   * normal send path and closes the ledger row. ChatService is never called.
+   */
+  private async replyWithNotice(msg: InboundMessage): Promise<boolean> {
+    const kind = noticeKindFor(msg);
+    if (!kind) return false;
+    // AGENTS.md §1.1: nothing may short-circuit in front of the safety path.
+    // A stale text that any of the pipeline's deterministic pre-LLM checks
+    // would turn into a safety, urgent or mental-health template runs the full
+    // pipeline, so the sender gets the approved reply, however late. Only a
+    // message every check passes as normal may get the stale notice.
+    if (kind === "stale" && this.flaggedBySafetyChecks(msg.text)) {
+      this.logger.warn(`Stale WhatsApp message ${msg.wamid} flagged by the safety checks: running the pipeline`);
+      return false;
+    }
+    let noticeSent = false;
+    if (this.noticeLimiter.tryAcquire(msg.from, kind)) {
+      try {
+        // sendText has already retried a transient first-part failure once.
+        await this.sendText(msg.from, NOTICE_TEXT[kind]);
+      } catch (err: any) {
+        // Free the slot so the contact's next message can get the notice.
+        this.noticeLimiter.release(msg.from, kind);
+        this.logger.error(`Failed to send the ${kind} notice for WhatsApp message ${msg.wamid}: ${err?.message}`);
+        await this.markFailed(msg.wamid, err, { notice: kind, noticeSent: false });
+        // No fallback reply. The notice is already the fixed reply, and a
+        // failed send means the outbound channel itself is down.
+        return true;
+      }
+      noticeSent = true;
+      this.logger.log(`WhatsApp message ${msg.wamid} answered with the ${kind} notice (pipeline not run)`);
+    } else {
+      this.logger.log(`WhatsApp message ${msg.wamid} not answered: ${kind} notice already sent to this contact`);
+    }
+    await this.markLedger(msg.wamid, "processed", undefined, undefined, undefined, { notice: kind, noticeSent });
+    return true;
+  }
+
+  /**
+   * The synchronous, text-only checks `ChatService.handle` runs before the LLM,
+   * in its order, called here unchanged. True when any one of them would send
+   * the turn to a safety, urgent or mental-health template:
+   *   1. emergency fast path (red-flag escalation)
+   *   2. safety rules (self-harm, emergency, refusals, misinformation)
+   *   3. urgency indicators (urgent S2 template)
+   *   4. mental-health screen (MH1 crisis, MH2/MH3 support templates)
+   * No safety logic lives in this module.
+   */
+  private flaggedBySafetyChecks(text: string): boolean {
+    // ChatService.handleTurn rewrites typed input (every WhatsApp message:
+    // channel "whatsapp", no voice inputMode) with correctMedicalSpelling
+    // before any check, so "kemotherapy" is matched as "chemotherapy". Check
+    // both the raw and the corrected text, so the guard is never blind to
+    // something the pipeline would escalate.
+    return [text, correctMedicalSpelling(text)].some((t) => this.tripsAnySafetyCheck(t));
+  }
+
+  private tripsAnySafetyCheck(text: string): boolean {
+    if (evaluateEmergencyFastPath(text).isEmergency) return true;
+    if (this.safety.evaluate(text).classification !== "normal") return true;
+    if (this.abstention.hasUrgencyIndicators(text)) return true;
+    return this.empathy.detectMentalHealthNeed(text).needsSupport;
+  }
+
   /** Run one already-claimed message through the chat pipeline. Never throws. */
   private async processOne(msg: InboundMessage): Promise<void> {
     try {
+      if (await this.replyWithNotice(msg)) return;
       const locale = detectLocale(msg.text);
       let sessionId = await this.resolveSession(msg.from, locale);
       let result;
@@ -373,15 +477,7 @@ export class WhatsAppService {
     } catch (err: any) {
       const delivery = err instanceof WhatsAppDeliveryError;
       this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
-      await this.markLedger(
-        msg.wamid,
-        "failed",
-        err?.message,
-        delivery ? "delivery" : "pipeline",
-        delivery
-          ? { partsSent: err.partsSent, httpStatus: err.httpStatus, metaErrorCode: err.metaErrorCode }
-          : undefined,
-      );
+      await this.markFailed(msg.wamid, err);
       // `sendText` has already retried a transient first-part failure once.
       // A delivery failure here means the outbound channel itself is down (missing
       // or rejected credentials, Graph outage). Pushing the fallback down the
@@ -390,6 +486,19 @@ export class WhatsAppService {
       if (delivery) return;
       await this.sendText(msg.from, FALLBACK_REPLY).catch(() => undefined);
     }
+  }
+
+  /** Record a failed turn, splitting a delivery failure from a pipeline one. */
+  private async markFailed(wamid: string, err: any, notice?: { notice: string; noticeSent: boolean }): Promise<void> {
+    const delivery = err instanceof WhatsAppDeliveryError;
+    await this.markLedger(
+      wamid,
+      "failed",
+      err?.message,
+      delivery ? "delivery" : "pipeline",
+      delivery ? { partsSent: err.partsSent, httpStatus: err.httpStatus, metaErrorCode: err.metaErrorCode } : undefined,
+      notice,
+    );
   }
 
   /**
@@ -526,5 +635,11 @@ function extractText(m: MetaMessage): string | null {
     return (m.interactive?.button_reply?.title || m.interactive?.list_reply?.title)?.trim() || null;
   }
   if (m.type === "button") return m.button?.text?.trim() || null;
+  // A typed caption on media is the sender's words. It runs the normal
+  // pipeline (and the safety checks). Only caption-less media gets the
+  // typed-messages notice.
+  if (m.type === "image") return m.image?.caption?.trim() || null;
+  if (m.type === "video") return m.video?.caption?.trim() || null;
+  if (m.type === "document") return m.document?.caption?.trim() || null;
   return null;
 }

@@ -1,3 +1,6 @@
+import { EmpathyDetector } from "../chat/empathy-detector";
+import { AbstentionService } from "../abstention/abstention.service";
+import { SafetyService } from "../safety/safety.service";
 import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
 import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppService } from "./whatsapp.service";
@@ -83,7 +86,7 @@ describe("WhatsAppService", () => {
     chat = { handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }) };
     sessions = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
 
-    svc = new WhatsAppService(prisma, chat, sessions);
+    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
     // Avoid real network in sendText
     jest.spyOn(svc, "sendText").mockResolvedValue(1);
   });
@@ -196,11 +199,11 @@ describe("WhatsAppService", () => {
       expect(svc.parseInbound(body)).toEqual([{ wamid: "w2", from: "91999", text: "Yes", profileName: undefined }]);
     });
 
-    it("skips unsupported message types (e.g. image)", () => {
+    it("keeps a message with no readable text (e.g. image) so it can get the fixed notice", () => {
       const body: MetaWebhookBody = {
         entry: [{ changes: [{ value: { messages: [{ id: "w3", from: "91", type: "image" }] } }] }],
       };
-      expect(svc.parseInbound(body)).toEqual([]);
+      expect(svc.parseInbound(body)).toEqual([{ wamid: "w3", from: "91", text: "", unsupportedType: "image" }]);
     });
   });
 
@@ -222,7 +225,7 @@ describe("WhatsAppService", () => {
 
     it("de-duplicates a retry that lands on a different instance (FR-WA-007)", async () => {
       // Two service instances sharing one database, as on Cloud Run.
-      const other = new WhatsAppService(prisma, chat, sessions);
+      const other = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
       jest.spyOn(other, "sendText").mockResolvedValue(1);
       const m = { wamid: "cross-instance", from: "9199", text: "hi" };
 
