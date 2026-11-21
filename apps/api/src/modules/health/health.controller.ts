@@ -5,9 +5,28 @@ import { HealthService } from "./health.service";
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
+  /**
+   * Deep health. Returns 503 with the usual body when the database is
+   * unreachable, so an uptime probe that reads only the status code sees the
+   * outage. "degraded" stays HTTP 200 (the gated pipeline reads the body).
+   */
   @Get()
   async check() {
-    return this.healthService.check();
+    const result = await this.healthService.check();
+    if (result.status === "error") {
+      throw new HttpException(result, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    return result;
+  }
+
+  /**
+   * Liveness. Answers 200 whenever the process is serving HTTP and touches no
+   * dependency. Container startup and liveness probes belong here, so that a
+   * brief database blip cannot stop a container from starting.
+   */
+  @Get("live")
+  live() {
+    return { status: "ok", timestamp: new Date().toISOString() };
   }
 
   /**

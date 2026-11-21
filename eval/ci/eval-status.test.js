@@ -386,3 +386,29 @@ test('#110: email report separates unscored cases from failures and still notifi
   assert.doesNotMatch(body, /All tests passed/);
   assert.doesNotMatch(body, /@dikshafoundation\.org/);
 });
+
+// --- API unavailable: the health check failed, so the eval never ran -------
+
+test('API unavailable outranks every other state, with or without a report', () => {
+  assert.equal(deriveEvalStatus('skipped', null, { apiAvailable: false }), EVAL_STATUS.API_UNAVAILABLE);
+  assert.equal(
+    deriveEvalStatus('success', makeReport({ failed: 3 }), { apiAvailable: false }),
+    EVAL_STATUS.API_UNAVAILABLE
+  );
+  // Absent or true leaves the existing states untouched.
+  assert.equal(deriveEvalStatus('skipped', null, { apiAvailable: true }), EVAL_STATUS.INFRA_ERROR);
+  assert.equal(deriveEvalStatus('success', makeReport()), EVAL_STATUS.PASSED);
+});
+
+test('API unavailable fails CI with its own annotation, distinct from an evaluation failure', () => {
+  const result = buildEvalResult({ report: null, evalStepOutcome: 'skipped', apiAvailable: false, env: {} });
+  assert.equal(result.evaluation.status, 'api_unavailable');
+  const { exitCode, message } = evaluateCheck(result);
+  assert.equal(exitCode, 1);
+  assert.match(message, /::error title=API unavailable::/);
+  assert.doesNotMatch(message, /Evaluation failed/);
+  assert.doesNotMatch(message, /Eval infrastructure error/);
+  const md = buildSummaryMarkdown(result, 'skipped');
+  assert.match(md, /API unavailable/);
+  assert.match(md, /the eval was not run/);
+});

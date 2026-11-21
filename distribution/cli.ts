@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { parseArticle } from "./parser";
+import { parseArticle, ParsedArticle } from "./parser";
+import { articleUrl } from "./article-url";
 import { loadQueue, saveQueue, updateEntry } from "./queue-manager";
 import { generatePack, GeneratedPack, ChannelName } from "./generator";
 import { checkSafety, SafetyReport } from "./safety-checker";
@@ -16,17 +17,20 @@ import { sendPackEmail } from "./pack-mailer";
 const REPO_ROOT = path.resolve(__dirname, "..");
 const QUEUE_PATH = path.resolve(__dirname, "queue.json");
 
+// The canonical URL comes from the article's own frontmatter (content_type and
+// page_id), so it matches the route the landing site builds for it.
+async function parseWithLiveUrl(articlePath: string): Promise<ParsedArticle> {
+  const article = await parseArticle(articlePath, "");
+  return { ...article, canonicalUrl: articleUrl(article.contentType, article.slug) };
+}
+
 async function cmdParse(articleArg: string): Promise<void> {
   // Accept absolute path or path relative to repo root
   const articlePath = path.isAbsolute(articleArg)
     ? articleArg
     : path.resolve(REPO_ROOT, articleArg);
 
-  // Derive a placeholder canonical URL from the file path for smoke-test purposes
-  const slug = path.basename(articlePath, ".md");
-  const placeholderUrl = `https://suchitracancercare.org/cancer-type/${slug}/`;
-
-  const article = await parseArticle(articlePath, placeholderUrl);
+  const article = await parseWithLiveUrl(articlePath);
 
   const wordCount = article.body.split(/\s+/).filter(Boolean).length;
 
@@ -208,12 +212,8 @@ async function cmdGenerate(articleArg: string, noEmail = false): Promise<void> {
     ? articleArg
     : path.resolve(REPO_ROOT, articleArg);
 
-  // Derive canonical URL from the file path (same logic as parse command)
-  const slug = path.basename(articlePath, ".md");
-  const canonicalUrl = `https://suchitracancercare.org/cancer-type/${slug}/`;
-
   console.log(`Parsing: ${articlePath}`);
-  const article = await parseArticle(articlePath, canonicalUrl);
+  const article = await parseWithLiveUrl(articlePath);
   console.log(`Generating pack for: ${article.title} (${article.slug})`);
 
   const pack = await generatePack(article, PROMPTS_DIR);
