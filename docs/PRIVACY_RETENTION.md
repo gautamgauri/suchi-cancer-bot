@@ -22,7 +22,7 @@
 | TTS audio output | GCS `suchi-tts-audio` bucket, signed URLs (60 min TTL) | Expiry: 7 days (see below) |
 | Article drafts + queue | GCS `suchi-navigator-state` bucket | Gautam, Divya |
 | Hospital directory | GCS + committed to git (`hospitals.json`) | Gautam, Divya, Nisha |
-| Analytics events (event name and a JSON payload). This includes the WhatsApp inbound ledger, which holds the message ID, a status, the time received and the text length. The ledger holds no message text and no phone number. | PostgreSQL `AnalyticsEvent` table | The maintainer |
+| Analytics events (event name and a JSON payload). This includes the WhatsApp inbound ledger, which holds the message ID, a status, the time received and the text length. The ledger holds no message text. It has no phone number field, but the row key and payload both carry Meta's message ID, and that ID may be decodable to the sender's phone number. This is confirmed only on the sample ID format in Meta's documentation, which base64-decodes to a string containing the sender's number. Treat ledger rows as personal data until shown otherwise. | PostgreSQL `AnalyticsEvent` table | The maintainer |
 | Langfuse traces | Langfuse US cloud (third-party) | Gautam |
 
 ---
@@ -46,7 +46,7 @@
 | WhatsApp contacts | **90 days** | Purged when inactive for 90 days to protect phone number privacy |
 | Safety events | **1 year** | Required for audit; safety events are not message content |
 | Feedback | **1 year** | Used for quality improvement |
-| Analytics events | **No limit at present** | The table sits outside the 90 day purge. `RetentionService` deletes no analytics rows. When a session is deleted, its analytics rows stay and lose their link to the session. |
+| Analytics events | **No limit at present** | The table sits outside the 90 day purge. `RetentionService` deletes no analytics rows. When a session is deleted, its analytics rows stay and lose their link to the session. This includes the WhatsApp ledger rows, whose message IDs may decode to a phone number. |
 | TTS audio (GCS) | **7 days** | Signed URLs expire in 60 min; raw files cleaned by GCS lifecycle rule |
 | Langfuse traces | **30 days** (Langfuse default) | Observability only |
 | Article drafts (GCS) | Until published or archived | Content pipeline operational data |
@@ -90,7 +90,7 @@ Suchi has no user account system.
 
 Web chat sessions are not linked to an identity. A web user cannot be identified across sessions from the stored data, apart from the approximate location described above.
 
-The WhatsApp channel is live. For each WhatsApp user the `whatsAppContact` table stores the phone number in E.164 form and maps it to the current session. A WhatsApp user can therefore be identified by phone number until the contact record is purged.
+The WhatsApp channel is live. For each WhatsApp user the `whatsAppContact` table stores the phone number in E.164 form and maps it to the current session. A WhatsApp user can therefore be identified by phone number until the contact record is purged. The WhatsApp ledger in `AnalyticsEvent` may keep a decodable form of the number after that purge, as described in the data table above.
 
 There is no automated workflow for a deletion or access request. If a WhatsApp user asks for deletion, the session can be located by phone number and the associated records deleted by hand. A workflow for such requests has not been designed. It needs a decision from the maintainer and SCCF.
 
@@ -103,7 +103,7 @@ There is no automated workflow for a deletion or access request. If a WhatsApp u
 | PostgreSQL 90-day retention job (messages + sessions) | ~~P1~~ **Done** | — |
 | GCS lifecycle rule for TTS audio bucket (7-day delete) | ~~P1~~ **Done** | — |
 | Cloud Scheduler job for run-retention (weekly) | P1, **open** | The maintainer. See the open item below. |
-| Retention period for the `AnalyticsEvent` table | Open | The maintainer and SCCF |
+| Retention period for the `AnalyticsEvent` table | **Urgent, open.** The WhatsApp ledger rows carry Meta message IDs that may decode to the sender's phone number, and the table has no retention limit. These rows outlive the 90 day contact purge. | The maintainer and SCCF |
 | PostgreSQL 1-year retention for safety events + feedback | ~~P2~~ **Done** | — |
 | PostgreSQL 90-day WhatsApp contact purging | ~~P2~~ **Done** | — |
 | Log redaction for phone/Aadhaar patterns | P3 | Gautam |

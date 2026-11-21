@@ -94,7 +94,7 @@ The first command prints `billingEnabled` for the project and the name of its bi
 gcloud run services describe suchi-api --region us-central1 \
   --project gen-lang-client-0202543132 \
   --format 'yaml(status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName,status.conditions)'
-gcloud run revisions list --service suchi-api --region us-central1 --limit 5
+gcloud run revisions list --service suchi-api --region us-central1 --project gen-lang-client-0202543132 --limit 5
 gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.service_name=suchi-api AND severity>=ERROR' \
   --project gen-lang-client-0202543132 --limit 30 --freshness 1h
 ```
@@ -106,7 +106,7 @@ Cloud Run can report the service as Ready while every request fails. It did so t
 | Evidence | Likely cause | Action |
 |---|---|---|
 | 503 from Google's front end with the body "The service you requested is not available yet". Logs say "The request failed because billing is disabled for this project". | The billing account is closed or billing is disabled | Step 2. The maintainer reopens and pays the account. No redeploy is needed. |
-| Latest created revision differs from latest ready revision, or a recent build failed at the deploy step | A secret named in `--set-secrets` does not exist or cannot be read. Cloud Run resolves every reference at deploy time. | Run `gcloud secrets describe <NAME>` for each name in `cloudbuild.yaml`. Names are case-sensitive. Create or fix the secret, then redeploy. |
+| Latest created revision differs from latest ready revision, or a recent build failed at the deploy step | A secret named in `--set-secrets` does not exist or cannot be read. Cloud Run resolves every reference at deploy time. | Run `gcloud secrets describe <NAME> --project gen-lang-client-0202543132` for each name in `cloudbuild.yaml`. Names are case-sensitive. Create or fix the secret, then redeploy. |
 | Container exits at start with a validation error | A required variable is missing (`DATABASE_URL`, `ADMIN_BASIC_USER`, `ADMIN_BASIC_PASS`), or neither `GEMINI_API_KEY` nor `GOOGLE_CLOUD_PROJECT` is set | Roll back (section 5). Fix `cloudbuild.yaml`. |
 | Features missing after a deploy, such as emails, social posts or WhatsApp replies | A deploy ran from a stale env or secret list. Deploy flags replace the whole configuration. | Roll back to the previous revision, which carries its own configuration. |
 | Health body says `error`, or logs show `remaining connection slots are reserved` or pool timeouts | Database out of connections or short of memory | Step 5 |
@@ -184,9 +184,13 @@ gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-020254
 
 7. Promote. Traffic is assigned to a named revision, so a new revision receives no traffic until it is promoted.
 
+Take the revision name from the output of your own build. The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer. Check that the revision runs your build's image, then promote it.
+
 ```bash
-LATEST=$(gcloud run revisions list --service=suchi-api --region=us-central1 --limit=1 --format='value(name)')
-gcloud run services update-traffic suchi-api --region=us-central1 --to-revisions=$LATEST=100
+gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
+  --format 'value(spec.containers[0].image)'   # must end in :<BUILD_ID> of your build
+gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+  --to-revisions <REVISION>=100
 ```
 
 8. Verify. `/v1/health` must return `"status":"ok"`. Send one web chat message and one WhatsApp message. Read the startup log lines for the build ID and the latest migration.
@@ -199,8 +203,8 @@ The gated pipeline (`cloudbuild.gated.yaml`) adds a migration job, a candidate r
 Cloud Run keeps earlier revisions. A rollback is a traffic change and needs no rebuild.
 
 ```bash
-gcloud run revisions list --service=suchi-api --region=us-central1
-gcloud run services update-traffic suchi-api --region=us-central1 --to-revisions=<GOOD_REVISION>=100
+gcloud run revisions list --service=suchi-api --region=us-central1 --project gen-lang-client-0202543132
+gcloud run services update-traffic suchi-api --region=us-central1 --project gen-lang-client-0202543132 --to-revisions=<GOOD_REVISION>=100
 curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health
 ```
 
@@ -280,7 +284,7 @@ Migration `20260908000000_restore_kb_chunk_fts` enforces this. On a table with m
 ```bash
 # Terminal 1: the proxy on port 5433, as above.
 # Terminal 2, repository root. A low-traffic window is preferred. The build scans the table and takes no blocking lock.
-export DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)"
+export DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url --project gen-lang-client-0202543132)"
 python3 scripts/sql/kb_fts_safe_rollout.py            # dry run that prints state and plan
 python3 scripts/sql/kb_fts_safe_rollout.py --execute  # drop legacy objects, build the index, verify, resolve
 curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health/retrieval   # fullTextSearch.status should be ok
@@ -316,7 +320,7 @@ All runtime secrets live in Secret Manager in the project above. `cloudbuild.yam
 | `LINKEDIN_ACCESS_TOKEN` | same | Expires every 60 days |
 | `LINKEDIN_AUTHOR_URN` | same | |
 
-Six names are lower case with hyphens and fifteen are upper case. Secret Manager names are case-sensitive, so check each new name with `gcloud secrets describe` before deploying.
+Seven names are lower case with hyphens and fourteen are upper case. Secret Manager names are case-sensitive, so check each new name with `gcloud secrets describe <NAME> --project gen-lang-client-0202543132` before deploying.
 
 The navigator jobs also mount `ANTHROPIC_API_KEY` (`cloudbuild.navigator-research.yaml`).
 
