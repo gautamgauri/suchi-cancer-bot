@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import hospitalsData from '../../../content/hospitals.json';
+import WhatsAppButton from '../../../components/WhatsAppButton.astro';
 
 type Hospital = (typeof hospitalsData.hospitals)[number];
 
@@ -175,6 +176,7 @@ function scoreClass(score: number): string {
             option and explain what to expect at each step.
           </p>
           <a href="/" class="cta-btn">Ask Suchi →</a>
+          <WhatsAppButton source="wa-hospitals" />
         </div>
       </aside>
 

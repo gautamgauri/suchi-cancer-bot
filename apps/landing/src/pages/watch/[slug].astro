@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LiteYouTube from '../../components/LiteYouTube.astro';
+import WhatsAppButton from '../../components/WhatsAppButton.astro';
 import videosData from '../../content/videos.json';
 
 export function getStaticPaths() {
@@ -107,6 +108,7 @@ const situationLabels = video.situations.map(id =>
         <a href={suchiUrlWithPrompt} target="_blank" rel="noopener" class="btn-primary">
           Ask Suchi about this video
         </a>
+        <WhatsAppButton source="wa-video" />
       </div>
 
       <!-- Related Videos -->
