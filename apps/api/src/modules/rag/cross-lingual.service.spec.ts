@@ -153,13 +153,11 @@ describe("CrossLingualService", () => {
   });
 
   describe("issue #126 — pregnancy questions and the keyword-query gate", () => {
-    // Synthetic probe, not a real user message. It is written to exercise the
-    // same path as the query that surfaced #126: Hinglish kinship framing,
-    // "pregnant" + "bachche" + "dawai", and a demand for a definite answer
-    // whose translated function words ("tell me medicine") used to become the
-    // keyword query on their own.
+    // Synthetic probe written for this test. It carries the words the #126 fix
+    // depends on: "pregnant", "bachche" and "dawai", plus a "batao" imperative
+    // that translates to the function words "tell me".
     const probeA =
-      "meri bhabhi ko cancer hai aur wo pregnant hai, kya uski dawai se bachche ko nuksaan hoga? jaldi bataiye";
+      "agar pregnant mahila ko cancer ho, to kya dawai se bachche ko nuksaan hota hai? batao";
 
     test("translates bachcha → baby and keeps pregnant, so the English KB can match the fetal section", () => {
       const result = service.generateParallelQueries(probeA);
