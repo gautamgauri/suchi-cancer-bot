@@ -8,6 +8,8 @@ import { AddressInfo } from "net";
 import {
   ClientIpThrottlerGuard,
   RESOLUTION_LOG_INTERVAL_MS,
+  SAFETY_BYPASS_LIMIT,
+  SAFETY_BYPASS_TTL_MS,
   SafetyRoute,
   classifyClientAddress,
   resolveClientAddress,
@@ -238,6 +240,44 @@ describe("ClientIpThrottlerGuard over HTTP (trust proxy = 1, as in main.ts)", ()
     // A refusal template is not urgent and does not get round the limit.
     expect(await post(ip, "what dose of tamoxifen should I take")).toBe(429);
     expect(await post(ip, "what is chemotherapy?")).toBe(429);
+  });
+
+  // Review B1: the guard must screen the whole message, as the pipeline does.
+  it.each([
+    ["English self-harm", "I have some questions about my treatment plan. ".repeat(200) + " I want to kill myself"],
+    ["Devanagari emergency", "मेरे इलाज के बारे में कुछ सवाल हैं। ".repeat(400) + " सांस नहीं आ रही"],
+  ])("a %s phrase beyond 4096 characters still passes the limiter", async (_name, text) => {
+    expect(text.length).toBeGreaterThan(4096);
+    const ip = _name.startsWith("English") ? "198.51.100.61" : "198.51.100.62";
+    expect(await post(ip, "what is chemotherapy?")).toBe(201);
+    expect(await post(ip, "what is chemotherapy?")).toBe(429);
+    expect(await post(ip, text)).toBe(201);
+  });
+
+  it("safety messages have their own cap, and past it go back to the route's normal limit", async () => {
+    const before = ClientIpThrottlerGuard.safetyBypassLimit;
+    ClientIpThrottlerGuard.safetyBypassLimit = 3;
+    try {
+      const ip = "198.51.100.70";
+      for (let i = 0; i < 3; i++) expect(await post(ip, "I am coughing up blood right now")).toBe(201);
+      // Over the safety cap: the route's own limit (1 a minute) still has room once.
+      expect(await post(ip, "I am coughing up blood right now")).toBe(201);
+      // Now both are used up, so the flood is stopped with 429 and Retry-After.
+      const res = await fetch(`${base}/t/chat`, {
+        method: "POST",
+        headers: { "x-forwarded-for": ip, "content-type": "application/json" },
+        body: JSON.stringify({ channel: "web", userText: "I am coughing up blood right now" }),
+      });
+      expect(res.status).toBe(429);
+      expect(res.headers.get("retry-after")).not.toBeNull();
+    } finally {
+      ClientIpThrottlerGuard.safetyBypassLimit = before;
+    }
+  });
+
+  it("the production safety cap is 300 a minute", () => {
+    expect(SAFETY_BYPASS_LIMIT).toBe(300);
+    expect(SAFETY_BYPASS_TTL_MS).toBe(60_000);
   });
 
   it("@SkipThrottle routes are never throttled", async () => {

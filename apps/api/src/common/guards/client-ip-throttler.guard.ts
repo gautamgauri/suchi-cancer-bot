@@ -108,7 +108,8 @@ export function isUntrustedClientAddress(ip: string | undefined): boolean {
  * Marks a route a patient may need in an emergency (chat, session creation,
  * voice). On these the limiter fails open when the client address cannot be
  * trusted, and lets through a chat message that trips a deterministic
- * emergency, self-harm or crisis check.
+ * emergency, self-harm or crisis check, up to SAFETY_BYPASS_LIMIT such
+ * messages per address a minute.
  */
 export const SAFETY_ROUTE_KEY = "suchi:safety-route";
 export const SafetyRoute = () => SetMetadata(SAFETY_ROUTE_KEY, true);
@@ -125,8 +126,15 @@ export const RESOLUTION_LOG_INTERVAL_MS = 5 * 60_000;
  *   ThrottlerGuard's HTTP-only request/response handling.
  * - Never rate-limits a safety reply on a @SafetyRoute (see above).
  */
+/** Window for the safety-message cap. */
+export const SAFETY_BYPASS_TTL_MS = 60_000;
+/** Safety messages per address per window that skip the route's limit. */
+export const SAFETY_BYPASS_LIMIT = 300;
+
 @Injectable()
 export class ClientIpThrottlerGuard extends ThrottlerGuard {
+  /** SAFETY_BYPASS_LIMIT. Static so a spec can lower it. */
+  static safetyBypassLimit = SAFETY_BYPASS_LIMIT;
   private static readonly logger = new Logger("ClientIpThrottlerGuard");
   private static lastResolutionLogAt = 0;
 
@@ -147,13 +155,27 @@ export class ClientIpThrottlerGuard extends ThrottlerGuard {
     if (!safetyRoute) return false;
 
     const req = context.switchToHttp().getRequest();
+    const ip = resolveClientAddress(req).ip;
     // Fail open: a bucket keyed on a private or Google address would be
     // shared by every user, and a patient must not be refused for that.
-    if (isUntrustedClientAddress(resolveClientAddress(req).ip)) return true;
-    // A message that would get the emergency, self-harm or crisis template is
-    // never refused. These turns use no retrieval or LLM.
+    if (isUntrustedClientAddress(ip)) return true;
+    // A message that would get the emergency, self-harm or crisis template
+    // skips the route's limit. These turns use no retrieval or LLM. They have
+    // their own, much larger cap per address, so a flood of them is still
+    // stopped. Past that cap the request is handed back to the route's normal
+    // limit, which answers 429 with Retry-After only if that limit is used up too.
     const body = req?.body;
-    return isUrgentSafetyText(body?.userText, body?.channel, body?.inputMode);
+    if (!isUrgentSafetyText(body?.userText, body?.channel, body?.inputMode)) return false;
+    // Blocked for the rest of the window once the cap is passed. With no
+    // block time the storage would reset the count on the next hit.
+    const { isBlocked } = await this.storageService.increment(
+      `safety-bypass:${ip}`,
+      SAFETY_BYPASS_TTL_MS,
+      ClientIpThrottlerGuard.safetyBypassLimit,
+      SAFETY_BYPASS_TTL_MS,
+      "safety-bypass",
+    );
+    return !isBlocked;
   }
 
   /**
