@@ -3,7 +3,8 @@
 **Version:** 1.0  
 **Date:** Jun 2026  
 **Owner:** SCCF / Suchi product  
-**Status:** Adopted — implementation partially complete (see gaps below)
+**Status:** Adopted — implementation partially complete (see gaps below)  
+**Last corrected:** 21 Nov 2026 (location, WhatsApp, analytics events, retention schedule)
 
 ---
 
@@ -12,7 +13,7 @@
 | Data | Where stored | Who can access |
 |---|---|---|
 | Conversation messages (user queries + assistant responses) | PostgreSQL `message` table | Gautam (DB access), future: admin panel read-only |
-| Session metadata (channel, locale, cancerType, emotionalState) | PostgreSQL `session` table | Gautam |
+| Session metadata (channel, locale, cancerType, emotionalState, and the city, region and country code derived from the client IP address) | PostgreSQL `session` table | Gautam |
 | Safety events (classification, rule fired, session/message ID) | PostgreSQL `safetyEvent` table | Gautam |
 | Feedback (thumbs up/down, free-text) | PostgreSQL `feedback` table | Gautam |
 | Voice audio (STT input) | **Not persisted** — transcribed and discarded | N/A |
@@ -21,6 +22,7 @@
 | TTS audio output | GCS `suchi-tts-audio` bucket, signed URLs (60 min TTL) | Expiry: 7 days (see below) |
 | Article drafts + queue | GCS `suchi-navigator-state` bucket | Gautam, Divya |
 | Hospital directory | GCS + committed to git (`hospitals.json`) | Gautam, Divya, Nisha |
+| Analytics events (event name and a JSON payload). This includes the WhatsApp inbound ledger, which holds the message ID, a status, the time received and the text length. The ledger holds no message text and no phone number. | PostgreSQL `AnalyticsEvent` table | The maintainer |
 | Langfuse traces | Langfuse US cloud (third-party) | Gautam |
 
 ---
@@ -28,7 +30,7 @@
 ## What data Suchi does NOT collect
 
 - No names or Aadhaar/ID numbers from users. Note: E.164 phone numbers are collected only for WhatsApp users to map inbound messages to conversation sessions.
-- No location beyond what the user voluntarily shares in text
+- No precise location. Suchi does store an approximate location. When a session is created, the API looks up the client IP address in a local GeoIP database and stores the city, region and country code on the session (`apps/api/src/modules/sessions/sessions.controller.ts`). The lookup makes no external call. The session record has no field for the IP address itself.
 - No cookies or persistent browser identifiers (web session ID is ephemeral per conversation)
 - No payment information
 
@@ -44,12 +46,13 @@
 | WhatsApp contacts | **90 days** | Purged when inactive for 90 days to protect phone number privacy |
 | Safety events | **1 year** | Required for audit; safety events are not message content |
 | Feedback | **1 year** | Used for quality improvement |
+| Analytics events | **No limit at present** | The table sits outside the 90 day purge. `RetentionService` deletes no analytics rows. When a session is deleted, its analytics rows stay and lose their link to the session. |
 | TTS audio (GCS) | **7 days** | Signed URLs expire in 60 min; raw files cleaned by GCS lifecycle rule |
 | Langfuse traces | **30 days** (Langfuse default) | Observability only |
 | Article drafts (GCS) | Until published or archived | Content pipeline operational data |
 
 **Implementation status:**
-- 90-day message/voice/WhatsApp deletion and 1-year session metadata/feedback/safety deletion: **implemented** — `RetentionService` + `POST /v1/admin/housekeeping/run-retention`; schedule weekly via Cloud Scheduler
+- 90-day message/voice/WhatsApp deletion and 1-year session metadata/feedback/safety deletion: **implemented** — `RetentionService` + `POST /v1/admin/housekeeping/run-retention`. The code is in place. **It is not scheduled in production.** See the open item below.
 - TTS GCS lifecycle rule: **implemented** — 7-day delete lifecycle rule applied to `suchi-tts-audio` bucket (Jun 2026)
 - Safety event / feedback 1-year retention: **implemented** (with message content purged at 90 days)
 - WhatsApp contact purging: **implemented** (purged after 90 days of inactivity)
@@ -83,11 +86,13 @@ Application logs (Cloud Logging) may contain user query text from `this.logger.l
 
 ## User rights
 
-Suchi does not currently have a user account system — sessions are ephemeral and not linked to identity. Users cannot be identified across sessions. Therefore:
-- No right-to-deletion workflow is needed (data is not linked to identity)
-- No right-to-access workflow is needed
+Suchi has no user account system.
 
-If an identified user (e.g., via future WhatsApp integration with phone number) requests deletion, the session ID can be located by phone number and all associated records deleted manually.
+Web chat sessions are not linked to an identity. A web user cannot be identified across sessions from the stored data, apart from the approximate location described above.
+
+The WhatsApp channel is live. For each WhatsApp user the `whatsAppContact` table stores the phone number in E.164 form and maps it to the current session. A WhatsApp user can therefore be identified by phone number until the contact record is purged.
+
+There is no automated workflow for a deletion or access request. If a WhatsApp user asks for deletion, the session can be located by phone number and the associated records deleted by hand. A workflow for such requests has not been designed. It needs a decision from the maintainer and SCCF.
 
 ---
 
@@ -97,7 +102,20 @@ If an identified user (e.g., via future WhatsApp integration with phone number) 
 |---|---|---|
 | PostgreSQL 90-day retention job (messages + sessions) | ~~P1~~ **Done** | — |
 | GCS lifecycle rule for TTS audio bucket (7-day delete) | ~~P1~~ **Done** | — |
-| Cloud Scheduler job for run-retention (weekly) | P1 | Gautam — add job at console.cloud.google.com |
+| Cloud Scheduler job for run-retention (weekly) | P1, **open** | The maintainer. See the open item below. |
+| Retention period for the `AnalyticsEvent` table | Open | The maintainer and SCCF |
 | PostgreSQL 1-year retention for safety events + feedback | ~~P2~~ **Done** | — |
 | PostgreSQL 90-day WhatsApp contact purging | ~~P2~~ **Done** | — |
 | Log redaction for phone/Aadhaar patterns | P3 | Gautam |
+
+---
+
+## Open item: the retention purge is not scheduled
+
+**Status on 21 November 2026: open.**
+
+No Cloud Scheduler job for the retention purge exists in production. The jobs in `us-central1` were listed on that date and none calls `POST /v1/admin/housekeeping/run-retention`.
+
+The retention periods in this document are therefore implemented in code and are not being applied on a schedule. Data older than the stated periods may still be held. Whether the purge has ever been run by hand in production is TO CONFIRM.
+
+The maintainer must create the job. The list of scheduled jobs is in `docs/OPERATIONS.md` section 10. This document should be updated once the job exists and its first run has been checked.
