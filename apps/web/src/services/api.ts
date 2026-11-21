@@ -41,7 +41,12 @@ export interface ChatResponse {
   messageId: string;
   responseText: string;
   safety: {
-    classification: "normal" | "refusal" | "red_flag" | "self_harm";
+    /**
+     * "not_assessed" is client-side only. It marks a 504 timeout reply whose
+     * body carried no safety verdict, because the turn was cut off before the
+     * safety screens concluded (issue #221). It must never be read as normal.
+     */
+    classification: "normal" | "refusal" | "red_flag" | "self_harm" | "not_assessed";
     actions: Array<"show_emergency_banner" | "suggest_doctor_visit" | "end_conversation">;
     /**
      * Escalation copy for the emergency banner, sent with
@@ -107,7 +112,9 @@ function timeoutFallbackFrom(err: unknown): ChatResponse | null {
     messageId: `timeout-${Date.now()}`,
     responseText,
     safety: {
-      classification: rawSafety.classification ?? "normal",
+      // A body without a verdict means no safety screen had concluded. Older
+      // API builds always send "normal" here, so they render as before.
+      classification: rawSafety.classification ?? "not_assessed",
       actions: Array.isArray(rawSafety.actions) ? rawSafety.actions : [],
       ...(rawSafety.bannerText ? { bannerText: rawSafety.bannerText } : {})
     },

@@ -105,6 +105,25 @@ describe('ChatInterface — 55s turn timeout (issue #171)', () => {
     expect(container.querySelectorAll('[role="log"] strong').length).toBeGreaterThan(0);
   });
 
+  it('renders the fallback when the 504 body carries no safety verdict (issue #221)', async () => {
+    mocks.post.mockRejectedValue(
+      axiosError(504, {
+        sessionId: 'session-1',
+        responseText: FALLBACK_TEXT,
+        safetyAssessed: false,
+        error: 'timeout',
+      })
+    );
+
+    render(<ChatInterface sessionId="session-1" onStartOver={vi.fn()} />);
+    await sendQuestion();
+
+    const log = await screen.findByRole('log');
+    expect(log.textContent).toContain('1800-22-1951');
+    expect(screen.queryByText(GENERIC_ERROR)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('still shows the generic error when the 504 carries no usable copy', async () => {
     mocks.post.mockRejectedValue(axiosError(504, '<html>upstream request timeout</html>'));
 
