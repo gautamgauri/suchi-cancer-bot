@@ -2,26 +2,57 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
+import { organizationJsonLd, breadcrumbJsonLd, serializeJsonLd, type Crumb } from '../lib/seo';
 
 export interface Props {
   title: string;
   description?: string;
+  /** Use this exact string as the <title> instead of "{title} | SCCF". */
+  fullTitle?: string;
+  /** BCP 47 language tag for <html lang>. Article pages derive it from frontmatter `locale`. */
+  lang?: string;
+  ogType?: 'website' | 'article' | 'video.other';
+  /** Absolute URL of a page-specific share image. Defaults to the site card. */
+  ogImage?: string;
+  /** Page-specific JSON-LD objects. The Organization block is always emitted. */
+  jsonLd?: Record<string, unknown>[];
+  /** Breadcrumb trail, emitted as a BreadcrumbList when it has two or more items. */
+  breadcrumbs?: Crumb[];
 }
 
-const { title, description = "Suchitra Cancer Care Foundation - Cancer awareness and navigation support for patients and families in Eastern India" } = Astro.props;
+const {
+  title,
+  description = "Suchitra Cancer Care Foundation - Cancer awareness and navigation support for patients and families in Eastern India",
+  fullTitle,
+  lang = 'en',
+  ogType = 'website',
+  ogImage: ogImageProp,
+  jsonLd = [],
+  breadcrumbs = [],
+} = Astro.props;
 
 const base = import.meta.env.BASE_URL;
+const metaDescription = description.trim();
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const ogImage = new URL(`${base}og-image.png`, Astro.site);
+const ogImage = ogImageProp ?? new URL(`${base}og-image.png`, Astro.site).href;
+const usesSiteCard = ogImageProp === undefined;
+const pageTitle = fullTitle ?? `${title} | SCCF`;
+const socialTitle = fullTitle ?? title;
+
+const structuredData = [
+  organizationJsonLd(),
+  ...(breadcrumbs.length >= 2 ? [breadcrumbJsonLd(breadcrumbs)] : []),
+  ...jsonLd,
+];
 ---
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang={lang}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{title} | SCCF</title>
-  <meta name="description" content={description} />
+  <title>{pageTitle}</title>
+  <meta name="description" content={metaDescription} />
   <link rel="canonical" href={canonical} />
 
   <!-- Favicons: the SCCF mark (see docs/brand/README.md) -->
@@ -34,18 +65,23 @@ const ogImage = new URL(`${base}og-image.png`, Astro.site);
   <meta name="theme-color" content="#133133" />
 
   <!-- Social -->
-  <meta property="og:type" content="website" />
+  <meta property="og:type" content={ogType} />
   <meta property="og:site_name" content="Suchitra Cancer Care Foundation" />
-  <meta property="og:title" content={title} />
-  <meta property="og:description" content={description} />
+  <meta property="og:title" content={socialTitle} />
+  <meta property="og:description" content={metaDescription} />
   <meta property="og:url" content={canonical} />
   <meta property="og:image" content={ogImage} />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
+  {usesSiteCard && <meta property="og:image:width" content="1200" />}
+  {usesSiteCard && <meta property="og:image:height" content="630" />}
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content={title} />
-  <meta name="twitter:description" content={description} />
+  <meta name="twitter:title" content={socialTitle} />
+  <meta name="twitter:description" content={metaDescription} />
   <meta name="twitter:image" content={ogImage} />
+
+  <!-- Structured data. Only properties backed by real data; see src/lib/seo.ts. -->
+  {structuredData.map((block) => (
+    <script type="application/ld+json" set:html={serializeJsonLd(block)} />
+  ))}
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
