@@ -1068,10 +1068,11 @@ export class ChatService implements BeforeApplicationShutdown {
 
     // 1.6. Extract context and emotional state from message (even if greeting is bypassed)
     // This ensures we capture context silently for evaluation compatibility
-    // Parallelize context extraction and emotional tone detection
+    // Parallelize context extraction and emotional tone detection. The whole
+    // message: an "urgent" tone reaches the intent classifier (review B2).
     const [contextResult, emotionalToneResult] = await Promise.all([
-      this.greetingFlow.extractContextFromMessage(dto.userText),
-      this.empathyDetector.detectEmotionalTone(dto.userText)
+      this.greetingFlow.extractContextFromMessage(screenedText),
+      this.empathyDetector.detectEmotionalTone(screenedText)
     ]);
 
     // Update emotionalState if emotionalToneResult provides new information
