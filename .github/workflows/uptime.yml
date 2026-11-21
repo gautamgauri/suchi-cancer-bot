@@ -1,0 +1,138 @@
+name: Uptime probe
+
+# Requests the two public surfaces every 15 minutes and fails the run when
+# either one stays unreachable after retries.
+#
+# Alerting:
+#   - Every failed probe leaves a red run in the Actions history.
+#   - One email is sent when the probe goes from up to down, and one when it
+#     comes back. A long outage therefore produces two emails in total. The
+#     previous state is read from the conclusion of the previous run of this
+#     workflow, so nothing is stored anywhere.
+#   - The email reuses the SMTP secrets of eval-tier1.yml. The recipient is the
+#     repository variable UPTIME_ALERT_TO when it is set. Otherwise the alert
+#     goes to the SMTP account's own mailbox. No address is written in this file.
+#   - A delivery failure never changes the result of the probe.
+#
+# Limits worth knowing:
+#   - GitHub may start scheduled runs several minutes late.
+#   - GitHub disables schedules in a repository with no activity for 60 days.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: uptime-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Probe public endpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Probe endpoints
+        id: probe
+        run: |
+          down=""
+
+          # probe <label> <url>: three attempts, 20 seconds apart. Succeeds on a
+          # 2xx answer. For the API a body with status "error" also counts as
+          # down, for revisions that answer HTTP 200 when the database is gone.
+          probe() {
+            label="$1"; url="$2"
+            for attempt in 1 2 3; do
+              code=$(curl -sS -L -o body.txt --max-time 30 -w '%{http_code}' "$url" || true)
+              if [ "$label" = "API health" ] && grep -q '"status":"error"' body.txt 2>/dev/null; then
+                code="${code:-000} with status error in the body"
+              elif [ "${code:-000}" -ge 200 ] && [ "${code:-000}" -lt 300 ]; then
+                echo "$label: up (HTTP $code, attempt $attempt)"
+                return 0
+              fi
+              echo "$label: attempt $attempt failed (HTTP ${code:-000})"
+              if [ "$attempt" -lt 3 ]; then sleep 20; fi
+            done
+            echo "::error title=$label is down::$url answered HTTP ${code:-000} after 3 attempts."
+            down="$down- $label ($url): HTTP ${code:-000}\n"
+            return 0
+          }
+
+          probe "API health" "https://suchi-api-lxiveognla-uc.a.run.app/v1/health"
+          probe "Web chat" "https://chat.suchitracancercare.org/"
+
+          if [ -n "$down" ]; then
+            echo "state=down" >> "$GITHUB_OUTPUT"
+            printf 'The uptime probe found a public surface unreachable.\n\n%b\nRun: %s/%s/actions/runs/%s\n\nNo further email will be sent until the service recovers.\n' \
+              "$down" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > alert.txt
+          else
+            echo "state=up" >> "$GITHUB_OUTPUT"
+            printf 'The uptime probe found both public surfaces reachable again.\n\nRun: %s/%s/actions/runs/%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > alert.txt
+          fi
+
+      # Conclusion of the most recent completed run of this workflow other than
+      # this one. "unknown" when it cannot be read, which errs towards alerting.
+      - name: Read previous probe result
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          prev=$(gh run list --workflow uptime.yml --status completed --limit 5 \
+            --json databaseId,conclusion \
+            --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)][0].conclusion" 2>/dev/null || true)
+          echo "previous=${prev:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "Previous probe result: ${prev:-unknown}"
+
+      - name: Send outage email (first failure only)
+        id: alert-down
+        if: steps.probe.outputs.state == 'down' && steps.previous.outputs.previous != 'failure'
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: 'Suchi uptime: service DOWN'
+          to: ${{ vars.UPTIME_ALERT_TO || secrets.SMTP_USERNAME }}
+          from: ${{ secrets.SMTP_USERNAME }}
+          body: file://alert.txt
+
+      - name: Send recovery email
+        id: alert-up
+        if: steps.probe.outputs.state == 'up' && steps.previous.outputs.previous == 'failure'
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: 'Suchi uptime: service recovered'
+          to: ${{ vars.UPTIME_ALERT_TO || secrets.SMTP_USERNAME }}
+          from: ${{ secrets.SMTP_USERNAME }}
+          body: file://alert.txt
+
+      - name: Report notification status
+        if: always()
+        run: |
+          if [ "${{ steps.alert-down.outcome }}" = "failure" ] || [ "${{ steps.alert-up.outcome }}" = "failure" ]; then
+            echo "::warning title=Notification degraded::Email delivery failed. The probe result is unaffected."
+          fi
+
+      - name: Enforce probe result
+        if: always()
+        run: |
+          if [ "${{ steps.probe.outputs.state }}" != "up" ]; then
+            echo "Probe state: ${{ steps.probe.outputs.state || 'not determined' }}"
+            exit 1
+          fi
+          echo "Both endpoints are up."
