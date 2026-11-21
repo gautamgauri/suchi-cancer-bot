@@ -93,6 +93,128 @@ describe('cleanResponseForDisplay', () => {
       const text = 'Body of the answer.\n\n**Sources:** National Cancer Institute';
       expect(cleanResponseForDisplay(text)).toBe(text);
     });
+
+    /**
+     * Issue #160. The sources block is appended by the composite/escalated path
+     * and the Disclaimer Engine appends its footer AFTER it, so the persisted
+     * text is `...answer \n\n**Sources:** [markers] \n\n---\n*footer*`. The
+     * strip must take the block and nothing else: eating the paragraph break
+     * glues the emergency footer to the last sentence and ships the raw `---`,
+     * because markdown only renders a `---` that is alone on its line.
+     */
+    describe('the paragraph break before the appended disclaimer (issue #160)', () => {
+      const EMERGENCY_FOOTER =
+        '\n\n---\n*If this is a medical emergency, call 112 or 108 immediately. ' +
+        'This information does not replace emergency medical care.*';
+      const ANSWER = 'Have you noticed nipple discharge or changes in breast size/shape?';
+
+      it('keeps the break when a Sources block sits between the answer and the footer', () => {
+        const withSources =
+          ANSWER +
+          '\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).toBe(ANSWER + EMERGENCY_FOOTER);
+        expect(out).not.toContain('breast size/shape?---');
+        expect(out).toContain('\n\n---\n');
+      });
+
+      it('matches the control: the same text with no Sources block is unchanged', () => {
+        const out = cleanResponseForDisplay(ANSWER + EMERGENCY_FOOTER);
+
+        expect(out).toBe(ANSWER + EMERGENCY_FOOTER);
+      });
+
+      it('keeps the break for the standard disclaimer too, not only the emergency one', () => {
+        const standard =
+          '\n\n---\n*This information is for general educational purposes only and is not a ' +
+          'substitute for professional medical advice, diagnosis, or treatment.*';
+        const withSources =
+          'Therefore, I cannot answer your question based on the evidence given.' +
+          '\n\n**Sources:** [citation:doc1:chunk1]' +
+          standard;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).toBe(
+          'Therefore, I cannot answer your question based on the evidence given.' + standard,
+        );
+        expect(out).not.toContain('given.---');
+      });
+
+      it('still strips a Sources block whose markers are on their own lines', () => {
+        const withSources =
+          ANSWER +
+          '\n\n**Sources:**\n[citation:doc1:chunk1]\n[citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).not.toContain('Sources:');
+        expect(out).not.toContain('citation');
+        expect(out).toContain('\n\n---\n');
+      });
+
+      /**
+       * The shape `chat.service` actually persists on the escalated path, not a
+       * one-line reconstruction of it: the S2 escalation block, the literal
+       * `ESCALATION_RAG_SEPARATOR` (`chat.service.ts`), the grounded half with
+       * its own inline markers, the appended Sources block, then the footer.
+       * Pinned here because the bold escalation header runs through
+       * `EMPTY_BOLD_PATTERN` in the same pass — that pattern is the one that ate
+       * a line break in #135, and #160 is the same family one step later.
+       */
+      it('keeps every break in the composite escalated reply', () => {
+        const escalation = '**This could be serious.**\n\n**Call for help NOW:**\n- Call 108';
+        const separator = '\n\n**Information from trusted sources:**\n\n';
+        const grounded =
+          'Breast changes have many causes [citation:doc1:chunk1].\n' + ANSWER;
+        const persisted =
+          escalation +
+          separator +
+          grounded +
+          '\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(persisted);
+
+        expect(out).toBe(
+          escalation +
+            separator +
+            'Breast changes have many causes.\n' +
+            ANSWER +
+            EMERGENCY_FOOTER,
+        );
+        // The escalation header keeps its own break (#135) and the footer keeps
+        // the one before it (#160).
+        expect(out).toContain('serious.**\n\n**Call for help NOW:**');
+        expect(out).toContain('\n\n---\n');
+        expect(out).not.toContain('breast size/shape?---');
+      });
+
+      /**
+       * The WhatsApp report on #160 was a Hindi turn, and the disclaimer now
+       * arrives in the language of the reply (#162/#163). Devanagari has broken
+       * text cleaning in this repo before — `\b` is ASCII-only — so the break in
+       * front of a Devanagari disclaimer gets its own guard.
+       */
+      it('keeps the break in front of a Devanagari disclaimer', () => {
+        const hindiAnswer = 'स्तन कैंसर की जांच ४० वर्ष की आयु से शुरू होती है।';
+        const hindiDisclaimer =
+          '\n\n---\n*यह जानकारी केवल सामान्य शैक्षिक उद्देश्यों के लिए है और पेशेवर ' +
+          'चिकित्सा सलाह, निदान या उपचार का विकल्प नहीं है।*';
+        const persisted =
+          hindiAnswer + '\n\n**Sources:** [citation:doc1:chunk1]' + hindiDisclaimer;
+
+        const out = cleanResponseForDisplay(persisted);
+
+        expect(out).toBe(hindiAnswer + hindiDisclaimer);
+        expect(out).toContain('\n\n---\n');
+        expect(out).not.toContain('है।---');
+      });
+    });
   });
 
   describe('Devanagari punctuation debris (issue #81, finding 3)', () => {

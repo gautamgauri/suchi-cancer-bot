@@ -121,6 +121,37 @@ describe("CrossLingualService", () => {
     });
   });
 
+  describe("issue #170 — the asked disease site survives translation", () => {
+    // Synthetic question in the shape of the #170 report (not the tester's text).
+    const oralQuestion = "तंबाकू छोड़ने के बाद मुँह के कैंसर का जोखिम कितना रहता है?";
+
+    test("मुँह (chandrabindu) + कैंसर translates to 'oral cancer', not bare 'cancer'", () => {
+      const result = service.generateParallelQueries(oralQuestion);
+      expect(result.translatedTerms).toContain("oral cancer");
+      expect(result.parallelQueries).toContain("oral cancer");
+      expect(result.parallelQueries[1]).toMatch(/\boral cancer\b/);
+    });
+
+    test("तंबाकू translates to tobacco, so the English KB sees the exposure too", () => {
+      const result = service.generateParallelQueries(oralQuestion);
+      expect(result.parallelQueries[1]).toMatch(/\btobacco\b/);
+    });
+
+    test("the keyword query carries the site and the exposure — no lung, no bare 'cancer'", () => {
+      const result = service.generateParallelQueries(oralQuestion);
+      const keyword = result.parallelQueries.find((q) => /tobacco/.test(q) && /oral cancer/.test(q) && !/[ऀ-ॿ]/.test(q));
+      expect(keyword).toBeDefined();
+      for (const q of result.parallelQueries) {
+        expect(q).not.toMatch(/\blung\b/);
+      }
+    });
+
+    test("फेफड़ों (oblique plural) + कैंसर translates to 'lung cancer'", () => {
+      const result = service.generateParallelQueries("फेफड़ों के कैंसर के लक्षण क्या हैं?");
+      expect(result.translatedTerms).toContain("lung cancer");
+    });
+  });
+
   describe("issue #126 — pregnancy questions and the keyword-query gate", () => {
     const probeA =
       "meri mausi ko cancer hai aur wo pregnant hai, kya cancer ki dawai se bachcha affected hoga? exact batao";

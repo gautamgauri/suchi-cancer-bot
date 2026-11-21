@@ -1,4 +1,52 @@
-import { detectCancerType, detectCancerTypes } from "./cancer-type-detector";
+import { detectCancerType, detectCancerTypes, detectExplicitCancerTypes } from "./cancer-type-detector";
+
+/**
+ * Issue #170 — a Hindi question about MOUTH cancer on a session already tagged
+ * `lung` was answered with lung-cancer content. The detector had no Devanagari
+ * site words at all, so "मुँह के कैंसर" named no type and the stale `lung` tag
+ * steered retrieval. Synthetic texts only.
+ */
+describe("detectCancerType — Hindi / Hinglish disease sites (#170)", () => {
+  it("a Devanagari mouth-cancer question overrides a stale lung session tag (chandrabindu spelling)", () => {
+    expect(detectCancerType("तंबाकू छोड़ दिया है, क्या अब भी मुँह के कैंसर का डर है?", "lung")).toBe("oral");
+  });
+
+  it("anusvara spelling and the का/की postpositions", () => {
+    expect(detectCancerType("मुंह का कैंसर कैसे पहचानें", "lung")).toBe("oral");
+    expect(detectCancerType("मुंह की कैंसर जांच", null)).toBe("oral");
+  });
+
+  it("lung in its oblique plural form, breast, stomach", () => {
+    expect(detectCancerType("फेफड़ों के कैंसर के लक्षण", "breast")).toBe("lung");
+    expect(detectCancerType("फेफड़े का कैंसर", null)).toBe("lung");
+    expect(detectCancerType("स्तन कैंसर की जांच", "lung")).toBe("breast");
+    expect(detectCancerType("पेट के कैंसर का इलाज", "lung")).toBe("stomach");
+  });
+
+  it("Hinglish mouth-cancer wording overrides the session tag", () => {
+    expect(detectCancerType("tambaku chhodne ke baad bhi munh ke cancer ka khatra hai kya", "lung")).toBe("oral");
+    expect(detectCancerType("muh ka cancer", "lung")).toBe("oral");
+  });
+
+  it("a bare organ word without cancer wording is not a disease (session tag kept)", () => {
+    expect(detectCancerType("मुँह में छाले हो गए हैं", "breast")).toBe("breast");
+    expect(detectCancerType("पेट में दर्द है", "lung")).toBe("lung");
+    expect(detectCancerTypes("मुँह में छाले")).toEqual([]);
+  });
+
+  it("an organ word inside a longer Devanagari word does not count (प्रमुख = 'major', not मुख = 'mouth')", () => {
+    expect(detectCancerTypes("भारत में प्रमुख कैंसर कौन से हैं?")).toEqual([]);
+    expect(detectCancerType("भारत में प्रमुख कैंसर कौन से हैं?", "lung")).toBe("lung");
+  });
+
+  it("detectExplicitCancerTypes lists every site the message itself names", () => {
+    const sites = detectExplicitCancerTypes("मुँह के कैंसर और फेफड़ों के कैंसर में क्या फर्क है?");
+    expect(sites).toHaveLength(2);
+    expect(sites).toEqual(expect.arrayContaining(["oral", "lung"]));
+    expect(detectExplicitCancerTypes("oral cancer after quitting tobacco")).toEqual(["oral"]);
+    expect(detectExplicitCancerTypes("क्या कैंसर के मरीज़ को टीका लगवाना चाहिए?")).toEqual([]);
+  });
+});
 
 /**
  * Issue #175 — a WhatsApp session tagged `breast` answered a *prostate*

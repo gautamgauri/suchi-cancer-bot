@@ -193,6 +193,238 @@ describe("stripPromptScaffolding (issue #152)", () => {
     });
   });
 
+  /**
+   * The post-#153 live re-probe: the ALL-CAPS contract headings were gone, but
+   * `What I understood:` — step 1 of the same "SAFE + USEFUL" contract, and the
+   * direct sibling of the `Educational answer:` label the strip already removed
+   * — was still in the DELIVERED text of five scheduled runs.
+   */
+  describe("the \"SAFE + USEFUL\" contract step labels", () => {
+    // run runs/2026-09-20T18-00-31_seed1789907431, q02 (abstention/en).
+    const DELIVERED_GROUNDING_LABEL =
+      "Important: This information is for general educational purposes and is not a " +
+      "diagnosis. Please consult with your healthcare provider for accurate, personalized " +
+      "medical information. I understand receiving a cancer diagnosis can be overwhelming. " +
+      "What I understood: You are asking about the prognosis for a relative who has been " +
+      "diagnosed with lung cancer that has spread to other parts of the body. I cannot " +
+      "provide specific information about lung cancer prognosis.";
+
+    it("removes the delivered `What I understood:` label", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_GROUNDING_LABEL);
+
+      expect(cleaned).not.toContain("What I understood");
+    });
+
+    it("keeps the grounding sentence that followed the label", () => {
+      const cleaned = stripPromptScaffolding(DELIVERED_GROUNDING_LABEL);
+
+      expect(cleaned).toContain(
+        "You are asking about the prognosis for a relative who has been diagnosed"
+      );
+      expect(cleaned).toContain("I cannot provide specific information about lung cancer");
+      // The empathic opener and the disclaimer prefix are clinical wording.
+      expect(cleaned).toContain("I understand receiving a cancer diagnosis can be overwhelming.");
+      expect(cleaned).toContain(
+        "This information is for general educational purposes and is not a diagnosis."
+      );
+    });
+
+    it("removes the English label spliced into an otherwise Devanagari reply", () => {
+      const cleaned = stripPromptScaffolding(
+        "...medical information. What I understood: आप जानना चाहते हैं कि इलाज के दौरान टीका लगवाना सुरक्षित है या नहीं।"
+      );
+
+      expect(cleaned).not.toContain("What I understood");
+      expect(cleaned).toContain(
+        "आप जानना चाहते हैं कि इलाज के दौरान टीका लगवाना सुरक्षित है या नहीं।"
+      );
+    });
+
+    const STEP_LABELS = [
+      "What I understood:",
+      "**What I understood**:",
+      "**What I understood:**",
+      "One clarifying question:",
+      "**One clarifying question**:",
+      "**One clarifying question** (optional):",
+    ];
+
+    it.each(STEP_LABELS)("strips %s and keeps the words after it", (label) => {
+      expect(stripPromptScaffolding(`${label} Which tests has the doctor ordered?`)).toBe(
+        "Which tests has the doctor ordered?"
+      );
+    });
+
+    /**
+     * The list marker is NOT part of the label. Step 3 (`What to do next`) is
+     * deliberately kept, so a strip that also ate `1.`, `2.` and `4.` would
+     * leave the reader a list whose only surviving number is `3.` — the same
+     * orphaned-numbering artifact issue #158 reports, reintroduced by the fix
+     * for #152. `Educational answer` (step 2) has always left its marker alone;
+     * these labels now behave identically.
+     */
+    const LIST_PREFIXED_STEP_LABELS: Array<[string, string]> = [
+      ["1. **What I understood**:", "1. "],
+      ["1) What I understood:", "1) "],
+      ["4. **One clarifying question** (optional):", "4. "],
+      ["- **What I understood**:", "- "],
+      ["* **What I understood**:", "* "],
+    ];
+
+    it.each(LIST_PREFIXED_STEP_LABELS)(
+      "strips %s but leaves its list marker for the sibling items",
+      (label, marker) => {
+        expect(stripPromptScaffolding(`${label} Which tests has the doctor ordered?`)).toBe(
+          `${marker}Which tests has the doctor ordered?`
+        );
+      }
+    );
+
+    it("leaves a delivered contract echo as a list that still starts at 1", () => {
+      const echoed =
+        "1. **What I understood**: You are asking about screening.\n" +
+        "2. **Educational answer**: Screening can find cancer early.\n" +
+        "3. **What to do next**: Ask your doctor about a screening test.\n" +
+        "4. **One clarifying question** (optional): Have you had a test before?";
+
+      expect(stripPromptScaffolding(echoed)).toBe(
+        "1. You are asking about screening.\n" +
+          "2. Screening can find cancer early.\n" +
+          "3. **What to do next**: Ask your doctor about a screening test.\n" +
+          "4. Have you had a test before?"
+      );
+    });
+
+    it("leaves the bullet of a bulleted contract echo, as the sibling item keeps its own", () => {
+      expect(
+        stripPromptScaffolding(
+          "* **What I understood**: You are asking about screening.\n" +
+            "* **Educational answer**: Screening can find cancer early."
+        )
+      ).toBe(
+        "* You are asking about screening.\n* Screening can find cancer early."
+      );
+    });
+
+    /**
+     * Title case is the commonest heading casing a model produces, and the
+     * case-sensitivity above only has to protect the FIRST word: lowercase
+     * `...what I understood:` is the prose form that must survive.
+     */
+    const TITLE_CASE_STEP_LABELS = [
+      "What I Understood:",
+      "**What I Understood:**",
+      "One Clarifying Question:",
+      "**One Clarifying Question** (optional):",
+    ];
+
+    it.each(TITLE_CASE_STEP_LABELS)("strips the title-case form %s", (label) => {
+      expect(stripPromptScaffolding(`${label} Which tests has the doctor ordered?`)).toBe(
+        "Which tests has the doctor ordered?"
+      );
+    });
+
+    it("strips a label terminated by an em dash, as the contract-heading strip already does", () => {
+      expect(
+        stripPromptScaffolding("**What I understood** — You are asking about screening.")
+      ).toBe("You are asking about screening.");
+    });
+
+    it("strips a label left standing alone as a heading line", () => {
+      expect(
+        stripPromptScaffolding("**What I understood**\nYou are asking about screening.")
+      ).toBe("You are asking about screening.");
+    });
+
+    it("strips a second label that follows the first immediately", () => {
+      expect(
+        stripPromptScaffolding(
+          "What I understood: One clarifying question: Which tests has the doctor ordered?"
+        )
+      ).toBe("Which tests has the doctor ordered?");
+    });
+
+    it("leaves no extra blank line where a label had a paragraph to itself", () => {
+      expect(
+        stripPromptScaffolding(
+          "Screening can find cancer early.\n\n**What I understood:**\nYou are asking about screening."
+        )
+      ).toBe("Screening can find cancer early.\n\nYou are asking about screening.");
+    });
+
+    it("leaves no orphaned `**` when the model bolds the whole line", () => {
+      expect(
+        stripPromptScaffolding("**What I understood: You are asking about screening.**")
+      ).toBe("You are asking about screening.");
+      expect(
+        stripPromptScaffolding("1. **One clarifying question: Have you had a test before?**")
+      ).toBe("1. Have you had a test before?");
+    });
+
+    it("keeps `What to do next`, which is a reader-facing heading we emit ourselves", () => {
+      const text =
+        "**What to do next:**\n- Ask your doctor for a biopsy.\n- Call 1800-22-1951 for help.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps the same words used as lowercase prose rather than as a label", () => {
+      const text = "Let me restate what I understood: you want to know about screening.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("keeps a title-case `What to do Next` heading too", () => {
+      const text = "**What to do Next:**\n- Ask your doctor for a biopsy.";
+
+      expect(stripPromptScaffolding(text)).toBe(text);
+    });
+
+    it("is idempotent on a step label", () => {
+      const once = stripPromptScaffolding("What I understood: You are asking about screening.");
+
+      expect(stripPromptScaffolding(once)).toBe(once);
+    });
+
+    it("is idempotent on a whole delivered contract echo", () => {
+      const echoed =
+        "1. **What I understood**: You are asking about screening.\n" +
+        "2. **Educational answer**: Screening can find cancer early.\n" +
+        "3. **What to do next**: Ask your doctor about a screening test.\n" +
+        "4. **One clarifying question** (optional): Have you had a test before?";
+      const once = stripPromptScaffolding(echoed);
+
+      expect(stripPromptScaffolding(once)).toBe(once);
+    });
+  });
+
+  /**
+   * `Educational answer` is step 2 of the same contract and shares the strip's
+   * shape, so the whitespace and markup debris fixed for the step labels is
+   * asserted for it as well rather than left to drift apart again.
+   */
+  describe("the `Educational answer` label leaves no debris either", () => {
+    it("leaves no extra blank line where the label had a paragraph to itself", () => {
+      expect(
+        stripPromptScaffolding(
+          "Screening can find cancer early.\n\n**Educational answer:**\nIt is offered from age 30."
+        )
+      ).toBe("Screening can find cancer early.\n\nIt is offered from age 30.");
+    });
+
+    it("leaves no orphaned `**` when the model bolds the whole line", () => {
+      expect(
+        stripPromptScaffolding("**Educational answer: Screening can find cancer early.**")
+      ).toBe("Screening can find cancer early.");
+    });
+
+    it("leaves the list marker of a numbered contract step", () => {
+      expect(
+        stripPromptScaffolding("2. **Educational answer**: Screening can find cancer early.")
+      ).toBe("2. Screening can find cancer early.");
+    });
+  });
+
   describe("at the shared delivery boundary", () => {
     it("cleanResponseForDisplay strips scaffolding for chat, voice and WhatsApp alike", () => {
       const raw =
@@ -209,6 +441,34 @@ describe("stripPromptScaffolding (issue #152)", () => {
       );
 
       expect(cleaned).toBe("स्क्रीनिंग जल्दी पता लगाती है।");
+    });
+
+    it("delivers a contract echo as a list the reader can follow, not one starting at 2", () => {
+      const cleaned = cleanResponseForDisplay(
+        "1. **What I understood**: You are asking about screening.\n" +
+          "2. **Educational answer**: Screening can find cancer early.\n" +
+          "3. **What to do next**: Ask your doctor about a screening test.\n" +
+          "4. **One clarifying question** (optional): Have you had a test before?"
+      );
+
+      expect(cleaned).toBe(
+        "1. You are asking about screening.\n" +
+          "2. Screening can find cancer early.\n" +
+          "3. **What to do next**: Ask your doctor about a screening test.\n" +
+          "4. Have you had a test before?"
+      );
+    });
+
+    it("leaves neither a blank line nor an orphaned `**` on the display path", () => {
+      expect(
+        cleanResponseForDisplay(
+          "Screening can find cancer early.\n\n**What I understood:**\nYou are asking about screening."
+        )
+      ).toBe("Screening can find cancer early.\n\nYou are asking about screening.");
+
+      expect(
+        cleanResponseForDisplay("**What I understood: You are asking about screening.**")
+      ).toBe("You are asking about screening.");
     });
   });
 });

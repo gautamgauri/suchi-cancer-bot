@@ -37,6 +37,52 @@ describe("ModeDetector - identify questions", () => {
     test("can I identify if my mother has cancer -> NAVIGATE (personal reference)", () => {
       expect(ModeDetector.detectMode("can I identify if my mother has cancer")).toBe("navigate");
     });
+
+    // Issue #184 — live prod repro (web, en): the bare question retrieved 6 KB
+    // chunks, the same question with a trailing "I should look for" retrieved
+    // none, because the clause flipped the turn to NAVIGATE and the Navigate
+    // PERSONAL_SYMPTOMS branch never calls RAG. The two phrasings must route
+    // identically: the clause describes what the ANSWER should cover.
+    test("mouth cancer signs: trailing 'I should look for' routes like the bare question", () => {
+      const bare = "What are the early signs of mouth cancer?";
+      const withClause = "What are the early signs of mouth cancer I should look for?";
+      expect(ModeDetector.detectMode(bare)).toBe("explain");
+      expect(ModeDetector.detectMode(withClause)).toBe(ModeDetector.detectMode(bare));
+    });
+
+    test("trailing answer-shape clause variants -> EXPLAIN", () => {
+      expect(ModeDetector.detectMode("What are the signs of oral cancer I should watch out for?")).toBe("explain");
+      expect(
+        ModeDetector.detectMode("What are the early signs of mouth cancer that I should be looking for?"),
+      ).toBe("explain");
+    });
+
+    test("the same clause does not mask a real personal report", () => {
+      expect(
+        ModeDetector.detectMode("I have a sore in my mouth — what signs should I look for?"),
+      ).toBe("navigate");
+    });
+
+    // PR #185 review (Codex P1): the exemption applies only when the clause
+    // truly ends the question. A continuation after "for" can carry the only
+    // personal signal and must keep the turn in NAVIGATE.
+    test("'I should look for' followed by a personal continuation -> NAVIGATE", () => {
+      expect(
+        ModeDetector.detectMode("What are the signs of cancer I should look for after finding a lump?"),
+      ).toBe("navigate");
+      expect(
+        ModeDetector.detectMode("What are the signs of mouth cancer I should look for since I have a lump in my mouth?"),
+      ).toBe("navigate");
+      expect(
+        ModeDetector.detectMode("What are the signs of oral cancer I should watch out for, given a sore that won't heal?"),
+      ).toBe("navigate");
+    });
+
+    test("a truly trailing clause still routes EXPLAIN with trailing punctuation/whitespace", () => {
+      expect(ModeDetector.detectMode("What are the early signs of mouth cancer I should look for?  ")).toBe("explain");
+      expect(ModeDetector.detectMode("What are the early signs of mouth cancer I should look for")).toBe("explain");
+      expect(ModeDetector.detectMode("What are the early signs of mouth cancer I should look for?!")).toBe("explain");
+    });
   });
 
   describe("hasPersonalDiagnosisSignal", () => {
@@ -70,6 +116,16 @@ describe("ModeDetector - identify questions", () => {
       expect(ModeDetector.hasPersonalDiagnosisSignal("should I check")).toBe(true);
     });
 
+    // PR #185 review (Codex P1): only a clause that ends the text is exempt.
+    test("an 'I should look for' clause with a continuation IS a personal signal", () => {
+      expect(
+        ModeDetector.hasPersonalDiagnosisSignal("the signs of cancer I should look for after finding a lump"),
+      ).toBe(true);
+      expect(
+        ModeDetector.hasPersonalDiagnosisSignal("signs I should watch out for now that a sore won't heal?"),
+      ).toBe(true);
+    });
+
     test("detects someone-specific references", () => {
       expect(ModeDetector.hasPersonalDiagnosisSignal("my mother has")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("my father")).toBe(true);
@@ -80,6 +136,17 @@ describe("ModeDetector - identify questions", () => {
       expect(ModeDetector.hasPersonalDiagnosisSignal("I have been experiencing")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("I feel pain")).toBe(true);
       expect(ModeDetector.hasPersonalDiagnosisSignal("suffering from")).toBe(true);
+    });
+
+    // Issue #184: "…mouth cancer I should look for?" — the trailing clause names
+    // what the answer should cover. The inverted "should I …" stays personal.
+    test("a trailing 'I should look for' clause is NOT a personal signal", () => {
+      expect(ModeDetector.hasPersonalDiagnosisSignal("the early signs of mouth cancer I should look for")).toBe(false);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("signs of oral cancer I should watch out for")).toBe(false);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("signs that I should be looking for")).toBe(false);
+      // Inverted form is a genuine personal question and must stay a signal.
+      expect(ModeDetector.hasPersonalDiagnosisSignal("should I look for a second opinion")).toBe(true);
+      expect(ModeDetector.hasPersonalDiagnosisSignal("should I check")).toBe(true);
     });
 
     test("does not detect general questions", () => {

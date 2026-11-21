@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { PatientState } from "../chat/patient-state.service";
 import { ObservabilityService } from "../observability/observability.service";
-import { buildExplainModeBasePrompt, buildNavigateModePrompt, DEFINITIONAL_EXPLAIN_PROMPT } from "./prompts";
+import { buildExplainModeBasePrompt, buildNavigateModePrompt, DEFINITIONAL_EXPLAIN_PROMPT, NO_REFERENCE_INVENTORY_RULE } from "./prompts";
 
 /**
  * IDENTIFY_REQUIREMENTS: Structure checklist for "how to identify" questions
@@ -1039,6 +1039,7 @@ RESPONSE INSTRUCTIONS (follow the "Safe + Useful" contract):
 - Do NOT add disclaimers, caveats, or "is there anything else" closers
 - Do NOT repeat information across sections
 - Do NOT copy document titles (e.g., "Cervical Cancer Treatment - NCI") or reference metadata into your response — synthesize the information into your own words
+${NO_REFERENCE_INVENTORY_RULE}
 - Do NOT copy raw reference text verbatim — always paraphrase into clear, conversational language
 - Do NOT respond with only "I can't verify" — ALWAYS give educational content first
 - If the user is describing symptoms, focus on what those symptoms could mean and what tests/doctors to see — do NOT generate biopsy report explanations or pathology content

@@ -16,11 +16,12 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
-import { StructuredExtractorService, StructuredInfo } from "./structured-extractor.service";
+import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
 import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
+import { askedDiseaseSites, scopeChunksToAskedSites } from "../rag/disease-site-scope";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
 import { PatientStateService, PatientState } from "./patient-state.service";
@@ -34,6 +35,7 @@ import { reconcileAppendedAnswer } from "./escalation-reconciler";
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
 import { CrossLingualService } from "../rag/cross-lingual.service";
+import { scopeEvidenceToPregnancyScenario } from "../rag/scenario-section-filter";
 // Phase 3 Agentic components
 import {
   ExecutionPlannerService,
@@ -435,6 +437,15 @@ export class ChatService {
 
     const isFirstMessage = existingAssistantMessages === 0;
     const sessionCancerType = session.cancerType;
+    // Issue #170: retrieval is steered by the cancer type of THIS turn. A site the
+    // user names now (in English, Hindi or Hinglish) beats the session tag, which
+    // is sticky and can be stale — a WhatsApp conversation tagged `lung` answered
+    // a later mouth-cancer question from lung documents. The session tag is still
+    // the fallback when the message names no site (#175 semantics).
+    const turnCancerType = detectCancerType(dto.userText, sessionCancerType);
+    // Sites the message itself asks about; evidence about a different site is
+    // not allowed to answer it (see scopeEvidenceToAskedSites).
+    const askedSites = askedDiseaseSites(dto.userText);
     let emotionalState = session.emotionalState as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
     const userContext = session.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
 
@@ -563,14 +574,21 @@ export class ChatService {
     let earlyEvidenceChunks: any[] = [];
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Quick RAG retrieval for urgent cases to support citations
-      // Reuse sessionCancerType from session fetched at start
+      // The turn's cancer type, not the (possibly stale) session tag (#170)
       try {
-        earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, earlyQueryType);
+        earlyEvidenceChunks = this.scopeEvidenceToAskedSites(
+          await this.rag.retrieveWithMetadata(dto.userText, 6, turnCancerType, earlyQueryType),
+          askedSites,
+          dto.sessionId,
+          "early"
+        );
       } catch (earlyRagError: any) {
         this.logger.warn(`Early RAG retrieval failed: ${earlyRagError.message} — continuing without citations`);
       }
     }
-    
+    // #126: the urgent path composes from these chunks directly.
+    earlyEvidenceChunks = this.scopeEvidenceToScenario(earlyEvidenceChunks, dto.userText, dto.sessionId, "early");
+
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Use template system for urgent symptoms (S2 template) but include RAG content if available
       // Reuse isFirstMessage from message count fetched at start
@@ -1204,7 +1222,7 @@ export class ChatService {
 
     // TIMING: Track RAG retrieval time
     const ragStarted = Date.now();
-    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: sessionCancerType });
+    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: turnCancerType });
     let evidenceChunks: any[] = [];
     if (earlyEvidenceChunks.length > 0) {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
@@ -1213,7 +1231,7 @@ export class ChatService {
       // ─── Phase 2: Multi-call retrieval for complex queries ──────────
       // Build session context for the query decomposer
       const sessionCtx: SessionContext = {
-        cancerType: sessionCancerType,
+        cancerType: turnCancerType,
         district: null, // TODO: extract from session when available
         budgetConcern: false, // TODO: detect and persist
         userContext,
@@ -1263,10 +1281,11 @@ export class ChatService {
           : dto.userText;
 
         if (mightBeIdentifyQuestion) {
-          const cancerType = detectCancerType(dto.userText, sessionCancerType);
-          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, cancerType, undefined, undefined, queryType);
+          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, turnCancerType, undefined, undefined, queryType);
         } else {
-          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, sessionCancerType, queryType);
+          // #170: was `sessionCancerType` — a stale tag rewrote a mouth-cancer
+          // query into "... lung cancer prevention".
+          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, turnCancerType, queryType);
         }
 
         if (crossLingualResult.detectedLanguage !== "en") {
@@ -1281,6 +1300,9 @@ export class ChatService {
       this.logger.error(`RAG retrieval failed: ${ragError.message} — continuing with empty evidence`);
       evidenceChunks = [];
     } }
+    // #170: evidence about a different disease site than the one the user named
+    // may not answer the question (early chunks were already scoped above).
+    evidenceChunks = this.scopeEvidenceToAskedSites(evidenceChunks, askedSites, dto.sessionId, "primary");
     const ragMs = Date.now() - ragStarted;
     this.observability.endSpan(ragSpan, {
       chunksReturned: evidenceChunks.length,
@@ -1303,6 +1325,10 @@ export class ChatService {
       }
     }
 
+    // 4.6. #126: a pregnancy question that does not ask about breastfeeding must
+    // not be composed from lactation sections (verbatim cut, no rewording).
+    evidenceChunks = this.scopeEvidenceToScenario(evidenceChunks, dto.userText, dto.sessionId, "primary");
+
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 5. Intent classification (moved before evidence gate to provide context)
@@ -1314,7 +1340,7 @@ export class ChatService {
       { status: 'ok', approvedChunks: evidenceChunks, reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
       { hasGenerallyAsking },
-      { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
+      { userContext, emotionalState, cancerType: turnCancerType } // Pass session context (emotionalState already updated above)
     );
 
     // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
@@ -1337,7 +1363,7 @@ export class ChatService {
     // Check if this query benefits from the Phase 3 planning path
     // (Navigation, Schemes, Psychosocial with structured template matches)
     const sessionCtxForPlanner: SessionContext = {
-      cancerType: sessionCancerType,
+      cancerType: turnCancerType,
       district: null,
       budgetConcern: false,
       userContext,
@@ -1385,7 +1411,8 @@ export class ChatService {
             const quickVerify = this.outputVerifier.quickVerify(
               phase3Response,
               executionResult.mergedChunks,
-              dto.userText
+              dto.userText,
+              disclaimerLocale
             );
             if (quickVerify.fixedContent) {
               phase3Response = quickVerify.fixedContent;
@@ -1525,10 +1552,14 @@ export class ChatService {
 
     // If evidence is weak or insufficient, try expanded retrieval
     if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
-      const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
+      const expandedChunks = this.scopeEvidenceToAskedSites(
+        await this.rag.retrieveWithExpansion(dto.userText, 6, turnCancerType, undefined, undefined, queryType),
+        askedSites,
+        dto.sessionId,
+        "expansion"
+      );
       if (expandedChunks.length > evidenceChunks.length) {
-        evidenceChunks = expandedChunks;
+        evidenceChunks = this.scopeEvidenceToScenario(expandedChunks, dto.userText, dto.sessionId, "expansion"); // #126
         // Re-run evidence gate with expanded chunks
         gateResult = await this.evidenceGate.validateEvidence(
           evidenceChunks,
@@ -1800,7 +1831,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             false,
-            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent, patientState },
+            { hasGenerallyAsking, cancerType: turnCancerType, emotionalState, intent: intentResult.intent, patientState },
             undefined,
             obsTrace?.id
           ),
@@ -2139,7 +2170,7 @@ export class ChatService {
 
       // Detect cancer type for cancer-type-specific responses
       // Always detect from query text — not just for identify questions — so essential term injection works
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
+      const cancerType = turnCancerType;
 
       // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
       const extractionStarted = Date.now();
@@ -2177,7 +2208,18 @@ export class ChatService {
 
       // POST-PROCESSING: Check completeness and fill gaps if needed
       const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
-      
+
+      // The disclaimer's locale signal (#163) plus Romanized Hinglish, which it
+      // cannot see: the fallback block is spliced into this body, so it has to
+      // be readable next to it (#186).
+      const fallbackContent = completenessResult.meetsPolicy
+        ? ""
+        : this.structuredExtractor.generateFallbackContent(
+            completenessResult.missing,
+            extraction,
+            resolveFallbackLocale(disclaimerLocale, dto.userText, responseText)
+          );
+
       // Structured logging for completeness outcomes (observability)
       this.logger.log({
         event: "completeness_check",
@@ -2202,7 +2244,9 @@ export class ChatService {
             required: completenessResult.coverage.timeline.required,
           },
         },
-        fallbackInserted: !completenessResult.meetsPolicy && completenessResult.missing.diagnosticTests.length + completenessResult.missing.warningSigns.length > 0,
+        // Reflects the block we actually built: a reply whose language has no
+        // reviewed labels yet gets none, and the log must not claim one (#186).
+        fallbackInserted: fallbackContent.length > 0,
         meetsPolicy: completenessResult.meetsPolicy,
       });
       
@@ -2211,7 +2255,6 @@ export class ChatService {
           `Response incomplete: tests=${completenessResult.coverage.diagnosticTests.found}/${completenessResult.coverage.diagnosticTests.required}, ` +
           `signs=${completenessResult.coverage.warningSigns.found}/${completenessResult.coverage.warningSigns.required}`
         );
-        const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
         if (fallbackContent) {
           // Try multiple insertion points (most specific first)
           const insertionPatterns = [
@@ -2328,7 +2371,7 @@ export class ChatService {
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -2529,7 +2572,7 @@ export class ChatService {
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
         let retryOrphanCount = retryExtractionResult.orphanCount;
@@ -2612,7 +2655,8 @@ export class ChatService {
       const phase3Verification = this.outputVerifier.quickVerify(
         responseText,
         evidenceChunks,
-        dto.userText
+        dto.userText,
+        disclaimerLocale
       );
       if (phase3Verification.fixedContent) {
         responseText = phase3Verification.fixedContent;
@@ -2755,7 +2799,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         false,
-        { emotionalState, cancerType: sessionCancerType, patientState },
+        { emotionalState, cancerType: turnCancerType, patientState },
         undefined,
         obsTrace?.id
       ),
@@ -2788,7 +2832,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           false,
-          { emotionalState, cancerType: sessionCancerType, patientState },
+          { emotionalState, cancerType: turnCancerType, patientState },
           undefined,
           obsTrace?.id
         );
@@ -2948,6 +2992,35 @@ export class ChatService {
    * standard terms that users expect for a given cancer type.
    * This is a deterministic safety net — no LLM call needed.
    */
+  /**
+   * Issue #170: drop evidence whose source document is about a different
+   * disease site than the one the user's message names. Zero chunks left is the
+   * intended safe failure — the evidence gate then abstains instead of letting
+   * lung content answer a mouth-cancer question.
+   */
+  private scopeEvidenceToAskedSites<T extends { chunkId?: string; docId?: string; document?: { title?: string | null } | null }>(
+    chunks: T[],
+    askedSites: string[],
+    sessionId: string,
+    stage: string
+  ): T[] {
+    if (!chunks || chunks.length === 0 || askedSites.length === 0) return chunks;
+    const { kept, dropped } = scopeChunksToAskedSites(chunks, askedSites);
+    if (dropped.length > 0) {
+      this.logger.log({
+        event: "disease_site_scope_applied",
+        sessionId,
+        stage,
+        askedSites,
+        kept: kept.length,
+        dropped: dropped.length,
+        // Ids only — no query text (it can be the patient's own words).
+        droppedDocIds: Array.from(new Set(dropped.map((c) => c.docId))).slice(0, 6),
+      });
+    }
+    return kept;
+  }
+
   private injectEssentialTermsIfMissing(responseText: string, cancerType: string | null, queryType: string): string {
     if (!cancerType) return responseText;
 
@@ -3041,6 +3114,35 @@ export class ChatService {
     return responseText + addendum;
   }
 
+  /**
+   * Issue #126: evidence applicability by scenario. A question about pregnancy
+   * that does not ask about breastfeeding gets the lactation sections cut out of
+   * its evidence (verbatim section removal — no text is written), and chunks
+   * that are only about lactation are dropped.
+   */
+  private scopeEvidenceToScenario<T extends { chunkId: string; docId?: string; content: string; document?: { title?: string | null } | null }>(
+    chunks: T[],
+    userText: string,
+    sessionId: string,
+    stage: string
+  ): T[] {
+    if (!chunks || chunks.length === 0) return chunks;
+    const result = scopeEvidenceToPregnancyScenario(chunks, userText);
+    if (result.trimmedChunkIds.length > 0 || result.droppedChunkIds.length > 0) {
+      this.logger.log({
+        event: "scenario_section_filter_applied",
+        scenario: "pregnancy_not_nursing",
+        sessionId,
+        stage,
+        // Ids only — no query text (it can be the patient's own words).
+        trimmedChunkIds: result.trimmedChunkIds.slice(0, 6),
+        droppedChunkIds: result.droppedChunkIds.slice(0, 6),
+        kept: result.chunks.length,
+      });
+    }
+    return result.chunks;
+  }
+
   private passesIdentifyRubric(text: string): { ok: boolean; missing: string[] } {
     const missing: string[] = [];
 
@@ -3096,10 +3198,21 @@ export class ChatService {
    * Reapply essential-term / completeness fallback after any regeneration that replaces responseText.
    * Call after identify regeneration and citation regeneration so injected terms are not lost.
    */
-  private applyEssentialTermFallback(responseText: string, extraction: StructuredInfo, queryType: string): string {
+  private applyEssentialTermFallback(
+    responseText: string,
+    extraction: StructuredInfo,
+    queryType: string,
+    locale?: string | null,
+    userText?: string
+  ): string {
     const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
     if (completenessResult.meetsPolicy) return responseText;
-    const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+    // The block is written in the language of the body it is spliced into (#186).
+    const fallbackContent = this.structuredExtractor.generateFallbackContent(
+      completenessResult.missing,
+      extraction,
+      resolveFallbackLocale(locale, userText, responseText)
+    );
     if (!fallbackContent) return responseText;
     const insertionPatterns = [
       /(\n\n\*\*Questions to Ask Your Doctor:\*\*)/i,
@@ -3541,14 +3654,11 @@ export class ChatService {
         ? `--- ${this.regionalCentresHeading(geography)} ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
         : "";
 
-    // NOTE: the instruction that told the model not to call a cross-border
-    // fallback "nearby" and not to invent a travel time lived here. It is a
-    // prompt change under chat/, so AGENTS.md §1.3 sends it through SCCF
-    // human/medical review in its own labelled PR rather than riding along
-    // with this structural one (PR #99 re-review). Until that lands, the only
-    // thing this block says about distance is what the stage heading says:
-    // "may involve significant travel" on the adjacent-state rung, "travel
-    // distance not established" on the unfiltered one.
+    // Travel and distance guidance: one paragraph, placed before the list.
+    // Supersedes #159 (cross-border caveat) and #181 (straight-line distance).
+    //
+    // SCCF sign-off: Gautam Gauri, SCCF Director, 2026-09-30 (AGENTS.md §1.3).
+    const travelAndDistance = this.travelAndDistanceGuidance(geography, regional.length > 0);
 
     const nationalBlock =
       national.length > 0
@@ -3562,12 +3672,60 @@ The following hospitals are from the Suchi Navigator structured database (verifi
 
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
-When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
+When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from this region also travel to [TMH/AIIMS]."
 
-${combinedBlocks}
+${travelAndDistance ? `${travelAndDistance}\n\n` : ""}${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
 === END HOSPITAL DATA ===`;
+  }
+
+  /**
+   * The travel-and-distance paragraph for the hospital block, by search rung.
+   * Empty on rungs where the centres really are local (`city`, `state`) or no
+   * location was given.
+   *
+   * - `distance`: the patient's city is geocoded and the whole pool is sorted
+   *   by km with no state rung (owner direction 2026-09-30: km order, state
+   *   does not matter). Order is not a ranking. Figures are straight-line, so
+   *   the model says "about N km" and that the road or rail journey is longer,
+   *   never a travel time and never the word "straight-line" (a literal
+   *   translation means nothing to a rural Hindi speaker). A centre across a
+   *   state line may not take the patient's card: West Bengal runs Swasthya
+   *   Sathi rather than PM-JAY, and it holds the nearest centres for Seemanchal.
+   *   So the model names the state and tells the patient to confirm, without
+   *   asserting acceptance unless the record says so.
+   * - `adjacent_state` / `unfiltered`: the city is known but not geocoded (1 of
+   *   46 table entries today), so there are no km figures. "The directory has
+   *   no cancer centre in X" replaces "no centre serves X directly", which can
+   *   read to a patient as "you cannot be treated".
+   *
+   * `STRAIGHT-LINE distance, already rounded` is matched by deploy preflight
+   * check 9 (.claude/commands/deploy.md) and must stay while the block renders
+   * kilometre figures.
+   */
+  private travelAndDistanceGuidance(
+    geography: HospitalSearchGeography | null | undefined,
+    hasRegional: boolean
+  ): string {
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+
+    if (geography?.stage === "distance") {
+      const order = hasRegional
+        ? `The nearest-centres list below is ordered by distance from ${city ?? "the patient's location"}, nearest first, regardless of state. Keep that order. It is not a ranking of quality or suitability; use each centre's Tier, Departments and Notes for that. `
+        : "";
+      const otherState = state ? `a state other than ${state}` : "a state other than the patient's own";
+      const scheme = state ? `${state} state scheme` : "state scheme";
+      return `${order}Each distance is a STRAIGHT-LINE distance, already rounded. If you mention one, say "about N km" (or "within 10 km") and add that the road or rail journey is longer; do not use the word "straight-line" with the patient. NEVER state or estimate a travel time, a road distance, or a journey duration. For any centre in ${otherState}, name its state and tell the patient to confirm with that hospital, before travelling, whether their PM-JAY card or ${scheme} is accepted there. Do not say whether it will or will not be accepted unless that centre's PMJAY field or Navigation notes say so.`;
+    }
+
+    if (hasRegional && (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")) {
+      const where = city ?? state ?? "the patient's stated location";
+      return `The directory has no cancer centre in ${where}. The centres listed below are in other districts or states and may involve significant travel. Do NOT describe them as "nearby" or "close by", and do NOT state or estimate a travel time or distance.`;
+    }
+
+    return "";
   }
 
   /**

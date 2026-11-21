@@ -131,12 +131,13 @@ cd /home/gauta/suchi_repo && \
   travel time or a road distance**. Nothing then stops the model turning ~50 km into
   "about an hour's drive" for a patient in rural North Bihar where it is three.
 
-  Blocked until **PR #149** (distance-handling instruction) and **PR #159**
-  (cross-border travel caveat — a nearer centre across a state line means a different
-  state health scheme and referral paperwork) are reviewed by SCCF and merged.
+  Blocked until **PR #200** is reviewed by SCCF and merged. It combines the
+  distance-handling instruction (#149 → #181) and the cross-border travel caveat (#159 —
+  a nearer centre across a state line means a different state health scheme and
+  referral paperwork) into one paragraph.
 
-  Do NOT work around this by deleting the distance text. Either land #149 and #159, or
-  deploy a commit that predates the mechanism.
+  Do NOT work around this by deleting the distance text. Either land #200, or deploy a
+  commit that predates the mechanism.
 
 This check is self-resolving: it arms itself when the mechanism lands and disarms when
 the reviewed wording lands. It needs no network and no `gh`.
