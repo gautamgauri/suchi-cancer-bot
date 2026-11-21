@@ -254,6 +254,67 @@ describe("ExecutionPlannerService", () => {
 
   // ─── needsPlanning() ──────────────────────────────────────────
 
+  // ─── Treatment-need extraction (PR #148 review, P1) ───────────
+  //
+  // The directory's capability filter is a hard one — a centre that cannot
+  // deliver the treatment is never offered — but it was unreachable from the
+  // patient-facing flow, because `plan()` never supplied `requiredDepartments`
+  // and the cancer-type extractor does not recognise a treatment need. So
+  // "Which hospital in Bhagalpur for radiotherapy?" carried no requirement at
+  // all and surgery-only Healing Touch could lead the list.
+  describe("treatment-need extraction", () => {
+    const needs = (text: string): string[] =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (planner as any).extractTreatmentNeeds(text);
+
+    test.each([
+      ["Which hospital in Bhagalpur for radiotherapy?", "radiation_oncology"],
+      ["where can I get radiation therapy near Purnia", "radiation_oncology"],
+      ["Bhagalpur me sikai kahan hoti hai", "radiation_oncology"],
+      ["भागलपुर में रेडियोथेरेपी कहाँ होती है", "radiation_oncology"],
+      ["सिकाई के लिए कौन सा अस्पताल", "radiation_oncology"],
+      ["best hospital for chemotherapy in Patna", "medical_oncology"],
+      ["chemo kahan hoga", "medical_oncology"],
+      ["kimo ke liye kaun sa hospital", "medical_oncology"],
+      ["कीमोथेरेपी के लिए अस्पताल", "medical_oncology"],
+      ["hospital for cancer surgery in Muzaffarpur", "surgical_oncology"],
+      ["operation kahan karwaye", "surgical_oncology"],
+      ["ऑपरेशन के लिए अस्पताल", "surgical_oncology"],
+    ])("%s → %s", (text, department) => {
+      expect(needs(text)).toContain(department);
+    });
+
+    test("names no need when the patient states none", () => {
+      expect(needs("Which is a good cancer hospital in Patna?")).toEqual([]);
+    });
+
+    test("collects every need a query states, deduplicated", () => {
+      const result = needs("Patna hospital for chemo and radiotherapy and surgery");
+      expect(result.sort()).toEqual([
+        "medical_oncology",
+        "radiation_oncology",
+        "surgical_oncology",
+      ]);
+    });
+
+    test("does not fire on a substring of an unrelated word", () => {
+      // "chemotherapy" must not be reached through "chemistry", nor
+      // "operation" through "cooperation".
+      expect(needs("chemistry lab report")).toEqual([]);
+      expect(needs("thanks for the cooperation")).toEqual([]);
+    });
+
+    test("matches Devanagari without \\b, which is ASCII-only (issue #30)", () => {
+      // The Hindi-safety bug in miniature: a `\b` placed against a Devanagari
+      // character matches on the wrong side of the word, so these patterns are
+      // written without boundaries. Assert they still fire mid-sentence.
+      expect(needs("मेरे पिता को रेडिएशन की जरूरत है")).toContain(
+        "radiation_oncology"
+      );
+      expect(needs("उनको कीमो चल रहा है")).toContain("medical_oncology");
+    });
+  });
+
   describe("needsPlanning()", () => {
     test("EMERGENCY → false", () => {
       expect(

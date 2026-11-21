@@ -16,10 +16,12 @@ import { ModeDetector } from "./mode-detector";
 import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
-import { StructuredExtractorService, StructuredInfo } from "./structured-extractor.service";
+import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
 import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
-import { detectCancerType } from "./utils/cancer-type-detector";
+import { isClaimVerificationQuestion } from "./utils/claim-verification";
+import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
+import { askedDiseaseSites, scopeChunksToAskedSites } from "../rag/disease-site-scope";
 import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
 import { PatientStateService, PatientState } from "./patient-state.service";
@@ -28,12 +30,18 @@ import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
+import { reconcileAppendedAnswer } from "./escalation-reconciler";
 // Phase 2 Agentic components
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { QueryDecomposerService, SessionContext } from "../rag/query-decomposer.service";
 import { CrossLingualService } from "../rag/cross-lingual.service";
+import { scopeEvidenceToPregnancyScenario } from "../rag/scenario-section-filter";
 // Phase 3 Agentic components
-import { ExecutionPlannerService, HospitalSearchResult } from "./execution-planner.service";
+import {
+  ExecutionPlannerService,
+  HospitalSearchResult,
+  HospitalSearchGeography,
+} from "./execution-planner.service";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { ReviewService } from "../review/review.service";
@@ -59,6 +67,13 @@ export class ChatService {
   private readonly CACHE_TTL_MS = 60000; // 60 seconds
   /** Request budget so explain/fallback/urgent flows cannot stack multiple full-length LLM calls (controller is 55s) */
   private readonly REQUEST_BUDGET_MS = 45000;
+  /**
+   * Budget for turns that no HTTP client is waiting on. WhatsApp webhooks ACK
+   * first and run the turn detached (`void this.svc.processClaimed(...)` in
+   * whatsapp.controller.ts), so those turns are not bounded by the 55s
+   * ChatController timeout that REQUEST_BUDGET_MS is derived from — issue #168.
+   */
+  private readonly ASYNC_CHANNEL_BUDGET_MS = 90000;
   private readonly MIN_BUDGET_FOR_LLM_MS = 15000;
   /** Urgent/symptomatic path: hard deadline for LLM so we fall back to template quickly instead of 504 */
   private readonly URGENT_PATH_LLM_DEADLINE_MS = 15000;
@@ -195,7 +210,111 @@ export class ChatService {
     return session;
   }
 
+  /**
+   * Wall-clock budget for one turn, chosen by channel.
+   *
+   * The whole pipeline shares ONE budget (`requestDeadlineMs` below), so every
+   * pre-generation stage — safety, empathy, retrieval, decomposition,
+   * extraction — spends from the same pot as the LLM stage. When less than
+   * `MIN_BUDGET_FOR_LLM_MS` is left, `llmWithDeadline` throws and the turn
+   * produces no answer at all. On WhatsApp that throw surfaces to the patient
+   * as the generic failure reply (issue #168).
+   *
+   * 45s exists because the HTTP client behind `ChatController` gives up at 55s.
+   * WhatsApp turns have no such client, so holding them to the HTTP budget
+   * traded a slow-but-real answer for no answer.
+   */
+  private turnBudgetMs(channel?: string): number {
+    return channel === "whatsapp" ? this.ASYNC_CHANNEL_BUDGET_MS : this.REQUEST_BUDGET_MS;
+  }
+
+  /**
+   * True for the deadline errors `llmWithDeadline` throws once the turn's
+   * budget is gone. Aborts are excluded on purpose: an abort means the caller
+   * (`ChatController`) has already timed out and returns its own fallback.
+   */
+  private isBudgetExhaustionError(err: any, signal?: AbortSignal): boolean {
+    if (signal?.aborted) return false;
+    const message: string = err?.message ?? "";
+    return message.startsWith("LLM generation timeout:") && !message.includes("abort");
+  }
+
+  /**
+   * Last-resort reply for a turn whose budget ran out at the generation stage.
+   *
+   * The pre-RAG budget guard already degrades this way; every stage after RAG
+   * used to throw out of `handle()` instead, and the WhatsApp worker answered
+   * with `FALLBACK_REPLY` ("something went wrong on our side") — issue #168.
+   *
+   * Like the pre-RAG guard this is a *technical* timeout, not a clinical
+   * finding: it must use the technical-failure template (A3) and never the S2
+   * urgent-escalation template (issue #94).
+   */
+  private async budgetExhaustedResponse(dto: ChatDto, turnStarted: number, err: any) {
+    this.logger.warn(
+      `Request budget exhausted at the generation stage after ${Date.now() - turnStarted}ms ` +
+        `(channel=${dto.channel}): ${err?.message} — returning template response`,
+    );
+
+    const responseText = ResponseTemplates.A3({
+      isFirstMessage: false,
+      userText: dto.userText,
+      locale: dto.locale,
+    } as any);
+
+    this.analytics
+      .emit(
+        "turn_budget_exhausted",
+        { channel: dto.channel, stage: "generation", latencyMs: Date.now() - turnStarted, error: err?.message },
+        dto.sessionId,
+      )
+      .catch((e) => this.logger.warn(`Analytics emit failed: ${e.message}`));
+
+    let messageId: string | undefined;
+    try {
+      const assistant = await this.prisma.message.create({
+        data: {
+          sessionId: dto.sessionId,
+          role: "assistant",
+          text: responseText,
+          safetyClassification: "normal",
+          latencyMs: Date.now() - turnStarted,
+        },
+      });
+      messageId = assistant.id;
+    } catch (persistErr: any) {
+      // Persisting is best-effort — the patient still gets the reply.
+      this.logger.warn(`Could not persist budget-exhaustion reply: ${persistErr?.message}`);
+    }
+
+    // The optional fields are spelled out as `undefined` on purpose: this object
+    // joins `handleTurn`'s inferred return union from a different function, so
+    // TypeScript does not normalise the union's optional keys onto it, and
+    // callers that read e.g. `result.citations?.length` would stop compiling.
+    return {
+      sessionId: dto.sessionId,
+      messageId,
+      responseText,
+      safety: { classification: "normal" as const, actions: [] },
+      citations: undefined,
+      citationConfidence: undefined,
+      retrievedChunks: undefined,
+      abstentionReason: undefined,
+      error: "budget_exhausted_before_llm",
+    };
+  }
+
   async handle(dto: ChatDto, signal?: AbortSignal) {
+    const turnStarted = Date.now();
+    try {
+      return await this.handleTurn(dto, signal);
+    } catch (err: any) {
+      if (!this.isBudgetExhaustionError(err, signal)) throw err;
+      return await this.budgetExhaustedResponse(dto, turnStarted, err);
+    }
+  }
+
+  private async handleTurn(dto: ChatDto, signal?: AbortSignal) {
     // ─── Phase 0: Input Cleanup (by modality, not channel) ────────────
     // Speech recognition output (the `voice` channel, or the web mic which
     // sends channel "web" + inputMode "voice") can stutter, duplicate words and
@@ -227,8 +346,30 @@ export class ChatService {
       throw new BadRequestException("Invalid sessionId");
     }
 
+    // Locale handed to the disclaimer engine. THIS TURN outranks the session,
+    // because Session.locale is written once at session creation and never
+    // refreshed: a WhatsApp contact who opens in Hindi and later writes in
+    // English keeps Session.locale "hi" for the whole TTL (whatsapp.service
+    // re-detects per message and updates only WhatsAppContact.locale), and an
+    // explicit Indic locale short-circuits detectLocale() before the response
+    // body is looked at — so the stale "hi" would put a Hindi disclaimer under
+    // an English reply. Falling back to session.locale keeps the bh/mai signal
+    // for callers that send no per-request locale (the web client sends none).
+    // A Devanagari body still wins over a request locale of "en" — that is
+    // detectLocale()'s precedence, not this expression's.
+    const disclaimerLocale = dto.locale || session.locale;
+
     const isFirstMessage = existingAssistantMessages === 0;
     const sessionCancerType = session.cancerType;
+    // Issue #170: retrieval is steered by the cancer type of THIS turn. A site the
+    // user names now (in English, Hindi or Hinglish) beats the session tag, which
+    // is sticky and can be stale — a WhatsApp conversation tagged `lung` answered
+    // a later mouth-cancer question from lung documents. The session tag is still
+    // the fallback when the message names no site (#175 semantics).
+    const turnCancerType = detectCancerType(dto.userText, sessionCancerType);
+    // Sites the message itself asks about; evidence about a different site is
+    // not allowed to answer it (see scopeEvidenceToAskedSites).
+    const askedSites = askedDiseaseSites(dto.userText);
     let emotionalState = session.emotionalState as "anxious" | "calm" | "urgent" | "sad" | "neutral" | undefined;
     const userContext = session.userContext as "general" | "patient" | "caregiver" | "post_diagnosis" | undefined;
 
@@ -242,7 +383,7 @@ export class ChatService {
     );
 
     const started = Date.now();
-    const requestDeadlineMs = started + this.REQUEST_BUDGET_MS;
+    const requestDeadlineMs = started + this.turnBudgetMs(dto.channel);
 
     // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
     // This runs BEFORE any LLM or async call. Pure regex, zero cost.
@@ -250,7 +391,7 @@ export class ChatService {
     if (emergencyFastPath.isEmergency) {
       const responseText = appendDisclaimer(
         emergencyFastPath.responseText!,
-        session.locale || dto.locale,
+        disclaimerLocale,
         true, // isEmergency
         dto.userText
       );
@@ -301,7 +442,11 @@ export class ChatService {
         responseText: assistant.text,
         safety: {
           classification: "red_flag" as const,
-          actions: ["show_emergency_banner", "end_conversation"],
+          // Owner decision (#196): urgent keeps the banner but leaves the
+          // conversation open; critical still ends it.
+          actions: emergencyFastPath.severity === "critical"
+            ? ["show_emergency_banner", "end_conversation"]
+            : ["show_emergency_banner"],
           // Nothing is appended on the fast path, so the banner block is the
           // whole reply (issue #111).
           bannerText: assistant.text,
@@ -320,7 +465,7 @@ export class ChatService {
           role: "assistant",
           text: appendDisclaimer(
             safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
-            session.locale || dto.locale,
+            disclaimerLocale,
             safetyResult.classification === "red_flag",
             dto.userText
           ),
@@ -351,14 +496,21 @@ export class ChatService {
     let earlyEvidenceChunks: any[] = [];
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Quick RAG retrieval for urgent cases to support citations
-      // Reuse sessionCancerType from session fetched at start
+      // The turn's cancer type, not the (possibly stale) session tag (#170)
       try {
-        earlyEvidenceChunks = await this.rag.retrieveWithMetadata(dto.userText, 6, sessionCancerType, earlyQueryType);
+        earlyEvidenceChunks = this.scopeEvidenceToAskedSites(
+          await this.rag.retrieveWithMetadata(dto.userText, 6, turnCancerType, earlyQueryType),
+          askedSites,
+          dto.sessionId,
+          "early"
+        );
       } catch (earlyRagError: any) {
         this.logger.warn(`Early RAG retrieval failed: ${earlyRagError.message} — continuing without citations`);
       }
     }
-    
+    // #126: the urgent path composes from these chunks directly.
+    earlyEvidenceChunks = this.scopeEvidenceToScenario(earlyEvidenceChunks, dto.userText, dto.sessionId, "early");
+
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Use template system for urgent symptoms (S2 template) but include RAG content if available
       // Reuse isFirstMessage from message count fetched at start
@@ -399,6 +551,23 @@ export class ChatService {
         } finally {
           clearTimeout(urgentTimeoutId!);
         }
+      }
+
+      // Issue #112: the escalation above is the only voice on emergency-level
+      // urgency. Strip urgency/triage statements out of the half we are about
+      // to append so it cannot contradict the escalation it sits under. Done
+      // before citation extraction so citations describe delivered text.
+      if (urgentRagResponse) {
+        const reconciled = reconcileAppendedAnswer(urgentRagResponse);
+        if (reconciled.removed.length > 0) {
+          this.logger.warn({
+            event: "escalation_triage_statement_removed",
+            sessionId: dto.sessionId,
+            removedCount: reconciled.removed.length,
+          });
+        }
+        // Nothing left worth appending — deliver the escalation on its own.
+        urgentRagResponse = reconciled.text.length > 0 ? reconciled.text : null;
       }
 
       if (urgentRagResponse) {
@@ -469,6 +638,8 @@ export class ChatService {
             safetyClassification: "red_flag",
             latencyMs: Date.now() - started,
             kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
+            locale: disclaimerLocale,
+            userText: dto.userText,
           }
         );
 
@@ -516,7 +687,9 @@ export class ChatService {
         [],
         {
           safetyClassification: "red_flag",
-          latencyMs: Date.now() - started
+          latencyMs: Date.now() - started,
+          locale: disclaimerLocale,
+          userText: dto.userText,
         }
       );
 
@@ -967,7 +1140,7 @@ export class ChatService {
 
     // TIMING: Track RAG retrieval time
     const ragStarted = Date.now();
-    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: sessionCancerType });
+    const ragSpan = this.observability.startSpan(obsTrace, 'rag_retrieval', { query: dto.userText?.substring(0, 200), cancerType: turnCancerType });
     let evidenceChunks: any[] = [];
     if (earlyEvidenceChunks.length > 0) {
       // Reuse early RAG retrieval from urgent check to avoid double retrieval
@@ -976,7 +1149,7 @@ export class ChatService {
       // ─── Phase 2: Multi-call retrieval for complex queries ──────────
       // Build session context for the query decomposer
       const sessionCtx: SessionContext = {
-        cancerType: sessionCancerType,
+        cancerType: turnCancerType,
         district: null, // TODO: extract from session when available
         budgetConcern: false, // TODO: detect and persist
         userContext,
@@ -1026,10 +1199,11 @@ export class ChatService {
           : dto.userText;
 
         if (mightBeIdentifyQuestion) {
-          const cancerType = detectCancerType(dto.userText, sessionCancerType);
-          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, cancerType, undefined, undefined, queryType);
+          evidenceChunks = await this.rag.retrieveWithExpansion(queryToUse, 6, turnCancerType, undefined, undefined, queryType);
         } else {
-          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, sessionCancerType, queryType);
+          // #170: was `sessionCancerType` — a stale tag rewrote a mouth-cancer
+          // query into "... lung cancer prevention".
+          evidenceChunks = await this.rag.retrieveWithMetadata(queryToUse, 6, turnCancerType, queryType);
         }
 
         if (crossLingualResult.detectedLanguage !== "en") {
@@ -1044,6 +1218,9 @@ export class ChatService {
       this.logger.error(`RAG retrieval failed: ${ragError.message} — continuing with empty evidence`);
       evidenceChunks = [];
     } }
+    // #170: evidence about a different disease site than the one the user named
+    // may not answer the question (early chunks were already scoped above).
+    evidenceChunks = this.scopeEvidenceToAskedSites(evidenceChunks, askedSites, dto.sessionId, "primary");
     const ragMs = Date.now() - ragStarted;
     this.observability.endSpan(ragSpan, {
       chunksReturned: evidenceChunks.length,
@@ -1066,6 +1243,10 @@ export class ChatService {
       }
     }
 
+    // 4.6. #126: a pregnancy question that does not ask about breastfeeding must
+    // not be composed from lactation sections (verbatim cut, no rewording).
+    evidenceChunks = this.scopeEvidenceToScenario(evidenceChunks, dto.userText, dto.sessionId, "primary");
+
     const kbDocIds: string[] = Array.from(new Set(evidenceChunks.map(c => c.docId)));
 
     // 5. Intent classification (moved before evidence gate to provide context)
@@ -1077,7 +1258,7 @@ export class ChatService {
       { status: 'ok', approvedChunks: evidenceChunks, reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
       { hasGenerallyAsking },
-      { userContext, emotionalState, cancerType: sessionCancerType } // Pass session context (emotionalState already updated above)
+      { userContext, emotionalState, cancerType: turnCancerType } // Pass session context (emotionalState already updated above)
     );
 
     // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
@@ -1100,7 +1281,7 @@ export class ChatService {
     // Check if this query benefits from the Phase 3 planning path
     // (Navigation, Schemes, Psychosocial with structured template matches)
     const sessionCtxForPlanner: SessionContext = {
-      cancerType: sessionCancerType,
+      cancerType: turnCancerType,
       district: null,
       budgetConcern: false,
       userContext,
@@ -1108,6 +1289,7 @@ export class ChatService {
     };
 
     let structuredHospitalResults: HospitalSearchResult[] | null = null;
+    let structuredHospitalGeography: HospitalSearchGeography | null = null;
 
     if (this.executionPlanner.needsPlanning(dto.userText, agenticIntent.category, intentResult.intent)) {
       const plan = this.executionPlanner.plan(
@@ -1118,6 +1300,7 @@ export class ChatService {
         intentResult.intent
       );
       structuredHospitalResults = plan.structuredHospitalResults ?? null;
+      structuredHospitalGeography = plan.structuredHospitalGeography ?? null;
 
       // Only use the structured template path (non-template path falls through to existing flow)
       if (plan.usesStructuredTemplate) {
@@ -1146,7 +1329,8 @@ export class ChatService {
             const quickVerify = this.outputVerifier.quickVerify(
               phase3Response,
               executionResult.mergedChunks,
-              dto.userText
+              dto.userText,
+              disclaimerLocale
             );
             if (quickVerify.fixedContent) {
               phase3Response = quickVerify.fixedContent;
@@ -1155,7 +1339,7 @@ export class ChatService {
             // Append disclaimer via existing engine
             phase3Response = appendDisclaimer(
               phase3Response,
-              session.locale || dto.locale,
+              disclaimerLocale,
               false,
               dto.userText
             );
@@ -1179,6 +1363,8 @@ export class ChatService {
                 kbDocIds: Array.from(new Set(executionResult.mergedChunks.map(c => c.docId))),
                 evidenceQuality: executionResult.mergedChunks.length > 0 ? "strong" : "weak",
                 evidenceGatePassed: true,
+                locale: disclaimerLocale,
+                userText: dto.userText,
               }
             );
 
@@ -1284,10 +1470,14 @@ export class ChatService {
 
     // If evidence is weak or insufficient, try expanded retrieval
     if ((gateResult.quality === "weak" || gateResult.quality === "insufficient") && !mightBeIdentifyQuestion) {
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
-      const expandedChunks = await this.rag.retrieveWithExpansion(dto.userText, 6, cancerType, undefined, undefined, queryType);
+      const expandedChunks = this.scopeEvidenceToAskedSites(
+        await this.rag.retrieveWithExpansion(dto.userText, 6, turnCancerType, undefined, undefined, queryType),
+        askedSites,
+        dto.sessionId,
+        "expansion"
+      );
       if (expandedChunks.length > evidenceChunks.length) {
-        evidenceChunks = expandedChunks;
+        evidenceChunks = this.scopeEvidenceToScenario(expandedChunks, dto.userText, dto.sessionId, "expansion"); // #126
         // Re-run evidence gate with expanded chunks
         gateResult = await this.evidenceGate.validateEvidence(
           evidenceChunks,
@@ -1334,6 +1524,8 @@ export class ChatService {
           evidenceQuality: 'insufficient',
           evidenceGatePassed: false,
           abstentionReason: gateResult.reasonCode || 'no_evidence',
+          locale: disclaimerLocale,
+          userText: dto.userText,
         }
       );
 
@@ -1430,6 +1622,8 @@ export class ChatService {
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: !gateResult.shouldAbstain,
           abstentionReason: gateResult.shouldAbstain ? gateResult.reason || undefined : undefined,
+          locale: disclaimerLocale,
+          userText: dto.userText,
         }
       );
 
@@ -1502,7 +1696,12 @@ export class ChatService {
           data: {
             sessionId: dto.sessionId,
             role: "assistant",
-            text: appendDisclaimer(clarifyingQuestion),
+            text: appendDisclaimer(
+              clarifyingQuestion,
+              disclaimerLocale,
+              false,
+              dto.userText
+            ),
             safetyClassification: "normal",
             kbDocIds: [],
             latencyMs: Date.now() - started,
@@ -1550,7 +1749,7 @@ export class ChatService {
             dto.userText,
             evidenceChunks,
             false,
-            { hasGenerallyAsking, cancerType: sessionCancerType, emotionalState, intent: intentResult.intent, patientState },
+            { hasGenerallyAsking, cancerType: turnCancerType, emotionalState, intent: intentResult.intent, patientState },
             undefined,
             obsTrace?.id
           ),
@@ -1597,6 +1796,8 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: gateResult.reason || undefined,
+            locale: disclaimerLocale,
+            userText: dto.userText,
           }
         );
 
@@ -1714,6 +1915,14 @@ export class ChatService {
 
     const queryNeedsStructuredResponse = needsStructuredResponse(dto.userText);
 
+    // Issue #136: "people say X — is it true?" questions are claim checks, not
+    // definitions. The answer-first path returns a 2-3 sentence definition plus a
+    // clarifying question and never engages with the claim, so a myth question
+    // that happens to satisfy every other condition (Hindi biopsy probe, daily QA
+    // 2026-09-13) came back as "a biopsy is a procedure…". Route them to the
+    // full explain path instead. Language handling downstream is unchanged.
+    const isClaimVerification = isClaimVerificationQuestion(dto.userText);
+
     // DEBUG: Log all answer-first trigger conditions for diagnosis
     this.logger.log({
       event: 'answer_first_condition_check',
@@ -1724,6 +1933,7 @@ export class ChatService {
         intent: intentResult.intent,
         mightBeIdentifyQuestion,
         queryNeedsStructuredResponse,
+        isClaimVerification,
         evidenceChunksLength: evidenceChunks.length,
         avgSimilarity: avgSimilarity.toFixed(3),
         // Final eligibility (answer-first only for simple definitional queries)
@@ -1731,6 +1941,7 @@ export class ChatService {
                   (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
                   !mightBeIdentifyQuestion &&
                   !queryNeedsStructuredResponse &&
+                  !isClaimVerification &&
                   evidenceChunks.length >= 2 &&
                   avgSimilarity >= 0.40
       }
@@ -1744,6 +1955,7 @@ export class ChatService {
       (intentResult.intent === "INFORMATIONAL_GENERAL" || intentResult.intent === "INFORMATIONAL_SYMPTOMS") &&
       !mightBeIdentifyQuestion && // Not an "identify" question (those need full structured response)
       !queryNeedsStructuredResponse && // Not asking for lists of symptoms/tests/treatments
+      !isClaimVerification && // Not a "is it true that…" myth check (#136) — needs the full explain path
       evidenceChunks.length >= 2 && // Sufficient chunks
       avgSimilarity >= 0.40 // Moderate confidence threshold
     ) {
@@ -1803,6 +2015,8 @@ export class ChatService {
             kbDocIds: Array.from(new Set(evidenceChunks.map(c => c.docId))),
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
+            locale: disclaimerLocale,
+            userText: dto.userText,
           }
         );
 
@@ -1874,7 +2088,7 @@ export class ChatService {
 
       // Detect cancer type for cancer-type-specific responses
       // Always detect from query text — not just for identify questions — so essential term injection works
-      const cancerType = detectCancerType(dto.userText, sessionCancerType);
+      const cancerType = turnCancerType;
 
       // DETERMINISTIC PRE-EXTRACTION: Extract structured entities from chunks before LLM
       const extractionStarted = Date.now();
@@ -1884,7 +2098,9 @@ export class ChatService {
 
       // For navigation intents: prepend structured hospital facts to the checklist slot so the LLM
       // treats them as authoritative before KB references. KB markdown remains for pathway guidance.
-      const hospitalContextBlock = isNavigationIntent ? this.buildHospitalContextBlock(structuredHospitalResults) : "";
+      const hospitalContextBlock = isNavigationIntent
+        ? this.buildHospitalContextBlock(structuredHospitalResults, structuredHospitalGeography)
+        : "";
       const combinedChecklist = [hospitalContextBlock, checklist].filter(Boolean).join("\n\n");
 
       // Generate response with Explain Mode prompt + checklist
@@ -1910,7 +2126,18 @@ export class ChatService {
 
       // POST-PROCESSING: Check completeness and fill gaps if needed
       const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
-      
+
+      // The disclaimer's locale signal (#163) plus Romanized Hinglish, which it
+      // cannot see: the fallback block is spliced into this body, so it has to
+      // be readable next to it (#186).
+      const fallbackContent = completenessResult.meetsPolicy
+        ? ""
+        : this.structuredExtractor.generateFallbackContent(
+            completenessResult.missing,
+            extraction,
+            resolveFallbackLocale(disclaimerLocale, dto.userText, responseText)
+          );
+
       // Structured logging for completeness outcomes (observability)
       this.logger.log({
         event: "completeness_check",
@@ -1935,7 +2162,9 @@ export class ChatService {
             required: completenessResult.coverage.timeline.required,
           },
         },
-        fallbackInserted: !completenessResult.meetsPolicy && completenessResult.missing.diagnosticTests.length + completenessResult.missing.warningSigns.length > 0,
+        // Reflects the block we actually built: a reply whose language has no
+        // reviewed labels yet gets none, and the log must not claim one (#186).
+        fallbackInserted: fallbackContent.length > 0,
         meetsPolicy: completenessResult.meetsPolicy,
       });
       
@@ -1944,7 +2173,6 @@ export class ChatService {
           `Response incomplete: tests=${completenessResult.coverage.diagnosticTests.found}/${completenessResult.coverage.diagnosticTests.required}, ` +
           `signs=${completenessResult.coverage.warningSigns.found}/${completenessResult.coverage.warningSigns.required}`
         );
-        const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
         if (fallbackContent) {
           // Try multiple insertion points (most specific first)
           const insertionPatterns = [
@@ -2061,7 +2289,7 @@ export class ChatService {
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+          responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
           
           // Re-validate after regeneration
           const revalidationResult = this.responseValidator.validate(responseText, evidenceChunks);
@@ -2155,6 +2383,8 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: true,
             abstentionReason: 'citation_validation_failed',
+            locale: disclaimerLocale,
+            userText: dto.userText,
           }
         );
 
@@ -2260,7 +2490,7 @@ export class ChatService {
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
-        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType);
+        responseText = this.applyEssentialTermFallback(responseText, extraction, queryType, disclaimerLocale, dto.userText);
         const retryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
         citations = retryExtractionResult.citations;
         let retryOrphanCount = retryExtractionResult.orphanCount;
@@ -2303,7 +2533,12 @@ export class ChatService {
               data: {
                 sessionId: dto.sessionId,
                 role: "assistant",
-                text: appendDisclaimer(clarifyingQuestion),
+                text: appendDisclaimer(
+                  clarifyingQuestion,
+                  disclaimerLocale,
+                  false,
+                  dto.userText
+                ),
                 safetyClassification: "normal",
                 kbDocIds: [],
                 latencyMs: Date.now() - started,
@@ -2338,7 +2573,8 @@ export class ChatService {
       const phase3Verification = this.outputVerifier.quickVerify(
         responseText,
         evidenceChunks,
-        dto.userText
+        dto.userText,
+        disclaimerLocale
       );
       if (phase3Verification.fixedContent) {
         responseText = phase3Verification.fixedContent;
@@ -2363,6 +2599,8 @@ export class ChatService {
           kbDocIds,
           evidenceQuality: gateResult.quality,
           evidenceGatePassed: true,
+          locale: disclaimerLocale,
+          userText: dto.userText,
         }
       );
 
@@ -2449,7 +2687,7 @@ export class ChatService {
 
       const assistant = await this.persistAssistantMessage(
         dto.sessionId, responseText, [], [],
-        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false }
+        { safetyClassification: "normal", latencyMs: Date.now() - started, kbDocIds: [], evidenceQuality: "insufficient", evidenceGatePassed: false, locale: disclaimerLocale, userText: dto.userText }
       );
       await this.analytics.emit("symptom_soft_redirect", { intent: intentResult.intent }, dto.sessionId);
 
@@ -2479,7 +2717,7 @@ export class ChatService {
         dto.userText,
         evidenceChunks,
         false,
-        { emotionalState, cancerType: sessionCancerType, patientState },
+        { emotionalState, cancerType: turnCancerType, patientState },
         undefined,
         obsTrace?.id
       ),
@@ -2512,7 +2750,7 @@ export class ChatService {
           dto.userText,
           evidenceChunks,
           false,
-          { emotionalState, cancerType: sessionCancerType, patientState },
+          { emotionalState, cancerType: turnCancerType, patientState },
           undefined,
           obsTrace?.id
         );
@@ -2566,6 +2804,8 @@ export class ChatService {
             evidenceQuality: gateResult.quality,
             evidenceGatePassed: false,
             abstentionReason: "citation_validation_failed",
+            locale: disclaimerLocale,
+            userText: dto.userText,
           }
         );
 
@@ -2611,6 +2851,8 @@ export class ChatService {
         kbDocIds,
         evidenceQuality: gateResult.quality,
         evidenceGatePassed: true,
+        locale: disclaimerLocale,
+        userText: dto.userText,
       }
     );
 
@@ -2668,6 +2910,35 @@ export class ChatService {
    * standard terms that users expect for a given cancer type.
    * This is a deterministic safety net — no LLM call needed.
    */
+  /**
+   * Issue #170: drop evidence whose source document is about a different
+   * disease site than the one the user's message names. Zero chunks left is the
+   * intended safe failure — the evidence gate then abstains instead of letting
+   * lung content answer a mouth-cancer question.
+   */
+  private scopeEvidenceToAskedSites<T extends { chunkId?: string; docId?: string; document?: { title?: string | null } | null }>(
+    chunks: T[],
+    askedSites: string[],
+    sessionId: string,
+    stage: string
+  ): T[] {
+    if (!chunks || chunks.length === 0 || askedSites.length === 0) return chunks;
+    const { kept, dropped } = scopeChunksToAskedSites(chunks, askedSites);
+    if (dropped.length > 0) {
+      this.logger.log({
+        event: "disease_site_scope_applied",
+        sessionId,
+        stage,
+        askedSites,
+        kept: kept.length,
+        dropped: dropped.length,
+        // Ids only — no query text (it can be the patient's own words).
+        droppedDocIds: Array.from(new Set(dropped.map((c) => c.docId))).slice(0, 6),
+      });
+    }
+    return kept;
+  }
+
   private injectEssentialTermsIfMissing(responseText: string, cancerType: string | null, queryType: string): string {
     if (!cancerType) return responseText;
 
@@ -2718,7 +2989,17 @@ export class ChatService {
     };
 
     const cancerKey = cancerType.toLowerCase();
-    const cancerTerms = essentialTerms[cancerKey] || [];
+
+    // Disease-consistency guard (issue #175): never splice cancer X's notes into
+    // an answer that is about cancer Y. If the answer names cancer types and the
+    // requested one is not among them, the type we were handed is stale/wrong —
+    // drop the disease-specific notes. The universal (disease-agnostic) notes
+    // below are still safe to add.
+    const typesNamedInResponse = detectCancerTypes(responseText);
+    const responseIsAboutAnotherCancer =
+      typesNamedInResponse.length > 0 && !typesNamedInResponse.includes(cancerKey);
+
+    const cancerTerms = responseIsAboutAnotherCancer ? [] : (essentialTerms[cancerKey] || []);
 
     // Check universal terms that match the current query type
     const applicableUniversalTerms = universalTerms.filter(t =>
@@ -2749,6 +3030,35 @@ export class ChatService {
 
     // Fallback: append at end
     return responseText + addendum;
+  }
+
+  /**
+   * Issue #126: evidence applicability by scenario. A question about pregnancy
+   * that does not ask about breastfeeding gets the lactation sections cut out of
+   * its evidence (verbatim section removal — no text is written), and chunks
+   * that are only about lactation are dropped.
+   */
+  private scopeEvidenceToScenario<T extends { chunkId: string; docId?: string; content: string; document?: { title?: string | null } | null }>(
+    chunks: T[],
+    userText: string,
+    sessionId: string,
+    stage: string
+  ): T[] {
+    if (!chunks || chunks.length === 0) return chunks;
+    const result = scopeEvidenceToPregnancyScenario(chunks, userText);
+    if (result.trimmedChunkIds.length > 0 || result.droppedChunkIds.length > 0) {
+      this.logger.log({
+        event: "scenario_section_filter_applied",
+        scenario: "pregnancy_not_nursing",
+        sessionId,
+        stage,
+        // Ids only — no query text (it can be the patient's own words).
+        trimmedChunkIds: result.trimmedChunkIds.slice(0, 6),
+        droppedChunkIds: result.droppedChunkIds.slice(0, 6),
+        kept: result.chunks.length,
+      });
+    }
+    return result.chunks;
   }
 
   private passesIdentifyRubric(text: string): { ok: boolean; missing: string[] } {
@@ -2806,10 +3116,21 @@ export class ChatService {
    * Reapply essential-term / completeness fallback after any regeneration that replaces responseText.
    * Call after identify regeneration and citation regeneration so injected terms are not lost.
    */
-  private applyEssentialTermFallback(responseText: string, extraction: StructuredInfo, queryType: string): string {
+  private applyEssentialTermFallback(
+    responseText: string,
+    extraction: StructuredInfo,
+    queryType: string,
+    locale?: string | null,
+    userText?: string
+  ): string {
     const completenessResult = this.structuredExtractor.checkCompleteness(responseText, extraction, queryType);
     if (completenessResult.meetsPolicy) return responseText;
-    const fallbackContent = this.structuredExtractor.generateFallbackContent(completenessResult.missing, extraction);
+    // The block is written in the language of the body it is spliced into (#186).
+    const fallbackContent = this.structuredExtractor.generateFallbackContent(
+      completenessResult.missing,
+      extraction,
+      resolveFallbackLocale(locale, userText, responseText)
+    );
     if (!fallbackContent) return responseText;
     const insertionPatterns = [
       /(\n\n\*\*Questions to Ask Your Doctor:\*\*)/i,
@@ -3066,6 +3387,10 @@ export class ChatService {
       evidenceQuality?: string;
       evidenceGatePassed?: boolean;
       abstentionReason?: string;
+      /** Session/request locale — the disclaimer engine's only source of bh/mai. */
+      locale?: string | null;
+      /** The user's own message — language fallback when nothing else is conclusive. */
+      userText?: string;
     }
   ): Promise<{ id: string; text: string }> {
     // PHASE 2.5+: Ensure citation markers are present in response text for LLM judge compliance
@@ -3081,7 +3406,12 @@ export class ChatService {
     // Phase 1: Disclaimer Engine — auto-append to every response
     const isEmergencyResponse = options.safetyClassification === "red_flag" ||
       options.safetyClassification === "mental_health_crisis";
-    finalText = appendDisclaimer(finalText, undefined, isEmergencyResponse);
+    finalText = appendDisclaimer(
+      finalText,
+      options.locale,
+      isEmergencyResponse,
+      options.userText
+    );
 
     // Review Copilot — second-pass review before delivery
     const reviewCtx: ReviewContext = {
@@ -3156,7 +3486,10 @@ export class ChatService {
    *
    * Returns empty string if no results (LLM falls back to KB markdown only).
    */
-  private buildHospitalContextBlock(results: HospitalSearchResult[] | null): string {
+  private buildHospitalContextBlock(
+    results: HospitalSearchResult[] | null,
+    geography?: HospitalSearchGeography | null
+  ): string {
     if (!results || results.length === 0) return "";
 
     const regional = results.filter((h) => !h.national_referral);
@@ -3184,16 +3517,39 @@ export class ChatService {
         ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}`
         : "";
 
+      // Straight-line distance, rounded to the nearest 10km so the number
+      // never implies more precision than a locality-level geocode carries.
+      // No travel time is stated anywhere — the road route is longer and the
+      // journey depends on connections this data says nothing about (#103).
+      //
+      // Under 10km the figure is a bound, not a number. Many records are
+      // geocoded to city confidence, i.e. to the very coordinate the patient's
+      // city resolves to, so a same-city search measures exactly 0km — and the
+      // old `Math.max(10, …)` turned every one of those into "~10 km away",
+      // asserting a distance that was never measured (PR #148 review, P2).
+      const distance =
+        typeof h.distance_km === "number"
+          ? h.distance_km < 10
+            ? ` | within 10 km (straight-line)`
+            : ` | ~${Math.round(h.distance_km / 10) * 10} km away (straight-line)`
+          : "";
+
       return `[${i + 1}] ${h.name}${tier}
-  Type: ${h.type} | City: ${h.city}, ${h.state}
+  Type: ${h.type} | City: ${h.city}, ${h.state}${distance}
   Departments: ${depts || "Not specified"}
   PMJAY: ${pmjay} | NCG Member: ${ncg} | Cost: ${h.cost_tier || "Unknown"}${phone}${address}${navNotes}${notes}`;
     };
 
     const regionalBlock =
       regional.length > 0
-        ? `--- Regional / Nearby Centres ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
+        ? `--- ${this.regionalCentresHeading(geography)} ---\n${regional.map((h, i) => formatHospital(h, i)).join("\n\n")}`
         : "";
+
+    // Travel and distance guidance: one paragraph, placed before the list.
+    // Supersedes #159 (cross-border caveat) and #181 (straight-line distance).
+    //
+    // SCCF sign-off: Gautam Gauri, SCCF Director, 2026-09-30 (AGENTS.md §1.3).
+    const travelAndDistance = this.travelAndDistanceGuidance(geography, regional.length > 0);
 
     const nationalBlock =
       national.length > 0
@@ -3207,11 +3563,131 @@ The following hospitals are from the Suchi Navigator structured database (verifi
 
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
-When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from Bihar also travel to [TMH/AIIMS]."
+When national referral centres are listed, mention them naturally — e.g. "For complex or specialised care, patients from this region also travel to [TMH/AIIMS]."
 
-${combinedBlocks}
+${travelAndDistance ? `${travelAndDistance}\n\n` : ""}${combinedBlocks}
 
 MANDATORY: End your response with this exact sentence — "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment."
 === END HOSPITAL DATA ===`;
+  }
+
+  /**
+   * The travel-and-distance paragraph for the hospital block, by search rung.
+   * Empty on rungs where the centres really are local (`city`, `state`) or no
+   * location was given.
+   *
+   * - `distance`: the patient's city is geocoded and the whole pool is sorted
+   *   by km with no state rung (owner direction 2026-09-30: km order, state
+   *   does not matter). Order is not a ranking. Figures are straight-line, so
+   *   the model says "about N km" and that the road or rail journey is longer,
+   *   never a travel time and never the word "straight-line" (a literal
+   *   translation means nothing to a rural Hindi speaker). A centre across a
+   *   state line may not take the patient's card: West Bengal runs Swasthya
+   *   Sathi rather than PM-JAY, and it holds the nearest centres for Seemanchal.
+   *   So the model names the state and tells the patient to confirm, without
+   *   asserting acceptance unless the record says so.
+   * - `adjacent_state` / `unfiltered`: the city is known but not geocoded (1 of
+   *   46 table entries today), so there are no km figures. "The directory has
+   *   no cancer centre in X" replaces "no centre serves X directly", which can
+   *   read to a patient as "you cannot be treated".
+   *
+   * `STRAIGHT-LINE distance, already rounded` is matched by deploy preflight
+   * check 9 (.claude/commands/deploy.md) and must stay while the block renders
+   * kilometre figures.
+   */
+  private travelAndDistanceGuidance(
+    geography: HospitalSearchGeography | null | undefined,
+    hasRegional: boolean
+  ): string {
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+
+    if (geography?.stage === "distance") {
+      const order = hasRegional
+        ? `The nearest-centres list below is ordered by distance from ${city ?? "the patient's location"}, nearest first, regardless of state. Keep that order. It is not a ranking of quality or suitability; use each centre's Tier, Departments and Notes for that. `
+        : "";
+      const otherState = state ? `a state other than ${state}` : "a state other than the patient's own";
+      const scheme = state ? `${state} state scheme` : "state scheme";
+      return `${order}Each distance is a STRAIGHT-LINE distance, already rounded. If you mention one, say "about N km" (or "within 10 km") and add that the road or rail journey is longer; do not use the word "straight-line" with the patient. NEVER state or estimate a travel time, a road distance, or a journey duration. For any centre in ${otherState}, name its state and tell the patient to confirm with that hospital, before travelling, whether their PM-JAY card or ${scheme} is accepted there. Do not say whether it will or will not be accepted unless that centre's PMJAY field or Navigation notes say so.`;
+    }
+
+    if (hasRegional && (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")) {
+      const where = city ?? state ?? "the patient's stated location";
+      return `The directory has no cancer centre in ${where}. The centres listed below are in other districts or states and may involve significant travel. Do NOT describe them as "nearby" or "close by", and do NOT state or estimate a travel time or distance.`;
+    }
+
+    return "";
+  }
+
+  /**
+   * Heading for the regional block, stated in terms of what the search actually
+   * found rather than asserting proximity.
+   *
+   * The old heading was a flat `Regional / Nearby Centres`. Once #95's fallback
+   * chain widened the candidate set instead of returning nothing, that heading
+   * became false at the adjacent-state and unfiltered rungs: a Darbhanga query
+   * that widens into West Bengal would present Siliguri or Kolkata — 300–400km
+   * away — as "nearby", and a Jaipur query that matches no rung at all would
+   * present the entire East-India pool the same way. The stage is known at
+   * search time, so the label is derived from it instead of guessed.
+   *
+   * No heading claims a distance or a travel time — the directory holds no
+   * coordinates, so any such claim would be invented (issue #103).
+   */
+  private regionalCentresHeading(geography?: HospitalSearchGeography | null): string {
+    return `${this.stageHeading(geography)}${this.capabilityLabel(geography)}`;
+  }
+
+  /**
+   * Factual suffix for the regional heading when the search required a
+   * treatment the directory has nowhere in the regional pool.
+   *
+   * NOT the mechanism that keeps incapable centres away from a patient — that
+   * is structural and lives in the directory. `searchHospitalsWithGeography()`
+   * now withholds those rows to `HospitalSearchOutcome.nonCapableRegional`, so
+   * on the planner path `regional` is empty whenever `capabilityUnavailable` is
+   * set and this suffix never renders (PR #148 review, P0). It remains as a
+   * belt-and-braces label for any caller that hands this method rows of its
+   * own: a data label on a list, in the same register as the stage headings,
+   * stating what the search found and asserting nothing about how to answer.
+   */
+  private capabilityLabel(geography?: HospitalSearchGeography | null): string {
+    if (geography?.capabilityUnavailable !== true) return "";
+    const needs = (geography.requiredDepartments ?? [])
+      .map((d) => d.replace(/_/g, " "))
+      .join(", ");
+    return needs
+      ? ` — no centre listed here offers ${needs}`
+      : " — no centre listed here offers the treatment asked about";
+  }
+
+  /** The heading proper, derived from the rung that produced the candidates. */
+  private stageHeading(geography?: HospitalSearchGeography | null): string {
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+
+    switch (geography?.stage) {
+      // The patient's city is geocoded, so the list is ordered by real
+      // straight-line distance and each line carries its own kilometre figure.
+      case "distance":
+        return city ? `Nearest cancer centres to ${city}` : "Nearest cancer centres";
+      // Hospitals in the city the patient named.
+      case "city":
+        return city ? `Centres in ${city}` : "Cancer centres";
+      // No centre in that city; these are elsewhere in the same state.
+      case "state":
+        return state ? `Centres in ${state}` : "Cancer centres";
+      // Nothing in the state either — these are across a state border.
+      case "adjacent_state":
+        return "Centres in neighbouring states — may involve significant travel";
+      // No geographic match at any rung; this is the unfiltered pool.
+      case "unfiltered":
+        return city
+          ? `Major cancer centres (none found near ${city}) — travel distance not established`
+          : "Major cancer centres — travel distance not established";
+      // No location was supplied at all, so nothing was filtered.
+      default:
+        return "Major cancer centres";
+    }
   }
 }

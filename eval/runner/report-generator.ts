@@ -1,4 +1,5 @@
-import { EvaluationResult, EvaluationReport, EvaluationConfig, Rubric } from "../types";
+import { EvaluationResult, EvaluationReport, EvaluationConfig, Rubric, LLMJudgeResult } from "../types";
+import { isUnscored, resolveCaseUnscored, summarizeUnscoredReasons } from "./judge-errors";
 
 /**
  * Reports are uploaded as CI artifacts (eval-tier1.yml) and committed to the
@@ -27,9 +28,15 @@ export class ReportGenerator {
       selectedCount: number;
     }
   ): EvaluationReport {
+    // Three mutually exclusive buckets (issue #110): passed / failed / unscored.
+    // An unscored case had at least one judge check with no verdict; it is a
+    // statement about the judge, not about the answer, so it never counts as
+    // a failure — and never counts as a pass either.
     const passed = results.filter((r) => r.passed);
-    const failed = results.filter((r) => !r.passed);
+    const unscored = results.filter((r) => !r.passed && this.determineUnscored(r));
+    const failed = results.filter((r) => !r.passed && !this.determineUnscored(r));
     const skipped = results.filter((r) => r.error?.includes("skipped"));
+    const judge = this.summarizeJudge(results);
 
     const scores = results
       .filter((r) => r.score !== undefined)
@@ -98,14 +105,74 @@ export class ReportGenerator {
         passed: passed.length,
         failed: failed.length,
         skipped: skipped.length,
+        unscored: unscored.length,
         averageScore,
         executionTimeMs: totalExecutionTime,
         retrievalQuality,
         citationIntegrity,
+        judge,
       },
       results,
       failures: failed,
     };
+  }
+
+  /**
+   * A case is unscored when its failure rests entirely on judge checks that
+   * rendered no verdict (issue #110). Rendered evidence outranks a missing
+   * verdict — see resolveCaseUnscored() — so a case that failed a required
+   * deterministic check, or a required judge check that really did answer
+   * "ok: false", stays a genuine failure even if another check went unscored.
+   *
+   * The evaluator has the rubric and records its decision on `result.unscored`;
+   * that decision is authoritative here. `rubric` is only needed when
+   * classifying results that did not come from this process (a report read
+   * back from disk, a merged run).
+   */
+  determineUnscored(result: EvaluationResult, rubric?: Rubric): boolean {
+    return resolveCaseUnscored(result, requiredLlmCheckIds(rubric));
+  }
+
+  /**
+   * Judge-availability summary for the run — an infrastructure axis, not a
+   * quality one. NOTE `unscoredCases` here counts every case the judge left
+   * with >=1 verdict missing, which is a superset of `summary.unscored` (the
+   * outcome bucket): a case can carry an unscored check and still be a real
+   * failure on the checks that did render. CI thresholds the availability
+   * number; the outcome bucket is what never counts as a failure.
+   */
+  summarizeJudge(results: EvaluationResult[]): EvaluationReport["summary"]["judge"] {
+    const all: LLMJudgeResult[] = results.flatMap((r) => r.llmJudgeResults ?? []);
+    const unscoredChecks = all.filter(isUnscored);
+    const unscoredCaseIds = results
+      .filter((r) => (r.llmJudgeResults ?? []).some(isUnscored))
+      .map((r) => r.testCaseId);
+    const reasons: Record<string, number> = {};
+    for (const r of unscoredChecks) {
+      const label = r.error?.split(":")[0]?.trim() || r.unscoredReason || "unavailable";
+      reasons[label] = (reasons[label] ?? 0) + 1;
+    }
+    const status: NonNullable<EvaluationReport["summary"]["judge"]>["status"] =
+      all.length === 0
+        ? "not_run"
+        : unscoredChecks.length === 0
+          ? "active"
+          : unscoredChecks.length === all.length
+            ? "unavailable"
+            : "degraded";
+    return {
+      status,
+      scoredChecks: all.length - unscoredChecks.length,
+      unscoredChecks: unscoredChecks.length,
+      unscoredCases: unscoredCaseIds.length,
+      unscoredCaseIds,
+      reasons,
+    };
+  }
+
+  /** Human-readable reason for an unscored case, e.g. "rate_limited (HTTP 429) ×6". */
+  unscoredReasonFor(result: EvaluationResult): string | undefined {
+    return summarizeUnscoredReasons(result.llmJudgeResults);
   }
 
   /**
@@ -126,11 +193,14 @@ export class ReportGenerator {
     }
 
     // Process LLM judge results
-    // PHASE 2.5+: Skipped checks are excluded from both numerator and denominator
+    // Unscored checks (no verdict) are excluded from numerator AND denominator:
+    // the score is "over the checks that rendered a verdict". On its own that
+    // would inflate a broken judge into a higher score (#74) — which is why
+    // determinePass() refuses to pass a case with any unscored check and the
+    // report counts such cases separately (issue #110).
     if (result.llmJudgeResults) {
       for (const judgeResult of result.llmJudgeResults) {
-        // Skip checks that were skipped (e.g., LLM judge not available)
-        if (judgeResult.skipped) {
+        if (isUnscored(judgeResult)) {
           continue; // Excluded from scoring entirely
         }
         const weight = weights[judgeResult.checkId] || 0;
@@ -161,19 +231,21 @@ export class ReportGenerator {
       return false;
     }
 
+    // Issue #110: a case whose judge rendered no verdict cannot be declared a
+    // pass — the rubric was not fully evaluated. It is not a failure either;
+    // generateReport() files it under `unscored`. (Pre-#110 this returned
+    // "not a failure" for skipped checks and let the case pass on the
+    // remaining checks — the fail-open inflation #74 measured.)
+    if (result.llmJudgeResults?.some(isUnscored)) {
+      return false;
+    }
+
     // Check if all required LLM checks passed
-    // PHASE 2.5+: Skipped checks don't count as failures (excluded from evaluation)
     if (result.llmJudgeResults) {
-      const requiredLLMFailed = result.llmJudgeResults.some(
-        (r) => {
-          // Skipped checks are excluded from required check validation
-          if (r.skipped) {
-            return false; // Not a failure
-          }
-          const check = rubric.llm_judge?.checks.find((c) => c.id === r.checkId);
-          return check?.required && !r.passed;
-        }
-      );
+      const requiredLLMFailed = result.llmJudgeResults.some((r) => {
+        const check = rubric.llm_judge?.checks.find((c) => c.id === r.checkId);
+        return check?.required && !r.passed;
+      });
       if (requiredLLMFailed) {
         return false;
       }
@@ -201,6 +273,10 @@ export class ReportGenerator {
     lines.push(`Total Tests: ${report.summary.total}`);
     lines.push(`Passed: ${report.summary.passed} (${((report.summary.passed / report.summary.total) * 100).toFixed(1)}%)`);
     lines.push(`Failed: ${report.summary.failed} (${((report.summary.failed / report.summary.total) * 100).toFixed(1)}%)`);
+    const unscoredCount = report.summary.unscored ?? 0;
+    if (unscoredCount > 0) {
+      lines.push(`Unscored (judge unavailable): ${unscoredCount} (${((unscoredCount / report.summary.total) * 100).toFixed(1)}%) — not counted as failures`);
+    }
     lines.push(`Skipped: ${report.summary.skipped}`);
     lines.push(`Average Score: ${(report.summary.averageScore * 100).toFixed(1)}%`);
     lines.push(`Total Execution Time: ${(report.summary.executionTimeMs / 1000).toFixed(2)}s`);
@@ -231,28 +307,43 @@ export class ReportGenerator {
       }
     }
 
-    // LLM Judge status summary
+    // LLM Judge status summary (infrastructure axis — issue #110)
     const allLlmResults = report.results.flatMap(r => r.llmJudgeResults || []);
     if (allLlmResults.length > 0) {
-      const skippedResults = allLlmResults.filter(r => r.skipped);
-      const passedResults = allLlmResults.filter(r => r.passed && !r.skipped);
-      const failedResults = allLlmResults.filter(r => !r.passed && !r.skipped);
+      const unscoredResults = allLlmResults.filter(isUnscored);
+      const passedResults = allLlmResults.filter(r => r.passed && !isUnscored(r));
+      const failedResults = allLlmResults.filter(r => !r.passed && !isUnscored(r));
+      const judge = report.summary.judge ?? this.summarizeJudge(report.results);
 
       lines.push("");
       lines.push("LLM JUDGE STATUS");
       lines.push("-".repeat(60));
 
-      if (skippedResults.length === allLlmResults.length) {
-        // All skipped - extract reason from first error
-        const reason = skippedResults[0]?.error?.split(':')[0] || 'unavailable';
-        lines.push(`Status: SKIPPED (${reason})`);
-        lines.push(`Checks skipped: ${skippedResults.length}`);
-      } else if (skippedResults.length > 0) {
-        lines.push(`Status: PARTIAL`);
-        lines.push(`Passed: ${passedResults.length}, Failed: ${failedResults.length}, Skipped: ${skippedResults.length}`);
+      if (unscoredResults.length === allLlmResults.length) {
+        lines.push(`Status: UNAVAILABLE — no check received a verdict`);
+        lines.push(`Checks unscored: ${unscoredResults.length}`);
+      } else if (unscoredResults.length > 0) {
+        lines.push(`Status: DEGRADED`);
+        lines.push(`Passed: ${passedResults.length}, Failed: ${failedResults.length}, Unscored: ${unscoredResults.length}`);
       } else {
         lines.push(`Status: ACTIVE`);
         lines.push(`Passed: ${passedResults.length}, Failed: ${failedResults.length}`);
+      }
+      if (judge && judge.unscoredChecks > 0) {
+        const reasons = Object.entries(judge.reasons).map(([k, v]) => `${k}=${v}`).join(", ");
+        lines.push(`Unscored reasons: ${reasons}`);
+        lines.push(`Unscored cases (${judge.unscoredCases}): ${judge.unscoredCaseIds.join(", ")}`);
+      }
+    }
+
+    // Unscored cases are listed on their own — they are NOT failures
+    const unscoredCases = report.results.filter((r) => this.determineUnscored(r));
+    if (unscoredCases.length > 0) {
+      lines.push("");
+      lines.push("UNSCORED CASES (judge unavailable — not quality failures)");
+      lines.push("-".repeat(60));
+      for (const c of unscoredCases) {
+        lines.push(`  ${c.testCaseId}: ${c.unscoredReason ?? this.unscoredReasonFor(c) ?? "judge rendered no verdict"}`);
       }
     }
 
@@ -273,7 +364,7 @@ export class ReportGenerator {
           }
         }
 
-        const failedLLM = failure.llmJudgeResults?.filter((r) => !r.passed);
+        const failedLLM = failure.llmJudgeResults?.filter((r) => !r.passed && !isUnscored(r));
         if (failedLLM && failedLLM.length > 0) {
           lines.push(`  Failed LLM Checks:`);
           for (const check of failedLLM) {
@@ -302,3 +393,8 @@ export class ReportGenerator {
   }
 }
 
+/** Ids of the rubric's *required* LLM-judge checks, for outcome precedence. */
+function requiredLlmCheckIds(rubric?: Rubric): ReadonlySet<string> | undefined {
+  if (!rubric?.llm_judge?.checks) return undefined;
+  return new Set(rubric.llm_judge.checks.filter((c) => c.required).map((c) => c.id));
+}

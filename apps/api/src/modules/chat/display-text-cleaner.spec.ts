@@ -93,6 +93,128 @@ describe('cleanResponseForDisplay', () => {
       const text = 'Body of the answer.\n\n**Sources:** National Cancer Institute';
       expect(cleanResponseForDisplay(text)).toBe(text);
     });
+
+    /**
+     * Issue #160. The sources block is appended by the composite/escalated path
+     * and the Disclaimer Engine appends its footer AFTER it, so the persisted
+     * text is `...answer \n\n**Sources:** [markers] \n\n---\n*footer*`. The
+     * strip must take the block and nothing else: eating the paragraph break
+     * glues the emergency footer to the last sentence and ships the raw `---`,
+     * because markdown only renders a `---` that is alone on its line.
+     */
+    describe('the paragraph break before the appended disclaimer (issue #160)', () => {
+      const EMERGENCY_FOOTER =
+        '\n\n---\n*If this is a medical emergency, call 112 or 108 immediately. ' +
+        'This information does not replace emergency medical care.*';
+      const ANSWER = 'Have you noticed nipple discharge or changes in breast size/shape?';
+
+      it('keeps the break when a Sources block sits between the answer and the footer', () => {
+        const withSources =
+          ANSWER +
+          '\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).toBe(ANSWER + EMERGENCY_FOOTER);
+        expect(out).not.toContain('breast size/shape?---');
+        expect(out).toContain('\n\n---\n');
+      });
+
+      it('matches the control: the same text with no Sources block is unchanged', () => {
+        const out = cleanResponseForDisplay(ANSWER + EMERGENCY_FOOTER);
+
+        expect(out).toBe(ANSWER + EMERGENCY_FOOTER);
+      });
+
+      it('keeps the break for the standard disclaimer too, not only the emergency one', () => {
+        const standard =
+          '\n\n---\n*This information is for general educational purposes only and is not a ' +
+          'substitute for professional medical advice, diagnosis, or treatment.*';
+        const withSources =
+          'Therefore, I cannot answer your question based on the evidence given.' +
+          '\n\n**Sources:** [citation:doc1:chunk1]' +
+          standard;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).toBe(
+          'Therefore, I cannot answer your question based on the evidence given.' + standard,
+        );
+        expect(out).not.toContain('given.---');
+      });
+
+      it('still strips a Sources block whose markers are on their own lines', () => {
+        const withSources =
+          ANSWER +
+          '\n\n**Sources:**\n[citation:doc1:chunk1]\n[citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(withSources);
+
+        expect(out).not.toContain('Sources:');
+        expect(out).not.toContain('citation');
+        expect(out).toContain('\n\n---\n');
+      });
+
+      /**
+       * The shape `chat.service` actually persists on the escalated path, not a
+       * one-line reconstruction of it: the S2 escalation block, the literal
+       * `ESCALATION_RAG_SEPARATOR` (`chat.service.ts`), the grounded half with
+       * its own inline markers, the appended Sources block, then the footer.
+       * Pinned here because the bold escalation header runs through
+       * `EMPTY_BOLD_PATTERN` in the same pass — that pattern is the one that ate
+       * a line break in #135, and #160 is the same family one step later.
+       */
+      it('keeps every break in the composite escalated reply', () => {
+        const escalation = '**This could be serious.**\n\n**Call for help NOW:**\n- Call 108';
+        const separator = '\n\n**Information from trusted sources:**\n\n';
+        const grounded =
+          'Breast changes have many causes [citation:doc1:chunk1].\n' + ANSWER;
+        const persisted =
+          escalation +
+          separator +
+          grounded +
+          '\n\n**Sources:** [citation:doc1:chunk1] [citation:doc2:chunk2]' +
+          EMERGENCY_FOOTER;
+
+        const out = cleanResponseForDisplay(persisted);
+
+        expect(out).toBe(
+          escalation +
+            separator +
+            'Breast changes have many causes.\n' +
+            ANSWER +
+            EMERGENCY_FOOTER,
+        );
+        // The escalation header keeps its own break (#135) and the footer keeps
+        // the one before it (#160).
+        expect(out).toContain('serious.**\n\n**Call for help NOW:**');
+        expect(out).toContain('\n\n---\n');
+        expect(out).not.toContain('breast size/shape?---');
+      });
+
+      /**
+       * The WhatsApp report on #160 was a Hindi turn, and the disclaimer now
+       * arrives in the language of the reply (#162/#163). Devanagari has broken
+       * text cleaning in this repo before — `\b` is ASCII-only — so the break in
+       * front of a Devanagari disclaimer gets its own guard.
+       */
+      it('keeps the break in front of a Devanagari disclaimer', () => {
+        const hindiAnswer = 'स्तन कैंसर की जांच ४० वर्ष की आयु से शुरू होती है।';
+        const hindiDisclaimer =
+          '\n\n---\n*यह जानकारी केवल सामान्य शैक्षिक उद्देश्यों के लिए है और पेशेवर ' +
+          'चिकित्सा सलाह, निदान या उपचार का विकल्प नहीं है।*';
+        const persisted =
+          hindiAnswer + '\n\n**Sources:** [citation:doc1:chunk1]' + hindiDisclaimer;
+
+        const out = cleanResponseForDisplay(persisted);
+
+        expect(out).toBe(hindiAnswer + hindiDisclaimer);
+        expect(out).toContain('\n\n---\n');
+        expect(out).not.toContain('है।---');
+      });
+    });
   });
 
   describe('Devanagari punctuation debris (issue #81, finding 3)', () => {
@@ -129,6 +251,67 @@ describe('cleanResponseForDisplay', () => {
       );
       expect(out).toBe('कीमोथेरेपी के दौरान संक्रमण का खतरा बढ़ सकता है');
       expect(out).not.toContain('kb_hi_chemo_v1');
+    });
+  });
+
+  describe('escalated reply header keeps its line break (issue #135)', () => {
+    // Exact `safety.bannerText` from live prod, 2026-09-13, seed 1789272008,
+    // q02 messageId c8f0e493-…; the bubble's `responseText` in the same payload
+    // was 6 characters shorter: `**\n\n**` between the two header lines was gone.
+    const bannerTextFromRun =
+      '⚠️ **This sounds like a medical emergency.**\n\n**Call for help NOW:**\n• **112** — National emergency number (police, fire, ambulance)\n• **108** — Free ambulance service (available in most states)\n• **102** — Medical emergency helpline\n\n**While waiting for help:**\n• Do not move the person unnecessarily\n• If breathing is difficult, keep them sitting upright\n• If there is severe bleeding, apply gentle pressure with a clean cloth\n• Keep the person calm and warm\n• Note the time symptoms started — doctors will need this\n\n**Bring to the hospital:**\n• Aadhaar card / ID\n• Current medications list\n• Ayushman Bharat (PMJAY) card if available\n• Any recent medical reports\n\n**Important:** I am an information assistant, not a doctor. This is not a diagnosis. Please get emergency medical help immediately.\n\n---\n*If this is a medical emergency, call 112 or 108 immediately. This information does not replace emergency medical care.*';
+
+    it('leaves the critical escalation text byte-identical (no markers to strip)', () => {
+      expect(cleanResponseForDisplay(bannerTextFromRun)).toBe(bannerTextFromRun);
+    });
+
+    it('keeps "medical emergency." and "Call for help NOW:" on separate lines', () => {
+      const out = cleanResponseForDisplay(bannerTextFromRun);
+
+      expect(out).toContain('medical emergency.**\n\n**Call for help NOW:**');
+      expect(out).not.toContain('medical emergency.Call for help NOW:');
+    });
+
+    it('still strips a genuinely empty bold marker on a single line', () => {
+      expect(cleanResponseForDisplay('Some text ** ** more text.')).toBe('Some text more text.');
+    });
+  });
+
+  describe('knowledge-base image markup (issue #173)', () => {
+    it('removes the source page image a chunk carried into the bullet', () => {
+      const text =
+        "- Emotions and Cancer![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/xnrzdm211/files/cgov_image/2023-11/iStock-1301700665.jpg) When you have cancer, you may feel a wide range of emotions.";
+
+      const cleaned = cleanResponseForDisplay(text);
+
+      expect(cleaned).not.toContain('![');
+      expect(cleaned).not.toContain('/sites/g/files/');
+      expect(cleaned).not.toContain('Sick woman lying in mans arms');
+      expect(cleaned).toContain('Emotions and Cancer');
+      expect(cleaned).toContain('you may feel a wide range of emotions.');
+    });
+
+    it('removes an image whose URL was cut off, without eating the next line', () => {
+      const text = [
+        '**Coping Strategies**',
+        "- Emotions and Cancer![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/xnrzdm211/files/iStock-1...",
+        '- Coping and support for young people: Cancer can create a sense of isolation.',
+      ].join('\n');
+
+      const cleaned = cleanResponseForDisplay(text);
+
+      expect(cleaned).not.toContain('![');
+      expect(cleaned).not.toContain('/sites/g/files/');
+      expect(cleaned).toContain('**Coping Strategies**');
+      expect(cleaned).toContain(
+        '- Coping and support for young people: Cancer can create a sense of isolation.'
+      );
+    });
+
+    it('leaves an ordinary markdown link alone — only images go', () => {
+      const text =
+        'See [the Indian Cancer Society](https://www.indiancancersociety.org) for support groups.';
+      expect(cleanResponseForDisplay(text)).toBe(text);
     });
   });
 

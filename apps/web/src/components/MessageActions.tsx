@@ -5,12 +5,15 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 interface MessageActionsProps {
   messageText: string;
   audioUrl?: string | null;
+  /** False hides the thumbs for a reply that has no stored message to rate. */
+  showFeedback?: boolean;
   onFeedback?: (rating: "up" | "down") => void;
 }
 
 export const MessageActions: React.FC<MessageActionsProps> = ({
   messageText,
   audioUrl,
+  showFeedback = true,
   onFeedback
 }) => {
   const [copied, setCopied] = useState(false);
@@ -151,32 +154,34 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
           🔗 Share
         </button>
       )}
-      <div style={styles.feedbackGroup}>
-        <button
-          onClick={() => handleFeedback("up")}
-          style={{
-            ...styles.feedbackButton,
-            ...(feedbackGiven === "up" ? styles.feedbackButtonActive : {})
-          }}
-          aria-label="Thumbs up"
-          title="Helpful"
-          disabled={feedbackGiven !== null}
-        >
-          👍
-        </button>
-        <button
-          onClick={() => handleFeedback("down")}
-          style={{
-            ...styles.feedbackButton,
-            ...(feedbackGiven === "down" ? styles.feedbackButtonActive : {})
-          }}
-          aria-label="Thumbs down"
-          title="Not helpful"
-          disabled={feedbackGiven !== null}
-        >
-          👎
-        </button>
-      </div>
+      {showFeedback && (
+        <div style={styles.feedbackGroup}>
+          <button
+            onClick={() => handleFeedback("up")}
+            style={{
+              ...styles.feedbackButton,
+              ...(feedbackGiven === "up" ? styles.feedbackButtonActive : {})
+            }}
+            aria-label="Thumbs up"
+            title="Helpful"
+            disabled={feedbackGiven !== null}
+          >
+            👍
+          </button>
+          <button
+            onClick={() => handleFeedback("down")}
+            style={{
+              ...styles.feedbackButton,
+              ...(feedbackGiven === "down" ? styles.feedbackButtonActive : {})
+            }}
+            aria-label="Thumbs down"
+            title="Not helpful"
+            disabled={feedbackGiven !== null}
+          >
+            👎
+          </button>
+        </div>
+      )}
     </div>
   );
 };

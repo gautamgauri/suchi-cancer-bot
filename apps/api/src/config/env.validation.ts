@@ -42,10 +42,15 @@ export const envSchema = z.object({
   VOICE_WS_ENABLED: z.string().optional().default('false'),
   VOICE_WS_IDLE_TIMEOUT_MS: z.coerce.number().optional().default(30000),
   VOICE_WS_MAX_SESSION_MS: z.coerce.number().optional().default(60000),
+  // YouTube transcript ingestion (issue #91). Opt-in ONLY: POST
+  // /v1/admin/youtube/ingest writes KB documents from uncorrected machine
+  // captions, which must happen in a repo checkout and go through review.
+  // Both Cloud Build pipelines set this to "false" explicitly.
+  YOUTUBE_INGEST_ENABLED: z.string().optional().default('false'),
   // Review Copilot
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
   // Social post publishing (all optional — platforms without credentials are silently skipped)
-  SUCHI_SITE_URL:           z.string().optional().default("https://suchicancercare.org"),
+  SUCHI_SITE_URL:           z.string().optional().default("https://suchitracancercare.org"),
   SOCIAL_APPROVAL_SECRET:   z.string().optional(),
   DISTRIBUTION_APPROVAL_SECRET: z.string().optional(), // HMAC key for one-click distribution approve/reject links
   // Meta (Facebook + Instagram)

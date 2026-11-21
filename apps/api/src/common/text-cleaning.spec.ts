@@ -11,11 +11,33 @@
 
 import {
   cleanForSpeech,
+  stripCitationDebris,
   stripCitationMarkers,
   stripResidualMarkdownForSpeech,
 } from "./text-cleaning";
 
 const KB_ID = "kb_en_nci_types_breast_diagnosis_breast_cancer_biomarker_tests_v1";
+
+describe("stripCitationDebris — empty bold markers (issue #135)", () => {
+  it("still removes a genuinely empty bold span left on one line", () => {
+    expect(stripCitationDebris("Important: ** ** see a doctor.")).toBe("Important: see a doctor.");
+    expect(stripCitationDebris("Important: **** see a doctor.")).toBe("Important: see a doctor.");
+  });
+
+  it("does NOT eat the line break between two adjacent bold lines", () => {
+    // Live prod 2026-09-13 (seed 1789272008, q02): the closing `**` of the
+    // header, the paragraph break, and the opening `**` of the next line were
+    // matched as one "empty bold" and deleted, gluing the two lines together.
+    const twoBoldLines = "⚠️ **This sounds like a medical emergency.**\n\n**Call for help NOW:**";
+
+    expect(stripCitationDebris(twoBoldLines)).toBe(twoBoldLines);
+  });
+
+  it("does NOT eat a single line break between two bold lines either", () => {
+    const text = "**Line one.**\n**Line two:**";
+    expect(stripCitationDebris(text)).toBe(text);
+  });
+});
 
 describe("stripCitationMarkers", () => {
   it("removes a complete marker", () => {

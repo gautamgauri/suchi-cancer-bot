@@ -22,7 +22,6 @@
   /* Action color - Gold (primary CTAs) */
   --color-accent: #F4B41A;
   --color-accent-soft: rgba(244, 180, 26, 0.08);
-  --color-accent-glow: rgba(244, 180, 26, 0.55);
   --color-accent-hover: #D9A218;
 
   /* Interactive color - Teal (links, focus, hover) */
@@ -268,24 +267,7 @@ a:hover {
 .nav-logo-mark {
   width: 34px;
   height: 34px;
-  border-radius: var(--radius-full);
-  background: conic-gradient(from 210deg, #f4b41a, #ff7d6b, #ff4b6b, #4de2c1, #f4b41a);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 2px rgba(8, 10, 22, 0.9), 0 0 20px var(--color-accent-glow);
   flex-shrink: 0;
-}
-
-.nav-logo-mark::after {
-  content: "";
-  width: 72%;
-  height: 72%;
-  border-radius: inherit;
-  background: radial-gradient(circle at 30% 20%, #fff, #fef6e3 45%, #f4b41a 100%);
-  mix-blend-mode: screen;
-  opacity: 0.95;
 }
 
 .nav-logo-text {
@@ -1327,8 +1309,7 @@ a:hover {
 .footer-logo-mark {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-full);
-  background: conic-gradient(from 210deg, #f4b41a, #ff7d6b, #ff4b6b, #4de2c1, #f4b41a);
+  flex-shrink: 0;
 }
 
 .footer-logo-text {

@@ -23,6 +23,7 @@ export const CLUSTER_ORDER = [
   "citation-confidence",
   "safety",
   "execution-error",
+  "judge-unavailable",
   "quality",
 ] as const;
 
@@ -34,6 +35,9 @@ export interface ClusterCaseEntry {
   riskCategory: string;
   cancer?: string;
   passed: boolean;
+  /** Judge rendered no verdict — neither passed nor failed (issue #110) */
+  unscored: boolean;
+  unscoredReason?: string;
   score: number;
   retrievalPath: string;
   retrievedCount: number;
@@ -51,7 +55,10 @@ export interface FailureClusterReport {
   generatedAt: string;
   runIds: string[];
   totalCases: number;
+  /** Cases that failed on rendered checks; excludes unscored */
   failedCases: number;
+  /** Cases the judge could not score (issue #110) */
+  unscoredCases: number;
   clusters: Array<{
     cluster: string;
     count: number;
@@ -69,6 +76,8 @@ function toEntry(record: CaseEvaluationRecord): ClusterCaseEntry {
     riskCategory: record.riskCategory,
     cancer: record.cancer,
     passed: record.outcome.passed,
+    unscored: record.outcome.unscored === true,
+    unscoredReason: record.outcome.unscoredReason,
     score: record.outcome.score,
     retrievalPath: record.retrieval.retrievalPath,
     retrievedCount: record.retrieval.retrievedCount,
@@ -118,7 +127,8 @@ export function generateClusterReport(
     generatedAt: new Date().toISOString(),
     runIds: [...new Set(records.map((r) => r.runId))],
     totalCases: records.length,
-    failedCases: records.filter((r) => !r.outcome.passed).length,
+    failedCases: records.filter((r) => !r.outcome.passed && !r.outcome.unscored).length,
+    unscoredCases: records.filter((r) => r.outcome.unscored === true).length,
     clusters: orderedClusters.map((cluster) => {
       const clusterRecords = byCluster.get(cluster)!;
       return {
@@ -138,7 +148,9 @@ export function clusterReportToMarkdown(report: FailureClusterReport): string {
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push(`Runs: ${report.runIds.join(", ")}`);
   lines.push(
-    `Cases: ${report.totalCases} total, ${report.failedCases} failed, ${report.clusters.length} active clusters`
+    `Cases: ${report.totalCases} total, ${report.failedCases} failed` +
+      (report.unscoredCases > 0 ? `, ${report.unscoredCases} unscored (judge unavailable)` : "") +
+      `, ${report.clusters.length} active clusters`
   );
   lines.push("");
   lines.push("| Cluster | Cases | Case IDs |");
@@ -152,10 +164,14 @@ export function clusterReportToMarkdown(report: FailureClusterReport): string {
     lines.push(`## Cluster: ${c.cluster} (${c.count})`);
     lines.push("");
     for (const entry of c.cases) {
-      lines.push(
-        `### ${entry.testId} — ${entry.intent} [${entry.riskCategory}]${entry.passed ? " (passed, flagged)" : ""}`
-      );
+      const suffix = entry.passed
+        ? " (passed, flagged)"
+        : entry.unscored
+          ? " (unscored — judge unavailable)"
+          : "";
+      lines.push(`### ${entry.testId} — ${entry.intent} [${entry.riskCategory}]${suffix}`);
       if (entry.suiteFile) lines.push(`- Suite: \`${entry.suiteFile}\``);
+      if (entry.unscored) lines.push(`- Judge: ${entry.unscoredReason ?? "no verdict rendered"}`);
       lines.push(`- Score: ${(entry.score * 100).toFixed(1)}%`);
       lines.push(
         `- Retrieval path: ${entry.retrievalPath} (${entry.retrievedCount} chunks)` +

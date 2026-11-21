@@ -115,6 +115,48 @@ describe("AbstentionService", () => {
     ])("does not flag %p as urgent", (text) => {
       expect(service.hasUrgencyIndicators(text)).toBe(false);
     });
+
+    // ── #164: asking ABOUT an emergency is not reporting one ────────────────
+    //
+    // A bare `emergency|urgent|immediate|right now` pattern used to sit in this
+    // list, so every one of these escalated to the S2 template — "call 112 /
+    // 108" — and `end_conversation` closed the chat. Reproduced on production
+    // before the fix: the lump question below returned red_flag, and the same
+    // sentence without its final question returned a normal answer.
+    it.each([
+      "I found a new hard lump in my breast that wasn't there last week and it's painful. Is this an emergency?",
+      "Is this an emergency?",
+      "Is a headache an emergency?",
+      "When is a cough NOT an emergency?",
+      "what counts as an emergency during chemo",
+      // negation — the old pattern fired on these too
+      "I have a mild rash. This is not urgent, just curious.",
+      "this is not an emergency but I wanted to ask",
+      // our own KB phrases it this way; a user quoting it back used to escalate
+      "the website said a lump should be evaluated immediately by a doctor",
+    ])("does not escalate on the word alone: %p", (text) => {
+      expect(service.hasUrgencyIndicators(text)).toBe(false);
+    });
+
+    // The declaration still escalates — this is the half worth keeping.
+    it.each([
+      "this is an emergency",
+      "It is urgent, she is very weak",
+      "this is an emergency, please help",
+    ])("still flags a stated emergency: %p", (text) => {
+      expect(service.hasUrgencyIndicators(text)).toBe(true);
+    });
+
+    // Genuine emergencies are described by symptom, never by vocabulary, so
+    // none of these depend on the removed pattern.
+    it.each([
+      "she can't breathe properly and her face is swollen",
+      "my mother is bleeding heavily after surgery",
+      "he fainted this morning",
+      "fever during chemotherapy",
+    ])("still flags a described emergency: %p", (text) => {
+      expect(service.hasUrgencyIndicators(text)).toBe(true);
+    });
   });
 
   // ── Safe fallback response (LLM/evidence-gate failure path) ───────────────

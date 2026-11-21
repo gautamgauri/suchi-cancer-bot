@@ -222,14 +222,125 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(persistedUserText(prisma)).toBe("tell me about chemo");
   });
 
-  it("rule layer: neither Hinglish text trips the emergency fast path, safety rules or urgency guard (the #81 coverage gap — documented, not fixed here)", async () => {
+  it("rule layer: the benign Hinglish awareness question trips no emergency fast path, safety rule or urgency guard", async () => {
     const { chat, prisma } = await buildService({ channel: "whatsapp" });
-    for (const text of [HINGLISH_BENIGN, HINGLISH_RED_FLAG]) {
-      prisma.safetyEvent.create.mockClear();
-      const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: text });
-      // No rule-based escalation fired: no SafetyEvent row, and the reply is not red-flag classified.
-      expect(prisma.safetyEvent.create).not.toHaveBeenCalled();
-      expect(result.safety.classification).toBe("normal");
-    }
+    const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: HINGLISH_BENIGN });
+    // No rule-based escalation fired: no SafetyEvent row, and the reply is not red-flag classified.
+    expect(prisma.safetyEvent.create).not.toHaveBeenCalled();
+    expect(result.safety.classification).toBe("normal");
+  });
+
+  // #81: this used to be pinned as a documented coverage gap (classified
+  // "normal", served chemo-prep content). It now takes the emergency fast path.
+  it("rule layer: the Hinglish post-chemo bleeding + dizziness report escalates on the fast path (#81)", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "whatsapp" });
+    const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: HINGLISH_RED_FLAG });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.actions).toEqual(["show_emergency_banner", "end_conversation"]);
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ type: "emergency_fast_path_critical" }) }),
+    );
+    expect(result.responseText).toContain("112");
+    expect(result.responseText).toContain("108");
+    // Fast path: no retrieval, no generation.
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
+
+  // #81 / SCCF decision on #196: bleeding + dizziness with no heavy or
+  // won't-stop signal takes the URGENT fast path, not the critical one.
+  it("rule layer: plain Hinglish bleeding + dizziness (no heavy signal) escalates as urgent on the fast path (#81)", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "whatsapp" });
+    const text = "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain";
+    const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: text });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: "emergency_fast_path_urgent",
+          detail: expect.stringContaining("bleeding_with_dizziness_multilingual"),
+        }),
+      }),
+    );
+    expect(result.responseText).toContain("Contact your care team today");
+    expect(result.responseText).toContain("112");
+    expect(result.responseText).toContain("108");
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
+
+  // QA0904-1: the Hindi child-on-treatment severe headache + blurred vision
+  // report used to return `normal` from every rule layer. It now takes the
+  // URGENT fast path (parity with English severe_symptom_en /
+  // sudden_sensory_loss_en), which keeps the conversation open.
+  it("rule layer: the QA0904-1 Hindi headache + blurred vision report escalates as urgent on the fast path", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "web" });
+    const text = "बच्चे को कैंसर है, इलाज के दौरान उसे तेज़ सिरदर्द और धुंधला दिखने लगा है। क्या यह खतरनाक है?";
+    const result = await chat.handle({ sessionId: "wa-session", channel: "web", locale: "hi", userText: text });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.actions).toEqual(["show_emergency_banner"]);
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: "emergency_fast_path_urgent",
+          detail: expect.stringContaining("headache_with_vision_change_multilingual"),
+        }),
+      }),
+    );
+    expect(result.responseText).toContain("Contact your care team today");
+    expect(result.responseText).toContain("112");
+    expect(result.responseText).toContain("108");
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
+
+  // Owner decision on #196: a fast-path URGENT turn keeps the banner but leaves
+  // the conversation open. Critical still ends it (asserted above).
+  it("fast-path urgent: banner + SafetyEvent, but no end_conversation (#196)", async () => {
+    const { chat, prisma } = await buildService({ channel: "web" });
+    const result = await chat.handle({
+      sessionId: "wa-session",
+      channel: "web",
+      locale: "en",
+      userText: "kemo ke baad papa ki naak se khoon aa raha hai aur chakar aa rahe hain",
+    });
+
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.actions).toEqual(["show_emergency_banner"]);
+    expect(result.safety.actions).not.toContain("end_conversation");
+    expect((result.safety as any).bannerText).toContain("Contact your care team today");
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ type: "emergency_fast_path_urgent" }) }),
+    );
+  });
+
+  it("fast-path urgent then a critical message in the same session: the next turn still escalates critical (#196)", async () => {
+    const { chat, prisma, rag, llm } = await buildService({ channel: "web" });
+
+    const first = await chat.handle({
+      sessionId: "wa-session",
+      channel: "web",
+      locale: "en",
+      userText: "chemo ke baad bleeding ho rahi hai aur chakkar aa raha hai",
+    });
+    expect(first.safety.actions).not.toContain("end_conversation");
+
+    const second = await chat.handle({
+      sessionId: "wa-session",
+      channel: "web",
+      locale: "en",
+      userText: "ab bleeding ruk nahi rahi",
+    });
+
+    expect(second.safety.classification).toBe("red_flag");
+    expect(second.safety.actions).toEqual(["show_emergency_banner", "end_conversation"]);
+    expect(second.responseText).toContain("This sounds like a medical emergency");
+    const types = prisma.safetyEvent.create.mock.calls.map((c: any) => c[0].data.type);
+    expect(types).toEqual(["emergency_fast_path_urgent", "emergency_fast_path_critical"]);
+    expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
+    expect(llm.generateWithCitations).not.toHaveBeenCalled();
   });
 });

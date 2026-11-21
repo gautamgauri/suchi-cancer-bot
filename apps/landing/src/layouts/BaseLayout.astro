@@ -9,6 +9,10 @@ export interface Props {
 }
 
 const { title, description = "Suchitra Cancer Care Foundation - Cancer awareness and navigation support for patients and families in Eastern India" } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(`${base}og-image.png`, Astro.site);
 ---
 
 <!DOCTYPE html>
@@ -18,6 +22,31 @@ const { title, description = "Suchitra Cancer Care Foundation - Cancer awareness
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{title} | SCCF</title>
   <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+
+  <!-- Favicons: the SCCF mark (see docs/brand/README.md) -->
+  <link rel="icon" href={`${base}favicon.ico`} sizes="32x32" />
+  <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+  <link rel="icon" type="image/png" sizes="32x32" href={`${base}favicon-32.png`} />
+  <link rel="icon" type="image/png" sizes="16x16" href={`${base}favicon-16.png`} />
+  <link rel="apple-touch-icon" sizes="180x180" href={`${base}apple-touch-icon.png`} />
+  <link rel="manifest" href={`${base}site.webmanifest`} />
+  <meta name="theme-color" content="#133133" />
+
+  <!-- Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Suchitra Cancer Care Foundation" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImage} />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@400;600;700&display=swap" rel="stylesheet" />

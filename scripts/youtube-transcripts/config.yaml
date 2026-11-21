@@ -2,7 +2,9 @@
 
 # Output directories
 output_dir: "./output"  # Raw JSON transcripts
-kb_dir: "../../kb/en/01_suchi_oncotalks"  # Processed Markdown files
+# Root of the kb/ checkout. The per-language folder (kb/hi/... or kb/en/...)
+# is chosen from the caption track actually used — see kb_dir_for().
+kb_root: "../../kb"
 
 # YouTube channel configuration
 channel_id: "UCI242a2_VRTCdCbpXzyeW4w"  # Suchitra Cancer Care Foundation
@@ -14,6 +16,9 @@ channel_handle: "@suchitracancercarefoundati1877"
 #   - "def456"
 
 # Transcript settings
+# Preference order for caption tracks. Machine-TRANSLATED tracks are rejected
+# outright, so on a Hindi video this yields the Hindi original rather than
+# YouTube's English translation of it.
 languages:
   - "en"  # Primary language
   - "hi"  # Fallback language (Hindi)
@@ -23,25 +28,3 @@ default_source: "SCCF Onco Talks"
 default_source_type: "01_suchi_oncotalks"
 default_license: "sccf_owned"
 default_review_frequency: "monthly"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

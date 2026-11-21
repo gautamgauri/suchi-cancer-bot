@@ -103,7 +103,12 @@
         "First choice for North Bihar patients (Muzaffarpur, Sitamarhi, Vaishali, Sheohar, Gopalganj)",
         "TMC standard protocols and staff — same quality as Tata Memorial Mumbai",
         "Government rates — free or near-free for most patients"
-      ]
+      ],
+      "latitude": 26.1183,
+      "longitude": 85.3858,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "mahavir-cancer-sansthan-patna",
@@ -198,7 +203,12 @@
         "Free treatment for children under 18",
         "Rs 10,000 grant for low-income adults — ask at registration counter",
         "618 beds — Bihar's largest dedicated cancer hospital"
-      ]
+      ],
+      "latitude": 25.5602,
+      "longitude": 85.0415,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "paras-hmri-patna",
@@ -292,7 +302,12 @@
         "First NABH-accredited hospital in Bihar",
         "Verify PMJAY empanelment before visiting — private rates are high",
         "Strong for bone marrow transplant (BMT) for leukemia and lymphoma"
-      ]
+      ],
+      "latitude": 25.6044,
+      "longitude": 85.0877,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "jay-prabha-medanta-patna",
@@ -390,7 +405,12 @@
         "Largest private hospital in Patna — strong across all oncology sub-specialties",
         "Varian Edge radiation machine — first in Eastern India",
         "Da Vinci robotic surgery available for oncology"
-      ]
+      ],
+      "latitude": 25.6019,
+      "longitude": 85.1667,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "ruban-memorial-patna",
@@ -476,7 +496,12 @@
         "High-volume robotic surgery centre — strong for prostate, kidney, colorectal, gynecologic cancers",
         "Limited medical oncology compared to Paras/Medanta — best for surgical cases",
         "Verify PMJAY empanelment before visiting"
-      ]
+      ],
+      "latitude": 25.6292,
+      "longitude": 85.1096,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "buddha-cancer-centre-patna",
@@ -566,7 +591,12 @@
         "More affordable than Paras/Medanta for medical oncology",
         "NGS genetic testing available — useful for targeted therapy decisions",
         "Dedicated palliative care clinic"
-      ]
+      ],
+      "latitude": 25.6102,
+      "longitude": 85.1351,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "ss-hospital-patna",
@@ -649,7 +679,12 @@
         "Led by Dr. J.K. Singh — Padma Shri awardee, one of Bihar's most respected oncologists",
         "Medical and surgical oncology only — no radiation on site",
         "Day-care chemo unit — suitable for outpatient chemotherapy"
-      ]
+      ],
+      "latitude": 25.6019,
+      "longitude": 85.1667,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "igims-patna",
@@ -729,7 +764,12 @@
         "Designated Regional Cancer Centre — PMJAY accepted",
         "Quality variable — use when AIIMS Patna or Mahavir Cancer Sansthan not accessible",
         "Verify radiation department capacity before referral"
-      ]
+      ],
+      "latitude": 25.6093,
+      "longitude": 85.1235,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "healing-touch-bhagalpur",
@@ -809,7 +849,12 @@
         "Best surgical oncology option for East Bihar (Bhagalpur, Munger, Banka)",
         "No radiation or medical oncology — refer to Patna or Muzaffarpur for those needs",
         "First NABH-accredited hospital in Bhagalpur"
-      ]
+      ],
+      "latitude": 25.2495,
+      "longitude": 86.9828,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "narayana-cancer-centre-patna",
@@ -880,7 +925,12 @@
       "navigation_notes": [
         "Part of Narayana Health national network — doctor list needs verification",
         "NABH Recommended (Feb 2025) — newer, still establishing reputation"
-      ]
+      ],
+      "latitude": 25.6277,
+      "longitude": 85.0979,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "name_address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "atlantis-super-speciality-patna",
@@ -956,7 +1006,12 @@
         "Medical oncology only — no radiation or surgical oncology on site",
         "Dr. Rohan Singh trained at Tata Memorial — good for second opinion on chemo protocol",
         "Refer surgical cases to Paras, Medanta, or Mahavir"
-      ]
+      ],
+      "latitude": 25.6093,
+      "longitude": 85.1235,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "manipal-hospital-rangapani",
@@ -1048,7 +1103,12 @@
         "Accessible from Bihar via NJP station (trains from Patna/Muzaffarpur)",
         "High cost — verify insurance before admission",
         "Best all-round cancer facility in Siliguri region for Bihar/Sikkim/Northeast patients"
-      ]
+      ],
+      "latitude": 26.7164,
+      "longitude": 88.431,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hope-and-heal-jalpaiguri",
@@ -1155,7 +1215,12 @@
         "Near Fulbari border — practical option for Kishanganj, Araria, Purnea, Katihar patients",
         "First GE 3-Ring PET-CT in North Bengal — good for staging",
         "NABH + NABL — medium cost, more affordable than Manipal Rangapani"
-      ]
+      ],
+      "latitude": 26.7164,
+      "longitude": 88.431,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "desun-hospital-siliguri",
@@ -1236,7 +1301,12 @@
         "Adjacent to NBMCH government medical college — central Siliguri location",
         "Verify surgical oncologist availability before referral",
         "NABH received Nov 2024 — relatively newly accredited"
-      ]
+      ],
+      "latitude": 26.7164,
+      "longitude": 88.431,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "nbmch-siliguri",
@@ -1306,7 +1376,12 @@
         "Only government radiotherapy unit in North Bengal — Cobalt-60 only",
         "No LINAC or brachytherapy — for comprehensive cancer care go to Manipal Rangapani or Hope & Heal",
         "Very high patient volume — expect long waiting lists"
-      ]
+      ],
+      "latitude": 26.7164,
+      "longitude": 88.431,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "neotia-getwel-siliguri",
@@ -1375,7 +1450,12 @@
       "navigation_notes": [
         "Do not refer cancer patients — oncology department not confirmed on hospital website",
         "Call to verify before sending any patient"
-      ]
+      ],
+      "latitude": 26.7164,
+      "longitude": 88.431,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "tata-medical-center-kolkata",
@@ -1452,7 +1532,12 @@
         "Major TMC referral centre for East India — Bihar, Jharkhand, Odisha, Northeast",
         "More accessible than TMH Mumbai for East India patients",
         "West Bengal uses Swasthya Sathi — PMJAY cards from Bihar may need verification"
-      ]
+      ],
+      "latitude": 22.5883,
+      "longitude": 88.4734,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "tata-memorial-hospital-mumbai",
@@ -1533,7 +1618,12 @@
         "Very high volume — plan for 2–4 weeks wait for appointments",
         "Government rates — highly affordable once registered",
         "Logistical planning essential: train from Patna to Mumbai takes ~30 hours"
-      ]
+      ],
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-delhi",
@@ -1608,7 +1698,12 @@
         "Rajdhani Express from Patna to Delhi — ~8-9 hours overnight",
         "Extremely long wait times — plan significantly in advance",
         "Best for second opinions and rare cancers"
-      ]
+      ],
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "rims-ranchi",
@@ -1694,7 +1789,12 @@
         "Surgical OPD Mon/Thu; Radiation OPD Mon–Thu",
         "Very high patient volume — plan for long waits",
         "Free/subsidized for Jharkhand state residents"
-      ]
+      ],
+      "latitude": 23.3751,
+      "longitude": 85.2762,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "rchrc-ranchi",
@@ -1767,7 +1867,12 @@
         "Tata Trusts operated — subsidized rates; PMJAY accepted",
         "Toll-free helpline: 1800-313-4922",
         "Serves Jharkhand, Bihar, WB, Chhattisgarh, MP patients"
-      ]
+      ],
+      "latitude": 23.3701,
+      "longitude": 85.325,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hcg-ranchi",
@@ -1842,7 +1947,12 @@
         "Premier private cancer hospital in Jharkhand since 2008",
         "24/7 — good for urgent cases needing private sector access",
         "Verify PMJAY/insurance before visiting — high private rates"
-      ]
+      ],
+      "latitude": 23.3701,
+      "longitude": 85.325,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-deoghar",
@@ -1916,7 +2026,12 @@
         "OPD Mon–Fri 8:30am–4:30pm, Sat till 2pm",
         "Medical Oncology department expanding — verify availability before referral",
         "Deoghar Airport now operational — direct flights from some cities"
-      ]
+      ],
+      "latitude": 24.3808,
+      "longitude": 86.5385,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "ahpgic-cuttack",
@@ -2000,7 +2115,12 @@
         "Uses Odisha BSKY scheme — Bihar PMJAY cards not accepted; self-pay at government rates (very low)",
         "One of India's 25 Regional Cancer Centres — 507 beds"
       ],
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 20.4686,
+      "longitude": 85.8792,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hcg-panda-cuttack",
@@ -2089,7 +2209,12 @@
         "Confirmed NCG member — Elekta Versa HD LINAC + BMT",
         "Private rates — high cost; check insurance before visiting",
         "Established 2002 — experienced team for Odisha region"
-      ]
+      ],
+      "latitude": 20.4686,
+      "longitude": 85.8792,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "cnci-kolkata",
@@ -2169,7 +2294,12 @@
         "Two campuses — New Town Rajarhat (460 beds, ultramodern) preferred for new patients",
         "Free for BPL; heavily subsidized for all — PMJAY and Swasthya Sathi both accepted",
         "Top government referral centre after TMC Kolkata for East India"
-      ]
+      ],
+      "latitude": 22.5726,
+      "longitude": 88.3639,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-kalyani",
@@ -2241,7 +2371,12 @@
         "Radiation (LINAC) operational since Feb 2024 — capacity still ramping up; verify before referral",
         "Accessible for lower West Bengal and Bihar border patients",
         "Surgical oncology not yet independently confirmed"
-      ]
+      ],
+      "latitude": 22.9755,
+      "longitude": 88.5297,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "name_address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hcg-eko-kolkata",
@@ -2319,7 +2454,12 @@
         "First Radixact TomoTherapy in Eastern India",
         "Best for patients with corporate/mediclaim insurance",
         "West Bengal uses Swasthya Sathi — PMJAY from Bihar may not be accepted"
-      ]
+      ],
+      "latitude": 22.5807,
+      "longitude": 88.4624,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "nscri-kolkata",
@@ -2397,7 +2537,12 @@
         "Charitable trust — mission to serve poor and middle-class patients at affordable cost",
         "24 insurance providers accepted",
         "HIPEC/PIPAC surgical procedures and BMT available"
-      ]
+      ],
+      "latitude": 22.5726,
+      "longitude": 88.3639,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "apollo-gleneagles-kolkata",
@@ -2473,7 +2618,12 @@
         "Sole JCI-accredited hospital in Eastern India — best for international insurance",
         "First Radiosurgery (knifeless brain surgery) in Eastern India",
         "High private rates — best for patients with comprehensive insurance"
-      ]
+      ],
+      "latitude": 22.598,
+      "longitude": 88.3878,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "cchrc-silchar",
@@ -2548,7 +2698,12 @@
         "Tata Trusts supported — free/subsidized for low-income patients",
         "PMJAY accepted",
         "Confirm appointment availability before long-distance travel — limited capacity"
-      ]
+      ],
+      "latitude": 24.7935,
+      "longitude": 92.7916,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "neigrihms-shillong",
@@ -2625,7 +2780,12 @@
         "PMJAY accepted; government rates",
         "Complex cancer cases should go to BBCI Guwahati — NEIGRIHMS is not a dedicated cancer centre",
         "Serves Meghalaya, Nagaland, Mizoram, and Manipur patients"
-      ]
+      ],
+      "latitude": 25.576,
+      "longitude": 91.8828,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "bbci-guwahati",
@@ -2718,7 +2878,12 @@
         "Direct trains from Patna to Guwahati (Avadh Assam Express ~22 hrs)",
         "311 beds; full spectrum including BMT/SCT"
       ],
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 26.1534,
+      "longitude": 91.6658,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "mpmmcc-varanasi",
@@ -2801,7 +2966,12 @@
         "Handles adult solid tumours — blood cancers and pediatric go to HBCH Varanasi (9km)",
         "ESMO Designated Centre; PMJAY accepted; free/subsidized treatment",
         "352 beds, 6 radiation machines"
-      ]
+      ],
+      "latitude": 25.3356,
+      "longitude": 83.0076,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hbch-varanasi",
@@ -2880,7 +3050,12 @@
         "Bihar patients with leukemia, lymphoma, or childhood cancer should come here — not MPMMCC",
         "Companion to MPMMCC (9km apart, same director)",
         "BMT facility; 179 beds; PMJAY accepted; free/subsidized"
-      ]
+      ],
+      "latitude": 25.3356,
+      "longitude": 83.0076,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "sgpgi-lucknow",
@@ -2959,7 +3134,12 @@
         "Not a dedicated cancer centre — one oncology department among many",
         "Palliative care with home visits within 25km radius",
         "Better suited for lower Bihar patients who need Lucknow referral"
-      ]
+      ],
+      "latitude": 26.8381,
+      "longitude": 80.9346,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "kgmu-lucknow",
@@ -3043,7 +3223,12 @@
         "NABH accredited; PMJAY accepted; government rates",
         "One of India's oldest and largest government medical universities (est. 1911)"
       ],
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 26.8662,
+      "longitude": 80.9182,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "rgci-delhi",
@@ -3127,7 +3312,12 @@
         "Accessible from Patna by Rajdhani (8-9 hrs) or flight (1 hr)",
         "400+ beds; BMT, PET-CT, advanced surgical oncology"
       ],
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 28.7133,
+      "longitude": 77.1091,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "sir-ganga-ram-delhi",
@@ -3202,7 +3392,12 @@
         "200-bed dedicated cancer centre (expanded 2025)",
         "PMJAY empanelled — call to confirm coverage for specific treatment before travel",
         "High private rates — useful for insured patients"
-      ]
+      ],
+      "latitude": 28.6665,
+      "longitude": 77.217,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "apollo-cancer-delhi",
@@ -3280,7 +3475,12 @@
         "JCI + NABH + NABL — proton therapy, Da Vinci robotic surgery",
         "Not PMJAY empanelled — best for patients with comprehensive insurance or NRIs",
         "High private rates"
-      ]
+      ],
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "max-cancer-saket",
@@ -3356,7 +3556,12 @@
         "No PMJAY — best for Max Health Insurance or corporate coverage",
         "SRS/SBRT Stereotactic Radiosurgery; Da Vinci robotic surgery",
         "High private rates"
-      ]
+      ],
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "blk-max-delhi",
@@ -3431,7 +3636,12 @@
         "Strongest BMT programme in Delhi — best for blood cancers (leukemia, lymphoma, myeloma)",
         "Cyberknife, IMRT, PET-CT",
         "No PMJAY — high private rates"
-      ]
+      ],
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "fortis-fmri-gurugram",
@@ -3508,7 +3718,12 @@
         "JCI + NABH + NABL — Cyberknife, Tomotherapy, robotic surgery",
         "No PMJAY — best for corporate or international insurance",
         "~30 min from Delhi airport; near Delhi for patients transiting"
-      ]
+      ],
+      "latitude": 28.4507,
+      "longitude": 77.0738,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "kokilaben-mumbai",
@@ -3592,7 +3807,12 @@
         "Cyberknife, Tomotherapy, Da Vinci robotic surgery",
         "Good alternative to TMH when TMH wait times are very long",
         "Strong for Head & Neck, Breast, GI cancers"
-      ]
+      ],
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hn-reliance-mumbai",
@@ -3668,7 +3888,12 @@
         "Charitable trust — subsidized rates for economically weaker patients",
         "Good option for Mumbai referrals when TMH has very long waits",
         "NABH + NABL accredited"
-      ]
+      ],
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "gcri-ahmedabad",
@@ -3747,7 +3972,12 @@
         "7 Linear Accelerators, PET-CT, comprehensive BMT unit",
         "Free/subsidized for BPL; very low cost for all",
         "Best referral for Bihar patients with family in Gujarat"
-      ]
+      ],
+      "latitude": 23.0215,
+      "longitude": 72.5801,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "cmc-vellore",
@@ -3827,7 +4057,12 @@
         "Sliding-scale fees — socio-economic assessment for reduced rates (not PMJAY)",
         "Worth the distance for rare cancers or cases where local hospitals struggle",
         "~24 hrs from Patna by train; book via CMC appointment app"
-      ]
+      ],
+      "latitude": 12.9286,
+      "longitude": 79.1434,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "cancer-institute-wia-chennai",
@@ -3908,7 +4143,12 @@
         "700 beds; subsidized rates for all, free for BPL; PMJAY accepted",
         "Highly respected for Head & Neck, Gynaecological, and Blood cancers",
         "Proton therapy and BMT available"
-      ]
+      ],
+      "latitude": 13.0085,
+      "longitude": 80.2317,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "apollo-cancer-chennai",
@@ -3987,7 +4227,12 @@
         "JCI + NABH — proton therapy, Da Vinci robotic surgery",
         "High private rates — not PMJAY empanelled",
         "Cancer Institute WIA Chennai nearby offers equivalent care at far lower cost"
-      ]
+      ],
+      "latitude": 13.0837,
+      "longitude": 80.2702,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "kidwai-kmio-bangalore",
@@ -4068,7 +4313,12 @@
         "863 beds, 7 Linear Accelerators, PET-CT, BMT unit",
         "PMJAY accepted; government rates — very affordable",
         "Best for Bihar patients with family in Bangalore"
-      ]
+      ],
+      "latitude": 12.9317,
+      "longitude": 77.6136,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hcg-bangalore",
@@ -4148,7 +4398,12 @@
         "BMT, robotic surgery, proton therapy referral, molecular diagnostics",
         "Not PMJAY — Kidwai KMIO nearby offers affordable government care",
         "High private rates — best for insured patients in Bangalore"
-      ]
+      ],
+      "latitude": 12.9768,
+      "longitude": 77.5901,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "basavatarakam-hyderabad",
@@ -4229,7 +4484,12 @@
         "PMJAY accepted; medium cost — more affordable than private hospitals",
         "Strong for Head & Neck, GI, and Gynaecological cancers",
         "BMT, Cyberknife, proton therapy referral"
-      ]
+      ],
+      "latitude": 17.4183,
+      "longitude": 78.4293,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "mnj-hyderabad",
@@ -4305,7 +4565,12 @@
         "Free/subsidized for BPL; PMJAY accepted",
         "Very high patient load — expect significant waiting times",
         "Best for Bihar patients with family in Hyderabad needing affordable government care"
-      ]
+      ],
+      "latitude": 17.3606,
+      "longitude": 78.4741,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-new-delhi",
@@ -4390,7 +4655,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "tata-memorial-mumbai",
@@ -4477,7 +4747,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "pgimer-chandigarh",
@@ -4561,7 +4836,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 30.7644,
+      "longitude": 76.7789,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "jipmer-puducherry",
@@ -4639,7 +4919,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 11.9496,
+      "longitude": 79.8007,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "sctimst-thiruvananthapuram",
@@ -4711,7 +4996,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 8.5211,
+      "longitude": 76.9292,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-bhubaneswar",
@@ -4787,7 +5077,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 20.2603,
+      "longitude": 85.8395,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-jodhpur",
@@ -4857,7 +5152,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 26.2968,
+      "longitude": 73.0351,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-patna",
@@ -4928,7 +5228,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 25.5602,
+      "longitude": 85.0415,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-rishikesh",
@@ -5004,7 +5309,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 30.1087,
+      "longitude": 78.2916,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "nimhans-bangalore",
@@ -5081,7 +5391,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 12.933,
+      "longitude": 77.613,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "kidwai-memorial-bangalore",
@@ -5164,7 +5479,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 12.9317,
+      "longitude": 77.6136,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "cancer-institute-adyar-chennai",
@@ -5247,7 +5567,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 13.007,
+      "longitude": 80.2584,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "regional-cancer-centre-thiruvananthapuram",
@@ -5331,7 +5656,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 8.523,
+      "longitude": 76.9294,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "gujarat-cancer-research-institute-ahmedabad",
@@ -5410,7 +5740,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 23.0215,
+      "longitude": 72.5801,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "chittaranjan-national-cancer-institute-kolkata",
@@ -5489,7 +5824,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 22.6359,
+      "longitude": 88.4163,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-raipur",
@@ -5565,7 +5905,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 21.2381,
+      "longitude": 81.6337,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-nagpur",
@@ -5639,7 +5984,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 21.1498,
+      "longitude": 79.0821,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-bhopal",
@@ -5715,7 +6065,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 23.2093,
+      "longitude": 77.4585,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "name_address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "aiims-hyderabad",
@@ -5784,7 +6139,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 17.3606,
+      "longitude": 78.4741,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "nims-hyderabad",
@@ -5862,7 +6222,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 17.4287,
+      "longitude": 78.4519,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "apollo-cancer-centre-chennai",
@@ -5946,7 +6311,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 13.0837,
+      "longitude": 80.2702,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "medanta-cancer-institute-gurugram",
@@ -6033,7 +6403,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 28.4351,
+      "longitude": 77.0404,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "fortis-memorial-research-institute-gurugram",
@@ -6113,7 +6488,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 28.4507,
+      "longitude": 77.0738,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "max-cancer-centre-saket-delhi",
@@ -6193,7 +6573,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 28.6139,
+      "longitude": 77.209,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
@@ -6270,7 +6655,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 19.1288,
+      "longitude": 72.8256,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "address",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "hcg-cancer-centre-bangalore",
@@ -6355,7 +6745,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 12.9768,
+      "longitude": 77.5901,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "manipal-comprehensive-cancer-centre-manipal",
@@ -6436,7 +6831,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 13.352,
+      "longitude": 74.787,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "lilavati-hospital-cancer-mumbai",
@@ -6509,7 +6909,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "breach-candy-hospital-cancer-mumbai",
@@ -6583,7 +6988,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     },
     {
       "id": "jaslok-hospital-cancer-mumbai",
@@ -6660,7 +7070,12 @@
       },
       "verified_date": "2026-05-09",
       "status": "active",
-      "national_referral": true
+      "national_referral": true,
+      "latitude": 19.055,
+      "longitude": 72.8692,
+      "geocode_source": "nominatim",
+      "geocode_confidence": "city",
+      "geocoded_at": "2026-09-13"
     }
   ]
 }

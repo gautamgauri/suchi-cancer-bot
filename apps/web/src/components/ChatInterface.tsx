@@ -32,6 +32,18 @@ const SUGGESTED_PROMPTS = [
   "How can I support a loved one with cancer?"
 ];
 
+/**
+ * "About Our Sources" copy, shown once after the first answer.
+ *
+ * Issue #90: this used to promise "Each response includes citations so you can
+ * verify the information." No answer shows citations — the API strips them as
+ * an audit artifact (#54) and its `citations` array carries no title or URL a
+ * reader could follow — so the promise was false. Say only what is true, and
+ * point the reader at the verification route that actually exists.
+ */
+const SOURCES_DISCLOSURE_TEXT =
+  "Suchi's answers are based on information from trusted sources, including the National Cancer Institute (NCI) and other authoritative medical organizations. Individual answers do not list their sources, so please check anything important with your doctor or care team.";
+
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStartOver, onRoleSelected, sessionCreating }) => {
   const showRolePicker = !sessionId && !!onRoleSelected;
   const [messages, setMessages] = useState<Message[]>([
@@ -129,14 +141,34 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
         ...(meta?.inputMode ? { inputMode: meta.inputMode } : {})
       });
 
+      const timedOut = response.error === "timeout";
+
       const assistantMessage: Message = {
         id: response.messageId,
         role: "assistant",
         text: response.responseText,
-        timestamp: new Date()
+        timestamp: new Date(),
+        // Nothing was stored for a timed-out turn, so the bubble carries no
+        // rateable message: hide its thumbs rather than let them rate the
+        // previous answer.
+        ...(timedOut ? { rateable: false } : {})
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Issue #171: the turn timed out server-side, but the API still composed
+      // the helpline / 112 / 108 fallback above. Render it as the reply instead
+      // of the generic error overlay. Nothing was persisted for this turn, so
+      // it is not the feedback target and there is no greeting state to refresh.
+      if (timedOut) {
+        setSafetyBanner(null);
+        // Drop the previous answer as the feedback target too — otherwise the
+        // conversation feedback button rates that answer as if it were this
+        // reply.
+        setLastMessageId(null);
+        return;
+      }
+
       setLastMessageId(response.messageId);
 
       // Show sources disclosure on first assistant response (one-time)
@@ -365,7 +397,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
           <div style={styles.sourcesDisclosureModal} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.sourcesDisclosureTitle}>About Our Sources</h3>
             <p style={styles.sourcesDisclosureText}>
-              Suchi's answers are based on information from trusted sources including the National Cancer Institute (NCI) and other authoritative medical organizations. Each response includes citations so you can verify the information.
+              {SOURCES_DISCLOSURE_TEXT}
             </p>
             <button
               onClick={() => setShowSourcesDisclosure(false)}

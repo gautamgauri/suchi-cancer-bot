@@ -164,11 +164,17 @@ export class OpsMetricsService {
       }),
       // #86 — duplicate KB chunk rows. ingest-kb.ts upserts on the deterministic id
       // `docId::chunk::N`, so a healthy index has one row per (docId, chunkIndex)
-      // and no row with any other id shape.
+      // and no row whose id is anything other than that exact string. The
+      // comparison is exact, not `LIKE '%::chunk::%'`: an id such as
+      // `legacy::chunk::x`, or one naming a different doc, contains the
+      // separator but is just as unreachable by the upsert as a uuid id. Kept
+      // in step with NON_DETERMINISTIC_ID_PREDICATE in
+      // src/scripts/kb-index-preflight.ts and query (A) of
+      // scripts/sql/kb_duplicate_cleanup.sql.
       this.prisma.$queryRaw<KbIntegrityRow[]>`
         SELECT
           count(*)::int AS total_rows,
-          (count(*) FILTER (WHERE id NOT LIKE '%::chunk::%'))::int AS non_deterministic_id_rows,
+          (count(*) FILTER (WHERE id IS DISTINCT FROM ("docId" || '::chunk::' || "chunkIndex")))::int AS non_deterministic_id_rows,
           (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
         FROM "KbChunk"
       `,
@@ -234,8 +240,8 @@ export class OpsMetricsService {
         basis: { totalRows: Number(kb.total_rows), nonDeterministicIdRows },
         healthy: kbHealthy,
         caveat:
-          "Counts rows beyond the first per (docId, chunkIndex) and rows whose id is not the " +
-          "deterministic `docId::chunk::N` shape ingest-kb.ts upserts on. Both must be 0 after " +
+          "Counts rows beyond the first per (docId, chunkIndex) and rows whose id is not exactly the " +
+          "deterministic `docId::chunk::N` ingest-kb.ts upserts on. Both must be 0 after " +
           "any ingest. Does not hash content, so genuine in-document repeats are not counted.",
       },
       tier1EvalStatus,

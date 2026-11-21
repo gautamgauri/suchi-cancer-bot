@@ -39,61 +39,28 @@ echo "Step 1: Extracting YouTube transcripts..."
 cd "$SCRIPT_DIR"
 python3 extract_transcripts.py --channel-id UCI242a2_VRTCdCbpXzyeW4w
 
-# Check if new files were created
-NEW_FILES=$(find "$KB_DIR/en/01_suchi_oncotalks" -name "oncotalks-*.md" -mtime -1 2>/dev/null | wc -l || echo "0")
-
-if [ "$NEW_FILES" -eq "0" ]; then
-    echo "No new transcripts found. Exiting."
-    exit 0
-fi
-
-echo ""
-echo "Step 2: New transcripts found. Ingesting into KB..."
-cd "$API_DIR"
-
-# Check if Node.js dependencies are installed
-if [ ! -d "node_modules" ]; then
-    echo "Installing Node.js dependencies..."
-    npm install
-fi
-
-# Run KB ingestion with embeddings
-echo "Running KB ingestion with embeddings..."
-npm run kb:ingest
+# Check if new drafts were created (either language folder)
+NEW_FILES=$(find "$KB_DIR/hi/01_suchi_oncotalks" "$KB_DIR/en/01_suchi_oncotalks" \
+    -name "oncotalks-*.md" -mtime -1 2>/dev/null | wc -l || echo "0")
 
 echo ""
 echo "=========================================="
-echo "✓ Monthly update completed successfully!"
+echo "✓ Transcript drafts regenerated"
 echo "=========================================="
 echo ""
 echo "Summary:"
-echo "  - New transcripts: $NEW_FILES"
-echo "  - KB ingestion: Completed"
-echo "  - Embeddings: Generated"
+echo "  - New/updated transcript drafts: $NEW_FILES"
+echo "  - Staged manifest: $KB_DIR/manifest.oncotalks-pending.json"
+echo ""
+echo "This script deliberately STOPS here. It used to run 'npm run kb:ingest'"
+echo "straight afterwards, which would have chunked and embedded uncorrected"
+echo "machine captions of medical conversation with no human in the loop."
+echo "See issue #91: every caption on this channel is machine-generated and is"
+echo "demonstrably wrong on names, drug names and numbers."
 echo ""
 echo "Next steps:"
-echo "  1. Review ingested content in admin panel"
-echo "  2. Test queries to verify new content"
+echo "  1. Open a PR with the new drafts under kb/hi/01_suchi_oncotalks/."
+echo "  2. Have SCCF correct the captions and record the review."
+echo "  3. Only then move the entry from manifest.oncotalks-pending.json into"
+echo "     kb/manifest.json, set status to \"active\", and run npm run kb:ingest."
 echo ""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

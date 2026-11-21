@@ -21,6 +21,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import {
   ExecutionPlan,
   HospitalSearchResult,
+  HospitalSearchGeography,
   PlanStep,
   RetrievalStep,
   TemplateStep,
@@ -34,6 +35,68 @@ import {
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { OutputVerifierService, VerificationResult } from "./output-verifier.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { normaliseDepartment } from "./hospital-directory.service";
+
+/**
+ * A line of chunk text that opens mid-word, i.e. on the tail of a word the
+ * chunker cut in half (issue #173). The whole first word must be lower-case
+ * ASCII: Devanagari has no case and never matches, and `mRNA`/`pH` carry an
+ * upper-case second character and never match either. No `g` flag — this is
+ * tested against many strings and `lastIndex` must not carry between them.
+ */
+const LEADING_FRAGMENT_PATTERN = /^[a-z]+(?:\s|$)/;
+
+/**
+ * Shared empty set for a section that must not be emptied by cross-section
+ * bullet suppression — a REQUIRED section (see `executeTemplateStep`).
+ */
+const NO_SUPPRESSION: ReadonlySet<string> = new Set<string>();
+
+/**
+ * A chunk summary that is the source document's own apparatus, not information
+ * for a patient (issue #218). The PDQ summaries open with a paragraph about the
+ * editorial board that wrote them, and the Bihar research report opens with a
+ * preamble about itself; both score for a hospital question because they sit
+ * in the documents that answer it, and both were rendered as bullets under
+ * "Hospital / Treatment Centre Information". Matched against the extracted
+ * summary, case-insensitively; deliberately narrow so that KB prose is never
+ * dropped for merely mentioning a report.
+ */
+const DOCUMENT_BOILERPLATE_PATTERNS: RegExp[] = [
+  /\beditorial board\b/i,
+  /^(?:based|drawing) on (?:comprehensive|extensive|detailed|thorough) research\b/i,
+  /\bthe following report (?:details|describes|summari[sz]es|presents|lists)\b/i,
+  /^this (?:report|document|summary|pdq (?:summary|cancer information summary))\b/i,
+  /^(?:about|what is) (?:this )?pdq\b/i,
+  /^(?:updated|last (?:updated|modified|reviewed))\b/i,
+];
+
+/**
+ * Plain words for a canonical department name, for the directory-rendered
+ * hospital section. Anything not listed falls back to the title-cased name.
+ */
+const DEPARTMENT_PLAIN_NAMES: Record<string, string> = {
+  radiation_oncology: "Radiotherapy",
+  medical_oncology: "Chemotherapy (medical oncology)",
+  surgical_oncology: "Cancer surgery",
+  head_and_neck: "Head and neck cancer care",
+  gynaec_oncology: "Gynaecological cancer care",
+  hemato_oncology: "Blood cancer care",
+  pediatric_oncology: "Children's cancer care",
+  palliative_care: "Palliative care",
+  bone_marrow_transplant: "Bone marrow transplant",
+  nuclear_medicine: "Nuclear medicine",
+  neuro_oncology: "Brain and nerve cancer care",
+  uro_oncology: "Urological cancer care",
+};
+
+/**
+ * The sentence the LLM path is instructed to end every hospital answer with
+ * (chat.service.ts, buildHospitalContextBlock). The template path has no LLM,
+ * so it appends the same sentence itself.
+ */
+const HOSPITAL_CONFIRMATION_SENTENCE =
+  "Hospital services, doctors, costs, and PM-JAY availability can change. Please confirm directly with the hospital before travel or payment.";
 
 // ─── Step Results ──────────────────────────────────────────────
 
@@ -99,6 +162,8 @@ export interface PlanExecutionResult {
   errors: string[];
   /** Structured hospital results from HospitalDirectoryService (when hospital_search detected) */
   structuredHospitalResults?: HospitalSearchResult[] | null;
+  /** Geographic provenance of those results — which fallback rung produced them */
+  structuredHospitalGeography?: HospitalSearchGeography | null;
 }
 
 // ─── Service ───────────────────────────────────────────────────
@@ -178,7 +243,9 @@ export class PlanExecutorService {
         templateStep,
         stepResults,
         mergedChunks,
-        locale
+        locale,
+        plan.structuredHospitalResults ?? null,
+        plan.structuredHospitalGeography ?? null
       );
       stepResults.set(templateStep.stepId, result);
       responseText = result.renderedContent;
@@ -210,7 +277,8 @@ export class PlanExecutorService {
         responseText,
         mergedChunks,
         verifyStep.checks,
-        userText
+        userText,
+        locale
       );
 
       const verifyResult: VerifyStepResult = {
@@ -258,6 +326,7 @@ export class PlanExecutorService {
       totalLatencyMs,
       errors,
       structuredHospitalResults: plan.structuredHospitalResults ?? null,
+      structuredHospitalGeography: plan.structuredHospitalGeography ?? null,
     };
   }
 
@@ -308,7 +377,9 @@ export class PlanExecutorService {
     step: TemplateStep,
     stepResults: Map<string, StepResult>,
     mergedChunks: EvidenceChunk[],
-    locale: string
+    locale: string,
+    hospitals: HospitalSearchResult[] | null = null,
+    geography: HospitalSearchGeography | null = null
   ): TemplateStepResult {
     const template = TEMPLATE_REGISTRY[step.templateId];
     if (!template) {
@@ -323,12 +394,67 @@ export class PlanExecutorService {
 
     const filledSections = new Map<string, string>();
     const filledIds: string[] = [];
+    // Content already emitted by an earlier retrieval section of this template.
+    // PSYCHOSOCIAL_SUPPORT declares "Coping Strategies" and "Support Groups &
+    // Communities" with the SAME retrievalIntent, so findChunksForIntent hands
+    // both the same chunks and both render byte-identical bodies — the reader
+    // got one five-bullet list printed twice under two headings, with ten
+    // citations covering five chunks (issue #173). Filling the second section is
+    // skipped; renderTemplate then drops the heading, since it is optional.
+    //
+    // Only OPTIONAL sections may be dropped this way. A required section that is
+    // left unfilled is rendered by renderTemplate as "_Information not available
+    // for your specific case…_", so suppressing one would tell the reader the
+    // knowledge base had nothing while its evidence sits under the heading
+    // above. SCHEME_APPLICATION_CHECKLIST is exactly that shape: "Scheme
+    // Overview" and "Eligibility Criteria" are both required and both carry
+    // retrievalIntent "schemes" (Codex review, PR #174).
+    //
+    // The suppression is per BULLET, not per section body (issue #214).
+    // HOSPITAL_VISIT_PREP's two retrieval sections carry DIFFERENT intents —
+    // "navigation" and "schemes" — so they are filled from two different
+    // retrieval steps whose chunk lists overlap without being identical. A
+    // whole-body comparison saw two unequal strings and printed both, so the
+    // Bihar accreditation chunk was listed under "Hospital / Treatment Centre
+    // Information" and again under "Financial Support Options". Comparing
+    // bullets shows the shared chunk once, under the first heading that claimed
+    // it, while each section keeps the evidence that is only its own (PM-JAY
+    // stays under the financial heading). An optional section left with no
+    // bullets of its own is not filled, so renderTemplate drops its heading —
+    // the same outcome #173 produced for a wholly duplicated section.
+    const emittedBullets = new Set<string>();
 
     for (const section of template.sections) {
       if (section.source === "template" && section.staticContent) {
         // Static content — use as-is
         filledSections.set(section.id, section.staticContent);
         filledIds.push(section.id);
+      } else if (
+        section.source === "retrieval" &&
+        section.retrievalIntent === "navigation" &&
+        hospitals &&
+        hospitals.length > 0
+      ) {
+        // The planner has already looked the patient's need up in the verified,
+        // geocoded directory and ranked the results by capability and distance
+        // (#148, #200). Until #218 this section ignored that and quoted whatever
+        // knowledge-base chunks the navigation retrieval returned, so a Darbhanga
+        // question was answered with Patna centres from a research report while
+        // HBCH Muzaffarpur, first in the directory results, was never shown.
+        const content = this.renderHospitalDirectorySection(
+          hospitals,
+          geography,
+          section.maxItems || 5
+        );
+        filledSections.set(section.id, content);
+        filledIds.push(section.id);
+        this.logger.debug({
+          event: "template_section_from_directory",
+          templateId: step.templateId,
+          sectionId: section.id,
+          hospitalCount: hospitals.length,
+          stage: geography?.stage ?? null,
+        });
       } else if (section.source === "retrieval") {
         // Fill from retrieval results
         const intent = section.retrievalIntent || "education";
@@ -342,8 +468,19 @@ export class PlanExecutorService {
         if (relevantChunks.length > 0) {
           const maxItems = section.maxItems || 5;
           const content = this.formatChunksAsContent(
-            relevantChunks.slice(0, maxItems)
+            relevantChunks.slice(0, maxItems),
+            section.required ? NO_SUPPRESSION : emittedBullets,
+            emittedBullets
           );
+          if (!content.trim()) {
+            this.logger.debug({
+              event: "duplicate_template_section_skipped",
+              templateId: step.templateId,
+              sectionId: section.id,
+              intent,
+            });
+            continue;
+          }
           filledSections.set(section.id, content);
           filledIds.push(section.id);
         }
@@ -419,8 +556,18 @@ export class PlanExecutorService {
    * chunk rows carrying the same text (e.g. stale chunk rows left behind by an
    * earlier ingest run) — those reached the reader as the same sentence printed
    * twice in a row. See issue #67.
+   *
+   * `suppress` carries the fingerprints already shown under an EARLIER section
+   * of the same template, so a chunk retrieved for two intents is printed once
+   * (issue #214); pass {@link NO_SUPPRESSION} for a required section, which may
+   * never be emptied this way. Every bullet this call keeps is added to
+   * `record` for the sections that come after it.
    */
-  private formatChunksAsContent(chunks: EvidenceChunk[]): string {
+  private formatChunksAsContent(
+    chunks: EvidenceChunk[],
+    suppress: ReadonlySet<string> = NO_SUPPRESSION,
+    record: Set<string> = new Set()
+  ): string {
     if (chunks.length === 0) return "";
 
     const lines: string[] = [];
@@ -430,8 +577,18 @@ export class PlanExecutorService {
       const summary = this.extractSummary(chunk.content);
       if (!summary) continue;
 
+      if (DOCUMENT_BOILERPLATE_PATTERNS.some((p) => p.test(summary))) {
+        this.logger.debug({
+          event: "boilerplate_chunk_summary_skipped",
+          chunkId: chunk.chunkId,
+          docId: chunk.docId,
+          summary: summary.substring(0, 80),
+        });
+        continue;
+      }
+
       const fingerprint = summary.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-      if (seenSummaries.has(fingerprint)) {
+      if (seenSummaries.has(fingerprint) || suppress.has(fingerprint)) {
         this.logger.debug({
           event: "duplicate_chunk_summary_skipped",
           chunkId: chunk.chunkId,
@@ -441,6 +598,7 @@ export class PlanExecutorService {
         continue;
       }
       seenSummaries.add(fingerprint);
+      record.add(fingerprint);
 
       const citation = `[citation:${chunk.docId}:${chunk.chunkId}]`;
       lines.push(`- ${summary} ${citation}`);
@@ -450,41 +608,270 @@ export class PlanExecutorService {
   }
 
   /**
+   * Render the hospital section of a navigation template from the directory
+   * results the planner attached to the plan (issue #218).
+   *
+   * Deterministic, no LLM. The wording follows the rules the LLM path is
+   * instructed with in `ChatService.buildHospitalContextBlock` and
+   * `travelAndDistanceGuidance` (SCCF sign-off recorded there, 2026-09-30):
+   *   - the order is the directory's order, nearest first on the distance rung,
+   *     and is not presented as a ranking of quality;
+   *   - a distance is "about N km" rounded to 10 km, or "within 10 km", never
+   *     a travel time or a road distance, and the word "straight-line" is never
+   *     shown to the patient; one line says the road or rail journey is longer;
+   *   - a centre in another state is named with its state and the patient is
+   *     told to confirm whether their card or state scheme is accepted there;
+   *   - PM-JAY status is stated only as the record has it; unverified says so;
+   *   - national referral centres are mentioned as places patients from the
+   *     region also travel to, not as recommendations;
+   *   - the section ends with the same confirmation sentence the LLM path must
+   *     end with.
+   * Headings are localised by renderTemplate; the bullets are English, like
+   * every other template section today.
+   */
+  private renderHospitalDirectorySection(
+    hospitals: HospitalSearchResult[],
+    geography: HospitalSearchGeography | null,
+    maxItems: number
+  ): string {
+    const regional = hospitals.filter((h) => h.national_referral !== true).slice(0, maxItems);
+    const national = hospitals.filter((h) => h.national_referral === true);
+    const city = geography?.requestedCity?.trim() || null;
+    const state = geography?.resolvedState?.trim() || null;
+    const required = (geography?.requiredDepartments ?? []).map(normaliseDepartment);
+    const needs = required.map((d) => this.departmentPlainName(d).toLowerCase()).join(", ");
+
+    const lines: string[] = [];
+
+    // Lead line, by the rung that produced the candidates.
+    if (regional.length === 0) {
+      if (geography?.capabilityUnavailable === true) {
+        lines.push(
+          `The directory lists no centre near ${city ?? state ?? "your location"} that offers ${needs || "the treatment asked about"}.`
+        );
+      }
+    } else {
+      switch (geography?.stage) {
+        case "distance":
+          lines.push(
+            `${city ? `Nearest cancer centres to ${city}` : "Nearest cancer centres"}, nearest first. Distances are approximate; the road or rail journey is longer.`
+          );
+          break;
+        case "city":
+          lines.push(city ? `Cancer centres in ${city}.` : "Cancer centres.");
+          break;
+        case "state":
+          lines.push(state ? `Cancer centres in ${state}.` : "Cancer centres.");
+          break;
+        case "adjacent_state":
+        case "unfiltered":
+          lines.push(
+            `The directory has no cancer centre in ${city ?? state ?? "your stated location"}. The centres below are in other districts or states and may involve significant travel.`
+          );
+          break;
+        default:
+          lines.push("Major cancer centres.");
+      }
+    }
+
+    for (const h of regional) {
+      const parts: string[] = [];
+      const title =
+        h.short_name && h.short_name !== h.name ? `**${h.short_name}** (${h.name})` : `**${h.name}**`;
+      parts.push(`${title}, ${h.city}, ${h.state}.`);
+
+      if (geography?.stage === "distance" && typeof h.distance_km === "number") {
+        parts.push(
+          h.distance_km < 10 ? "Within 10 km." : `About ${Math.round(h.distance_km / 10) * 10} km away.`
+        );
+      }
+
+      const canonical = (h.departments ?? []).map(normaliseDepartment);
+      if (required.length > 0) {
+        const offered = required.filter((d) => canonical.includes(d)).map((d) => this.departmentPlainName(d));
+        if (offered.length > 0) parts.push(`${offered.join(", ")} available.`);
+      } else if (canonical.length > 0) {
+        parts.push(`Departments: ${canonical.map((d) => this.departmentPlainName(d)).join(", ")}.`);
+      }
+
+      if (h.pmjay_empanelled === true) parts.push("PM-JAY empanelled.");
+      else if (h.pmjay_empanelled === false) parts.push("Not PM-JAY empanelled.");
+      else parts.push("PM-JAY status not verified; confirm with the hospital.");
+
+      if (state && h.state && h.state !== state) {
+        parts.push(
+          `This centre is in ${h.state}; before travelling, confirm with the hospital whether your PM-JAY card or ${state} state scheme is accepted there.`
+        );
+      }
+
+      if (h.contact?.phone) parts.push(`Phone: ${h.contact.phone}.`);
+
+      lines.push(`- ${parts.join(" ")}`);
+    }
+
+    if (national.length > 0) {
+      lines.push(
+        `For complex or specialised care, patients from this region also travel to: ${national
+          .map((h) => `${h.short_name || h.name} (${h.city})`)
+          .join("; ")}.`
+      );
+    }
+
+    lines.push(HOSPITAL_CONFIRMATION_SENTENCE);
+    return lines.join("\n");
+  }
+
+  /** Plain words for a canonical department name; title case otherwise. */
+  private departmentPlainName(canonical: string): string {
+    return (
+      DEPARTMENT_PLAIN_NAMES[canonical] ??
+      canonical.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    );
+  }
+
+  /**
    * Extract a clean summary from chunk content (first ~100 chars of meaningful text).
    *
    * A chunk usually opens with its markdown heading. Stripping the heading markers
    * along with the newline that followed them ran the heading straight into the
    * body ("Chemotherapy can cause side effects Chemotherapy not only kills…"), so
    * the heading is separated out and re-attached with a colon. See issue #67.
+   *
+   * The chunk text is ingest output, not prose written for a reader, so it is
+   * sanitised before any of it is quoted into a bullet (issue #173):
+   *   - ingest markup is removed (`stripIngestMarkup`), and
+   *   - a chunk that opens mid-sentence contributes from its first COMPLETE
+   *     sentence onward (`dropLeadingSentenceFragment`).
+   *
+   * Each line's own list marker is removed as well (issue #158). Knowledge-base
+   * documents are numbered lists of sections (`### 4. Other Accredited
+   * Hospitals…`), and the chunker cuts them on length, so a continuation chunk
+   * opens on section 4 of a list whose 1–3 live in OTHER chunks. The chunk is
+   * re-emitted as one `- ` bullet, so the source's `4.` reached the reader as
+   * `- 4. …` — a list starting at 4 with no 1–3 anywhere — and, when that line
+   * was not taken as a heading, the first-sentence cut stopped at its `.` and
+   * the bullet was the bare `4.`. Only the marker goes; the words stay.
    */
   private extractSummary(content: string): string {
-    // Strip heading markers and bold, but keep the line structure so a heading
-    // stays a distinct line rather than colliding with the paragraph beneath it.
+    // Strip heading markers, bold and list markers, but keep the line structure
+    // so a heading stays a distinct line rather than colliding with the
+    // paragraph beneath it.
     const lines = content
       .replace(/\r\n/g, "\n")
       .split("\n")
-      .map((line) => line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, "").replace(/\s+/g, " ").trim())
+      .map((line) =>
+        this.stripListMarkers(
+          this.stripIngestMarkup(line.replace(/^\s*#{1,6}\s*/, "").replace(/\*\*/g, ""))
+        )
+          .replace(/\s+/g, " ")
+          .trim()
+      )
       .filter((line) => line.length > 0);
 
     if (lines.length === 0) return "";
 
     // A short opening line with no terminal punctuation is a heading, not prose.
+    // One that opens mid-word is a chunk-boundary slice, not a heading either.
     const looksLikeHeading =
-      lines.length > 1 && lines[0].length <= 100 && !/[.!?:]$/.test(lines[0]);
+      lines.length > 1 &&
+      lines[0].length <= 100 &&
+      !/[.!?:]$/.test(lines[0]) &&
+      !LEADING_FRAGMENT_PATTERN.test(lines[0]);
     const heading = looksLikeHeading ? lines[0] : null;
-    const body = (looksLikeHeading ? lines.slice(1) : lines).join(" ").replace(/\s+/g, " ").trim();
+    const body = this.dropLeadingSentenceFragment(
+      (looksLikeHeading ? lines.slice(1) : lines).join(" ").replace(/\s+/g, " ").trim()
+    );
 
     const prefix = heading ? `${heading}: ` : "";
     const summary = this.firstSentenceOrTruncate(body);
     return summary ? `${prefix}${summary}` : heading || "";
   }
 
+  /**
+   * Remove ingest markup from a line of chunk text (issue #173).
+   *
+   * Chunks are converted from source web pages, so they carry the page's markup.
+   * A caregiver asking how to give her mother courage was shown
+   * `Emotions and Cancer![Sick woman lying in man's arms relaxing on couch.](/sites/g/files/…`
+   * in her reply: an NCI CMS image whose URL is site-relative and therefore
+   * resolves to nothing on this domain.
+   *
+   * Images go entirely — Suchi emits no images, so one in a bullet is always an
+   * artifact — including the unterminated form, which is what survives when a
+   * chunk boundary or the truncation below cuts the URL in half. Links keep
+   * their text and lose their target, because the text is the sentence the
+   * reader needs and the target is markup they cannot follow in a chat bubble.
+   */
+  private stripIngestMarkup(line: string): string {
+    return line
+      .replace(/!\[[^\]\n]*\]\([^)\n]*\)/g, "")
+      .replace(/!\[[^\]\n]*\]\([^)\n]*$/, "")
+      .replace(/!\[[^\]\n]*$/, "")
+      .replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
+      .replace(/\[([^\]\n]*)\]\([^)\n]*$/, "$1");
+  }
+
+  /**
+   * Drop a line's leading markdown list marker (issue #214).
+   *
+   * Parts of the knowledge base are deep-research reports, and their structure
+   * survives chunking: a chunk opens on a numbered report section and the lines
+   * under it are a bullet list. `extractSummary` re-attaches that opening line
+   * to the body with a colon, so the reader was handed the document's own
+   * scaffolding — `4. Other Accredited Hospitals with Surgical Oncology: -
+   * Savera Cancer and Multispeciality Hospital, Patna: NABH Recommended` — where
+   * a hospital name belonged.
+   *
+   * Only an ordinal or bullet at the START of a line goes, and the marker must
+   * be followed by whitespace: that is what makes it list scaffolding rather
+   * than prose. `2.5 lakh` and `20 May 2025` keep their digits, and a hyphen
+   * used as a dash mid-sentence is untouched. The loop handles a nested marker
+   * (`- 4. …`), which the chunker produces when it slices into a sub-list.
+   * Devanagari digits (`४.`) are ordinals too: Hindi documents number their
+   * sections the same way (issue #158).
+   */
+  private stripListMarkers(line: string): string {
+    let out = line;
+    for (let i = 0; i < 3; i++) {
+      const next = out.replace(/^\s*(?:[-*•+]|\(?[0-9०-९]{1,2}[.)])\s+/, "");
+      if (next === out) break;
+      out = next;
+    }
+    return out;
+  }
+
+  /**
+   * Drop a chunk's opening partial sentence (issue #173).
+   *
+   * Chunking splits documents on length, not on sentence boundaries, so a
+   * continuation chunk routinely starts mid-word — `rs experienced greater
+   * depressive symptoms…` is the tail of "caregivers", and `n your area, try a
+   * support group online.` is the tail of "in your area". Quoted into a bullet
+   * verbatim, both read as corrupted text.
+   *
+   * A body whose first word is entirely lower-case ASCII is such a slice: the
+   * knowledge base's own sentences open with a capital, and the test cannot fire
+   * on Devanagari (no case) or on lower-case-initial terms like `mRNA`/`pH`,
+   * whose second character is upper-case. The partial sentence is dropped and
+   * the chunk contributes from its first complete sentence; if it has none, it
+   * contributes nothing and `formatChunksAsContent` omits the bullet.
+   */
+  private dropLeadingSentenceFragment(body: string): string {
+    if (!LEADING_FRAGMENT_PATTERN.test(body)) return body;
+
+    const boundary = body.search(/[.!?]\s+\S/);
+    if (boundary === -1) return "";
+    return body.slice(boundary + 1).trim();
+  }
+
   /** First sentence of `text`, or a word-boundary truncation when there is none. */
   private firstSentenceOrTruncate(text: string): string {
     if (!text) return "";
 
-    // Take first sentence or first 150 chars
-    const firstSentenceMatch = text.match(/^[^.!?]+[.!?]/);
+    // Take first sentence or first 150 chars. A sentence ends at a terminator
+    // followed by whitespace or the end, so the `.` of `1.5 lakh` does not cut
+    // the bullet down to `1.` (issue #158).
+    const firstSentenceMatch = text.match(/^[\s\S]+?[.!?](?=\s|$)/);
     if (firstSentenceMatch && firstSentenceMatch[0].length <= 200) {
       return firstSentenceMatch[0].trim();
     }

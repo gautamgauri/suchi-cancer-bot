@@ -1,0 +1,731 @@
+{
+  "channelId": "UCI242a2_VRTCdCbpXzyeW4w",
+  "channelUrl": "https://www.youtube.com/@suchitracancercarefoundati1877",
+  "reviewedBy": "PENDING — SCCF medical review (issue #91, decisions D1-D5)",
+  "reviewedOn": null,
+  "note": "Inclusion decisions for OncoTalk video transcripts. Every video on the channel appears here with an explicit decision and reason. `include` entries are built into kb/<lang>/01_suchi_oncotalks/ by apps/api/src/scripts/youtube-transcript-draft.ts and staged in kb/manifest.oncotalks-pending.json. Nothing here is ingested.",
+  "videos": [
+    {
+      "videoId": "fa-i0SavbXU",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 1)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 1096,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "UZU6fb6bk1A",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 2)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 534,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "faFyxDN_2Ws",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 3)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 742,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "A7KXJNbo3Ew",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 4)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 611,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "41p4gxKcbVI",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 5)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 1086,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "aFIF9SwjJD0",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 6)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 463,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "zEanLkUpnsA",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 7)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 526,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "V9SMABvec20",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 8)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 1247,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "_bdgVdMu6Z4",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 9)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 785,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "LdgCLmz2YFQ",
+      "playlist": "breast-awareness",
+      "decision": "include",
+      "reason": "Patient-facing Hindi Q&A with named oncologists practising in Bihar. Highest-value patient education on the channel; short, topic-dense, and free of branded-drug content.",
+      "title": "Breast Cancer Awareness Series – Expert Insights (Part 10)",
+      "language": "hi",
+      "cancerTypes": [
+        "breast"
+      ],
+      "tags": [
+        "breast-cancer",
+        "screening",
+        "symptoms",
+        "treatment",
+        "transcript",
+        "onco-talks",
+        "hindi"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 1135,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "AmWyqSkCuqE",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Long-form interview whose speakers code-switch constantly between Hindi and English. YouTube's Hindi ASR renders the English half as Devanagari TRANSLITERATION (e.g. 'सो वी आर वेरी हैप्पी दैट यू आर हियर'), which is neither searchable in English nor readable as Hindi. Much of the runtime is biography and small talk. Not usable without a human re-transcription.",
+      "title": "Onco Talks Episode 1: Oral Cancer",
+      "language": "hi",
+      "durationSeconds": 1945,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "N8CmiHcXcok",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Long-form interview whose speakers code-switch constantly between Hindi and English. YouTube's Hindi ASR renders the English half as Devanagari TRANSLITERATION (e.g. 'सो वी आर वेरी हैप्पी दैट यू आर हियर'), which is neither searchable in English nor readable as Hindi. Much of the runtime is biography and small talk. Not usable without a human re-transcription.",
+      "title": "Onco Talks Episode 2: Prostate Cancer",
+      "language": "hi",
+      "durationSeconds": 2400,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "ModQvH5WTXk",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Onco Talks Episode 3: Cancer Surgery"
+    },
+    {
+      "videoId": "X3dCbyG-GnE",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Long-form interview whose speakers code-switch constantly between Hindi and English. YouTube's Hindi ASR renders the English half as Devanagari TRANSLITERATION (e.g. 'सो वी आर वेरी हैप्पी दैट यू आर हियर'), which is neither searchable in English nor readable as Hindi. Much of the runtime is biography and small talk. Not usable without a human re-transcription.",
+      "title": "Onco Talks Episode 4: Ovarian Cancer",
+      "language": "hi",
+      "durationSeconds": 1525,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "8dwnK_jiyUQ",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Long-form interview whose speakers code-switch constantly between Hindi and English. YouTube's Hindi ASR renders the English half as Devanagari TRANSLITERATION (e.g. 'सो वी आर वेरी हैप्पी दैट यू आर हियर'), which is neither searchable in English nor readable as Hindi. Much of the runtime is biography and small talk. Not usable without a human re-transcription.",
+      "title": "Onco Talks Episode 5: Childhood Cancer",
+      "language": "hi",
+      "durationSeconds": 1811,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "6edsfQY1TZU",
+      "playlist": "onco-talks",
+      "decision": "include",
+      "reason": "The only patient-facing video on the channel whose ORIGINAL caption track is English (en-orig). Included so an English-speaking reviewer can judge the format and the ASR error rate without needing Hindi.",
+      "title": "Onco Talks Episode 6: Precision Oncology",
+      "language": "en",
+      "cancerTypes": [
+        "general",
+        "breast"
+      ],
+      "tags": [
+        "precision-oncology",
+        "genomic-testing",
+        "targeted-therapy",
+        "transcript",
+        "onco-talks"
+      ],
+      "audienceLevel": "patient",
+      "qualityNote": "PLACEHOLDER",
+      "headings": [],
+      "durationSeconds": 1378,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "8QbjErXl8DM",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Long-form interview whose speakers code-switch constantly between Hindi and English. YouTube's Hindi ASR renders the English half as Devanagari TRANSLITERATION (e.g. 'सो वी आर वेरी हैप्पी दैट यू आर हियर'), which is neither searchable in English nor readable as Hindi. Much of the runtime is biography and small talk. Not usable without a human re-transcription.",
+      "title": "Onco Talks Episode 7: Bone Marrow & Stem Cell Transplants",
+      "language": "hi",
+      "durationSeconds": 1316,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "3C0RUiaIuQQ",
+      "playlist": "onco-talks",
+      "decision": "exclude",
+      "reason": "Long-form interview whose speakers code-switch constantly between Hindi and English. YouTube's Hindi ASR renders the English half as Devanagari TRANSLITERATION (e.g. 'सो वी आर वेरी हैप्पी दैट यू आर हियर'), which is neither searchable in English nor readable as Hindi. Much of the runtime is biography and small talk. Not usable without a human re-transcription.",
+      "title": "Onco Talks Episode 8: Lung & Head and Neck Cancers",
+      "language": "hi",
+      "durationSeconds": 1863,
+      "originalCaptionTracks": [
+        "hi-orig"
+      ]
+    },
+    {
+      "videoId": "u3H_YEUySe0",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Newer Advances in the Management of SCLC",
+      "language": "unknown",
+      "durationSeconds": 2155,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "hBVjnVOm-to",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Treatment Dilemma: Monotherapy vs Combination in Advanced EGFR-mutant NSCLC",
+      "language": "unknown",
+      "durationSeconds": 1550,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "d5AUvSTixGI",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Peri-Operative Immunotherapy in Head & Neck Cancer",
+      "language": "en",
+      "durationSeconds": 750,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "kcVR4RpncPM",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Importance of TBS in 1L Treatment for RM SCCHN Patients (Part 1)",
+      "language": "en",
+      "durationSeconds": 1021,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "T_dZJQ9Hetg",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Importance of TBS in 1L Treatment for RM SCCHN Patients (Part 2)",
+      "language": "en",
+      "durationSeconds": 1021,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "5Q9RkMKJnUU",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Redefining NSCLC Management with Atezolizumab",
+      "language": "unknown",
+      "durationSeconds": 668,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "UYA6uaBpj6Y",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Role of 4-Factor PCC in Uncontrolled Bleeding",
+      "language": "unknown",
+      "durationSeconds": 589,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "o7Wna9zx6EA",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Future of PICC Line Insertion",
+      "language": "en",
+      "durationSeconds": 626,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "o1z05WqsxDI",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "NIAGARA Insights: Perioperative Strategies in Urothelial Carcinoma",
+      "language": "en",
+      "durationSeconds": 2430,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "dtJDJSniP3k",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Setting a New Course with PADCEV in LA/mUC",
+      "language": "en",
+      "durationSeconds": 2921,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "1IQ7JrKunvI",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Darolutamide: Expanding Horizons in Prostate Cancer Management",
+      "language": "unknown",
+      "durationSeconds": 1804,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "ZV4X-FW7TIk",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Evolving Treatment Paradigm with Immunotherapy in Endometrial Cancer",
+      "language": "en",
+      "durationSeconds": 1664,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "0WKn963G2yw",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Toripalimab in HCC: New-Gen Immunotherapy in Liver Cancer",
+      "language": "unknown",
+      "durationSeconds": 589,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "uIBdYzmhtnw",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "PARPi in Ovarian Cancer: Beyond BRCA and HRD Status",
+      "language": "en",
+      "durationSeconds": 1270,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "OMAUKiwpQrA",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Identifying Hidden Threat in EGFR Exon 20 Insertion",
+      "language": "en",
+      "durationSeconds": 724,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "KwEg-s7iOoo",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Peri-Operative Treatment in Resectable Gastric/GEJ Cancer",
+      "language": "unknown",
+      "durationSeconds": 2112,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "r54S4FZD6YE",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "TDXd in HER2-Low Breast Cancer: A New Frontier in ADC Therapeutics",
+      "language": "unknown",
+      "durationSeconds": 1799,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "JRdT4eCYRe0",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "HCC Surveillance to Treatment: An Interdisciplinary Dialogue",
+      "language": "en",
+      "durationSeconds": 2025,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "yyvW59WeWRs",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Tislelizumab in Esophageal and Gastric Cancer Management",
+      "language": "unknown",
+      "durationSeconds": 1166,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "0-5lJpexanw",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Precision Sequencing in HR-Positive mBC: ADCs, Endocrine Agents, Biomarkers",
+      "language": "en",
+      "durationSeconds": 2390,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "idOPLjUiH2k",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Integrating Scalp Cooling into Cancer Care",
+      "language": "unknown",
+      "durationSeconds": 3478,
+      "originalCaptionTracks": []
+    },
+    {
+      "videoId": "3jk8ONat100",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Transform the Journey for HER2+ Early Breast Cancer Patients",
+      "language": "en",
+      "durationSeconds": 589,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "2uxFpS8u-Ig",
+      "playlist": "panel-discussions",
+      "decision": "exclude",
+      "reason": "Clinician-to-clinician panel about branded drugs and treatment sequencing in advanced disease. Out of scope for a patient-facing bot regardless of transcription quality (issue #91 decision D1).",
+      "title": "Optimizing 1L HR+/HER2- ABC Treatment with CDK4/6i",
+      "language": "en",
+      "durationSeconds": 900,
+      "originalCaptionTracks": [
+        "en-orig"
+      ]
+    },
+    {
+      "videoId": "dc9jpspsE5w",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Ovarian and Endometrial Cancer Conference"
+    },
+    {
+      "videoId": "PwxJ7P1Uatw",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "HCC Meeting Session 2"
+    },
+    {
+      "videoId": "-pcwMMKo20I",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Breast Cancer Conference - September 25th"
+    },
+    {
+      "videoId": "7Jx9fehlWyw",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Breast Cancer Conference - September 26th, 2023"
+    },
+    {
+      "videoId": "610iHu8Drpw",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Breast Cancer Conference - September 27th"
+    },
+    {
+      "videoId": "665TY6V6j08",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Colorectal & HCC Conference - January 19th, 2023"
+    },
+    {
+      "videoId": "oVL4Sm-Gbyo",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Ovarian Cancer Symposium - March 15th, 2022"
+    },
+    {
+      "videoId": "C5JJCCTYjE8",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Post ASCO 2022 Updates in GU Cancer"
+    },
+    {
+      "videoId": "bZlz0VM37fM",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Breaking the Myths in Breast Cancer"
+    },
+    {
+      "videoId": "S5AyTKA0H18",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "HER2 Positive Breast Cancer Symposium"
+    },
+    {
+      "videoId": "fjAC37dAlQs",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Prostate Cancer Conference"
+    },
+    {
+      "videoId": "eT70YNcbNO8",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Ovarian Symposium Part 2"
+    },
+    {
+      "videoId": "wfI1pQVrInc",
+      "playlist": "conferences",
+      "decision": "exclude",
+      "reason": "Video is no longer available on YouTube (yt-dlp: 'This video is not available'). It is still listed in apps/landing/src/content/videos.json.",
+      "title": "Ovarian Symposium - March 15th, 2022"
+    }
+  ]
+}

@@ -32,7 +32,9 @@ const merged = {
   summary: {
     total: allResults.length,
     passed: allResults.filter(r => r.passed).length,
-    failed: allResults.filter(r => !r.passed).length,
+    // Unscored (judge unavailable, issue #110) is its own bucket, not a failure
+    failed: allResults.filter(r => !r.passed && !r.unscored).length,
+    unscored: allResults.filter(r => !r.passed && r.unscored).length,
     skipped: allResults.filter(r => r.error?.includes('skipped')).length,
     averageScore: (() => {
       const scores = allResults.filter(r => r.score !== undefined).map(r => r.score || 0);

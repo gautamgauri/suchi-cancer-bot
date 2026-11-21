@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AbstentionReason } from "../evidence/evidence-gate.service";
 import { QueryType } from "../../config/trusted-sources.config";
+import { matchesIndicRedFlag } from "../safety/emergency-fast-path";
 
 @Injectable()
 export class AbstentionService {
@@ -48,7 +49,16 @@ export class AbstentionService {
       /\b(confusion|confused|altered\s+sensorium|disoriented)\b/i,
       /\b(fainting|fainted|passed\s+out|unconscious)\b/i,
       /\b(rapidly\s+worsening|getting\s+worse\s+quickly|suddenly\s+worse)\b/i,
-      /\b(emergency|urgent|immediate|right\s+now)\b/i,
+      // Declaration of an emergency only — never a question about one.
+      // "this is an emergency" flags; "is this an emergency?" does not, and the
+      // word order alone separates them. A bare `emergency|urgent|immediate`
+      // match used to stand here, which meant anyone ASKING whether something
+      // was an emergency was told that it was, and the conversation was ended
+      // on them (#164). It was also negation-blind: "this is not urgent" fired.
+      // Every other pattern in this list describes a condition; that one
+      // described vocabulary, and so added nothing a symptom pattern did not
+      // already catch.
+      /\b(?:this|it)\s+is\s+(?!not\b)(?:an?\s+)?(?:emergency|urgent)\b/i,
       /\b(chest\s+pain|heart\s+attack|stroke)\b/i,
       // Febrile neutropenia - fever during chemo is oncology emergency
       /\b(fever|temperature|high\s+temp)\b.*\b(chemo|chemotherapy|treatment|during\s+treatment)\b/i,
@@ -67,7 +77,11 @@ export class AbstentionService {
       /\bvomit(ed|ing)?\s+blood\b/i
     ];
 
-    return urgencyPatterns.some(pattern => pattern.test(userText));
+    // Issue #81: the patterns above are `\b`-anchored English. The romanised
+    // Hindi / Devanagari red flags (heavy bleeding, bleeding + dizziness,
+    // fever during chemo) are shared with the emergency fast path so the two
+    // layers cannot disagree about the same sentence.
+    return urgencyPatterns.some(pattern => pattern.test(userText)) || matchesIndicRedFlag(userText);
   }
 
   /**

@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "description": "Records the geocoder could not resolve within its hard gates. Every hospital and city either carries coordinates or appears here — there is no silent third state. Entries need manual review; do NOT hand-enter a coordinate without a source.",
+    "gates": {
+      "city_state": "returned address must contain the record's own city AND state",
+      "india_bbox": "lat 6.5..37.5, lon 68.0..97.5"
+    },
+    "last_run": "2026-09-13"
+  },
+  "hospitals": [],
+  "cities": []
+}

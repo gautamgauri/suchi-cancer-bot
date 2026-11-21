@@ -179,6 +179,15 @@ model KbChunk {
 
   document KbDocument @relation(fields: [docId], references: [id])
 
+  /// One row per (docId, chunkIndex) — issue #86. ingest-kb.ts upserts on the deterministic
+  /// id `docId::chunk::N`; a run that wrote uuid ids left a byte-identical second copy of
+  /// 25,065 chunks (34% of the index) that the upsert could never reach. Cleaned up on prod
+  /// 2026-09-06; this constraint makes a recurrence a 23505 unique_violation instead of a
+  /// silent retrieval-quality loss. Migration 20260913000000_kb_chunk_unique_position
+  /// RAISEs (nothing committed) if duplicate positions exist when it runs.
+  /// `KbChunk_docId_idx` is now redundant (this key's leading column is docId) but is kept
+  /// until it is dropped deliberately in its own change.
+  @@unique([docId, chunkIndex])
   @@index([docId])
   @@index([content])
 }

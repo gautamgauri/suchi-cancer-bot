@@ -124,9 +124,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </article>
       </div>
 
-      <div class="founders-photo">
-        <img src="/assets/founders_photo.jpg" alt="SCCF Founders: Gautam Gauri, Dr. Amit Kumar, and Dr. Nandini Thakur Jha" loading="lazy" />
-      </div>
+      {/*
+        Founders group photo intentionally omitted (issue #140).
+        The previous /assets/founders_photo.jpg was a Facebook HTML page saved
+        under a .jpg name and rendered as a broken image on the live site. The
+        real photograph is pending from SCCF; when it arrives, drop it in
+        apps/landing/public/assets/ (scripts/check_image_assets.py verifies it is
+        a real image) and restore:
+          <div class="founders-photo">
+            <img src="/assets/founders_photo.jpg"
+                 alt="SCCF Founders: Gautam Gauri, Dr. Amit Kumar, and Dr. Nandini Thakur Jha"
+                 loading="lazy" />
+          </div>
+        The founders' names and credits remain visible in the cards above.
+      */}
     </div>
   </section>
 
@@ -356,6 +367,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     margin: 0;
   }
 
+  /* Kept for the founders photo once SCCF supplies it (issue #140). */
   .founders-photo {
     max-width: 500px;
     margin: 0 auto;

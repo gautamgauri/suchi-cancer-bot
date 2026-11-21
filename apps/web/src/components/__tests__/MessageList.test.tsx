@@ -9,12 +9,6 @@ vi.mock('../SuchiAvatar', () => ({
   ),
 }));
 
-vi.mock('../Citation', () => ({
-  Citation: ({ citation, index }: { citation: { title: string }; index: number }) => (
-    <span data-testid="citation">[{index + 1}] {citation.title}</span>
-  ),
-}));
-
 vi.mock('../MessageActions', () => ({
   MessageActions: ({ onFeedback }: { onFeedback: (rating: 'up' | 'down') => void }) => (
     <div data-testid="message-actions">
@@ -91,25 +85,61 @@ describe('MessageList', () => {
     });
   });
 
-  describe('citations', () => {
-    it('renders citations in assistant messages', () => {
+  // Issue #90: there is no per-answer citation renderer. The API strips markers
+  // and sends no title/URL a reader could follow, so the only correct client
+  // behaviour is to drop any marker that slips through — never to turn it into
+  // a "[1]" badge or a "Sources" footer that points at nothing.
+  describe('citation markers (#90)', () => {
+    const renderedLog = () => screen.getByRole('log').textContent ?? '';
+
+    it('strips a complete marker that reaches the client', () => {
       render(<MessageList messages={[mockMessages[1]]} />);
-      expect(screen.getByTestId('citation')).toBeInTheDocument();
+      const text = renderedLog();
+      expect(text).toContain('Breast cancer symptoms include lumps');
+      expect(text).not.toContain('[citation:');
+      expect(text).not.toContain('doc1');
     });
 
-    it('renders sources section when citations present', () => {
+    it('renders no inline [n] badge and no sources footer', () => {
       render(<MessageList messages={[mockMessages[1]]} />);
-      expect(screen.getByText(/Sources \(1\)/)).toBeInTheDocument();
+      const text = renderedLog();
+      expect(text).not.toMatch(/\[\d+\]/);
+      expect(text).not.toMatch(/Sources/i);
+      expect(text).not.toMatch(/Source \d/);
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
-    it('does not render citations for user messages', () => {
+    it('strips an unterminated marker left by a truncated generation (#68)', () => {
+      const truncated: Message = {
+        id: 'msg-4',
+        role: 'assistant',
+        text: 'Synthetic grounded claim [citation:kb_en_synthetic_doc_v1:kb_',
+      };
+      render(<MessageList messages={[truncated]} />);
+      const text = renderedLog();
+      expect(text).toContain('Synthetic grounded claim');
+      expect(text).not.toContain('kb_en_synthetic_doc_v1');
+      expect(text).not.toContain('[citation');
+    });
+
+    it('renders an already-clean answer (the real API shape) unchanged', () => {
+      const clean: Message = {
+        id: 'msg-5',
+        role: 'assistant',
+        text: 'Synthetic answer text with no markers.',
+      };
+      render(<MessageList messages={[clean]} />);
+      expect(screen.getByText('Synthetic answer text with no markers.')).toBeInTheDocument();
+    });
+
+    it('leaves user text with brackets untouched', () => {
       const userMessageWithBrackets: Message = {
         id: 'msg-3',
         role: 'user',
         text: 'What about [specific] details?',
       };
       render(<MessageList messages={[userMessageWithBrackets]} />);
-      expect(screen.queryByTestId('citation')).not.toBeInTheDocument();
+      expect(screen.getByText('What about [specific] details?')).toBeInTheDocument();
     });
   });
 

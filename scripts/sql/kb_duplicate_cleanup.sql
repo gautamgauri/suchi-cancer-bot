@@ -31,15 +31,39 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- 1. Cheap health signal (the same query OpsMetricsService.kbIndexIntegrity runs).
+-- 1. Cheap health signal (the same query OpsMetricsService.kbIndexIntegrity runs,
+--    and NON_DETERMINISTIC_ID_PREDICATE in apps/api/src/scripts/kb-index-preflight.ts).
 --    Healthy index: duplicate_position_rows = 0 AND non_deterministic_id_rows = 0.
 --    Measured 2026-09-06: 73802 | 25065 | 25065
+--
+--    The id test is EXACT (`id IS DISTINCT FROM "docId" || '::chunk::' || "chunkIndex"`),
+--    not `NOT LIKE '%::chunk::%'`. ingest-kb.ts's upsert can only ever reach that one
+--    string, so an id like `legacy::chunk::x` or one naming a different document
+--    contains the separator yet is as unreachable as a uuid id — the substring form
+--    scored those rows as healthy and let ingestion walk into a bare 23505.
+--
+--    Sections 2-4 below deliberately keep the LOOSER substring test: there it does not
+--    describe health, it selects the DELETE cohort — the legacy uuid-id rows inside
+--    docs that also hold deterministic rows, the exact set whose "identical surviving
+--    twin" invariant was verified offline (25065/25065, 2026-09-06). Tightening it
+--    would silently widen a destructive DELETE past what was verified. Consequence, by
+--    design: a row like `legacy::chunk::x` in a doc with NO deterministic rows keeps
+--    section 1 non-zero after the cleanup. That is correct — it needs its own decision
+--    (re-ingest the doc, or delete the row), not a blanket DELETE.
 -- ---------------------------------------------------------------------------
 SELECT
   count(*)::int                                                       AS total_rows,
-  (count(*) FILTER (WHERE id NOT LIKE '%::chunk::%'))::int            AS non_deterministic_id_rows,
+  (count(*) FILTER (WHERE id IS DISTINCT FROM
+     ("docId" || '::chunk::' || "chunkIndex")))::int                   AS non_deterministic_id_rows,
   (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int           AS duplicate_position_rows
 FROM "KbChunk";
+
+-- Sample offending ids (the five the ingest preflight prints in its refusal).
+SELECT id, "docId", "chunkIndex"
+FROM "KbChunk"
+WHERE id IS DISTINCT FROM ("docId" || '::chunk::' || "chunkIndex")
+ORDER BY id
+LIMIT 5;
 
 -- ---------------------------------------------------------------------------
 -- 2. DRY RUN — exactly the rows section 4 would delete.
@@ -122,9 +146,14 @@ WHERE m."docId" = k."docId"
 -- psql prints "DELETE <n>". n MUST equal section 2's count (25065 on 2026-09-06).
 -- If it does not: ROLLBACK;
 
--- Post-check inside the same transaction: both must be 0.
+-- Post-check inside the same transaction, same predicate as section 1.
+-- duplicate_position_rows MUST be 0 — if it is not, ROLLBACK.
+-- non_deterministic_id_rows should be 0 too, but a leftover here is NOT a reason
+-- to roll back the DELETE: it means a doc holds an off-shape id with no
+-- deterministic twin (see the note in section 1), which needs its own fix.
 SELECT
-  (count(*) FILTER (WHERE id NOT LIKE '%::chunk::%'))::int  AS non_deterministic_id_rows,
+  (count(*) FILTER (WHERE id IS DISTINCT FROM
+     ("docId" || '::chunk::' || "chunkIndex")))::int         AS non_deterministic_id_rows,
   (count(*) - count(DISTINCT ("docId", "chunkIndex")))::int AS duplicate_position_rows
 FROM "KbChunk";
 

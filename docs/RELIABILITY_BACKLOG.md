@@ -224,7 +224,7 @@ by this handoff review.
      `apps/api/src/modules/chat/intent-classifier.ts` — the red-flag path is
      the safety module, not an intent.)
 - **Impact:** its 9 case IDs are counted by the case-manifest guard, so the
-  headline **601 cases overstates executable coverage by 9 (592 runnable)**.
+  headline **603 cases overstates executable coverage by 9 (594 runnable)**.
   Nine user-journey behaviours — newly diagnosed, caregiver reading a report,
   symptom worry, caregiver crisis escalation, emergency red flags — read as
   covered and are not tested at all. This is also why #70's false negative
@@ -233,7 +233,7 @@ by this handoff review.
   every case file by runner lane (`gold` / `voice` / `voice-e2e` / orphan),
   fails if a **new** file arrives in a schema no runner reads, fails if a
   quarantined file is quietly ported (stale-entry check), and pins the
-  601/9/592 split so the coverage headline cannot silently re-inflate.
+  603/9/594 split so the coverage headline cannot silently re-inflate.
 - **`mode:` — recorded decision (was the open question in #71.3):** the
   `mode: navigate|explain` key is descriptive only, not a request field, and
   that is correct as-is. `runner/api-client.ts` posts
@@ -275,6 +275,160 @@ weaknesses found while investigating, deliberately *not* changed here:
   race in `resolveSession` that minted four sessions for one new contact's
   burst. Both are fixed in the follow-up serialisation PR, not here — this PR
   is kept to the safety-relevant template correction.
+### P1-12. Hospital ranking has no proximity signal — recommendation: do not build a distance model on today's data (issue #95)
+
+- **Context:** issue #95 (a Darbhanga query answered with Patna hospitals,
+  HBCH&RC Muzaffarpur never surfaced) is fixed at the candidate-set level: the
+  city filter in `apps/api/src/modules/chat/hospital-directory.service.ts` now
+  degrades city → state → adjacent state → full regional pool instead of
+  returning `[]`. Ranking was left alone: `searchHospitals` still orders by the
+  directory `score` (quality / cost / location / PMJAY).
+- **Assessed and deliberately not implemented:** a district/region proximity
+  map for Bihar. The data does not support it, measured against
+  `apps/api/data/hospitals.json` (83 entries, symlinked from
+  `apps/landing/src/content/hospitals.json`):
+  1. **No geographic primitive.** No `district`, no coordinates, no
+     hospital-to-city distances. `region` is coarse and inconsistent — nine
+     distinct values across the file, with both `"East India"` and `"East"` in
+     use *within Bihar* (HBCH Muzaffarpur is `"East India"`, AIIMS Patna is
+     `"East"`). It cannot separate North from South Bihar.
+  2. **Catchment prose is too sparse, and misses the reported city.** Only 2 of
+     12 Bihar records name a catchment: HBCH Muzaffarpur
+     (`"Muzaffarpur, Sitamarhi, Vaishali, Sheohar, Gopalganj"`) and Healing
+     Touch Bhagalpur (`"Bhagalpur, Munger, Banka"`). **Darbhanga appears in
+     neither.** A catchment-driven map would therefore not have fixed the very
+     query in the issue. The only Darbhanga signal in the whole file is
+     HBCH's `logistics.nearest_airport: "Darbhanga Airport (~50km)"` — one
+     free-text field on one record; 53 of 83 records have any logistics place
+     name at all.
+  3. **Proximity ranking would be clinically wrong here.** Bihar's active
+     oncology supply sits in three cities: Patna (9 records), Muzaffarpur (1),
+     Bhagalpur (1). Ranking eastern-Bihar queries by distance promotes Healing
+     Touch Bhagalpur (tier C, score 50) over HBCH Muzaffarpur (tier A, score
+     90, TMC unit) — and Healing Touch's own record says
+     `"No radiation or medical oncology — refer to Patna or Muzaffarpur for
+     those needs"`. Issue #95 is explicit that the recommendation must follow
+     clinical need, not proximity; the score already encodes that.
+- **Recommendation, in order:**
+  1. Add a `district` field (and, where a facility genuinely claims one, a
+     structured `catchment_districts` list) to the facility schema and populate
+     it **through the Navigator research/review/approve pipeline**
+     (`docs/NAVIGATOR_PIPELINE.md`). Facility data is not an agent's to author
+     — see the human-decision list below.
+  2. Only once districts exist, consider proximity as a **tiebreak within a
+     score band**, never as the primary key, so a nearer facility can win
+     between comparable options but can never displace a materially
+     better-equipped one.
+  3. Do not synthesise distances from `logistics.nearest_railway` /
+     `nearest_airport` strings. They are free text, ~64% populated, and
+     describe the facility's own transport links, not the patient's.
+- **Observability in place meanwhile:** every widening step logs
+  `event: "hospital_search_geographic_fallback"` (with `stage`,
+  `requestedCity`, `resolvedState`, `count`) or
+  `event: "hospital_search_adjacency_fallback"`, so the districts that actually
+  generate fallbacks can be counted from production logs before anyone invests
+  in a distance model.
+
+### P1-13. Devanagari-script hospital queries never reach the hospital directory (issue #95 acceptance criteria, partially met)
+
+- **What:** issue #95 requires Hindi/Hinglish variants to follow the same
+  facility-selection logic. **Hinglish (Latin script) does** — verified:
+  `detectLocation("Darbhanga ke paas cancer hospital")` →
+  `{city: "Darbhanga", state: "Bihar"}`, and the `hospitalSearch` signal fires,
+  so it runs the same `searchHospitals` call as the English query.
+  **Devanagari does not**, for two independent reasons:
+  1. `execution-planner.service.ts` gates the whole structured lookup on
+     `detected.hospitalSearch`, whose pattern is
+     `/\b(hospital|अस्पताल|clinic|...)\b/i`. JavaScript `\b` never matches next
+     to Devanagari, so `अस्पताल` can never match — same root cause as QA0904-1
+     and `AbstentionService.hasUrgencyIndicators`. Verified:
+     `.test("दरभंगा के पास कैंसर अस्पताल कहाँ है") === false`. The hospital
+     directory is therefore never consulted at all.
+  2. `utils/location-detector.ts` holds only Latin aliases, so even with the
+     signal fixed, `detectLocation("दरभंगा में …")` returns `null`.
+- **Impact:** a Hindi-script navigation query gets no structured hospital rows
+  and is answered from retrieval/model prior — the same failure mode as issue
+  #95, still live for Devanagari input. Hindi is a primary user language for
+  SCCF (Bihar).
+- **Not fixed here, deliberately:** the fix means adding Devanagari terms to
+  detection patterns that sit alongside the safety keyword lists, and the
+  `\b`-on-Devanagari class of bug should be fixed once, consistently, with the
+  QA0904-1 review rather than patched per call site (AGENTS.md §1.3).
+- **Fix shape:** drop `\b` in favour of explicit boundaries (or the `u` flag
+  with Unicode property escapes) for the Devanagari alternatives, and add
+  Devanagari aliases to `INDIAN_CITIES`; pin both with tests next to
+  `intent-classifier.romanized.spec.ts`.
+
+### P1-14. The urgency declaration pattern is both over- and under-inclusive — NEEDS SCCF REVIEW (new; surfaced by the Codex review of PR #165)
+
+- **What:** PR #165 (issue #164) replaced the bare vocabulary pattern
+  `/\b(emergency|urgent|immediate|right\s+now)\b/i` in
+  `AbstentionService.hasUrgencyIndicators()`
+  (`apps/api/src/modules/abstention/abstention.service.ts:60`) with a
+  declaration-only pattern:
+  `/\b(?:this|it)\s+is\s+(?!not\b)(?:an?\s+)?(?:emergency|urgent)\b/i`.
+  The new pattern keys on the *substring* `this is` / `it is`, which English
+  preserves inside indirect questions and which excludes several ordinary ways
+  of declaring an emergency. Verified by running all three detection layers
+  (`evaluateEmergencyFastPath`, `SafetyService.evaluate`,
+  `hasUrgencyIndicators`) against each input:
+
+  | input | fast path | SafetyService | `hasUrgencyIndicators` | wanted |
+  | --- | --- | --- | --- | --- |
+  | `Do you think this is an emergency?` | false | normal | **true** | false |
+  | `Can you tell me if this is urgent?` | false | normal | **true** | false |
+  | `Is this an emergency?` | false | normal | false | false |
+  | `I have an emergency` | false | normal | **false** | true |
+  | `we have an emergency` | false | normal | **false** | true |
+  | `it's an emergency` | false | normal | **false** | true |
+  | `this is a medical emergency` | false | normal | **false** | true |
+  | `this is an emergency` | false | normal | true | true |
+
+- **Impact (over-inclusive half):** the #164 production failure survives for
+  indirect phrasings. With `safetyResult.classification === "normal"`, the
+  urgency branch at `apps/api/src/modules/chat/chat.service.ts:368` returns the
+  S2 template with `actions: ["show_emergency_banner", "end_conversation"]`
+  (`chat.service.ts:510`, `chat.service.ts:556`) — so a worried user who asks
+  "do you think this is an emergency?" about a symptom no safety rule assesses
+  is still told it is one, and the chat is closed on them.
+- **Impact (under-inclusive half):** an explicit, symptom-free declaration of
+  an emergency now escalates nowhere. `EMERGENCY_PATTERNS`
+  (`apps/api/src/modules/safety/safety.rules.ts:54-78`) and the fast path's
+  `CRITICAL_PATTERNS`/`URGENT_PATTERNS`
+  (`apps/api/src/modules/safety/emergency-fast-path.ts:24-112`) are all
+  symptom- or helpline-scoped; neither has a generic declaration rule. Before
+  #165 the removed vocabulary pattern covered these four inputs. This is a
+  coverage regression introduced by #165, not a pre-existing gap.
+- **Why an agent must not fix it:** this is a safety keyword list and it
+  decides whether a turn ends in `end_conversation`. AGENTS.md §1.3 puts both
+  behind SCCF human/medical review, and the two halves pull in opposite
+  directions (one narrows escalation, one widens it) — that trade-off is a
+  clinical call, not a regex cleanup.
+- **Fix shape (proposal for review, not applied):**
+  1. Narrow the interrogative half with a lead-in exclusion, e.g. prefix the
+     existing pattern with
+     `(?<!\b(?:if|whether|think|thinks|know|knows|wonder|wondering|asking|ask|tell\s+me)\s)`.
+     Verified to flip both indirect questions to false while keeping
+     `this is an emergency`, `It is urgent, she is very weak` and
+     `this is an emergency, please help` true. Note the exclusion list is
+     enumerable and therefore incomplete — an alternative framing is "a
+     message that ends in `?` and contains no symptom match never escalates",
+     which is a policy statement rather than a word list.
+  2. Restore the declaration half by allowing the contraction, an adjective
+     slot, and a have-form, e.g.
+     `/…\b(?:this|it|that)(?:['’]s|\s+is)\s*(?!not\b)(?:an?\s+)?(?:real\s+|true\s+|medical\s+)?(?:emergency|urgent)\b/i`
+     plus
+     `/\b(?:i|we|he|she|they)\s+(?:have|has)\s+(?:an?\s+)?(?:medical\s+)?emergency\b/i`.
+     Verified to make all four missing declarations true without re-flagging
+     the negated or interrogative forms already pinned in
+     `abstention.service.spec.ts:126-139`.
+  3. Whichever shape SCCF approves ships with cases added to the existing
+     `it.each` blocks in
+     `apps/api/src/modules/abstention/abstention.service.spec.ts:119-159`.
+- **Decision needed:** SCCF confirms (a) that an indirect question about an
+  emergency must not escalate or end the conversation, and (b) that a bare
+  declaration of an emergency with no described symptom must escalate to S2.
+  Both are currently answered wrong, in opposite directions.
 
 ---
 
@@ -320,9 +474,13 @@ the contract. Also placeholder generators in
 ### P2-6. LinkedIn token expiry (tracked: issue #27)
 
 `LINKEDIN_ACCESS_TOKEN` (60-day OAuth token,
-`apps/api/src/modules/admin/social-post.service.ts`) expires ~2026-07-20;
-LinkedIn posting is intentionally disabled until an org page exists. Decide:
-rotate or remove the code path.
+`apps/api/src/modules/admin/social-post.service.ts`) expired ~2026-07-20.
+**Decided (Sep 2026): rotate, not remove** — SCCF has an organisation page, so
+`postLinkedIn()` now targets the versioned Posts API with an
+`urn:li:organization:` author. The engineering side is done; what remains is a
+human OAuth sign-in and two Secret Manager values. Runbook:
+`docs/LINKEDIN_ORG_POSTING.md`. The 60-day expiry itself does not go away —
+rotation stays a recurring calendar task.
 
 ### P2-7. Instagram social card placeholder (tracked: issue #28)
 
@@ -587,7 +745,7 @@ no persistent database had recorded it).
    schema (which requires deciding the pass criteria for symptom-worry and
    emergency journeys — SCCF medical review per AGENTS.md §1.3) or retire the
    file with a manifest tombstone. Until then, quote executable coverage as
-   572, not 601 — see item 12; the case manifest now reports the figure
+   574, not 603 — see item 12; the case manifest now reports the figure
    directly (`npm --prefix eval run cases:check`, issue #89).
 12. P1-11 (found 2026-09-09 while fixing #89): **20 gold-lane eval cases name
    an intent `rubrics/rubrics.v1.json` does not define**, so
@@ -606,7 +764,24 @@ no persistent database had recorded it).
    assert — including red-flag ones — so this is an eval-owner + SCCF call,
    not an agent fix. Pinned by `eval/scripts/case-schema.test.ts` so the list
    cannot grow silently.
-13. **Privacy — the redacted user message is still recoverable from Git
+13. P1-12: hospital proximity. Decide whether the Navigator pipeline should
+   start capturing a `district` (and optionally a catchment district list) per
+   facility. That is a facility-data schema change and goes through the
+   Navigator review/approve pipeline, not a code fix — an agent must not
+   author district or distance values.
+14. P1-13: Devanagari-script hospital queries. The `hospitalSearch` signal and
+   the city table are both Latin-only, so a Hindi-script navigation query
+   never reaches the hospital directory. Fixing it means editing detection
+   patterns that sit next to the safety keyword lists (same `\b`-on-Devanagari
+   root cause as QA0904-1) — the Devanagari term list needs SCCF review.
+15. P1-14: the urgency declaration pattern in `hasUrgencyIndicators()` is
+   wrong in both directions — indirect questions ("do you think this is an
+   emergency?") still escalate and end the conversation, while plain
+   declarations ("I have an emergency", "it's an emergency", "this is a
+   medical emergency") now escalate nowhere. SCCF decides both halves; the
+   candidate patterns are written out under P1-14 but must not be applied by
+   an agent (AGENTS.md §1.3 — safety keyword list + `end_conversation`).
+16. **Privacy — the redacted user message is still recoverable from Git
     history** (raised by Codex on PR #150; agents must not rewrite history).
     PR #150 and commit `32849b4` remove the real caregiver message from the
     *working tree*, which is all an agent may do. The message remains in the

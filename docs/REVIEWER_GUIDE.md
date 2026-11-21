@@ -8,7 +8,7 @@ This guide is for Gautam, Divya, and Nisha. It explains every approval email you
 
 | Pipeline | What it produces | Who triggers it | Who approves |
 |---|---|---|---|
-| **Article** | New webpage on suchicancercare.org | Automated scheduler (daily) | Gautam, Divya, Nisha |
+| **Article** | New webpage on suchitracancercare.org | Automated scheduler (daily) | Gautam, Divya, Nisha |
 | **Social post** | Facebook / Instagram / LinkedIn post | Auto-triggered after article approval | Gautam, Divya, Nisha |
 | **Hospital directory** | New hospitals in Find Care directory | Research agent (manual trigger) | Gautam, Divya |
 

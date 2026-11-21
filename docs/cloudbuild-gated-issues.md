@@ -1,8 +1,12 @@
 # cloudbuild.gated.yaml — Known Issues
 
-> **Status (Feb 2026)**: Old issues related to the evaluation gate (openai-api-key secret and build timeout) were resolved by removing the eval gate entirely.
+> **Status (Sep 2026)**: Old issues related to the evaluation gate (openai-api-key secret and build timeout) were resolved by removing the eval gate entirely.
 > Issue 4 (check-schema-local validation) was resolved by switching to `prisma validate`.
-> MIG updated to `20260606000000_phase2_user_role_review_kb_metadata`.
+> MIG updated to `20260913000000_kb_chunk_unique_position` (issue #86), in both
+> `cloudbuild.gated.yaml` and the fallback default inside `migrate-with-repair.sh`.
+> Issue 3 is now partly addressed: the script has a step (6) that asserts the
+> `KbChunk_docId_chunkIndex_key` index exists, so a migration that did not apply
+> — or that was wrongly marked applied by the repair path — fails the job.
 
 
 ## Summary
@@ -39,7 +43,7 @@ gcloud builds submit . --config=cloudbuild.gated.yaml --project=gen-lang-client-
 
 **What**: The `update-migrate-job-image` step always sets:
 ```
-MIG=20260606000000_phase2_user_role_review_kb_metadata
+MIG=20260913000000_kb_chunk_unique_position
 ```
 
 **Why it matters**: `migrate-with-repair.sh` uses `MIG` in its fallback/repair path:
@@ -68,6 +72,15 @@ will report success even though the new table doesn't exist.
 
 **Fix**: After a new migration is added, update the column/table check in the script to
 include a representative column/table from the new migration.
+
+**Partly done (Sep 2026, issue #86)**: `migrate-with-repair.sh` gained a step (6)
+that runs unconditionally — not only on the repair branch — and asserts that
+`KbChunk_docId_chunkIndex_key` (the `@@unique([docId, chunkIndex])` guard from
+`20260913000000_kb_chunk_unique_position`) exists and is valid. This also covers
+the repair path's own hazard: step (4) marks `$MIG` applied whenever the *column*
+repair ran, which for an index-creating migration would record something untrue.
+Extend the same pattern for the next migration rather than adding another
+greeting-era column.
 
 ---
 
