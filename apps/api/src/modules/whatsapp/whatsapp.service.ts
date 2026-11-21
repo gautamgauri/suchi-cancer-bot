@@ -40,16 +40,45 @@ function isUniqueViolation(err: any): boolean {
  *
  * `partsSent` is how many chunks made it out before the failure, so the caller
  * can tell "nothing was delivered" from "the patient got a truncated reply".
+ *
+ * The message never carries Meta's response body. It holds the HTTP status and
+ * Meta's numeric error code only, because it is copied into the ledger.
  */
 export class WhatsAppDeliveryError extends Error {
   constructor(
     message: string,
     readonly partsSent: number,
+    readonly kind: "config" | "network" | "http" = "http",
+    readonly httpStatus?: number,
+    readonly metaErrorCode?: number,
   ) {
     super(message);
     this.name = "WhatsAppDeliveryError";
   }
+
+  /**
+   * A failure worth one more attempt: the connection broke, Meta throttled us
+   * (429) or the Graph API had a server error (5xx). Missing credentials, 401
+   * and 403 will not heal in a second, so they are never retried.
+   */
+  get retryable(): boolean {
+    if (this.kind === "network") return true;
+    if (this.kind !== "http" || this.httpStatus === undefined) return false;
+    return this.httpStatus === 429 || this.httpStatus >= 500;
+  }
 }
+
+/** Meta's numeric `error.code` from a Graph API error body, if it has one. */
+function metaErrorCodeOf(body: string): number | undefined {
+  try {
+    const code = JSON.parse(body)?.error?.code;
+    return typeof code === "number" ? code : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 @Injectable()
 export class WhatsAppService {
@@ -73,6 +102,9 @@ export class WhatsAppService {
    * is what guarantees at-most-once processing.
    */
   private readonly contactQueues = new Map<string, Promise<void>>();
+
+  /** Pause before the single retry of a first part that failed transiently. */
+  retryDelayMs = 1_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -132,7 +164,9 @@ export class WhatsAppService {
     const b = Buffer.from(expected);
     const ok = a.length === b.length && timingSafeEqual(a, b);
     if (!ok) {
-      this.logger.error(
+      // `warn`, because anyone can POST a bad signature to this public
+      // endpoint. A missing secret above stays at `error`: that is our fault.
+      this.logger.warn(
         "WhatsApp webhook rejected: x-hub-signature-256 does not match META_APP_SECRET — " +
           "inbound messages are being dropped at the signature gate",
       );
@@ -241,6 +275,7 @@ export class WhatsAppService {
     status: "processed" | "failed",
     error?: string,
     failedStage?: "pipeline" | "delivery",
+    delivery?: { partsSent?: number; httpStatus?: number; metaErrorCode?: number },
   ): Promise<void> {
     try {
       const existing = await this.prisma.analyticsEvent.findUnique({
@@ -256,6 +291,10 @@ export class WhatsAppService {
             // Error class/message only — never the user's text.
             ...(error ? { error: error.slice(0, 200) } : {}),
             ...(failedStage ? { failedStage } : {}),
+            // Numbers only. Meta's response body text is never stored here.
+            ...(delivery?.partsSent !== undefined ? { partsSent: delivery.partsSent } : {}),
+            ...(delivery?.httpStatus !== undefined ? { httpStatus: delivery.httpStatus } : {}),
+            ...(delivery?.metaErrorCode !== undefined ? { metaErrorCode: delivery.metaErrorCode } : {}),
           },
         },
       });
@@ -329,13 +368,22 @@ export class WhatsAppService {
       // markers in ChatController; this channel bypasses the controller, so it
       // must strip them itself or raw `[citation:...]` ids reach the patient
       // (issue #116). The raw text stays in the DB for evaluation.
-      await this.sendText(msg.from, cleanResponseForDisplay(result.responseText));
-      await this.markLedger(msg.wamid, "processed");
+      const partsSent = await this.sendText(msg.from, cleanResponseForDisplay(result.responseText));
+      await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent });
     } catch (err: any) {
       const delivery = err instanceof WhatsAppDeliveryError;
       this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
-      await this.markLedger(msg.wamid, "failed", err?.message, delivery ? "delivery" : "pipeline");
-      // A delivery failure means the outbound channel itself is down (missing
+      await this.markLedger(
+        msg.wamid,
+        "failed",
+        err?.message,
+        delivery ? "delivery" : "pipeline",
+        delivery
+          ? { partsSent: err.partsSent, httpStatus: err.httpStatus, metaErrorCode: err.metaErrorCode }
+          : undefined,
+      );
+      // `sendText` has already retried a transient first-part failure once.
+      // A delivery failure here means the outbound channel itself is down (missing
       // or rejected credentials, Graph outage). Pushing the fallback down the
       // same channel cannot reach the patient, and after a partial send it
       // would leave them a truncated answer followed by an apology.
@@ -378,17 +426,24 @@ export class WhatsAppService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Hand a reply to the Graph API. Throws `WhatsAppDeliveryError` if anything
-   * stops it reaching Meta — callers must not treat a return-without-send as
-   * success (issue #231).
+   * Hand a reply to the Graph API and return how many parts Meta accepted.
+   * Throws `WhatsAppDeliveryError` if anything stops it reaching Meta — callers
+   * must not treat a return-without-send as success (issue #231).
+   *
+   * One transient failure (network, 429, 5xx) on the first part is retried
+   * once after `retryDelayMs`. Only the first part, and only while nothing has
+   * been accepted, so a retry never repeats a part Meta already took. A
+   * failure on a later part is not retried, because the patient already holds
+   * the start of the reply.
    */
-  async sendText(to: string, text: string): Promise<void> {
+  async sendText(to: string, text: string): Promise<number> {
     const phoneNumberId = process.env.META_WABA_PHONE_NUMBER_ID;
     const token = process.env.META_WABA_TOKEN;
     if (!phoneNumberId || !token) {
       throw new WhatsAppDeliveryError(
         "WhatsApp outbound not configured — META_WABA_PHONE_NUMBER_ID / META_WABA_TOKEN missing",
         0,
+        "config",
       );
     }
     const version = process.env.WHATSAPP_GRAPH_VERSION ?? "v21.0";
@@ -396,40 +451,61 @@ export class WhatsAppService {
 
     let partsSent = 0;
     for (const body of formatForWhatsApp(text)) {
-      let res: Response;
       try {
-        res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to,
-            type: "text",
-            text: { preview_url: true, body },
-          }),
-        });
-      } catch (err: any) {
-        // DNS, TLS or connection failure: fetch rejects before any HTTP
-        // response exists. The reply did not leave the box, so this is a
-        // delivery failure like a non-2xx send. Left as a native error it was
-        // recorded as failedStage "pipeline" and the fallback was pushed down
-        // the same dead channel.
-        throw new WhatsAppDeliveryError(
-          `WhatsApp send failed (network): ${String(err?.message ?? err).slice(0, 200)}`,
-          partsSent,
-        );
-      }
-      if (!res.ok) {
-        const errText = await res.text().catch(() => `HTTP ${res.status}`);
-        // Stop sending further parts, and surface it — a 401/403 on the system
-        // user token silently kills every reply on the live number.
-        throw new WhatsAppDeliveryError(
-          `WhatsApp send failed (${res.status}): ${errText.slice(0, 200)}`,
-          partsSent,
-        );
+        await this.postPart(url, token, to, body, partsSent);
+      } catch (err) {
+        if (!(err instanceof WhatsAppDeliveryError) || !err.retryable || partsSent !== 0) throw err;
+        this.logger.warn(`${err.message}. Retrying the first part once in ${this.retryDelayMs} ms`);
+        await sleep(this.retryDelayMs);
+        await this.postPart(url, token, to, body, partsSent);
       }
       partsSent++;
+    }
+    return partsSent;
+  }
+
+  /** POST one part. Throws `WhatsAppDeliveryError` unless Meta answers 2xx. */
+  private async postPart(url: string, token: string, to: string, body: string, partsSent: number): Promise<void> {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to,
+          type: "text",
+          text: { preview_url: true, body },
+        }),
+      });
+    } catch (err: any) {
+      // DNS, TLS or connection failure: fetch rejects before any HTTP
+      // response exists. The reply did not leave the box, so this is a
+      // delivery failure like a non-2xx send. Left as a native error it was
+      // recorded as failedStage "pipeline" and the fallback was pushed down
+      // the same dead channel.
+      throw new WhatsAppDeliveryError(
+        `WhatsApp send failed (network): ${String(err?.message ?? err).slice(0, 200)}`,
+        partsSent,
+        "network",
+      );
+    }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      const metaErrorCode = metaErrorCodeOf(errText);
+      // Meta's body goes to the log for the operator. It stays out of the
+      // error message, which is copied into the ledger.
+      this.logger.warn(`WhatsApp Graph API error body (${res.status}): ${errText.slice(0, 200)}`);
+      // Stop sending further parts, and surface it — a 401/403 on the system
+      // user token silently kills every reply on the live number.
+      throw new WhatsAppDeliveryError(
+        `WhatsApp send failed (${res.status}${metaErrorCode !== undefined ? `, Meta code ${metaErrorCode}` : ""})`,
+        partsSent,
+        "http",
+        res.status,
+        metaErrorCode,
+      );
     }
   }
 }

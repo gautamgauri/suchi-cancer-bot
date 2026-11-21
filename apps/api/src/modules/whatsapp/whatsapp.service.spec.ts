@@ -85,7 +85,7 @@ describe("WhatsAppService", () => {
 
     svc = new WhatsAppService(prisma, chat, sessions);
     // Avoid real network in sendText
-    jest.spyOn(svc, "sendText").mockResolvedValue(undefined);
+    jest.spyOn(svc, "sendText").mockResolvedValue(1);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -131,13 +131,17 @@ describe("WhatsAppService", () => {
     // Issue #231: with no global exception filter, a rejection here 403s the
     // batch with nothing in the logs naming the WhatsApp webhook — a rotated
     // app secret looks identical to a channel that just went quiet.
-    it("logs why a rejection happened, without leaking the secret or the body", () => {
+    it("logs why a rejection happened at warn, without leaking the secret or the body", () => {
+      // A bad signature on a public endpoint can come from anyone, so it is a
+      // warning. Only a missing secret (our own fault) is logged at error.
+      const warnLog = jest.spyOn(svc["logger"], "warn").mockImplementation(() => undefined);
       const errorLog = jest.spyOn(svc["logger"], "error").mockImplementation(() => undefined);
 
       expect(svc.verifySignature(Buffer.from('{"a":2}'), sign('{"a":1}', APP_SECRET))).toBe(false);
 
-      expect(errorLog).toHaveBeenCalledTimes(1);
-      const logged = String(errorLog.mock.calls[0][0]);
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).toHaveBeenCalledTimes(1);
+      const logged = String(warnLog.mock.calls[0][0]);
       expect(logged).toMatch(/does not match META_APP_SECRET/);
       expect(logged).not.toContain(APP_SECRET);
       expect(logged).not.toContain('{"a":2}');
@@ -219,7 +223,7 @@ describe("WhatsAppService", () => {
     it("de-duplicates a retry that lands on a different instance (FR-WA-007)", async () => {
       // Two service instances sharing one database, as on Cloud Run.
       const other = new WhatsAppService(prisma, chat, sessions);
-      jest.spyOn(other, "sendText").mockResolvedValue(undefined);
+      jest.spyOn(other, "sendText").mockResolvedValue(1);
       const m = { wamid: "cross-instance", from: "9199", text: "hi" };
 
       await svc.processInbound([m]);
@@ -369,6 +373,7 @@ describe("WhatsAppService", () => {
       (svc.sendText as jest.Mock).mockRestore();
       fetchMock = jest.fn();
       jest.spyOn(global, "fetch").mockImplementation(fetchMock as any);
+      svc.retryDelayMs = 0;
     });
 
     const okResponse = () => ({ ok: true, status: 200, text: async () => "{}" });
@@ -431,6 +436,7 @@ describe("WhatsAppService", () => {
       expect(err?.name).toBe("WhatsAppDeliveryError");
       expect(err.partsSent).toBe(0);
       expect(err.message).toMatch(/WhatsApp send failed \(network\): fetch failed/);
+      expect(fetchMock).toHaveBeenCalledTimes(2); // the first attempt and one retry
     });
 
     it("keeps the count of delivered parts when the transport fails mid-reply", async () => {
@@ -452,8 +458,93 @@ describe("WhatsAppService", () => {
       expect(ledger.rows.get(inboundLedgerId("wa-231-net")).payload).toEqual(
         expect.objectContaining({ status: "failed", failedStage: "delivery" }),
       );
-      // One attempt for the real reply. No second attempt for the fallback.
+      // The real reply plus its one retry. No attempt for the fallback.
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    // Review of #232: one transient failure used to leave the patient with
+    // silence, emergency turns included. The first part gets one retry.
+    const statusResponse = (status: number, body = "{}") => ({ ok: false, status, text: async () => body });
+
+    it.each([429, 500, 503])("retries the first part once after HTTP %i and delivers the reply", async (status) => {
+      fetchMock.mockResolvedValueOnce(statusResponse(status)).mockResolvedValueOnce(okResponse());
+
+      await svc.processInbound([{ wamid: `wa-retry-${status}`, from: "9199", text: "hi" }]);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(ledger.rows.get(inboundLedgerId(`wa-retry-${status}`)).payload).toEqual(
+        expect.objectContaining({ status: "processed", partsSent: 1 }),
+      );
+    });
+
+    it("retries the first part once after a network error and delivers the reply", async () => {
+      fetchMock.mockRejectedValueOnce(new TypeError("fetch failed")).mockResolvedValueOnce(okResponse());
+
+      await svc.processInbound([{ wamid: "wa-retry-net", from: "9199", text: "hi" }]);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(ledger.rows.get(inboundLedgerId("wa-retry-net")).payload).toEqual(
+        expect.objectContaining({ status: "processed", partsSent: 1 }),
+      );
+    });
+
+    it("retries at most once, then records the failure with no fallback", async () => {
+      fetchMock.mockResolvedValue(statusResponse(503));
+
+      await svc.processInbound([{ wamid: "wa-retry-twice", from: "9199", text: "hi" }]);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(ledger.rows.get(inboundLedgerId("wa-retry-twice")).payload).toEqual(
+        expect.objectContaining({ status: "failed", failedStage: "delivery", partsSent: 0, httpStatus: 503 }),
+      );
+    });
+
+    it.each([401, 403, 400])("does not retry HTTP %i", async (status) => {
+      fetchMock.mockResolvedValue(statusResponse(status));
+
+      const err = await svc.sendText("9199", "hello").catch((e) => e);
+
+      expect(err?.name).toBe("WhatsAppDeliveryError");
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not retry a later part, so no accepted part is sent twice", async () => {
+      const long = "A sentence about chemotherapy side effects.\n".repeat(120);
+      fetchMock.mockResolvedValueOnce(okResponse()).mockResolvedValue(statusResponse(503));
+
+      const err = await svc.sendText("9199", long).catch((e) => e);
+
+      expect(err.partsSent).toBe(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2); // part 1 once, part 2 once
+      const bodies = fetchMock.mock.calls.map((c) => JSON.parse(c[1].body).text.body);
+      expect(bodies[0]).not.toEqual(bodies[1]);
+    });
+
+    it("returns the number of parts Meta accepted", async () => {
+      fetchMock.mockResolvedValue(okResponse());
+      const long = "A sentence about chemotherapy side effects.\n".repeat(120);
+
+      const sent = await svc.sendText("9199", long);
+
+      expect(sent).toBeGreaterThan(1);
+      expect(sent).toBe(fetchMock.mock.calls.length);
+    });
+
+    it("stores the HTTP status and Meta's numeric code in the ledger, never Meta's body text", async () => {
+      jest.spyOn(svc["logger"], "warn").mockImplementation(() => undefined);
+      jest.spyOn(svc["logger"], "error").mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(
+        statusResponse(400, '{"error":{"message":"BODY-TEXT-MARKER","type":"OAuthException","code":131030}}'),
+      );
+
+      await svc.processInbound([{ wamid: "wa-body", from: "9199", text: "hi" }]);
+
+      const payload = ledger.rows.get(inboundLedgerId("wa-body")).payload;
+      expect(payload).toEqual(
+        expect.objectContaining({ status: "failed", httpStatus: 400, metaErrorCode: 131030, partsSent: 0 }),
+      );
+      expect(JSON.stringify(payload)).not.toContain("BODY-TEXT-MARKER");
+      expect(JSON.stringify(payload)).not.toContain("OAuthException");
     });
 
     it("still marks the ledger processed when delivery succeeds", async () => {
