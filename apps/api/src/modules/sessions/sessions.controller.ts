@@ -1,16 +1,25 @@
-import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
 import * as geoip from "geoip-lite";
 import { CreateSessionDto } from "./dto";
 import { SessionsService } from "./sessions.service";
+import { parseAttribution } from "./source-code";
 
 @Controller("sessions")
 export class SessionsController {
   constructor(private readonly sessions: SessionsService) {}
   @Post()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  async create(@Body() dto: CreateSessionDto, @Req() req: Request) {
+  async create(
+    @Body() dto: CreateSessionDto,
+    @Req() req: Request,
+    // Attribution travels as query parameters. An API that predates this
+    // ignores them, whereas an unknown body field gets a 400 from the global
+    // ValidationPipe (forbidNonWhitelisted). Validated in parseAttribution.
+    @Query("src") src?: unknown,
+    @Query("utm_source") utmSource?: unknown,
+  ) {
     // Extract client IP (handle proxies like Cloud Run)
     const forwardedFor = req.headers["x-forwarded-for"];
     const clientIp = typeof forwardedFor === "string"
@@ -26,7 +35,7 @@ export class SessionsController {
     // Check for eval marker header (used by automated tests/evals)
     const isEval = req.headers["x-suchi-eval"] === "true";
 
-    const s = await this.sessions.create(dto, geoData, isEval);
+    const s = await this.sessions.create(dto, geoData, isEval, parseAttribution(src, utmSource));
     return { sessionId: s.id, createdAt: s.createdAt };
   }
 

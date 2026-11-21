@@ -153,8 +153,11 @@ describe("CrossLingualService", () => {
   });
 
   describe("issue #126 — pregnancy questions and the keyword-query gate", () => {
+    // Synthetic probe written for this test. It carries the words the #126 fix
+    // depends on: "pregnant", "bachche" and "dawai", plus a "batao" imperative
+    // that translates to the function words "tell me".
     const probeA =
-      "meri mausi ko cancer hai aur wo pregnant hai, kya cancer ki dawai se bachcha affected hoga? exact batao";
+      "agar pregnant mahila ko cancer ho, to kya dawai se bachche ko nuksaan hota hai? batao";
 
     test("translates bachcha → baby and keeps pregnant, so the English KB can match the fetal section", () => {
       const result = service.generateParallelQueries(probeA);
