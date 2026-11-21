@@ -187,13 +187,24 @@ Cloud Build is the only deployer of `suchi-api`. The GitHub workflow `deploy-api
 gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-0202543132
 ```
 
-7. Promote. Traffic is assigned to a named revision, so a new revision receives no traffic until it is promoted.
+7. Check the new revision, and promote it if it is not already serving.
 
-Take the revision name from the output of your own build. The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer. Check that the revision runs your build's image, then promote it.
+Before you build, read how the service routes traffic and note the serving revision. That revision is your rollback target.
+
+```bash
+gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+  --format 'yaml(spec.traffic,status.traffic)'
+```
+
+As of 21 November 2026 `spec.traffic` shows `latestRevision: true` at 100%. In that state the build's own deploy step sends all traffic to the new revision as soon as it is ready. No check runs first, and the promotion below has nothing left to do. If the service is pinned to a named revision instead, a new revision receives no traffic until it is promoted. Promoting by name pins the service. Adding `--no-traffic` to the `deploy-api` step in `cloudbuild.yaml` would make the check come before the traffic in both states. That is a pipeline change for its own pull request.
+
+Take the revision name from the log of your own build (`gcloud builds log <BUILD_ID> --project gen-lang-client-0202543132`). The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer. Check that the revision runs your build's image. The revision stores the image by digest, so compare the digest behind your build's tag with the revision's image. Promote only if they match and the revision is not already serving.
 
 ```bash
 gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
-  --format 'value(spec.containers[0].image)'   # must end in :<BUILD_ID> of your build
+  --format 'value(spec.containers[0].image)'   # must end in @<DIGEST> from the command below
+gcloud artifacts docker images describe us-central1-docker.pkg.dev/gen-lang-client-0202543132/suchi-images/suchi-api:<BUILD_ID> \
+  --project gen-lang-client-0202543132 --format 'value(image_summary.digest)'
 gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
   --to-revisions <REVISION>=100
 ```

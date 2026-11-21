@@ -222,6 +222,12 @@ If yes, proceed to Phase 3. If no, stop.
 This mode follows `docs/OPERATIONS.md` section 4, steps 6 to 8. Every `gcloud run` call names the project and the region. The Cloud Build calls name the project only, as the runbook does. Cloud Build runs these builds in its global location, and `--region us-central1` would send `gcloud builds` to a different location.
 
 1. Run `git status --short` again. If it prints anything, stop. The tree must still be clean at the moment of upload.
+   Record the revision that serves traffic now, and how the service routes. The serving revision is the rollback target.
+   ```bash
+   gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --format 'yaml(spec.traffic,status.traffic)'
+   ```
+   If `spec.traffic` shows `latestRevision: true` at 100%, the service follows the latest revision. The build's own deploy step will then send all traffic to the new revision as soon as it is ready, before any check in this file runs. Tell the user this before building, and name the rollback target. As of 21 November 2026 the service is in this state.
    Then build and deploy from the repository root.
    ```bash
    gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-0202543132
@@ -235,30 +241,37 @@ This mode follows `docs/OPERATIONS.md` section 4, steps 6 to 8. Every `gcloud ru
    ```bash
    gcloud builds log <BUILD_ID> --project gen-lang-client-0202543132 | grep 'Service \[suchi-api\] revision'
    ```
-   If this prints no line, or more than one revision name, do not guess. Find the revision by its image tag, which is this build's ID.
+   If this prints no line, or more than one revision name, do not guess. Find the revision by this build's image digest (step 4), with `<DIGEST>` in place of the build ID.
    ```bash
    gcloud run revisions list --service suchi-api --region us-central1 --project gen-lang-client-0202543132 \
-     --format 'value(name,spec.containers[0].image)' | grep ':<BUILD_ID>$'
+     --format 'value(name,spec.containers[0].image)' | grep '@<DIGEST>$'
    ```
    If that does not print exactly one revision, stop and report. Do not promote.
-4. Check that the revision runs this build's image. The image must end in `:<BUILD_ID>`. If it does not, stop and report. Do not promote.
+4. Check that the revision runs this build's image.
+   The revision stores its image by digest, so compare digests. First read the digest that this build's tag points to.
+   ```bash
+   gcloud artifacts docker images describe us-central1-docker.pkg.dev/gen-lang-client-0202543132/suchi-images/suchi-api:<BUILD_ID> \
+     --project gen-lang-client-0202543132 --format 'value(image_summary.digest)'
+   ```
+   Then read the revision's image. It must end in `@<DIGEST>`. If it does not, stop and report. Do not promote.
    ```bash
    gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
      --format 'value(spec.containers[0].image)'
    ```
-5. Record the revision that serves traffic now. This is the rollback target.
+5. Read the traffic split again.
    ```bash
    gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
      --format 'yaml(status.traffic)'
    ```
-   Then promote the new revision to 100% traffic.
+   If the new revision already serves 100%, skip the promotion and go to step 6. Promoting by name would pin the service to that revision and change how later deploys behave.
+   Otherwise promote the new revision to 100% traffic.
    ```bash
    gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
      --to-revisions <REVISION>=100
    ```
 6. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`. The body must contain `"status":"ok"`.
-   If the request fails or the status is not `ok`, tell the user at once. Give the previous revision name recorded in step 5 and the rollback command from `docs/OPERATIONS.md` section 5. Do not roll back without the user's word.
-7. Report: build ID, duration, previous revision name, promoted revision name, image tag check result, health check result. Remind the user of the remaining checks in `docs/OPERATIONS.md` section 4 (one web chat message, one WhatsApp message, the startup log lines, and the production table).
+   If the request fails or the status is not `ok`, tell the user at once. Give the previous revision name recorded in step 1 and the rollback command from `docs/OPERATIONS.md` section 5. Do not roll back without the user's word.
+7. Report: build ID, duration, previous revision name, new revision name, image digest check result, whether a promotion was needed, health check result. Remind the user of the remaining checks in `docs/OPERATIONS.md` section 4 (one web chat message, one WhatsApp message, the startup log lines, and the production table).
 
 ### Mode: `gated`
 
@@ -275,12 +288,12 @@ This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy 
    gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
      --format 'yaml(status.traffic)'
    ```
-2. Confirm that the named revision exists, and show its image.
+2. Confirm that the named revision exists, and show its image. The image is stored by digest. To see which build produced it, list the tags on that digest in Artifact Registry. The tag is the build ID.
    ```bash
    gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
      --format 'value(spec.containers[0].image)'
    ```
-3. Show the revision name and its image tag, and ask for confirmation. The user checks that the tag is the build ID they mean to ship.
+3. Show the revision name and its image digest, and ask for confirmation. Tell the user that promoting by name pins the service to this revision, so later builds will not take traffic until someone promotes them or sets the service back to latest.
 4. Shift traffic.
    ```bash
    gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
@@ -288,7 +301,7 @@ This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy 
    ```
 5. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`. The body must contain `"status":"ok"`.
    If the request fails or the status is not `ok`, tell the user at once. Give the previous revision name recorded in step 1 and the rollback command from `docs/OPERATIONS.md` section 5. Do not roll back without the user's word.
-6. Report: previous revision name, promoted revision name, image tag, health check result.
+6. Report: previous revision name, promoted revision name, image digest, health check result.
 
 ---
 
@@ -319,7 +332,7 @@ This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy 
 | Preflight        | N/N PASS (count the checks that ran) |
 | Previous revision | ...           |
 | Promoted revision | ...           |
-| Image tag check  | match / mismatch |
+| Image digest check | match / mismatch |
 | Health Check     | ok / failed    |
 | Status           | SUCCESS / FAIL |
 ```
