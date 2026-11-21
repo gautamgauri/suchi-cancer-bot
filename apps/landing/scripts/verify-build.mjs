@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+/**
+ * Post-build checks for the landing site. Run after `astro build`:
+ *   npm run verify
+ *
+ * Fails (exit 1) when:
+ *   - robots.txt or the sitemap is missing, or the sitemap does not list every built page
+ *   - any JSON-LD block does not parse, or any page claims medical review
+ *   - two pages share a <title> or meta description, or a page lacks either
+ *   - an internal link points at a page that was not built
+ */
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
+const SITE = 'https://suchitracancercare.org';
+const errors = [];
+
+function walk(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name);
+    return statSync(p).isDirectory() ? walk(p) : [p];
+  });
+}
+
+const htmlFiles = walk(DIST).filter((f) => f.endsWith('.html'));
+const pagePath = (file) => '/' + relative(DIST, file).replace(/index\.html$/, '').replace(/\\/g, '/');
+const builtPaths = new Set(htmlFiles.map(pagePath));
+
+// robots.txt
+const robotsFile = join(DIST, 'robots.txt');
+if (!existsSync(robotsFile)) errors.push('robots.txt missing');
+else if (!readFileSync(robotsFile, 'utf8').includes(`Sitemap: ${SITE}/sitemap-index.xml`)) {
+  errors.push('robots.txt does not point at the sitemap index');
+}
+
+// Sitemap
+const sitemapFiles = readdirSync(DIST).filter((f) => /^sitemap-\d+\.xml$/.test(f));
+if (!existsSync(join(DIST, 'sitemap-index.xml')) || sitemapFiles.length === 0) errors.push('sitemap missing');
+const sitemapUrls = sitemapFiles.flatMap((f) =>
+  [...readFileSync(join(DIST, f), 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]),
+);
+for (const u of sitemapUrls) {
+  if (!u.startsWith(`${SITE}/`)) errors.push(`sitemap URL on wrong origin: ${u}`);
+}
+const sitemapPaths = new Set(sitemapUrls.map((u) => new URL(u).pathname));
+for (const p of builtPaths) if (!sitemapPaths.has(p)) errors.push(`page missing from sitemap: ${p}`);
+
+// Per-page checks
+const titles = new Map();
+const descriptions = new Map();
+let jsonLdBlocks = 0;
+const typeCounts = {};
+const brokenLinks = new Set();
+
+for (const file of htmlFiles) {
+  const html = readFileSync(file, 'utf8');
+  const path = pagePath(file);
+
+  const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
+  const desc = html.match(/<meta name="description" content="([^"]*)"/)?.[1];
+  if (!title) errors.push(`${path}: no <title>`);
+  if (!desc) errors.push(`${path}: no meta description`);
+  if (title) titles.set(title, [...(titles.get(title) ?? []), path]);
+  if (desc) descriptions.set(desc, [...(descriptions.get(desc) ?? []), path]);
+  if (!/<html lang="[a-zA-Z-]+"/.test(html)) errors.push(`${path}: no lang attribute`);
+  if (!html.includes(`<link rel="canonical" href="${SITE}${path}"`)) errors.push(`${path}: canonical missing or wrong`);
+
+  for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    jsonLdBlocks += 1;
+    try {
+      const data = JSON.parse(m[1]);
+      typeCounts[data['@type']] = (typeCounts[data['@type']] ?? 0) + 1;
+      // Articles are AI drafts. No markup may claim review.
+      for (const key of ['reviewedBy', 'lastReviewed', 'medicalAudience']) {
+        if (key in data) errors.push(`${path}: JSON-LD claims ${key}`);
+      }
+    } catch (e) {
+      errors.push(`${path}: JSON-LD does not parse (${e.message})`);
+    }
+  }
+
+  for (const m of html.matchAll(/href="([^"]+)"/g)) {
+    let href = m[1];
+    if (href.startsWith(SITE)) href = href.slice(SITE.length) || '/';
+    if (!href.startsWith('/') || href.startsWith('//')) continue;
+    const target = href.split(/[?#]/)[0];
+    if (/\.[a-z0-9]+$/i.test(target)) {
+      if (!existsSync(join(DIST, target))) brokenLinks.add(`${path} -> ${href}`);
+    } else {
+      const withSlash = target.endsWith('/') ? target : `${target}/`;
+      if (!builtPaths.has(withSlash)) brokenLinks.add(`${path} -> ${href}`);
+    }
+  }
+}
+
+for (const [t, paths] of titles) if (paths.length > 1) errors.push(`duplicate title "${t}": ${paths.join(', ')}`);
+for (const [d, paths] of descriptions) if (paths.length > 1) errors.push(`duplicate description on: ${paths.join(', ')}`);
+
+// Broken links that predate this check. Remove an entry once its page exists
+// or the link is fixed. Anything not listed here fails the build.
+//   /about/safety/  footer link, no page has been written yet
+//   /articles/...   links inside article markdown bodies, which need SCCF review to edit
+const KNOWN_BROKEN = new Set([
+  '/about/safety/',
+  '/articles/breast-cancer/',
+  '/articles/cancer-care-in-bihar/',
+  '/articles/cervical-cancer/',
+  '/articles/colorectal-cancer/',
+  '/articles/lung-cancer/',
+  '/articles/lymphoma/',
+  '/articles/oral-cancer/',
+  '/articles/questions-to-ask-your-doctor/',
+]);
+const unexpectedBroken = [...brokenLinks].filter((l) => !KNOWN_BROKEN.has(l.split(' -> ')[1]));
+
+console.log(`pages built: ${builtPaths.size}`);
+console.log(`sitemap URLs: ${sitemapUrls.length}`);
+console.log(`JSON-LD blocks parsed: ${jsonLdBlocks} ${JSON.stringify(typeCounts)}`);
+console.log(`unique titles: ${titles.size}, unique descriptions: ${descriptions.size}`);
+console.log(`broken internal links: ${brokenLinks.size} (${unexpectedBroken.length} not on the known list)`);
+for (const l of unexpectedBroken) errors.push(`broken internal link: ${l}`);
+
+if (errors.length) {
+  console.error(`\n${errors.length} problem(s):`);
+  for (const e of errors) console.error(`  - ${e}`);
+  process.exit(1);
+}
+console.log('landing build verified');

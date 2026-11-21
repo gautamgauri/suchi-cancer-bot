@@ -45,6 +45,13 @@ jobs:
         run: npm run build
         working-directory: apps/landing
 
+      # Sitemap covers every page, robots.txt is present, JSON-LD parses and
+      # claims no medical review, titles and descriptions are unique, and no
+      # new broken internal links.
+      - name: Verify built site
+        run: npm run verify
+        working-directory: apps/landing
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
