@@ -12,7 +12,7 @@ Parse the mode from the argument. Default to `direct` if no argument is given.
 ## Modes
 
 - **`direct`** (default): Run all preflight checks, then deploy via `cloudbuild.yaml`.
-- **`gated`**: Run all preflight checks, then deploy via `cloudbuild.gated.yaml`.
+- **`gated`**: Run all preflight checks, then deploy via `cloudbuild.gated.yaml`. This pipeline is not in use. Before running it, compare its service flags with `cloudbuild.yaml` and read `docs/cloudbuild-gated-issues.md`.
 - **`promote`**: Promote an existing candidate revision (no preflight, no rebuild).
 - **`preflight-only`**: Run only the automated preflight checks. Do NOT deploy.
 
@@ -20,12 +20,29 @@ Parse the mode from the argument. Default to `direct` if no argument is given.
 
 ## Phase 1: Automated Preflight (hard gate)
 
-Run ALL 9 checks below **sequentially** for `direct`, `gated`, and `preflight-only` modes. Track results in a table. If ANY check fails (not WARN), **stop immediately** — do NOT proceed to Phase 2 or deploy.
+Run Checks 0 to 9 below **sequentially** for `direct`, `gated`, and `preflight-only` modes. Check 10 is optional. Track results in a table. If ANY check fails (not WARN), **stop immediately** and do NOT proceed to Phase 2 or deploy.
+
+Run every command from the repository root. The commands below find it with `git rev-parse --show-toplevel`. The procedure this command automates is in `docs/OPERATIONS.md` section 4.
+
+### Check 0: Clean working tree
+
+`gcloud builds submit` uploads the working directory as it stands. Uncommitted or untracked files would reach production without review.
+
+```bash
+cd "$(git rev-parse --show-toplevel)" && git status --short
+git rev-parse --abbrev-ref HEAD
+git fetch origin main && git rev-parse HEAD origin/main
+```
+
+- PASS: `git status --short` prints nothing
+- FAIL (`direct` and `gated`): any output from `git status --short`. Show it and stop. Do not stash, reset or clean on the user's behalf.
+- WARN (`preflight-only`): any output from `git status --short`
+- WARN: the branch is not `main`, or `HEAD` differs from `origin/main`. Report both commits and let the user decide.
 
 ### Check 1: TypeScript Build
 
 ```bash
-cd /home/gauta/suchi_repo/apps/api && npm run build
+cd "$(git rev-parse --show-toplevel)/apps/api" && npm run build
 ```
 
 - PASS: exit code 0
@@ -34,7 +51,7 @@ cd /home/gauta/suchi_repo/apps/api && npm run build
 ### Check 2: Prisma Schema Validation
 
 ```bash
-cd /home/gauta/suchi_repo/apps/api && npx prisma validate
+cd "$(git rev-parse --show-toplevel)/apps/api" && npx prisma validate
 ```
 
 - PASS: exit code 0
@@ -45,7 +62,7 @@ cd /home/gauta/suchi_repo/apps/api && npx prisma validate
 Grep the API source tree for potential hardcoded secrets:
 
 ```bash
-grep -rn --include='*.ts' --include='*.js' -E '(sk-[a-zA-Z0-9]{20,}|AIza[a-zA-Z0-9_-]{30,}|Bearer [a-zA-Z0-9_-]{20,})' /home/gauta/suchi_repo/apps/api/src/
+grep -rn --include='*.ts' --include='*.js' -E '(sk-[a-zA-Z0-9]{20,}|AIza[a-zA-Z0-9_-]{30,}|Bearer [a-zA-Z0-9_-]{20,})' "$(git rev-parse --show-toplevel)/apps/api/src/"
 ```
 
 - PASS: no matches
@@ -54,7 +71,7 @@ grep -rn --include='*.ts' --include='*.js' -E '(sk-[a-zA-Z0-9]{20,}|AIza[a-zA-Z0
 ### Check 4: Doubled Route Prefixes
 
 ```bash
-grep -rn --include='*.ts' '/v1/v1/' /home/gauta/suchi_repo/apps/api/src/
+grep -rn --include='*.ts' '/v1/v1/' "$(git rev-parse --show-toplevel)/apps/api/src/"
 ```
 
 - PASS: no matches
@@ -75,7 +92,7 @@ Verify the safety module is properly registered and not bypassed:
 1. Read `apps/api/src/app.module.ts` — confirm `SafetyModule` is in imports.
 2. Grep for patterns that might bypass safety:
    ```bash
-   grep -rn --include='*.ts' -E '(skipSafety|bypassSafety|safety.*false|disableSafety)' /home/gauta/suchi_repo/apps/api/src/
+   grep -rn --include='*.ts' -E '(skipSafety|bypassSafety|safety.*false|disableSafety)' "$(git rev-parse --show-toplevel)/apps/api/src/"
    ```
 
 - PASS: SafetyModule registered and no bypass patterns found
@@ -118,7 +135,7 @@ puts un-reviewed guidance in front of patients. This check refuses that combinat
 **Hospital distance (#148 mechanism / #149 + #159 wording):**
 
 ```bash
-cd /home/gauta/suchi_repo && \
+cd "$(git rev-parse --show-toplevel)" && \
   grep -c '(straight-line)' apps/api/src/modules/chat/chat.service.ts; \
   grep -c 'STRAIGHT-LINE distance, already rounded' apps/api/src/modules/chat/chat.service.ts
 ```
@@ -131,13 +148,12 @@ cd /home/gauta/suchi_repo && \
   travel time or a road distance**. Nothing then stops the model turning ~50 km into
   "about an hour's drive" for a patient in rural North Bihar where it is three.
 
-  Blocked until **PR #200** is reviewed by SCCF and merged. It combines the
-  distance-handling instruction (#149 → #181) and the cross-border travel caveat (#159 —
-  a nearer centre across a state line means a different state health scheme and
-  referral paperwork) into one paragraph.
+  The reviewed wording landed in **PR #200**, which SCCF approved and which merged on
+  10 October 2026. Both counts are non-zero on `main` since then, so this check passes.
+  A FAIL today means the reviewed instruction has been removed or reworded.
 
-  Do NOT work around this by deleting the distance text. Either land #200, or deploy a
-  commit that predates the mechanism.
+  Do NOT work around a FAIL by deleting the distance text. Restore the instruction from
+  PR #200, or take any change to its wording back through SCCF review.
 
 This check is self-resolving: it arms itself when the mechanism lands and disarms when
 the reviewed wording lands. It needs no network and no `gh`.
@@ -149,7 +165,7 @@ This check runs the gold eval pack via the release gate module. **Skip this chec
 If `--with-eval-gate` is present:
 
 ```bash
-cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts release-gate --api-url http://localhost:3001 --output reports/release-gate-report.json
+cd "$(git rev-parse --show-toplevel)/eval" && npx ts-node cli.ts release-gate --api-url http://localhost:3001 --output reports/release-gate-report.json
 ```
 
 - PASS: exit code 0 (verdict is DEPLOY)
@@ -166,6 +182,7 @@ After running all checks, display results:
 
 | #  | Check                        | Result      | Details          |
 |----|------------------------------|-------------|------------------|
+| 0  | Clean working tree           | PASS / WARN / FAIL | ...       |
 | 1  | TypeScript build             | PASS / FAIL | ...              |
 | 2  | Prisma schema validation     | PASS / FAIL | ...              |
 | 3  | Hardcoded secrets scan       | PASS / WARN | ...              |
@@ -174,7 +191,8 @@ After running all checks, display results:
 | 6  | Safety module integrity      | PASS / WARN / FAIL | ...     |
 | 7  | CloudBuild substitutions     | PASS / FAIL | ...              |
 | 8  | Env var coverage             | PASS / FAIL | ...              |
-| 9  | Release eval gate            | PASS / FAIL / SKIP | (only if --with-eval-gate) |
+| 9  | Clinical prompt gate         | PASS / FAIL | ...              |
+| 10 | Release eval gate            | PASS / FAIL / SKIP | (only if --with-eval-gate) |
 ```
 
 **If mode is `preflight-only`, stop here and report results. Do NOT proceed to Phase 2.**
@@ -201,7 +219,8 @@ If yes, proceed to Phase 3. If no, stop.
 
 ### Mode: `direct`
 
-1. Run `gcloud builds submit --config=cloudbuild.yaml .` from `/home/gauta/suchi_repo/`
+1. Run `git status --short` again. If it prints anything, stop. The tree must still be clean at the moment of upload.
+   Then run `gcloud builds submit --config=cloudbuild.yaml .` from the repository root.
 2. Stream build logs. If the build takes long, poll `gcloud builds list --limit=1` every 30 seconds until complete.
 3. After build succeeds, **promote the latest revision to 100% traffic**:
    ```
@@ -213,7 +232,8 @@ If yes, proceed to Phase 3. If no, stop.
 
 ### Mode: `gated`
 
-1. Run `gcloud builds submit --config=cloudbuild.gated.yaml .` from `/home/gauta/suchi_repo/`
+1. Run `git status --short` again. If it prints anything, stop.
+   Then run `gcloud builds submit --config=cloudbuild.gated.yaml .` from the repository root.
 2. Stream build logs. Poll until complete.
 3. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`
 4. Report: build ID, duration, health check result.
@@ -244,7 +264,8 @@ Skip preflight. Promote only.
 - **API Service:** `suchi-api`
 - **Web Service:** `suchi-web`
 - **Production URL:** `https://suchi-api-lxiveognla-uc.a.run.app/v1`
-- **Repo root:** `/home/gauta/suchi_repo/`
+- **Repo root:** the output of `git rev-parse --show-toplevel`
+- **Runbook:** `docs/OPERATIONS.md`
 - **CloudBuild config:** `cloudbuild.yaml`
 - **API source:** `apps/api/src/`
 - **Prisma schema:** `apps/api/prisma/schema.prisma`
@@ -260,7 +281,7 @@ Skip preflight. Promote only.
 | Mode             | ...            |
 | Build ID         | ...            |
 | Duration         | ...            |
-| Preflight        | 8/8 PASS       |
+| Preflight        | N/N PASS (count the checks that ran) |
 | Health Check     | ok / failed    |
 | Status           | SUCCESS / FAIL |
 ```

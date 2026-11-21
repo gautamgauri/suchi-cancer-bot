@@ -125,11 +125,11 @@ Ask the user: "Run `npm run kb:ingest` in apps/api/ to ingest the new article in
 
 If yes:
 ```bash
-cd /home/gauta/suchi_repo/apps/api && npm run kb:ingest
+cd "$(git rev-parse --show-toplevel)/apps/api" && npm run kb:ingest
 ```
 
 ## Constants
 
-- **KB root:** `/home/gauta/suchi_repo/kb/`
-- **Manifest:** `/home/gauta/suchi_repo/kb/manifest.json`
+- **KB root:** `kb/` under the repository root (`git rev-parse --show-toplevel`)
+- **Manifest:** `kb/manifest.json`
 - **Schema version:** `2.0`
