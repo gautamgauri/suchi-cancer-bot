@@ -125,6 +125,8 @@ describe("WhatsApp rapid-sequential inbound (issue #94)", () => {
         // Echo the text back so a crossed wire is visible in the reply.
         return { responseText: `answer to: ${userText} (session ${sessionId})` };
       }),
+      // No deterministic safety gate fires on these messages.
+      deterministicSafetyReplyWithoutSession: jest.fn(() => null),
     };
 
     sessions = {

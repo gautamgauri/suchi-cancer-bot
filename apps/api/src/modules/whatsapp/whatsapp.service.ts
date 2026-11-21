@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChatService } from "../chat/chat.service";
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
+import { SAFETY_SESSION_LOOKUP_BOUND_MS, errorTag, withinBound } from "../chat/deterministic-safety";
 import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
 import { SessionsService } from "../sessions/sessions.service";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
@@ -352,7 +353,31 @@ export class WhatsAppService {
   private async processOne(msg: InboundMessage): Promise<void> {
     try {
       const locale = detectLocale(msg.text);
-      let sessionId = await this.resolveSession(msg.from, locale);
+      // The deterministic safety screen needs only the text. If it fires and
+      // the session cannot be resolved (database down, pool exhausted), the
+      // contact still gets the emergency, self-harm or crisis template
+      // instead of the generic failure reply (PR #202).
+      const safetyFallback = this.chat.deterministicSafetyReplyWithoutSession({
+        userText: msg.text,
+        channel: "whatsapp",
+        locale,
+      });
+      let sessionId: string;
+      try {
+        const resolving = this.resolveSession(msg.from, locale);
+        sessionId = safetyFallback
+          ? await withinBound(resolving, SAFETY_SESSION_LOOKUP_BOUND_MS, "whatsapp:resolveSession")
+          : await resolving;
+      } catch (err: any) {
+        if (!safetyFallback) throw err;
+        this.logger.error(
+          `[safety-fallback] could not resolve the WhatsApp session for ${msg.wamid} (${errorTag(err)}); ` +
+            `sending the ${safetyFallback.label} template without a session`,
+        );
+        const partsSent = await this.sendText(msg.from, cleanResponseForDisplay(safetyFallback.responseText));
+        await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent });
+        return;
+      }
       let result;
       try {
         result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
