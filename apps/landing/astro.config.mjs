@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 import remarkStripCitations from './src/lib/remark-strip-citations.mjs';
 import remarkStripMissingEvidence from './src/lib/remark-strip-missing-evidence.mjs';
 
@@ -8,6 +9,9 @@ export default defineConfig({
   output: 'static',
   site: 'https://suchitracancercare.org',
   base: '/',
+  // Custom domain from public/CNAME, served at the root by GitHub Pages.
+  // The sitemap and canonical URLs are built from `site`, so keep them in step.
+  integrations: [sitemap()],
   trailingSlash: 'always',
   build: {
     assets: '_assets'
