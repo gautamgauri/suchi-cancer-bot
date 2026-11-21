@@ -62,7 +62,12 @@ Always read the body. A probe that reads only the status code is reliable only a
 PR #247 also adds two things. This runbook describes them as they will be once that pull request is merged and deployed.
 
 - `GET /v1/health/live` answers 200 whenever the process serves HTTP. It touches no dependency. It tells you the container is up and nothing more.
-- `.github/workflows/uptime.yml` requests `/v1/health` and the web chat every 15 minutes. It sends one email when a surface goes down and one when it recovers. A red run in `gh run list --workflow uptime.yml` means a surface was unreachable.
+- `.github/workflows/uptime.yml` requests `/v1/health` and the web chat every 15 minutes. Each run tries each surface three times, 20 seconds apart, and fails if either one stays down. A red run in `gh run list --workflow uptime.yml` means a surface was unreachable for that run.
+  - The outage email goes out only after two failed runs in a row. The first email therefore arrives 15 to 30 minutes after the fault begins, or later if GitHub starts the run late.
+  - A single failed run sends no email. Failures that alternate with passing runs send no email either, because each passing run resets the count. Read the run history when you suspect a flapping surface.
+  - The email is sent once per outage. If a send fails, the next failed run tries again. A long outage gets a reminder about every seven and a half hours.
+  - If the run history cannot be read, the first failed run sends the email.
+  - One recovery email follows the first passing run, and only if an outage email was delivered.
 
 A 503 whose body is the Google page "The service you requested is not available yet" comes from Google's front end. The application did not answer. Go to section 3.
 
@@ -212,7 +217,13 @@ A revision carries its own env and secret references, so a rollback also restore
 
 Migrations do not roll back. There are no down-migrations here, and undoing a schema change needs a new forward migration. Before moving traffic to an older image, read the migration that shipped with the newer one in `apps/api/prisma/migrations/`. An additive migration is safe to leave in place.
 
-The same commands work for `suchi-web`. For the landing site, revert the commit and let `deploy-landing.yml` run again.
+The same commands work for `suchi-web`, with one extra step afterwards. `update-traffic --to-revisions` pins the service to that revision. `deploy-web.yml` deploys with no traffic flag, so while the pin holds, each later automatic web deploy creates a revision at 0% traffic. Its verify step still passes, because it reads the service URL, which the old revision answers. Once the fix is merged to `main`, release the pin so that the newest revision takes traffic again.
+
+```bash
+gcloud run services update-traffic suchi-web --region us-central1 --project gen-lang-client-0202543132 --to-latest
+```
+
+For the landing site, revert the commit and let `deploy-landing.yml` run again.
 
 ## 6. Database access and migrations
 
@@ -435,7 +446,7 @@ cd apps/api && npx jest                                         # full unit suit
 cd apps/api && npx jest --testPathPatterns=safety               # one area (jest 30 flag)
 cd apps/api && npm run build                                    # must be clean before a deploy
 cd apps/web && npm ci && npm run dev                            # http://localhost:3000
-cd apps/web && npm test                                         # Vitest
+cd apps/web && npx vitest run                                   # Vitest, single run. `npm test` starts watch mode.
 cd eval && npm ci && npm test                                   # eval framework unit tests
 cd eval && npx ts-node cli.ts --help                            # lists the eval subcommands
 ```
