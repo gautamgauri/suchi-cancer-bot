@@ -10,7 +10,8 @@ import { getHospitalDirectoryStatus } from "../../common/hospital-directory-file
  *                  (today: the hospital directory, issue #123). Still HTTP 200 so
  *                  the Cloud Run startup probe is unaffected, but the gated
  *                  pipeline refuses to promote a revision that is not "ok".
- *   - "error"    — database unreachable
+ *   - "error"    — database unreachable. The controller turns this into HTTP 503
+ *                  with the same body.
  */
 @Injectable()
 export class HealthService {

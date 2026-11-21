@@ -84,7 +84,10 @@ export async function selectRole(
 export async function stubSessionApi(page: Page, sessionId = 'e2e-stub-session'): Promise<void> {
   const createdAt = new Date().toISOString();
 
-  await page.route('**/sessions', async (route) => {
+  // A regex, so a create request that carries attribution in the query
+  // string (`/sessions?src=...`) is stubbed too. The glob `**/sessions`
+  // would not match it.
+  await page.route(/\/sessions(\?.*)?$/, async (route) => {
     if (route.request().method() !== 'POST') {
       await route.fallback();
       return;
@@ -122,6 +125,14 @@ export async function stubSessionApi(page: Page, sessionId = 'e2e-stub-session')
  * about UI timing, not about what the API returns.
  */
 export async function stubSlowChat(page: Page, delayMs: number): Promise<void> {
+  await stubChatApi(page, delayMs);
+}
+
+/**
+ * Stub POST /chat with a fixed reply. For smoke tests that send a message
+ * only to check the UI, so CI never sends a message to the production API.
+ */
+export async function stubChatApi(page: Page, delayMs = 0): Promise<void> {
   await page.route('**/chat', async (route) => {
     if (route.request().method() !== 'POST') {
       await route.fallback();
@@ -133,7 +144,7 @@ export async function stubSlowChat(page: Page, delayMs: number): Promise<void> {
       contentType: 'application/json',
       body: JSON.stringify({
         messageId: 'e2e-stub-message',
-        responseText: 'Stubbed response for loading-state timing.',
+        responseText: 'Stubbed response.',
         citations: [],
         safety: { classification: 'normal', actions: [] },
       }),

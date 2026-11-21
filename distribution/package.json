@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "run": "ts-node cli.ts"
+    "run": "ts-node cli.ts",
+    "test": "node --require ts-node/register --test article-url.test.ts"
   },
   "dependencies": {
     "@google-cloud/vertexai": "^1.12.0",

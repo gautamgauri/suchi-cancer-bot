@@ -127,10 +127,14 @@ steps:
       # request-scoped CPU the instance is throttled while the turn runs and the
       # pipeline times out (issues #115/#116/#117). Keep CPU allocated always.
       - '--no-cpu-throttling'
+      - '--timeout'
+      - '300'
       - '--min-instances'
       - '0'
+      # Kept equal to cloudbuild.yaml (two instances x connection_limit=5 fits the
+      # db-f1-micro). scripts/check_deploy_config_parity.py fails CI on a mismatch.
       - '--max-instances'
-      - '10'
+      - '2'
       - '--port'
       - '8080'
       - '--tag'

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { readAttribution } from "../utils/attribution";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/v1";
 
@@ -116,7 +117,11 @@ function timeoutFallbackFrom(err: unknown): ChatResponse | null {
 
 export const apiService = {
   async createSession(data: CreateSessionRequest): Promise<CreateSessionResponse> {
-    const response = await api.post<CreateSessionResponse>("/sessions", data);
+    // Attribution goes in the query string, never the body. See utils/attribution.ts.
+    const params = readAttribution();
+    const response = Object.keys(params).length > 0
+      ? await api.post<CreateSessionResponse>("/sessions", data, { params })
+      : await api.post<CreateSessionResponse>("/sessions", data);
     return response.data;
   },
 

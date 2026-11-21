@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { CreateSessionDto } from "./dto";
+import { SessionAttribution } from "./source-code";
 
 export interface GeoData {
   city: string | null;
@@ -14,7 +15,7 @@ export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
 
   constructor(private readonly prisma: PrismaService, private readonly analytics: AnalyticsService) {}
-  async create(dto: CreateSessionDto, geoData?: GeoData, isEval = false) {
+  async create(dto: CreateSessionDto, geoData?: GeoData, isEval = false, attribution: SessionAttribution = {}) {
     let s;
     try {
       // Try with all fields including geo and isEval using raw SQL
@@ -48,6 +49,9 @@ export class SessionsService {
       city: geoData?.city,
       country: geoData?.country,
       isEval,
+      // Already validated short codes. Only present when supplied.
+      ...(attribution.src ? { src: attribution.src } : {}),
+      ...(attribution.utmSource ? { utmSource: attribution.utmSource } : {}),
     }, s.id);
     return s;
   }

@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import hospitalsData from '../../../content/hospitals.json';
+import { chatUrlFor } from '../../../lib/chat-link';
 
 type Hospital = (typeof hospitalsData.hospitals)[number];
 
@@ -81,6 +82,11 @@ function scoreClass(score: number): string {
 
 <BaseLayout
   title="Hospital Directory — Find Cancer Care"
+  breadcrumbs={[
+    { name: 'Home', path: '/' },
+    { name: 'Find Care', path: '/find-care/' },
+    { name: 'Hospital Directory', path: '/find-care/hospitals/' },
+  ]}
   description={`${LISTABLE.length} verified cancer hospitals across East India and national referral centres — Bihar, Jharkhand, West Bengal, Odisha, Assam, and beyond.`}
 >
   <section class="dir-page">
@@ -174,7 +180,7 @@ function scoreClass(score: number): string {
             Tell Suchi your location and type of cancer — she can help you find the best
             option and explain what to expect at each step.
           </p>
-          <a href="/" class="cta-btn">Ask Suchi →</a>
+          <a href={chatUrlFor(Astro.url.pathname)} target="_blank" rel="noopener" class="cta-btn">Ask Suchi →</a>
         </div>
       </aside>
 

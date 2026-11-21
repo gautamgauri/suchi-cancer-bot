@@ -7,7 +7,7 @@ argument-hint: "[direct|promote <REVISION>|preflight-only]"
 
 You are deploying the Suchi Cancer Bot. The user's argument is: $ARGUMENTS
 
-Parse the mode from the argument. Default to `direct` if no argument is given. A flag such as `--with-eval-gate` is not a mode word. If the first word that is not a flag is not one of the modes below, stop and report the valid modes. Do not guess a mode.
+Parse the mode from the argument. Default to `direct` if the argument holds no mode word. A flag such as `--with-eval-gate` is not a mode word. If the first word that is not a flag is not one of the modes below, stop and report the valid modes. Do not guess a mode.
 
 ## Modes
 
@@ -237,7 +237,7 @@ This mode follows `docs/OPERATIONS.md` section 4, steps 6 to 9. Every `gcloud ru
    ```bash
    gcloud builds describe <BUILD_ID> --project gen-lang-client-0202543132 --format 'value(status)'
    ```
-   If the status is anything other than `SUCCESS`, do not promote. Read the traffic split again with the step 5 command. If the serving revision is still the one recorded in step 1, report the status and the failing step and stop. If the serving revision has changed, the build's deploy step put a new revision live before the build failed. Tell the user at once, run the health check in step 6, give the rollback target from step 1 and the rollback command from `docs/OPERATIONS.md` section 5, and stop. Do not roll back without the user's word.
+   If the status is anything other than `SUCCESS`, do not promote. Read the traffic split again with the step 5 command. If the serving revision is still the one recorded in step 1, report the status and the failing step, name any new API revision the build left at 0%, and stop. If the serving revision has changed, the build's deploy step put a new revision live before the build failed. Tell the user at once, run the health check in step 6, give the rollback target from step 1 and the rollback command from `docs/OPERATIONS.md` section 5, and stop. Do not roll back without the user's word.
 3. After the build succeeds, take the revision name from the log of this build. The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer.
    ```bash
    gcloud builds log <BUILD_ID> --project gen-lang-client-0202543132 | grep 'Service \[suchi-api\] revision'
@@ -290,7 +290,7 @@ This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy 
      --format 'yaml(status.traffic)'
    ```
 2. If the named revision already serves 100%, say so and stop. Promoting it by name would only pin the service.
-   Otherwise confirm that the named revision exists, and show its image. The image is stored by digest. To see which build produced it, list the tags on that digest in Artifact Registry. The tag is the build ID.
+   Otherwise confirm that the named revision exists, and show its image. If the describe command fails, report that and stop. The image is stored by digest. To see which build produced it, list the tags on that digest in Artifact Registry. The tag is the build ID.
    ```bash
    gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
      --format 'value(spec.containers[0].image)'

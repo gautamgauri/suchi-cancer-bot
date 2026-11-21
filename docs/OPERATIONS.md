@@ -205,6 +205,11 @@ gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang
   --format 'value(spec.containers[0].image)'   # must end in @<DIGEST> from the command below
 gcloud artifacts docker images describe us-central1-docker.pkg.dev/gen-lang-client-0202543132/suchi-images/suchi-api:<BUILD_ID> \
   --project gen-lang-client-0202543132 --format 'value(image_summary.digest)'
+```
+
+Promote only after the two values match.
+
+```bash
 gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
   --to-revisions <REVISION>=100
 ```
