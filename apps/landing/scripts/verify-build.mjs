@@ -6,6 +6,8 @@
  * Fails (exit 1) when:
  *   - robots.txt or the sitemap is missing, or the sitemap leaves out an indexable page
  *   - any JSON-LD block does not parse, or any page claims medical review
+ *   - a page shows a review label ("Reviewed", "Last reviewed") beside an article whose
+ *     frontmatter does not record a completed review (src/lib/review-status.mjs)
  *   - a page lacks a <title> or meta description, or an indexable page has a wrong canonical URL
  *   - an internal link points at a page that was not built
  *
@@ -21,8 +23,10 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
+import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
+const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
 const SITE = 'https://suchitracancercare.org';
 const errors = [];
 const warnings = [];
@@ -41,6 +45,33 @@ const builtPaths = new Set(htmlFiles.map(pagePath));
 const is404 = (path) => path === '/404.html' || path === '/404/';
 const hasNoindex = (html) =>
   [...html.matchAll(/<meta\s+name="robots"\s+content="([^"]*)"/gi)].some((m) => /noindex/i.test(m[1]));
+
+// Review status of every article, from its frontmatter. A missing
+// review_status is the schema default, ai_draft.
+const reviewStatus = new Map();
+for (const file of walk(ARTICLES).filter((f) => /\.mdx?$/.test(f))) {
+  const front = readFileSync(file, 'utf8').match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1] ?? '';
+  const field = (name) => front.match(new RegExp(`^${name}:\\s*["']?([^"'\\r\\n]+?)["']?\\s*$`, 'm'))?.[1];
+  const id = field('page_id');
+  if (id) reviewStatus.set(id, field('review_status') ?? 'ai_draft');
+}
+if (reviewStatus.size === 0) errors.push(`no articles found under ${ARTICLES}`);
+
+// A review label is text a reader would take as a statement of clinical review.
+const REVIEW_LABEL_RE = /(?<![A-Za-z])(?:(?:Last|Medically|Clinically) reviewed|Reviewed)(?![A-Za-z])/g;
+const MARKED_LABEL_RE = new RegExp(
+  `<([a-zA-Z][a-zA-Z0-9]*)\\b[^>]*\\b${REVIEW_LABEL_ATTR}="([^"]*)"[^>]*>[\\s\\S]*?<\\/\\1>`,
+  'g',
+);
+const visibleText = (html) =>
+  html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ');
+let reviewLabels = 0;
+let unmarkedLabels = 0;
 
 // robots.txt
 const robotsFile = join(DIST, 'robots.txt');
@@ -95,6 +126,25 @@ for (const file of htmlFiles) {
   if (!/<html lang="[a-zA-Z-]+"/.test(html)) errors.push(`${path}: no lang attribute`);
   if (indexable && !html.includes(`<link rel="canonical" href="${SITE}${path}"`)) {
     errors.push(`${path}: canonical missing or wrong`);
+  }
+
+  // Review labels. Each one must carry REVIEW_LABEL_ATTR naming a reviewed
+  // article. Any label text left once the marked labels are removed is unmarked.
+  for (const m of html.matchAll(MARKED_LABEL_RE)) {
+    reviewLabels += 1;
+    const id = m[2];
+    if (!reviewStatus.has(id)) {
+      errors.push(`${path}: review label for unknown article "${id}"`);
+    } else if (!isReviewed({ review_status: reviewStatus.get(id) })) {
+      errors.push(`${path}: review label beside article "${id}", whose review_status is ${reviewStatus.get(id)}`);
+    }
+  }
+  const unmarked = visibleText(html.replace(MARKED_LABEL_RE, ' ')).match(REVIEW_LABEL_RE);
+  if (unmarked) {
+    unmarkedLabels += unmarked.length;
+    errors.push(
+      `${path}: ${unmarked.length} review label(s) ("${unmarked[0]}") with no ${REVIEW_LABEL_ATTR}. Show review labels only through isReviewed() in src/lib/review-status.mjs.`,
+    );
   }
 
   for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
@@ -156,6 +206,7 @@ console.log(`pages built: ${builtPaths.size} (${notIndexable} not indexable, ${T
 console.log(`sitemap URLs: ${sitemapUrls.length}`);
 console.log(`JSON-LD blocks parsed: ${jsonLdBlocks} ${JSON.stringify(typeCounts)}`);
 console.log(`unique titles: ${titles.size}, unique descriptions: ${descriptions.size}`);
+console.log(`review labels: ${reviewLabels} marked, ${unmarkedLabels} unmarked (articles recorded as reviewed: ${[...reviewStatus.values()].filter((v) => isReviewed({ review_status: v })).length} of ${reviewStatus.size})`);
 console.log(`broken internal links: ${brokenLinks.size} (${unexpectedBroken.length} not on the known list)`);
 for (const l of unexpectedBroken) errors.push(`broken internal link: ${l}`);
 
