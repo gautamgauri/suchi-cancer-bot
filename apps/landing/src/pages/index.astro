@@ -5,7 +5,9 @@ import videosData from '../content/videos.json';
 
 const featuredVideos = videosData.videos.filter(v => v.featured).slice(0, 3);
 const cancerTypes = videosData.cancerTypes;
-const botUrl = "https://chat.suchitracancercare.org";
+import { chatUrlFor } from '../lib/chat-link';
+
+const botUrl = chatUrlFor(Astro.url.pathname);
 const base = import.meta.env.BASE_URL;
 ---
 
