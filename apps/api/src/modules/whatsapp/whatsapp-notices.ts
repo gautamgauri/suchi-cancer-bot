@@ -6,6 +6,11 @@
 //   - a message Meta delivered long after it was sent, typically a redelivery
 //     of the queue after an outage, which must not be answered as if fresh
 //
+// A stale text message that the emergency fast path or the safety rules flag
+// never gets the stale notice. It runs the full pipeline (see
+// WhatsAppService.replyWithNotice). The stale notice names no cause, because
+// a late timestamp does not prove the service was down.
+//
 // The strings are fixed and carry no medical content. They are never produced
 // by the LLM. Any change to them needs the owner's approval.
 
@@ -20,8 +25,8 @@ export const UNSUPPORTED_TYPE_NOTICE =
 
 /** Sent when a message arrives too long after it was written to answer as fresh. */
 export const STALE_MESSAGE_NOTICE =
-  "क्षमा करें, सुचि की सेवा कुछ समय के लिए उपलब्ध नहीं थी और आपके संदेश का उत्तर नहीं दिया जा सका। कृपया अपना सवाल दोबारा भेजें।\n\n" +
-  "Sorry, Suchi was briefly unavailable and your message was not answered. Please send your question again.";
+  "क्षमा करें, आपके संदेश का उत्तर नहीं दिया जा सका। कृपया अपना सवाल दोबारा भेजें।\n\n" +
+  "Sorry, your message was not answered. Please send your question again.";
 
 export const NOTICE_TEXT: Record<NoticeKind, string> = {
   unsupported_type: UNSUPPORTED_TYPE_NOTICE,

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { PrismaModule } from "../prisma/prisma.module";
 import { ChatModule } from "../chat/chat.module";
 import { SessionsModule } from "../sessions/sessions.module";
+import { SafetyModule } from "../safety/safety.module";
 import { WhatsAppController } from "./whatsapp.controller";
 import { WhatsAppService } from "./whatsapp.service";
 
@@ -9,7 +10,7 @@ import { WhatsAppService } from "./whatsapp.service";
 // All inbound traffic is routed through ChatService.handle({channel:"whatsapp"}),
 // reusing the same safety/RAG/citation pipeline as web and voice.
 @Module({
-  imports: [PrismaModule, ChatModule, SessionsModule],
+  imports: [PrismaModule, ChatModule, SessionsModule, SafetyModule],
   controllers: [WhatsAppController],
   providers: [WhatsAppService],
   exports: [WhatsAppService],

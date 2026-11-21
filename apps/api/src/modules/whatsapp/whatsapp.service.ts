@@ -4,6 +4,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ChatService } from "../chat/chat.service";
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { SessionsService } from "../sessions/sessions.service";
+import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { SafetyService } from "../safety/safety.service";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
@@ -58,6 +60,7 @@ export class WhatsAppService {
     private readonly prisma: PrismaService,
     private readonly chat: ChatService,
     private readonly sessions: SessionsService,
+    private readonly safety: SafetyService,
   ) {}
 
   /** True only when every Meta credential is present — otherwise the channel fails safe. */
@@ -194,7 +197,12 @@ export class WhatsAppService {
   }
 
   /** Close out a ledger row. Best-effort: a bookkeeping failure must not affect the reply. */
-  private async markLedger(wamid: string, status: "processed" | "failed", error?: string): Promise<void> {
+  private async markLedger(
+    wamid: string,
+    status: "processed" | "failed",
+    error?: string,
+    notice?: { notice: string; noticeSent: boolean },
+  ): Promise<void> {
     try {
       const existing = await this.prisma.analyticsEvent.findUnique({
         where: { id: inboundLedgerId(wamid) },
@@ -208,6 +216,9 @@ export class WhatsAppService {
             completedAt: new Date().toISOString(),
             // Error class/message only — never the user's text.
             ...(error ? { error: error.slice(0, 200) } : {}),
+            // A notice row is "processed" even when the cooldown suppressed the
+            // reply. noticeSent says whether anything went out.
+            ...(notice ?? {}),
           },
         },
       });
@@ -268,6 +279,16 @@ export class WhatsAppService {
   private async replyWithNotice(msg: InboundMessage): Promise<boolean> {
     const kind = noticeKindFor(msg);
     if (!kind) return false;
+    // AGENTS.md §1.1: nothing may short-circuit in front of the safety path.
+    // A stale text that the pipeline's first deterministic checks would flag
+    // (emergency fast path, then the safety rules) runs the full pipeline, so
+    // the sender gets the approved safety reply, however late. Only a message
+    // both checks pass as normal may be answered with the stale notice.
+    if (kind === "stale" && this.flaggedBySafetyChecks(msg.text)) {
+      this.logger.warn(`Stale WhatsApp message ${msg.wamid} flagged by the safety checks: running the pipeline`);
+      return false;
+    }
+    let noticeSent = false;
     if (this.noticeLimiter.tryAcquire(msg.from, kind)) {
       try {
         await this.sendText(msg.from, NOTICE_TEXT[kind]);
@@ -275,12 +296,23 @@ export class WhatsAppService {
         this.noticeLimiter.release(msg.from, kind);
         throw err;
       }
+      noticeSent = true;
       this.logger.log(`WhatsApp message ${msg.wamid} answered with the ${kind} notice (pipeline not run)`);
     } else {
       this.logger.log(`WhatsApp message ${msg.wamid} not answered: ${kind} notice already sent to this contact`);
     }
-    await this.markLedger(msg.wamid, "processed");
+    await this.markLedger(msg.wamid, "processed", undefined, { notice: kind, noticeSent });
     return true;
+  }
+
+  /**
+   * The same two deterministic checks `ChatService.handle` runs first, called
+   * here unchanged. True when either one classifies the text as anything other
+   * than normal. No safety logic lives in this module.
+   */
+  private flaggedBySafetyChecks(text: string): boolean {
+    if (evaluateEmergencyFastPath(text).isEmergency) return true;
+    return this.safety.evaluate(text).classification !== "normal";
   }
 
   /** Run one already-claimed message through the chat pipeline. Never throws. */

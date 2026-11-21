@@ -1,3 +1,5 @@
+import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { SafetyService } from "../safety/safety.service";
 import { inboundLedgerId, WhatsAppService } from "./whatsapp.service";
 import {
   NOTICE_COOLDOWN_MS,
@@ -58,7 +60,7 @@ describe("WhatsApp fixed notices", () => {
     };
     chat = { handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }) };
     const sessions: any = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
-    svc = new WhatsAppService(prisma, chat, sessions);
+    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService());
     sendText = jest.spyOn(svc, "sendText").mockResolvedValue(undefined);
   });
 
@@ -206,6 +208,95 @@ describe("WhatsApp fixed notices", () => {
       expect(sendText).toHaveBeenCalledTimes(1);
       expect(sendText).toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
       expect(ledgerStatus("w1")).toBe("processed");
+    });
+
+    // Review of #248 (AGENTS.md §1.1): the stale notice must never stand in
+    // front of the safety path. The texts below are the synthetic probes the
+    // safety specs already use.
+    describe("a stale message the safety checks flag runs the pipeline", () => {
+      const staleText = (id: string, body: string, ageSeconds = 7 * 3600): MetaMessage => ({
+        id,
+        from: CONTACT_A,
+        type: "text",
+        text: { body },
+        timestamp: secondsAgo(ageSeconds),
+      });
+      const EMERGENCY = "I can't breathe properly";
+      const SELF_HARM = "I want to kill myself";
+
+      it("emergency (fast path): ChatService runs and no stale notice is sent", async () => {
+        expect(evaluateEmergencyFastPath(EMERGENCY).isEmergency).toBe(true);
+
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", EMERGENCY)])));
+
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: EMERGENCY }));
+        expect(sendText).toHaveBeenCalledTimes(1);
+        expect(sendText).toHaveBeenCalledWith(CONTACT_A, "Here is some info.");
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+        expect(ledger.rows.get(inboundLedgerId("w1")).payload).not.toHaveProperty("notice");
+      });
+
+      it("self-harm (safety rules): ChatService runs and no stale notice is sent", async () => {
+        expect(new SafetyService().evaluate(SELF_HARM).classification).toBe("self_harm");
+
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", SELF_HARM)])));
+
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: SELF_HARM }));
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      });
+
+      it("a flagged message is never swallowed by the notice cooldown", async () => {
+        // An ordinary stale message takes the notice slot first. The flagged
+        // one after it must still run the pipeline.
+        await svc.processInbound(
+          svc.parseInbound(
+            webhook([
+              staleText("w1", "synthetic question"),
+              staleText("w2", SELF_HARM),
+              staleText("w3", EMERGENCY),
+              staleText("w4", "another synthetic question"),
+            ]),
+          ),
+        );
+
+        expect(chat.handle).toHaveBeenCalledTimes(2);
+        expect(chat.handle).toHaveBeenNthCalledWith(1, expect.objectContaining({ userText: SELF_HARM }));
+        expect(chat.handle).toHaveBeenNthCalledWith(2, expect.objectContaining({ userText: EMERGENCY }));
+        expect(sendText.mock.calls.filter((c) => c[1] === STALE_MESSAGE_NOTICE)).toHaveLength(1);
+      });
+
+      it("an ordinary stale message still gets the notice", async () => {
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", "synthetic question")])));
+
+        expect(chat.handle).not.toHaveBeenCalled();
+        expect(sendText).toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      });
+    });
+
+    it("records the notice kind and whether it was sent, so processed is not read as delivered", async () => {
+      const backlog = ["w1", "w2"].map((id) => text(id, CONTACT_A, 7 * 3600));
+      await svc.processInbound(svc.parseInbound(webhook(backlog)));
+
+      expect(ledger.rows.get(inboundLedgerId("w1")).payload).toMatchObject({
+        status: "processed",
+        notice: "stale",
+        noticeSent: true,
+      });
+      expect(ledger.rows.get(inboundLedgerId("w2")).payload).toMatchObject({
+        status: "processed",
+        notice: "stale",
+        noticeSent: false,
+      });
+    });
+
+    it("records the unsupported-type notice the same way", async () => {
+      const burst = ["w1", "w2"].map((id) => ({ id, from: CONTACT_A, type: "image" }));
+      await svc.processInbound(svc.parseInbound(webhook(burst)));
+
+      expect(ledger.rows.get(inboundLedgerId("w1")).payload).toMatchObject({ notice: "unsupported_type", noticeSent: true });
+      expect(ledger.rows.get(inboundLedgerId("w2")).payload).toMatchObject({ notice: "unsupported_type", noticeSent: false });
     });
 
     it("sends one note for a redelivered backlog from the same contact and runs none of it", async () => {
