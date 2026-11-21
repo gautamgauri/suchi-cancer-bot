@@ -12,7 +12,7 @@ import {
   flaggedByDeterministicSafetyChecks,
   withinBound,
 } from "../chat/deterministic-safety";
-import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
+import { MAX_USER_TEXT_HARD_LIMIT, cutToLength } from "../chat/dto";
 import { SessionsService } from "../sessions/sessions.service";
 import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
@@ -100,6 +100,22 @@ function metaErrorCodeOf(body: string): number | undefined {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * How long a session lookup that missed the safety bound may still take for
+ * the turn to be stored afterwards (PR #202).
+ */
+export const LATE_SESSION_WAIT_MS = 60_000;
+
+/** A session lookup that failed or missed the safety bound. `cause` is the underlying error. */
+class SessionUnresolvedError extends Error {
+  readonly code: string;
+  constructor(readonly cause: any) {
+    super("WhatsApp session not resolved");
+    this.name = "SessionUnresolvedError";
+    this.code = String(cause?.code ?? cause?.name ?? "unknown");
+  }
+}
 
 /** Per-request bound on a POST to the Graph API. A hung request becomes a network failure. */
 export const SEND_TIMEOUT_MS = 15_000;
@@ -256,10 +272,17 @@ export class WhatsAppService {
             sentAt: parseSentAt(m.timestamp),
           };
           if (text) {
-            // Meta caps inbound text at 4096 chars today. Bound it here too,
-            // since this path never passes ChatDto (a webhook cannot get a 400).
-            const bounded = text.length > MAX_USER_TEXT_LENGTH ? text.slice(0, MAX_USER_TEXT_LENGTH) : text;
-            out.push({ ...base, text: bounded, ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}) });
+            // Never bounded to the pipeline limit here. ChatService screens the
+            // whole message for safety and only then cuts it to
+            // MAX_USER_TEXT_LENGTH, and the stale guard and the no-session
+            // safety reply below screen the whole message too (PR #202). Text
+            // above the abuse ceiling is cut, as a web request would be refused.
+            const bounded = cutToLength(text, MAX_USER_TEXT_HARD_LIMIT);
+            out.push({
+              ...base,
+              text: bounded,
+              ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}),
+            });
           } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
             // No readable text (voice note, image, document, ...). Kept so the
             // sender gets the fixed "typed messages only" notice. Never reaches
@@ -355,7 +378,7 @@ export class WhatsAppService {
     error?: string,
     failedStage?: "pipeline" | "delivery",
     delivery?: { partsSent?: number; httpStatus?: number; metaErrorCode?: number },
-    notice?: { notice: string; noticeSent: boolean },
+    notice?: { notice: string; noticeSent: boolean; [field: string]: string | boolean },
   ): Promise<void> {
     try {
       const existing = await this.prisma.analyticsEvent.findUnique({
@@ -438,7 +461,7 @@ export class WhatsAppService {
   private async replyWithNotice(msg: InboundMessage): Promise<boolean> {
     const kind = noticeKindFor(msg);
     if (!kind) return false;
-    // AGENTS.md §1.1: nothing may short-circuit in front of the safety path.
+    // AGENTS.md, section 1, rule 1: nothing may short-circuit in front of the safety path.
     // A stale text that any of the pipeline's deterministic pre-LLM checks
     // would turn into a safety, urgent or mental-health template runs the full
     // pipeline, so the sender gets the approved reply, however late. Only a
@@ -566,11 +589,15 @@ export class WhatsAppService {
         this.safetyScreenDeps,
       );
       // Resolve the session. A safety turn waits at most a short, fixed time.
-      const resolve = (forceNew: boolean) => {
+      // The raw promise is kept so that a late session can still store the turn.
+      const resolve = async (forceNew: boolean): Promise<string> => {
         const resolving = this.resolveSession(msg.from, locale, forceNew);
-        return safetyFallback
-          ? withinBound(resolving, SAFETY_SESSION_LOOKUP_BOUND_MS, "whatsapp:resolveSession")
-          : resolving;
+        if (!safetyFallback) return resolving;
+        try {
+          return await withinBound(resolving, SAFETY_SESSION_LOOKUP_BOUND_MS, "whatsapp:resolveSession");
+        } catch (err) {
+          throw Object.assign(new SessionUnresolvedError(err), { resolving });
+        }
       };
       let sessionId: string;
       try {
@@ -635,23 +662,62 @@ export class WhatsAppService {
    */
   private async sendSafetyFallback(msg: InboundMessage, reply: DeterministicSafetyReply, cause: any): Promise<void> {
     this.logger.error(
-      `[safety-fallback] could not resolve the WhatsApp session for ${msg.wamid} (${errorTag(cause)}); ` +
+      `[safety-fallback] could not resolve the WhatsApp session for ${msg.wamid} (${errorTag(cause?.cause ?? cause)}); ` +
         `sending the ${reply.label} template without a session`,
     );
-    const note = { notice: "safety_fallback", noticeSent: false };
+    // The gate and classification go in the ledger row, never the text.
+    const note = {
+      notice: "safety_fallback",
+      noticeSent: false,
+      safetyGate: reply.label,
+      safetyClassification: reply.safety.classification,
+    };
     let partsSent: number;
     try {
       partsSent = await this.sendText(msg.from, cleanResponseForDisplay(reply.responseText));
     } catch (sendErr: any) {
       this.logger.error(`Failed to send the safety template for WhatsApp message ${msg.wamid}: ${sendErr?.message}`);
       await this.markFailed(msg.wamid, sendErr, note);
+      this.storeWhenSessionArrives(msg, reply, cause);
       return;
     }
     await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent }, { ...note, noticeSent: true });
+    this.storeWhenSessionArrives(msg, reply, cause);
+  }
+
+  /**
+   * If the session lookup that timed out does settle with a session, store
+   * the turn the healthy path would have stored (user message, reply,
+   * SafetyEvent and, for a crisis, the review flag), in the background with
+   * bounded single attempts. If it fails, or does not settle within
+   * LATE_SESSION_WAIT_MS, log that the turn has no stored record, with the
+   * wamid and an error code only.
+   */
+  private storeWhenSessionArrives(msg: InboundMessage, reply: DeterministicSafetyReply, cause: any): void {
+    const resolving: Promise<string> | undefined = cause?.resolving;
+    const noRecord = (err: any) =>
+      this.logger.error(
+        `[safety-fallback] WhatsApp message ${msg.wamid} has no stored record (${errorTag(err)}); only the ledger row describes it`,
+      );
+    if (!resolving) {
+      noRecord(cause);
+      return;
+    }
+    void withinBound(resolving, LATE_SESSION_WAIT_MS, "whatsapp:lateSession").then((sessionId) => {
+      try {
+        this.chat.recordSessionFreeSafetyTurn(sessionId, { userText: msg.text, channel: "whatsapp" }, reply);
+      } catch (err) {
+        noRecord(err);
+      }
+    }, noRecord);
   }
 
   /** Record a failed turn, splitting a delivery failure from a pipeline one. */
-  private async markFailed(wamid: string, err: any, notice?: { notice: string; noticeSent: boolean }): Promise<void> {
+  private async markFailed(
+    wamid: string,
+    err: any,
+    notice?: { notice: string; noticeSent: boolean; [field: string]: string | boolean },
+  ): Promise<void> {
     const delivery = err instanceof WhatsAppDeliveryError;
     await this.markLedger(
       wamid,

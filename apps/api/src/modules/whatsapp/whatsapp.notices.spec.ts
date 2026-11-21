@@ -295,7 +295,7 @@ describe("WhatsApp fixed notices", () => {
       expect(ledgerStatus("w1")).toBe("processed");
     });
 
-    // Review of #248 (AGENTS.md §1.1): the stale notice must never stand in
+    // Review of #248 (AGENTS.md, section 1, rule 1): the stale notice must never stand in
     // front of the safety path. The texts below are the synthetic probes the
     // safety specs already use.
     describe("a stale message the safety checks flag runs the pipeline", () => {

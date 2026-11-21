@@ -5,7 +5,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
 import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppDeliveryError, WhatsAppService } from "./whatsapp.service";
 import { MetaWebhookBody } from "./whatsapp.types";
-import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
+import { MAX_USER_TEXT_HARD_LIMIT, MAX_USER_TEXT_LENGTH } from "../chat/dto";
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
@@ -90,6 +90,7 @@ describe("WhatsAppService", () => {
     };
     chat = {
       handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }),
+      recordSessionFreeSafetyTurn: jest.fn(),
     };
     sessions = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
 
@@ -175,9 +176,16 @@ describe("WhatsAppService", () => {
       ]);
     });
 
-    it("bounds inbound text to MAX_USER_TEXT_LENGTH (this path skips ChatDto)", () => {
+    // PR #202: the whole message reaches the safety screen. ChatService cuts it
+    // to MAX_USER_TEXT_LENGTH only after screening. Only the abuse ceiling applies here.
+    it("keeps inbound text above MAX_USER_TEXT_LENGTH, so the safety screen sees all of it", () => {
       const msgs = svc.parseInbound(textWebhook("wamid.long", "919876543210", "x".repeat(MAX_USER_TEXT_LENGTH + 500)));
-      expect(msgs[0].text).toHaveLength(MAX_USER_TEXT_LENGTH);
+      expect(msgs[0].text).toHaveLength(MAX_USER_TEXT_LENGTH + 500);
+    });
+
+    it("cuts inbound text at the abuse ceiling (this path skips ChatDto)", () => {
+      const msgs = svc.parseInbound(textWebhook("wamid.huge", "919876543210", "x".repeat(MAX_USER_TEXT_HARD_LIMIT + 500)));
+      expect(msgs[0].text).toHaveLength(MAX_USER_TEXT_HARD_LIMIT);
     });
 
     it("ignores statuses-only events", () => {
@@ -389,6 +397,78 @@ describe("WhatsAppService", () => {
       expect(chat.handle).toHaveBeenCalledTimes(1);
       expect(svc.sendText).toHaveBeenCalledTimes(1);
       expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
+    });
+
+    it("records the gate and classification in the ledger row, never the text", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf9", from: "9199", text: SELF_HARM }]);
+      const payload = ledger.rows.get(inboundLedgerId("sf9")).payload;
+      expect(payload).toMatchObject({
+        status: "processed",
+        notice: "safety_fallback",
+        noticeSent: true,
+        safetyGate: "safetyTemplate",
+        safetyClassification: "self_harm",
+      });
+      expect(JSON.stringify(payload)).not.toContain(SELF_HARM);
+    });
+
+    it("stores the turn once a slow session lookup does resolve", async () => {
+      let finish!: (v: any) => void;
+      prisma.whatsAppContact.findUnique.mockImplementation(
+        () => new Promise((r) => (finish = r)),
+      );
+      await svc.processClaimed([{ wamid: "sf10", from: "9199", text: SELF_HARM }]);
+      // The template went out without a session.
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedSelfHarm());
+      expect(chat.recordSessionFreeSafetyTurn).not.toHaveBeenCalled();
+      // The lookup finishes late with a live contact.
+      finish({ waId: "9199", sessionId: "sess-late", lastActiveAt: new Date() });
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+      expect(chat.recordSessionFreeSafetyTurn).toHaveBeenCalledTimes(1);
+      const [sessionId, input, reply] = chat.recordSessionFreeSafetyTurn.mock.calls[0];
+      expect(sessionId).toBe("sess-late");
+      expect(input).toEqual({ userText: SELF_HARM, channel: "whatsapp" });
+      expect(reply.safety.classification).toBe("self_harm");
+    }, 10_000);
+
+    it("logs, without the text, when the session never arrives", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf11", from: "9199", text: SELF_HARM }]);
+      await new Promise((r) => setImmediate(r));
+      expect(chat.recordSessionFreeSafetyTurn).not.toHaveBeenCalled();
+      const logged = ((svc as any).logger.error as jest.Mock).mock.calls.flat().join(" ");
+      expect(logged).toContain("sf11 has no stored record");
+      expect(logged).not.toContain(SELF_HARM);
+    });
+
+    // Review B1: a safety phrase beyond 4096 characters reaches the fallback.
+    it("screens the whole of a long message for the no-session template", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      const long = "I have some questions about my treatment plan. ".repeat(200) + " " + SELF_HARM;
+      expect(long.length).toBeGreaterThan(MAX_USER_TEXT_LENGTH);
+      const [parsed] = svc.parseInbound(textWebhook("sf12", "9199", long));
+      await svc.processClaimed([parsed]);
+      const r = new SafetyService().evaluate(long);
+      expect(r.classification).toBe("self_harm");
+      expect(svc.sendText).toHaveBeenCalledWith(
+        "9199",
+        cleanResponseForDisplay(appendDisclaimer(r.responseText!, detectLocale(long), false, long)),
+      );
+    });
+
+    // #254 with PR #202: a caption note must never follow a no-session safety reply.
+    it("captioned media with an emergency caption and no session: one send, the template, no caption note", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf13", from: "9199", text: EMERGENCY, captionMediaType: "image" } as any]);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
+      const payload = ledger.rows.get(inboundLedgerId("sf13")).payload;
+      expect(payload).toMatchObject({ status: "processed", notice: "safety_fallback" });
+      for (const field of ["captionNote", "captionNoteSent", "captionNoteSkipped", "captionNoteFailed"]) {
+        expect(payload).not.toHaveProperty(field);
+      }
     });
 
     it("a healthy session lookup goes through the full pipeline as before", async () => {
