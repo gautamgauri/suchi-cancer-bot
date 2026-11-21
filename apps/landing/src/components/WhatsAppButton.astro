@@ -1,0 +1,45 @@
+---
+/**
+ * "Ask on WhatsApp" link. Renders nothing until SCCF_WHATSAPP_NUMBER is set
+ * in src/config/whatsapp.ts.
+ *
+ * variant="button" is a standalone button for in-page call-to-action blocks.
+ * Pass `class` to reuse an existing style instead (for example nav-cta).
+ */
+import { whatsappUrl, type WhatsAppSource } from '../config/whatsapp';
+
+export interface Props {
+  source: WhatsAppSource;
+  variant?: 'button' | 'plain';
+  class?: string;
+}
+
+const { source, variant = 'button', class: extraClass = '' } = Astro.props;
+const href = whatsappUrl(source);
+const classes = [variant === 'button' ? 'wa-button' : '', extraClass].filter(Boolean).join(' ');
+---
+
+{href && (
+  <a href={href} class={classes} target="_blank" rel="noopener" data-wa-source={source}>
+    Ask on WhatsApp
+  </a>
+)}
+
+<style>
+  .wa-button {
+    display: inline-block;
+    padding: 0.625rem 1.25rem;
+    background: #fff;
+    color: #075e54;
+    border: 1px solid #25d366;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease;
+    margin: 0.5rem 0 0 0.5rem;
+    vertical-align: middle;
+  }
+  .wa-button:hover {
+    background: #e9fbf0;
+  }
+</style>

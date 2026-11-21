@@ -379,6 +379,17 @@ a:hover {
   color: var(--color-teal);
 }
 
+/* WhatsApp pill: only where the bar has room for two. Always in the mobile menu. */
+.nav-cta--wa {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .nav-cta--wa {
+    display: inline-flex;
+  }
+}
+
 /* Mobile Menu Toggle */
 .nav-toggle {
   width: 44px;
