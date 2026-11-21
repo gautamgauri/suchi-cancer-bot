@@ -560,16 +560,29 @@ describe("ChatService.recordSessionFreeSafetyTurn (WhatsApp audit, PR #202)", ()
     const reply = svc.deterministicSafetyReplyWithoutSession({ userText: text, channel: "whatsapp" })!;
     expect(reply.safety.classification).toBe(classification);
 
-    svc.recordSessionFreeSafetyTurn("sess-late", { userText: text, channel: "whatsapp" }, reply);
+    // The turn was received and answered a minute before it is stored (review N4).
+    const receivedAt = new Date("2026-01-15T10:00:00.000Z");
+    const repliedAt = new Date("2026-01-15T10:00:01.000Z");
+    svc.recordSessionFreeSafetyTurn("sess-late", { userText: text, channel: "whatsapp" }, reply, { receivedAt, repliedAt });
     await svc.settleBackgroundWrites();
     await new Promise((r) => setImmediate(r));
 
     const user = created.find((c) => c.model === "message" && c.data.role === "user");
     const assistant = created.find((c) => c.model === "message" && c.data.role === "assistant");
     const event = created.find((c) => c.model === "safetyEvent");
-    expect(user?.data).toEqual({ sessionId: "sess-late", role: "user", text });
-    expect(assistant?.data).toMatchObject({ sessionId: "sess-late", text: reply.responseText, safetyClassification: classification });
-    expect(event?.data).toMatchObject({ sessionId: "sess-late", messageId: assistant?.data.id, type: classification });
+    expect(user?.data).toEqual({ sessionId: "sess-late", role: "user", text, createdAt: receivedAt });
+    expect(assistant?.data).toMatchObject({
+      sessionId: "sess-late",
+      text: reply.responseText,
+      safetyClassification: classification,
+      createdAt: repliedAt,
+    });
+    expect(event?.data).toMatchObject({
+      sessionId: "sess-late",
+      messageId: assistant?.data.id,
+      type: classification,
+      createdAt: repliedAt,
+    });
     const flag = created.find((c) => c.model === "session.update");
     expect(flag ? flag.data : undefined).toEqual(flagged ? { reviewFlagged: true, reviewFlagReason: "distress" } : undefined);
   });

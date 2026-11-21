@@ -577,6 +577,8 @@ export class WhatsAppService {
 
   /** Run one already-claimed message through the chat pipeline. Never throws. */
   private async processOne(msg: InboundMessage): Promise<void> {
+    // When this turn started, for the late audit rows of a no-session reply.
+    const receivedAt = new Date();
     try {
       if (await this.replyWithNotice(msg)) return;
       const locale = detectLocale(msg.text);
@@ -604,7 +606,7 @@ export class WhatsAppService {
         sessionId = await resolve(false);
       } catch (err: any) {
         if (!safetyFallback) throw err;
-        await this.sendSafetyFallback(msg, safetyFallback, err);
+        await this.sendSafetyFallback(msg, safetyFallback, err, receivedAt);
         return;
       }
       let result;
@@ -620,7 +622,7 @@ export class WhatsAppService {
             sessionId = await resolve(true);
           } catch (mintErr: any) {
             if (!safetyFallback) throw mintErr;
-            await this.sendSafetyFallback(msg, safetyFallback, mintErr);
+            await this.sendSafetyFallback(msg, safetyFallback, mintErr, receivedAt);
             return;
           }
           result = await this.chat.handle({ sessionId, channel: "whatsapp", locale, userText: msg.text });
@@ -660,7 +662,12 @@ export class WhatsAppService {
    * failure reply never follows a safety template. Never throws. The log line
    * carries the wamid and an error code, never the message text.
    */
-  private async sendSafetyFallback(msg: InboundMessage, reply: DeterministicSafetyReply, cause: any): Promise<void> {
+  private async sendSafetyFallback(
+    msg: InboundMessage,
+    reply: DeterministicSafetyReply,
+    cause: any,
+    receivedAt: Date,
+  ): Promise<void> {
     this.logger.error(
       `[safety-fallback] could not resolve the WhatsApp session for ${msg.wamid} (${errorTag(cause?.cause ?? cause)}); ` +
         `sending the ${reply.label} template without a session`,
@@ -678,11 +685,13 @@ export class WhatsAppService {
     } catch (sendErr: any) {
       this.logger.error(`Failed to send the safety template for WhatsApp message ${msg.wamid}: ${sendErr?.message}`);
       await this.markFailed(msg.wamid, sendErr, note);
-      this.storeWhenSessionArrives(msg, reply, cause);
+      this.storeWhenSessionArrives(msg, reply, cause, { receivedAt, repliedAt: new Date() });
       return;
     }
+    // The reply time, taken as soon as Meta accepted it.
+    const repliedAt = new Date();
     await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent }, { ...note, noticeSent: true });
-    this.storeWhenSessionArrives(msg, reply, cause);
+    this.storeWhenSessionArrives(msg, reply, cause, { receivedAt, repliedAt });
   }
 
   /**
@@ -693,7 +702,12 @@ export class WhatsAppService {
    * LATE_SESSION_WAIT_MS, log that the turn has no stored record, with the
    * wamid and an error code only.
    */
-  private storeWhenSessionArrives(msg: InboundMessage, reply: DeterministicSafetyReply, cause: any): void {
+  private storeWhenSessionArrives(
+    msg: InboundMessage,
+    reply: DeterministicSafetyReply,
+    cause: any,
+    times: { receivedAt: Date; repliedAt: Date },
+  ): void {
     const resolving: Promise<string> | undefined = cause?.resolving;
     const noRecord = (err: any) =>
       this.logger.error(
@@ -705,7 +719,7 @@ export class WhatsAppService {
     }
     void withinBound(resolving, LATE_SESSION_WAIT_MS, "whatsapp:lateSession").then((sessionId) => {
       try {
-        this.chat.recordSessionFreeSafetyTurn(sessionId, { userText: msg.text, channel: "whatsapp" }, reply);
+        this.chat.recordSessionFreeSafetyTurn(sessionId, { userText: msg.text, channel: "whatsapp" }, reply, times);
       } catch (err) {
         noRecord(err);
       }

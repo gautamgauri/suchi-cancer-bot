@@ -423,14 +423,20 @@ describe("WhatsAppService", () => {
       expect(svc.sendText).toHaveBeenCalledWith("9199", expectedSelfHarm());
       expect(chat.recordSessionFreeSafetyTurn).not.toHaveBeenCalled();
       // The lookup finishes late with a live contact.
+      const finishedAt = Date.now();
       finish({ waId: "9199", sessionId: "sess-late", lastActiveAt: new Date() });
       await new Promise((r) => setImmediate(r));
       await new Promise((r) => setImmediate(r));
       expect(chat.recordSessionFreeSafetyTurn).toHaveBeenCalledTimes(1);
-      const [sessionId, input, reply] = chat.recordSessionFreeSafetyTurn.mock.calls[0];
+      const [sessionId, input, reply, times] = chat.recordSessionFreeSafetyTurn.mock.calls[0];
       expect(sessionId).toBe("sess-late");
       expect(input).toEqual({ userText: SELF_HARM, channel: "whatsapp" });
       expect(reply.safety.classification).toBe("self_harm");
+      // The rows carry the receive and reply times, taken before the late
+      // session arrived, so the transcript order holds (review N4).
+      expect(times.receivedAt).toBeInstanceOf(Date);
+      expect(times.repliedAt.getTime()).toBeGreaterThanOrEqual(times.receivedAt.getTime());
+      expect(times.repliedAt.getTime()).toBeLessThanOrEqual(finishedAt);
     }, 10_000);
 
     it("logs, without the text, when the session never arrives", async () => {

@@ -273,11 +273,16 @@ export class ChatService implements BeforeApplicationShutdown {
    * attempts: the user message (cut to MAX_USER_TEXT_LENGTH), the assistant
    * message, the SafetyEvent, and for a crisis the review flag. So a
    * self-harm message still reaches the review queue. Never throws.
+   *
+   * The rows carry the times the message was received and the reply was
+   * sent, so the transcript stays in order even though the writes land up to
+   * a minute later, possibly after a newer turn (review N4).
    */
   recordSessionFreeSafetyTurn(
     sessionId: string,
     input: { userText: string; channel?: string; inputMode?: string },
     reply: DeterministicSafetyReply,
+    times: { receivedAt: Date; repliedAt: Date },
   ): void {
     const userText = boundUserText(preprocessUserText(input.userText, input.channel, input.inputMode));
     this.persistSafetyTurnInBackground(reply.label, {
@@ -286,6 +291,7 @@ export class ChatService implements BeforeApplicationShutdown {
       messageId: randomUUID(),
       row: { ...reply.row, text: reply.responseText, latencyMs: 0 },
       safetyEvent: reply.safetyEvent,
+      times,
     });
     if (reply.safety.classification === "mental_health_crisis") {
       this.flagSessionForReview(sessionId, "distress").catch(() => {});
@@ -399,8 +405,12 @@ export class ChatService implements BeforeApplicationShutdown {
       messageId: string;
       row: { safetyClassification: string; policyRulesFired?: string[]; text: string; latencyMs: number };
       safetyEvent?: { type: string; detail?: string };
+      /** Explicit row times for a turn stored late. Omitted, the database sets them. */
+      times?: { receivedAt: Date; repliedAt: Date };
     },
   ): void {
+    const userAt = p.times ? { createdAt: p.times.receivedAt } : {};
+    const replyAt = p.times ? { createdAt: p.times.repliedAt } : {};
     const attempt = async (step: string, write: () => Promise<unknown>): Promise<boolean> => {
       try {
         await withinBound(write(), SAFETY_WRITE_BOUND_MS, `${label}:${step}`);
@@ -414,7 +424,7 @@ export class ChatService implements BeforeApplicationShutdown {
     };
     const run = async () => {
       await attempt("userMessage", () =>
-        this.prisma.message.create({ data: { sessionId: p.sessionId, role: "user", text: p.userText } }),
+        this.prisma.message.create({ data: { sessionId: p.sessionId, role: "user", text: p.userText, ...userAt } }),
       );
       const { text, safetyClassification, policyRulesFired, latencyMs } = p.row;
       const stored = await attempt("assistantMessage", () =>
@@ -427,6 +437,7 @@ export class ChatService implements BeforeApplicationShutdown {
             ...(policyRulesFired !== undefined && { policyRulesFired }),
             latencyMs,
             role: "assistant",
+            ...replyAt,
           },
         }),
       );
@@ -434,7 +445,13 @@ export class ChatService implements BeforeApplicationShutdown {
         const event = p.safetyEvent;
         await attempt("safetyEvent", () =>
           this.prisma.safetyEvent.create({
-            data: { sessionId: p.sessionId, messageId: stored ? p.messageId : null, type: event.type, detail: event.detail },
+            data: {
+              sessionId: p.sessionId,
+              messageId: stored ? p.messageId : null,
+              type: event.type,
+              detail: event.detail,
+              ...replyAt,
+            },
           }),
         );
       }
