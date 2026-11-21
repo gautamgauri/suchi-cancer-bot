@@ -18,6 +18,9 @@ async function bootstrap() {
   app.use(helmet());
   app.setGlobalPrefix("v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+  // On SIGTERM, run the shutdown hooks: ChatService drains pending safety
+  // writes for at most 3 s before Prisma disconnects (PR #202).
+  app.enableShutdownHooks();
 
   // Enable WebSocket adapter if VOICE_WS_ENABLED
   if (process.env.VOICE_WS_ENABLED === 'true') {

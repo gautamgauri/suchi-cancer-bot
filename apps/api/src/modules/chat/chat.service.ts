@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
@@ -18,7 +18,7 @@ import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
 import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
-import { ChatDto, boundUserText } from "./dto";
+import { ChatDto, MAX_USER_TEXT_HARD_LIMIT, boundUserText, cutToLength } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
 import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
@@ -136,7 +136,7 @@ type PersistAssistantOptions = {
 };
 
 @Injectable()
-export class ChatService {
+export class ChatService implements OnModuleDestroy {
   private readonly logger = new Logger(ChatService.name);
   // In-memory session cache with 60s TTL
   private readonly sessionCache = new Map<string, { data: any; expires: number }>();
@@ -224,6 +224,25 @@ export class ChatService {
     await Promise.all(Array.from(this.backgroundWrites));
   }
 
+  /** Longest a shutdown waits for pending safety writes. Cloud Run allows 10 s after SIGTERM. */
+  private readonly SHUTDOWN_DRAIN_MS = 3_000;
+
+  /**
+   * On shutdown (main.ts enables Nest's shutdown hooks), give pending safety
+   * writes a short time to land. Nest destroys this module before the Prisma
+   * module it depends on, so the connection is still open. Never throws and
+   * never waits longer than SHUTDOWN_DRAIN_MS.
+   */
+  async onModuleDestroy(): Promise<void> {
+    const pending = this.backgroundWrites.size;
+    if (pending === 0) return;
+    try {
+      await withinBound(this.settleBackgroundWrites(), this.SHUTDOWN_DRAIN_MS, "shutdown:drain");
+    } catch {
+      this.logger.error(`[safety-persist] shutdown: ${this.backgroundWrites.size} of ${pending} safety writes still pending`);
+    }
+  }
+
   /** Text-only checks the screen runs before any database access. */
   private get safetyScreenDeps(): SafetyScreenDeps {
     return { safety: this.safety, abstention: this.abstention, empathy: this.empathyDetector };
@@ -246,6 +265,32 @@ export class ChatService {
   }
 
   /**
+   * Store a safety turn that was answered without a session, once a session
+   * has been found for it (WhatsApp, PR #202). Writes what the healthy path
+   * writes for the same gate, behind the reply, with the same bounded single
+   * attempts: the user message (cut to MAX_USER_TEXT_LENGTH), the assistant
+   * message, the SafetyEvent, and for a crisis the review flag. So a
+   * self-harm message still reaches the review queue. Never throws.
+   */
+  recordSessionFreeSafetyTurn(
+    sessionId: string,
+    input: { userText: string; channel?: string; inputMode?: string },
+    reply: DeterministicSafetyReply,
+  ): void {
+    const userText = boundUserText(preprocessUserText(input.userText, input.channel, input.inputMode));
+    this.persistSafetyTurnInBackground(reply.label, {
+      sessionId,
+      userText,
+      messageId: randomUUID(),
+      row: { ...reply.row, text: reply.responseText, latencyMs: 0 },
+      safetyEvent: reply.safetyEvent,
+    });
+    if (reply.safety.classification === "mental_health_crisis") {
+      this.flagSessionForReview(sessionId, "distress").catch(() => {});
+    }
+  }
+
+  /**
    * Deliver a deterministic safety reply: the same text, classification,
    * rows, events and logs as the inline gates produced before PR #202, with
    * one difference. The reply no longer waits for its writes. The user
@@ -265,10 +310,16 @@ export class ChatService {
       isFirstMessage: boolean;
       started: number;
       sessionKnown: boolean;
+      /**
+       * The whole preprocessed message the screen saw. The reply is built
+       * from it, as before any length limit existed, while `dto.userText`
+       * (stored as the user row) is already cut to MAX_USER_TEXT_LENGTH.
+       */
+      screenedText: string;
     },
   ) {
     const reply = buildDeterministicSafetyReply(screen, {
-      userText: dto.userText,
+      userText: ctx.screenedText,
       disclaimerLocale: ctx.disclaimerLocale,
       templateLocale: ctx.templateLocale,
       isFirstMessage: ctx.isFirstMessage,
@@ -305,7 +356,7 @@ export class ChatService {
       screen.gate === "emergency" ? { ...reply.analytics.payload, latencyMs: Date.now() - ctx.started } : reply.analytics.payload;
     this.analytics
       .emit(reply.analytics.name, payload, dto.sessionId)
-      .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+      .catch((err) => this.logger.warn(`Analytics emit failed (${errorTag(err)})`));
 
     if (screen.gate === "emergency") {
       this.logger.warn({
@@ -407,7 +458,7 @@ export class ChatService {
       );
     } catch (err: any) {
       this.logger.error(
-        `[safety-persist] ${label}: could not record SafetyEvent "${event.type}" for session ${sessionId}: ${err?.message}`,
+        `[safety-persist] ${label}: could not record SafetyEvent "${event.type}" for session ${sessionId} (${errorTag(err)})`,
       );
     }
   }
@@ -593,9 +644,10 @@ export class ChatService {
     // budget that only started afterwards ran past the 55s controller timeout
     // instead of degrading inside it (issue #225).
     const turnStarted = Date.now();
-    // Every channel sees at most MAX_USER_TEXT_LENGTH characters. Web text up
-    // to the DTO's abuse ceiling is cut here instead of rejected (PR #202).
-    dto.userText = boundUserText(dto.userText);
+    // Abuse ceiling only. The safety screen in handleTurn sees the whole
+    // message up to this length, and cuts it to MAX_USER_TEXT_LENGTH after
+    // (PR #202). The DTO already refuses longer web text.
+    dto.userText = cutToLength(dto.userText, MAX_USER_TEXT_HARD_LIMIT);
     try {
       return await this.handleTurn(dto, signal, turnStarted, progress);
     } catch (err: any) {
@@ -617,10 +669,10 @@ export class ChatService {
     // not be rewritten — the stutter/repeat rules turned a WhatsApp caregiver's
     // "meri didi" into "meri di" and "papa" into "pa" before classification
     // (issue #115). Typed input only gets medical-spelling normalisation.
-    dto.userText = preprocessUserText(dto.userText, dto.channel, dto.inputMode);
+    const screenedText = preprocessUserText(dto.userText, dto.channel, dto.inputMode);
 
     const obsTrace = this.observability.startTrace('chat_turn', {
-      query: dto.userText?.substring(0, 200),
+      query: screenedText?.substring(0, 200),
       channel: dto.channel,
     }, undefined, dto.sessionId);
 
@@ -630,11 +682,16 @@ export class ChatService {
     // their pipeline order, before the session lookup, so an unreachable
     // database cannot cost a patient the emergency or self-harm reply (PR #202,
     // owner-approved reorder). Their verdicts are used unchanged below.
-    const screen = screenDeterministicSafety(dto.userText, this.safetyScreenDeps);
+    // The screen sees the WHOLE message, so a safety phrase near the end of a
+    // long message is caught exactly as it was before any length limit.
+    const screen = screenDeterministicSafety(screenedText, this.safetyScreenDeps);
     // All four screens have concluded, so the turn's safety verdict is known
     // before any I/O. Recording it here means a turn cut off in the session
     // read reports the real verdict, and so does a no-session reply (#221).
     recordSafetyVerdict(progress, screen);
+    // Everything downstream (session writes, retrieval, the LLM, the stored
+    // user message) works on at most MAX_USER_TEXT_LENGTH characters.
+    dto.userText = boundUserText(screenedText);
     if (screen.gate !== "emergency") {
       const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
       this.observability.endSpan(safetySpan, { classification: screen.safety.classification, rulesFired: screen.safety.rulesFired, blocked: screen.safety.classification !== 'normal' });
@@ -677,6 +734,7 @@ export class ChatService {
           isFirstMessage: false,
           started: turnStarted,
           sessionKnown: false,
+          screenedText,
         });
       }
     } else {
@@ -732,7 +790,7 @@ export class ChatService {
         );
       } catch (err: any) {
         userMsgPersistError = err;
-        this.logger.error(`[safety-persist] could not persist user message for session ${dto.sessionId}: ${err?.message}`);
+        this.logger.error(`[safety-persist] could not persist user message for session ${dto.sessionId} (${errorTag(err)})`);
       }
     }
 
@@ -748,6 +806,7 @@ export class ChatService {
         isFirstMessage,
         started,
         sessionKnown: true,
+        screenedText,
       });
     }
     const safetyResult = screen.safety;
@@ -777,7 +836,7 @@ export class ChatService {
           "early"
         );
       } catch (earlyRagError: any) {
-        this.logger.warn(`Early RAG retrieval failed: ${earlyRagError.message} — continuing without citations`);
+        this.logger.warn(`Early RAG retrieval failed (${errorTag(earlyRagError)}), continuing without citations`);
       }
     }
     // #126: the urgent path composes from these chunks directly.
@@ -1000,14 +1059,21 @@ export class ChatService {
     // Best-effort: this runs before the mental-health crisis check, so a failed
     // context write must not stop MH1 from reaching the user.
     if (contextResult.context || contextResult.cancerType || emotionalToneResult.tone !== "neutral") {
+      const contextWrite = this.greetingFlow.updateSessionContext(dto.sessionId, {
+        userContext: contextResult.context,
+        cancerType: contextResult.cancerType,
+        emotionalState: emotionalToneResult.tone,
+      });
       try {
-        await this.greetingFlow.updateSessionContext(dto.sessionId, {
-          userContext: contextResult.context,
-          cancerType: contextResult.cancerType,
-          emotionalState: emotionalToneResult.tone,
-        });
+        // A mental-health reply waits at most SAFETY_WRITE_BOUND_MS for this
+        // write, so a hung write cannot hold MH1, MH2 or MH3 back (PR #202).
+        // The write itself carries on in the background. Other turns wait as
+        // before, since later steps read the session context.
+        await (screen.gate === "mental_health_crisis" || screen.gate === "mental_health_support"
+          ? withinBound(contextWrite, SAFETY_WRITE_BOUND_MS, "handle:updateSessionContext")
+          : contextWrite);
       } catch (err: any) {
-        this.logger.warn(`Could not update session context for ${dto.sessionId}: ${err?.message}`);
+        this.logger.warn(`Could not update session context for ${dto.sessionId} (${errorTag(err)})`);
       }
     }
 
@@ -1025,6 +1091,7 @@ export class ChatService {
         isFirstMessage,
         started,
         sessionKnown: true,
+        screenedText,
       });
     }
     // Past the safety / escalation / crisis gates: this is an ordinary turn, and
@@ -3655,7 +3722,7 @@ export class ChatService {
     } catch (err: any) {
       if (!options.bestEffort) throw err;
       this.logger.error(
-        `[safety-persist] could not persist ${options.safetyClassification} reply for session ${sessionId} — returning it to the user anyway: ${err?.message}`,
+        `[safety-persist] could not persist ${options.safetyClassification} reply for session ${sessionId} (${errorTag(err)}); returning it to the user anyway`,
       );
       return { id: undefined, text: finalText };
     }

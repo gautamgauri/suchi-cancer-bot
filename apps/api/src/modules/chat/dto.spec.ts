@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { BadRequestException, ValidationPipe } from "@nestjs/common";
-import { ChatDto, MAX_USER_TEXT_HARD_LIMIT, MAX_USER_TEXT_LENGTH, boundUserText } from "./dto";
+import { ChatDto, MAX_USER_TEXT_HARD_LIMIT, MAX_USER_TEXT_LENGTH, boundUserText, cutToLength } from "./dto";
 
 // Same options as main.ts, so this exercises the real rejection path.
 const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
@@ -44,6 +44,19 @@ describe("ChatDto.userText length bound", () => {
   it("boundUserText cuts to the pipeline bound and leaves shorter text alone", () => {
     expect(boundUserText("a".repeat(MAX_USER_TEXT_LENGTH + 500))).toHaveLength(MAX_USER_TEXT_LENGTH);
     expect(boundUserText("short")).toBe("short");
+  });
+
+  it("never leaves half an emoji at the cut", () => {
+    // The emoji's two UTF-16 halves sit at positions 4095 and 4096.
+    const text = "a".repeat(MAX_USER_TEXT_LENGTH - 1) + "\u{1F600}" + "tail";
+    expect(text.charCodeAt(MAX_USER_TEXT_LENGTH - 1)).toBe(0xd83d);
+    const cut = boundUserText(text);
+    expect(cut).toBe("a".repeat(MAX_USER_TEXT_LENGTH - 1));
+    expect(/[\uD800-\uDBFF]$/.test(cut)).toBe(false);
+    // An emoji that ends exactly at the bound is kept whole.
+    const whole = "a".repeat(MAX_USER_TEXT_LENGTH - 2) + "\u{1F600}" + "tail";
+    expect(boundUserText(whole)).toBe("a".repeat(MAX_USER_TEXT_LENGTH - 2) + "\u{1F600}");
+    expect(cutToLength("ab", 5)).toBe("ab");
   });
 
   it("counts characters, not bytes (Devanagari at the limit is accepted)", async () => {

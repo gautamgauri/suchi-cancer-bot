@@ -15,7 +15,7 @@ import {
 import { VoiceRequestDto, VoiceResponse } from './dto';
 import { detectLocation } from '../chat/utils/location-detector';
 import { cleanResponseForDisplay } from '../chat/display-text-cleaner';
-import { MAX_USER_TEXT_LENGTH } from '../chat/dto';
+import { MAX_USER_TEXT_HARD_LIMIT, cutToLength } from '../chat/dto';
 
 @Injectable()
 export class VoiceService {
@@ -199,8 +199,10 @@ export class VoiceService {
       sessionId,
       channel: 'voice',
       locale: locale.startsWith('en') ? 'en' : 'hi',
-      // STT output never passes ChatDto; bound it like every other channel.
-      userText: transcript.slice(0, MAX_USER_TEXT_LENGTH),
+      // STT output never passes ChatDto. Cut it at the abuse ceiling only:
+      // ChatService screens the whole transcript for safety and then cuts it
+      // to MAX_USER_TEXT_LENGTH for everything downstream (PR #202).
+      userText: cutToLength(transcript, MAX_USER_TEXT_HARD_LIMIT),
     });
     const chatMs = Date.now() - chatStarted;
 

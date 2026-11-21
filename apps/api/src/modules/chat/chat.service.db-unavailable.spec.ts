@@ -14,6 +14,7 @@ import { OutputVerifierService } from "./output-verifier.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { ResponseTemplates } from "./response-templates";
+import { SAFETY_WRITE_BOUND_MS } from "./deterministic-safety";
 
 /**
  * Emergency and self-harm replies when the database is unreachable (PR #202).
@@ -307,7 +308,7 @@ describe("ChatService with over-length input (PR #202)", () => {
   // message that opens with an emergency still gets the emergency reply.
   afterEach(() => jest.restoreAllMocks());
 
-  it("cuts a long emergency message to the pipeline bound and still escalates", async () => {
+  it("cuts a long emergency message to the pipeline bound after screening, and still escalates", async () => {
     jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
     const sessionRow = {
@@ -409,5 +410,233 @@ describe("ChatService progress verdict when the session read stalls (#221 with P
     // Still waiting on the database, as before, but the verdict is known.
     expect(r.status).toBe("pending");
     expect(progress.safety).toEqual(verdict);
+  });
+});
+
+describe("ChatService screens the whole of a long message (PR #202, review B1)", () => {
+  // Main has no length limit and screens the whole message. A safety phrase
+  // beyond 4096 characters must still get its template. Synthetic text.
+  const EN_LONG_SELF_HARM = "I have some questions about my treatment plan. ".repeat(200) + " I want to kill myself";
+  const HI_LONG_BREATHING = "मेरे इलाज के बारे में कुछ सवाल हैं। ".repeat(400) + " सांस नहीं आ रही";
+
+  let created: any[];
+  let svc: ChatService;
+
+  beforeEach(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+    created = [];
+    const rows = () => ({
+      create: jest.fn(async (args: any) => {
+        created.push(args.data);
+        return { id: args.data.id ?? "row", ...args.data };
+      }),
+      update: jest.fn(async () => ({})),
+      count: jest.fn(async () => 0),
+      findMany: jest.fn(async () => []),
+    });
+    const sessionRow = {
+      id: "s",
+      createdAt: new Date(0),
+      channel: "web",
+      locale: "en",
+      userType: null,
+      status: "active",
+      userContext: null,
+      cancerType: null,
+      greetingCompleted: true,
+      emotionalState: "neutral",
+    };
+    svc = buildService({
+      $queryRaw: jest.fn(async () => [sessionRow]),
+      session: rows(),
+      message: rows(),
+      safetyEvent: rows(),
+      analyticsEvent: rows(),
+    });
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    ["English self-harm at the end", EN_LONG_SELF_HARM],
+    ["Devanagari breathing emergency at the end", HI_LONG_BREATHING],
+  ])("%s gets the same template as the whole message would", async (_name, text) => {
+    expect(text.length).toBeGreaterThan(4096);
+    const safety = new SafetyService().evaluate(text);
+    const fast = evaluateEmergencyFastPath(text);
+    // The phrase sits beyond the pipeline bound, so the first 4096 characters alone are clean.
+    const head = text.slice(0, 4096);
+    expect(evaluateEmergencyFastPath(head).isEmergency || new SafetyService().evaluate(head).classification !== "normal").toBe(false);
+    expect(fast.isEmergency || safety.classification !== "normal").toBe(true);
+
+    const result: any = await svc.handle({
+      sessionId: "00000000-0000-4000-8000-000000000006",
+      channel: "web",
+      userText: text,
+    } as any);
+    await svc.settleBackgroundWrites();
+
+    const want = fast.isEmergency
+      ? appendDisclaimer(fast.responseText!, "en", true, text)
+      : appendDisclaimer(safety.responseText!, "en", safety.classification === "red_flag", text);
+    expect(result.responseText).toBe(want);
+    expect(result.safety.classification).toBe(fast.isEmergency ? "red_flag" : safety.classification);
+    // Intended difference from main: the stored user message is cut to 4096.
+    const userRow = created.find((d) => d.role === "user");
+    expect(userRow.text).toBe(text.slice(0, 4096));
+  });
+});
+
+describe("ChatService mental-health replies do not wait on a hung context write (PR #202)", () => {
+  const MH_SUPPORT = "I feel so alone in this cancer journey";
+
+  beforeEach(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    [MH_CRISIS, "mental_health_crisis"],
+    [MH_SUPPORT, "mental_health_support"],
+  ])("%p is answered within the write bound when updateSessionContext hangs", async (text, classification) => {
+    const sessionRow = {
+      id: "s",
+      createdAt: new Date(0),
+      channel: "web",
+      locale: "en",
+      userType: null,
+      status: "active",
+      userContext: null,
+      cancerType: null,
+      greetingCompleted: true,
+      emotionalState: "neutral",
+    };
+    const svc: any = buildService({
+      $queryRaw: jest.fn(async () => [sessionRow]),
+      message: { count: jest.fn(async () => 0), create: jest.fn(hang) },
+      session: { update: jest.fn(hang) },
+      safetyEvent: { create: jest.fn(hang) },
+      analyticsEvent: { create: jest.fn(hang) },
+    });
+    const contextWrite = jest.spyOn(svc.greetingFlow, "updateSessionContext").mockImplementation(hang);
+    // Make sure the context write is attempted: a non-neutral tone triggers it.
+    jest.spyOn(svc.empathyDetector, "detectEmotionalTone").mockResolvedValue({ tone: "sad" });
+
+    const started = Date.now();
+    const r = await within(
+      svc.handle({ sessionId: "00000000-0000-4000-8000-000000000007", channel: "web", locale: LOCALE, userText: text }),
+      SAFETY_WRITE_BOUND_MS + 1_500,
+    );
+    expect(contextWrite).toHaveBeenCalled();
+    expect(r.status).toBe("ok");
+    expect((r as any).value.safety.classification).toBe(classification);
+    expect(Date.now() - started).toBeLessThan(SAFETY_WRITE_BOUND_MS + 1_500);
+  }, 15_000);
+});
+
+describe("ChatService.recordSessionFreeSafetyTurn (WhatsApp audit, PR #202)", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    [SELF_HARM, "self_harm", false],
+    [MH_CRISIS, "mental_health_crisis", true],
+  ])("stores %p like the healthy path, with the review flag for a crisis", async (text, classification, flagged) => {
+    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const created: Array<{ model: string; data: any }> = [];
+    const rows = (model: string) => ({
+      create: jest.fn(async (args: any) => {
+        created.push({ model, data: args.data });
+        return { id: args.data.id ?? "row", ...args.data };
+      }),
+      update: jest.fn(async (args: any) => {
+        created.push({ model: `${model}.update`, data: args.data });
+        return {};
+      }),
+    });
+    const svc = buildService({ message: rows("message"), safetyEvent: rows("safetyEvent"), session: rows("session") });
+    const reply = svc.deterministicSafetyReplyWithoutSession({ userText: text, channel: "whatsapp" })!;
+    expect(reply.safety.classification).toBe(classification);
+
+    svc.recordSessionFreeSafetyTurn("sess-late", { userText: text, channel: "whatsapp" }, reply);
+    await svc.settleBackgroundWrites();
+    await new Promise((r) => setImmediate(r));
+
+    const user = created.find((c) => c.model === "message" && c.data.role === "user");
+    const assistant = created.find((c) => c.model === "message" && c.data.role === "assistant");
+    const event = created.find((c) => c.model === "safetyEvent");
+    expect(user?.data).toEqual({ sessionId: "sess-late", role: "user", text });
+    expect(assistant?.data).toMatchObject({ sessionId: "sess-late", text: reply.responseText, safetyClassification: classification });
+    expect(event?.data).toMatchObject({ sessionId: "sess-late", messageId: assistant?.data.id, type: classification });
+    const flag = created.find((c) => c.model === "session.update");
+    expect(flag ? flag.data : undefined).toEqual(flagged ? { reviewFlagged: true, reviewFlagReason: "distress" } : undefined);
+  });
+});
+
+describe("ChatService drains safety writes on shutdown (PR #202)", () => {
+  beforeEach(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const sessionRow = {
+    id: "s",
+    createdAt: new Date(0),
+    channel: "web",
+    locale: "en",
+    userType: null,
+    status: "active",
+    userContext: null,
+    cancerType: null,
+    greetingCompleted: true,
+    emotionalState: "neutral",
+  };
+
+  it("waits for pending writes that finish", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const created: string[] = [];
+    const slowCreate = (model: string) =>
+      jest.fn(async (args: any) => {
+        await gate;
+        created.push(`${model}:${args.data.role ?? args.data.type}`);
+        return { id: args.data.id ?? "row", ...args.data };
+      });
+    const svc = buildService({
+      $queryRaw: jest.fn(async () => [sessionRow]),
+      message: { count: jest.fn(async () => 0), create: slowCreate("message") },
+      safetyEvent: { create: slowCreate("safetyEvent") },
+      analyticsEvent: { create: jest.fn(async () => ({})) },
+    });
+    await svc.handle({ sessionId: "00000000-0000-4000-8000-000000000008", channel: "web", locale: LOCALE, userText: EMERGENCY } as any);
+    expect(created).toEqual([]);
+    const draining = svc.onModuleDestroy();
+    release();
+    await draining;
+    expect(created).toEqual(["message:user", "message:assistant", expect.stringMatching(/^safetyEvent:emergency_fast_path_/)]);
+  });
+
+  it("gives up after a short bound when the writes hang", async () => {
+    const svc = buildService({
+      $queryRaw: jest.fn(async () => [sessionRow]),
+      message: { count: jest.fn(async () => 0), create: jest.fn(hang) },
+      safetyEvent: { create: jest.fn(hang) },
+      analyticsEvent: { create: jest.fn(hang) },
+    });
+    await svc.handle({ sessionId: "00000000-0000-4000-8000-000000000009", channel: "web", locale: LOCALE, userText: EMERGENCY } as any);
+    const started = Date.now();
+    await svc.onModuleDestroy();
+    expect(Date.now() - started).toBeLessThan(3_500);
+  }, 10_000);
+
+  it("returns at once with nothing pending", async () => {
+    const svc = buildService({});
+    const started = Date.now();
+    await svc.onModuleDestroy();
+    expect(Date.now() - started).toBeLessThan(50);
   });
 });

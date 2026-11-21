@@ -23,7 +23,7 @@ import { SafetyClassification } from "../safety/safety.rules";
 import { SafetyService } from "../safety/safety.service";
 import { SafetyResult } from "../safety/safety.templates";
 import type { TurnProgress } from "./chat.service";
-import { boundUserText } from "./dto";
+import { MAX_USER_TEXT_HARD_LIMIT, cutToLength } from "./dto";
 import { EmpathyDetector, MentalHealthNeedResult } from "./empathy-detector";
 import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
 import { ResponseTemplates } from "./response-templates";
@@ -292,7 +292,7 @@ export function buildSessionFreeSafetyReply(
 /**
  * True when any of the four deterministic checks would turn a message into a
  * safety, urgent or mental-health template. Used by the WhatsApp stale-message
- * guard (AGENTS.md section 1.1): such a message must run the pipeline however
+ * guard (AGENTS.md, section 1, rule 1, never bypass the safety path): such a message must run the pipeline however
  * late it arrives.
  *
  * Both the raw text and the text after the pipeline's preprocessing are
@@ -332,8 +332,10 @@ function standaloneScreenDeps(): SafetyScreenDeps {
  */
 export function isUrgentSafetyText(userText: unknown, channel?: unknown, inputMode?: unknown): boolean {
   if (typeof userText !== "string" || userText.trim() === "") return false;
+  // The whole message, as the pipeline screens it. Only the abuse ceiling
+  // applies, since the DTO refuses anything longer anyway.
   const text = preprocessUserText(
-    boundUserText(userText),
+    cutToLength(userText, MAX_USER_TEXT_HARD_LIMIT),
     typeof channel === "string" ? channel : undefined,
     typeof inputMode === "string" ? inputMode : undefined,
   );
