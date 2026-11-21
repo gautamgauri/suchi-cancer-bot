@@ -7,7 +7,10 @@ config from production. This happened twice (Jun 27 and Jun 28, 2026).
 
 Cloud Build (cloudbuild.yaml) is the single deployment authority; this script
 asserts that every other pipeline that declares Cloud Run runtime config for
-suchi-api stays byte-identical to it. Run locally or in CI:
+suchi-api stays byte-identical to it. The service flags that size the service
+(instances, memory, CPU, timeout, CPU throttling) are compared as well: the
+last deploy wins for those too, so a mirror with a stale --max-instances would
+undo the cap set in the canonical file. Run locally or in CI:
 
     python3 scripts/check_deploy_config_parity.py
 """
@@ -19,6 +22,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CANONICAL = ("cloudbuild.yaml", "deploy-api")
 # Pipelines that must match the canonical env/secret sets exactly: file -> API deploy step id.
 MIRRORS = {"cloudbuild.gated.yaml": "deploy-candidate"}
+# Service flags that take a value and must match the canonical pipeline.
+SERVICE_VALUE_FLAGS = ("--max-instances", "--min-instances", "--memory", "--cpu", "--timeout")
+# CPU allocation is a bare switch; whichever spelling is present is the value.
+CPU_THROTTLING_SWITCHES = ("--no-cpu-throttling", "--cpu-throttling")
 
 
 def parse_kv(csv: str) -> dict:
@@ -32,8 +39,36 @@ def parse_kv(csv: str) -> dict:
     return out
 
 
-def extract_cloudbuild(path: Path, step_id: str) -> tuple[dict, dict]:
-    """Pull --set-env-vars / --set-secrets values for the deploy-api step.
+def extract_service_flags(block: list[str]) -> dict:
+    """Pull the service sizing flags out of one deploy step's args list.
+
+    Works on whole list items (comments skipped), so `--cpu` never matches
+    inside `--no-cpu-throttling`. Accepts both `--flag` followed by its value
+    and the `--flag=value` spelling. A flag the step does not pass is simply
+    absent from the result, and the comparison reports it as missing.
+    """
+    items = []
+    for line in block:
+        m = re.match(r"\s*-\s+(.*?)\s*$", line)
+        if not m or line.lstrip().startswith("#"):
+            continue
+        items.append(m.group(1).strip("'\""))
+
+    flags = {}
+    for i, item in enumerate(items):
+        name, eq, inline = item.partition("=")
+        if name in SERVICE_VALUE_FLAGS:
+            if eq:
+                flags[name] = inline
+            elif i + 1 < len(items):
+                flags[name] = items[i + 1]
+        elif item in CPU_THROTTLING_SWITCHES:
+            flags["cpu throttling"] = item
+    return flags
+
+
+def extract_cloudbuild(path: Path, step_id: str) -> tuple[dict, dict, dict]:
+    """Pull --set-env-vars / --set-secrets values and the service flags for the deploy-api step.
 
     Deliberately line-based rather than yaml.safe_load so it needs no
     third-party deps in CI. The flag value is the next list item after the
@@ -61,7 +96,7 @@ def extract_cloudbuild(path: Path, step_id: str) -> tuple[dict, dict]:
                     value = block[j + 1].strip().lstrip("-").strip().strip("'\"")
                     found[flag] = parse_kv(value)
         if "--set-env-vars" in found and "--set-secrets" in found:
-            return found["--set-env-vars"], found["--set-secrets"]
+            return found["--set-env-vars"], found["--set-secrets"], extract_service_flags(block)
     raise SystemExit(f"{path.name}: could not locate {step_id} step with --set-env-vars/--set-secrets")
 
 
@@ -83,15 +118,21 @@ def diff(kind: str, canonical: dict, mirror: dict, mirror_name: str) -> list[str
 
 def main() -> int:
     canon_file, canon_step = CANONICAL
-    canon_env, canon_sec = (normalize(d) for d in extract_cloudbuild(REPO_ROOT / canon_file, canon_step))
-    print(f"canonical ({canon_file}): {len(canon_env)} env vars, {len(canon_sec)} secrets")
+    canon_env, canon_sec, canon_flags = (
+        normalize(d) for d in extract_cloudbuild(REPO_ROOT / canon_file, canon_step)
+    )
+    print(
+        f"canonical ({canon_file}): {len(canon_env)} env vars, {len(canon_sec)} secrets, "
+        f"{len(canon_flags)} service flags"
+    )
 
     problems = []
     for mirror, step_id in MIRRORS.items():
-        env, sec = (normalize(d) for d in extract_cloudbuild(REPO_ROOT / mirror, step_id))
-        print(f"checking {mirror}: {len(env)} env vars, {len(sec)} secrets")
+        env, sec, flags = (normalize(d) for d in extract_cloudbuild(REPO_ROOT / mirror, step_id))
+        print(f"checking {mirror}: {len(env)} env vars, {len(sec)} secrets, {len(flags)} service flags")
         problems += diff("env var", canon_env, env, mirror)
         problems += diff("secret", canon_sec, sec, mirror)
+        problems += diff("service flag", canon_flags, flags, mirror)
 
     if problems:
         print("\nCONFIG DRIFT DETECTED:")
