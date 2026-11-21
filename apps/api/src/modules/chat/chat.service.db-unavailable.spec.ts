@@ -300,3 +300,63 @@ describe.each<Mode>(["session-read-rejects", "all-reject", "all-hang"])(
     });
   },
 );
+
+describe("ChatService with over-length input (PR #202)", () => {
+  // A web message above MAX_USER_TEXT_LENGTH used to get a 400, which the web
+  // client shows as a generic error. It is now cut on the server, so a long
+  // message that opens with an emergency still gets the emergency reply.
+  afterEach(() => jest.restoreAllMocks());
+
+  it("cuts a long emergency message to the pipeline bound and still escalates", async () => {
+    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    const sessionRow = {
+      id: "s",
+      createdAt: new Date(0),
+      channel: "web",
+      locale: "en",
+      userType: null,
+      status: "active",
+      userContext: null,
+      cancerType: null,
+      greetingCompleted: true,
+      emotionalState: "neutral",
+    };
+    const created: any[] = [];
+    const rows = () => ({
+      create: jest.fn(async (args: any) => {
+        created.push(args.data);
+        return { id: args.data.id ?? "row", ...args.data };
+      }),
+      update: jest.fn(async () => ({})),
+      count: jest.fn(async () => 0),
+      findMany: jest.fn(async () => []),
+    });
+    const prisma: any = {
+      $queryRaw: jest.fn(async () => [sessionRow]),
+      session: rows(),
+      message: rows(),
+      safetyEvent: rows(),
+      analyticsEvent: rows(),
+    };
+    const svc = buildService(prisma);
+    const long = `${EMERGENCY}. ${"My notes from the clinic visit follow. ".repeat(200)}`;
+    expect(long.length).toBeGreaterThan(4096);
+
+    const result: any = await svc.handle({
+      sessionId: "00000000-0000-4000-8000-000000000003",
+      channel: "web",
+      locale: LOCALE,
+      userText: long,
+    } as any);
+    await svc.settleBackgroundWrites();
+
+    const bounded = long.slice(0, 4096);
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.responseText).toBe(
+      appendDisclaimer(evaluateEmergencyFastPath(bounded).responseText!, LOCALE, true, bounded),
+    );
+    const userRow = created.find((d) => d.role === "user");
+    expect(userRow.text).toHaveLength(4096);
+  });
+});

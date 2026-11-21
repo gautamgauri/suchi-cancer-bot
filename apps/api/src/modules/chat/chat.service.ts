@@ -18,7 +18,7 @@ import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
 import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
-import { ChatDto } from "./dto";
+import { ChatDto, boundUserText } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
 import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
@@ -545,6 +545,9 @@ export class ChatService {
 
   async handle(dto: ChatDto, signal?: AbortSignal) {
     const turnStarted = Date.now();
+    // Every channel sees at most MAX_USER_TEXT_LENGTH characters. Web text up
+    // to the DTO's abuse ceiling is cut here instead of rejected (PR #202).
+    dto.userText = boundUserText(dto.userText);
     try {
       return await this.handleTurn(dto, signal);
     } catch (err: any) {

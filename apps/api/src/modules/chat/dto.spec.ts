@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { BadRequestException, ValidationPipe } from "@nestjs/common";
-import { ChatDto, MAX_USER_TEXT_LENGTH } from "./dto";
+import { ChatDto, MAX_USER_TEXT_HARD_LIMIT, MAX_USER_TEXT_LENGTH, boundUserText } from "./dto";
 
 // Same options as main.ts, so this exercises the real rejection path.
 const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
@@ -19,12 +19,31 @@ describe("ChatDto.userText length bound", () => {
     expect(dto.userText).toHaveLength(MAX_USER_TEXT_LENGTH);
   });
 
-  it("rejects an over-length message with a 400 and a readable message", async () => {
-    const err = await validate({ ...base, userText: "a".repeat(MAX_USER_TEXT_LENGTH + 1) }).catch((e) => e);
+  // PR #202: a 400 reached the patient as a generic error, so a long message
+  // that opened with an emergency got no safety reply. Text above the
+  // pipeline bound is accepted here and cut on the server.
+  it("accepts text above the pipeline bound, up to the abuse ceiling", async () => {
+    const dto = await validate({ ...base, userText: "a".repeat(MAX_USER_TEXT_HARD_LIMIT) });
+    expect(dto.userText).toHaveLength(MAX_USER_TEXT_HARD_LIMIT);
+  });
+
+  it("rejects only text above the abuse ceiling, with a 400 and a readable message", async () => {
+    expect(MAX_USER_TEXT_HARD_LIMIT).toBeGreaterThanOrEqual(4 * MAX_USER_TEXT_LENGTH);
+    const err = await validate({ ...base, userText: "a".repeat(MAX_USER_TEXT_HARD_LIMIT + 1) }).catch((e) => e);
     expect(err).toBeInstanceOf(BadRequestException);
     expect(err.getStatus()).toBe(400);
     const messages: string[] = (err.getResponse() as any).message;
-    expect(messages.join(" ")).toMatch(/userText must be at most 4096 characters/);
+    expect(messages.join(" ")).toMatch(/userText must be at most 20000 characters/);
+  });
+
+  it("the abuse ceiling in Devanagari still fits the default 100 kB JSON body limit", () => {
+    const body = JSON.stringify({ ...base, userText: "क".repeat(MAX_USER_TEXT_HARD_LIMIT) });
+    expect(Buffer.byteLength(body, "utf8")).toBeLessThan(100 * 1024);
+  });
+
+  it("boundUserText cuts to the pipeline bound and leaves shorter text alone", () => {
+    expect(boundUserText("a".repeat(MAX_USER_TEXT_LENGTH + 500))).toHaveLength(MAX_USER_TEXT_LENGTH);
+    expect(boundUserText("short")).toBe("short");
   });
 
   it("counts characters, not bytes (Devanagari at the limit is accepted)", async () => {
