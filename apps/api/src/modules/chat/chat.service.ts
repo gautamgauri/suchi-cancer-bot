@@ -689,8 +689,11 @@ export class ChatService implements OnModuleDestroy {
     // before any I/O. Recording it here means a turn cut off in the session
     // read reports the real verdict, and so does a no-session reply (#221).
     recordSafetyVerdict(progress, screen);
-    // Everything downstream (session writes, retrieval, the LLM, the stored
-    // user message) works on at most MAX_USER_TEXT_LENGTH characters.
+    // Retrieval, the LLM and the stored user message work on at most
+    // MAX_USER_TEXT_LENGTH characters. Nothing that can choose a safety or
+    // escalation template may read this cut text: every such decision below
+    // reads `screenedText`, the whole message, as before any length limit
+    // (PR #202, review B1 and B2).
     dto.userText = boundUserText(screenedText);
     if (screen.gate !== "emergency") {
       const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
@@ -970,7 +973,7 @@ export class ChatService implements OnModuleDestroy {
             latencyMs: Date.now() - started,
             kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
             locale: disclaimerLocale,
-            userText: dto.userText,
+            userText: screenedText, // disclaimer language from the whole message, as on main
             bestEffort: true,
           }
         );
@@ -1003,9 +1006,11 @@ export class ChatService implements OnModuleDestroy {
         };
       }
       
-      // Fallback: no RAG content available, use template only
+      // Fallback: no RAG content available, use template only.
+      // The whole message: IntentClassifier re-checks urgency on this text
+      // to pick the urgent template (review B2).
       const templateResult = this.templateSelector.selectAndGenerate(
-        dto.userText,
+        screenedText,
         [],
         { status: 'ok', approvedChunks: [], reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" },
         "normal",
@@ -1022,7 +1027,7 @@ export class ChatService implements OnModuleDestroy {
           safetyClassification: "red_flag",
           latencyMs: Date.now() - started,
           locale: disclaimerLocale,
-          userText: dto.userText,
+          userText: screenedText, // disclaimer language from the whole message, as on main
           bestEffort: true,
         }
       );
@@ -1295,9 +1300,10 @@ export class ChatService implements OnModuleDestroy {
     if (GreetingDetector.isGreeting(dto.userText)) {
       // Reuse isFirstMessage from message count fetched at start
 
-      // Use template system for greeting
+      // Use template system for greeting. The whole message, since the
+      // intent classifier behind it can pick an urgent template.
       const templateResult = this.templateSelector.selectAndGenerate(
-        dto.userText,
+        screenedText,
         [],
         { status: 'ok', approvedChunks: [], reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" },
         "normal",
@@ -1330,7 +1336,8 @@ export class ChatService implements OnModuleDestroy {
     // emotionalState already updated above if emotionalToneResult provided new information
 
     // 2. Mode Detection (NEW - after greeting, before RAG)
-    const mode = ModeDetector.detectMode(dto.userText);
+    // The whole message: "navigate" mode routes to symptom guidance.
+    const mode = ModeDetector.detectMode(screenedText);
 
     // 2.5. Conversation History Tracking - detect "generally asking" signals
     const recentMessages = await this.prisma.message.findMany({
@@ -1348,7 +1355,8 @@ export class ChatService implements OnModuleDestroy {
     const queryType = QueryTypeClassifier.classify(dto.userText);
 
     // 3.5. Clinical Reasoning: Detect patient journey state (rule-based, sub-ms)
-    const patientStateResult = this.patientStateService.detect(dto.userText);
+    // The whole message: the URGENT patient state is a red-flag decision.
+    const patientStateResult = this.patientStateService.detect(screenedText);
     const patientState = patientStateResult.state;
     this.logger.log({
       event: "patient_state_detected",
@@ -1518,8 +1526,9 @@ export class ChatService implements OnModuleDestroy {
     // 5. Intent classification (moved before evidence gate to provide context)
     // Reuse isFirstMessage from message count fetched at start
 
+    // The whole message: the intent can be SYMPTOMS_URGENT_RED_FLAGS.
     const intentResult = this.intentClassifier.classify(
-      dto.userText,
+      screenedText,
       evidenceChunks,
       { status: 'ok', approvedChunks: evidenceChunks, reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
@@ -1528,8 +1537,9 @@ export class ChatService implements OnModuleDestroy {
     );
 
     // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
+    // The whole message: the category can be EMERGENCY.
     const agenticIntent: AgenticIntentResult = classifyAgenticIntent(
-      dto.userText,
+      screenedText,
       intentResult.intent,
       intentResult.confidence
     );
@@ -1854,8 +1864,9 @@ export class ChatService implements OnModuleDestroy {
     }
 
     if (templateOnlyIntents.includes(intentResult.intent)) {
+      // The whole message, as the intent classifier behind it re-checks urgency.
       const templateResult = this.templateSelector.selectAndGenerate(
-        dto.userText,
+        screenedText,
         evidenceChunks,
         gateResult,
         safetyResult.classification,
@@ -2487,7 +2498,7 @@ export class ChatService implements OnModuleDestroy {
           `Response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
         );
         // Check for red flags in user text
-        const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
+        const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(screenedText); // whole message (B2)
         const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
         
         const assistant = await this.prisma.message.create({
@@ -2566,7 +2577,7 @@ export class ChatService implements OnModuleDestroy {
           if (revalidationResult.shouldAbstain && !isInformationalQuery) {
             // Only abstain for non-informational queries
             this.logger.warn(`Regenerated response still contains ungrounded entities`);
-            const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
+            const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(screenedText); // whole message (B2)
             const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
             
             const assistant = await this.prisma.message.create({
@@ -2953,7 +2964,7 @@ export class ChatService implements OnModuleDestroy {
         );
         if (!responseText) throw new Error("empty");
       } catch {
-        responseText = ResponseTemplates.navigateModeFrame(dto.userText);
+        responseText = ResponseTemplates.navigateModeFrame(screenedText); // whole message (B2)
       }
 
       if (dto.channel === 'voice') responseText = stripForVoice(responseText);
@@ -3055,7 +3066,8 @@ export class ChatService implements OnModuleDestroy {
 
       if (citationValidation.confidenceLevel === "RED") {
         // Still RED after override check - abstain
-        const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType, dto.userText);
+        // The whole message: the abstention adds urgent guidance when it finds urgency (B2).
+        const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType, screenedText);
         const { modifiedText, citations: abstentionCitations } = this.attachDeterministicCitationsIfNeeded(
           abstentionMsg,
           evidenceChunks,

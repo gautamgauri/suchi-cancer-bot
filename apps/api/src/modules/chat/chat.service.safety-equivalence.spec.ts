@@ -27,8 +27,9 @@ import { OutputVerifierService } from "./output-verifier.service";
  * template code over a healthy in-memory database, and compares the outcome
  * with a baseline captured from code WITHOUT the reorder
  * (`__fixtures__/safety-path-baseline.json`). The current baseline was
- * captured from `ChatService` as it stands on main at f9bfaeb, which holds
- * #228's turn-deadline and progress changes but none of PR #202.
+ * captured from `ChatService` as it stands on main at b121036, which has no
+ * length limit and none of PR #202. The stored user message is compared after
+ * the 4096 cut, the one intended difference in the stored rows.
  *
  * For each probe and variant the record holds the reply text, classification,
  * actions and banner, whether a message id came back, every row written
@@ -90,6 +91,13 @@ const EXTRA_PROBES: Array<{ source: string; text: string }> = [
   { source: "long", text: EN_FILLER.repeat(200) + " I don't want to live anymore" },
   { source: "long", text: HI_FILLER.repeat(400) + " सांस नहीं आ रही" },
   { source: "long", text: HI_FILLER.repeat(400) + " जीने का मन नहीं है" },
+  // Urgency only (no fast path, no safety rule) beyond 4096 (review B2). The
+  // urgent template is chosen by text that the cut would drop.
+  { source: "long-urgency", text: EN_FILLER.repeat(200) + " weakness on one side" },
+  { source: "long-urgency", text: EN_FILLER.repeat(200) + " coughed up blood" },
+  { source: "long-urgency", text: EN_FILLER.repeat(420) + " this is an emergency, please help" },
+  { source: "long-urgency", text: HI_FILLER.repeat(400) + " weakness on one side" },
+  { source: "long-urgency", text: HI_FILLER.repeat(400) + " coughed up blood" },
   { source: "overlap", text: "how much painkiller should I take, the pain is severe" },
   { source: "overlap", text: "is it safe to stop chemo, she has been confused since yesterday" },
   { source: "overlap", text: "do I have cancer, I am breathless" },
@@ -355,7 +363,9 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
       expect(labels).toContain(l);
     }
     // Every long probe gets a safety reply, as on main, whatever its length.
-    const longKeys = new Set(EXTRA_PROBES.filter((p) => p.source === "long").map((p) => probeKey(p.text)));
+    const longKeys = new Set(
+      EXTRA_PROBES.filter((p) => p.source === "long" || p.source === "long-urgency").map((p) => probeKey(p.text)),
+    );
     for (const r of results.filter((x) => longKeys.has(x.text))) {
       expect({ probe: r.text, variant: r.variant, label: r.label }).toEqual(
         expect.objectContaining({ label: expect.stringMatching(/^reply:(red_flag|self_harm|mental_health_crisis)$/) }),

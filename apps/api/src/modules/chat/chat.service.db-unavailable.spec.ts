@@ -85,7 +85,7 @@ function makePrisma(mode: Mode) {
   return prisma;
 }
 
-function buildService(prisma: any): ChatService {
+function buildService(prisma: any, overrides: { rag?: any; llm?: any; citations?: any; review?: any } = {}): ChatService {
   const empathy = new EmpathyDetector();
   const abstention = new AbstentionService();
   const intent = new IntentClassifier(abstention);
@@ -94,10 +94,10 @@ function buildService(prisma: any): ChatService {
     prisma,
     new AnalyticsService(prisma),
     new SafetyService(),
-    { retrieveWithMetadata: jest.fn(fail), retrieveWithExpansion: jest.fn(fail) } as any,
-    { generateWithCitations: jest.fn(fail), generateRaw: jest.fn(fail), generate: jest.fn(fail) } as any,
+    overrides.rag ?? ({ retrieveWithMetadata: jest.fn(fail), retrieveWithExpansion: jest.fn(fail) } as any),
+    overrides.llm ?? ({ generateWithCitations: jest.fn(fail), generateRaw: jest.fn(fail), generate: jest.fn(fail) } as any),
     { validateEvidence: jest.fn() } as any,
-    { extractCitations: jest.fn(), validateCitations: jest.fn(), enrichCitations: jest.fn() } as any,
+    overrides.citations ?? ({ extractCitations: jest.fn(), validateCitations: jest.fn(), enrichCitations: jest.fn() } as any),
     abstention,
     intent,
     new TemplateSelector(intent),
@@ -113,7 +113,7 @@ function buildService(prisma: any): ChatService {
     { needsPlanning: () => false, plan: jest.fn() } as any,
     { execute: jest.fn() } as any,
     new OutputVerifierService(),
-    { copilotMode: "off", review: jest.fn(fail), persistRecord: jest.fn(fail), buildBlockedFallback: jest.fn() } as any,
+    overrides.review ?? ({ copilotMode: "off", review: jest.fn(fail), persistRecord: jest.fn(fail), buildBlockedFallback: jest.fn() } as any),
     { startTrace: () => ({}), startSpan: () => ({}), endSpan: () => undefined, finalizeTrace: () => undefined } as any,
   );
 }
@@ -638,5 +638,115 @@ describe("ChatService drains safety writes on shutdown (PR #202)", () => {
     const started = Date.now();
     await svc.onModuleDestroy();
     expect(Date.now() - started).toBeLessThan(50);
+  });
+});
+
+describe("ChatService urgency path on a long message (PR #202, review B2)", () => {
+  // Urgency-only phrases (no fast path, no safety rule) beyond 4096
+  // characters. Main answers them with the urgent escalation template (the
+  // 112 and 108 block). Synthetic text.
+  const EN_LONG_URGENT = "I have some questions about my treatment plan. ".repeat(200) + " weakness on one side";
+  const HI_LONG_URGENT = "मेरे इलाज के बारे में कुछ सवाल हैं। ".repeat(400) + " coughed up blood";
+  const S2_HEAD = ResponseTemplates.S2({ isFirstMessage: true, userText: "" } as any).split("\n\n")[0];
+  const CHUNK = {
+    id: "chunk-1",
+    docId: "doc-1",
+    chunkId: "chunk-1",
+    text: "Synthetic evidence text about getting urgent care.",
+    similarity: 0.9,
+    document: { sourceType: "NCI", isTrustedSource: true, title: "Synthetic" },
+  };
+  const sessionRow = {
+    id: "s",
+    createdAt: new Date(0),
+    channel: "web",
+    locale: "en",
+    userType: null,
+    status: "active",
+    userContext: null,
+    cancerType: null,
+    greetingCompleted: true,
+    emotionalState: "neutral",
+  };
+  const rows = () => ({
+    create: jest.fn(async (args: any) => ({ id: args?.data?.id ?? "row", ...(args?.data ?? {}) })),
+    createMany: jest.fn(async () => ({ count: 0 })),
+    update: jest.fn(async () => ({})),
+    count: jest.fn(async () => 0),
+    findMany: jest.fn(async () => []),
+  });
+  const build = (chunks: any[], llmAnswer: string | null) =>
+    buildService(
+      {
+        $queryRaw: jest.fn(async () => [sessionRow]),
+        message: rows(),
+        messageCitation: rows(),
+        safetyEvent: rows(),
+        analyticsEvent: rows(),
+        session: rows(),
+      },
+      {
+        rag: { retrieveWithMetadata: jest.fn(async () => chunks), retrieveWithExpansion: jest.fn(async () => chunks) },
+        llm: {
+          generateWithCitations: jest.fn(async () => {
+            if (llmAnswer === null) throw new Error("LLM unavailable");
+            return llmAnswer;
+          }),
+        },
+        citations: {
+          extractCitations: jest.fn(() => ({ citations: [], orphanCount: 0 })),
+          validateCitations: jest.fn(() => ({ isValid: true, confidenceLevel: "GREEN", citations: [] })),
+          enrichCitations: jest.fn(async () => []),
+        },
+        review: {
+          copilotMode: "off",
+          review: jest.fn(async () => ({ verdict: "PASS", hardFailures: [] })),
+          persistRecord: jest.fn(async () => undefined),
+          buildBlockedFallback: jest.fn(),
+        },
+      },
+    );
+
+  beforeEach(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const turn = (svc: ChatService, text: string) =>
+    svc.handle({ sessionId: "00000000-0000-4000-8000-00000000000c", channel: "web", userText: text } as any) as Promise<any>;
+
+  it.each([
+    ["English", EN_LONG_URGENT],
+    ["Devanagari", HI_LONG_URGENT],
+  ])("%s: the template fallback with no retrieval sends the urgent escalation", async (_n, text) => {
+    expect(new AbstentionService().hasUrgencyIndicators(text.slice(0, 4096))).toBe(false);
+    const result = await turn(build([], null), text);
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.responseText.startsWith(S2_HEAD)).toBe(true);
+    expect(result.responseText).toContain("**112**");
+  });
+
+  it.each([
+    ["English", EN_LONG_URGENT],
+    ["Devanagari", HI_LONG_URGENT],
+  ])("%s: the template fallback when the LLM fails sends the urgent escalation", async (_n, text) => {
+    const result = await turn(build([CHUNK], null), text);
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.responseText.startsWith(S2_HEAD)).toBe(true);
+    expect(result.responseText).toContain("**112**");
+  });
+
+  it.each([
+    ["English", EN_LONG_URGENT],
+    ["Devanagari", HI_LONG_URGENT],
+  ])("%s: with retrieval and the LLM the escalation leads and the answer follows", async (_n, text) => {
+    const result = await turn(build([CHUNK], "Synthetic educational answer [citation:doc-1:chunk-1]."), text);
+    expect(result.safety.classification).toBe("red_flag");
+    expect(result.safety.bannerText.startsWith(S2_HEAD)).toBe(true);
+    expect(result.safety.bannerText).toContain("**112**");
+    expect(result.responseText.startsWith(result.safety.bannerText)).toBe(true);
+    expect(result.responseText).toContain("Synthetic educational answer");
   });
 });
