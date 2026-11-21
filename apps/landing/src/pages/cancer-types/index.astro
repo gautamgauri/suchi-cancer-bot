@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { isReviewed } from '../../lib/review-status.mjs';
 
 const URL_SEGMENT = 'cancer-types';
 
@@ -194,16 +195,19 @@ const pageDescription =
                     </div>
                   </div>
                   <footer class="card-footer">
-                    <time
-                      class="card-meta"
-                      datetime={new Date(a.data.last_reviewed).toISOString()}
-                    >
-                      Reviewed{' '}
-                      {new Date(a.data.last_reviewed).toLocaleDateString('en-IN', {
-                        year: 'numeric',
-                        month: 'short',
-                      })}
-                    </time>
+                    {isReviewed(a.data) && (
+                      <time
+                        class="card-meta"
+                        data-review-page-id={a.data.page_id}
+                        datetime={new Date(a.data.last_reviewed).toISOString()}
+                      >
+                        Reviewed{' '}
+                        {new Date(a.data.last_reviewed).toLocaleDateString('en-IN', {
+                          year: 'numeric',
+                          month: 'short',
+                        })}
+                      </time>
+                    )}
                     <span class="card-cta" aria-hidden="true">Read guide →</span>
                   </footer>
                 </a>
@@ -455,6 +459,7 @@ const pageDescription =
   }
 
   .card-cta {
+    margin-left: auto;
     font-size: 0.8125rem;
     font-weight: 600;
     color: var(--color-accent);

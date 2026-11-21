@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { isReviewed } from '../../lib/review-status.mjs';
 
 const URL_SEGMENT = 'find-care';
 
@@ -68,16 +69,18 @@ const pageDescription =
                   {a.data.featured && <span class="hub-badge">Featured</span>}
                 </div>
                 <p class="hub-card-summary">{a.data.summary}</p>
-                <p class="hub-card-meta">
-                  Last reviewed{' '}
-                  <time datetime={new Date(a.data.last_reviewed).toISOString()}>
-                    {new Date(a.data.last_reviewed).toLocaleDateString('en-IN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </time>
-                </p>
+                {isReviewed(a.data) && (
+                  <p class="hub-card-meta" data-review-page-id={a.data.page_id}>
+                    Last reviewed{' '}
+                    <time datetime={new Date(a.data.last_reviewed).toISOString()}>
+                      {new Date(a.data.last_reviewed).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </time>
+                  </p>
+                )}
               </a>
             </li>
           ))}
