@@ -18,7 +18,14 @@ import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
 import { EmpathyDetector } from "../chat/empathy-detector";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
-import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
+import {
+  CAPTION_MEDIA_TYPES,
+  NOTICE_MESSAGE_TYPES,
+  NOTICE_TEXT,
+  NoticeLimiter,
+  noticeKindFor,
+  parseSentAt,
+} from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
 const FALLBACK_REPLY =
@@ -93,6 +100,35 @@ function metaErrorCodeOf(body: string): number | undefined {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Per-request bound on a POST to the Graph API. A hung request becomes a network failure. */
+export const SEND_TIMEOUT_MS = 15_000;
+
+/**
+ * Bound on the caption note (see sendCaptionNote). It gets one attempt with
+ * no retry and is abandoned after this long, so the contact's queue is freed.
+ */
+export const CAPTION_NOTE_TIMEOUT_MS = 5_000;
+
+/**
+ * Ledger fields for the caption note. `captionNoteSent` says whether it went
+ * out. When it did not, `captionNoteSkipped` gives the reason it was not tried
+ * (a safety reply, a degraded reply or the cooldown), and `captionNoteFailed`
+ * marks a send that was tried and failed or was abandoned.
+ */
+type CaptionNoteRecord = {
+  captionNote: true;
+  captionNoteSent: boolean;
+  captionNoteSkipped?: "safety_reply" | "degraded_reply" | "cooldown";
+  captionNoteFailed?: true;
+};
+
+interface SendOptions {
+  /** Retry a transient first-part failure once. Default true. */
+  retry?: boolean;
+  /** Per-request timeout. Default SEND_TIMEOUT_MS. */
+  timeoutMs?: number;
+}
 
 @Injectable()
 export class WhatsAppService {
@@ -223,7 +259,7 @@ export class WhatsAppService {
             // Meta caps inbound text at 4096 chars today. Bound it here too,
             // since this path never passes ChatDto (a webhook cannot get a 400).
             const bounded = text.length > MAX_USER_TEXT_LENGTH ? text.slice(0, MAX_USER_TEXT_LENGTH) : text;
-            out.push({ ...base, text: bounded });
+            out.push({ ...base, text: bounded, ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}) });
           } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
             // No readable text (voice note, image, document, ...). Kept so the
             // sender gets the fixed "typed messages only" notice. Never reaches
@@ -276,7 +312,9 @@ export class WhatsAppService {
               status: "received",
               receivedAt: new Date().toISOString(),
               textLength: msg.text.length,
-              ...(msg.unsupportedType ? { messageType: msg.unsupportedType } : {}),
+              ...(msg.unsupportedType || msg.captionMediaType
+                ? { messageType: msg.unsupportedType ?? msg.captionMediaType }
+                : {}),
               ...(msg.sentAt ? { sentAt: new Date(msg.sentAt * 1000).toISOString() } : {}),
             },
           },
@@ -438,6 +476,68 @@ export class WhatsAppService {
   }
 
   /**
+   * After the pipeline has answered a captioned image, video or document, tell
+   * the sender the attachment itself was not read. Called only once the answer
+   * was accepted by Meta and recorded, so it never comes before or in place of
+   * it, and the ledger never waits on it.
+   *
+   * Skipped, without taking a limiter slot, after a safety reply (any
+   * classification other than "normal"), so the safety reply and its helpline
+   * numbers stay the last message on screen. Also skipped after a degraded
+   * reply: ChatService sets `error` only on its budget-exhausted templates
+   * ("budget_exhausted_before_llm" and "budget_exhausted_before_rag").
+   *
+   * At most one per contact inside the cooldown. One attempt, no retry, and
+   * abandoned after CAPTION_NOTE_TIMEOUT_MS, so the contact's queue is freed
+   * quickly. Never throws: any failure frees the slot and returns
+   * captionNoteSent false. No fallback reply is ever sent for it.
+   */
+  private async sendCaptionNote(
+    msg: InboundMessage,
+    result: { error?: unknown; safety?: { classification?: string } },
+  ): Promise<CaptionNoteRecord> {
+    if (result.error) return { captionNote: true, captionNoteSent: false, captionNoteSkipped: "degraded_reply" };
+    if (result.safety?.classification !== "normal") {
+      return { captionNote: true, captionNoteSent: false, captionNoteSkipped: "safety_reply" };
+    }
+    let acquired = false;
+    try {
+      acquired = this.noticeLimiter.tryAcquire(msg.from, "caption_media");
+      if (!acquired) return { captionNote: true, captionNoteSent: false, captionNoteSkipped: "cooldown" };
+      await this.sendText(msg.from, NOTICE_TEXT.caption_media, { retry: false, timeoutMs: CAPTION_NOTE_TIMEOUT_MS });
+      return { captionNote: true, captionNoteSent: true };
+    } catch (err: any) {
+      try {
+        if (acquired) this.noticeLimiter.release(msg.from, "caption_media");
+      } catch {
+        // Nothing more to do. The slot expires with the cooldown.
+      }
+      // The delivery error carries the HTTP status and Meta's code only.
+      this.logger.warn(`Failed to send the caption note for WhatsApp message ${msg.wamid}: ${err?.message}`);
+      return { captionNote: true, captionNoteSent: false, captionNoteFailed: true };
+    }
+  }
+
+  /**
+   * Add the caption note's outcome to an answered turn's ledger row. Adds the
+   * note fields only, so `status` and `partsSent` keep describing the answer.
+   * Best effort: a failed write is logged and the turn carries on.
+   */
+  private async recordCaptionNote(wamid: string, note: CaptionNoteRecord): Promise<void> {
+    try {
+      const existing = await this.prisma.analyticsEvent.findUnique({ where: { id: inboundLedgerId(wamid) } });
+      const payload = (existing?.payload as Record<string, unknown> | null) ?? {};
+      await this.prisma.analyticsEvent.update({
+        where: { id: inboundLedgerId(wamid) },
+        // The existing fields are spread last, so status and partsSent cannot change.
+        data: { payload: { ...note, ...payload } },
+      });
+    } catch (err: any) {
+      this.logger.warn(`Could not record the caption note for WhatsApp message ${wamid}: ${err?.message}`);
+    }
+  }
+
+  /**
    * True when any of the deterministic, text-only checks `ChatService.handle`
    * runs before the LLM would send the turn to a safety, urgent or
    * mental-health template:
@@ -506,7 +606,11 @@ export class WhatsAppService {
       // must strip them itself or raw `[citation:...]` ids reach the patient
       // (issue #116). The raw text stays in the DB for evaluation.
       const partsSent = await this.sendText(msg.from, cleanResponseForDisplay(result.responseText));
+      // The answer is recorded before any note work, so the row never waits on the note.
       await this.markLedger(msg.wamid, "processed", undefined, undefined, { partsSent });
+      if (msg.captionMediaType) {
+        await this.recordCaptionNote(msg.wamid, await this.sendCaptionNote(msg, result));
+      }
     } catch (err: any) {
       const delivery = err instanceof WhatsAppDeliveryError;
       this.logger.error(`Failed to process WhatsApp message ${msg.wamid}: ${err?.message}`, err?.stack);
@@ -603,7 +707,9 @@ export class WhatsAppService {
    * failure on a later part is not retried, because the patient already holds
    * the start of the reply.
    */
-  async sendText(to: string, text: string): Promise<number> {
+  async sendText(to: string, text: string, opts: SendOptions = {}): Promise<number> {
+    const retry = opts.retry ?? true;
+    const timeoutMs = opts.timeoutMs ?? SEND_TIMEOUT_MS;
     const phoneNumberId = process.env.META_WABA_PHONE_NUMBER_ID;
     const token = process.env.META_WABA_TOKEN;
     if (!phoneNumberId || !token) {
@@ -619,23 +725,56 @@ export class WhatsAppService {
     let partsSent = 0;
     for (const body of formatForWhatsApp(text)) {
       try {
-        await this.postPart(url, token, to, body, partsSent);
+        await this.postPart(url, token, to, body, partsSent, timeoutMs);
       } catch (err) {
-        if (!(err instanceof WhatsAppDeliveryError) || !err.retryable || partsSent !== 0) throw err;
+        if (!retry || !(err instanceof WhatsAppDeliveryError) || !err.retryable || partsSent !== 0) throw err;
         this.logger.warn(`${err.message}. Retrying the first part once in ${this.retryDelayMs} ms`);
         await sleep(this.retryDelayMs);
-        await this.postPart(url, token, to, body, partsSent);
+        await this.postPart(url, token, to, body, partsSent, timeoutMs);
       }
       partsSent++;
     }
     return partsSent;
   }
 
-  /** POST one part. Throws `WhatsAppDeliveryError` unless Meta answers 2xx. */
-  private async postPart(url: string, token: string, to: string, body: string, partsSent: number): Promise<void> {
+  /**
+   * POST one part. Throws `WhatsAppDeliveryError` unless Meta answers 2xx.
+   *
+   * The request is aborted after `timeoutMs`. Without a bound a hung request
+   * held the contact's queue, so the next message (possibly an emergency)
+   * waited behind it. An abort makes fetch reject, which the catch below
+   * classifies as a network failure like any other. The timer is a plain
+   * setTimeout, which the specs can drive with fake timers.
+   */
+  private async postPart(
+    url: string,
+    token: string,
+    to: string,
+    body: string,
+    partsSent: number,
+    timeoutMs: number = SEND_TIMEOUT_MS,
+  ): Promise<void> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(`timed out after ${timeoutMs} ms`)), timeoutMs);
+    try {
+      await this.postPartWithSignal(url, token, to, body, partsSent, controller.signal);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async postPartWithSignal(
+    url: string,
+    token: string,
+    to: string,
+    body: string,
+    partsSent: number,
+    signal: AbortSignal,
+  ): Promise<void> {
     let res: Response;
     try {
       res = await fetch(url, {
+        signal,
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({

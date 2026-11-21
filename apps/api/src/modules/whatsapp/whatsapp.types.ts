@@ -65,4 +65,10 @@ export interface InboundMessage {
    * the bot can read. `text` is then "" and the pipeline is not run.
    */
   unsupportedType?: string;
+  /**
+   * Meta message type ("image", "video" or "document") when `text` is the
+   * typed caption of an attachment. The pipeline answers the caption, and a
+   * short note then says the attachment itself was not read.
+   */
+  captionMediaType?: string;
 }
