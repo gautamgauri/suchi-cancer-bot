@@ -8,7 +8,7 @@ config from production. This happened twice (Jun 27 and Jun 28, 2026).
 Cloud Build (cloudbuild.yaml) is the single deployment authority; this script
 asserts that every other pipeline that declares Cloud Run runtime config for
 suchi-api stays byte-identical to it. The service flags that size the service
-(instances, memory, CPU, timeout, CPU throttling) are compared as well: the
+(maximum instances, memory, CPU, timeout, CPU throttling) are compared as well: the
 last deploy wins for those too, so a mirror with a stale --max-instances would
 undo the cap set in the canonical file. Run locally or in CI:
 
@@ -23,7 +23,9 @@ CANONICAL = ("cloudbuild.yaml", "deploy-api")
 # Pipelines that must match the canonical env/secret sets exactly: file -> API deploy step id.
 MIRRORS = {"cloudbuild.gated.yaml": "deploy-candidate"}
 # Service flags that take a value and must match the canonical pipeline.
-SERVICE_VALUE_FLAGS = ("--max-instances", "--min-instances", "--memory", "--cpu", "--timeout")
+# --min-instances is left out on purpose. The gated pipeline may differ there:
+# PR #228 sets 1 in cloudbuild.yaml and keeps 0 in cloudbuild.gated.yaml.
+SERVICE_VALUE_FLAGS = ("--max-instances", "--memory", "--cpu", "--timeout")
 # CPU allocation is a bare switch; whichever spelling is present is the value.
 CPU_THROTTLING_SWITCHES = ("--no-cpu-throttling", "--cpu-throttling")
 

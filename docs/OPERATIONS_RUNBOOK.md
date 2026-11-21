@@ -88,7 +88,7 @@ Safety-relevant regression suites worth knowing by name:
 | `deploy-landing.yml` | push touching `apps/landing/**`; manual | Astro build → GitHub Pages | Standard |
 | `e2e-tests.yml` ("Web Tests") | PR/push touching `apps/web/**`; manual | Vitest unit tests + Playwright (`@smoke` against dev server, or full suite against a provided `base_url`) | Blocking for web PRs |
 | `eval-tier1.yml` ("Eval Tier1 - Retrieval Quality") | nightly 02:00 UTC; PRs touching rag/evidence/citations/eval paths; manual | Runs `npm run eval:tier1` against live API, uploads `tier1-eval-report-<run>` artifact, emails report when failures > 0 | Job outcome reflects the evaluation result (enforced by "Enforce evaluation status" step). Email delivery uses `continue-on-error` and is a warning annotation only (no job failure). |
-| `uptime.yml` ("Uptime probe") | every 15 minutes; manual | Requests `/v1/health` and the web chat with retries | Fails while either stays unreachable. Sends one email when the probe goes down and one when it recovers. |
+| `uptime.yml` ("Uptime probe") | every 15 minutes; manual | Requests `/v1/health` and the web chat with retries | Fails while either stays unreachable. Sends one outage email after two failed runs in a row, and tries again on the next run if that email was not delivered. Sends one recovery email when it comes back. Runs only in the main repository. |
 
 There is **no CI job that runs the API jest suite**; run it locally before
 merging (tracked as P1-4 in `docs/RELIABILITY_BACKLOG.md`).
