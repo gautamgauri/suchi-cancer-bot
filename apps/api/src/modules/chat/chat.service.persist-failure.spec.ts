@@ -32,10 +32,16 @@ import { ResponseTemplates } from "./response-templates";
  *
  * These branches used to persist with a bare prisma.message.create /
  * safetyEvent.create; a Cloud SQL blip or exhausted pool threw out of
- * handle() and the patient got a 500 instead of emergency numbers. They now
- * retry (prismaRetry) and, if the write still fails, log and return the
- * template with messageId undefined. analytics.emit failures are absorbed
- * inside AnalyticsService, so they cannot fail a turn either.
+ * handle() and the patient got a 500 instead of emergency numbers. Since
+ * PR #202 the deterministic safety replies (emergency, safety classifier,
+ * mental health) return first and are stored behind the reply, one bounded
+ * attempt per write. The message id is chosen before the write, so it comes
+ * back even when that write later fails. The urgency (S2) path still awaits
+ * its writes and returns messageId undefined when they fail. analytics.emit
+ * failures are absorbed inside AnalyticsService, so they cannot fail a turn.
+ *
+ * The session read and message count keep working here. The cases where the
+ * session read itself fails are in chat.service.db-unavailable.spec.ts.
  */
 describe("ChatService — safety replies survive persistence failures", () => {
   let chatService: ChatService;
@@ -230,9 +236,15 @@ describe("ChatService — safety replies survive persistence failures", () => {
     expect(result.safety.actions).toContain("show_emergency_banner");
     expect(result.responseText).toMatch(/112|108/);
     expect(result.safety.bannerText).toBe(result.responseText);
-    expect(result.messageId).toBeUndefined();
-    expect(prisma.safetyEvent.create).toHaveBeenCalled(); // attempted; audit trail is best-effort
+    expect(result.messageId).toMatch(/^[0-9a-f-]{36}$/);
+    await chatService.settleBackgroundWrites();
+    // Attempted behind the reply. The audit trail is best-effort.
+    expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ messageId: null }) }),
+    );
     expect(errorLog).toHaveBeenCalledWith(expect.stringContaining("[safety-persist] emergencyFastPath"));
+    // The failure log names the step and the error code, never the user's words.
+    expect(errorLog.mock.calls.flat().join(" ")).not.toContain("coughing up blood");
   });
 
   it("emergency fast path still answers when even the USER message cannot be stored", async () => {
@@ -255,7 +267,10 @@ describe("ChatService — safety replies survive persistence failures", () => {
     expect(result.safety.classification).toBe("self_harm");
     expect(result.responseText).toContain("Tele-MANAS 14416");
     expect(result.safety.bannerText).toBe(result.responseText);
-    expect(result.messageId).toBeUndefined();
+    await chatService.settleBackgroundWrites();
+    expect(errorLog).toHaveBeenCalledWith(
+      expect.stringContaining("[safety-persist] safetyTemplate: assistantMessage not stored"),
+    );
   });
 
   it("S2 urgency with RAG: escalation + answer returned when persistAssistantMessage fails", async () => {
@@ -292,7 +307,10 @@ describe("ChatService — safety replies survive persistence failures", () => {
     expect(result.responseText).toBe(
       ResponseTemplates.MH1({ isFirstMessage: true, userText: "I feel so tired of everything today", locale: "en" } as any),
     );
-    expect(result.messageId).toBeUndefined();
+    await chatService.settleBackgroundWrites();
+    expect(errorLog).toHaveBeenCalledWith(
+      expect.stringContaining("[safety-persist] mentalHealthCrisis: assistantMessage not stored"),
+    );
   });
 
   it("an ordinary turn whose user message cannot be stored still fails (unchanged contract)", async () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalyticsService } from "../analytics/analytics.service";
@@ -26,10 +27,21 @@ import { GreetingFlowService } from "./greeting-flow.service";
 import { EmpathyDetector } from "./empathy-detector";
 import { PatientStateService, PatientState } from "./patient-state.service";
 // Phase 1 Agentic components
-import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-router";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
-import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
+import {
+  DeterministicSafetyReply,
+  DeterministicSafetyScreen,
+  SAFETY_SESSION_LOOKUP_BOUND_MS,
+  SAFETY_WRITE_BOUND_MS,
+  SafetyScreenDeps,
+  buildDeterministicSafetyReply,
+  errorTag,
+  preprocessUserText,
+  repliesWithoutSession,
+  screenDeterministicSafety,
+  withinBound,
+} from "./deterministic-safety";
 import { reconcileAppendedAnswer } from "./escalation-reconciler";
 // Phase 2 Agentic components
 import { RetrievalToolService } from "../rag/retrieval-tool.service";
@@ -156,39 +168,190 @@ export class ChatService {
   }
 
   /**
-   * Persist an emergency / safety / crisis reply WITHOUT ever losing it.
-   *
-   * These templates are the replies a patient most needs to see. A failed DB
-   * write (pool exhaustion past prismaRetry, Cloud SQL blip) used to throw out
-   * of handle() and the user got a 500 / generic error instead of emergency
-   * numbers. Now the write is retried, and if it still fails we log at error
-   * level and return `undefined` — the caller still returns the template text.
-   * Same contract as budgetExhaustedResponse.
+   * Best-effort writes behind deterministic safety replies that have not
+   * settled yet. Tracked so tests (and a graceful shutdown) can wait for them.
    */
-  private async persistSafetyReply(
-    label: string,
-    data: {
-      sessionId: string;
-      text: string;
-      safetyClassification: string;
-      policyRulesFired?: string[];
-      latencyMs: number;
+  private readonly backgroundWrites = new Set<Promise<void>>();
+
+  /** Wait for every pending safety write to settle. Never rejects. */
+  async settleBackgroundWrites(): Promise<void> {
+    await Promise.all(Array.from(this.backgroundWrites));
+  }
+
+  /** Text-only checks the screen runs before any database access. */
+  private get safetyScreenDeps(): SafetyScreenDeps {
+    return { safety: this.safety, abstention: this.abstention, empathy: this.empathyDetector };
+  }
+
+  /**
+   * The deterministic safety reply for a message whose session could not be
+   * resolved, or null when no deterministic gate fires. Pure: no database, no
+   * logging. Used by channels that resolve their own session before calling
+   * handle() (WhatsApp), with the same preprocessing, screen and templates as
+   * handle() itself.
+   */
+  deterministicSafetyReplyWithoutSession(input: {
+    userText: string;
+    channel?: string;
+    inputMode?: string;
+    locale?: string | null;
+  }): DeterministicSafetyReply | null {
+    const userText = preprocessUserText(input.userText, input.channel, input.inputMode);
+    const screen = screenDeterministicSafety(userText, this.safetyScreenDeps);
+    if (!repliesWithoutSession(screen.gate)) return null;
+    return buildDeterministicSafetyReply(screen, {
+      userText,
+      disclaimerLocale: input.locale,
+      templateLocale: input.locale,
+      isFirstMessage: false,
+    });
+  }
+
+  /**
+   * Deliver a deterministic safety reply: the same text, classification,
+   * rows, events and logs as the inline gates produced before PR #202, with
+   * one difference. The reply no longer waits for its writes. The user
+   * message, the assistant message and the SafetyEvent are written in the
+   * background, in that order, one bounded attempt each.
+   *
+   * `sessionKnown` is false when the session lookup failed. The writes are
+   * still attempted, but no message id is returned because nothing is known
+   * to have been stored.
+   */
+  private deliverDeterministicSafetyReply(
+    dto: ChatDto,
+    screen: DeterministicSafetyScreen,
+    ctx: {
+      disclaimerLocale?: string | null;
+      templateLocale?: string | null;
+      isFirstMessage: boolean;
+      started: number;
+      sessionKnown: boolean;
     },
-    safetyEvent?: { type: string; detail?: string },
-  ): Promise<string | undefined> {
-    let messageId: string | undefined;
-    try {
-      const assistant = await this.prismaRetry(`${label}:createMsg`, () =>
-        this.prisma.message.create({ data: { ...data, role: "assistant" } }),
-      );
-      messageId = assistant.id;
-    } catch (err: any) {
-      this.logger.error(
-        `[safety-persist] ${label}: could not persist assistant reply for session ${data.sessionId} — returning it to the user anyway: ${err?.message}`,
-      );
+  ) {
+    const reply = buildDeterministicSafetyReply(screen, {
+      userText: dto.userText,
+      disclaimerLocale: ctx.disclaimerLocale,
+      templateLocale: ctx.templateLocale,
+      isFirstMessage: ctx.isFirstMessage,
+    })!;
+    const messageId = randomUUID();
+
+    if (screen.gate === "mental_health_crisis") {
+      this.logger.warn({
+        event: "mental_health_crisis_detected",
+        sessionId: dto.sessionId,
+        keywords: screen.mentalHealth.keywords,
+      });
+    } else if (screen.gate === "mental_health_support") {
+      this.logger.log({
+        event: "mental_health_support_detected",
+        sessionId: dto.sessionId,
+        category: screen.mentalHealth.category,
+        keywords: screen.mentalHealth.keywords,
+      });
     }
-    if (safetyEvent) await this.recordSafetyEvent(label, data.sessionId, messageId, safetyEvent);
-    return messageId;
+
+    this.persistSafetyTurnInBackground(reply.label, {
+      sessionId: dto.sessionId,
+      userText: dto.userText,
+      messageId,
+      row: { ...reply.row, text: reply.responseText, latencyMs: Date.now() - ctx.started },
+      safetyEvent: reply.safetyEvent,
+    });
+    if (screen.gate === "mental_health_crisis") {
+      this.flagSessionForReview(dto.sessionId, "distress").catch(() => {});
+    }
+
+    const payload =
+      screen.gate === "emergency" ? { ...reply.analytics.payload, latencyMs: Date.now() - ctx.started } : reply.analytics.payload;
+    this.analytics
+      .emit(reply.analytics.name, payload, dto.sessionId)
+      .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+
+    if (screen.gate === "emergency") {
+      this.logger.warn({
+        event: "emergency_fast_path_triggered",
+        sessionId: dto.sessionId,
+        severity: screen.emergency.severity,
+        patterns: screen.emergency.matchedPatterns,
+        latencyMs: Date.now() - ctx.started,
+      });
+    }
+
+    // The optional fields are spelled out as `undefined` for the same reason as
+    // in budgetExhaustedResponse: this object joins handleTurn's inferred union.
+    return {
+      sessionId: dto.sessionId,
+      messageId: ctx.sessionKnown ? (messageId as string) : undefined,
+      responseText: reply.responseText,
+      safety: reply.safety,
+      citations: undefined,
+      citationConfidence: undefined,
+      retrievedChunks: undefined,
+      abstentionReason: undefined,
+    };
+  }
+
+  /**
+   * Store a safety turn without holding up its reply. Runs the user message,
+   * assistant message and SafetyEvent writes one after another, each a single
+   * attempt bounded by SAFETY_WRITE_BOUND_MS. A failure is logged with the
+   * label, the session id and the error code only (no message text), and
+   * never rejects.
+   */
+  private persistSafetyTurnInBackground(
+    label: string,
+    p: {
+      sessionId: string;
+      userText: string;
+      messageId: string;
+      row: { safetyClassification: string; policyRulesFired?: string[]; text: string; latencyMs: number };
+      safetyEvent?: { type: string; detail?: string };
+    },
+  ): void {
+    const attempt = async (step: string, write: () => Promise<unknown>): Promise<boolean> => {
+      try {
+        await withinBound(write(), SAFETY_WRITE_BOUND_MS, `${label}:${step}`);
+        return true;
+      } catch (err: any) {
+        this.logger.error(
+          `[safety-persist] ${label}: ${step} not stored for session ${p.sessionId} (${errorTag(err)}); the reply was delivered`,
+        );
+        return false;
+      }
+    };
+    const run = async () => {
+      await attempt("userMessage", () =>
+        this.prisma.message.create({ data: { sessionId: p.sessionId, role: "user", text: p.userText } }),
+      );
+      const { text, safetyClassification, policyRulesFired, latencyMs } = p.row;
+      const stored = await attempt("assistantMessage", () =>
+        this.prisma.message.create({
+          data: {
+            id: p.messageId,
+            sessionId: p.sessionId,
+            text,
+            safetyClassification,
+            ...(policyRulesFired !== undefined && { policyRulesFired }),
+            latencyMs,
+            role: "assistant",
+          },
+        }),
+      );
+      if (p.safetyEvent) {
+        const event = p.safetyEvent;
+        await attempt("safetyEvent", () =>
+          this.prisma.safetyEvent.create({
+            data: { sessionId: p.sessionId, messageId: stored ? p.messageId : null, type: event.type, detail: event.detail },
+          }),
+        );
+      }
+    };
+    const pending: Promise<void> = run()
+      .catch(() => undefined)
+      .finally(() => this.backgroundWrites.delete(pending));
+    this.backgroundWrites.add(pending);
   }
 
   /** Best-effort SafetyEvent write (retried; logged, never thrown). messageId is nullable in the schema. */
@@ -398,25 +561,69 @@ export class ChatService {
     // not be rewritten — the stutter/repeat rules turned a WhatsApp caregiver's
     // "meri didi" into "meri di" and "papa" into "pa" before classification
     // (issue #115). Typed input only gets medical-spelling normalisation.
-    const spoken = dto.channel === "voice" || dto.inputMode === "voice";
-    dto.userText = spoken ? cleanVoiceInput(dto.userText) : correctMedicalSpelling(dto.userText);
+    dto.userText = preprocessUserText(dto.userText, dto.channel, dto.inputMode);
 
     const obsTrace = this.observability.startTrace('chat_turn', {
       query: dto.userText?.substring(0, 200),
       channel: dto.channel,
     }, undefined, dto.sessionId);
 
+    // ─── Phase 0.5: Deterministic safety screen (text only, no DB) ────
+    // The emergency fast path, the safety classifier, the urgency check and the
+    // mental-health screen are pure functions of the text. They run here, in
+    // their pipeline order, before the session lookup, so an unreachable
+    // database cannot cost a patient the emergency or self-harm reply (PR #202,
+    // owner-approved reorder). Their verdicts are used unchanged below.
+    const turnStarted = Date.now();
+    const screen = screenDeterministicSafety(dto.userText, this.safetyScreenDeps);
+    if (screen.gate !== "emergency") {
+      const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
+      this.observability.endSpan(safetySpan, { classification: screen.safety.classification, rulesFired: screen.safety.rulesFired, blocked: screen.safety.classification !== 'normal' });
+    }
+    const deterministicReply = repliesWithoutSession(screen.gate);
+
     // Fetch session (with caching) and message count once at the start - reuse throughout method
     // Wrapped with prismaRetry to handle transient connection-pool exhaustion under load
-    const [session, existingAssistantMessages] = await this.prismaRetry(
-      "handle:init",
-      () => Promise.all([
-        this.getSession(dto.sessionId),
-        this.prisma.message.count({
-          where: { sessionId: dto.sessionId, role: "assistant" }
-        })
-      ])
-    );
+    const loadSession = () =>
+      this.prismaRetry("handle:init", () =>
+        Promise.all([
+          this.getSession(dto.sessionId),
+          this.prisma.message.count({
+            where: { sessionId: dto.sessionId, role: "assistant" },
+          }),
+        ]),
+      );
+    let session: Awaited<ReturnType<typeof loadSession>>[0];
+    let existingAssistantMessages: number;
+    if (deterministicReply) {
+      // A safety turn waits a short, fixed time for its session. If the lookup
+      // fails or is too slow, the template goes out with the request's locale.
+      try {
+        [session, existingAssistantMessages] = await withinBound(
+          loadSession(),
+          SAFETY_SESSION_LOOKUP_BOUND_MS,
+          "handle:init",
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `[safety-fallback] session lookup failed for session ${dto.sessionId} (${errorTag(err)}); ` +
+            `replying with the ${screen.gate} template without session state`,
+        );
+        this.analytics.emit("chat_turn_submitted", { channel: dto.channel }, dto.sessionId).catch(e =>
+          this.logger.warn(`Analytics emit failed: ${e.message}`)
+        );
+        return this.deliverDeterministicSafetyReply(dto, screen, {
+          disclaimerLocale: dto.locale,
+          templateLocale: dto.locale,
+          isFirstMessage: false,
+          started: turnStarted,
+          sessionKnown: false,
+        });
+      }
+    } else {
+      // Ordinary turns are unchanged: they wait on the database as before.
+      [session, existingAssistantMessages] = await loadSession();
+    }
 
     if (!session) {
       throw new BadRequestException("Invalid sessionId");
@@ -454,119 +661,41 @@ export class ChatService {
       this.logger.warn(`Analytics emit failed: ${err.message}`)
     );
 
-    // If the user's message cannot be stored, still run the deterministic
-    // emergency/safety gates below and deliver their templates; the error is
-    // re-thrown only once we know this is not a safety turn.
+    // Ordinary and urgency turns store the user's message first, as before. If
+    // that fails, the error is held and re-thrown once we know this is not a
+    // safety, escalation or crisis turn. Deterministic safety turns store it in
+    // the background behind their reply (deliverDeterministicSafetyReply).
     let userMsgPersistError: unknown;
-    try {
-      await this.prismaRetry("handle:createUserMsg", () =>
-        this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } })
-      );
-    } catch (err: any) {
-      userMsgPersistError = err;
-      this.logger.error(`[safety-persist] could not persist user message for session ${dto.sessionId}: ${err?.message}`);
+    if (!deterministicReply) {
+      try {
+        await this.prismaRetry("handle:createUserMsg", () =>
+          this.prisma.message.create({ data: { sessionId: dto.sessionId, role: "user", text: dto.userText } })
+        );
+      } catch (err: any) {
+        userMsgPersistError = err;
+        this.logger.error(`[safety-persist] could not persist user message for session ${dto.sessionId}: ${err?.message}`);
+      }
     }
 
     const started = Date.now();
     const requestDeadlineMs = started + this.turnBudgetMs(dto.channel);
 
-    // ─── Phase 1: Emergency Fast-Path (rule-based, sub-1ms) ───────────
-    // This runs BEFORE any LLM or async call. Pure regex, zero cost.
-    const emergencyFastPath = evaluateEmergencyFastPath(dto.userText);
-    if (emergencyFastPath.isEmergency) {
-      const responseText = appendDisclaimer(
-        emergencyFastPath.responseText!,
+    // ─── Phase 1: Emergency fast path, then the safety classifier ─────
+    // Both verdicts come from the Phase 0.5 screen (pure regex, sub-1ms).
+    if (screen.gate === "emergency" || screen.gate === "safety") {
+      return this.deliverDeterministicSafetyReply(dto, screen, {
         disclaimerLocale,
-        true, // isEmergency
-        dto.userText
-      );
-
-      const messageId = await this.persistSafetyReply(
-        "emergencyFastPath",
-        {
-          sessionId: dto.sessionId,
-          text: responseText,
-          safetyClassification: "red_flag",
-          policyRulesFired: emergencyFastPath.matchedPatterns,
-          latencyMs: Date.now() - started,
-        },
-        {
-          type: `emergency_fast_path_${emergencyFastPath.severity}`,
-          detail: emergencyFastPath.matchedPatterns.join(","),
-        },
-      );
-
-      this.analytics
-        .emit(
-          "emergency_fast_path_triggered",
-          {
-            severity: emergencyFastPath.severity,
-            patterns: emergencyFastPath.matchedPatterns,
-            latencyMs: Date.now() - started,
-          },
-          dto.sessionId
-        )
-        .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
-
-      this.logger.warn({
-        event: "emergency_fast_path_triggered",
-        sessionId: dto.sessionId,
-        severity: emergencyFastPath.severity,
-        patterns: emergencyFastPath.matchedPatterns,
-        latencyMs: Date.now() - started,
+        templateLocale: session.locale || dto.locale,
+        isFirstMessage,
+        started,
+        sessionKnown: true,
       });
-
-      return {
-        sessionId: dto.sessionId,
-        messageId,
-        responseText,
-        safety: {
-          classification: "red_flag" as const,
-          // Owner decision (#196): urgent keeps the banner but leaves the
-          // conversation open; critical still ends it.
-          actions: emergencyFastPath.severity === "critical"
-            ? ["show_emergency_banner", "end_conversation"]
-            : ["show_emergency_banner"],
-          // Nothing is appended on the fast path, so the banner block is the
-          // whole reply (issue #111).
-          bannerText: responseText,
-        },
-      };
     }
-
-    const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
-    const safetyResult = this.safety.evaluate(dto.userText);
-    this.observability.endSpan(safetySpan, { classification: safetyResult.classification, rulesFired: safetyResult.rulesFired, blocked: safetyResult.classification !== 'normal' });
-
-    if (safetyResult.classification !== "normal") {
-      const safetyText = appendDisclaimer(
-        safetyResult.responseText ?? "I'm sorry—can you rephrase that?",
-        disclaimerLocale,
-        safetyResult.classification === "red_flag",
-        dto.userText
-      );
-      const messageId = await this.persistSafetyReply(
-        "safetyTemplate",
-        {
-          sessionId: dto.sessionId,
-          text: safetyText,
-          safetyClassification: safetyResult.classification,
-          policyRulesFired: safetyResult.rulesFired,
-          latencyMs: Date.now() - started,
-        },
-        { type: safetyResult.classification, detail: safetyResult.rulesFired.join(",") },
-      );
-
-      this.analytics.emit("safety_triggered", { classification: safetyResult.classification, rules: safetyResult.rulesFired }, dto.sessionId).catch(err =>
-        this.logger.warn(`Analytics emit failed: ${err.message}`)
-      );
-
-      return { sessionId: dto.sessionId, messageId, responseText: safetyText, safety: { classification: safetyResult.classification, actions: safetyResult.actions, bannerText: safetyText } };
-    }
+    const safetyResult = screen.safety;
 
     // 1.5. Check for urgent red flags (but retrieve RAG first to include citations)
     // This ensures "hi + severe pain" doesn't get a cheerful greeting menu, but still includes RAG content
-    const hasUrgencyIndicators = this.abstention.hasUrgencyIndicators(dto.userText);
+    const hasUrgencyIndicators = screen.hasUrgencyIndicators;
     
     // Retrieve RAG content early for urgent cases to include citations
     // Classify query type early for better RAG retrieval
@@ -818,98 +947,21 @@ export class ChatService {
     }
 
     // 1.6.3. Mental health support check (after safety, before greeting flow)
-    // Detect if user needs mental health support - crisis takes highest priority
-    const mentalHealthNeed = this.empathyDetector.detectMentalHealthNeed(dto.userText);
-
-    if (mentalHealthNeed.isCrisis) {
-      // CRISIS DETECTED - Immediate response with crisis resources
-      this.logger.warn({
-        event: 'mental_health_crisis_detected',
-        sessionId: dto.sessionId,
-        keywords: mentalHealthNeed.keywords,
-      });
-
-      const crisisResponse = ResponseTemplates.MH1({
+    // Detect if user needs mental health support - crisis takes highest priority.
+    // The verdict comes from the Phase 0.5 screen, which ran the same check on
+    // the same text.
+    if (screen.gate === "mental_health_crisis" || screen.gate === "mental_health_support") {
+      // Crisis: MH1. Isolation: MH3. Depression or support-seeking: MH2.
+      // The crisis event is logged for monitoring, and a failed write never
+      // withholds the reply.
+      return this.deliverDeterministicSafetyReply(dto, screen, {
+        disclaimerLocale,
+        templateLocale: session.locale || dto.locale,
         isFirstMessage,
-        userText: dto.userText,
-        locale: session.locale || dto.locale,
+        started,
+        sessionKnown: true,
       });
-
-      // Crisis event is logged for monitoring; a failed write never withholds MH1.
-      const crisisMessageId = await this.persistSafetyReply(
-        "mentalHealthCrisis",
-        {
-          sessionId: dto.sessionId,
-          text: crisisResponse,
-          safetyClassification: "mental_health_crisis",
-          latencyMs: Date.now() - started,
-        },
-        { type: "mental_health_crisis", detail: mentalHealthNeed.keywords.join(",") },
-      );
-      this.flagSessionForReview(dto.sessionId, "distress").catch(() => {});
-
-      this.analytics.emit("mental_health_crisis_detected", {
-        keywords: mentalHealthNeed.keywords,
-      }, dto.sessionId).catch(err =>
-        this.logger.warn(`Analytics emit failed: ${err.message}`)
-      );
-
-      return {
-        sessionId: dto.sessionId,
-        messageId: crisisMessageId,
-        responseText: crisisResponse,
-        safety: { classification: "mental_health_crisis" as const, actions: ["show_crisis_resources"] },
-      };
     }
-
-    if (mentalHealthNeed.needsSupport) {
-      // Non-crisis mental health support needed
-      this.logger.log({
-        event: 'mental_health_support_detected',
-        sessionId: dto.sessionId,
-        category: mentalHealthNeed.category,
-        keywords: mentalHealthNeed.keywords,
-      });
-
-      // Select appropriate template based on category
-      let mentalHealthResponse: string;
-      if (mentalHealthNeed.category === "isolation") {
-        mentalHealthResponse = ResponseTemplates.MH3({
-          isFirstMessage,
-          userText: dto.userText,
-          locale: session.locale || dto.locale,
-        });
-      } else {
-        // depression or support-seeking
-        mentalHealthResponse = ResponseTemplates.MH2({
-          isFirstMessage,
-          userText: dto.userText,
-          locale: session.locale || dto.locale,
-        });
-      }
-
-      const supportMessageId = await this.persistSafetyReply("mentalHealthSupport", {
-        sessionId: dto.sessionId,
-        text: mentalHealthResponse,
-        safetyClassification: "mental_health_support",
-        latencyMs: Date.now() - started,
-      });
-
-      this.analytics.emit("mental_health_support_provided", {
-        category: mentalHealthNeed.category,
-        keywords: mentalHealthNeed.keywords,
-      }, dto.sessionId).catch(err =>
-        this.logger.warn(`Analytics emit failed: ${err.message}`)
-      );
-
-      return {
-        sessionId: dto.sessionId,
-        messageId: supportMessageId,
-        responseText: mentalHealthResponse,
-        safety: { classification: "mental_health_support" as const, actions: [] },
-      };
-    }
-
     // Past the safety / escalation / crisis gates: this is an ordinary turn, and
     // without the user's message on record the normal pipeline (history,
     // citations, review) cannot run — fail the way it always has.
