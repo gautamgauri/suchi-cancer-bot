@@ -93,7 +93,8 @@ export interface VideoLdInput {
 /**
  * `uploadDate` is left out on purpose: the `date` values in videos.json are
  * sequential placeholders (2024-01-01, 2024-01-02, ...), not YouTube upload
- * dates. Add it once real dates are recorded.
+ * dates. Add it once real dates are recorded. Until then Search Console will
+ * report these items as missing a required field.
  */
 export function videoJsonLd(v: VideoLdInput): JsonLd {
   return {
@@ -102,7 +103,8 @@ export function videoJsonLd(v: VideoLdInput): JsonLd {
     name: v.title,
     description: v.description,
     thumbnailUrl: [`https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg`],
-    contentUrl: `https://www.youtube.com/watch?v=${v.youtubeId}`,
+    // No `contentUrl`. It must point at the media file itself, and a YouTube
+    // watch page is a player page. The player belongs in `embedUrl` only.
     embedUrl: `https://www.youtube.com/embed/${v.youtubeId}`,
     url: new URL(v.path, SITE_URL).href,
     publisher: { '@id': ORG_ID },
