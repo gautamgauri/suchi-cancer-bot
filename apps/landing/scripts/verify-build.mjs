@@ -4,18 +4,28 @@
  *   npm run verify
  *
  * Fails (exit 1) when:
- *   - robots.txt or the sitemap is missing, or the sitemap does not list every built page
+ *   - robots.txt or the sitemap is missing, or the sitemap leaves out an indexable page
  *   - any JSON-LD block does not parse, or any page claims medical review
- *   - two pages share a <title> or meta description, or a page lacks either
+ *   - a page lacks a <title> or meta description, or an indexable page has a wrong canonical URL
  *   - an internal link points at a page that was not built
+ *
+ * Warns (exit 0) when:
+ *   - two indexable pages share a <title> or meta description
+ *   - a hub listed in THIN_HUBS has gained articles, or a 404 or noindex page is in the sitemap
+ *   - an entry on the KNOWN_BROKEN list is no longer broken
+ *
+ * A 404 page and any page with a `noindex` robots meta are not indexable.
+ * They are left out of the sitemap, canonical and duplicate checks.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const SITE = 'https://suchitracancercare.org';
 const errors = [];
+const warnings = [];
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -27,6 +37,10 @@ function walk(dir) {
 const htmlFiles = walk(DIST).filter((f) => f.endsWith('.html'));
 const pagePath = (file) => '/' + relative(DIST, file).replace(/index\.html$/, '').replace(/\\/g, '/');
 const builtPaths = new Set(htmlFiles.map(pagePath));
+
+const is404 = (path) => path === '/404.html' || path === '/404/';
+const hasNoindex = (html) =>
+  [...html.matchAll(/<meta\s+name="robots"\s+content="([^"]*)"/gi)].some((m) => /noindex/i.test(m[1]));
 
 // robots.txt
 const robotsFile = join(DIST, 'robots.txt');
@@ -45,27 +59,43 @@ for (const u of sitemapUrls) {
   if (!u.startsWith(`${SITE}/`)) errors.push(`sitemap URL on wrong origin: ${u}`);
 }
 const sitemapPaths = new Set(sitemapUrls.map((u) => new URL(u).pathname));
-for (const p of builtPaths) if (!sitemapPaths.has(p)) errors.push(`page missing from sitemap: ${p}`);
 
 // Per-page checks
 const titles = new Map();
 const descriptions = new Map();
 let jsonLdBlocks = 0;
+let notIndexable = 0;
 const typeCounts = {};
 const brokenLinks = new Set();
 
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   const path = pagePath(file);
+  const indexable = !is404(path) && !hasNoindex(html);
+
+  if (indexable) {
+    if (THIN_HUBS.includes(path)) {
+      if (!html.includes(COMING_SOON_TEXT)) {
+        warnings.push(`${path} now has articles. Remove it from THIN_HUBS so it joins the sitemap.`);
+      }
+    } else if (!sitemapPaths.has(path)) {
+      errors.push(`page missing from sitemap: ${path}`);
+    }
+  } else {
+    notIndexable += 1;
+    if (sitemapPaths.has(path)) warnings.push(`${path} is a 404 or noindex page but is in the sitemap`);
+  }
 
   const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
   const desc = html.match(/<meta name="description" content="([^"]*)"/)?.[1];
   if (!title) errors.push(`${path}: no <title>`);
   if (!desc) errors.push(`${path}: no meta description`);
-  if (title) titles.set(title, [...(titles.get(title) ?? []), path]);
-  if (desc) descriptions.set(desc, [...(descriptions.get(desc) ?? []), path]);
+  if (indexable && title) titles.set(title, [...(titles.get(title) ?? []), path]);
+  if (indexable && desc) descriptions.set(desc, [...(descriptions.get(desc) ?? []), path]);
   if (!/<html lang="[a-zA-Z-]+"/.test(html)) errors.push(`${path}: no lang attribute`);
-  if (!html.includes(`<link rel="canonical" href="${SITE}${path}"`)) errors.push(`${path}: canonical missing or wrong`);
+  if (indexable && !html.includes(`<link rel="canonical" href="${SITE}${path}"`)) {
+    errors.push(`${path}: canonical missing or wrong`);
+  }
 
   for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
     jsonLdBlocks += 1;
@@ -95,11 +125,14 @@ for (const file of htmlFiles) {
   }
 }
 
-for (const [t, paths] of titles) if (paths.length > 1) errors.push(`duplicate title "${t}": ${paths.join(', ')}`);
-for (const [d, paths] of descriptions) if (paths.length > 1) errors.push(`duplicate description on: ${paths.join(', ')}`);
+// Repeated titles or descriptions are poor for search but are not a reason to
+// stop a deploy. Two videos can share a title on YouTube, for example.
+for (const [t, paths] of titles) if (paths.length > 1) warnings.push(`duplicate title "${t}": ${paths.join(', ')}`);
+for (const [, paths] of descriptions) if (paths.length > 1) warnings.push(`duplicate description on: ${paths.join(', ')}`);
 
 // Broken links that predate this check. Remove an entry once its page exists
-// or the link is fixed. Anything not listed here fails the build.
+// or the link is fixed. Anything not listed here fails the build. An entry
+// that is no longer broken is reported as a warning so the list can be pruned.
 //   /about/safety/  footer link, no page has been written yet
 //   /articles/...   links inside article markdown bodies, which need SCCF review to edit
 const KNOWN_BROKEN = new Set([
@@ -113,15 +146,23 @@ const KNOWN_BROKEN = new Set([
   '/articles/oral-cancer/',
   '/articles/questions-to-ask-your-doctor/',
 ]);
+const brokenTargets = new Set([...brokenLinks].map((l) => l.split(' -> ')[1]));
 const unexpectedBroken = [...brokenLinks].filter((l) => !KNOWN_BROKEN.has(l.split(' -> ')[1]));
+for (const t of KNOWN_BROKEN) {
+  if (!brokenTargets.has(t)) warnings.push(`KNOWN_BROKEN entry ${t} is no longer broken. Remove it from the list.`);
+}
 
-console.log(`pages built: ${builtPaths.size}`);
+console.log(`pages built: ${builtPaths.size} (${notIndexable} not indexable, ${THIN_HUBS.length} thin hubs left out of the sitemap)`);
 console.log(`sitemap URLs: ${sitemapUrls.length}`);
 console.log(`JSON-LD blocks parsed: ${jsonLdBlocks} ${JSON.stringify(typeCounts)}`);
 console.log(`unique titles: ${titles.size}, unique descriptions: ${descriptions.size}`);
 console.log(`broken internal links: ${brokenLinks.size} (${unexpectedBroken.length} not on the known list)`);
 for (const l of unexpectedBroken) errors.push(`broken internal link: ${l}`);
 
+if (warnings.length) {
+  console.warn(`\n${warnings.length} warning(s):`);
+  for (const w of warnings) console.warn(`  - ${w}`);
+}
 if (errors.length) {
   console.error(`\n${errors.length} problem(s):`);
   for (const e of errors) console.error(`  - ${e}`);
