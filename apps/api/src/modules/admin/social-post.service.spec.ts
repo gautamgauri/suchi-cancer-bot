@@ -315,6 +315,9 @@ describe("SocialPostService — LinkedIn org posting", () => {
     expect(logged).toContain("401");
     expect(logged).toContain("expired");
     expect(logged).toContain("docs/LINKEDIN_ORG_POSTING.md");
+    // The secret is named in upper case in Secret Manager and cloudbuild.yaml.
+    expect(logged).toContain("LINKEDIN_ACCESS_TOKEN secret");
+    expect(logged).not.toContain("linkedin-access-token");
   });
 
   it("explains a 403 as a missing w_organization_social scope or page-admin role", async () => {

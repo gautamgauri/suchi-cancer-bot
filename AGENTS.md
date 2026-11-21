@@ -9,7 +9,8 @@ Companion documents:
 
 - `CLAUDE.md` — project map, key commands, git-safety preflight (mandatory).
 - `docs/ARCHITECTURE.md` — modules, data flows, deployment surfaces.
-- `docs/OPERATIONS_RUNBOOK.md` — setup, tests, CI, health checks, rollback.
+- `docs/OPERATIONS.md` is the runbook. It covers health checks, outage
+  response, deploy, rollback, migrations, secrets, evaluation and scheduled jobs.
 - `docs/RELIABILITY_BASELINE.md` — verified state of the repo at handoff.
 - `docs/RELIABILITY_BACKLOG.md` — ranked known issues.
 - `docs/SUCHI_SAFETY_CONTRACT.md` and `docs/SUCHI_ANSWER_POLICY.md` — the
@@ -81,7 +82,7 @@ It is restated in `CLAUDE.md`; both copies are binding.
 - **Migrations:** Prisma migrations in `apps/api/prisma/migrations/`. Note that
   `prisma migrate dev` fails against the production DB (no shadow-DB
   permissions); the operational pattern is diff + psql + `migrate resolve`
-  (see `docs/OPERATIONS_RUNBOOK.md`).
+  (see `docs/OPERATIONS.md` section 6).
 - **Commit style:** conventional-ish (`fix(scope): ...`, `feat: ...`,
   `docs: ...`), imperative mood, small focused PRs.
 
@@ -102,9 +103,11 @@ It is restated in `CLAUDE.md`; both copies are binding.
 - **Eval awareness:** retrieval/citation changes should be checked against the
   Tier1 eval (`cd eval && npm run eval:tier1`, needs API access + judge LLM
   credentials). The nightly Tier1 workflow (`.github/workflows/eval-tier1.yml`)
-  is the canary for retrieval quality; its current red status is a
-  *notification* failure, not an eval failure — see
-  `docs/RELIABILITY_BASELINE.md` before "fixing" it blind.
+  is the canary for retrieval quality. Its job result reflects the evaluation
+  outcome only. An email delivery failure shows as a warning and leaves the
+  result unchanged. The workflow has no pull request trigger, because it sends
+  real chat requests to production. Read the annotation on a red run before
+  acting on it (`docs/OPERATIONS.md` section 8).
 
 ## 5. Scope discipline for agents
 
@@ -130,6 +133,10 @@ It is restated in `CLAUDE.md`; both copies are binding.
   code paths in `apps/api/src/modules/llm/` are legacy plumbing kept for
   fallback wiring — do not build new features on them.
 - **Two Cloud Build pipelines exist on purpose:** `cloudbuild.yaml` (simple,
-  active) and `cloudbuild.gated.yaml` (migration job + health gate, has known
-  issues documented in `docs/cloudbuild-gated-issues.md`). Keep their env/secret
-  lists byte-identical when touching either.
+  active) and `cloudbuild.gated.yaml` (migration job + health gate, currently unused,
+  has known issues documented in `docs/cloudbuild-gated-issues.md`). Keep their
+  env and secret lists identical when touching either.
+  `scripts/check_deploy_config_parity.py` enforces this in CI. The service
+  flags (`--max-instances`, `--memory`, `--cpu`, `--timeout`, CPU throttling)
+  must match as well. Compare them by hand unless the parity script reports on
+  them, and never deploy from the gated file without doing so.

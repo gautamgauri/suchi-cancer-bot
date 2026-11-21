@@ -119,6 +119,16 @@ export function generateMarkdownReport(metrics: DailyReportMetrics): string {
     lines.push('');
   }
 
+  // Older callers may build metrics without this field.
+  const sessionsBySource = metrics.sessionsBySource ?? [];
+  if (sessionsBySource.length > 0) {
+    lines.push('### Sessions Started, by Source');
+    sessionsBySource.forEach(s => {
+      lines.push(`- ${s.source}: ${s.count}`);
+    });
+    lines.push('');
+  }
+
   if (metrics.geoBreakdown.length > 0) {
     lines.push('### Geographic Distribution');
     metrics.geoBreakdown.slice(0, 5).forEach(g => {

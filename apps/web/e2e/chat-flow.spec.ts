@@ -5,6 +5,7 @@ import {
   acceptConsent,
   assistantMessages,
   enterChat,
+  stubChatApi,
   stubSessionApi,
   waitForAssistantReply,
 } from './helpers';
@@ -225,8 +226,28 @@ test.describe('Error Handling @smoke', () => {
   });
 });
 
+test.describe('Source Attribution @smoke', () => {
+  test('a visit with ?src= sends the code on the session request, which the stub answers', async ({
+    page,
+  }) => {
+    const sessionRequest = page.waitForRequest(
+      (r) => r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/sessions'),
+    );
+    await enterChat(page, { path: '/?src=site-article' });
+
+    const req = await sessionRequest;
+    const url = new URL(req.url());
+    expect(url.searchParams.get('src')).toBe('site-article');
+    // Attribution never goes in the body.
+    expect(req.postDataJSON()).not.toHaveProperty('src');
+  });
+});
+
 test.describe('Keyboard Navigation @smoke', () => {
   test('can navigate with keyboard', async ({ page }) => {
+    // The chat reply is stubbed. This test is about the keyboard, and CI must
+    // not send messages to the production API.
+    await stubChatApi(page);
     await enterChat(page);
 
     const input = page.locator('textarea');
