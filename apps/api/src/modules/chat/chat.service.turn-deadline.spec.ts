@@ -459,4 +459,33 @@ describe("ChatService — 'normal' is reported only after every safety screen (i
     expect(seen).toEqual([undefined]);
     expect(progress.safety).toEqual({ classification: "normal", source: "safety_module" });
   });
+
+  it("records 'mental_health_support', not 'normal', before the MH2/MH3 reply is written", async () => {
+    const { service, prisma } = await buildService({ channel: "web" });
+    const svc = service as any;
+    const progress: TurnProgress = {};
+    svc.empathyDetector.detectMentalHealthNeed.mockReturnValue({
+      needsSupport: true,
+      isCrisis: false,
+      category: "depression",
+      keywords: ["synthetic-support-marker"],
+    });
+    // What a 504 raised while the assistant row is being written would report.
+    let atAssistantWrite: TurnProgress["safety"] | "not reached" = "not reached";
+    const create = prisma.message.create.getMockImplementation()!;
+    prisma.message.create.mockImplementation(async (args: any) => {
+      if (args.data.role === "assistant") atAssistantWrite = progress.safety;
+      return create(args);
+    });
+
+    const result: any = await service.handle(
+      { sessionId: "session1", userText: EXPLAIN_QUERY, channel: "web" } as any,
+      undefined,
+      progress,
+    );
+
+    expect(result.safety.classification).toBe("mental_health_support");
+    expect(atAssistantWrite).toEqual({ classification: "mental_health_support", source: "mental_health" });
+    expect(progress.safety).toEqual({ classification: "mental_health_support", source: "mental_health" });
+  });
 });

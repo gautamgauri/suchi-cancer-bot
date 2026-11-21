@@ -31,6 +31,9 @@ const FALLBACK_TEXT =
 
 const GENERIC_ERROR = /there was an error processing your message/i;
 
+// SafetyBanner's title for a red_flag escalation. The banner has no ARIA role.
+const BANNER_TITLE = 'Seek Emergency Medical Care';
+
 function installLocalStorage(seed: Record<string, string>) {
   const store = new Map(Object.entries(seed));
   Object.defineProperty(window, 'localStorage', {
@@ -121,7 +124,56 @@ describe('ChatInterface — 55s turn timeout (issue #171)', () => {
     const log = await screen.findByRole('log');
     expect(log.textContent).toContain('1800-22-1951');
     expect(screen.queryByText(GENERIC_ERROR)).toBeNull();
-    expect(screen.queryByRole('alert')).toBeNull();
+    // A timeout carries no escalation actions, so it raises no banner itself.
+    expect(screen.queryByText(BANNER_TITLE)).toBeNull();
+  });
+
+  describe('an escalation banner from an earlier turn (issue #221)', () => {
+    const URGENT_TEXT = '**Please get urgent medical help now.** Synthetic escalation copy for this test.';
+
+    // Turn 1 is an urgent reply that raises the banner. Turn 2 times out with
+    // the given 504 body.
+    const urgentThenTimeout = (timeoutBody: Record<string, unknown>) => {
+      let chatCalls = 0;
+      mocks.post.mockImplementation(async () => {
+        chatCalls += 1;
+        if (chatCalls === 1) {
+          return {
+            data: {
+              sessionId: 'session-1',
+              messageId: 'message-1',
+              responseText: URGENT_TEXT,
+              safety: { classification: 'red_flag', actions: ['show_emergency_banner'], bannerText: URGENT_TEXT },
+            },
+          };
+        }
+        throw axiosError(504, { sessionId: 'session-1', responseText: FALLBACK_TEXT, ...timeoutBody, error: 'timeout' });
+      });
+    };
+
+    it('stays up when the next turn times out unassessed', async () => {
+      urgentThenTimeout({ safetyAssessed: false });
+
+      render(<ChatInterface sessionId="session-1" onStartOver={vi.fn()} />);
+      await sendQuestion();
+      expect(await screen.findByText(BANNER_TITLE)).toBeInTheDocument();
+
+      await sendQuestion();
+      expect((await screen.findByRole('log')).textContent).toContain('1800-22-1951');
+      expect(screen.getByText(BANNER_TITLE)).toBeInTheDocument();
+    });
+
+    it('clears, as today, when the timeout body says normal (the API in production)', async () => {
+      urgentThenTimeout({ safety: { classification: 'normal', actions: [] } });
+
+      render(<ChatInterface sessionId="session-1" onStartOver={vi.fn()} />);
+      await sendQuestion();
+      expect(await screen.findByText(BANNER_TITLE)).toBeInTheDocument();
+
+      await sendQuestion();
+      expect((await screen.findByRole('log')).textContent).toContain('1800-22-1951');
+      expect(screen.queryByText(BANNER_TITLE)).toBeNull();
+    });
   });
 
   it('still shows the generic error when the 504 carries no usable copy', async () => {

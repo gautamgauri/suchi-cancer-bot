@@ -72,6 +72,13 @@ describe("ChatController — 504 timeout body (issue #221)", () => {
     expect(body.safety).toEqual({ classification: "normal", actions: [], source: "safety_module" });
   });
 
+  it("reports a mental-health support verdict as reached", async () => {
+    const body = await timeoutBody(hangingChat({ classification: "mental_health_support", source: "mental_health" }));
+
+    expect(body.safetyAssessed).toBe(true);
+    expect(body.safety).toEqual({ classification: "mental_health_support", actions: [], source: "mental_health" });
+  });
+
   it("does not attach escalation actions or change the patient-facing copy (SCCF-owned, P1-11)", async () => {
     const body = await timeoutBody(hangingChat({ classification: "red_flag", source: "urgency_indicators" }));
 

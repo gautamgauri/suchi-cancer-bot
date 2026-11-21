@@ -65,7 +65,7 @@ export interface TurnProgress {
    * the mental-health screen have all concluded.
    */
   safety?: {
-    classification: SafetyClassification | "mental_health_crisis";
+    classification: SafetyClassification | "mental_health_crisis" | "mental_health_support";
     /** Which stage concluded it. */
     source: "emergency_fast_path" | "safety_module" | "urgency_indicators" | "mental_health";
   };
@@ -808,9 +808,13 @@ export class ChatService {
     const mentalHealthNeed = this.empathyDetector.detectMentalHealthNeed(dto.userText);
 
     // Every rule-based safety screen has now concluded. This is the first
-    // point at which the turn can be reported as assessed normal (#221).
+    // point at which the turn can be reported as assessed (#221). A turn that
+    // needs mental-health support (MH2/MH3) is recorded as such. Only a turn
+    // that every screen passed is recorded as normal.
     if (progress && !progress.safety && !mentalHealthNeed.isCrisis) {
-      progress.safety = { classification: "normal", source: "safety_module" };
+      progress.safety = mentalHealthNeed.needsSupport
+        ? { classification: "mental_health_support", source: "mental_health" }
+        : { classification: "normal", source: "safety_module" };
     }
 
     if (mentalHealthNeed.isCrisis) {

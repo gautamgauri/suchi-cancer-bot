@@ -46,7 +46,14 @@ export interface ChatResponse {
      * body carried no safety verdict, because the turn was cut off before the
      * safety screens concluded (issue #221). It must never be read as normal.
      */
-    classification: "normal" | "refusal" | "red_flag" | "self_harm" | "not_assessed";
+    classification:
+      | "normal"
+      | "refusal"
+      | "red_flag"
+      | "self_harm"
+      | "mental_health_crisis"
+      | "mental_health_support"
+      | "not_assessed";
     actions: Array<"show_emergency_banner" | "suggest_doctor_visit" | "end_conversation">;
     /**
      * Escalation copy for the emergency banner, sent with

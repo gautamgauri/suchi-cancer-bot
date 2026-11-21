@@ -161,7 +161,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ sessionId, onStart
       // of the generic error overlay. Nothing was persisted for this turn, so
       // it is not the feedback target and there is no greeting state to refresh.
       if (timedOut) {
-        setSafetyBanner(null);
+        // Clear an earlier escalation banner only when the API says this turn
+        // was assessed normal. A turn cut off before the safety screens
+        // concluded ("not_assessed", issue #221) leaves the banner in place.
+        if (response.safety.classification === "normal") setSafetyBanner(null);
         // Drop the previous answer as the feedback target too — otherwise the
         // conversation feedback button rates that answer as if it were this
         // reply.
