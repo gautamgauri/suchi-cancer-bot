@@ -39,6 +39,8 @@ import { HospitalDirectoryService } from "./hospital-directory.service";
   ],
   controllers: [ChatController],
   providers: [ChatService, IntentClassifier, TemplateSelector, ResponseValidatorService, GreetingFlowService, EmpathyDetector, StructuredExtractorService, PatientStateService, ExecutionPlannerService, PlanExecutorService, OutputVerifierService, HospitalDirectoryService],
-  exports: [ChatService]
+  // EmpathyDetector is exported so the WhatsApp stale guard can call the same
+  // synchronous mental-health screen ChatService runs (detectMentalHealthNeed).
+  exports: [ChatService, EmpathyDetector]
 })
 export class ChatModule {}

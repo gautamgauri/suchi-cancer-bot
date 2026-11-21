@@ -6,6 +6,8 @@ import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { SessionsService } from "../sessions/sessions.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { SafetyService } from "../safety/safety.service";
+import { AbstentionService } from "../abstention/abstention.service";
+import { EmpathyDetector } from "../chat/empathy-detector";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
 import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
@@ -61,6 +63,8 @@ export class WhatsAppService {
     private readonly chat: ChatService,
     private readonly sessions: SessionsService,
     private readonly safety: SafetyService,
+    private readonly abstention: AbstentionService,
+    private readonly empathy: EmpathyDetector,
   ) {}
 
   /** True only when every Meta credential is present — otherwise the channel fails safe. */
@@ -280,10 +284,10 @@ export class WhatsAppService {
     const kind = noticeKindFor(msg);
     if (!kind) return false;
     // AGENTS.md §1.1: nothing may short-circuit in front of the safety path.
-    // A stale text that the pipeline's first deterministic checks would flag
-    // (emergency fast path, then the safety rules) runs the full pipeline, so
-    // the sender gets the approved safety reply, however late. Only a message
-    // both checks pass as normal may be answered with the stale notice.
+    // A stale text that any of the pipeline's deterministic pre-LLM checks
+    // would turn into a safety, urgent or mental-health template runs the full
+    // pipeline, so the sender gets the approved reply, however late. Only a
+    // message every check passes as normal may get the stale notice.
     if (kind === "stale" && this.flaggedBySafetyChecks(msg.text)) {
       this.logger.warn(`Stale WhatsApp message ${msg.wamid} flagged by the safety checks: running the pipeline`);
       return false;
@@ -306,13 +310,20 @@ export class WhatsAppService {
   }
 
   /**
-   * The same two deterministic checks `ChatService.handle` runs first, called
-   * here unchanged. True when either one classifies the text as anything other
-   * than normal. No safety logic lives in this module.
+   * The synchronous, text-only checks `ChatService.handle` runs before the LLM,
+   * in its order, called here unchanged. True when any one of them would send
+   * the turn to a safety, urgent or mental-health template:
+   *   1. emergency fast path (red-flag escalation)
+   *   2. safety rules (self-harm, emergency, refusals, misinformation)
+   *   3. urgency indicators (urgent S2 template)
+   *   4. mental-health screen (MH1 crisis, MH2/MH3 support templates)
+   * No safety logic lives in this module.
    */
   private flaggedBySafetyChecks(text: string): boolean {
     if (evaluateEmergencyFastPath(text).isEmergency) return true;
-    return this.safety.evaluate(text).classification !== "normal";
+    if (this.safety.evaluate(text).classification !== "normal") return true;
+    if (this.abstention.hasUrgencyIndicators(text)) return true;
+    return this.empathy.detectMentalHealthNeed(text).needsSupport;
   }
 
   /** Run one already-claimed message through the chat pipeline. Never throws. */

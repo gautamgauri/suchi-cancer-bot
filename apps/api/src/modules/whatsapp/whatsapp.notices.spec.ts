@@ -1,3 +1,5 @@
+import { EmpathyDetector } from "../chat/empathy-detector";
+import { AbstentionService } from "../abstention/abstention.service";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
 import { SafetyService } from "../safety/safety.service";
 import { inboundLedgerId, WhatsAppService } from "./whatsapp.service";
@@ -60,7 +62,7 @@ describe("WhatsApp fixed notices", () => {
     };
     chat = { handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }) };
     const sessions: any = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
-    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService());
+    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
     sendText = jest.spyOn(svc, "sendText").mockResolvedValue(undefined);
   });
 
@@ -265,6 +267,39 @@ describe("WhatsApp fixed notices", () => {
         expect(chat.handle).toHaveBeenNthCalledWith(1, expect.objectContaining({ userText: SELF_HARM }));
         expect(chat.handle).toHaveBeenNthCalledWith(2, expect.objectContaining({ userText: EMERGENCY }));
         expect(sendText.mock.calls.filter((c) => c[1] === STALE_MESSAGE_NOTICE)).toHaveLength(1);
+      });
+
+      // Probes taken from abstention.service.spec.ts and empathy-detector.spec.ts.
+      // Each must trip ONLY its own check, so the test proves that check alone.
+      const URGENT_ONLY = "this is an emergency";
+      const MH_SUPPORT_ONLY = "I feel so alone in this cancer journey";
+      const passesOtherChecks = (t: string) => {
+        expect(evaluateEmergencyFastPath(t).isEmergency).toBe(false);
+        expect(new SafetyService().evaluate(t).classification).toBe("normal");
+      };
+
+      it("urgency indicators only (S2 template): ChatService runs and no stale notice is sent", async () => {
+        passesOtherChecks(URGENT_ONLY);
+        expect(new EmpathyDetector().detectMentalHealthNeed(URGENT_ONLY).needsSupport).toBe(false);
+        expect(new AbstentionService().hasUrgencyIndicators(URGENT_ONLY)).toBe(true);
+
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", URGENT_ONLY)])));
+
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: URGENT_ONLY }));
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      });
+
+      it("mental-health screen only (MH templates): ChatService runs and no stale notice is sent", async () => {
+        passesOtherChecks(MH_SUPPORT_ONLY);
+        expect(new AbstentionService().hasUrgencyIndicators(MH_SUPPORT_ONLY)).toBe(false);
+        expect(new EmpathyDetector().detectMentalHealthNeed(MH_SUPPORT_ONLY).needsSupport).toBe(true);
+
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", MH_SUPPORT_ONLY)])));
+
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: MH_SUPPORT_ONLY }));
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
       });
 
       it("an ordinary stale message still gets the notice", async () => {

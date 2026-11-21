@@ -1,3 +1,5 @@
+import { EmpathyDetector } from "../chat/empathy-detector";
+import { AbstentionService } from "../abstention/abstention.service";
 import { SafetyService } from "../safety/safety.service";
 import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
@@ -84,7 +86,7 @@ describe("WhatsAppService", () => {
     chat = { handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }) };
     sessions = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
 
-    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService());
+    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
     // Avoid real network in sendText
     jest.spyOn(svc, "sendText").mockResolvedValue(undefined);
   });
@@ -195,7 +197,7 @@ describe("WhatsAppService", () => {
 
     it("de-duplicates a retry that lands on a different instance (FR-WA-007)", async () => {
       // Two service instances sharing one database, as on Cloud Run.
-      const other = new WhatsAppService(prisma, chat, sessions, new SafetyService());
+      const other = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
       jest.spyOn(other, "sendText").mockResolvedValue(undefined);
       const m = { wamid: "cross-instance", from: "9199", text: "hi" };
 
