@@ -6,6 +6,10 @@
 //   - a message Meta delivered long after it was sent, typically a redelivery
 //     of the queue after an outage, which must not be answered as if fresh
 //
+// A third, the caption note, does not replace the pipeline. It follows the
+// pipeline's answer to a captioned image, video or document, to say the
+// attachment itself was not read (WhatsAppService.sendCaptionNote).
+//
 // A stale text message that the emergency fast path or the safety rules flag
 // never gets the stale notice. It runs the full pipeline (see
 // WhatsAppService.replyWithNotice). The stale notice names no cause, because
@@ -17,7 +21,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { InboundMessage } from "./whatsapp.types";
 
-export type NoticeKind = "unsupported_type" | "stale";
+export type NoticeKind = "unsupported_type" | "stale" | "caption_media";
 
 /** Sent when a message has no text the bot can read. Hindi first, then English. */
 export const UNSUPPORTED_TYPE_NOTICE =
@@ -29,10 +33,24 @@ export const STALE_MESSAGE_NOTICE =
   "क्षमा करें, आपके संदेश का उत्तर नहीं दिया जा सका। कृपया अपना सवाल दोबारा भेजें।\n\n" +
   "Sorry, your message was not answered. Please send your question again.";
 
+/**
+ * Sent as a separate message after the pipeline's answer to an image, video or
+ * document that carried a typed caption. The answer covers the caption only,
+ * and this tells the sender the attachment itself was not read. Wording
+ * approved by the owner on 21 November 2026. The bot speaks in the feminine.
+ */
+export const CAPTION_MEDIA_NOTICE =
+  "मैं फ़ोटो या फ़ाइलें नहीं देख सकती, इसलिए मैंने केवल आपके लिखे हुए संदेश का जवाब दिया है।\n\n" +
+  "I cannot see photos or files, so I have answered your written message only.";
+
 export const NOTICE_TEXT: Record<NoticeKind, string> = {
   unsupported_type: UNSUPPORTED_TYPE_NOTICE,
   stale: STALE_MESSAGE_NOTICE,
+  caption_media: CAPTION_MEDIA_NOTICE,
 };
+
+/** Media types whose typed caption is read as the message text. */
+export const CAPTION_MEDIA_TYPES: ReadonlySet<string> = new Set(["image", "video", "document"]);
 
 /**
  * Message types that get the "typed messages only" notice. A voice note arrives
