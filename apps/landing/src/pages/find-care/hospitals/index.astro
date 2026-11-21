@@ -81,6 +81,11 @@ function scoreClass(score: number): string {
 
 <BaseLayout
   title="Hospital Directory — Find Cancer Care"
+  breadcrumbs={[
+    { name: 'Home', path: '/' },
+    { name: 'Find Care', path: '/find-care/' },
+    { name: 'Hospital Directory', path: '/find-care/hospitals/' },
+  ]}
   description={`${LISTABLE.length} verified cancer hospitals across East India and national referral centres — Bihar, Jharkhand, West Bengal, Odisha, Assam, and beyond.`}
 >
   <section class="dir-page">

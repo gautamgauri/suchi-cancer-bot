@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LiteYouTube from '../../components/LiteYouTube.astro';
 import videosData from '../../content/videos.json';
+import { videoJsonLd } from '../../lib/seo';
 
 export function getStaticPaths() {
   return videosData.videos.map((video) => ({
@@ -28,6 +29,18 @@ const relatedVideos = videosData.videos
   )
   .slice(0, 3);
 
+const pageDescription = `Watch ${video.title} - ${video.takeaways?.[0] || 'Educational video from Onco Talks by SCCF'}`;
+const pagePath = `/watch/${video.slug}/`;
+const breadcrumbs = [
+  { name: 'Home', path: '/' },
+  { name: 'Watch', path: '/watch/' },
+  { name: video.title, path: pagePath },
+];
+const structuredData = [
+  videoJsonLd({ youtubeId: video.youtubeId, title: video.title, description: pageDescription, path: pagePath }),
+];
+const shareImage = `https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg`;
+
 const cancerTypeLabels = video.cancerTypes.map(id =>
   videosData.cancerTypes.find(t => t.id === id)?.label || id
 );
@@ -37,7 +50,14 @@ const situationLabels = video.situations.map(id =>
 );
 ---
 
-<BaseLayout title={video.title} description={`Watch ${video.title} - ${video.takeaways?.[0] || 'Educational video from Onco Talks by SCCF'}`}>
+<BaseLayout
+  title={video.title}
+  description={pageDescription}
+  ogType="video.other"
+  ogImage={shareImage}
+  jsonLd={structuredData}
+  breadcrumbs={breadcrumbs}
+>
   <section class="video-detail">
     <div class="video-detail-inner">
       <!-- Video Embed -->
