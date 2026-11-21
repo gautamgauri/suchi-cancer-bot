@@ -1,6 +1,6 @@
 ---
 allowed-tools: Bash, Read
-argument-hint: "[direct|gated|promote|preflight-only]"
+argument-hint: "[direct|gated|promote <REVISION>|preflight-only]"
 ---
 
 # Deploy Suchi Cancer Bot to Cloud Run
@@ -13,7 +13,7 @@ Parse the mode from the argument. Default to `direct` if no argument is given.
 
 - **`direct`** (default): Run all preflight checks, then deploy via `cloudbuild.yaml`.
 - **`gated`**: Run all preflight checks, then deploy via `cloudbuild.gated.yaml`. This pipeline is not in use. Before running it, compare its service flags with `cloudbuild.yaml` and read `docs/cloudbuild-gated-issues.md`.
-- **`promote`**: Promote an existing candidate revision (no preflight, no rebuild).
+- **`promote <REVISION>`**: Promote the named revision (no preflight, no rebuild). A revision name is required.
 - **`preflight-only`**: Run only the automated preflight checks. Do NOT deploy.
 
 ---
@@ -219,22 +219,43 @@ If yes, proceed to Phase 3. If no, stop.
 
 ### Mode: `direct`
 
+This mode follows `docs/OPERATIONS.md` section 4, steps 6 to 8. Every `gcloud run` call names the project and the region. The Cloud Build calls name the project only, as the runbook does. Cloud Build runs these builds in its global location, and `--region us-central1` would send `gcloud builds` to a different location.
+
 1. Run `git status --short` again. If it prints anything, stop. The tree must still be clean at the moment of upload.
-   Then run `gcloud builds submit --config=cloudbuild.yaml .` from the repository root.
-2. Stream build logs. If the build takes long, poll `gcloud builds list --limit=1` every 30 seconds until complete.
-3. After build succeeds, **promote the latest revision to 100% traffic**:
+   Then build and deploy from the repository root.
+   ```bash
+   gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-0202543132
    ```
-   LATEST=$(gcloud run revisions list --service=suchi-api --region=us-central1 --limit=1 --format='value(name)')
-   gcloud run services update-traffic suchi-api --region=us-central1 --to-revisions=$LATEST=100
+2. Stream build logs. Record the build ID that `gcloud builds submit` prints. If you lose the stream, poll that build every 30 seconds until it completes.
+   ```bash
+   gcloud builds describe <BUILD_ID> --project gen-lang-client-0202543132 --format 'value(status)'
    ```
-4. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`
-5. Report: build ID, duration, promoted revision name, health check result.
+3. After the build succeeds, take the revision name from the output of this build. The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer.
+   If the line is not in the streamed output, read it from the build log.
+   ```bash
+   gcloud builds log <BUILD_ID> --project gen-lang-client-0202543132 | grep 'Service \[suchi-api\] revision'
+   ```
+4. Check that the revision runs this build's image. The image must end in `:<BUILD_ID>`. If it does not, stop and report.
+   ```bash
+   gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
+     --format 'value(spec.containers[0].image)'
+   ```
+5. Promote that revision to 100% traffic.
+   ```bash
+   gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --to-revisions <REVISION>=100
+   ```
+6. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`. The body must contain `"status":"ok"`.
+7. Report: build ID, duration, promoted revision name, image tag check result, health check result.
 
 ### Mode: `gated`
 
 1. Run `git status --short` again. If it prints anything, stop.
-   Then run `gcloud builds submit --config=cloudbuild.gated.yaml .` from the repository root.
-2. Stream build logs. Poll until complete.
+   Then build and deploy from the repository root.
+   ```bash
+   gcloud builds submit --config=cloudbuild.gated.yaml . --project gen-lang-client-0202543132
+   ```
+2. Stream build logs. Poll with `gcloud builds describe <BUILD_ID> --project gen-lang-client-0202543132 --format 'value(status)'` until complete.
 3. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`
 4. Report: build ID, duration, health check result.
 
@@ -242,18 +263,26 @@ If yes, proceed to Phase 3. If no, stop.
 
 Skip preflight. Promote only.
 
-1. List revisions:
+This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy promote suchi-api-00430-abc`. If no revision name is given, list the revisions, report "Name the revision to promote" and stop. Do not pick a revision for the user. More than one revision can sit at 0% traffic, and tagged revisions often do.
+
+1. List revisions for reference.
+   ```bash
+   gcloud run revisions list --service suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --format "table(name,traffic_percent,tags)"
    ```
-   gcloud run revisions list --service=suchi-api --region=us-central1 --format="table(name,traffic_percent,tags)"
+2. Confirm that the named revision exists, and show its image.
+   ```bash
+   gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
+     --format 'value(spec.containers[0].image)'
    ```
-2. Identify the revision currently at 0% traffic. If none exists, report "No candidate revision found" and stop.
-3. Show which revision will be promoted and ask for confirmation.
-4. Shift traffic:
-   ```
-   gcloud run services update-traffic suchi-api --region=us-central1 --to-revisions=REVISION_NAME=100
+3. Show the revision name and its image tag, and ask for confirmation. The user checks that the tag is the build ID they mean to ship.
+4. Shift traffic.
+   ```bash
+   gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --to-revisions <REVISION>=100
    ```
 5. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`
-6. Report: promoted revision name, health check result.
+6. Report: promoted revision name, image tag, health check result.
 
 ---
 
