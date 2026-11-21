@@ -1,15 +1,14 @@
-import { ForbiddenException } from "@nestjs/common";
-import { createHmac } from "node:crypto";
-import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppService } from "./whatsapp.service";
-import { MetaWebhookBody } from "./whatsapp.types";
-import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
-import { ChatService } from "../chat/chat.service";
-import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { EmpathyDetector } from "../chat/empathy-detector";
 import { AbstentionService } from "../abstention/abstention.service";
+import { SafetyService } from "../safety/safety.service";
+import { ForbiddenException } from "@nestjs/common";
+import { createHmac } from "node:crypto";
+import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppDeliveryError, WhatsAppService } from "./whatsapp.service";
+import { MetaWebhookBody } from "./whatsapp.types";
+import { MAX_USER_TEXT_LENGTH } from "../chat/dto";
+import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
-import { SafetyService } from "../safety/safety.service";
 import { detectLocale } from "./whatsapp-format";
 
 /**
@@ -38,21 +37,6 @@ function makeLedgerMock() {
       return row;
     }),
   };
-}
-
-/**
- * A ChatService carrying only the text-only safety dependencies, so the
- * WhatsApp tests exercise the production screen and templates without the
- * rest of the pipeline.
- */
-function realSafetyScreen(): ChatService {
-  const svc = Object.create(ChatService.prototype);
-  Object.assign(svc, {
-    safety: new SafetyService(),
-    abstention: new AbstentionService(),
-    empathyDetector: new EmpathyDetector(),
-  });
-  return svc;
 }
 
 function sign(body: string, secret: string): string {
@@ -106,14 +90,10 @@ describe("WhatsAppService", () => {
     };
     chat = {
       handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }),
-      // The real screen and templates: only the session-free safety reply is used.
-      deterministicSafetyReplyWithoutSession: jest.fn((input: any) =>
-        realSafetyScreen().deterministicSafetyReplyWithoutSession(input),
-      ),
     };
     sessions = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
 
-    svc = new WhatsAppService(prisma, chat, sessions);
+    svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
     // Avoid real network in sendText
     jest.spyOn(svc, "sendText").mockResolvedValue(1);
   });
@@ -231,11 +211,11 @@ describe("WhatsAppService", () => {
       expect(svc.parseInbound(body)).toEqual([{ wamid: "w2", from: "91999", text: "Yes", profileName: undefined }]);
     });
 
-    it("skips unsupported message types (e.g. image)", () => {
+    it("keeps a message with no readable text (e.g. image) so it can get the fixed notice", () => {
       const body: MetaWebhookBody = {
         entry: [{ changes: [{ value: { messages: [{ id: "w3", from: "91", type: "image" }] } }] }],
       };
-      expect(svc.parseInbound(body)).toEqual([]);
+      expect(svc.parseInbound(body)).toEqual([{ wamid: "w3", from: "91", text: "", unsupportedType: "image" }]);
     });
   });
 
@@ -257,7 +237,7 @@ describe("WhatsAppService", () => {
 
     it("de-duplicates a retry that lands on a different instance (FR-WA-007)", async () => {
       // Two service instances sharing one database, as on Cloud Run.
-      const other = new WhatsAppService(prisma, chat, sessions);
+      const other = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
       jest.spyOn(other, "sendText").mockResolvedValue(1);
       const m = { wamid: "cross-instance", from: "9199", text: "hi" };
 
@@ -372,6 +352,43 @@ describe("WhatsAppService", () => {
       await svc.processClaimed([{ wamid: "sf4", from: "9199", text: "what is chemotherapy?" }]);
       expect(chat.handle).not.toHaveBeenCalled();
       expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+    });
+
+    it("records a truthful ledger row for the session-free template", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf6", from: "9199", text: EMERGENCY }]);
+      expect(ledger.rows.get(inboundLedgerId("sf6")).payload).toMatchObject({
+        status: "processed",
+        partsSent: 1,
+        notice: "safety_fallback",
+        noticeSent: true,
+      });
+    });
+
+    it("never follows a failed safety template with the generic failure reply", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      (svc.sendText as jest.Mock).mockRejectedValue(
+        new WhatsAppDeliveryError("Graph API 500", 0, "http", 500),
+      );
+      await svc.processClaimed([{ wamid: "sf7", from: "9199", text: EMERGENCY }]);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).not.toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+      expect(ledger.rows.get(inboundLedgerId("sf7")).payload).toMatchObject({
+        status: "failed",
+        failedStage: "delivery",
+        notice: "safety_fallback",
+        noticeSent: false,
+      });
+    });
+
+    it("sends the template when the stored session is gone and a new one cannot be minted", async () => {
+      prisma.whatsAppContact.findUnique.mockResolvedValue({ waId: "9199", sessionId: "sess-gone", lastActiveAt: new Date() });
+      chat.handle.mockRejectedValue(new Error("Invalid sessionId"));
+      sessions.create.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf8", from: "9199", text: EMERGENCY }]);
+      expect(chat.handle).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
     });
 
     it("a healthy session lookup goes through the full pipeline as before", async () => {

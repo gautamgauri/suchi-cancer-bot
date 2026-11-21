@@ -31,11 +31,13 @@ import { classifyAgenticIntent, AgenticIntentResult } from "./agentic-intent-rou
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import {
   DeterministicSafetyReply,
+  recordSafetyVerdict,
   DeterministicSafetyScreen,
   SAFETY_SESSION_LOOKUP_BOUND_MS,
   SAFETY_WRITE_BOUND_MS,
   SafetyScreenDeps,
   buildDeterministicSafetyReply,
+  buildSessionFreeSafetyReply,
   errorTag,
   preprocessUserText,
   repliesWithoutSession,
@@ -62,6 +64,48 @@ import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
 import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
+import type { SafetyClassification } from "../safety/safety.rules";
+
+/**
+ * What a turn has concluded so far, written by `ChatService.handle()` as each
+ * stage concludes. ChatController reads it when it gives up on a turn at 55s,
+ * so its timeout body reports the pipeline's real safety assessment, or none at
+ * all, instead of a hardcoded "normal" (issue #221).
+ */
+export interface TurnProgress {
+  /**
+   * Absent means no safety assessment had been made when the turn was cut off.
+   * "normal" is set only after the safety module, the urgency indicators and
+   * the mental-health screen have all concluded.
+   */
+  safety?: {
+    classification: SafetyClassification | "mental_health_crisis" | "mental_health_support";
+    /** Which stage concluded it. */
+    source: "emergency_fast_path" | "safety_module" | "urgency_indicators" | "mental_health";
+  };
+}
+
+/**
+ * Wall-clock cap on the urgent path's early retrieval. That retrieval only
+ * decorates the escalation with cited context; when the database is slow it
+ * must not hold the urgent guidance hostage. On overrun the turn continues
+ * without chunks, exactly as it already does when the early retrieval throws
+ * (issue #225: `dbMs` reached 46s on 2026-10-14).
+ */
+export const URGENT_EARLY_RAG_DEADLINE_MS = 8000;
+
+/** Rejects after `ms` with `message`; the timer is cleared either way. */
+async function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  try {
+    return await Promise.race([work, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Joins the safety escalation block and the appended RAG answer on the urgent
@@ -109,6 +153,8 @@ export class ChatService {
   private readonly MIN_BUDGET_FOR_LLM_MS = 15000;
   /** Urgent/symptomatic path: hard deadline for LLM so we fall back to template quickly instead of 504 */
   private readonly URGENT_PATH_LLM_DEADLINE_MS = 15000;
+  /** See URGENT_EARLY_RAG_DEADLINE_MS. An instance field so specs can shorten it. */
+  private readonly URGENT_EARLY_RAG_DEADLINE_MS = URGENT_EARLY_RAG_DEADLINE_MS;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -196,15 +242,7 @@ export class ChatService {
     inputMode?: string;
     locale?: string | null;
   }): DeterministicSafetyReply | null {
-    const userText = preprocessUserText(input.userText, input.channel, input.inputMode);
-    const screen = screenDeterministicSafety(userText, this.safetyScreenDeps);
-    if (!repliesWithoutSession(screen.gate)) return null;
-    return buildDeterministicSafetyReply(screen, {
-      userText,
-      disclaimerLocale: input.locale,
-      templateLocale: input.locale,
-      isFirstMessage: false,
-    });
+    return buildSessionFreeSafetyReply(input, this.safetyScreenDeps);
   }
 
   /**
@@ -543,20 +581,35 @@ export class ChatService {
     };
   }
 
-  async handle(dto: ChatDto, signal?: AbortSignal) {
+  /**
+   * `progress`, when given, is filled in as the turn runs so a caller that
+   * gives up on the turn (ChatController's 55s timeout) can report what the
+   * pipeline actually concluded instead of inventing it (issue #221).
+   */
+  async handle(dto: ChatDto, signal?: AbortSignal, progress?: TurnProgress) {
+    // The turn budget is measured from HERE, not from after the session read
+    // and user-message insert. Under connection-pool pressure those two DB
+    // steps can each wait pool_timeout (10s) per prismaRetry attempt, and a
+    // budget that only started afterwards ran past the 55s controller timeout
+    // instead of degrading inside it (issue #225).
     const turnStarted = Date.now();
     // Every channel sees at most MAX_USER_TEXT_LENGTH characters. Web text up
     // to the DTO's abuse ceiling is cut here instead of rejected (PR #202).
     dto.userText = boundUserText(dto.userText);
     try {
-      return await this.handleTurn(dto, signal);
+      return await this.handleTurn(dto, signal, turnStarted, progress);
     } catch (err: any) {
       if (!this.isBudgetExhaustionError(err, signal)) throw err;
       return await this.budgetExhaustedResponse(dto, turnStarted, err);
     }
   }
 
-  private async handleTurn(dto: ChatDto, signal?: AbortSignal) {
+  private async handleTurn(
+    dto: ChatDto,
+    signal?: AbortSignal,
+    turnStarted: number = Date.now(),
+    progress?: TurnProgress,
+  ) {
     // ─── Phase 0: Input Cleanup (by modality, not channel) ────────────
     // Speech recognition output (the `voice` channel, or the web mic which
     // sends channel "web" + inputMode "voice") can stutter, duplicate words and
@@ -577,8 +630,11 @@ export class ChatService {
     // their pipeline order, before the session lookup, so an unreachable
     // database cannot cost a patient the emergency or self-harm reply (PR #202,
     // owner-approved reorder). Their verdicts are used unchanged below.
-    const turnStarted = Date.now();
     const screen = screenDeterministicSafety(dto.userText, this.safetyScreenDeps);
+    // All four screens have concluded, so the turn's safety verdict is known
+    // before any I/O. Recording it here means a turn cut off in the session
+    // read reports the real verdict, and so does a no-session reply (#221).
+    recordSafetyVerdict(progress, screen);
     if (screen.gate !== "emergency") {
       const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
       this.observability.endSpan(safetySpan, { classification: screen.safety.classification, rulesFired: screen.safety.rulesFired, blocked: screen.safety.classification !== 'normal' });
@@ -681,7 +737,7 @@ export class ChatService {
     }
 
     const started = Date.now();
-    const requestDeadlineMs = started + this.turnBudgetMs(dto.channel);
+    const requestDeadlineMs = turnStarted + this.turnBudgetMs(dto.channel);
 
     // ─── Phase 1: Emergency fast path, then the safety classifier ─────
     // Both verdicts come from the Phase 0.5 screen (pure regex, sub-1ms).
@@ -707,9 +763,15 @@ export class ChatService {
     if (hasUrgencyIndicators && safetyResult.classification === "normal") {
       // Quick RAG retrieval for urgent cases to support citations
       // The turn's cancer type, not the (possibly stale) session tag (#170)
+      // progress.safety was set to red_flag (urgency_indicators) by
+      // recordSafetyVerdict before any I/O, so a slow retrieval cannot hide it.
       try {
         earlyEvidenceChunks = this.scopeEvidenceToAskedSites(
-          await this.rag.retrieveWithMetadata(dto.userText, 6, turnCancerType, earlyQueryType),
+          await withTimeout(
+            this.rag.retrieveWithMetadata(dto.userText, 6, turnCancerType, earlyQueryType),
+            this.URGENT_EARLY_RAG_DEADLINE_MS,
+            `early RAG exceeded ${this.URGENT_EARLY_RAG_DEADLINE_MS}ms`,
+          ),
           askedSites,
           dto.sessionId,
           "early"
@@ -2413,16 +2475,20 @@ export class ChatService {
           // Regenerate with stricter prompt (cancerType already detected above)
           const llm2Started = Date.now();
           llmCallCount++;
-          responseText = await this.llm.generateWithCitations(
-            "explain",
-            "",
-            dto.userText,
-            evidenceChunks,
-            true,
-            { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel },
-            undefined,
-            obsTrace?.id
-          );
+          // Bounded by the turn deadline (#225): unwrapped, this call claimed a
+          // fresh LLM_TIMEOUT_MS (45s) and could finish long after the 55s
+          // controller timeout. On overrun the turn degrades via handle().
+          responseText = await this.llmWithDeadline(requestDeadlineMs, "identify-regeneration", () =>
+            this.llm.generateWithCitations(
+              "explain",
+              "",
+              dto.userText,
+              evidenceChunks,
+              true,
+              { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel },
+              undefined,
+              obsTrace?.id
+            ), signal);
           const llm2Ms = Date.now() - llm2Started;
           this.logger.log({ event: 'identify_regeneration', sessionId: dto.sessionId, llm2Ms, reason: validation.missing });
           responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
@@ -2623,7 +2689,10 @@ export class ChatService {
         if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
           const llm3Started = Date.now();
           llmCallCount++;
-          responseText = await this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel }, undefined, obsTrace?.id);
+          // Bounded by the turn deadline (#225) — see identify-regeneration.
+          responseText = await this.llmWithDeadline(requestDeadlineMs, "citation-regeneration", () =>
+            this.llm.generateWithCitations("explain", "", dto.userText, evidenceChunks, mightBeIdentifyQuestion, { hasGenerallyAsking, cancerType, emotionalState, intent: intentResult.intent, patientState, channel: dto.channel }, undefined, obsTrace?.id),
+            signal);
         const llm3Ms = Date.now() - llm3Started;
         this.logger.log({ event: 'citation_regeneration', sessionId: dto.sessionId, llm3Ms });
         responseText = ResponseTemplates.explainModeFrame(responseText, dto.userText, evidenceChunks, queryType);
@@ -2881,16 +2950,18 @@ export class ChatService {
       this.logger.warn(`Citation validation RED (no citations): ${citationValidation.errors?.join(", ")}`);
       // Retry once only if request budget allows
       if (Date.now() < requestDeadlineMs - this.MIN_BUDGET_FOR_LLM_MS) {
-        responseText = await this.llm.generateWithCitations(
-          systemPrompt,
-          "",
-          dto.userText,
-          evidenceChunks,
-          false,
-          { emotionalState, cancerType: turnCancerType, patientState },
-          undefined,
-          obsTrace?.id
-        );
+        // Bounded by the turn deadline (#225) — see identify-regeneration.
+        responseText = await this.llmWithDeadline(requestDeadlineMs, "patient-citation-regeneration", () =>
+          this.llm.generateWithCitations(
+            systemPrompt,
+            "",
+            dto.userText,
+            evidenceChunks,
+            false,
+            { emotionalState, cancerType: turnCancerType, patientState },
+            undefined,
+            obsTrace?.id
+          ), signal);
       const patientRetryExtractionResult = this.citationService.extractCitations(responseText, evidenceChunks);
       citations = patientRetryExtractionResult.citations;
       patientOrphanCount = patientRetryExtractionResult.orphanCount;

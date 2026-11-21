@@ -21,7 +21,7 @@ Start a new quality loop. This will:
 4. Wait for approval before applying fixes
 
 ```bash
-cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts loop --api-url http://localhost:3001 --dataset ../evals/datasets/starter.jsonl
+cd "$(git rev-parse --show-toplevel)/eval" && npx ts-node cli.ts loop --api-url http://localhost:3001 --dataset ../evals/datasets/starter.jsonl
 ```
 
 If the user specifies a different API URL or dataset, use those instead.
@@ -36,7 +36,7 @@ After the loop reaches WAIT_APPROVAL, show:
 Resume a loop after approval:
 
 ```bash
-cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts loop --resume <loop-id> --approve
+cd "$(git rev-parse --show-toplevel)/eval" && npx ts-node cli.ts loop --resume <loop-id> --approve
 ```
 
 This will apply the fix (via Claude Code or manual), rerun evals, and compare.
@@ -46,7 +46,7 @@ This will apply the fix (via Claude Code or manual), rerun evals, and compare.
 Reject the repair plan:
 
 ```bash
-cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts loop --resume <loop-id> --reject --reason "..."
+cd "$(git rev-parse --show-toplevel)/eval" && npx ts-node cli.ts loop --resume <loop-id> --reject --reason "..."
 ```
 
 ### Mode: `status <loop-id>`
@@ -54,7 +54,7 @@ cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts loop --resume <loop-id> --r
 Show current loop state:
 
 ```bash
-cd /home/gauta/suchi_repo/eval && npx ts-node cli.ts loop --status <loop-id>
+cd "$(git rev-parse --show-toplevel)/eval" && npx ts-node cli.ts loop --status <loop-id>
 ```
 
 ## Output
@@ -63,7 +63,7 @@ Show the loop state transitions as they happen. At WAIT_APPROVAL, display the fu
 
 ## Constants
 
-- **Repo root:** `/home/gauta/suchi_repo/`
+- **Repo root:** the output of `git rev-parse --show-toplevel`
 - **Eval CLI:** `eval/cli.ts`
 - **Default dataset:** `evals/datasets/starter.jsonl`
 - **Default API:** `http://localhost:3001`

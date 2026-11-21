@@ -65,7 +65,7 @@ describe('apiService.sendMessage — 55s turn timeout (issue #171)', () => {
     expect(response.messageId).toMatch(/^timeout-/);
   });
 
-  it('defaults safety to normal when the 504 body omits or malforms it', async () => {
+  it('always gives an actions array when the 504 body malforms safety', async () => {
     mocks.post.mockRejectedValue(
       axiosError(504, { responseText: FALLBACK_TEXT, safety: { classification: 'normal' } })
     );
@@ -74,6 +74,34 @@ describe('apiService.sendMessage — 55s turn timeout (issue #171)', () => {
 
     // ChatInterface calls .includes() on actions — it must always be an array.
     expect(response.safety.actions).toEqual([]);
+  });
+
+  it('marks safety as not assessed when the 504 body has no verdict (issue #221)', async () => {
+    // The API's timeout body when the turn was cut off before any safety screen concluded.
+    mocks.post.mockRejectedValue(
+      axiosError(504, { sessionId: TIMEOUT_BODY.sessionId, responseText: FALLBACK_TEXT, safetyAssessed: false, error: 'timeout' })
+    );
+
+    const response = await apiService.sendMessage(request);
+
+    expect(response.safety).toEqual({ classification: 'not_assessed', actions: [] });
+    expect(response.safety.classification).not.toBe('normal');
+    expect(response.responseText).toBe(FALLBACK_TEXT);
+  });
+
+  it('passes through a verdict the pipeline had reached before the timeout', async () => {
+    mocks.post.mockRejectedValue(
+      axiosError(504, {
+        responseText: FALLBACK_TEXT,
+        safetyAssessed: true,
+        safety: { classification: 'red_flag', actions: [], source: 'urgency_indicators' },
+        error: 'timeout',
+      })
+    );
+
+    const response = await apiService.sendMessage(request);
+
+    expect(response.safety).toEqual({ classification: 'red_flag', actions: [] });
   });
 
   it('rethrows a bodyless 504 from the infrastructure', async () => {

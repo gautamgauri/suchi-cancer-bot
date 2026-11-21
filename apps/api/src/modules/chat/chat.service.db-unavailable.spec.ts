@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { ChatService } from "./chat.service";
+import { ChatService, TurnProgress } from "./chat.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
@@ -358,5 +358,56 @@ describe("ChatService with over-length input (PR #202)", () => {
     );
     const userRow = created.find((d) => d.role === "user");
     expect(userRow.text).toHaveLength(4096);
+  });
+});
+
+describe("ChatService progress verdict when the session read stalls (#221 with PR #202)", () => {
+  // The screens run before the session read, so a turn cut off there, or
+  // answered without a session, reports the real verdict.
+  const URGENT_ONLY = "my father is rapidly worsening since yesterday";
+
+  beforeEach(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([
+    [EMERGENCY, { classification: "red_flag", source: "emergency_fast_path" }],
+    [SELF_HARM, { classification: "self_harm", source: "safety_module" }],
+    [MH_CRISIS, { classification: "mental_health_crisis", source: "mental_health" }],
+  ])("a no-session reply to %p records its verdict", async (text, verdict) => {
+    const svc = buildService(makePrisma("all-hang"));
+    const progress: TurnProgress = {};
+    const r = await within(
+      svc.handle(
+        { sessionId: "00000000-0000-4000-8000-000000000004", channel: "web", locale: LOCALE, userText: text } as any,
+        undefined,
+        progress,
+      ),
+      REPLY_BOUND_MS,
+    );
+    expect(r.status).toBe("ok");
+    expect(progress.safety).toEqual(verdict);
+  });
+
+  it.each([
+    [URGENT_ONLY, { classification: "red_flag", source: "urgency_indicators" }],
+    [ORDINARY, { classification: "normal", source: "safety_module" }],
+  ])("a turn stalled in the session read already reports the verdict for %p", async (text, verdict) => {
+    const svc = buildService(makePrisma("all-hang"));
+    const progress: TurnProgress = {};
+    const r = await within(
+      svc.handle(
+        { sessionId: "00000000-0000-4000-8000-000000000005", channel: "web", locale: LOCALE, userText: text } as any,
+        undefined,
+        progress,
+      ),
+      200,
+    );
+    // Still waiting on the database, as before, but the verdict is known.
+    expect(r.status).toBe("pending");
+    expect(progress.safety).toEqual(verdict);
   });
 });

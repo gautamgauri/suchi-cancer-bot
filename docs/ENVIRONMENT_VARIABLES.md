@@ -1,6 +1,8 @@
 # Environment Variables Configuration
 
-This document reflects the backend runtime config in `apps/api/src/config/env.validation.ts` plus module-level optional vars currently used in code.
+This document describes the backend runtime config in `apps/api/src/config/env.validation.ts` plus module-level optional vars currently used in code.
+
+The schema file is the authoritative list. This document does not yet cover every variable in it. The WhatsApp, Meta, LinkedIn, Langfuse and Sarvam variables are described only by the comments in the schema. Production values are set in `cloudbuild.yaml`.
 
 ## API Variables
 
@@ -14,18 +16,19 @@ This document reflects the backend runtime config in `apps/api/src/config/env.va
 
 ### LLM provider configuration
 
-Set `LLM_PROVIDER` to one of: `gemini` (default), `openai`, `deepseek`.
+Gemini is the only live provider. Production sets `LLM_PROVIDER=gemini`, which is also the default. The `openai` and `deepseek` values are legacy code paths. Nothing in production uses them and no new work should depend on them.
 
-| Provider | Required Variables | Optional Variables |
-|----------|--------------------|--------------------|
-| `gemini` | `GOOGLE_CLOUD_PROJECT` | `VERTEX_AI_LOCATION` (default `us-central1`), `GEMINI_MODEL` (default `gemini-2.5-flash`) |
-| `openai` | `OPENAI_API_KEY` | `LLM_TIMEOUT_MS` |
-| `deepseek` | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL` (default `https://api.deepseek.com/v1`), `DEEPSEEK_MODEL` (default `deepseek-chat`), `LLM_TIMEOUT_MS` |
+| Provider | Status | Required variables | Optional variables |
+|----------|--------|--------------------|--------------------|
+| `gemini` | Live | `GEMINI_API_KEY` or `GOOGLE_CLOUD_PROJECT` | `VERTEX_AI_LOCATION` (default `us-central1`), `GEMINI_MODEL` (default `gemini-2.5-flash`), `LLM_TIMEOUT_MS` |
+| `openai` | Legacy, unused | `OPENAI_API_KEY` | `LLM_TIMEOUT_MS` |
+| `deepseek` | Legacy, unused | `DEEPSEEK_API_KEY` | `DEEPSEEK_BASE_URL` (default `https://api.deepseek.com/v1`), `DEEPSEEK_MODEL` (default `deepseek-chat`), `LLM_TIMEOUT_MS` |
 
 Notes:
-- `LLM_PROVIDER` defaults to `gemini`.
-- When `LLM_PROVIDER=gemini`, startup fails if `GOOGLE_CLOUD_PROJECT` is missing.
-- `LLM_TIMEOUT_MS` defaults to `15000` in env validation.
+- When `GEMINI_API_KEY` is set, the service calls the Google AI API. Without it, the service uses Vertex AI with `GOOGLE_CLOUD_PROJECT`. Production mounts `GEMINI_API_KEY`.
+- When `LLM_PROVIDER=gemini`, startup fails only if both `GEMINI_API_KEY` and `GOOGLE_CLOUD_PROJECT` are missing.
+- `LLM_TIMEOUT_MS` defaults to `15000` in env validation. Production sets `45000`.
+- `cloudbuild.yaml` still mounts `DEEPSEEK_API_KEY` from the secret `deepseek-api-key`. The secret must exist for a deploy to succeed, although the API does not use it.
 
 ### Core optional variables (validated)
 
@@ -36,7 +39,7 @@ Notes:
 | `RATE_LIMIT_TTL_SEC` | `60` (module fallback) | Rate-limit window |
 | `RATE_LIMIT_REQ_PER_TTL` | `20` (module fallback) | Requests per window |
 | `EMBEDDING_API_KEY` | unset | Embedding provider key |
-| `EMBEDDING_MODEL` | `text-embedding-004` | Embedding model |
+| `EMBEDDING_MODEL` | `text-embedding-004` | Embedding model. Production sets `gemini-embedding-001`. |
 | `REVIEW_COPILOT_MODE` | `off` | Review mode: `off`, `shadow`, `active` |
 
 ### Voice optional variables (validated)
@@ -48,7 +51,7 @@ Notes:
 | `STT_LANGUAGE_CODE` | `hi-IN` |
 | `STT_MODEL` | `latest_short` |
 | `STT_CONFIDENCE_THRESHOLD` | `0.6` |
-| `TTS_VOICE_NAME` | `hi-IN-Neural2-A` |
+| `TTS_VOICE_NAME` | `hi-IN-Neural2-D` |
 | `TTS_SPEAKING_RATE` | `0.9` |
 | `VOICE_MAX_AUDIO_SIZE_BYTES` | `2097152` |
 | `VOICE_MAX_AUDIO_DURATION_SEC` | `60` |
@@ -75,16 +78,18 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/suchi?schema=public
 ADMIN_BASIC_USER=admin
 ADMIN_BASIC_PASS=change_me_now
 
-# LLM (default path)
+# LLM. Set GEMINI_API_KEY for the Google AI API (as production does),
+# or GOOGLE_CLOUD_PROJECT for Vertex AI with Application Default Credentials.
 LLM_PROVIDER=gemini
-GOOGLE_CLOUD_PROJECT=your-gcp-project
-VERTEX_AI_LOCATION=us-central1
+GEMINI_API_KEY=your_gemini_api_key
+# GOOGLE_CLOUD_PROJECT=your-gcp-project
+# VERTEX_AI_LOCATION=us-central1
 GEMINI_MODEL=gemini-2.5-flash
 LLM_TIMEOUT_MS=15000
 
-# Embeddings
+# Embeddings (production uses gemini-embedding-001)
 EMBEDDING_API_KEY=your_embedding_api_key
-EMBEDDING_MODEL=text-embedding-004
+EMBEDDING_MODEL=gemini-embedding-001
 
 # Review Copilot rollout control
 REVIEW_COPILOT_MODE=off
@@ -119,23 +124,37 @@ Local development:
 postgresql://USERNAME:PASSWORD@localhost:5432/DATABASE_NAME
 ```
 
-## Secret Manager Mapping (example)
+## Secret Manager Mapping
 
-| Env Var | Suggested Secret Name |
-|---------|------------------------|
+These are the secrets `cloudbuild.yaml` mounts on `suchi-api`, by name only. That file is the authoritative list. Every name must exist in Secret Manager or the deploy fails. Names are case-sensitive.
+
+| Env var | Secret name |
+|---------|-------------|
 | `DATABASE_URL` | `database-url` |
+| `DEEPSEEK_API_KEY` | `deepseek-api-key` (legacy, still mounted) |
+| `EMBEDDING_API_KEY` | `embedding-api-key` |
 | `ADMIN_BASIC_USER` | `admin-basic-user` |
 | `ADMIN_BASIC_PASS` | `admin-basic-pass` |
-| `OPENAI_API_KEY` | `openai-api-key` |
-| `DEEPSEEK_API_KEY` | `deepseek-api-key` |
-| `EMBEDDING_API_KEY` | `embedding-api-key` |
-| `VOYAGE_API_KEY` | `voyage-api-key` |
+| `SMTP_PASS` | `SMTP_PASS` |
+| `LANGFUSE_PUBLIC_KEY` | `langfuse-public-key` |
+| `LANGFUSE_SECRET_KEY` | `langfuse-secret-key` |
+| `NAVIGATOR_APPROVAL_SECRET` | `NAVIGATOR_APPROVAL_SECRET` |
+| `CONTENT_APPROVAL_SECRET` | `CONTENT_APPROVAL_SECRET` |
+| `META_PAGE_ACCESS_TOKEN` | `META_PAGE_ACCESS_TOKEN` |
+| `META_PAGE_ID` | `META_PAGE_ID` |
+| `META_IG_USER_ID` | `META_IG_USER_ID` |
+| `GEMINI_API_KEY` | `GEMINI_API_KEY` |
+| `DISTRIBUTION_APPROVAL_SECRET` | `DISTRIBUTION_APPROVAL_SECRET` |
+| `META_WABA_PHONE_NUMBER_ID` | `META_WABA_PHONE_NUMBER_ID` |
+| `META_WABA_TOKEN` | `META_WABA_TOKEN` |
+| `META_APP_SECRET` | `META_APP_SECRET` |
+| `WHATSAPP_VERIFY_TOKEN` | `WHATSAPP_VERIFY_TOKEN` |
+| `LINKEDIN_ACCESS_TOKEN` | `LINKEDIN_ACCESS_TOKEN` |
+| `LINKEDIN_AUTHOR_URN` | `LINKEDIN_AUTHOR_URN` |
 
-Example deployment snippet:
+`cloudbuild.yaml` also sets ten names that the schema does not declare. They are `SCHEDULER_OIDC_AUDIENCE`, `SCHEDULER_SA_EMAIL`, `DAILY_REPORT_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `QUEUE_GCS_BUCKET`, `NAVIGATOR_APPROVAL_SECRET` and `CONTENT_APPROVAL_SECRET`. The code reads them directly from the environment.
 
-```bash
---set-secrets "DATABASE_URL=database-url:latest,ADMIN_BASIC_USER=admin-basic-user:latest,ADMIN_BASIC_PASS=admin-basic-pass:latest"
-```
+Rotation and the notes on each secret are in `docs/OPERATIONS.md` section 7.
 
 ## Security Notes
 

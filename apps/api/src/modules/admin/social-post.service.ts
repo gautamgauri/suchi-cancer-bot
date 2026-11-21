@@ -430,7 +430,7 @@ REVIEW: {one-sentence description of the specific concern}`,
       if (res.status === 401) {
         this.logger.error(
           `LinkedIn post failed 401 — access token expired or revoked. ` +
-          `Re-run the OAuth flow and update the linkedin-access-token secret: see ${LINKEDIN_DOC}. ` +
+          `Re-run the OAuth flow and update the LINKEDIN_ACCESS_TOKEN secret: see ${LINKEDIN_DOC}. ` +
           `Response: ${errText.slice(0, 200)}`,
         );
         return { success: false, error: `token_expired (HTTP 401) — see ${LINKEDIN_DOC}` };

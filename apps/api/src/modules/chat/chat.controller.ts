@@ -2,7 +2,7 @@ import { Body, Controller, GatewayTimeoutException, InternalServerErrorException
 import { Throttle } from "@nestjs/throttler";
 import { SafetyRoute } from "../../common/guards/client-ip-throttler.guard";
 import { ChatDto } from "./dto";
-import { ChatService } from "./chat.service";
+import { ChatService, TurnProgress } from "./chat.service";
 import { cleanResponseForDisplay } from "./display-text-cleaner";
 
 @Controller("chat")
@@ -19,6 +19,8 @@ export class ChatController {
   @SafetyRoute()
   async send(@Body() dto: ChatDto) {
     const abortController = new AbortController();
+    // Filled in by the pipeline as it concludes each stage; read on timeout.
+    const progress: TurnProgress = {};
     const timeoutId = setTimeout(() => {
       abortController.abort();
     }, this.REQUEST_TIMEOUT_MS);
@@ -26,7 +28,7 @@ export class ChatController {
     try {
       // Race between the actual request and timeout
       const result = await Promise.race([
-        this.chat.handle(dto, abortController.signal),
+        this.chat.handle(dto, abortController.signal, progress),
         new Promise((_, reject) => {
           abortController.signal.addEventListener('abort', () =>
             reject(new Error('REQUEST_TIMEOUT'))
@@ -59,7 +61,13 @@ export class ChatController {
             "2. **Indian Cancer Society Helpline**: Call 1800-22-1951 (toll-free) for guidance.\n" +
             "3. **Emergency**: If you're experiencing severe symptoms (coughing blood, sudden severe pain, difficulty breathing), call 112 or 108 for an ambulance.\n\n" +
             "Please try asking your question again — I should be able to give you a more detailed, referenced answer.",
-          safety: { classification: "normal" as const, actions: [] },
+          // Issue #221: report only what the pipeline actually concluded. This
+          // used to be a hardcoded "normal", which told every consumer that an
+          // urgent turn cut off mid-pipeline had been assessed as routine.
+          // No escalation actions are attached here: the reply above is the
+          // unchanged timeout copy, and changing what a patient sees on this
+          // path is an SCCF decision (RELIABILITY_BACKLOG P1-11).
+          ...timeoutSafety(progress),
           error: "timeout"
         });
       }
@@ -73,4 +81,21 @@ export class ChatController {
       throw new InternalServerErrorException("An error occurred processing your request");
     }
   }
+}
+
+/**
+ * The `safety` field of the 504 timeout body: the classification the pipeline
+ * had reached when the turn was cut off, or nothing if it had reached none.
+ * `assessed: false` makes the absence explicit for QA and monitoring readers.
+ */
+export function timeoutSafety(progress: TurnProgress): Record<string, unknown> {
+  if (!progress.safety) return { safetyAssessed: false };
+  return {
+    safetyAssessed: true,
+    safety: {
+      classification: progress.safety.classification,
+      actions: [],
+      source: progress.safety.source,
+    },
+  };
 }

@@ -22,6 +22,7 @@ import { EmergencyFastPathResult, evaluateEmergencyFastPath } from "../safety/em
 import { SafetyClassification } from "../safety/safety.rules";
 import { SafetyService } from "../safety/safety.service";
 import { SafetyResult } from "../safety/safety.templates";
+import type { TurnProgress } from "./chat.service";
 import { boundUserText } from "./dto";
 import { EmpathyDetector, MentalHealthNeedResult } from "./empathy-detector";
 import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
@@ -98,6 +99,39 @@ export function screenDeterministicSafety(text: string, deps: SafetyScreenDeps):
   else if (mentalHealth.needsSupport) gate = "mental_health_support";
 
   return { gate, emergency, safety, hasUrgencyIndicators, mentalHealth };
+}
+
+/**
+ * Write the turn's safety verdict to `progress` (issue #221). Called once,
+ * straight after the screen, before any I/O, so ChatController's timeout body
+ * and a no-session reply both report what the screens concluded. Precedence
+ * is the pipeline's: fast path, safety module, urgency, mental health.
+ *
+ * This is the only place "normal" is written, and it is written only after
+ * all four screens have run. An unset `progress.safety` still means the turn
+ * was not assessed.
+ */
+export function recordSafetyVerdict(progress: TurnProgress | undefined, screen: DeterministicSafetyScreen): void {
+  if (!progress) return;
+  switch (screen.gate) {
+    case "emergency":
+      progress.safety = { classification: "red_flag", source: "emergency_fast_path" };
+      return;
+    case "safety":
+      progress.safety = { classification: screen.safety.classification, source: "safety_module" };
+      return;
+    case "urgency":
+      progress.safety = { classification: "red_flag", source: "urgency_indicators" };
+      return;
+    case "mental_health_crisis":
+      progress.safety = { classification: "mental_health_crisis", source: "mental_health" };
+      return;
+    case "mental_health_support":
+      progress.safety = { classification: "mental_health_support", source: "mental_health" };
+      return;
+    default:
+      progress.safety = { classification: "normal", source: "safety_module" };
+  }
 }
 
 /** Gates whose reply is a fixed template that needs no session, retrieval or LLM. */
@@ -232,6 +266,46 @@ export function buildDeterministicSafetyReply(
     default:
       return null;
   }
+}
+
+/**
+ * The deterministic safety reply for a message whose session could not be
+ * resolved, or null when no deterministic gate fires. Pure: no database, no
+ * logging. Same preprocessing, screen and templates as ChatService.handle,
+ * with the request's locale for both the disclaimer and the templates.
+ */
+export function buildSessionFreeSafetyReply(
+  input: { userText: string; channel?: string; inputMode?: string; locale?: string | null },
+  deps: SafetyScreenDeps = standaloneScreenDeps(),
+): DeterministicSafetyReply | null {
+  const userText = preprocessUserText(input.userText, input.channel, input.inputMode);
+  const screen = screenDeterministicSafety(userText, deps);
+  if (!repliesWithoutSession(screen.gate)) return null;
+  return buildDeterministicSafetyReply(screen, {
+    userText,
+    disclaimerLocale: input.locale,
+    templateLocale: input.locale,
+    isFirstMessage: false,
+  });
+}
+
+/**
+ * True when any of the four deterministic checks would turn a message into a
+ * safety, urgent or mental-health template. Used by the WhatsApp stale-message
+ * guard (AGENTS.md section 1.1): such a message must run the pipeline however
+ * late it arrives.
+ *
+ * Both the raw text and the text after the pipeline's preprocessing are
+ * checked. Typed input is spell-corrected before any check ("kemotherapy" is
+ * matched as "chemotherapy"), so the guard is never blind to something the
+ * pipeline would escalate.
+ */
+export function flaggedByDeterministicSafetyChecks(
+  text: string,
+  deps: SafetyScreenDeps = standaloneScreenDeps(),
+  channel: string = "whatsapp",
+): boolean {
+  return [text, preprocessUserText(text, channel)].some((t) => screenDeterministicSafety(t, deps).gate !== "none");
 }
 
 // The checks hold no state, so one set serves callers outside Nest's DI (the

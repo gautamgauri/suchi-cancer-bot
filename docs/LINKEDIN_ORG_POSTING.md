@@ -12,7 +12,7 @@ Related: issue #27, `docs/RELIABILITY_BACKLOG.md` (P2-6),
 | What | Value |
 | --- | --- |
 | Env vars | `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_AUTHOR_URN` |
-| Secret Manager names | `linkedin-access-token`, `linkedin-author-urn` |
+| Secret Manager names | `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_AUTHOR_URN` |
 | GCP project | `gen-lang-client-0202543132` |
 | API | `POST https://api.linkedin.com/rest/posts` (versioned Posts API) |
 | Scope needed | `w_organization_social` (+ `r_organization_social` for step 3 only) |
@@ -100,7 +100,7 @@ The code expires in 30 minutes and is single-use.
 # recommended: the token goes straight into Secret Manager over the child
 # process's stdin — it never reaches stdout, argv, a shell history or a temp file
 npm run linkedin:auth -- exchange --code <code> \
-  --to-secret-manager linkedin-access-token
+  --to-secret-manager LINKEDIN_ACCESS_TOKEN
 ```
 
 **The token is never printed.** The script prints only metadata — granted
@@ -129,14 +129,14 @@ terminal variant, so a printing sink cannot be expressed, and
 `console.*` call is handed a token value. Please do not add the flag back.
 
 If a refresh token comes back it goes to a sibling destination —
-`linkedin-access-token-refresh` for `--to-secret-manager`, `<path>.refresh` for
+`LINKEDIN_ACCESS_TOKEN-refresh` for `--to-secret-manager`, `<path>.refresh` for
 `--out` — so neither value overwrites the other.
 
 With `--out`, step 3's manual `gcloud` path still works, and the file is already
 newline-free:
 
 ```bash
-gcloud secrets versions add linkedin-access-token --data-file=<path> \
+gcloud secrets versions add LINKEDIN_ACCESS_TOKEN --data-file=<path> \
   --project=gen-lang-client-0202543132
 shred -u <path>    # or rm; the file is a live 60-day credential
 ```
@@ -153,8 +153,8 @@ Naming matches the `--set-secrets` entries in `cloudbuild.yaml`.
 PROJECT=gen-lang-client-0202543132
 
 # First time only — create the secret containers
-gcloud secrets create linkedin-access-token --replication-policy=automatic --project=$PROJECT
-gcloud secrets create linkedin-author-urn  --replication-policy=automatic --project=$PROJECT
+gcloud secrets create LINKEDIN_ACCESS_TOKEN --replication-policy=automatic --project=$PROJECT
+gcloud secrets create LINKEDIN_AUTHOR_URN  --replication-policy=automatic --project=$PROJECT
 ```
 
 `--to-secret-manager` in step 2 already added the access-token version, so only
@@ -162,7 +162,7 @@ the author URN is left — it is not a secret value, just a configuration id:
 
 ```bash
 printf %s 'urn:li:organization:<id>' | \
-  gcloud secrets versions add linkedin-author-urn --data-file=- --project=$PROJECT
+  gcloud secrets versions add LINKEDIN_AUTHOR_URN --data-file=- --project=$PROJECT
 ```
 
 Manual alternative, if you used `--out` in step 2 (never edit a version in
@@ -170,7 +170,7 @@ place — always add a new one):
 
 ```bash
 printf %s '<access token>' | \
-  gcloud secrets versions add linkedin-access-token --data-file=- --project=$PROJECT
+  gcloud secrets versions add LINKEDIN_ACCESS_TOKEN --data-file=- --project=$PROJECT
 ```
 
 `printf %s` rather than `echo` — a trailing newline inside the token value
@@ -218,7 +218,7 @@ revision — see `docs/DEPLOYMENT.md`).
    - `403 — the token lacks w_organization_social, or the authorising member is
      not an ADMINISTRATOR/CONTENT_ADMIN` → the Community Management product is
      not approved on the app, or the member lost the page role.
-   - `invalid_author_urn` → `linkedin-author-urn` is not a full URN.
+   - `invalid_author_urn` → `LINKEDIN_AUTHOR_URN` is not a full URN.
    - `422` → usually the commentary; the service escapes LinkedIn "little text"
      reserved characters (`\ | { } @ [ ] ( ) < > # * _ ~`), which is why
      hashtags in LinkedIn copy render as literal text rather than links.
@@ -242,7 +242,7 @@ Note that refreshing does not extend the *refresh* token (365 days from first
 issue), so a full re-authorisation is still needed roughly once a year.
 
 Rotation writes a new secret version; nothing in the repo or the Cloud Run
-config changes. Prefer `--to-secret-manager linkedin-access-token` so the value
+config changes. Prefer `--to-secret-manager LINKEDIN_ACCESS_TOKEN` so the value
 never lands anywhere else.
 
 **Set a recurring calendar reminder at 55 days** ("Rotate Suchi LinkedIn token —
