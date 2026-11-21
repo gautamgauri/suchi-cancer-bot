@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizeSourceCode } from '../sessions/source-code';
 
 export interface DailyReportMetrics {
   dateRange: {
@@ -62,6 +63,32 @@ export interface DailyReportMetrics {
   userContextBreakdown: Array<{ context: string; count: number }>;
   cancerTypeBreakdown: Array<{ cancerType: string; count: number }>;
   geoBreakdown: Array<{ country: string; count: number }>;
+
+  // Sessions started in the window, by the attribution code recorded on
+  // session_created. Counts only. Eval sessions are excluded.
+  sessionsBySource: Array<{ source: string; count: number }>;
+}
+
+/** Label used when a session carries no attribution code. */
+export const NO_SOURCE_LABEL = '(none)';
+
+/**
+ * Tally session_created payloads by source. `src` wins. A session with only
+ * a utm_source is counted as `utm:<value>`. Values are re-checked with the
+ * same rule used on write, so nothing odd from older rows is echoed.
+ */
+export function tallySessionsBySource(payloads: unknown[]): Array<{ source: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const p of payloads) {
+    const obj = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>;
+    const src = normalizeSourceCode(obj.src);
+    const utm = normalizeSourceCode(obj.utmSource);
+    const key = src ?? (utm ? `utm:${utm}` : NO_SOURCE_LABEL);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source));
 }
 
 @Injectable()
@@ -274,6 +301,8 @@ export class DailyReportService {
     // Geo breakdown - disabled until city/country migration is applied to production
     const geoBreakdown: Array<{ country: string; count: number }> = [];
 
+    const sessionsBySource = await this.getSessionsBySource(realSessionIds);
+
     return {
       dateRange: { from, to },
       totalQueries,
@@ -305,7 +334,22 @@ export class DailyReportService {
       userContextBreakdown,
       cancerTypeBreakdown,
       geoBreakdown,
+      sessionsBySource,
     };
+  }
+
+  /**
+   * Sessions started in the window by attribution code. Reads only the
+   * session_created payload, which holds channel, coarse geo, the eval flag
+   * and the validated codes. No message text is touched.
+   */
+  private async getSessionsBySource(realSessionIds: string[]): Promise<Array<{ source: string; count: number }>> {
+    if (realSessionIds.length === 0) return [];
+    const events = await this.prisma.analyticsEvent.findMany({
+      where: { eventName: 'session_created', sessionId: { in: realSessionIds } },
+      select: { payload: true },
+    });
+    return tallySessionsBySource(events.map((e) => e.payload));
   }
 
   /**
