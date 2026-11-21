@@ -11,6 +11,8 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from './BaseLayout.astro';
 import VideoCard from '../components/VideoCard.astro';
 import videosData from '../content/videos.json';
+import { chatUrlFor } from '../lib/chat-link';
+import { articleJsonLd, localeToLang, type Crumb } from '../lib/seo';
 
 interface VideoEntry {
   youtubeId: string;
@@ -95,6 +97,34 @@ const relatedVideos: VideoEntry[] = (() => {
     .slice(0, 3);
 })();
 
+// Hub page for the breadcrumb trail. Nested test/treatment/side-effect
+// routes have no index of their own, so they point at /tests-treatment/.
+const HUB_FOR_CONTENT_TYPE: Record<string, Crumb> = {
+  cancer_type: { name: 'Cancer Types', path: '/cancer-types/' },
+  symptom: { name: 'Symptoms', path: '/symptoms/' },
+  treatment: { name: 'Tests & Treatment', path: '/tests-treatment/' },
+  test: { name: 'Tests & Treatment', path: '/tests-treatment/' },
+  side_effect: { name: 'Tests & Treatment', path: '/tests-treatment/' },
+  journey: { name: 'Living With Cancer', path: '/living-with-cancer/' },
+  find_care: { name: 'Find Care', path: '/find-care/' },
+};
+const pagePath = Astro.url.pathname;
+const hub = HUB_FOR_CONTENT_TYPE[article.data.content_type] ?? { name: 'Resources', path: '/resources/' };
+const breadcrumbs: Crumb[] = [
+  { name: 'Home', path: '/' },
+  hub,
+  { name: article.data.title, path: pagePath },
+];
+const pageLang = localeToLang(article.data.locale);
+const structuredData = [
+  articleJsonLd({
+    title: article.data.title,
+    summary: article.data.summary,
+    path: pagePath,
+    locale: article.data.locale,
+  }),
+];
+
 type SourceGroup = { doc_id: string; source: string; count: number };
 const sourceGroups: SourceGroup[] = (() => {
   const map = new Map<string, SourceGroup>();
@@ -107,7 +137,14 @@ const sourceGroups: SourceGroup[] = (() => {
 })();
 ---
 
-<BaseLayout title={article.data.title} description={article.data.summary}>
+<BaseLayout
+  title={article.data.title}
+  description={article.data.summary}
+  lang={pageLang}
+  ogType="article"
+  jsonLd={structuredData}
+  breadcrumbs={breadcrumbs}
+>
   <article class="article-page">
     <div class="article-inner">
       <h1>{article.data.title}</h1>
@@ -147,7 +184,7 @@ const sourceGroups: SourceGroup[] = (() => {
       <section class="ask-suchi-cta">
         <h2>Ask Suchi</h2>
         <p>Still unsure about something? You can ask Suchi for help with questions about your situation — symptoms, tests, treatment plans, or finding care near you.</p>
-        <a class="ask-suchi-button" href="https://chat.suchitracancercare.org" rel="noopener">Open Suchi chat →</a>
+        <a class="ask-suchi-button" href={chatUrlFor(Astro.url.pathname)} rel="noopener">Open Suchi chat →</a>
       </section>
 
       {sourceGroups.length > 0 && (

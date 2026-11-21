@@ -142,3 +142,7 @@ distribution/packs/
 
 
 
+
+# Local agent worktrees and browser-automation scratch output
+.claude/worktrees/
+.playwright-mcp/

@@ -137,6 +137,7 @@ describe("WhatsApp rapid-sequential inbound (issue #94)", () => {
     svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
     jest.spyOn(svc, "sendText").mockImplementation(async (to: string, text: string) => {
       sent.push({ to, text });
+      return 1;
     });
     jest.spyOn(svc, "verifySignature").mockReturnValue(true);
     ctrl = new WhatsAppController(svc);

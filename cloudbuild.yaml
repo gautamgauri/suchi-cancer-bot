@@ -114,6 +114,13 @@ steps:
       - '2'
       - '--port'
       - '8080'
+      # Create the revision without sending it traffic. The service used to follow
+      # the latest revision, so this step put every new revision in front of all
+      # users before any check had run. With this flag the serving revision keeps
+      # 100% until an operator has checked the new one and promoted it by name
+      # (docs/OPERATIONS_RUNBOOK.md section 4). The first build with this flag
+      # also pins the service to the revision that was serving at the time.
+      - '--no-traffic'
       - '--add-cloudsql-instances'
       - '${_CLOUDSQL_CONNECTION_NAME}'
       - '--set-env-vars'

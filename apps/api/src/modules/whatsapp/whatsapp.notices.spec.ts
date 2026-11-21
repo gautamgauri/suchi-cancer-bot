@@ -64,7 +64,7 @@ describe("WhatsApp fixed notices", () => {
     chat = { handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }) };
     const sessions: any = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
     svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
-    sendText = jest.spyOn(svc, "sendText").mockResolvedValue(undefined);
+    sendText = jest.spyOn(svc, "sendText").mockResolvedValue(1);
   });
 
   afterEach(() => {
@@ -82,6 +82,20 @@ describe("WhatsApp fixed notices", () => {
         expect(hindi).toMatch(/[ऀ-ॿ]/);
         expect(english).toMatch(/^[\x20-\x7E]+$/);
       }
+    });
+
+    it("matches the typed-messages wording the owner approved on 21 November 2026", () => {
+      expect(UNSUPPORTED_TYPE_NOTICE).toBe(
+        "फ़िलहाल सुचि पर केवल टाइप किए हुए संदेश पढ़े जा सकते हैं। कृपया अपना सवाल लिखकर भेजें।\n\n" +
+          "Suchi can only read typed messages for now. Please type your question and send it.",
+      );
+    });
+
+    it("spells the bot's name सुचि wherever it appears in Devanagari", () => {
+      for (const text of [UNSUPPORTED_TYPE_NOTICE, STALE_MESSAGE_NOTICE]) {
+        expect(text).not.toMatch(/सुची|सूचि|सूची/);
+      }
+      expect(UNSUPPORTED_TYPE_NOTICE).toContain("सुचि");
     });
   });
 
@@ -194,6 +208,8 @@ describe("WhatsApp fixed notices", () => {
       sendText.mockRejectedValueOnce(new Error("graph down"));
       await svc.processInbound(svc.parseInbound(webhook([{ id: "w1", from: CONTACT_A, type: "image" }])));
       expect(ledgerStatus("w1")).toBe("failed");
+      // No fallback reply after a failed notice.
+      expect(sendText).toHaveBeenCalledTimes(1);
 
       sendText.mockClear();
       await svc.processInbound(svc.parseInbound(webhook([{ id: "w2", from: CONTACT_A, type: "image" }])));
@@ -505,6 +521,111 @@ describe("WhatsApp fixed notices", () => {
     it("treats a timestamp in the future as fresh", () => {
       const msg: InboundMessage = { wamid: "w1", from: CONTACT_A, text: "x", sentAt: NOW_MS / 1000 + 600 };
       expect(noticeKindFor(msg, NOW_MS, 30 * 60_000)).toBeNull();
+    });
+  });
+
+  // The notice path through the real sendText (issue #231 behaviour): Meta
+  // rejects or fails, sendText retries a transient first-part failure once and
+  // then throws WhatsAppDeliveryError.
+  describe("notice delivery failures", () => {
+    let fetchMock: jest.Mock;
+    const okResponse = () => ({ ok: true, status: 200, text: async () => "{}" });
+    const statusResponse = (status: number) => ({
+      ok: false,
+      status,
+      text: async () => '{"error":{"message":"synthetic","code":190}}',
+    });
+    const image = (id: string) => svc.parseInbound(webhook([{ id, from: CONTACT_A, type: "image" }]));
+    const row = (wamid: string) => ledger.rows.get(inboundLedgerId(wamid)).payload;
+
+    beforeEach(() => {
+      // sendText's retry pause is a real setTimeout.
+      jest.useRealTimers();
+      sendText.mockRestore();
+      process.env.META_WABA_PHONE_NUMBER_ID = "PNID";
+      process.env.META_WABA_TOKEN = "tok";
+      fetchMock = jest.fn();
+      jest.spyOn(global, "fetch").mockImplementation(fetchMock as any);
+      svc.retryDelayMs = 0;
+    });
+
+    afterEach(() => {
+      delete process.env.META_WABA_PHONE_NUMBER_ID;
+      delete process.env.META_WABA_TOKEN;
+    });
+
+    it("a 401 is not retried, is recorded as a delivery failure with the notice kind, sends no fallback and frees the slot", async () => {
+      fetchMock.mockResolvedValueOnce(statusResponse(401));
+      await svc.processInbound(image("w1"));
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(row("w1")).toMatchObject({
+        status: "failed",
+        failedStage: "delivery",
+        httpStatus: 401,
+        metaErrorCode: 190,
+        partsSent: 0,
+        notice: "unsupported_type",
+        noticeSent: false,
+      });
+      expect(chat.handle).not.toHaveBeenCalled();
+
+      fetchMock.mockResolvedValueOnce(okResponse());
+      await svc.processInbound(image("w2"));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body).text.body).toBe(UNSUPPORTED_TYPE_NOTICE);
+      expect(row("w2")).toMatchObject({ status: "processed", notice: "unsupported_type", noticeSent: true });
+    });
+
+    it("a 500 followed by success on the retry counts as sent and keeps the slot", async () => {
+      fetchMock.mockResolvedValueOnce(statusResponse(500)).mockResolvedValueOnce(okResponse());
+      await svc.processInbound(image("w1"));
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(row("w1")).toMatchObject({ status: "processed", notice: "unsupported_type", noticeSent: true });
+      expect(row("w1").failedStage).toBeUndefined();
+
+      await svc.processInbound(image("w2"));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(row("w2")).toMatchObject({ status: "processed", notice: "unsupported_type", noticeSent: false });
+    });
+
+    it("two 500s are recorded as a delivery failure with the notice kind, send no fallback and free the slot", async () => {
+      fetchMock.mockResolvedValueOnce(statusResponse(500)).mockResolvedValueOnce(statusResponse(500));
+      await svc.processInbound(image("w1"));
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(row("w1")).toMatchObject({
+        status: "failed",
+        failedStage: "delivery",
+        httpStatus: 500,
+        notice: "unsupported_type",
+        noticeSent: false,
+      });
+      for (const call of fetchMock.mock.calls) {
+        expect(JSON.parse(call[1].body).text.body).toBe(UNSUPPORTED_TYPE_NOTICE);
+      }
+
+      fetchMock.mockResolvedValueOnce(okResponse());
+      await svc.processInbound(image("w2"));
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(row("w2")).toMatchObject({ status: "processed", noticeSent: true });
+    });
+
+    it("a failed stale notice carries its kind too", async () => {
+      jest.useFakeTimers({ now: NOW_MS, doNotFake: ["setTimeout"] });
+      process.env.WHATSAPP_STALE_MESSAGE_MINUTES = "30";
+      fetchMock.mockResolvedValue(statusResponse(401));
+      await svc.processInbound(
+        svc.parseInbound(
+          webhook([
+            { id: "w1", from: CONTACT_A, type: "text", text: { body: "synthetic question" }, timestamp: secondsAgo(7 * 3600) },
+          ]),
+        ),
+      );
+      expect(chat.handle).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(row("w1")).toMatchObject({ status: "failed", failedStage: "delivery", notice: "stale", noticeSent: false });
     });
   });
 

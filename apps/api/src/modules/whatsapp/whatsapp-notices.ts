@@ -21,7 +21,7 @@ export type NoticeKind = "unsupported_type" | "stale";
 
 /** Sent when a message has no text the bot can read. Hindi first, then English. */
 export const UNSUPPORTED_TYPE_NOTICE =
-  "फ़िलहाल सुचि पर केवल टाइप किए हुए संदेश पढ़े जा सकते हैं। कृपया अपना सवाल टाइप करके भेजें।\n\n" +
+  "फ़िलहाल सुचि पर केवल टाइप किए हुए संदेश पढ़े जा सकते हैं। कृपया अपना सवाल लिखकर भेजें।\n\n" +
   "Suchi can only read typed messages for now. Please type your question and send it.";
 
 /** Sent when a message arrives too long after it was written to answer as fresh. */

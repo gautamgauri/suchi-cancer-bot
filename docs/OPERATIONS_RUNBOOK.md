@@ -88,6 +88,7 @@ Safety-relevant regression suites worth knowing by name:
 | `deploy-landing.yml` | push touching `apps/landing/**`; manual | Astro build → GitHub Pages | Standard |
 | `e2e-tests.yml` ("Web Tests") | PR/push touching `apps/web/**`; manual | Vitest unit tests + Playwright (`@smoke` against dev server, or full suite against a provided `base_url`) | Blocking for web PRs |
 | `eval-tier1.yml` ("Eval Tier1 - Retrieval Quality") | nightly 02:00 UTC; PRs touching rag/evidence/citations/eval paths; manual | Runs `npm run eval:tier1` against live API, uploads `tier1-eval-report-<run>` artifact, emails report when failures > 0 | Job outcome reflects the evaluation result (enforced by "Enforce evaluation status" step). Email delivery uses `continue-on-error` and is a warning annotation only (no job failure). |
+| `uptime.yml` ("Uptime probe") | every 15 minutes; manual | Requests `/v1/health` and the web chat with retries | Fails while either stays unreachable. Sends one outage email after two failed runs in a row, and tries again on the next run if that email was not delivered. Sends one recovery email when it comes back. Runs only in the main repository. |
 
 There is **no CI job that runs the API jest suite**; run it locally before
 merging (tracked as P1-4 in `docs/RELIABILITY_BACKLOG.md`).
@@ -102,8 +103,12 @@ gcloud builds submit --config cloudbuild.yaml .
 ```
 
 - Builds + deploys both `suchi-api` and `suchi-web`.
-- No migration step and no health gate; after a simple-pipeline deploy,
-  verify and promote the latest revision to 100% traffic manually if needed.
+- No migration step and no health gate. The `deploy-api` step passes
+  `--no-traffic`, so the new API revision is created at 0% traffic. Check it,
+  then promote it by name with `gcloud run services update-traffic suchi-api
+  --region us-central1 --project gen-lang-client-0202543132
+  --to-revisions <REVISION>=100`. Until that command runs, users stay on the
+  previous revision. The web service still takes traffic as soon as it deploys.
 
 Gated pipeline (migration job `suchi-db-migrate` + candidate revision at 0%
 traffic + `/v1/health` gate + promotion):
@@ -194,6 +199,10 @@ cancelled DDL rolls back cleanly.
 # Deep health (checks DB connectivity, not just liveness)
 curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health
 # → {"status":"ok", "database":"connected", ...} on success
+# → HTTP 503 with {"status":"error", "database":"disconnected", ...} when the DB is unreachable
+
+# Liveness only (no dependency touched; the route for container probes)
+curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health/live
 
 # Which revision is serving, and with what config (env/secret NAMES only)
 gcloud run services describe suchi-api --region us-central1 \
