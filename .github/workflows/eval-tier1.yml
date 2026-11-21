@@ -27,6 +27,9 @@ name: Eval Tier1 - Retrieval Quality
 #                    are UNSCORED — reported separately, never counted as failed. Unscored
 #                    cases within the tolerance emit a warning annotation and CI stays green
 #                    (they are still not counted as passed).
+#                  * API down     -> job RED with "API unavailable" annotation. The
+#                    health step found the API unreachable, so the eval is skipped
+#                    and no chat request is sent.
 #
 # Log hygiene: SMTP secrets are auto-masked by Actions; the recipient address is
 # additionally masked via ::add-mask:: before any step that could echo it, and the
@@ -131,18 +134,31 @@ jobs:
         working-directory: eval
         run: mkdir -p reports
 
+      # An unreachable API ends the run here: the eval step is skipped and the
+      # final step fails the job with "API unavailable", which is a different
+      # annotation from "Evaluation failed". The step itself stays green so the
+      # status model above keeps a single place that decides the conclusion.
+      # A body with status "error" counts as unavailable too, for revisions that
+      # still answer HTTP 200 when the database is down.
       - name: Check API health
+        id: api-health
         run: |
           API_URL="${{
             github.event.inputs.api_url || 'https://suchi-api-lxiveognla-uc.a.run.app/v1'
           }}"
           echo "Checking API health at: $API_URL"
-          curl -f "$API_URL/health" || echo "Warning: Health check failed, but continuing..."
-        continue-on-error: true
+          if body=$(curl -fsS --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors "$API_URL/health") \
+            && ! echo "$body" | grep -q '"status":"error"'; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::error title=API unavailable::Health check failed at $API_URL/health. The eval was not run."
+          fi
 
       # continue-on-error so the reporting/notification steps below always run;
       # the true evaluation outcome is enforced by the final step of this job.
       - name: Run Tier1 Eval
+        if: steps.api-health.outputs.available == 'true'
         working-directory: eval
         env:
           EVAL_API_BASE_URL: ${{ github.event.inputs.api_url || 'https://suchi-api-lxiveognla-uc.a.run.app/v1' }}
@@ -167,6 +183,7 @@ jobs:
             --report reports/tier1-report.json \
             --eval-outcome "${{ steps.eval-run.outcome }}" \
             --max-unscored-ratio "$EVAL_MAX_UNSCORED_RATIO" \
+            --api-available "${{ steps.api-health.outputs.available }}" \
             --output reports/eval-result.json
 
       # Includes the per-case structured records (*.records.json) and the

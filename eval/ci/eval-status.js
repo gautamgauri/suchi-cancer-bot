@@ -19,6 +19,9 @@
  *                     those cases are UNSCORED, never counted as failed.
  *                     Unscored cases within the tolerance do not fail CI but
  *                     are listed and emit a warning annotation.
+ *   api_unavailable   the API health check failed before the run, so the eval
+ *                     was skipped. An availability state. It outranks every
+ *                     other state because no case was executed.
  *
  * Plain Node (no deps) so it is unit-testable with `node --test` and does not
  * interact with the TypeScript build. Never prints secrets or recipient
@@ -27,6 +30,7 @@
  * Subcommands:
  *   result        --report <tier1-report.json> --eval-outcome <success|failure|...>
  *                 --output <eval-result.json> [--max-unscored-ratio <0..1>]
+ *                 [--api-available <true|false>]
  *                 Writes the machine-readable eval-result.json and emits
  *                 GITHUB_OUTPUT lines (eval_status, should_notify, email_subject).
  *                 The ratio defaults to $EVAL_MAX_UNSCORED_RATIO, then 0.1.
@@ -51,6 +55,7 @@ const EVAL_STATUS = {
   FAILED: 'failed',
   INFRA_ERROR: 'infra_error',
   JUDGE_UNAVAILABLE: 'judge_unavailable',
+  API_UNAVAILABLE: 'api_unavailable',
 };
 
 /** Share of cases allowed to be unscored before the run is declared judge_unavailable. */
@@ -124,6 +129,7 @@ function judgeFacts(report) {
  * rather than pointing at whatever subset happened to fail.
  */
 function deriveEvalStatus(evalStepOutcome, report, opts = {}) {
+  if (opts.apiAvailable === false) return EVAL_STATUS.API_UNAVAILABLE;
   if (!report || !report.summary) return EVAL_STATUS.INFRA_ERROR;
   const maxUnscoredRatio = resolveMaxUnscoredRatio(opts.maxUnscoredRatio, opts.env || process.env);
   const { total, judgeUnscoredCases } = judgeFacts(report);
@@ -136,9 +142,16 @@ function deriveEvalStatus(evalStepOutcome, report, opts = {}) {
 }
 
 /** Build the machine-readable eval-result.json payload. */
-function buildEvalResult({ report, evalStepOutcome, env = process.env, now = new Date(), maxUnscoredRatio }) {
+function buildEvalResult({
+  report,
+  evalStepOutcome,
+  env = process.env,
+  now = new Date(),
+  maxUnscoredRatio,
+  apiAvailable,
+}) {
   const ratio = resolveMaxUnscoredRatio(maxUnscoredRatio, env);
-  const status = deriveEvalStatus(evalStepOutcome, report, { maxUnscoredRatio: ratio, env });
+  const status = deriveEvalStatus(evalStepOutcome, report, { maxUnscoredRatio: ratio, env, apiAvailable });
   const s = (report && report.summary) || {};
   const q = s.retrievalQuality || null;
   const judge = judgeFacts(report);
@@ -198,6 +211,8 @@ function statusBadge(status) {
       return '❌ failed (evaluation failure)';
     case EVAL_STATUS.JUDGE_UNAVAILABLE:
       return '⚠️ judge unavailable (LLM judge could not score the run — infrastructure, not quality)';
+    case EVAL_STATUS.API_UNAVAILABLE:
+      return '⚠️ API unavailable (health check failed, eval not run)';
     default:
       return '⚠️ infrastructure error (no usable eval result)';
   }
@@ -264,6 +279,8 @@ function buildSummaryMarkdown(result, artifactOutcome) {
         ''
       );
     }
+  } else if (e.status === EVAL_STATUS.API_UNAVAILABLE) {
+    lines.push('⚠️ The API health check failed, so the eval was not run. No case was executed.', '');
   } else {
     lines.push('⚠️ No report file was produced by the eval run.', '');
   }
@@ -407,6 +424,13 @@ function evaluateCheck(result) {
           `was unavailable (${reasons}). This is an infrastructure failure, not a quality failure` +
           `${(e.failed || 0) > 0 ? `; ${e.failed} case(s) did fail on checks that were scored` : ''}.`,
       };
+    case EVAL_STATUS.API_UNAVAILABLE:
+      return {
+        exitCode: 1,
+        message:
+          '::error title=API unavailable::The API health check failed, so the eval was not run. ' +
+          'This is an availability failure and says nothing about answer quality.',
+      };
     default:
       return {
         exitCode: 1,
@@ -459,6 +483,8 @@ function main(argv) {
         report,
         evalStepOutcome: args['eval-outcome'],
         maxUnscoredRatio: args['max-unscored-ratio'],
+        // Only an explicit "false" from the workflow's health step skips the run.
+        apiAvailable: args['api-available'] !== 'false',
       });
       const outFile = args.output || 'reports/eval-result.json';
       fs.mkdirSync(path.dirname(outFile), { recursive: true });
