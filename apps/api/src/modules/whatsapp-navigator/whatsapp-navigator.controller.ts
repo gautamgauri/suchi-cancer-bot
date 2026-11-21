@@ -6,6 +6,7 @@ import {
   Logger,
   Post,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { v4 as uuidv4 } from "uuid";
 import { WhatsAppNavigatorFlowService } from "./whatsapp-navigator-flow.service";
 import { NavigatorMessage, NavigatorSession } from "./whatsapp-navigator.types";
@@ -40,6 +41,12 @@ export class WhatsAppNavigatorController {
 
   @Post("webhook")
   @HttpCode(HttpStatus.OK)
+  // Explicit limit: 60 requests a minute per client address (PR #202).
+  // This is a legacy custom JSON endpoint. Meta does not call it (the Meta
+  // webhook is /v1/whatsapp/webhook), and its current caller is unknown. If
+  // the caller turns out to be a single relay server, all of its users share
+  // this one bucket and the limit will need raising.
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   async handleWebhook(
     @Body() body: WebhookRequestDto
   ): Promise<WebhookResponseDto> {

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { SafetyRoute } from "../../common/guards/client-ip-throttler.guard";
 import { Request } from "express";
 import * as geoip from "geoip-lite";
 import { CreateSessionDto } from "./dto";
@@ -11,6 +12,9 @@ export class SessionsController {
   constructor(private readonly sessions: SessionsService) {}
   @Post()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  // A patient needs a session before the first message. Fails open on an
+  // untrusted client address.
+  @SafetyRoute()
   async create(
     @Body() dto: CreateSessionDto,
     @Req() req: Request,

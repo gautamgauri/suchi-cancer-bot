@@ -1,5 +1,6 @@
 import { Body, Controller, GatewayTimeoutException, InternalServerErrorException, Logger, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { SafetyRoute } from "../../common/guards/client-ip-throttler.guard";
 import { ChatDto } from "./dto";
 import { ChatService } from "./chat.service";
 import { cleanResponseForDisplay } from "./display-text-cleaner";
@@ -13,6 +14,9 @@ export class ChatController {
 
   @Post()
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  // Fails open on an untrusted client address, and never refuses a message
+  // that trips a deterministic emergency, self-harm or crisis check.
+  @SafetyRoute()
   async send(@Body() dto: ChatDto) {
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => {

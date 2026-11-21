@@ -22,6 +22,7 @@ import { EmergencyFastPathResult, evaluateEmergencyFastPath } from "../safety/em
 import { SafetyClassification } from "../safety/safety.rules";
 import { SafetyService } from "../safety/safety.service";
 import { SafetyResult } from "../safety/safety.templates";
+import { boundUserText } from "./dto";
 import { EmpathyDetector, MentalHealthNeedResult } from "./empathy-detector";
 import { cleanVoiceInput, correctMedicalSpelling } from "./input-cleaner";
 import { ResponseTemplates } from "./response-templates";
@@ -231,6 +232,43 @@ export function buildDeterministicSafetyReply(
     default:
       return null;
   }
+}
+
+// The checks hold no state, so one set serves callers outside Nest's DI (the
+// rate-limit guard). They are the same classes ChatService is given.
+let standaloneDeps: SafetyScreenDeps | undefined;
+function standaloneScreenDeps(): SafetyScreenDeps {
+  standaloneDeps ??= {
+    safety: new SafetyService(),
+    abstention: new AbstentionService(),
+    empathy: new EmpathyDetector(),
+  };
+  return standaloneDeps;
+}
+
+/**
+ * True when a raw chat request carries text that trips the emergency fast
+ * path, the safety classifier's emergency or self-harm rules, or the
+ * mental-health crisis screen, after the pipeline's own bounding and
+ * preprocessing. The rate limiter lets such a message through, so a patient
+ * who has hit the limit still gets the emergency or crisis reply.
+ *
+ * Refusal templates (dosage, diagnosis and so on) do not count: they are not
+ * urgent, and they would otherwise be a way round the limit.
+ */
+export function isUrgentSafetyText(userText: unknown, channel?: unknown, inputMode?: unknown): boolean {
+  if (typeof userText !== "string" || userText.trim() === "") return false;
+  const text = preprocessUserText(
+    boundUserText(userText),
+    typeof channel === "string" ? channel : undefined,
+    typeof inputMode === "string" ? inputMode : undefined,
+  );
+  const screen = screenDeterministicSafety(text, standaloneScreenDeps());
+  if (screen.gate === "emergency" || screen.gate === "mental_health_crisis") return true;
+  return (
+    screen.gate === "safety" &&
+    (screen.safety.classification === "red_flag" || screen.safety.classification === "self_harm")
+  );
 }
 
 /**

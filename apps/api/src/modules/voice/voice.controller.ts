@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
+import { SafetyRoute } from "../../common/guards/client-ip-throttler.guard";
 import { VoiceRequestDto, VoiceResponse, TtsRequestDto, TtsResponse } from "./dto";
 import { VoiceService } from "./voice.service";
 import { VoiceResponseCondenser } from "./services/voice-response-condenser.service";
@@ -43,6 +44,9 @@ export class VoiceController {
 
   @Post("respond")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // Fails open on an untrusted client address. The audio is not readable
+  // before the guard runs, so there is no text check here.
+  @SafetyRoute()
   @UseInterceptors(
     FileInterceptor("audio", {
       limits: { fileSize: 2 * 1024 * 1024 },
