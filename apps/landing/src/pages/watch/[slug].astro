@@ -12,13 +12,9 @@ export function getStaticPaths() {
 }
 
 const { video } = Astro.props;
+// Plain attributed chat link. No `prompt` parameter: the chat app never
+// read it, and it put a health topic into an outbound URL.
 const botUrl = chatUrlFor(Astro.url.pathname);
-
-// Create a prefilled prompt for the "Ask Suchi" button
-const suchiPrompt = encodeURIComponent(
-  `I just watched the video "${video.title}" on SCCF. Can you summarize the key points and tell me what questions I should ask my doctor about ${video.cancerTypes[0] || 'this topic'}?`
-);
-const suchiUrlWithPrompt = `${botUrl}&prompt=${suchiPrompt}`;
 
 // Find related videos (same cancer type or situation)
 const relatedVideos = videosData.videos
@@ -105,7 +101,7 @@ const situationLabels = video.situations.map(id =>
       <div class="ask-suchi-cta">
         <h3>Have questions about this topic?</h3>
         <p>Suchi can summarize key points and help you prepare questions for your doctor.</p>
-        <a href={suchiUrlWithPrompt} target="_blank" rel="noopener" class="btn-primary">
+        <a href={botUrl} target="_blank" rel="noopener" class="btn-primary">
           Ask Suchi about this video
         </a>
       </div>
