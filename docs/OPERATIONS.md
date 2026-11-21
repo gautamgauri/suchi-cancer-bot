@@ -181,22 +181,22 @@ Cloud Build is the only deployer of `suchi-api`. The GitHub workflow `deploy-api
 3. If the change adds an env var or a secret, confirm it is in `apps/api/src/config/env.validation.ts`, `cloudbuild.yaml` and `cloudbuild.gated.yaml`. For a new secret run `gcloud secrets describe <NAME> --project gen-lang-client-0202543132` and compare the name letter by letter.
 4. If the change includes a migration, apply it first (section 6).
 5. Run the preflight with `/deploy preflight-only`, or let `/deploy` run it.
-6. Build and deploy.
-
-```bash
-gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-0202543132
-```
-
-7. Check the new revision, and promote it if it is not already serving.
-
-Before you build, read how the service routes traffic and note the serving revision. That revision is your rollback target.
+6. Record the serving revision and how the service routes traffic. That revision is your rollback target. Do this before the build.
 
 ```bash
 gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
   --format 'yaml(spec.traffic,status.traffic)'
 ```
 
-As of 21 November 2026 `spec.traffic` shows `latestRevision: true` at 100%. In that state the build's own deploy step sends all traffic to the new revision as soon as it is ready. No check runs first, and the promotion below has nothing left to do. If the service is pinned to a named revision instead, a new revision receives no traffic until it is promoted. Promoting by name pins the service. Adding `--no-traffic` to the `deploy-api` step in `cloudbuild.yaml` would make the check come before the traffic in both states. That is a pipeline change for its own pull request.
+7. Build and deploy.
+
+```bash
+gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-0202543132
+```
+
+8. Check the new revision, and promote it if it is not already serving.
+
+As of 21 November 2026 `spec.traffic` shows `latestRevision: true` at 100%. In that state, a `deploy-api` step with no traffic flag sends all traffic to the new revision as soon as it is ready. No check runs first, and the promotion below has nothing left to do. When the step passes `--no-traffic`, or the service is pinned to a named revision, a new revision receives no traffic until it is promoted. The first build with `--no-traffic` pins the service to the revision that was serving. Promoting by name also pins it. Check `cloudbuild.yaml` to see which case applies to your build.
 
 Take the revision name from the log of your own build (`gcloud builds log <BUILD_ID> --project gen-lang-client-0202543132`). The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer. Check that the revision runs your build's image. The revision stores the image by digest, so compare the digest behind your build's tag with the revision's image. Promote only if they match and the revision is not already serving.
 
@@ -209,8 +209,8 @@ gcloud run services update-traffic suchi-api --region us-central1 --project gen-
   --to-revisions <REVISION>=100
 ```
 
-8. Verify. `/v1/health` must return `"status":"ok"`. Send one web chat message and one WhatsApp message. Read the startup log lines for the build ID and the latest migration.
-9. Update the production state table in section 1.
+9. Verify. `/v1/health` must return `"status":"ok"`. Send one web chat message and one WhatsApp message. Read the startup log lines for the build ID and the latest migration.
+10. Update the production state table in section 1.
 
 The gated pipeline (`cloudbuild.gated.yaml`) adds a migration job, a candidate revision at 0% traffic and a health gate. It is not in use. Its migration name is hard-coded and must be updated whenever a migration is added. Before any use, compare its service flags with `cloudbuild.yaml` and read `docs/cloudbuild-gated-issues.md`.
 
@@ -225,6 +225,8 @@ curl -s https://suchi-api-lxiveognla-uc.a.run.app/v1/health
 ```
 
 A revision carries its own env and secret references, so a rollback also restores the earlier configuration. This is the remedy when a deploy ran from a stale env or secret list.
+
+A rollback by name pins `suchi-api` to that revision. While the pin holds, a new build creates its revision at 0% traffic and it must be promoted by name. That is also the normal state once `deploy-api` passes `--no-traffic`, so there is usually no need to return to following the latest revision. If you do want that, wait until the fixed build has been promoted and verified, then run `gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 --to-latest`. Do not run it earlier. It would send traffic to the newest ready revision, which may be the faulty one.
 
 Migrations do not roll back. There are no down-migrations here, and undoing a schema change needs a new forward migration. Before moving traffic to an older image, read the migration that shipped with the newer one in `apps/api/prisma/migrations/`. An additive migration is safe to leave in place.
 
