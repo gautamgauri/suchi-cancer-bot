@@ -23,6 +23,7 @@
 | Article drafts + queue | GCS `suchi-navigator-state` bucket | Gautam, Divya |
 | Hospital directory | GCS + committed to git (`hospitals.json`) | Gautam, Divya, Nisha |
 | Analytics events (event name and a JSON payload). This includes the WhatsApp inbound ledger, which holds the message ID, a status, the time received and the text length. The ledger holds no message text. It has no phone number field, but the row key and payload both carry Meta's message ID, and that ID may be decodable to the sender's phone number. This is confirmed only on the sample ID format in Meta's documentation, which base64-decodes to a string containing the sender's number. Treat ledger rows as personal data until shown otherwise. | PostgreSQL `AnalyticsEvent` table | The maintainer |
+| Session source code, once PR #251 is merged and the API is deployed. A web chat session may carry a short source code (`src`, for example `site-article`) and a `utm_source` value as query parameters on `POST /v1/sessions`. Each is kept only if it is 1 to 32 characters of lower-case letters, digits, hyphen or underscore. Any other value is dropped and the session is still created. Kept values are stored as `src` and `utmSource` in the payload of the `session_created` analytics event. Nothing is added to the `Session` row, and no referrer URL or free text is stored. These values follow the retention of analytics events below. | PostgreSQL `AnalyticsEvent` table | The maintainer |
 | Langfuse traces | Langfuse US cloud (third-party) | Gautam |
 
 ---
