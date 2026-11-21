@@ -1,18 +1,18 @@
 ---
 allowed-tools: Bash, Read
-argument-hint: "[direct|gated|promote <REVISION>|preflight-only]"
+argument-hint: "[direct|promote <REVISION>|preflight-only]"
 ---
 
 # Deploy Suchi Cancer Bot to Cloud Run
 
 You are deploying the Suchi Cancer Bot. The user's argument is: $ARGUMENTS
 
-Parse the mode from the argument. Default to `direct` if no argument is given.
+Parse the mode from the argument. Default to `direct` if no argument is given. If the first word of the argument is not one of the modes below, stop and report the valid modes. Do not guess a mode.
 
 ## Modes
 
 - **`direct`** (default): Run all preflight checks, then deploy via `cloudbuild.yaml`.
-- **`gated`**: Run all preflight checks, then deploy via `cloudbuild.gated.yaml`. This pipeline is not in use. Before running it, compare its service flags with `cloudbuild.yaml` and read `docs/cloudbuild-gated-issues.md`.
+- **`gated`**: Disabled. `cloudbuild.gated.yaml` is not in use. Report that, point to `docs/cloudbuild-gated-issues.md`, and stop.
 - **`promote <REVISION>`**: Promote the named revision (no preflight, no rebuild). A revision name is required.
 - **`preflight-only`**: Run only the automated preflight checks. Do NOT deploy.
 
@@ -20,7 +20,7 @@ Parse the mode from the argument. Default to `direct` if no argument is given.
 
 ## Phase 1: Automated Preflight (hard gate)
 
-Run Checks 0 to 9 below **sequentially** for `direct`, `gated`, and `preflight-only` modes. Check 10 is optional. Track results in a table. If ANY check fails (not WARN), **stop immediately** and do NOT proceed to Phase 2 or deploy.
+Run Checks 0 to 9 below **sequentially** for `direct` and `preflight-only` modes. The `gated` mode is disabled and stops before any check. Check 10 is optional. Track results in a table. If ANY check fails (not WARN), **stop immediately** and do NOT proceed to Phase 2 or deploy.
 
 Run every command from the repository root. The commands below find it with `git rev-parse --show-toplevel`. The procedure this command automates is in `docs/OPERATIONS.md` section 4.
 
@@ -35,7 +35,7 @@ git fetch origin main && git rev-parse HEAD origin/main
 ```
 
 - PASS: `git status --short` prints nothing
-- FAIL (`direct` and `gated`): any output from `git status --short`. Show it and stop. Do not stash, reset or clean on the user's behalf.
+- FAIL (`direct`): any output from `git status --short`. Show it and stop. Do not stash, reset or clean on the user's behalf.
 - WARN (`preflight-only`): any output from `git status --short`
 - WARN: the branch is not `main`, or `HEAD` differs from `origin/main`. Report both commits and let the user decide.
 
@@ -209,7 +209,7 @@ Display this reminder for the user's reference, then ask for ONE confirmation:
 - Voice: if voice endpoints changed, test voice round-trip
 - Model: if LLM model changed, run eval before deploying
 
-Then ask: **"Preflight passed. Deploy now? (y/n)"**
+Then ask: **"Preflight passed. Deploy now? (y/n)"** If any check returned WARN, repeat each warning in the same question, so the user answers with the warnings in view.
 
 If yes, proceed to Phase 3. If no, stop.
 
@@ -226,38 +226,43 @@ This mode follows `docs/OPERATIONS.md` section 4, steps 6 to 8. Every `gcloud ru
    ```bash
    gcloud builds submit --config=cloudbuild.yaml . --project gen-lang-client-0202543132
    ```
-2. Stream build logs. Record the build ID that `gcloud builds submit` prints. If you lose the stream, poll that build every 30 seconds until it completes.
+2. Record the build ID that `gcloud builds submit` prints. The build logs to Cloud Logging only, so `gcloud builds submit` may show no step output. Poll the build every 30 seconds until it completes.
    ```bash
    gcloud builds describe <BUILD_ID> --project gen-lang-client-0202543132 --format 'value(status)'
    ```
-3. After the build succeeds, take the revision name from the output of this build. The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer.
-   If the line is not in the streamed output, read it from the build log.
+   If the status is anything other than `SUCCESS`, stop and report the status and the failing step. Do not promote. A failed build may still have created a new API revision at 0% traffic. Leave it there and name it in the report.
+3. After the build succeeds, take the revision name from the log of this build. The `deploy-api` step prints a line of the form `Service [suchi-api] revision [<REVISION>] has been deployed`. Do not promote whichever revision is newest in a list. Another build, or a revision that failed to start, may be newer.
    ```bash
    gcloud builds log <BUILD_ID> --project gen-lang-client-0202543132 | grep 'Service \[suchi-api\] revision'
    ```
-4. Check that the revision runs this build's image. The image must end in `:<BUILD_ID>`. If it does not, stop and report.
+   If this prints no line, or more than one revision name, do not guess. Find the revision by its image tag, which is this build's ID.
+   ```bash
+   gcloud run revisions list --service suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --format 'value(name,spec.containers[0].image)' | grep ':<BUILD_ID>$'
+   ```
+   If that does not print exactly one revision, stop and report. Do not promote.
+4. Check that the revision runs this build's image. The image must end in `:<BUILD_ID>`. If it does not, stop and report. Do not promote.
    ```bash
    gcloud run revisions describe <REVISION> --region us-central1 --project gen-lang-client-0202543132 \
      --format 'value(spec.containers[0].image)'
    ```
-5. Promote that revision to 100% traffic.
+5. Record the revision that serves traffic now. This is the rollback target.
+   ```bash
+   gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --format 'yaml(status.traffic)'
+   ```
+   Then promote the new revision to 100% traffic.
    ```bash
    gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
      --to-revisions <REVISION>=100
    ```
 6. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`. The body must contain `"status":"ok"`.
-7. Report: build ID, duration, promoted revision name, image tag check result, health check result.
+   If the request fails or the status is not `ok`, tell the user at once. Give the previous revision name recorded in step 5 and the rollback command from `docs/OPERATIONS.md` section 5. Do not roll back without the user's word.
+7. Report: build ID, duration, previous revision name, promoted revision name, image tag check result, health check result. Remind the user of the remaining checks in `docs/OPERATIONS.md` section 4 (one web chat message, one WhatsApp message, the startup log lines, and the production table).
 
 ### Mode: `gated`
 
-1. Run `git status --short` again. If it prints anything, stop.
-   Then build and deploy from the repository root.
-   ```bash
-   gcloud builds submit --config=cloudbuild.gated.yaml . --project gen-lang-client-0202543132
-   ```
-2. Stream build logs. Poll with `gcloud builds describe <BUILD_ID> --project gen-lang-client-0202543132 --format 'value(status)'` until complete.
-3. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`
-4. Report: build ID, duration, health check result.
+This mode is disabled. Do not run `cloudbuild.gated.yaml`. That pipeline runs a migration job, carries its own service flags, and promotes a revision inside the build. Report that it is not in use, point the user to `docs/cloudbuild-gated-issues.md`, and stop.
 
 ### Mode: `promote`
 
@@ -265,10 +270,10 @@ Skip preflight. Promote only.
 
 This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy promote suchi-api-00430-abc`. If no revision name is given, list the revisions, report "Name the revision to promote" and stop. Do not pick a revision for the user. More than one revision can sit at 0% traffic, and tagged revisions often do.
 
-1. List revisions for reference.
+1. Show which revision serves traffic now and which revisions carry tags. Record the serving revision. This is the rollback target.
    ```bash
-   gcloud run revisions list --service suchi-api --region us-central1 --project gen-lang-client-0202543132 \
-     --format "table(name,traffic_percent,tags)"
+   gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 \
+     --format 'yaml(status.traffic)'
    ```
 2. Confirm that the named revision exists, and show its image.
    ```bash
@@ -281,8 +286,9 @@ This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy 
    gcloud run services update-traffic suchi-api --region us-central1 --project gen-lang-client-0202543132 \
      --to-revisions <REVISION>=100
    ```
-5. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`
-6. Report: promoted revision name, image tag, health check result.
+5. Health-check: `curl -fsSL https://suchi-api-lxiveognla-uc.a.run.app/v1/health`. The body must contain `"status":"ok"`.
+   If the request fails or the status is not `ok`, tell the user at once. Give the previous revision name recorded in step 1 and the rollback command from `docs/OPERATIONS.md` section 5. Do not roll back without the user's word.
+6. Report: previous revision name, promoted revision name, image tag, health check result.
 
 ---
 
@@ -311,6 +317,9 @@ This mode needs an explicit revision name in `$ARGUMENTS`, for example `/deploy 
 | Build ID         | ...            |
 | Duration         | ...            |
 | Preflight        | N/N PASS (count the checks that ran) |
+| Previous revision | ...           |
+| Promoted revision | ...           |
+| Image tag check  | match / mismatch |
 | Health Check     | ok / failed    |
 | Status           | SUCCESS / FAIL |
 ```
