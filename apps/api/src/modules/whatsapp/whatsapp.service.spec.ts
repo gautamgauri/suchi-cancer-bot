@@ -168,11 +168,11 @@ describe("WhatsAppService", () => {
       expect(svc.parseInbound(body)).toEqual([{ wamid: "w2", from: "91999", text: "Yes", profileName: undefined }]);
     });
 
-    it("skips unsupported message types (e.g. image)", () => {
+    it("keeps a message with no readable text (e.g. image) so it can get the fixed notice", () => {
       const body: MetaWebhookBody = {
         entry: [{ changes: [{ value: { messages: [{ id: "w3", from: "91", type: "image" }] } }] }],
       };
-      expect(svc.parseInbound(body)).toEqual([]);
+      expect(svc.parseInbound(body)).toEqual([{ wamid: "w3", from: "91", text: "", unsupportedType: "image" }]);
     });
   });
 

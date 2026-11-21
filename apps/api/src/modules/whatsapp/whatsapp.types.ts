@@ -49,4 +49,11 @@ export interface InboundMessage {
   from: string;
   text: string;
   profileName?: string;
+  /** When the sender wrote it, in epoch seconds, if Meta supplied a usable `timestamp`. */
+  sentAt?: number;
+  /**
+   * Meta message type ("audio", "image", ...) when the message carries no text
+   * the bot can read. `text` is then "" and the pipeline is not run.
+   */
+  unsupportedType?: string;
 }

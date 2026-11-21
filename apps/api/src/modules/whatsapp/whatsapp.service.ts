@@ -5,6 +5,7 @@ import { ChatService } from "../chat/chat.service";
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { SessionsService } from "../sessions/sessions.service";
 import { detectLocale, formatForWhatsApp } from "./whatsapp-format";
+import { NOTICE_MESSAGE_TYPES, NOTICE_TEXT, NoticeLimiter, noticeKindFor, parseSentAt } from "./whatsapp-notices";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
 const FALLBACK_REPLY =
@@ -49,6 +50,9 @@ export class WhatsAppService {
    * is what guarantees at-most-once processing.
    */
   private readonly contactQueues = new Map<string, Promise<void>>();
+
+  /** Per-contact cooldown for the fixed notices (see whatsapp-notices.ts). */
+  private readonly noticeLimiter = new NoticeLimiter();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -106,9 +110,22 @@ export class WhatsAppService {
         }
 
         for (const m of value.messages) {
+          if (!m.id || !m.from) continue;
           const text = extractText(m);
-          if (!m.id || !m.from || !text) continue; // unsupported types (image/audio/...) skipped in v1
-          out.push({ wamid: m.id, from: m.from, text, profileName: nameByWaId.get(m.from) });
+          const base = {
+            wamid: m.id,
+            from: m.from,
+            profileName: nameByWaId.get(m.from),
+            sentAt: parseSentAt(m.timestamp),
+          };
+          if (text) {
+            out.push({ ...base, text });
+          } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
+            // No readable text (voice note, image, document, ...). Kept so the
+            // sender gets the fixed "typed messages only" notice. Never reaches
+            // ChatService. Reactions, stickers and empty texts are still dropped.
+            out.push({ ...base, text: "", unsupportedType: m.type });
+          }
         }
       }
     }
@@ -155,6 +172,8 @@ export class WhatsAppService {
               status: "received",
               receivedAt: new Date().toISOString(),
               textLength: msg.text.length,
+              ...(msg.unsupportedType ? { messageType: msg.unsupportedType } : {}),
+              ...(msg.sentAt ? { sentAt: new Date(msg.sentAt * 1000).toISOString() } : {}),
             },
           },
         });
@@ -238,9 +257,36 @@ export class WhatsAppService {
     return next;
   }
 
+  /**
+   * Answer a message that must not run the pipeline with a fixed notice: one
+   * with no readable text, or one delivered long after it was sent (Meta
+   * redelivers its queue after an outage). Returns false for an ordinary
+   * message. At most one notice of each kind per contact inside the cooldown,
+   * so a burst of photos or a redelivered backlog produces one reply. Uses the
+   * normal send path and closes the ledger row. ChatService is never called.
+   */
+  private async replyWithNotice(msg: InboundMessage): Promise<boolean> {
+    const kind = noticeKindFor(msg);
+    if (!kind) return false;
+    if (this.noticeLimiter.tryAcquire(msg.from, kind)) {
+      try {
+        await this.sendText(msg.from, NOTICE_TEXT[kind]);
+      } catch (err) {
+        this.noticeLimiter.release(msg.from, kind);
+        throw err;
+      }
+      this.logger.log(`WhatsApp message ${msg.wamid} answered with the ${kind} notice (pipeline not run)`);
+    } else {
+      this.logger.log(`WhatsApp message ${msg.wamid} not answered: ${kind} notice already sent to this contact`);
+    }
+    await this.markLedger(msg.wamid, "processed");
+    return true;
+  }
+
   /** Run one already-claimed message through the chat pipeline. Never throws. */
   private async processOne(msg: InboundMessage): Promise<void> {
     try {
+      if (await this.replyWithNotice(msg)) return;
       const locale = detectLocale(msg.text);
       let sessionId = await this.resolveSession(msg.from, locale);
       let result;
