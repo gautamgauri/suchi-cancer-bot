@@ -103,8 +103,12 @@ gcloud builds submit --config cloudbuild.yaml .
 ```
 
 - Builds + deploys both `suchi-api` and `suchi-web`.
-- No migration step and no health gate; after a simple-pipeline deploy,
-  verify and promote the latest revision to 100% traffic manually if needed.
+- No migration step and no health gate. The `deploy-api` step passes
+  `--no-traffic`, so the new API revision is created at 0% traffic. Check it,
+  then promote it by name with `gcloud run services update-traffic suchi-api
+  --region us-central1 --project gen-lang-client-0202543132
+  --to-revisions <REVISION>=100`. Until that command runs, users stay on the
+  previous revision. The web service still takes traffic as soon as it deploys.
 
 Gated pipeline (migration job `suchi-db-migrate` + candidate revision at 0%
 traffic + `/v1/health` gate + promotion):
