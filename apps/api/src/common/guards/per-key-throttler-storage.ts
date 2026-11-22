@@ -25,7 +25,7 @@ interface Entry {
  * library: a blocked key adds no hits while blocked, and starts afresh when
  * the block ends. Memory is bounded: a key keeps at most `limit + 1` hit
  * times, idle keys are swept every SWEEP_EVERY calls, and past MAX_KEYS the
- * oldest keys are dropped.
+ * least recently used keys are dropped.
  */
 export class PerKeyThrottlerStorage implements ThrottlerStorage {
   static readonly MAX_KEYS = 100_000;
@@ -56,7 +56,11 @@ export class PerKeyThrottlerStorage implements ThrottlerStorage {
 
     const id = `${throttlerName}\u0000${key}`;
     let entry = this.entries.get(id);
-    if (!entry) {
+    if (entry) {
+      // Move it to the newest end, so eviction drops the least recently used key.
+      this.entries.delete(id);
+      this.entries.set(id, entry);
+    } else {
       entry = { hits: [], blockExpiresAt: 0 };
       this.entries.set(id, entry);
       this.enforceMaxKeys();
@@ -94,7 +98,7 @@ export class PerKeyThrottlerStorage implements ThrottlerStorage {
     }
   }
 
-  /** Past MAX_KEYS, drop the oldest keys (Map keeps insertion order). */
+  /** Past MAX_KEYS, drop the least recently used keys (the Map is kept in use order). */
   private enforceMaxKeys(): void {
     while (this.entries.size > PerKeyThrottlerStorage.MAX_KEYS) {
       const oldest = this.entries.keys().next().value as string;

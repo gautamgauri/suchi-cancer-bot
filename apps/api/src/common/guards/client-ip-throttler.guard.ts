@@ -1,7 +1,7 @@
 import { ExecutionContext, Injectable, Logger, SetMetadata } from "@nestjs/common";
 import { ThrottlerGuard, ThrottlerLimitDetail } from "@nestjs/throttler";
 import { BlockList, isIP } from "node:net";
-import { isUrgentSafetyText } from "../../modules/chat/deterministic-safety";
+import { safetyBypassCategory } from "../../modules/chat/deterministic-safety";
 
 /**
  * Number of reverse-proxy hops in front of the container that we trust to
@@ -107,9 +107,9 @@ export function isUntrustedClientAddress(ip: string | undefined): boolean {
 /**
  * Marks a route a patient may need in an emergency (chat, session creation,
  * voice). On these the limiter fails open when the client address cannot be
- * trusted, and lets through a chat message that trips a deterministic
- * emergency, self-harm or crisis check, up to SAFETY_BYPASS_LIMIT such
- * messages per address a minute.
+ * trusted, and lets a chat message that trips a deterministic emergency,
+ * self-harm or crisis check (SAFETY_BYPASS_LIMIT a minute) or the urgency
+ * check (URGENCY_BYPASS_LIMIT a minute) through a spent limit.
  */
 export const SAFETY_ROUTE_KEY = "suchi:safety-route";
 export const SafetyRoute = () => SetMetadata(SAFETY_ROUTE_KEY, true);
@@ -119,8 +119,16 @@ export const RESOLUTION_LOG_INTERVAL_MS = 5 * 60_000;
 
 /** Window for the safety-message cap. */
 export const SAFETY_BYPASS_TTL_MS = 60_000;
-/** Safety messages per address per window that may pass a route's spent limit. */
+/**
+ * Emergency, self-harm and crisis messages per address per window that may
+ * pass a route's spent limit. Their replies are fixed templates.
+ */
 export const SAFETY_BYPASS_LIMIT = 300;
+/**
+ * Urgency-only messages per address per window that may pass a route's spent
+ * limit (review F2). Lower, as the urgency reply uses retrieval and the model.
+ */
+export const URGENCY_BYPASS_LIMIT = 30;
 
 /**
  * Global rate-limit guard (bound as APP_GUARD in app.module.ts).
@@ -134,8 +142,9 @@ export const SAFETY_BYPASS_LIMIT = 300;
  */
 @Injectable()
 export class ClientIpThrottlerGuard extends ThrottlerGuard {
-  /** SAFETY_BYPASS_LIMIT. Static so a spec can lower it. */
+  /** SAFETY_BYPASS_LIMIT and URGENCY_BYPASS_LIMIT. Static so a spec can lower them. */
   static safetyBypassLimit = SAFETY_BYPASS_LIMIT;
+  static urgencyBypassLimit = URGENCY_BYPASS_LIMIT;
   private static readonly logger = new Logger("ClientIpThrottlerGuard");
   private static lastResolutionLogAt = 0;
 
@@ -158,7 +167,9 @@ export class ClientIpThrottlerGuard extends ThrottlerGuard {
    * Called only when the route's limit is spent and the request would be
    * refused. A message that would get the emergency, self-harm or crisis
    * template is let through instead, up to SAFETY_BYPASS_LIMIT such messages
-   * per address a minute. These turns use no retrieval or LLM.
+   * per address a minute. These turns use no retrieval or LLM. A message that
+   * trips only the urgency check is let through up to URGENCY_BYPASS_LIMIT a
+   * minute, since its reply uses retrieval and the model.
    *
    * The safety screen runs here only for a request that would otherwise be
    * refused, so a request within its limit pays for one screen, in the
@@ -182,12 +193,15 @@ export class ClientIpThrottlerGuard extends ThrottlerGuard {
     if (context.getType() !== "http" || !this.isSafetyRoute(context)) return false;
     const req = context.switchToHttp().getRequest();
     const body = req?.body;
-    if (!isUrgentSafetyText(body?.userText, body?.channel, body?.inputMode)) return false;
+    const category = safetyBypassCategory(body?.userText, body?.channel, body?.inputMode);
+    if (!category) return false;
+    const limit =
+      category === "critical" ? ClientIpThrottlerGuard.safetyBypassLimit : ClientIpThrottlerGuard.urgencyBypassLimit;
     // Blocked for the rest of the window once the cap is passed.
     const { isBlocked } = await this.storageService.increment(
-      `safety-bypass:${resolveClientAddress(req).ip}`,
+      `safety-bypass:${category}:${resolveClientAddress(req).ip}`,
       SAFETY_BYPASS_TTL_MS,
-      ClientIpThrottlerGuard.safetyBypassLimit,
+      limit,
       SAFETY_BYPASS_TTL_MS,
       "safety-bypass",
     );

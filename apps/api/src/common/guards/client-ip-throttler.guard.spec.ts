@@ -11,6 +11,7 @@ import {
   SAFETY_BYPASS_LIMIT,
   SAFETY_BYPASS_TTL_MS,
   SafetyRoute,
+  URGENCY_BYPASS_LIMIT,
   classifyClientAddress,
   resolveClientAddress,
   resolveClientIp,
@@ -281,7 +282,7 @@ describe("ClientIpThrottlerGuard over HTTP (trust proxy = 1, as in main.ts)", ()
   // Review N2: the screen can be slow on some inputs, so the guard runs it
   // only for a request that the route's limit would refuse.
   it("does not screen a request that is within its limit", async () => {
-    const screen = jest.spyOn(deterministicSafety, "isUrgentSafetyText");
+    const screen = jest.spyOn(deterministicSafety, "safetyBypassCategory");
     try {
       const ip = "198.51.100.80";
       expect(await post(ip, "I am coughing up blood right now")).toBe(201);
@@ -302,8 +303,29 @@ describe("ClientIpThrottlerGuard over HTTP (trust proxy = 1, as in main.ts)", ()
     }
   });
 
-  it("the production safety cap is 300 a minute", () => {
+  // Review F2: an urgency-only message past the limit got a 429, where main
+  // never refused it. It now has its own, lower cap.
+  it("urgency-only messages pass a spent limit up to their own cap", async () => {
+    const before = ClientIpThrottlerGuard.urgencyBypassLimit;
+    ClientIpThrottlerGuard.urgencyBypassLimit = 2;
+    try {
+      const ip = "198.51.100.90";
+      expect(await post(ip, "what is chemotherapy?")).toBe(201);
+      expect(await post(ip, "what is chemotherapy?")).toBe(429);
+      expect(await post(ip, "coughed up blood")).toBe(201);
+      expect(await post(ip, "coughed up blood")).toBe(201);
+      // The urgency cap is used up, so the next one is refused.
+      expect(await post(ip, "coughed up blood")).toBe(429);
+      // The emergency cap is separate and still has room.
+      expect(await post(ip, "I am coughing up blood right now")).toBe(201);
+    } finally {
+      ClientIpThrottlerGuard.urgencyBypassLimit = before;
+    }
+  });
+
+  it("the production caps are 300 and 30 a minute", () => {
     expect(SAFETY_BYPASS_LIMIT).toBe(300);
+    expect(URGENCY_BYPASS_LIMIT).toBe(30);
     expect(SAFETY_BYPASS_TTL_MS).toBe(60_000);
   });
 

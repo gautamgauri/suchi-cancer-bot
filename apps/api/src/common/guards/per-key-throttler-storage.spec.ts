@@ -71,6 +71,23 @@ describe("PerKeyThrottlerStorage", () => {
     expect((await store.increment("k", TTL, 1, TTL, "safety-bypass")).isBlocked).toBe(false);
   });
 
+  it("past the key cap, evicts the least recently used key", async () => {
+    const cap = PerKeyThrottlerStorage.MAX_KEYS;
+    (PerKeyThrottlerStorage as any).MAX_KEYS = 3;
+    try {
+      await hit("busy", 100);
+      await hit("b", 100);
+      await hit("c", 100);
+      await hit("busy", 100); // used again, so now the most recent
+      await hit("d", 100); // over the cap: "b" is the least recently used
+      expect(store.size).toBe(3);
+      expect((await hit("busy", 100)).totalHits).toBe(3);
+      expect((await hit("b", 100)).totalHits).toBe(1);
+    } finally {
+      (PerKeyThrottlerStorage as any).MAX_KEYS = cap;
+    }
+  });
+
   it("bounds memory: idle keys are swept and the key count is capped", async () => {
     for (let i = 0; i < PerKeyThrottlerStorage.SWEEP_EVERY - 1; i++) await hit(`k${i}`, 100);
     expect(store.size).toBe(PerKeyThrottlerStorage.SWEEP_EVERY - 1);
