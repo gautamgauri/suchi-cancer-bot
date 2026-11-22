@@ -3,7 +3,18 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Logger } from "@nestjs/common";
 import { ChatService } from "./chat.service";
-import { boundUserText } from "./dto";
+import { EvidenceGateService } from "../evidence/evidence-gate.service";
+import { CitationService } from "../citations/citation.service";
+import { ResponseValidatorService } from "./response-validator.service";
+import { ClinicalKeywordEnforcerService } from "../llm/clinical-keyword-enforcer";
+import { QueryDecomposerService } from "../rag/query-decomposer.service";
+import { RetrievalToolService } from "../rag/retrieval-tool.service";
+import { ExecutionPlannerService } from "./execution-planner.service";
+import { HospitalDirectoryService } from "./hospital-directory.service";
+import { PlanExecutorService } from "./plan-executor.service";
+import { RagService } from "../rag/rag.service";
+import { ResponseTemplates } from "./response-templates";
+import { preprocessUserText } from "./deterministic-safety";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
@@ -76,8 +87,12 @@ const VARIANTS: Variant[] = [
 /**
  * Probes added in code (review of PR #202), all synthetic.
  *
- * Long messages with the safety phrase beyond MAX_USER_TEXT_LENGTH (4096):
- * main screens the whole message, and so must this branch (review B1).
+ * Long messages with the safety phrase after 4096 characters (reviews B1
+ * and B2): main reads the whole message, and so must this branch.
+ *
+ * Personal symptom questions after 4,100 and 9,000 characters of neutral
+ * filler, with and without a greeting opener (review B4). They exercise
+ * routing past the safety gates: mode, intent, the symptom redirect.
  *
  * Overlaps that trip more than one screen without the fast path, so that
  * any change to the order of precedence changes a reply: the safety module
@@ -103,13 +118,83 @@ const EXTRA_PROBES: Array<{ source: string; text: string }> = [
   { source: "overlap", text: "do I have cancer, I am breathless" },
   { source: "overlap", text: "I feel so alone and the pain is severe" },
   { source: "overlap", text: "I feel hopeless and I am confused" },
+  ...routingProbes(),
 ];
+
+function routingProbes(): Array<{ source: string; text: string }> {
+  const en = "Thank you for reading my message. ";
+  const hi = "मेरा संदेश पढ़ने के लिए धन्यवाद। ";
+  const pad = (f: string, n: number) => f.repeat(Math.ceil(n / f.length)).slice(0, n);
+  const enQ = " I have had a lump in my breast for two weeks and it hurts, what should I do?";
+  const hiQ = " मेरे स्तन में दो हफ्ते से गांठ है और दर्द होता है, मुझे क्या करना चाहिए?";
+  const out: Array<{ source: string; text: string }> = [];
+  for (const n of [4_100, 9_000]) {
+    out.push({ source: "routing", text: pad(en, n) + enQ });
+    out.push({ source: "routing", text: "hello, " + pad(en, n) + enQ });
+    out.push({ source: "routing", text: pad(hi, n) + hiQ });
+    out.push({ source: "routing", text: "नमस्ते, " + pad(hi, n) + hiQ });
+  }
+  // General "how to identify" questions, which the evidence gate treats on
+  // their own terms, after impersonal filler (a personal word anywhere makes
+  // the question personal, and the gate then treats it as such).
+  const enGen = "This is some general background text. ";
+  const hiGen = "यह कुछ सामान्य पृष्ठभूमि पाठ है। ";
+  const enId = " How to identify the signs of lymphoma?";
+  const hiId = " लिंफोमा के लक्षण क्या हैं, कैसे पहचानें?";
+  for (const n of [4_100, 9_000]) {
+    out.push({ source: "routing-identify", text: pad(enGen, n) + enId });
+    out.push({ source: "routing-identify", text: pad(hiGen, n) + hiId });
+  }
+  // The same questions on their own, as a short control.
+  out.push({ source: "routing", text: enQ.trim() }, { source: "routing", text: hiQ.trim() });
+  out.push({ source: "routing-identify", text: enId.trim() }, { source: "routing-identify", text: hiId.trim() });
+  return out;
+}
 const ALL_PROBES = [...PROBES, ...EXTRA_PROBES];
 
 /** How a probe is named in the baseline file. Long probes by length and hash. */
 function probeKey(text: string): string {
   return text.length <= 300 ? text : `${text.length} chars, sha1 ${createHash("sha1").update(text).digest("hex")}`;
 }
+
+/**
+ * Mock configurations. "gates" stops each turn at the first ordinary step
+ * after the safety gates, over every variant. The other three run the whole
+ * pipeline with retrieval and the LLM returning content (review B4), over
+ * two variants: chunks with a cited answer, no retrieval, chunks with the
+ * LLM throwing, and low-similarity chunks with a cited answer.
+ */
+type Config = { name: "gates" | "cited-answer" | "no-retrieval" | "llm-throws" | "weak-chunks"; variants: string[] };
+const CONFIGS: Config[] = [
+  { name: "gates", variants: VARIANTS.map((v) => v.name) },
+  { name: "cited-answer", variants: ["web-typed-first", "whatsapp-hi-later"] },
+  { name: "no-retrieval", variants: ["web-typed-first", "whatsapp-hi-later"] },
+  { name: "llm-throws", variants: ["web-typed-first", "whatsapp-hi-later"] },
+  // One low-similarity, untrusted chunk with a cited answer: the evidence
+  // gate's own reading of the question decides whether the turn is answered.
+  { name: "weak-chunks", variants: ["web-typed-first", "whatsapp-hi-later"] },
+];
+
+const CHUNKS = [1, 2, 3].map((i) => ({
+  id: `chunk-${i}`,
+  chunkId: `chunk-${i}`,
+  docId: `doc-${i}`,
+  content: `Synthetic trusted evidence ${i} about cancer symptoms, treatment and when to see a doctor.`,
+  similarity: 0.82,
+  vecSim: 0.82,
+  lexSim: 0.4,
+  document: {
+    title: `Synthetic source ${i}`,
+    url: `https://example.org/doc-${i}`,
+    sourceType: "02_nci_core",
+    source: "NCI",
+    citation: null,
+    isTrustedSource: true,
+  },
+}));
+const CITED_ANSWER =
+  "Here is general information from trusted sources [citation:doc-1:chunk-1]. " +
+  "Please discuss any new symptom with your doctor [citation:doc-2:chunk-2].";
 
 function makeRecordingPrisma(sessionRow: any, priorAssistant: number) {
   const calls: Array<{ model: string; method: string; args: any }> = [];
@@ -143,52 +228,86 @@ function makeRecordingPrisma(sessionRow: any, priorAssistant: number) {
   return { prisma, calls };
 }
 
-function buildService(prisma: any): { svc: ChatService; greeting: GreetingFlowService } {
+function buildService(prisma: any, config: Config["name"]): { svc: ChatService; seen: any[] } {
   const empathy = new EmpathyDetector();
   const greeting = new GreetingFlowService(prisma, empathy);
-  jest.spyOn(greeting, "isGreetingFlowInProgress").mockRejectedValue(new Error(PAST_GATES));
+  if (config === "gates") {
+    jest.spyOn(greeting, "isGreetingFlowInProgress").mockRejectedValue(new Error(PAST_GATES));
+  }
   const abstention = new AbstentionService();
   const intent = new IntentClassifier(abstention);
-  const unused = () => {
-    throw new Error("not expected on the safety path");
-  };
+  // Every argument that reaches retrieval and the LLM is recorded, so the
+  // comparison also pins what they are given (one text value, as on main).
+  const seen: any[] = [];
+  const chunks =
+    config === "no-retrieval"
+      ? []
+      : config === "weak-chunks"
+        ? [
+            {
+              ...CHUNKS[0],
+              similarity: 0.05,
+              vecSim: 0.05,
+              lexSim: 0,
+              document: { ...CHUNKS[0].document, sourceType: "99_other", isTrustedSource: false },
+            },
+          ]
+        : CHUNKS;
+  const retrieve = (name: string) =>
+    jest.fn(async (...args: any[]) => {
+      seen.push([name, args]);
+      return config === "gates" ? [] : chunks.map((c) => ({ ...c }));
+    });
+  const llmCall = (name: string, answer: string) =>
+    jest.fn(async (...args: any[]) => {
+      seen.push([name, args.filter((a) => typeof a === "string")]);
+      if (config === "gates") throw new Error("not expected on the safety path");
+      if (config === "llm-throws") throw new Error("LLM unavailable");
+      return answer;
+    });
+  const rag = {
+    retrieveWithMetadata: retrieve("rag.retrieveWithMetadata"),
+    retrieveWithExpansion: retrieve("rag.retrieveWithExpansion"),
+    // The real filter. It is a pure function of its arguments.
+    applyPatientStateFilter: (c: any[], st: any) =>
+      RagService.prototype.applyPatientStateFilter.call({ logger: new Logger("RagService") }, c, st),
+  } as any;
   const svc = new ChatService(
     prisma,
     new AnalyticsService(prisma),
     new SafetyService(),
-    // Retrieval returns nothing, so the urgency path takes its template branch.
-    { retrieveWithMetadata: jest.fn(async () => []), retrieveWithExpansion: jest.fn(async () => []) } as any,
-    { generateWithCitations: jest.fn(unused), generateRaw: jest.fn(unused), generate: jest.fn(unused) } as any,
-    { validateEvidence: jest.fn(unused) } as any,
+    rag,
     {
-      extractCitations: jest.fn(() => ({ citations: [], orphanCount: 0 })),
-      validateCitations: jest.fn(() => ({ isValid: true, confidenceLevel: "GREEN", citations: [] })),
-      enrichCitations: jest.fn(async () => []),
+      generateWithCitations: llmCall("llm.generateWithCitations", CITED_ANSWER),
+      generateRaw: llmCall("llm.generateRaw", CITED_ANSWER),
+      generate: llmCall("llm.generate", "Synthetic supportive reply. Please see a doctor about this."),
     } as any,
+    new EvidenceGateService(prisma),
+    new CitationService(),
     abstention,
     intent,
     new TemplateSelector(intent),
-    { validate: jest.fn(unused) } as any,
+    new ResponseValidatorService(),
     greeting,
     empathy,
     new StructuredExtractorService(),
     new PatientStateService(),
-    { enforce: (t: string) => t } as any,
-    { multiRetrieve: jest.fn(unused) } as any,
-    { needsDecomposition: () => false, decompose: jest.fn(unused) } as any,
+    new ClinicalKeywordEnforcerService(),
+    new RetrievalToolService(rag),
+    new QueryDecomposerService(),
     new CrossLingualService(),
-    { needsPlanning: () => false, plan: jest.fn(unused) } as any,
-    { execute: jest.fn(unused) } as any,
+    new ExecutionPlannerService(new HospitalDirectoryService()),
+    new PlanExecutorService(new RetrievalToolService(rag), new OutputVerifierService()),
     new OutputVerifierService(),
     {
       copilotMode: "off",
       review: jest.fn(async () => ({ verdict: "PASS", hardFailures: [] })),
       persistRecord: jest.fn(async () => undefined),
-      buildBlockedFallback: jest.fn(unused),
+      buildBlockedFallback: jest.fn(),
     } as any,
     { startTrace: () => ({}), startSpan: () => ({}), endSpan: () => undefined, finalizeTrace: () => undefined } as any,
   );
-  return { svc, greeting };
+  return { svc, seen };
 }
 
 /** Let fire-and-forget writes land before the rows are read. */
@@ -201,17 +320,12 @@ async function drain(svc: any) {
 
 function normaliseRows(calls: Array<{ model: string; method: string; args: any }>, sessionId: string) {
   const assistantIds = new Set<string>();
-  // Intended difference from main (PR #202): the stored user message is cut
-  // to MAX_USER_TEXT_LENGTH. The reply and every verdict use the whole text.
   const byModel: Record<string, any[]> = {};
-  const scrub = (v: any): any => JSON.parse(JSON.stringify(v ?? null).split(sessionId).join("SESSION"));
+  const scrub = (v: any): any => stripTimings(JSON.parse(JSON.stringify(v ?? null).split(sessionId).join("SESSION")));
   for (const c of calls) {
     if (c.model === "message" && c.method === "count") continue; // a read
     const args = scrub(c.args);
     if (c.model === "message" && c.method === "create") {
-      if (args.data.role === "user" && typeof args.data.text === "string") {
-        args.data.text = boundUserText(args.data.text);
-      }
       if (args.data.id) assistantIds.add(args.data.id);
       delete args.data.id;
       delete args.data.latencyMs;
@@ -247,6 +361,21 @@ function writeOrder(calls: Array<{ model: string; method: string; args: any }>, 
   return ordinaryOrUrgency ? { turnRows, allWrites: writes.map(label) } : { turnRows };
 }
 
+/** Drop wall-clock fields (latencies, durations, timestamps) at any depth. */
+function stripTimings(v: any): any {
+  if (Array.isArray(v)) return v.map(stripTimings);
+  if (v && typeof v === "object") {
+    const out: any = {};
+    for (const [k, x] of Object.entries(v)) {
+      // planId embeds a timestamp.
+      if (/(Ms|At)$|latency|duration|timestamp|^planId$/i.test(k)) continue;
+      out[k] = stripTimings(x);
+    }
+    return out;
+  }
+  return v;
+}
+
 /** JSON with object keys sorted at every level. Array order still counts. */
 function canonicalJson(value: unknown): string {
   return JSON.stringify(value, (_key, v) =>
@@ -256,7 +385,7 @@ function canonicalJson(value: unknown): string {
   );
 }
 
-async function runProbe(text: string, variant: Variant) {
+async function runProbe(text: string, variant: Variant, config: Config["name"]) {
   const sessionId = `00000000-0000-4000-8000-${createHash("sha1").update(text + variant.name).digest("hex").slice(0, 12)}`;
   const sessionRow = {
     id: sessionId,
@@ -271,7 +400,7 @@ async function runProbe(text: string, variant: Variant) {
     emotionalState: "neutral",
   };
   const { prisma, calls } = makeRecordingPrisma(sessionRow, variant.priorAssistant);
-  const { svc } = buildService(prisma);
+  const { svc, seen } = buildService(prisma, config);
   let outcome: any;
   try {
     const r: any = await svc.handle({
@@ -300,9 +429,11 @@ async function runProbe(text: string, variant: Variant) {
     outcome,
     rows: normaliseRows(calls, sessionId),
     order: writeOrder(calls, outcome.kind !== "reply" || urgencyPath),
+    // What retrieval and the LLM were given, with session ids scrubbed.
+    calls: JSON.parse(JSON.stringify(seen).split(sessionId).join("SESSION")),
   };
   // Keys are sorted first, so the order of fields in an insert does not count.
-  const digest = createHash("sha256").update(canonicalJson(record)).digest("hex");
+  const digest = createHash("sha256").update(canonicalJson(record)).digest("hex").slice(0, 20);
   const label = outcome.kind === "reply" ? `reply:${outcome.classification}` : outcome.kind;
   return { label, digest, record };
 }
@@ -316,14 +447,17 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
   });
   afterAll(() => jest.restoreAllMocks());
 
-  it(`replays ${ALL_PROBES.length} probes x ${VARIANTS.length} variants against the baseline`, async () => {
-    const results: Array<{ text: string; variant: string; label: string; digest: string }> = [];
+  const runs = CONFIGS.reduce((n, c) => n + c.variants.length * ALL_PROBES.length, 0);
+  it(`replays ${ALL_PROBES.length} probes in ${CONFIGS.length} mock configurations (${runs} runs) against the baseline`, async () => {
+    const results: Array<{ config: string; text: string; variant: string; label: string; digest: string }> = [];
     const records: Record<string, any> = {};
-    for (const p of ALL_PROBES) {
-      for (const v of VARIANTS) {
-        const r = await runProbe(p.text, v);
-        results.push({ text: probeKey(p.text), variant: v.name, label: r.label, digest: r.digest });
-        records[`${v.name}::${probeKey(p.text)}`] = r.record;
+    for (const c of CONFIGS) {
+      for (const p of ALL_PROBES) {
+        for (const v of VARIANTS.filter((x) => c.variants.includes(x.name))) {
+          const r = await runProbe(p.text, v, c.name);
+          results.push({ config: c.name, text: probeKey(p.text), variant: v.name, label: r.label, digest: r.digest });
+          records[`${c.name}::${v.name}::${probeKey(p.text)}`] = r.record;
+        }
       }
     }
 
@@ -333,7 +467,8 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
     }
 
     if (process.env.SAFETY_BASELINE_CAPTURE === "1") {
-      fs.writeFileSync(BASELINE_PATH, JSON.stringify(results, null, 1) + "\n");
+      // One line per run keeps the fixture readable in a diff.
+      fs.writeFileSync(BASELINE_PATH, "[\n" + results.map((r) => JSON.stringify(r)).join(",\n") + "\n]\n");
       return;
     }
 
@@ -341,13 +476,17 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
     expect(results.length).toBe(baseline.length);
     const mismatches = results
       .map((r, i) => ({ r, b: baseline[i] }))
-      .filter(({ r, b }) => r.text !== b.text || r.variant !== b.variant || r.label !== b.label || r.digest !== b.digest)
+      .filter(
+        ({ r, b }) =>
+          r.config !== b.config || r.text !== b.text || r.variant !== b.variant || r.label !== b.label || r.digest !== b.digest,
+      )
       .map(({ r, b }) => ({
+        config: r.config,
         variant: r.variant,
         text: r.text.slice(0, 80),
         before: b.label,
         after: r.label,
-        record: records[`${r.variant}::${r.text}`],
+        record: records[`${r.config}::${r.variant}::${r.text}`],
       }));
     expect(mismatches).toEqual([]);
 
@@ -366,10 +505,85 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
     const longKeys = new Set(
       EXTRA_PROBES.filter((p) => p.source === "long" || p.source === "long-urgency").map((p) => probeKey(p.text)),
     );
-    for (const r of results.filter((x) => longKeys.has(x.text))) {
+    for (const r of results.filter((x) => x.config === "gates" && longKeys.has(x.text))) {
       expect({ probe: r.text, variant: r.variant, label: r.label }).toEqual(
         expect.objectContaining({ label: expect.stringMatching(/^reply:(red_flag|self_harm|mental_health_crisis)$/) }),
       );
     }
-  }, 240_000);
+  }, 600_000);
+});
+
+/**
+ * Routing on long messages (review B4). A personal symptom question after
+ * 4,100 or 9,000 characters of neutral filler, English or Devanagari, with or
+ * without a greeting opener, must route as on main: the symptom soft redirect,
+ * the `symptom_query` review flag, and the navigate frame when the LLM fails.
+ * The LLM is given the whole message, as on main.
+ */
+describe("ChatService routing on long messages (review B4)", () => {
+  beforeAll(() => {
+    for (const level of ["log", "warn", "error", "debug"] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
+    }
+  });
+  afterAll(() => jest.restoreAllMocks());
+
+  const variant = VARIANTS.find((v) => v.name === "web-typed-first")!;
+  const longRouting = routingProbes().filter((p) => p.source === "routing" && p.text.length > 4096);
+
+  async function turn(text: string, config: Config["name"]) {
+    const sessionId = "00000000-0000-4000-8000-0000000000b4";
+    const sessionRow = {
+      id: sessionId,
+      createdAt: new Date(0),
+      channel: "web",
+      locale: "en",
+      userType: null,
+      status: "active",
+      userContext: null,
+      cancerType: null,
+      greetingCompleted: true,
+      emotionalState: "neutral",
+    };
+    const { prisma, calls } = makeRecordingPrisma(sessionRow, variant.priorAssistant);
+    const { svc, seen } = buildService(prisma, config);
+    const result: any = await svc.handle({ sessionId, channel: "web", userText: text } as any);
+    await drain(svc);
+    const flags = calls
+      .filter((c) => c.model === "session" && c.method === "update")
+      .map((c) => c.args?.data?.reviewFlagReason)
+      .filter(Boolean);
+    return { result, seen, flags, calls };
+  }
+
+  it("covers both lengths, both scripts and the greeting opener", () => {
+    expect(longRouting).toHaveLength(8);
+  });
+
+  it.each(longRouting.map((p) => [p.text.length, p.text]))(
+    "a %i character message: symptom redirect from the LLM, flagged for review, LLM given the whole message",
+    async (_len, text) => {
+      const { result, seen, flags, calls } = await turn(text as string, "cited-answer");
+      expect(result.safety.classification).toBe("normal");
+      expect(result.responseText.startsWith("Synthetic supportive reply.")).toBe(true);
+      expect(flags).toContain("symptom_query");
+      const whole = preprocessUserText(text as string, "web");
+      const redirect = seen.find((s: any) => s[0] === "llm.generate");
+      expect(redirect[1][redirect[1].length - 1]).toBe(whole);
+      // The whole message is stored, as on main.
+      const userRow = calls.find((c) => c.model === "message" && c.method === "create" && c.args.data.role === "user");
+      expect(userRow.args.data.text).toBe(whole);
+    },
+  );
+
+  it.each(longRouting.map((p) => [p.text.length, p.text]))(
+    "a %i character message: the navigate frame when the LLM fails",
+    async (_len, text) => {
+      const { result, flags } = await turn(text as string, "llm-throws");
+      expect(result.safety.classification).toBe("normal");
+      const whole = preprocessUserText(text as string, "web");
+      expect(result.responseText.startsWith(ResponseTemplates.navigateModeFrame(whole))).toBe(true);
+      expect(flags).toContain("symptom_query");
+    },
+  );
 });
