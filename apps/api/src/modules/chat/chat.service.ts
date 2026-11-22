@@ -18,7 +18,7 @@ import { ResponseTemplates } from "./response-templates";
 import { ResponseFormatter } from "./response-formatter";
 import { ResponseValidatorService } from "./response-validator.service";
 import { StructuredExtractorService, StructuredInfo, resolveFallbackLocale } from "./structured-extractor.service";
-import { ChatDto, MAX_USER_TEXT_HARD_LIMIT, boundUserText, cutToLength } from "./dto";
+import { ChatDto } from "./dto";
 import { hasGeneralIntentSignal } from "./utils/general-intent";
 import { isClaimVerificationQuestion } from "./utils/claim-verification";
 import { detectCancerType, detectCancerTypes } from "./utils/cancer-type-detector";
@@ -42,6 +42,7 @@ import {
   preprocessUserText,
   repliesWithoutSession,
   screenDeterministicSafety,
+  screenWholeMessage,
   withinBound,
 } from "./deterministic-safety";
 import { reconcileAppendedAnswer } from "./escalation-reconciler";
@@ -270,7 +271,7 @@ export class ChatService implements BeforeApplicationShutdown {
    * Store a safety turn that was answered without a session, once a session
    * has been found for it (WhatsApp, PR #202). Writes what the healthy path
    * writes for the same gate, behind the reply, with the same bounded single
-   * attempts: the user message (cut to MAX_USER_TEXT_LENGTH), the assistant
+   * attempts: the user message (as the pipeline would store it), the assistant
    * message, the SafetyEvent, and for a crisis the review flag. So a
    * self-harm message still reaches the review queue. Never throws.
    *
@@ -284,7 +285,7 @@ export class ChatService implements BeforeApplicationShutdown {
     reply: DeterministicSafetyReply,
     times: { receivedAt: Date; repliedAt: Date },
   ): void {
-    const userText = boundUserText(preprocessUserText(input.userText, input.channel, input.inputMode));
+    const userText = screenWholeMessage(input.userText, input.channel, input.inputMode, this.safetyScreenDeps).text;
     this.persistSafetyTurnInBackground(reply.label, {
       sessionId,
       userText,
@@ -319,15 +320,14 @@ export class ChatService implements BeforeApplicationShutdown {
       started: number;
       sessionKnown: boolean;
       /**
-       * The whole preprocessed message the screen saw. The reply is built
-       * from it, as before any length limit existed, while `dto.userText`
-       * (stored as the user row) is already cut to MAX_USER_TEXT_LENGTH.
+       * The text the reply is built from: the message itself, or its screened
+       * tail when only the tail of an over-long message tripped a gate (F1).
        */
-      screenedText: string;
+      replyText: string;
     },
   ) {
     const reply = buildDeterministicSafetyReply(screen, {
-      userText: ctx.screenedText,
+      userText: ctx.replyText,
       disclaimerLocale: ctx.disclaimerLocale,
       templateLocale: ctx.templateLocale,
       isFirstMessage: ctx.isFirstMessage,
@@ -663,10 +663,6 @@ export class ChatService implements BeforeApplicationShutdown {
     // budget that only started afterwards ran past the 55s controller timeout
     // instead of degrading inside it (issue #225).
     const turnStarted = Date.now();
-    // Abuse ceiling only. The safety screen in handleTurn sees the whole
-    // message up to this length, and cuts it to MAX_USER_TEXT_LENGTH after
-    // (PR #202). The DTO already refuses longer web text.
-    dto.userText = cutToLength(dto.userText, MAX_USER_TEXT_HARD_LIMIT);
     try {
       return await this.handleTurn(dto, signal, turnStarted, progress);
     } catch (err: any) {
@@ -688,10 +684,21 @@ export class ChatService implements BeforeApplicationShutdown {
     // not be rewritten — the stutter/repeat rules turned a WhatsApp caregiver's
     // "meri didi" into "meri di" and "papa" into "pa" before classification
     // (issue #115). Typed input only gets medical-spelling normalisation.
-    const screenedText = preprocessUserText(dto.userText, dto.channel, dto.inputMode);
+    //
+    // ONE text value flows through the rest of the turn: the first
+    // MAX_USER_TEXT_HARD_LIMIT characters, preprocessed. The screens, routing,
+    // retrieval, the LLM and the stored message all read `dto.userText`
+    // (PR #202). When the message was longer, its tail is screened as well.
+    const screened = screenWholeMessage(dto.userText, dto.channel, dto.inputMode, this.safetyScreenDeps);
+    dto.userText = screened.text;
+    const screen = screened.screen;
+    // The text the safety reply is built from, and the urgency template's
+    // text: the tail when only the tail of an over-long message fired (F1).
+    const replyText = screened.fromTail ? screened.tailText! : dto.userText;
+    const urgencyText = replyText;
 
     const obsTrace = this.observability.startTrace('chat_turn', {
-      query: screenedText?.substring(0, 200),
+      query: dto.userText?.substring(0, 200),
       channel: dto.channel,
     }, undefined, dto.sessionId);
 
@@ -701,19 +708,10 @@ export class ChatService implements BeforeApplicationShutdown {
     // their pipeline order, before the session lookup, so an unreachable
     // database cannot cost a patient the emergency or self-harm reply (PR #202,
     // owner-approved reorder). Their verdicts are used unchanged below.
-    // The screen sees the WHOLE message, so a safety phrase near the end of a
-    // long message is caught exactly as it was before any length limit.
-    const screen = screenDeterministicSafety(screenedText, this.safetyScreenDeps);
     // All four screens have concluded, so the turn's safety verdict is known
     // before any I/O. Recording it here means a turn cut off in the session
     // read reports the real verdict, and so does a no-session reply (#221).
     recordSafetyVerdict(progress, screen);
-    // Retrieval, the LLM and the stored user message work on at most
-    // MAX_USER_TEXT_LENGTH characters. Nothing that can choose a safety or
-    // escalation template may read this cut text: every such decision below
-    // reads `screenedText`, the whole message, as before any length limit
-    // (PR #202, review B1 and B2).
-    dto.userText = boundUserText(screenedText);
     if (screen.gate !== "emergency") {
       const safetySpan = this.observability.startSpan(obsTrace, 'safety_check', { query: dto.userText?.substring(0, 200) });
       this.observability.endSpan(safetySpan, { classification: screen.safety.classification, rulesFired: screen.safety.rulesFired, blocked: screen.safety.classification !== 'normal' });
@@ -756,7 +754,7 @@ export class ChatService implements BeforeApplicationShutdown {
           isFirstMessage: false,
           started: turnStarted,
           sessionKnown: false,
-          screenedText,
+          replyText,
         });
       }
     } else {
@@ -828,7 +826,7 @@ export class ChatService implements BeforeApplicationShutdown {
         isFirstMessage,
         started,
         sessionKnown: true,
-        screenedText,
+        replyText,
       });
     }
     const safetyResult = screen.safety;
@@ -992,7 +990,7 @@ export class ChatService implements BeforeApplicationShutdown {
             latencyMs: Date.now() - started,
             kbDocIds: Array.from(new Set(earlyEvidenceChunks.map(c => c.docId))),
             locale: disclaimerLocale,
-            userText: screenedText, // disclaimer language from the whole message, as on main
+            userText: dto.userText,
             bestEffort: true,
           }
         );
@@ -1026,10 +1024,10 @@ export class ChatService implements BeforeApplicationShutdown {
       }
       
       // Fallback: no RAG content available, use template only.
-      // The whole message: IntentClassifier re-checks urgency on this text
-      // to pick the urgent template (review B2).
+      // When the urgency was found only in the tail of an over-long message,
+      // the template is chosen from that tail, which holds the phrase (F1).
       const templateResult = this.templateSelector.selectAndGenerate(
-        screenedText,
+        urgencyText,
         [],
         { status: 'ok', approvedChunks: [], reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" },
         "normal",
@@ -1046,7 +1044,7 @@ export class ChatService implements BeforeApplicationShutdown {
           safetyClassification: "red_flag",
           latencyMs: Date.now() - started,
           locale: disclaimerLocale,
-          userText: screenedText, // disclaimer language from the whole message, as on main
+          userText: dto.userText,
           bestEffort: true,
         }
       );
@@ -1068,11 +1066,10 @@ export class ChatService implements BeforeApplicationShutdown {
 
     // 1.6. Extract context and emotional state from message (even if greeting is bypassed)
     // This ensures we capture context silently for evaluation compatibility
-    // Parallelize context extraction and emotional tone detection. The whole
-    // message: an "urgent" tone reaches the intent classifier (review B2).
+    // Parallelize context extraction and emotional tone detection
     const [contextResult, emotionalToneResult] = await Promise.all([
-      this.greetingFlow.extractContextFromMessage(screenedText),
-      this.empathyDetector.detectEmotionalTone(screenedText)
+      this.greetingFlow.extractContextFromMessage(dto.userText),
+      this.empathyDetector.detectEmotionalTone(dto.userText)
     ]);
 
     // Update emotionalState if emotionalToneResult provides new information
@@ -1116,7 +1113,7 @@ export class ChatService implements BeforeApplicationShutdown {
         isFirstMessage,
         started,
         sessionKnown: true,
-        screenedText,
+        replyText,
       });
     }
     // Past the safety / escalation / crisis gates: this is an ordinary turn, and
@@ -1320,10 +1317,9 @@ export class ChatService implements BeforeApplicationShutdown {
     if (GreetingDetector.isGreeting(dto.userText)) {
       // Reuse isFirstMessage from message count fetched at start
 
-      // Use template system for greeting. The whole message, since the
-      // intent classifier behind it can pick an urgent template.
+      // Use template system for greeting
       const templateResult = this.templateSelector.selectAndGenerate(
-        screenedText,
+        dto.userText,
         [],
         { status: 'ok', approvedChunks: [], reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" },
         "normal",
@@ -1356,8 +1352,7 @@ export class ChatService implements BeforeApplicationShutdown {
     // emotionalState already updated above if emotionalToneResult provided new information
 
     // 2. Mode Detection (NEW - after greeting, before RAG)
-    // The whole message: "navigate" mode routes to symptom guidance.
-    const mode = ModeDetector.detectMode(screenedText);
+    const mode = ModeDetector.detectMode(dto.userText);
 
     // 2.5. Conversation History Tracking - detect "generally asking" signals
     const recentMessages = await this.prisma.message.findMany({
@@ -1375,8 +1370,7 @@ export class ChatService implements BeforeApplicationShutdown {
     const queryType = QueryTypeClassifier.classify(dto.userText);
 
     // 3.5. Clinical Reasoning: Detect patient journey state (rule-based, sub-ms)
-    // The whole message: the URGENT patient state is a red-flag decision.
-    const patientStateResult = this.patientStateService.detect(screenedText);
+    const patientStateResult = this.patientStateService.detect(dto.userText);
     const patientState = patientStateResult.state;
     this.logger.log({
       event: "patient_state_detected",
@@ -1546,9 +1540,8 @@ export class ChatService implements BeforeApplicationShutdown {
     // 5. Intent classification (moved before evidence gate to provide context)
     // Reuse isFirstMessage from message count fetched at start
 
-    // The whole message: the intent can be SYMPTOMS_URGENT_RED_FLAGS.
     const intentResult = this.intentClassifier.classify(
-      screenedText,
+      dto.userText,
       evidenceChunks,
       { status: 'ok', approvedChunks: evidenceChunks, reasonCode: null, shouldAbstain: false, confidence: "high", quality: "strong" }, // Temporary gate result for classification
       safetyResult.classification,
@@ -1557,9 +1550,8 @@ export class ChatService implements BeforeApplicationShutdown {
     );
 
     // ─── Phase 1: Agentic Intent Router (6 high-level categories) ─────
-    // The whole message: the category can be EMERGENCY.
     const agenticIntent: AgenticIntentResult = classifyAgenticIntent(
-      screenedText,
+      dto.userText,
       intentResult.intent,
       intentResult.confidence
     );
@@ -1884,9 +1876,8 @@ export class ChatService implements BeforeApplicationShutdown {
     }
 
     if (templateOnlyIntents.includes(intentResult.intent)) {
-      // The whole message, as the intent classifier behind it re-checks urgency.
       const templateResult = this.templateSelector.selectAndGenerate(
-        screenedText,
+        dto.userText,
         evidenceChunks,
         gateResult,
         safetyResult.classification,
@@ -2518,7 +2509,7 @@ export class ChatService implements BeforeApplicationShutdown {
           `Response contains ungrounded entities: ${validationResult.ungroundedEntities.map(e => e.entity).join(", ")}`
         );
         // Check for red flags in user text
-        const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(screenedText); // whole message (B2)
+        const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
         const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
         
         const assistant = await this.prisma.message.create({
@@ -2597,7 +2588,7 @@ export class ChatService implements BeforeApplicationShutdown {
           if (revalidationResult.shouldAbstain && !isInformationalQuery) {
             // Only abstain for non-informational queries
             this.logger.warn(`Regenerated response still contains ungrounded entities`);
-            const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(screenedText); // whole message (B2)
+            const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
             const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
             
             const assistant = await this.prisma.message.create({
@@ -2984,7 +2975,7 @@ export class ChatService implements BeforeApplicationShutdown {
         );
         if (!responseText) throw new Error("empty");
       } catch {
-        responseText = ResponseTemplates.navigateModeFrame(screenedText); // whole message (B2)
+        responseText = ResponseTemplates.navigateModeFrame(dto.userText);
       }
 
       if (dto.channel === 'voice') responseText = stripForVoice(responseText);
@@ -3086,8 +3077,7 @@ export class ChatService implements BeforeApplicationShutdown {
 
       if (citationValidation.confidenceLevel === "RED") {
         // Still RED after override check - abstain
-        // The whole message: the abstention adds urgent guidance when it finds urgency (B2).
-        const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType, screenedText);
+        const abstentionMsg = this.abstention.generateAbstentionMessage("citation_validation_failed", queryType, dto.userText);
         const { modifiedText, citations: abstentionCitations } = this.attachDeterministicCitationsIfNeeded(
           abstentionMsg,
           evidenceChunks,

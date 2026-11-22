@@ -199,9 +199,8 @@ export class VoiceService {
       sessionId,
       channel: 'voice',
       locale: locale.startsWith('en') ? 'en' : 'hi',
-      // STT output never passes ChatDto. Cut it at the abuse ceiling only:
-      // ChatService screens the whole transcript for safety and then cuts it
-      // to MAX_USER_TEXT_LENGTH for everything downstream (PR #202).
+      // STT output never passes ChatDto. Cut it at the abuse ceiling only,
+      // the same bound every channel uses (PR #202).
       userText: cutToLength(transcript, MAX_USER_TEXT_HARD_LIMIT),
     });
     const chatMs = Date.now() - chatStarted;

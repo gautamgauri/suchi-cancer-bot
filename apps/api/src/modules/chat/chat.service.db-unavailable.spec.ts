@@ -308,7 +308,7 @@ describe("ChatService with over-length input (PR #202)", () => {
   // message that opens with an emergency still gets the emergency reply.
   afterEach(() => jest.restoreAllMocks());
 
-  it("cuts a long emergency message to the pipeline bound after screening, and still escalates", async () => {
+  it("keeps a long emergency message whole, as main does, and escalates", async () => {
     jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
     const sessionRow = {
@@ -352,13 +352,11 @@ describe("ChatService with over-length input (PR #202)", () => {
     } as any);
     await svc.settleBackgroundWrites();
 
-    const bounded = long.slice(0, 4096);
     expect(result.safety.classification).toBe("red_flag");
-    expect(result.responseText).toBe(
-      appendDisclaimer(evaluateEmergencyFastPath(bounded).responseText!, LOCALE, true, bounded),
-    );
+    expect(result.responseText).toBe(appendDisclaimer(evaluateEmergencyFastPath(long).responseText!, LOCALE, true, long));
+    // Main stores the whole message, and so does this branch now.
     const userRow = created.find((d) => d.role === "user");
-    expect(userRow.text).toHaveLength(4096);
+    expect(userRow.text).toBe(long);
   });
 });
 
@@ -482,9 +480,9 @@ describe("ChatService screens the whole of a long message (PR #202, review B1)",
       : appendDisclaimer(safety.responseText!, "en", safety.classification === "red_flag", text);
     expect(result.responseText).toBe(want);
     expect(result.safety.classification).toBe(fast.isEmergency ? "red_flag" : safety.classification);
-    // Intended difference from main: the stored user message is cut to 4096.
+    // The stored user message is the whole message, as on main.
     const userRow = created.find((d) => d.role === "user");
-    expect(userRow.text).toBe(text.slice(0, 4096));
+    expect(userRow.text).toBe(text);
   });
 });
 
@@ -815,13 +813,29 @@ describe("ChatService above the 20,000 character ceiling (PR #202, review N3)", 
     expect(result.responseText).toContain("112");
   });
 
-  it("a phrase only beyond 20,000 characters is outside the ceiling (known limit)", async () => {
-    const text = FILLER.repeat(450) + " " + SELF_HARM;
+  // Review F1: the last 4,096 characters of a longer message are screened too.
+  it.each([30_000, 90_000])("a self-harm phrase at the very end of a %i character message gets its template", async (n) => {
+    const text = FILLER.repeat(Math.ceil(n / FILLER.length)).slice(0, n - SELF_HARM.length - 1) + " " + SELF_HARM;
+    expect(text.length).toBe(n);
+    const result: any = await build().handle({
+      sessionId: "00000000-0000-4000-8000-00000000000e",
+      channel: "web",
+      locale: LOCALE,
+      userText: text,
+    } as any);
+    const want = new SafetyService().evaluate(SELF_HARM);
+    expect(result.safety.classification).toBe("self_harm");
+    expect(result.responseText.startsWith(want.responseText!)).toBe(true);
+  });
+
+  it("known limit: a phrase only in the middle of a message longer than 24,096 characters is not screened", async () => {
+    const text = FILLER.repeat(450) + " " + SELF_HARM + " " + FILLER.repeat(100);
     expect(text.indexOf(SELF_HARM)).toBeGreaterThan(20_000);
+    expect(text.length - text.indexOf(SELF_HARM)).toBeGreaterThan(4096);
     const svc: any = build();
     jest.spyOn(svc.greetingFlow, "isGreetingFlowInProgress").mockRejectedValue(new Error("PAST_SAFETY_GATES"));
     await expect(
-      svc.handle({ sessionId: "00000000-0000-4000-8000-00000000000e", channel: "web", locale: LOCALE, userText: text }),
+      svc.handle({ sessionId: "00000000-0000-4000-8000-00000000000f", channel: "web", locale: LOCALE, userText: text }),
     ).rejects.toThrow("PAST_SAFETY_GATES");
   });
 });

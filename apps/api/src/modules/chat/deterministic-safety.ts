@@ -134,6 +134,85 @@ export function recordSafetyVerdict(progress: TurnProgress | undefined, screen: 
   }
 }
 
+/**
+ * How much of the END of a message longer than MAX_USER_TEXT_HARD_LIMIT is
+ * also screened (PR #202, review F1). The pipeline only reads the first
+ * MAX_USER_TEXT_HARD_LIMIT characters, so without this a safety phrase at the
+ * very end of an over-long message would be missed.
+ */
+export const SAFETY_TAIL_LENGTH = 4_096;
+
+/**
+ * The last `max` UTF-16 code units of `text`. A low surrogate left alone at
+ * the start of the cut (the second half of an emoji) is dropped.
+ */
+export function tailToLength(text: string, max: number): string {
+  if (typeof text !== "string" || text.length <= max) return text;
+  const cut = text.slice(text.length - max);
+  const first = cut.charCodeAt(0);
+  return first >= 0xdc00 && first <= 0xdfff ? cut.slice(1) : cut;
+}
+
+const GATE_RANK: Record<SafetyGate, number> = {
+  none: 0,
+  mental_health_support: 1,
+  mental_health_crisis: 2,
+  urgency: 3,
+  safety: 4,
+  emergency: 5,
+};
+
+/** Severity for picking between two screens, by the pipeline's precedence. */
+function severity(screen: DeterministicSafetyScreen): number {
+  let within = 0;
+  if (screen.gate === "emergency") within = screen.emergency.severity === "critical" ? 2 : 1;
+  if (screen.gate === "safety") {
+    within = screen.safety.classification === "self_harm" ? 2 : screen.safety.classification === "red_flag" ? 1 : 0;
+  }
+  return GATE_RANK[screen.gate] * 10 + within;
+}
+
+export interface ScreenedMessage {
+  /**
+   * The text the whole pipeline uses: the first MAX_USER_TEXT_HARD_LIMIT
+   * characters, preprocessed. One value, from the screen to storage.
+   */
+  text: string;
+  /** The verdict: the more severe of the screens of `text` and of the tail. */
+  screen: DeterministicSafetyScreen;
+  /** The screened tail, preprocessed, when the message was longer than the ceiling. */
+  tailText?: string;
+  /** True when the tail's verdict was the more severe one. */
+  fromTail: boolean;
+}
+
+/**
+ * Preprocess and screen a raw message (PR #202). The pipeline works on the
+ * first MAX_USER_TEXT_HARD_LIMIT characters. When the message is longer, its
+ * last SAFETY_TAIL_LENGTH characters are screened as well and the more
+ * severe verdict wins, by the existing order of precedence. A phrase that
+ * lies only in the middle of a message longer than
+ * MAX_USER_TEXT_HARD_LIMIT + SAFETY_TAIL_LENGTH characters is not screened.
+ */
+export function screenWholeMessage(
+  raw: string,
+  channel: string | undefined,
+  inputMode: string | undefined,
+  deps: SafetyScreenDeps,
+  /** False screens the text as given, with no preprocessing (the stale guard's raw check). */
+  preprocess = true,
+): ScreenedMessage {
+  const prep = (t: string) => (preprocess ? preprocessUserText(t, channel, inputMode) : t);
+  const text = prep(cutToLength(raw, MAX_USER_TEXT_HARD_LIMIT));
+  const screen = screenDeterministicSafety(text, deps);
+  if (typeof raw !== "string" || raw.length <= MAX_USER_TEXT_HARD_LIMIT) return { text, screen, fromTail: false };
+  const tailText = prep(tailToLength(raw, SAFETY_TAIL_LENGTH));
+  const tailScreen = screenDeterministicSafety(tailText, deps);
+  return severity(tailScreen) > severity(screen)
+    ? { text, screen: tailScreen, tailText, fromTail: true }
+    : { text, screen, tailText, fromTail: false };
+}
+
 /** Gates whose reply is a fixed template that needs no session, retrieval or LLM. */
 export function repliesWithoutSession(gate: SafetyGate): boolean {
   return (
@@ -278,11 +357,10 @@ export function buildSessionFreeSafetyReply(
   input: { userText: string; channel?: string; inputMode?: string; locale?: string | null },
   deps: SafetyScreenDeps = standaloneScreenDeps(),
 ): DeterministicSafetyReply | null {
-  const userText = preprocessUserText(input.userText, input.channel, input.inputMode);
-  const screen = screenDeterministicSafety(userText, deps);
-  if (!repliesWithoutSession(screen.gate)) return null;
-  return buildDeterministicSafetyReply(screen, {
-    userText,
+  const m = screenWholeMessage(input.userText, input.channel, input.inputMode, deps);
+  if (!repliesWithoutSession(m.screen.gate)) return null;
+  return buildDeterministicSafetyReply(m.screen, {
+    userText: m.fromTail ? m.tailText! : m.text,
     disclaimerLocale: input.locale,
     templateLocale: input.locale,
     isFirstMessage: false,
@@ -305,7 +383,11 @@ export function flaggedByDeterministicSafetyChecks(
   deps: SafetyScreenDeps = standaloneScreenDeps(),
   channel: string = "whatsapp",
 ): boolean {
-  return [text, preprocessUserText(text, channel)].some((t) => screenDeterministicSafety(t, deps).gate !== "none");
+  // The raw text and the pipeline's preprocessed text, each screened head and tail.
+  return (
+    screenWholeMessage(text, channel, undefined, deps, false).screen.gate !== "none" ||
+    screenWholeMessage(text, channel, undefined, deps).screen.gate !== "none"
+  );
 }
 
 // The checks hold no state, so one set serves callers outside Nest's DI (the
@@ -321,30 +403,34 @@ function standaloneScreenDeps(): SafetyScreenDeps {
 }
 
 /**
- * True when a raw chat request carries text that trips the emergency fast
- * path, the safety classifier's emergency or self-harm rules, or the
- * mental-health crisis screen, after the pipeline's own bounding and
- * preprocessing. The rate limiter lets such a message through, so a patient
- * who has hit the limit still gets the emergency or crisis reply.
- *
- * Refusal templates (dosage, diagnosis and so on) do not count: they are not
- * urgent, and they would otherwise be a way round the limit.
+ * Which limiter bypass a raw chat request qualifies for, after the pipeline's
+ * own ceiling, tail screen and preprocessing (PR #202).
+ * - "critical": the emergency fast path, the safety classifier's emergency or
+ *   self-harm rules, or the mental-health crisis screen. These replies are
+ *   fixed templates.
+ * - "urgency": the urgency indicators alone (review F2). Their reply uses
+ *   retrieval and the model, so they get a lower cap.
+ * - null: anything else. Refusal templates (dosage, diagnosis and so on) do
+ *   not count: they are not urgent, and would otherwise be a way round the limit.
  */
-export function isUrgentSafetyText(userText: unknown, channel?: unknown, inputMode?: unknown): boolean {
-  if (typeof userText !== "string" || userText.trim() === "") return false;
-  // The whole message, as the pipeline screens it. Only the abuse ceiling
-  // applies, since the DTO refuses anything longer anyway.
-  const text = preprocessUserText(
-    cutToLength(userText, MAX_USER_TEXT_HARD_LIMIT),
+export function safetyBypassCategory(userText: unknown, channel?: unknown, inputMode?: unknown): "critical" | "urgency" | null {
+  if (typeof userText !== "string" || userText.trim() === "") return null;
+  const { screen } = screenWholeMessage(
+    userText,
     typeof channel === "string" ? channel : undefined,
     typeof inputMode === "string" ? inputMode : undefined,
+    standaloneScreenDeps(),
   );
-  const screen = screenDeterministicSafety(text, standaloneScreenDeps());
-  if (screen.gate === "emergency" || screen.gate === "mental_health_crisis") return true;
-  return (
-    screen.gate === "safety" &&
-    (screen.safety.classification === "red_flag" || screen.safety.classification === "self_harm")
-  );
+  if (screen.gate === "emergency" || screen.gate === "mental_health_crisis") return "critical";
+  if (screen.gate === "safety") {
+    return screen.safety.classification === "red_flag" || screen.safety.classification === "self_harm" ? "critical" : null;
+  }
+  return screen.gate === "urgency" ? "urgency" : null;
+}
+
+/** True for the "critical" bypass category (see safetyBypassCategory). */
+export function isUrgentSafetyText(userText: unknown, channel?: unknown, inputMode?: unknown): boolean {
+  return safetyBypassCategory(userText, channel, inputMode) === "critical";
 }
 
 /**

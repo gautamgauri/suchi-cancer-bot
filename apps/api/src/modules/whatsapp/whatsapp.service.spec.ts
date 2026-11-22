@@ -5,7 +5,10 @@ import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
 import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppDeliveryError, WhatsAppService } from "./whatsapp.service";
 import { MetaWebhookBody } from "./whatsapp.types";
-import { MAX_USER_TEXT_HARD_LIMIT, MAX_USER_TEXT_LENGTH } from "../chat/dto";
+import { MAX_USER_TEXT_HARD_LIMIT } from "../chat/dto";
+
+// The 4096 bound an earlier revision of PR #202 applied. Text above it must pass whole.
+const MAX_USER_TEXT_LENGTH = 4096;
 import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
 import { appendDisclaimer } from "../safety/disclaimer-engine";
 import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
@@ -462,6 +465,20 @@ describe("WhatsAppService", () => {
         "9199",
         cleanResponseForDisplay(appendDisclaimer(r.responseText!, detectLocale(long), false, long)),
       );
+    });
+
+    // Review F1: the shared helper also screens the tail of a message longer
+    // than 20,000 characters. Meta's own cap on inbound text keeps WhatsApp
+    // messages far below that, so this checks the helper on this path.
+    it("the no-session reply screens the tail of a message over 20,000 characters", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      const filler = "I have some questions about my treatment plan. ".repeat(700);
+      const long = filler.slice(0, 30_000 - SELF_HARM.length - 1) + " " + SELF_HARM;
+      await svc.processClaimed([{ wamid: "sf14", from: "9199", text: long }]);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      const sent = (svc.sendText as jest.Mock).mock.calls[0][1] as string;
+      expect(sent).not.toContain("something went wrong");
+      expect(sent).toContain(cleanResponseForDisplay(new SafetyService().evaluate(SELF_HARM).responseText!).split("\n")[0]);
     });
 
     // #254 with PR #202: a caption note must never follow a no-session safety reply.

@@ -1,5 +1,8 @@
 import { VoiceService } from "./voice.service";
-import { MAX_USER_TEXT_HARD_LIMIT, MAX_USER_TEXT_LENGTH } from "../chat/dto";
+import { MAX_USER_TEXT_HARD_LIMIT } from "../chat/dto";
+
+// The 4096 bound an earlier revision of PR #202 applied. Text above it must pass whole.
+const MAX_USER_TEXT_LENGTH = 4096;
 
 /**
  * Review B1 of PR #202: the voice path hands ChatService the whole transcript,

@@ -272,11 +272,9 @@ export class WhatsAppService {
             sentAt: parseSentAt(m.timestamp),
           };
           if (text) {
-            // Never bounded to the pipeline limit here. ChatService screens the
-            // whole message for safety and only then cuts it to
-            // MAX_USER_TEXT_LENGTH, and the stale guard and the no-session
-            // safety reply below screen the whole message too (PR #202). Text
-            // above the abuse ceiling is cut, as a web request would be refused.
+            // Cut at the abuse ceiling only, the bound every channel uses. The
+            // stale guard, the no-session safety reply and ChatService also
+            // screen the tail of a longer message (PR #202).
             const bounded = cutToLength(text, MAX_USER_TEXT_HARD_LIMIT);
             out.push({
               ...base,
