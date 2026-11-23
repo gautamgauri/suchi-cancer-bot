@@ -15,8 +15,13 @@ import { ChatService } from "./chat.service";
  * pattern used by chat.service.hospital-context.spec.ts).
  */
 const svc: any = Object.create(ChatService.prototype);
-const inject = (text: string, cancerType: string | null, queryType: string): string =>
-  svc.injectEssentialTermsIfMissing(text, cancerType, queryType);
+const inject = (
+  text: string,
+  cancerType: string | null,
+  queryType: string,
+  locale?: string | null,
+  userText?: string
+): string => svc.injectEssentialTermsIfMissing(text, cancerType, queryType, locale, userText);
 
 // A prostate-framed answer shaped like the delivered reply in the issue:
 // correct body, then the injection point.
@@ -98,5 +103,84 @@ describe("injectEssentialTermsIfMissing — disease consistency (issue #175)", (
   it("is unchanged for a null cancer type or an irrelevant query type", () => {
     expect(inject(PROSTATE_ANSWER, null, "treatment")).toBe(PROSTATE_ANSWER);
     expect(inject(PROSTATE_ANSWER, "prostate", "emergency")).toBe(PROSTATE_ANSWER);
+  });
+});
+
+/**
+ * Issue #222 — the addendum's heading ("**Key points to be aware of:**") and all
+ * of its notes are hardcoded English, and its insertion patterns are English
+ * headings, so a Hindi reply got the whole English block welded onto its end:
+ *
+ *   क्या आप ब्रेस्ट कैंसर के ... जानना चाहेंगे?
+ *
+ *   **Key points to be aware of:**
+ *   - Mammogram (breast X-ray) is a standard screening and diagnostic tool
+ *
+ * A Hindi-only reader cannot read any of it. Sibling of #186 (completeness
+ * fallback, fixed in #187) on a different code path. Until SCCF has approved
+ * Hindi/Hinglish wording for these notes, a non-English reply gets no block.
+ *
+ * All text below is synthetic — no patient data.
+ */
+describe("injectEssentialTermsIfMissing — reply locale (issue #222)", () => {
+  const HINGLISH_QUESTION = "suna hai deodorant use karne se breast cancer hota hai, sach me?";
+
+  // Shaped like the delivered reply in the issue: Hindi body, Hindi headings,
+  // no mention of mammogram / biopsy / ultrasound, so every breast note is
+  // "missing" and the injector would fire.
+  const HINDI_REPLY = [
+    "नहीं, डिओडोरेंट के इस्तेमाल से ब्रेस्ट कैंसर होने का कोई प्रमाण नहीं मिला है।",
+    "",
+    "आगे क्या करें: किसी भी गांठ या बदलाव के बारे में अपने डॉक्टर से बात करें।",
+    "",
+    "क्या आप ब्रेस्ट कैंसर के किसी विशेष लक्षण या जोखिम कारकों के बारे में जानना चाहेंगे?",
+  ].join("\n");
+
+  // The same answer written in Romanized Hinglish — detectLocale() sees no
+  // Devanagari here, which is the case PR #187's review caught.
+  const HINGLISH_REPLY = [
+    "Nahi, deodorant use karne se breast cancer hone ka koi pramaan nahi mila hai.",
+    "",
+    "Aage kya karein: kisi bhi gaanth ya badlav ke baare mein apne doctor se baat karein.",
+  ].join("\n");
+
+  it("appends no English heading or notes to a Hindi reply (no locale given)", () => {
+    const out = inject(HINDI_REPLY, "breast", "general", undefined, HINGLISH_QUESTION);
+
+    expect(out).not.toContain("Key points to be aware of");
+    expect(out).not.toMatch(/Mammogram \(breast X-ray\)/);
+    expect(out).not.toMatch(/Biopsy is the definitive way/);
+    expect(out).toBe(HINDI_REPLY);
+  });
+
+  it("appends none when the session locale is a stale en but the body is Hindi", () => {
+    expect(inject(HINDI_REPLY, "breast", "general", "en", HINGLISH_QUESTION)).toBe(HINDI_REPLY);
+  });
+
+  it("appends none for an explicit hi locale", () => {
+    expect(inject(HINDI_REPLY, "breast", "screening", "hi", "deodorant se cancer hota hai kya")).toBe(
+      HINDI_REPLY
+    );
+  });
+
+  it("appends none to a Romanized Hinglish reply", () => {
+    const out = inject(HINGLISH_REPLY, "breast", "general", "en", HINGLISH_QUESTION);
+
+    expect(out).not.toContain("Key points to be aware of");
+    expect(out).toBe(HINGLISH_REPLY);
+  });
+
+  it("still appends the English block to an English reply", () => {
+    const ENGLISH_REPLY = [
+      "No, there is no evidence that using deodorant causes breast cancer.",
+      "",
+      "Would you like to know about the common risk factors for breast cancer?",
+    ].join("\n");
+
+    const out = inject(ENGLISH_REPLY, "breast", "general", "en", "does deodorant cause breast cancer?");
+
+    expect(out).toMatch(/\*\*Key points to be aware of:\*\*/);
+    expect(out).toMatch(/Mammogram \(breast X-ray\)/);
+    expect(out.startsWith(ENGLISH_REPLY)).toBe(true);
   });
 });
