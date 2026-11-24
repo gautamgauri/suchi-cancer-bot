@@ -15,6 +15,8 @@ export type ChatSource =
   | 'site-article'
   | 'site-video'
   | 'site-hospitals'
+  | 'site-hospital'
+  | 'site-hospital-place'
   | 'site-other';
 
 const HUB_PATHS = new Set([
@@ -42,6 +44,11 @@ export function chatSourceFor(pathname: string): ChatSource {
   if (path === '/') return 'site-home';
   if (path === '/about/') return 'site-about';
   if (path === '/find-care/hospitals/') return 'site-hospitals';
+  // City and state listings, then the page for one hospital.
+  if (path.startsWith('/find-care/hospitals/in/') || path.startsWith('/find-care/hospitals/state/')) {
+    return 'site-hospital-place';
+  }
+  if (path.startsWith('/find-care/hospitals/')) return 'site-hospital';
   if (HUB_PATHS.has(path)) return 'site-hub';
   if (path.startsWith('/watch/')) return 'site-video';
   if (ARTICLE_PREFIXES.some((p) => path.startsWith(p))) return 'site-article';
