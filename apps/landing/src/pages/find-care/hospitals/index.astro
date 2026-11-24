@@ -2,6 +2,7 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import hospitalsData from '../../../content/hospitals.json';
 import { chatUrlFor } from '../../../lib/chat-link';
+import WhatsAppButton from '../../../components/WhatsAppButton.astro';
 
 type Hospital = (typeof hospitalsData.hospitals)[number];
 
@@ -180,7 +181,10 @@ function scoreClass(score: number): string {
             Tell Suchi your location and type of cancer — she can help you find the best
             option and explain what to expect at each step.
           </p>
-          <a href={chatUrlFor(Astro.url.pathname)} target="_blank" rel="noopener" class="cta-btn">Ask Suchi →</a>
+          <div class="wa-cta-row wa-cta-row--center">
+            <a href={chatUrlFor(Astro.url.pathname)} target="_blank" rel="noopener" class="cta-btn">Ask Suchi →</a>
+            <WhatsAppButton source="wa-hospitals" />
+          </div>
         </div>
       </aside>
 

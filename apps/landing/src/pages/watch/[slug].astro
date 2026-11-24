@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import LiteYouTube from '../../components/LiteYouTube.astro';
 import videosData from '../../content/videos.json';
 import { chatUrlFor } from '../../lib/chat-link';
+import WhatsAppButton from '../../components/WhatsAppButton.astro';
 import { videoJsonLd } from '../../lib/seo';
 
 export function getStaticPaths() {
@@ -121,9 +122,12 @@ const situationLabels = video.situations.map(id =>
       <div class="ask-suchi-cta">
         <h3>Have questions about this topic?</h3>
         <p>Suchi can summarize key points and help you prepare questions for your doctor.</p>
-        <a href={botUrl} target="_blank" rel="noopener" class="btn-primary">
-          Ask Suchi about this video
-        </a>
+        <div class="wa-cta-row">
+          <a href={botUrl} target="_blank" rel="noopener" class="btn-primary">
+            Ask Suchi about this video
+          </a>
+          <WhatsAppButton source="wa-video" />
+        </div>
       </div>
 
       <!-- Related Videos -->
