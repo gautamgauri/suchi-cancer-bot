@@ -2,6 +2,8 @@
  * Greeting detector utility
  * Detects simple greetings and distinguishes them from medical queries
  */
+import { isHindiOrBilingualGreeting } from "./greeting-phrases";
+
 export class GreetingDetector {
   /** Longest text that can count as a greeting. */
   static readonly MAX_GREETING_LENGTH = 500;
@@ -12,7 +14,9 @@ export class GreetingDetector {
     // Conversational greetings: "hi there", "hello how are you", "hey how are you doing today"
     /^(hi|hello|hey)\s+(there|suchi)?\s*(,?\s*)?(how are you|how's it going|what's up|how do you do|how are you doing).*$/i,
     /^(good morning|good afternoon|good evening)\s*(,?\s*)?(how are you|how's it going)?.*$/i,
-    /^(namaste|namaskar)\s*(,?\s*)?(kaise ho|kaise hain|aap kaise hain)?.*$/i,
+    // "namaste" or "namaskar", an optional "ji" and "kaise ho", and nothing more.
+    // It used to end in .*, so "namaste ji saans phool rahi hai" got the greeting.
+    /^(namaste|namaskar)[\s,!.]*(?:ji[\s,!.]*)?(?:(?:kaise ho|kaise hain|aap kaise hain)[\s?!.]*)?$/i,
     /^👋\s*$/,
     /^🙏\s*$/
   ];
@@ -67,7 +71,9 @@ export class GreetingDetector {
     }
     
     // Check if it matches greeting patterns
-    const isGreetingPattern = this.GREETING_PATTERNS.some(pattern => pattern.test(trimmed));
+    // Hindi, Hinglish and the website's bilingual greeting (greeting-phrases.ts).
+    const isGreetingPattern =
+      this.GREETING_PATTERNS.some(pattern => pattern.test(trimmed)) || isHindiOrBilingualGreeting(trimmed);
     
     if (!isGreetingPattern) {
       return false;

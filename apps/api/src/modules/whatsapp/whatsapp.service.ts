@@ -25,6 +25,7 @@ import {
   noticeKindFor,
   parseSentAt,
 } from "./whatsapp-notices";
+import { extractSourceLine } from "./whatsapp-source";
 import { InboundMessage, MetaMessage, MetaWebhookBody } from "./whatsapp.types";
 
 const FALLBACK_REPLY =
@@ -271,7 +272,19 @@ export class WhatsAppService {
             sentAt: parseSentAt(m.timestamp),
           };
           if (text) {
-            out.push({ ...base, text, ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}) });
+            // The `(src: <code>)` line from the website's WhatsApp links is
+            // removed here, before the ledger and the pipeline. Only an
+            // allow-listed code is read, and never when removing it would
+            // change the deterministic safety outcome (whatsapp-source.ts).
+            const { text: body, sourceCode } = extractSourceLine(text, (t) =>
+              flaggedByDeterministicSafetyChecks(t, this.safetyScreenDeps),
+            );
+            out.push({
+              ...base,
+              text: body,
+              ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}),
+              ...(sourceCode ? { sourceCode } : {}),
+            });
           } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
             // No readable text (voice note, image, document, ...). Kept so the
             // sender gets the fixed "typed messages only" notice. Never reaches
@@ -328,6 +341,8 @@ export class WhatsAppService {
                 ? { messageType: msg.unsupportedType ?? msg.captionMediaType }
                 : {}),
               ...(msg.sentAt ? { sentAt: new Date(msg.sentAt * 1000).toISOString() } : {}),
+              // The validated source code only, never the line it came in.
+              ...(msg.sourceCode ? { src: msg.sourceCode } : {}),
             },
           },
         });
@@ -582,7 +597,7 @@ export class WhatsAppService {
       // Resolve the session. A safety turn waits at most a short, fixed time.
       // The raw promise is kept so that a late session can still store the turn.
       const resolve = async (forceNew: boolean): Promise<string> => {
-        const resolving = this.resolveSession(msg.from, locale, forceNew);
+        const resolving = this.resolveSession(msg.from, locale, forceNew, msg.sourceCode);
         if (!safetyFallback) return resolving;
         try {
           return await withinBound(resolving, SAFETY_SESSION_LOOKUP_BOUND_MS, "whatsapp:resolveSession");
@@ -736,8 +751,14 @@ export class WhatsAppService {
    * Reuse the active session for a contact, or mint a fresh one past the
    * inactivity window (FR-WA-009). Pass `forceNew` to always mint — used to
    * self-heal when the stored session has been deleted from the DB.
+   *
+   * `sourceCode` is the validated code from the website link, if the message
+   * carried one. It is recorded on `session_created` the way the web path
+   * records `?src=`, so the daily report counts the session under it. A
+   * contact who already has an active session keeps it, and the code is then
+   * recorded on the inbound ledger row only.
    */
-  async resolveSession(waId: string, locale: string, forceNew = false): Promise<string> {
+  async resolveSession(waId: string, locale: string, forceNew = false, sourceCode?: string): Promise<string> {
     const ttlMs = (Number(process.env.WHATSAPP_SESSION_TTL_HOURS) || 24) * 3_600_000;
     const now = new Date();
 
@@ -752,7 +773,10 @@ export class WhatsAppService {
       }
     }
 
-    const session = await this.sessions.create({ channel: "whatsapp", locale });
+    const dto = { channel: "whatsapp" as const, locale };
+    const session = sourceCode
+      ? await this.sessions.create(dto, undefined, false, { src: sourceCode })
+      : await this.sessions.create(dto);
     await this.prisma.whatsAppContact.upsert({
       where: { waId },
       create: { waId, sessionId: session.id, locale, lastActiveAt: now },

@@ -4,6 +4,7 @@
  */
 
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { greetingReplyLanguage } from "./greeting-phrases";
 
 export interface TemplateContext {
   isFirstMessage: boolean;
@@ -159,6 +160,32 @@ export class ResponseTemplates {
   static G1(context: TemplateContext): string {
     // First message of session - full introduction
     return "Hi. I'm Suchi, the Suchitra Cancer Bot. How can I help today?\n\nIs this about symptoms, a report, treatment side effects, or finding care?";
+  }
+
+  /**
+   * G1 in Hindi, for a first greeting written in Devanagari or romanised
+   * Hindi. Same layout as G1. Wording follows the owner's decisions of
+   * 21 November 2026: the name is spelled सुचि and Suchi speaks in the
+   * feminine, in plain spoken Hindi.
+   */
+  static G1Hindi(context: TemplateContext): string {
+    return "नमस्ते। मैं सुचि हूँ, सुचित्रा कैंसर केयर फ़ाउंडेशन की कैंसर जानकारी बॉट। आज मैं आपकी क्या मदद कर सकती हूँ?\n\nक्या आपका सवाल लक्षणों, किसी जाँच रिपोर्ट, इलाज के साइड इफ़ेक्ट, या अस्पताल और डॉक्टर ढूँढने के बारे में है?";
+  }
+
+  /**
+   * First greeting that carries both a Hindi and an English greeting line
+   * (the website's prefilled WhatsApp message), where the visitor's language
+   * is unknown: G1 in Hindi, a blank line, then the English G1, as one message.
+   */
+  static G1Bilingual(context: TemplateContext): string {
+    return ResponseTemplates.G1Hindi(context) + "\n\n" + ResponseTemplates.G1(context);
+  }
+
+  /** The first-greeting template for the greeting's language. */
+  private static firstGreeting(userText: string): (ctx: TemplateContext) => string {
+    const language = greetingReplyLanguage(userText);
+    if (language === "both") return ResponseTemplates.G1Bilingual;
+    return language === "hi" ? ResponseTemplates.G1Hindi : ResponseTemplates.G1;
   }
 
   static G2(context: TemplateContext): string {
@@ -490,7 +517,9 @@ Let me know if you'd like more information about any of these options, or if the
    */
   static selectTemplate(intent: string, context: TemplateContext): string {
     const templateMap: Record<string, (ctx: TemplateContext) => string> = {
-      GREETING_ONLY: context.isFirstMessage ? this.G1 : this.G2,
+      // A first greeting in Hindi gets G1 in Hindi, one with a Hindi and an
+      // English line gets both, any other gets the English G1.
+      GREETING_ONLY: context.isFirstMessage ? this.firstGreeting(context.userText ?? "") : this.G2,
       SYMPTOMS_URGENT_RED_FLAGS: this.S2,
       INSUFFICIENT_EVIDENCE: this.A0,
       MISSING_CONTEXT: this.A1,
