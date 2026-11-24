@@ -226,6 +226,8 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     const { chat, prisma } = await buildService({ channel: "whatsapp" });
     const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: HINGLISH_BENIGN });
     // No rule-based escalation fired: no SafetyEvent row, and the reply is not red-flag classified.
+    // Safety writes run behind the reply (PR #202).
+    await chat.settleBackgroundWrites();
     expect(prisma.safetyEvent.create).not.toHaveBeenCalled();
     expect(result.safety.classification).toBe("normal");
   });
@@ -238,6 +240,8 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
 
     expect(result.safety.classification).toBe("red_flag");
     expect(result.safety.actions).toEqual(["show_emergency_banner", "end_conversation"]);
+    // Safety writes run behind the reply (PR #202).
+    await chat.settleBackgroundWrites();
     expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ type: "emergency_fast_path_critical" }) }),
     );
@@ -256,6 +260,8 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     const result = await chat.handle({ sessionId: "wa-session", channel: "whatsapp", locale: "en", userText: text });
 
     expect(result.safety.classification).toBe("red_flag");
+    // Safety writes run behind the reply (PR #202).
+    await chat.settleBackgroundWrites();
     expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -282,6 +288,8 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
 
     expect(result.safety.classification).toBe("red_flag");
     expect(result.safety.actions).toEqual(["show_emergency_banner"]);
+    // Safety writes run behind the reply (PR #202).
+    await chat.settleBackgroundWrites();
     expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -312,6 +320,8 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(result.safety.actions).toEqual(["show_emergency_banner"]);
     expect(result.safety.actions).not.toContain("end_conversation");
     expect((result.safety as any).bannerText).toContain("Contact your care team today");
+    // Safety writes run behind the reply (PR #202).
+    await chat.settleBackgroundWrites();
     expect(prisma.safetyEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ type: "emergency_fast_path_urgent" }) }),
     );
@@ -338,6 +348,8 @@ describe("ChatService.handle — Phase 0 input cleanup by modality (#115)", () =
     expect(second.safety.classification).toBe("red_flag");
     expect(second.safety.actions).toEqual(["show_emergency_banner", "end_conversation"]);
     expect(second.responseText).toContain("This sounds like a medical emergency");
+    // Safety writes run behind the reply (PR #202).
+    await chat.settleBackgroundWrites();
     const types = prisma.safetyEvent.create.mock.calls.map((c: any) => c[0].data.type);
     expect(types).toEqual(["emergency_fast_path_urgent", "emergency_fast_path_critical"]);
     expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();

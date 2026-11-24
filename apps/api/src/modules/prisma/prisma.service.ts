@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from "@nestjs/common";
 import { PrismaClient } from "@prisma/client";
 
 /**
@@ -15,7 +15,7 @@ import { PrismaClient } from "@prisma/client";
  * crashing immediately.
  */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService extends PrismaClient implements OnModuleInit, OnApplicationShutdown {
   private static readonly logger = new Logger(PrismaService.name);
 
   constructor() {
@@ -49,7 +49,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$connect();
   }
 
-  async onModuleDestroy() {
+  /**
+   * Disconnect last. Nest runs every onModuleDestroy and every
+   * beforeApplicationShutdown hook before any onApplicationShutdown hook, so
+   * ChatService's drain of pending safety writes (beforeApplicationShutdown)
+   * always finishes while the connection is still open (PR #202, review N1).
+   * With onModuleDestroy, Nest 10 destroyed this global module before
+   * ChatModule, so the drain ran after the disconnect.
+   */
+  async onApplicationShutdown() {
     await this.$disconnect();
   }
 }

@@ -416,47 +416,60 @@ describe("ChatService — 'normal' is reported only after every safety screen (i
     jest.clearAllMocks();
   });
 
-  /** Captures what `progress` held while the session-context write was in flight. */
+  /**
+   * Captures what `progress` held when the mental-health screen was called,
+   * and while the session-context write was in flight.
+   *
+   * PR #202 moved the four deterministic screens ahead of the session read,
+   * so the mental-health screen now runs before the context write. The
+   * invariant is unchanged: "normal" is never claimed before that screen has
+   * run. The context write now sees the real verdict.
+   */
   async function runWithContextWrite(crisis: boolean) {
     const { service } = await buildService({ channel: "web" });
     const progress: TurnProgress = {};
     const seen: Array<TurnProgress["safety"]> = [];
+    const atMentalHealthScreen: Array<TurnProgress["safety"]> = [];
     const svc = service as any;
-    // A non-neutral tone makes the turn write session context, which is the
-    // slow I/O that sits between the safety module and the mental-health screen.
+    // A non-neutral tone makes the turn write session context, which is slow
+    // I/O that a 504 can interrupt.
     svc.empathyDetector.detectEmotionalTone.mockResolvedValue({ tone: "sad" });
     svc.greetingFlow.updateSessionContext.mockImplementation(async () => {
       seen.push(progress.safety);
     });
-    if (crisis) {
-      svc.empathyDetector.detectMentalHealthNeed.mockReturnValue({
-        needsSupport: true,
-        isCrisis: true,
-        category: "crisis",
-        keywords: ["synthetic-crisis-marker"],
-      });
-    }
+    const verdict = crisis
+      ? { needsSupport: true, isCrisis: true, category: "crisis", keywords: ["synthetic-crisis-marker"] }
+      : { needsSupport: false, isCrisis: false, category: null, keywords: [] };
+    svc.empathyDetector.detectMentalHealthNeed.mockImplementation(() => {
+      atMentalHealthScreen.push(progress.safety);
+      return verdict;
+    });
     const result: any = await service.handle(
       { sessionId: "session1", userText: EXPLAIN_QUERY, channel: "web" } as any,
       undefined,
       progress,
     );
-    return { progress, seen, result };
+    return { progress, seen, atMentalHealthScreen, result };
   }
 
   it("does not claim 'normal' while the mental-health screen has yet to run", async () => {
-    const { progress, seen, result } = await runWithContextWrite(true);
+    const { progress, seen, atMentalHealthScreen, result } = await runWithContextWrite(true);
 
-    // A 504 raised during the context write must say "not assessed".
-    expect(seen).toEqual([undefined]);
+    // Nothing at all is recorded until the mental-health screen has run.
+    expect(atMentalHealthScreen.length).toBeGreaterThan(0);
+    for (const s of atMentalHealthScreen) expect(s).toBeUndefined();
+    // The screen ran before the context write, so a 504 raised during that
+    // write reports the crisis, never "normal".
+    expect(seen).toEqual([{ classification: "mental_health_crisis", source: "mental_health" }]);
     expect(result.safety.classification).toBe("mental_health_crisis");
     expect(progress.safety).toEqual({ classification: "mental_health_crisis", source: "mental_health" });
   });
 
   it("records 'normal' once the mental-health screen has concluded without a crisis", async () => {
-    const { progress, seen } = await runWithContextWrite(false);
+    const { progress, seen, atMentalHealthScreen } = await runWithContextWrite(false);
 
-    expect(seen).toEqual([undefined]);
+    for (const s of atMentalHealthScreen) expect(s).toBeUndefined();
+    expect(seen).toEqual([{ classification: "normal", source: "safety_module" }]);
     expect(progress.safety).toEqual({ classification: "normal", source: "safety_module" });
   });
 
@@ -485,6 +498,8 @@ describe("ChatService — 'normal' is reported only after every safety screen (i
     );
 
     expect(result.safety.classification).toBe("mental_health_support");
+    // Since PR #202 the reply is returned first and stored behind it.
+    await svc.settleBackgroundWrites();
     expect(atAssistantWrite).toEqual({ classification: "mental_health_support", source: "mental_health" });
     expect(progress.safety).toEqual({ classification: "mental_health_support", source: "mental_health" });
   });

@@ -1,7 +1,10 @@
 import { Controller, Get, Patch, Query, Param, Body, UseGuards, Logger } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { BasicAuthGuard } from '../../common/guards/basic-auth.guard';
 import { ReviewService } from './review.service';
 
+// Review portal: several Basic-auth requests per page; see admin.controller.ts.
+@Throttle({ default: { limit: 120, ttl: 60_000 } })
 @Controller('review')
 export class ReviewController {
   private readonly logger = new Logger(ReviewController.name);

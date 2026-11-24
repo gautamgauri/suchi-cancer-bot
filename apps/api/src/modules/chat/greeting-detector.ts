@@ -3,6 +3,8 @@
  * Detects simple greetings and distinguishes them from medical queries
  */
 export class GreetingDetector {
+  /** Longest text that can count as a greeting. */
+  static readonly MAX_GREETING_LENGTH = 500;
   // Greeting patterns (case-insensitive)
   private static readonly GREETING_PATTERNS = [
     /^(hi|hello|hey|namaste|namaskar|greetings|good morning|good afternoon|good evening)$/i,
@@ -54,6 +56,9 @@ export class GreetingDetector {
    * @returns true if this is a simple greeting, false otherwise
    */
   static isGreeting(message: string): boolean {
+    // Bound the input length for greeting detection (PR #202). A message this
+    // long is not a greeting, and no pattern runs on it.
+    if (typeof message !== "string" || message.length > GreetingDetector.MAX_GREETING_LENGTH) return false;
     const trimmed = message.trim();
     
     // Empty or very short messages might be greetings

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Query, Param, Body, Res, UseGuards, Logger } from "@nestjs/common";
 import { Response } from "express";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { BasicAuthGuard } from "../../common/guards/basic-auth.guard";
 import { SchedulerOidcGuard } from "../../common/guards/scheduler-oidc.guard";
 import { AdminService } from "./admin.service";
@@ -19,6 +20,11 @@ import { ReviewQueueService } from "./review-queue.service";
 import { AnalyticsAdminService } from "./analytics-admin.service";
 import { LearningNoteService } from "./learning-note.service";
 
+// Admin/review portals fire several requests per page load and per inline
+// save, so the global default (20/min) is too tight here; 120/min still caps
+// Basic-auth and approval-token guessing. Cloud Scheduler routes skip
+// throttling entirely (OIDC-authenticated, shared Google source addresses).
+@Throttle({ default: { limit: 120, ttl: 60_000 } })
 @Controller("admin")
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
@@ -86,6 +92,7 @@ export class AdminController {
    * Cloud Scheduler endpoint - secured with OIDC token verification
    * Only accepts requests from the configured scheduler service account
    */
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("daily-report")
   async generateAndEmailReport(
@@ -144,6 +151,7 @@ export class AdminController {
    *
    * POST /admin/article-research  (OIDC-protected, triggered by Cloud Scheduler)
    */
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("article-research")
   async triggerArticleResearch() {
@@ -157,6 +165,7 @@ export class AdminController {
    *
    * POST /admin/hospital-research  (OIDC-protected, triggered by Cloud Scheduler)
    */
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("hospital-research")
   async triggerHospitalResearch() {
@@ -436,6 +445,7 @@ ${noteHtml}
    * Full automation (git push + deploy) is deferred (OD-001).
    * URL: POST /v1/admin/content/notify-publish (SchedulerOidcGuard — call daily)
    */
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("content/notify-publish")
   async notifyPublish() {
@@ -448,6 +458,7 @@ ${noteHtml}
    * Eval sessions are excluded. Call weekly via Cloud Scheduler.
    * URL: POST /v1/admin/housekeeping/run-retention
    */
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("housekeeping/run-retention")
   async runRetention() {
@@ -461,6 +472,7 @@ ${noteHtml}
    * send reminders. Called daily by Cloud Scheduler.
    * URL: POST /v1/admin/housekeeping/run-expiry
    */
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("housekeeping/run-expiry")
   async runDraftExpiry() {
@@ -487,6 +499,7 @@ ${noteHtml}
     return this.reviewQueue.markReviewed(sessionId, body.outcome, body.reviewerName);
   }
 
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("review-queue/send-digest")
   async sendReviewDigest() {
@@ -527,6 +540,7 @@ ${noteHtml}
 
   // ─── Learning Note (FR-LEARN-001) — first Monday of each month ───────────
 
+  @SkipThrottle()
   @UseGuards(SchedulerOidcGuard)
   @Post("learning-note/generate")
   async generateLearningNote(@Query("month") month?: string) {

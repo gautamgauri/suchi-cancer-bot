@@ -163,6 +163,20 @@ describe('ChatInterface — 55s turn timeout (issue #171)', () => {
       expect(screen.getByText(BANNER_TITLE)).toBeInTheDocument();
     });
 
+    // Since PR #202 the API records the verdict before the session read, so a
+    // timed-out turn can report red_flag. That must not take the banner down.
+    it('stays up when the next turn times out assessed as red_flag', async () => {
+      urgentThenTimeout({ safetyAssessed: true, safety: { classification: 'red_flag', actions: [] } });
+
+      render(<ChatInterface sessionId="session-1" onStartOver={vi.fn()} />);
+      await sendQuestion();
+      expect(await screen.findByText(BANNER_TITLE)).toBeInTheDocument();
+
+      await sendQuestion();
+      expect((await screen.findByRole('log')).textContent).toContain('1800-22-1951');
+      expect(screen.getByText(BANNER_TITLE)).toBeInTheDocument();
+    });
+
     it('clears, as today, when the timeout body says normal (the API in production)', async () => {
       urgentThenTimeout({ safety: { classification: 'normal', actions: [] } });
 
