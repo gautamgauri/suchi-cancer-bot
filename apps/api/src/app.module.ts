@@ -1,7 +1,10 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { envSchema } from "./config/env.validation";
+import { ClientIpThrottlerGuard } from "./common/guards/client-ip-throttler.guard";
+import { PerKeyThrottlerStorage } from "./common/guards/per-key-throttler-storage";
 
 import { PrismaModule } from "./modules/prisma/prisma.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
@@ -33,7 +36,11 @@ import { DistributionModule } from "./modules/distribution/distribution.module";
         throttlers: [{
           ttl: (cfg.get<number>("RATE_LIMIT_TTL_SEC") ?? 60) * 1000,
           limit: cfg.get<number>("RATE_LIMIT_REQ_PER_TTL") ?? 20
-        }]
+        }],
+        // Expiry tracked per key. The library's default storage lets one
+        // blocked address stop every other address's hits from expiring
+        // (PR #202, review N6). See per-key-throttler-storage.ts.
+        storage: new PerKeyThrottlerStorage(),
       })
     }),
     ObservabilityModule,
@@ -56,6 +63,12 @@ import { DistributionModule } from "./modules/distribution/distribution.module";
     WhatsAppModule,
     DistributionModule,
     ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
-  ]
+  ],
+  providers: [
+    // Without a bound guard ThrottlerModule is inert: every @Throttle in the app
+    // did nothing. Tracks by real client IP behind Cloud Run's front end — see
+    // ClientIpThrottlerGuard / TRUSTED_PROXY_HOPS and `trust proxy` in main.ts.
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
+  ],
 })
 export class AppModule {}
