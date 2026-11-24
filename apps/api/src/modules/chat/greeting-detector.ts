@@ -2,6 +2,8 @@
  * Greeting detector utility
  * Detects simple greetings and distinguishes them from medical queries
  */
+import { isHindiOrBilingualGreeting } from "./greeting-phrases";
+
 export class GreetingDetector {
   // Greeting patterns (case-insensitive)
   private static readonly GREETING_PATTERNS = [
@@ -62,7 +64,9 @@ export class GreetingDetector {
     }
     
     // Check if it matches greeting patterns
-    const isGreetingPattern = this.GREETING_PATTERNS.some(pattern => pattern.test(trimmed));
+    // Hindi, Hinglish and the website's bilingual greeting (greeting-phrases.ts).
+    const isGreetingPattern =
+      this.GREETING_PATTERNS.some(pattern => pattern.test(trimmed)) || isHindiOrBilingualGreeting(trimmed);
     
     if (!isGreetingPattern) {
       return false;
