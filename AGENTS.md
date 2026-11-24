@@ -27,12 +27,33 @@ Companion documents:
    (`apps/api/src/modules/rag/`). If evidence is insufficient, the correct
    behavior is abstention (`apps/api/src/modules/abstention/`), not a fluent
    guess.
-3. **Do not edit medical content, prompts, or clinical policy on your own
-   authority.** Changes to `kb/**`, system prompts under
-   `apps/api/src/modules/llm/` or `chat/`, safety keyword lists, escalation
-   wording, or `docs/SUCHI_ANSWER_POLICY.md` require SCCF human/medical review.
-   Propose them in a separate, clearly-labeled PR (see issue #48 boundaries for
-   the precedent).
+3. **Medically significant changes need clinical review. Other wording does
+   not.** SCCF's clinicians are busy. Send them only what a clinician must
+   decide, and decide the rest with the owner.
+
+   **Needs SCCF clinical review** (a medical social worker and a medical
+   oncologist), in a separate, clearly labelled PR:
+   - New or changed clinical content. This covers how urgent a symptom is, the
+     triage level of a reply (emergency, same-day, routine), any timeframe for
+     seeking care, anything about doses, drugs, tests or prognosis, and what a
+     symptom may mean.
+   - Changes to the clinical meaning of `kb/**`, of system prompts under
+     `apps/api/src/modules/llm/` or `chat/`, of `docs/SUCHI_ANSWER_POLICY.md`
+     or of `docs/SUCHI_SAFETY_CONTRACT.md`.
+   - Removing or narrowing anything that triggers a safety reply.
+
+   **Owner approval is enough** (no clinical review):
+   - Translating a reply that is already approved, with no change of meaning.
+     It needs a fluent reader of the language.
+   - Adding phrases or spellings that trigger an existing approved safety
+     reply, so that it fires more often.
+   - Greetings, notices, button text, error messages, privacy wording and
+     other interface copy with no medical content.
+   - Process matters such as review order, rotas and document layout.
+
+   When a clinician is needed, ask at most two or three questions, each
+   answerable in one line. Do not prepare a review packet. If you are unsure
+   which list a change belongs to, treat it as clinical and say why.
 4. **No secrets in code, docs, logs, or fixtures.** Secrets live in GCP Secret
    Manager (project `gen-lang-client-0202543132`) and are referenced by *name
    only* (e.g. `database-url`, `DISTRIBUTION_APPROVAL_SECRET`). Never paste
