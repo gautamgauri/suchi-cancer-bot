@@ -1,14 +1,15 @@
 ---
 /**
  * Links from the Hospital Directory to the city and state pages, grouped by
- * state. Server-rendered list, no script.
+ * state. A city with one hospital page has no city page, so that hospital is
+ * linked directly. Server-rendered list, no script.
  */
 import hospitalsData from '../content/hospitals.json';
-import { hospitalSite } from '../lib/hospital-pages.mjs';
+import { hospitalSite, hospitalPath, hospitalTitle } from '../lib/hospital-pages.mjs';
 
-const { places, stateOf } = hospitalSite(hospitalsData);
-const byState = new Map<string, typeof places>();
-for (const p of places) byState.set(p.state, [...(byState.get(p.state) ?? []), p]);
+const { allPlaces, stateOf } = hospitalSite(hospitalsData);
+const byState = new Map<string, typeof allPlaces>();
+for (const p of allPlaces) byState.set(p.state, [...(byState.get(p.state) ?? []), p]);
 const groups = [...byState.entries()].sort((a, b) => a[0].localeCompare(b[0], 'en'));
 ---
 
@@ -22,7 +23,11 @@ const groups = [...byState.entries()].sort((a, b) => a[0].localeCompare(b[0], 'e
           {sp ? <a class="hpl-state" href={sp.path}>{state}</a> : <span class="hpl-state">{state}</span>}
           <ul class="hpl-places">
             {ps.map((p) => (
-              <li><a href={p.path}>{p.place}</a></li>
+              <li>
+                {p.hasPage
+                  ? <a href={p.path}>{p.place}</a>
+                  : <a href={hospitalPath(p.hospitals[0])}>{hospitalTitle(p.hospitals[0])}</a>}
+              </li>
             ))}
           </ul>
         </li>

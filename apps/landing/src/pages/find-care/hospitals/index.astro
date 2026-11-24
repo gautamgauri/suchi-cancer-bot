@@ -3,7 +3,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import hospitalsData from '../../../content/hospitals.json';
 import { chatUrlFor } from '../../../lib/chat-link';
 import HospitalPlaceLinks from '../../../components/HospitalPlaceLinks.astro';
-import { hospitalSite, hospitalPath } from '../../../lib/hospital-pages.mjs';
+import { hospitalSite, hospitalPath, telHref } from '../../../lib/hospital-pages.mjs';
 
 // Entries with a page of their own (rules in src/lib/hospital-pages.mjs).
 const HAS_PAGE = new Set(hospitalSite(hospitalsData).publishable.map((h) => h.id));
@@ -155,8 +155,6 @@ function scoreClass(score: number): string {
                 )}
               </div>
 
-              <p class="hosp-notes">{h.notes}</p>
-
               {h.risk_flag && (
                 <p class="hosp-risk">
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 10.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM7.25 5h1.5v4h-1.5V5z"/></svg>
@@ -168,11 +166,9 @@ function scoreClass(score: number): string {
                 <span class={`cost-badge cost-${(h.cost_tier ?? '').toLowerCase()}`}>
                   {COST_LABEL[h.cost_tier] ?? h.cost_tier}
                 </span>
-                {h.contact?.phone && (
-                  <a href={`tel:${h.contact.phone.replace(/\s/g, '')}`} class="hosp-phone">
-                    {h.contact.phone}
-                  </a>
-                )}
+                {h.contact?.phone && (telHref(h.contact.phone)
+                  ? <a href={telHref(h.contact.phone)} class="hosp-phone">{h.contact.phone}</a>
+                  : <span class="hosp-phone">{h.contact.phone}</span>)}
               </div>
 
             </div>
@@ -417,19 +413,6 @@ function scoreClass(score: number): string {
     font-size: 0.6875rem;
     padding: 0.1875rem 0.5rem;
     color: var(--color-text-muted);
-  }
-
-  /* ── Notes ── */
-  .hosp-notes {
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: var(--color-text);
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    flex: 1;
   }
 
   /* ── Risk flag ── */

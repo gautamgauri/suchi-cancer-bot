@@ -3,7 +3,7 @@
  * Listing of the hospitals with a page of their own in one city or state.
  * Used by src/pages/find-care/hospitals/in/[place].astro and
  * state/[state].astro. Hospitals are listed by name. Nothing here ranks
- * or recommends one over another.
+ * or recommends one over another, or says every entry is a cancer hospital.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HospitalCta from './HospitalCta.astro';
@@ -14,27 +14,30 @@ import { hospitalPath, hospitalTitle, telHref, formatDate } from '../lib/hospita
 interface PlaceLink { place: string; path: string; hospitals: unknown[] }
 
 export interface Props {
-  /** "Patna, Bihar", or "Delhi" when the city and state share a name. */
+  /** Page heading and title, from cityHeading() or stateHeading(). */
+  heading: string;
+  /** Place named in the sentences, e.g. "Patna, Bihar" or "Bihar". */
   label: string;
   state: string;
   path: string;
   hospitals: any[];
   crumbs: Crumb[];
+  /** True when the directory lists more entries for this place than this page. */
+  partial: boolean;
   /** On a state page, the city pages in that state. */
   places?: PlaceLink[];
 }
 
-const { label, state, path, hospitals, crumbs, places = [] } = Astro.props;
+const { heading, label, state, path, hospitals, crumbs, partial, places = [] } = Astro.props;
 const n = hospitals.length;
-const heading = `${n === 1 ? 'Cancer hospital' : 'Cancer hospitals'} in ${label}`;
-const itemLevel = places.length ? 'h3' : 'h2';
-const Item = itemLevel;
+const Item = places.length ? 'h3' : 'h2';
+const isState = path.includes('/state/');
 ---
 
 <BaseLayout
   title={heading}
-  fullTitle={`${heading} | SCCF Hospital Directory`}
-  description={`${n} ${n === 1 ? 'hospital' : 'hospitals'} in ${label} from the SCCF hospital directory, with contact details and the date each entry was last verified.`}
+  fullTitle={heading}
+  description={`${n} ${n === 1 ? 'hospital' : 'hospitals'} ${isState ? 'across' : 'in'} ${label} from the SCCF hospital directory, with contact details and the date each entry was recorded.`}
   breadcrumbs={crumbs}
   jsonLd={[itemListJsonLd(heading, hospitals.map((h) => ({ name: h.name, path: hospitalPath(h) })))]}
 >
@@ -51,7 +54,12 @@ const Item = itemLevel;
       <header>
         <h1>{heading}</h1>
         <p class="pl-intro">
-          This page lists {n} {n === 1 ? 'hospital' : 'hospitals'} in {label} from the SCCF hospital directory.
+          This page lists {n} {n === 1 ? 'hospital' : 'hospitals'} {isState ? 'across' : 'in'} {label} from the SCCF hospital directory.
+          {partial && (
+            <>
+              {' '}<a href="/find-care/hospitals/">The Hospital Directory lists more hospitals in {label}.</a>
+            </>
+          )}
         </p>
       </header>
 
@@ -68,22 +76,26 @@ const Item = itemLevel;
       )}
 
       <ul class="pl-list">
-        {hospitals.map((h) => (
-          <li class="pl-item">
-            <Item class="pl-name"><a href={hospitalPath(h)}>{hospitalTitle(h)}</a></Item>
-            <p class="pl-meta">{h.type}</p>
-            {h.contact?.address && <p class="pl-meta">{h.contact.address}</p>}
-            {h.contact?.phone && (
-              <a class="pl-tap" href={telHref(h.contact.phone)}>{h.contact.phone}</a>
-            )}
-            <p class="pl-verified">
-              Hospital data verified <time datetime={h.verified_date}>{formatDate(h.verified_date)}</time>.
-            </p>
-          </li>
-        ))}
+        {hospitals.map((h) => {
+          const href = h.contact?.phone ? telHref(h.contact.phone) : null;
+          return (
+            <li class="pl-item">
+              <Item class="pl-name"><a href={hospitalPath(h)}>{hospitalTitle(h)}</a></Item>
+              <p class="pl-meta">{h.type}</p>
+              {h.contact?.address && <p class="pl-meta">{h.contact.address}</p>}
+              {h.contact?.phone && (href
+                ? <a class="pl-tap" href={href}>{h.contact.phone}</a>
+                : <p class="pl-meta">{h.contact.phone}</p>)}
+              <p class="pl-verified">
+                Recorded <time datetime={h.verified_date}>{formatDate(h.verified_date)}</time>.
+              </p>
+            </li>
+          );
+        })}
       </ul>
 
       <div class="pl-note">
+        <p>Details can change. Please confirm with the hospital before you travel.</p>
         <p>Always call ahead to confirm appointments and available services.</p>
         {state === 'West Bengal' && (
           <p>
@@ -117,6 +129,7 @@ const Item = itemLevel;
   }
   h2 { font-family: var(--font-serif); font-size: var(--text-2xl, 1.5rem); color: var(--color-text-dark); margin: 0 0 0.75rem; }
   .pl-intro { color: var(--color-text-secondary); margin: 0 0 1.5rem; }
+  .pl-intro a { color: var(--color-primary); }
 
   .pl-places { margin: 0 0 2rem; padding-left: 1.25rem; columns: 2 12rem; }
   .pl-places li { margin-bottom: 0.25rem; }
@@ -125,7 +138,15 @@ const Item = itemLevel;
   .pl-list { list-style: none; padding: 0; margin: 0 0 2rem; }
   .pl-item { padding: 1rem 0; border-top: 1px solid var(--color-border); }
   .pl-name { font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.3; margin: 0 0 0.25rem; }
-  .pl-name a { color: var(--color-text-dark); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--color-primary); }
+  .pl-name a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-text-dark);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--color-primary);
+  }
   .pl-meta { margin: 0 0 0.125rem; color: var(--color-text-secondary); font-size: 0.9375rem; }
   .pl-tap { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary); font-weight: 600; }
   .pl-verified { margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.875rem; }

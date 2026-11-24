@@ -1,17 +1,25 @@
 ---
 /**
  * One page per state whose publishable hospitals sit in two or more cities.
- * A state with one city is covered by that city's page.
+ * A state with one city is covered by that city's page or the hospital page.
  */
 import HospitalPlacePage from '../../../../components/HospitalPlacePage.astro';
 import hospitalsData from '../../../../content/hospitals.json';
-import { hospitalSite } from '../../../../lib/hospital-pages.mjs';
+import { hospitalSite, stateHeading } from '../../../../lib/hospital-pages.mjs';
 
 export function getStaticPaths() {
-  return hospitalSite(hospitalsData).states.map((s) => ({ params: { state: s.slug }, props: { s } }));
+  const site = hospitalSite(hospitalsData);
+  return site.states.map((s) => ({
+    params: { state: s.slug },
+    props: {
+      s,
+      places: s.places.filter((p) => p.hasPage),
+      partial: site.directoryCount.state(s) > s.hospitals.length,
+    },
+  }));
 }
 
-const { s } = Astro.props;
+const { s, places, partial } = Astro.props;
 const crumbs = [
   { name: 'Home', path: '/' },
   { name: 'Find Care', path: '/find-care/' },
@@ -20,4 +28,13 @@ const crumbs = [
 ];
 ---
 
-<HospitalPlacePage label={s.state} state={s.state} path={s.path} hospitals={s.hospitals} crumbs={crumbs} places={s.places} />
+<HospitalPlacePage
+  heading={stateHeading(s)}
+  label={s.state}
+  state={s.state}
+  path={s.path}
+  hospitals={s.hospitals}
+  crumbs={crumbs}
+  partial={partial}
+  places={places}
+/>
