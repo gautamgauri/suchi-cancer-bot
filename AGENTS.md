@@ -27,12 +27,50 @@ Companion documents:
    (`apps/api/src/modules/rag/`). If evidence is insufficient, the correct
    behavior is abstention (`apps/api/src/modules/abstention/`), not a fluent
    guess.
-3. **Do not edit medical content, prompts, or clinical policy on your own
-   authority.** Changes to `kb/**`, system prompts under
-   `apps/api/src/modules/llm/` or `chat/`, safety keyword lists, escalation
-   wording, or `docs/SUCHI_ANSWER_POLICY.md` require SCCF human/medical review.
-   Propose them in a separate, clearly-labeled PR (see issue #48 boundaries for
-   the precedent).
+3. **Medically significant changes need clinical review. Other changes to
+   wording need the owner's approval.** SCCF's clinicians are busy. Send them
+   only what a clinician must decide. The owner is the repository owner, a
+   person, never an agent.
+
+   **Needs SCCF clinical review**, in a separate, clearly labelled PR. The
+   medical oncologist decides. The medical social worker may route the question.
+   - New or changed clinical content. Examples are how urgent a symptom is,
+     which reply or triage level a symptom leads to, any timeframe for seeking
+     care, doses, drugs, tests, treatment, side effects, diet, prevention,
+     screening, prognosis, what a symptom may mean, and who to call or where
+     to go in an emergency.
+   - Changes to the clinical meaning of `kb/**`, of system prompts under
+     `apps/api/src/modules/llm/` or `chat/`, of `docs/SUCHI_ANSWER_POLICY.md`
+     or of `docs/SUCHI_SAFETY_CONTRACT.md`.
+   - Removing, narrowing, replacing or reordering anything that triggers a
+     safety reply.
+   - A new symptom or situation as a trigger for a safety reply, and any
+     change that moves a phrase from one reply to another.
+   - Thresholds and logic that decide whether Suchi answers, abstains,
+     escalates or ends the conversation.
+
+   **Owner approval is enough** (no clinical review):
+   - Translating an approved reply into a language Suchi already serves, with
+     no change of meaning. A named person who reads the language, other than
+     the author of the translation, checks it against the original and is
+     named in the PR. Numbers, timeframes and urgency words carry over
+     unchanged. A new language follows `docs/LANGUAGE_LAUNCH_GATE.md`.
+   - Adding spellings, transliterations and synonyms of a phrase that already
+     triggers the same safety reply.
+   - Edits to the files above that leave the clinical meaning unchanged, such
+     as spelling, grammar, layout and links. The owner makes that judgement
+     from the before and after text in the PR.
+   - Greetings, notices, button text, error messages, privacy wording and
+     other interface copy with no medical content. An approved sentence reused
+     word for word counts as interface copy. A new emergency number or
+     instruction is clinical.
+   - Process matters such as review order, rotas and document layout.
+
+   State in the PR which list applies and why. A change to wording, the
+   knowledge base, prompts or safety triggers that fits both lists, or
+   neither, is clinical. When a clinician is needed, ask at most two or three
+   questions, each answerable in one line, and quote the exact new wording in
+   each. If the change will not fit, split it. Record who answered and when.
 4. **No secrets in code, docs, logs, or fixtures.** Secrets live in GCP Secret
    Manager (project `gen-lang-client-0202543132`) and are referenced by *name
    only* (e.g. `database-url`, `DISTRIBUTION_APPROVAL_SECRET`). Never paste
