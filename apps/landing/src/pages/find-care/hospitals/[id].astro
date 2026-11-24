@@ -166,7 +166,7 @@ const crumbs = [
 
   .hp-crumbs ol { list-style: none; padding: 0; margin: 0 0 1.25rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.875rem; }
   .hp-crumbs li + li::before { content: '›'; margin-right: 0.5rem; color: var(--color-text-muted); }
-  .hp-crumbs a { color: var(--color-primary); }
+  .hp-crumbs a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary); }
 
   .hp-header h1 {
     font-family: var(--font-serif);
@@ -179,7 +179,7 @@ const crumbs = [
 
   .hp-facts { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
   .hp-facts caption { text-align: left; font-weight: 600; color: var(--color-text-dark); padding-bottom: 0.5rem; }
-  .hp-facts th, .hp-facts td { text-align: left; vertical-align: top; padding: 0.625rem 0.5rem 0.625rem 0; border-top: 1px solid var(--color-border); }
+  .hp-facts th, .hp-facts td { text-align: left; vertical-align: middle; padding: 0.625rem 0.5rem 0.625rem 0; border-top: 1px solid var(--color-border); }
   .hp-facts th { width: 8.5rem; font-weight: 600; color: var(--color-text-secondary); font-size: 0.9375rem; }
   .hp-facts td { color: var(--color-text); overflow-wrap: anywhere; }
 
