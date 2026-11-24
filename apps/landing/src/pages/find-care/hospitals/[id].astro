@@ -1,0 +1,212 @@
+---
+/**
+ * One page per publishable hospital (rules in src/lib/hospital-pages.mjs).
+ *
+ * Content rule: show a field only when the directory holds it. Every value
+ * taken from the data carries `data-field` naming its source, and
+ * scripts/verify-build.mjs fails the build if a marked value is not in the
+ * data for this hospital. Doctor names, notes, navigation notes, scores,
+ * tiers and cost ranges are never shown here.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import HospitalCta from '../../../components/HospitalCta.astro';
+import hospitalsData from '../../../content/hospitals.json';
+import { chatUrlFor } from '../../../lib/chat-link';
+import { hospitalJsonLd } from '../../../lib/seo';
+import {
+  hospitalSite,
+  hospitalTitle,
+  hospitalPath,
+  deptLabel,
+  telHref,
+  preciseGeo,
+  directionsUrl,
+  formatDate,
+} from '../../../lib/hospital-pages.mjs';
+
+export function getStaticPaths() {
+  const site = hospitalSite(hospitalsData);
+  return site.publishable.map((h) => ({
+    params: { id: h.id },
+    props: { h, place: site.placeOf.get(h.id), state: site.stateOf.get(h.state) ?? null },
+  }));
+}
+
+const { h, place, state } = Astro.props;
+const path = hospitalPath(h);
+const title = hospitalTitle(h);
+const verified = formatDate(h.verified_date);
+const phone = h.contact?.phone || null;
+const phoneAlt = h.contact?.phone_alt || null;
+const address = h.contact?.address || null;
+const website = h.contact?.website || null;
+const geo = preciseGeo(h);
+const pmjay = h.pmjay_empanelled === true;
+const westBengal = h.state === 'West Bengal';
+
+const crumbs = [
+  { name: 'Home', path: '/' },
+  { name: 'Find Care', path: '/find-care/' },
+  { name: 'Hospital Directory', path: '/find-care/hospitals/' },
+  ...(state ? [{ name: state.state, path: state.path }] : []),
+  { name: place.place, path: place.path },
+  { name: h.name, path },
+];
+---
+
+<BaseLayout
+  title={title}
+  fullTitle={`${title} | SCCF Hospital Directory`}
+  description={`Contact details and departments for ${title}, ${h.state}, as recorded in the SCCF hospital directory. Hospital data verified ${verified}.`}
+  breadcrumbs={crumbs}
+  jsonLd={[
+    hospitalJsonLd({
+      name: h.name,
+      path,
+      city: h.city,
+      state: h.state,
+      address,
+      telephone: phone,
+      website,
+      geo,
+    }),
+  ]}
+>
+  <section class="hp-page">
+    <div class="hp-inner">
+      <nav class="hp-crumbs" aria-label="Breadcrumb">
+        <ol>
+          {crumbs.slice(2, -1).map((c) => (
+            <li><a href={c.path}>{c.name}</a></li>
+          ))}
+        </ol>
+      </nav>
+
+      <header class="hp-header">
+        <h1 data-field="name">{h.name}</h1>
+        <p class="hp-intro">{h.name} is a hospital in {h.city}, {h.state}.</p>
+      </header>
+
+      <table class="hp-facts" data-facts>
+        <caption>Details recorded in the SCCF hospital directory</caption>
+        <tbody>
+          {h.type && (
+            <tr><th scope="row">Type</th><td><span data-field="type">{h.type}</span></td></tr>
+          )}
+          {address && (
+            <tr><th scope="row">Address</th><td><span data-field="contact.address">{address}</span></td></tr>
+          )}
+          <tr><th scope="row">City</th><td><span data-field="city">{h.city}</span></td></tr>
+          <tr><th scope="row">State</th><td><span data-field="state">{h.state}</span></td></tr>
+          {phone && (
+            <tr>
+              <th scope="row">Phone</th>
+              <td><a class="hp-tap" href={telHref(phone)}><span data-field="contact.phone">{phone}</span></a></td>
+            </tr>
+          )}
+          {phoneAlt && (
+            <tr>
+              <th scope="row">Other phone</th>
+              <td><a class="hp-tap" href={telHref(phoneAlt)}><span data-field="contact.phone_alt">{phoneAlt}</span></a></td>
+            </tr>
+          )}
+          {website && (
+            <tr>
+              <th scope="row">Website</th>
+              <td><a class="hp-tap hp-web" href={website} rel="noopener" target="_blank"><span data-field="contact.website">{website}</span></a></td>
+            </tr>
+          )}
+          {pmjay && (
+            <tr><th scope="row">Scheme</th><td><span data-field="pmjay_empanelled">PMJAY empanelled</span></td></tr>
+          )}
+          {geo && (
+            <tr>
+              <th scope="row">Map</th>
+              <td><a class="hp-tap" data-field="geo" href={directionsUrl(geo)} rel="noopener" target="_blank">Directions on Google Maps</a></td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      <h2>Departments recorded</h2>
+      <ul class="hp-depts">
+        {h.departments.map((d) => (
+          <li data-field="departments" data-raw={d}>{deptLabel(d)}</li>
+        ))}
+      </ul>
+
+      <div class="hp-note">
+        <p>
+          Hospital data verified <time data-field="verified_date" datetime={h.verified_date}>{verified}</time>.
+          Always call ahead to confirm appointments and available services.
+        </p>
+        {pmjay && <p>Confirm PMJAY portability directly with the hospital before travelling.</p>}
+        {westBengal && (
+          <p>
+            <strong>West Bengal note:</strong> WB operates Swasthya Sathi (not central PMJAY) — Bihar
+            PMJAY cards are generally not accepted at WB hospitals, whether government or private.
+          </p>
+        )}
+      </div>
+
+      <ul class="hp-more">
+        <li><a href={place.path}>All hospitals in {place.place}</a></li>
+        {state && <li><a href={state.path}>All hospitals in {state.state}</a></li>}
+        <li><a href="/find-care/hospitals/">Hospital Directory</a></li>
+      </ul>
+
+      <HospitalCta href={chatUrlFor(Astro.url.pathname)} />
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hp-page { padding: 2.5rem 1rem 4rem; background: var(--color-bg); }
+  .hp-inner { max-width: 760px; margin: 0 auto; }
+
+  .hp-crumbs ol { list-style: none; padding: 0; margin: 0 0 1.25rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.875rem; }
+  .hp-crumbs li + li::before { content: '›'; margin-right: 0.5rem; color: var(--color-text-muted); }
+  .hp-crumbs a { color: var(--color-primary); }
+
+  .hp-header h1 {
+    font-family: var(--font-serif);
+    font-size: var(--text-4xl, 2rem);
+    line-height: 1.2;
+    color: var(--color-text-dark);
+    margin: 0 0 0.5rem;
+  }
+  .hp-intro { color: var(--color-text-secondary); margin: 0 0 1.5rem; }
+
+  .hp-facts { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+  .hp-facts caption { text-align: left; font-weight: 600; color: var(--color-text-dark); padding-bottom: 0.5rem; }
+  .hp-facts th, .hp-facts td { text-align: left; vertical-align: top; padding: 0.625rem 0.5rem 0.625rem 0; border-top: 1px solid var(--color-border); }
+  .hp-facts th { width: 8.5rem; font-weight: 600; color: var(--color-text-secondary); font-size: 0.9375rem; }
+  .hp-facts td { color: var(--color-text); overflow-wrap: anywhere; }
+
+  .hp-tap {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .hp-web { font-weight: 500; }
+
+  .hp-page h2 { font-family: var(--font-serif); font-size: var(--text-2xl, 1.5rem); color: var(--color-text-dark); margin: 0 0 0.75rem; }
+  .hp-depts { margin: 0 0 2rem; padding-left: 1.25rem; columns: 2 14rem; color: var(--color-text); }
+  .hp-depts li { margin-bottom: 0.25rem; }
+
+  .hp-note { background: var(--color-bg-soft); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: 1rem 1.125rem; margin-bottom: 1.5rem; }
+  .hp-note p { margin: 0 0 0.5rem; color: var(--color-text); font-size: 0.9375rem; line-height: 1.6; }
+  .hp-note p:last-child { margin-bottom: 0; }
+
+  .hp-more { list-style: none; padding: 0; margin: 0 0 2rem; display: flex; flex-wrap: wrap; gap: 0 1.25rem; }
+  .hp-more a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary); font-weight: 500; }
+
+  @media (max-width: 480px) {
+    .hp-facts th { width: 6.5rem; }
+  }
+</style>

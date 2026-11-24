@@ -2,6 +2,11 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import hospitalsData from '../../../content/hospitals.json';
 import { chatUrlFor } from '../../../lib/chat-link';
+import HospitalPlaceLinks from '../../../components/HospitalPlaceLinks.astro';
+import { hospitalSite, hospitalPath } from '../../../lib/hospital-pages.mjs';
+
+// Entries with a page of their own (rules in src/lib/hospital-pages.mjs).
+const HAS_PAGE = new Set(hospitalSite(hospitalsData).publishable.map((h) => h.id));
 
 type Hospital = (typeof hospitalsData.hospitals)[number];
 
@@ -133,7 +138,9 @@ function scoreClass(score: number): string {
                 </span>
               </div>
 
-              <h2 class="hosp-name">{h.name}</h2>
+              <h2 class="hosp-name">
+                {HAS_PAGE.has(h.id) ? <a href={hospitalPath(h)}>{h.name}</a> : h.name}
+              </h2>
               <p class="hosp-location">
                 {h.city}, {h.state}
                 <span class="hosp-type"> · {h.type}</span>
@@ -172,6 +179,8 @@ function scoreClass(score: number): string {
           </li>
         ))}
       </ul>
+
+      <HospitalPlaceLinks />
 
       <aside class="suchi-cta">
         <div class="cta-inner">
@@ -367,6 +376,13 @@ function scoreClass(score: number): string {
     line-height: 1.3;
     color: var(--color-text-dark);
     margin: 0;
+  }
+
+  .hosp-name a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--color-primary);
+    text-underline-offset: 3px;
   }
 
   .hosp-location {

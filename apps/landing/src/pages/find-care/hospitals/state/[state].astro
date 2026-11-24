@@ -1,0 +1,23 @@
+---
+/**
+ * One page per state whose publishable hospitals sit in two or more cities.
+ * A state with one city is covered by that city's page.
+ */
+import HospitalPlacePage from '../../../../components/HospitalPlacePage.astro';
+import hospitalsData from '../../../../content/hospitals.json';
+import { hospitalSite } from '../../../../lib/hospital-pages.mjs';
+
+export function getStaticPaths() {
+  return hospitalSite(hospitalsData).states.map((s) => ({ params: { state: s.slug }, props: { s } }));
+}
+
+const { s } = Astro.props;
+const crumbs = [
+  { name: 'Home', path: '/' },
+  { name: 'Find Care', path: '/find-care/' },
+  { name: 'Hospital Directory', path: '/find-care/hospitals/' },
+  { name: s.state, path: s.path },
+];
+---
+
+<HospitalPlacePage label={s.state} state={s.state} path={s.path} hospitals={s.hospitals} crumbs={crumbs} places={s.places} />

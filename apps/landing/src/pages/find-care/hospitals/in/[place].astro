@@ -1,0 +1,26 @@
+---
+/** One page per city with at least one publishable hospital (src/lib/hospital-pages.mjs). */
+import HospitalPlacePage from '../../../../components/HospitalPlacePage.astro';
+import hospitalsData from '../../../../content/hospitals.json';
+import { hospitalSite } from '../../../../lib/hospital-pages.mjs';
+
+export function getStaticPaths() {
+  const site = hospitalSite(hospitalsData);
+  return site.places.map((p) => ({
+    params: { place: p.slug },
+    props: { p, state: site.stateOf.get(p.state) ?? null },
+  }));
+}
+
+const { p, state } = Astro.props;
+const label = p.place === p.state ? p.place : `${p.place}, ${p.state}`;
+const crumbs = [
+  { name: 'Home', path: '/' },
+  { name: 'Find Care', path: '/find-care/' },
+  { name: 'Hospital Directory', path: '/find-care/hospitals/' },
+  ...(state ? [{ name: state.state, path: state.path }] : []),
+  { name: p.place, path: p.path },
+];
+---
+
+<HospitalPlacePage label={label} state={p.state} path={p.path} hospitals={p.hospitals} crumbs={crumbs} />

@@ -1,0 +1,138 @@
+---
+/**
+ * Listing of the hospitals with a page of their own in one city or state.
+ * Used by src/pages/find-care/hospitals/in/[place].astro and
+ * state/[state].astro. Hospitals are listed by name. Nothing here ranks
+ * or recommends one over another.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HospitalCta from './HospitalCta.astro';
+import { chatUrlFor } from '../lib/chat-link';
+import { itemListJsonLd, type Crumb } from '../lib/seo';
+import { hospitalPath, hospitalTitle, telHref, formatDate } from '../lib/hospital-pages.mjs';
+
+interface PlaceLink { place: string; path: string; hospitals: unknown[] }
+
+export interface Props {
+  /** "Patna, Bihar", or "Delhi" when the city and state share a name. */
+  label: string;
+  state: string;
+  path: string;
+  hospitals: any[];
+  crumbs: Crumb[];
+  /** On a state page, the city pages in that state. */
+  places?: PlaceLink[];
+}
+
+const { label, state, path, hospitals, crumbs, places = [] } = Astro.props;
+const n = hospitals.length;
+const heading = `${n === 1 ? 'Cancer hospital' : 'Cancer hospitals'} in ${label}`;
+const itemLevel = places.length ? 'h3' : 'h2';
+const Item = itemLevel;
+---
+
+<BaseLayout
+  title={heading}
+  fullTitle={`${heading} | SCCF Hospital Directory`}
+  description={`${n} ${n === 1 ? 'hospital' : 'hospitals'} in ${label} from the SCCF hospital directory, with contact details and the date each entry was last verified.`}
+  breadcrumbs={crumbs}
+  jsonLd={[itemListJsonLd(heading, hospitals.map((h) => ({ name: h.name, path: hospitalPath(h) })))]}
+>
+  <section class="pl-page">
+    <div class="pl-inner">
+      <nav class="pl-crumbs" aria-label="Breadcrumb">
+        <ol>
+          {crumbs.slice(2, -1).map((c) => (
+            <li><a href={c.path}>{c.name}</a></li>
+          ))}
+        </ol>
+      </nav>
+
+      <header>
+        <h1>{heading}</h1>
+        <p class="pl-intro">
+          This page lists {n} {n === 1 ? 'hospital' : 'hospitals'} in {label} from the SCCF hospital directory.
+        </p>
+      </header>
+
+      {places.length > 0 && (
+        <>
+          <h2>Cities</h2>
+          <ul class="pl-places">
+            {places.map((p) => (
+              <li><a href={p.path}>{p.place}</a> ({p.hospitals.length})</li>
+            ))}
+          </ul>
+          <h2>Hospitals</h2>
+        </>
+      )}
+
+      <ul class="pl-list">
+        {hospitals.map((h) => (
+          <li class="pl-item">
+            <Item class="pl-name"><a href={hospitalPath(h)}>{hospitalTitle(h)}</a></Item>
+            <p class="pl-meta">{h.type}</p>
+            {h.contact?.address && <p class="pl-meta">{h.contact.address}</p>}
+            {h.contact?.phone && (
+              <a class="pl-tap" href={telHref(h.contact.phone)}>{h.contact.phone}</a>
+            )}
+            <p class="pl-verified">
+              Hospital data verified <time datetime={h.verified_date}>{formatDate(h.verified_date)}</time>.
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      <div class="pl-note">
+        <p>Always call ahead to confirm appointments and available services.</p>
+        {state === 'West Bengal' && (
+          <p>
+            <strong>West Bengal note:</strong> WB operates Swasthya Sathi (not central PMJAY) — Bihar
+            PMJAY cards are generally not accepted at WB hospitals, whether government or private.
+          </p>
+        )}
+      </div>
+
+      <p class="pl-back"><a href="/find-care/hospitals/">Hospital Directory</a></p>
+
+      <HospitalCta href={chatUrlFor(path)} />
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .pl-page { padding: 2.5rem 1rem 4rem; background: var(--color-bg); }
+  .pl-inner { max-width: 760px; margin: 0 auto; }
+
+  .pl-crumbs ol { list-style: none; padding: 0; margin: 0 0 1.25rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; font-size: 0.875rem; }
+  .pl-crumbs li + li::before { content: '›'; margin-right: 0.5rem; color: var(--color-text-muted); }
+  .pl-crumbs a { color: var(--color-primary); }
+
+  h1 {
+    font-family: var(--font-serif);
+    font-size: var(--text-4xl, 2rem);
+    line-height: 1.2;
+    color: var(--color-text-dark);
+    margin: 0 0 0.5rem;
+  }
+  h2 { font-family: var(--font-serif); font-size: var(--text-2xl, 1.5rem); color: var(--color-text-dark); margin: 0 0 0.75rem; }
+  .pl-intro { color: var(--color-text-secondary); margin: 0 0 1.5rem; }
+
+  .pl-places { margin: 0 0 2rem; padding-left: 1.25rem; columns: 2 12rem; }
+  .pl-places li { margin-bottom: 0.25rem; }
+  .pl-places a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary); font-weight: 600; }
+
+  .pl-list { list-style: none; padding: 0; margin: 0 0 2rem; }
+  .pl-item { padding: 1rem 0; border-top: 1px solid var(--color-border); }
+  .pl-name { font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.3; margin: 0 0 0.25rem; }
+  .pl-name a { color: var(--color-text-dark); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--color-primary); }
+  .pl-meta { margin: 0 0 0.125rem; color: var(--color-text-secondary); font-size: 0.9375rem; }
+  .pl-tap { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary); font-weight: 600; }
+  .pl-verified { margin: 0.25rem 0 0; color: var(--color-text-muted); font-size: 0.875rem; }
+
+  .pl-note { background: var(--color-bg-soft); border: 1px solid var(--color-border); border-radius: var(--radius-md, 8px); padding: 1rem 1.125rem; margin-bottom: 1rem; }
+  .pl-note p { margin: 0 0 0.5rem; font-size: 0.9375rem; line-height: 1.6; }
+  .pl-note p:last-child { margin-bottom: 0; }
+  .pl-back a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary); font-weight: 500; }
+  .pl-back { margin: 0 0 1.5rem; }
+</style>
