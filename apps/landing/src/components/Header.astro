@@ -1,5 +1,6 @@
 ---
 import { chatUrlFor } from '../lib/chat-link';
+import WhatsAppButton from './WhatsAppButton.astro';
 
 const botUrl = chatUrlFor(Astro.url.pathname);
 const base = import.meta.env.BASE_URL;
@@ -106,6 +107,7 @@ const CANCER_TYPES = [
     <!-- Actions -->
     <div class="nav-actions">
       <a href={botUrl} target="_blank" rel="noopener" class="nav-cta">Ask Suchi</a>
+      <WhatsAppButton source="wa-header" variant="nav" />
       <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu"
               aria-expanded="false" aria-controls="mobile-menu">
         <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -177,6 +179,7 @@ const CANCER_TYPES = [
   <a href={`${base}find-care/`} class="mobile-link">Find Care</a>
   <a href={`${base}watch/`}     class="mobile-link">Watch Videos</a>
   <a href={botUrl} target="_blank" rel="noopener" class="mobile-cta">Ask Suchi</a>
+  <WhatsAppButton source="wa-header" variant="menu" />
 </nav>
 
 <!-- Disclaimer Banner -->

@@ -929,6 +929,19 @@ a:hover {
   width: 100%;
 }
 
+/* A web chat link and the "Ask on WhatsApp" button side by side. When they
+   wrap on a phone, the second starts flush left (or centred) with no indent. */
+.wa-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wa-cta-row--center {
+  justify-content: center;
+}
+
 /* ==========================================================================
    Section Layout
    ========================================================================== */

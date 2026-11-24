@@ -10,6 +10,13 @@
  *     frontmatter does not record a completed review (src/lib/review-status.mjs)
  *   - a page lacks a <title> or meta description, or an indexable page has a wrong canonical URL
  *   - an internal link points at a page that was not built
+ *   - an "Ask on WhatsApp" button (a link with data-wa-source) does not go to
+ *     https://wa.me/SUCHI_WHATSAPP_NUMBER, does not open in a new tab with rel="noopener",
+ *     or its decoded text is not the configured greeting ending in a valid "(src: <code>)"
+ *     line for its own code (src/lib/whatsapp-link.mjs)
+ *   - fewer buttons are built than WHATSAPP_MIN_LINKS asks for, so losing them fails
+ *
+ * Other WhatsApp links (a hospital's own number, a share link) are counted, not checked.
  *
  * Warns (exit 0) when:
  *   - two indexable pages share a <title> or meta description
@@ -24,6 +31,12 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
+import {
+  SUCHI_WHATSAPP_NUMBER,
+  WHATSAPP_SOURCES,
+  SOURCE_LINE_RE,
+  whatsappGreeting,
+} from '../src/lib/whatsapp-link.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
@@ -72,6 +85,59 @@ const visibleText = (html) =>
     .replace(/\s+/g, ' ');
 let reviewLabels = 0;
 let unmarkedLabels = 0;
+
+// "Ask on WhatsApp" buttons, found by their data-wa-source marker. Each must go
+// to Suchi's number with the site greeting and its own source code on the
+// last line, and open in a new tab. Other WhatsApp links are only counted.
+const WA_BUTTON_RE = /<a\b[^>]*\bdata-wa-source="([^"]*)"[^>]*>/gi;
+const OTHER_WHATSAPP_RE = /href="https?:\/\/(?:wa\.me|api\.whatsapp\.com|(?:www\.)?whatsapp\.com)\/[^"]*"/gi;
+const whatsappBySource = Object.fromEntries(WHATSAPP_SOURCES.map((s) => [s, 0]));
+let otherWhatsAppLinks = 0;
+// Fewest buttons a build may have. The header has one on every page (and one in
+// the mobile menu). Each in-page placement exists at least once.
+const WHATSAPP_MIN_LINKS = { 'wa-header': 'pages', 'wa-article': 1, 'wa-video': 1, 'wa-hospitals': 1 };
+const decodeAttr = (v) =>
+  v.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+function checkWhatsAppButton(path, tag, marker) {
+  const rawHref = tag.match(/\bhref="([^"]*)"/)?.[1];
+  if (!rawHref) {
+    errors.push(`${path}: WhatsApp button "${marker}" has no href`);
+    return;
+  }
+  const href = decodeAttr(rawHref);
+  let url;
+  try {
+    url = new URL(href);
+  } catch {
+    errors.push(`${path}: WhatsApp link does not parse: ${href}`);
+    return;
+  }
+  if (url.hostname !== 'wa.me' || url.pathname !== `/${SUCHI_WHATSAPP_NUMBER}`) {
+    errors.push(`${path}: WhatsApp link is not https://wa.me/${SUCHI_WHATSAPP_NUMBER}: ${href}`);
+    return;
+  }
+  if (url.protocol !== 'https:') errors.push(`${path}: WhatsApp link is not https: ${href}`);
+  if (!/\btarget="_blank"/.test(tag) || !/\brel="[^"]*\bnoopener\b[^"]*"/.test(tag)) {
+    errors.push(`${path}: WhatsApp link must have target="_blank" and rel="noopener"`);
+  }
+  const text = url.searchParams.get('text') ?? '';
+  const code = text.match(SOURCE_LINE_RE)?.[1];
+  if (!code) {
+    errors.push(`${path}: WhatsApp link text does not end with a valid "(src: <code>)" line`);
+    return;
+  }
+  if (!WHATSAPP_SOURCES.includes(code)) {
+    errors.push(`${path}: WhatsApp link has unknown source code "${code}"`);
+    return;
+  }
+  if (code !== marker) errors.push(`${path}: WhatsApp button marked "${marker}" carries the code "${code}"`);
+  if (text !== whatsappGreeting(code)) errors.push(`${path}: WhatsApp link text differs from whatsappGreeting("${code}")`);
+  whatsappBySource[code] += 1;
+}
+
+// Web chat links, counted by their ?src= code (report only).
+const chatBySource = {};
 
 // robots.txt
 const robotsFile = join(DIST, 'robots.txt');
@@ -161,6 +227,17 @@ for (const file of htmlFiles) {
     }
   }
 
+  let buttons = 0;
+  for (const m of html.matchAll(WA_BUTTON_RE)) {
+    buttons += 1;
+    checkWhatsAppButton(path, m[0], m[1]);
+  }
+  otherWhatsAppLinks += Math.max(0, [...html.matchAll(OTHER_WHATSAPP_RE)].length - buttons);
+  for (const m of html.matchAll(/href="https:\/\/chat\.suchitracancercare\.org\/?([^"]*)"/g)) {
+    const src = new URLSearchParams(decodeAttr(m[1]).replace(/^[^?]*\?/, '')).get('src') ?? '(no src)';
+    chatBySource[src] = (chatBySource[src] ?? 0) + 1;
+  }
+
   for (const m of html.matchAll(/href="([^"]+)"/g)) {
     let href = m[1];
     if (href.startsWith(SITE)) href = href.slice(SITE.length) || '/';
@@ -208,6 +285,15 @@ console.log(`JSON-LD blocks parsed: ${jsonLdBlocks} ${JSON.stringify(typeCounts)
 console.log(`unique titles: ${titles.size}, unique descriptions: ${descriptions.size}`);
 console.log(`review labels: ${reviewLabels} marked, ${unmarkedLabels} unmarked (articles recorded as reviewed: ${[...reviewStatus.values()].filter((v) => isReviewed({ review_status: v })).length} of ${reviewStatus.size})`);
 console.log(`broken internal links: ${brokenLinks.size} (${unexpectedBroken.length} not on the known list)`);
+console.log(`WhatsApp buttons to ${SUCHI_WHATSAPP_NUMBER}: ${JSON.stringify(whatsappBySource)}`);
+console.log(`other WhatsApp links (not checked): ${otherWhatsAppLinks}`);
+for (const [code, min] of Object.entries(WHATSAPP_MIN_LINKS)) {
+  const need = min === 'pages' ? builtPaths.size : min;
+  if (whatsappBySource[code] < need) {
+    errors.push(`only ${whatsappBySource[code]} WhatsApp button(s) with "${code}", expected at least ${need}`);
+  }
+}
+console.log(`web chat links by src: ${JSON.stringify(chatBySource)}`);
 for (const l of unexpectedBroken) errors.push(`broken internal link: ${l}`);
 
 if (warnings.length) {

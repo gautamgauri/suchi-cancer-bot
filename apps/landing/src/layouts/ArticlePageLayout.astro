@@ -12,6 +12,7 @@ import BaseLayout from './BaseLayout.astro';
 import VideoCard from '../components/VideoCard.astro';
 import videosData from '../content/videos.json';
 import { chatUrlFor } from '../lib/chat-link';
+import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { articleJsonLd, localeToLang, type Crumb } from '../lib/seo';
 
 interface VideoEntry {
@@ -184,7 +185,10 @@ const sourceGroups: SourceGroup[] = (() => {
       <section class="ask-suchi-cta">
         <h2>Ask Suchi</h2>
         <p>Still unsure about something? You can ask Suchi for help with questions about your situation — symptoms, tests, treatment plans, or finding care near you.</p>
-        <a class="ask-suchi-button" href={chatUrlFor(Astro.url.pathname)} rel="noopener">Open Suchi chat →</a>
+        <div class="wa-cta-row">
+          <a class="ask-suchi-button" href={chatUrlFor(Astro.url.pathname)} rel="noopener">Open Suchi chat →</a>
+          <WhatsAppButton source="wa-article" />
+        </div>
       </section>
 
       {sourceGroups.length > 0 && (
