@@ -10,6 +10,9 @@
  *     frontmatter does not record a completed review (src/lib/review-status.mjs)
  *   - a page lacks a <title> or meta description, or an indexable page has a wrong canonical URL
  *   - an internal link points at a page that was not built
+ *   - the Hospital Directory shows unreviewed free text from hospitals.json: any
+ *     notes text, risk-flag text, name from key_doctors, or doctor's name found in notes
+ *   - any tel: link is not exactly one valid Indian number (src/lib/phone.mjs)
  *
  * Warns (exit 0) when:
  *   - two indexable pages share a <title> or meta description
@@ -24,9 +27,11 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
+import { TEL_HREF_RE } from '../src/lib/phone.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
+const HOSPITALS = fileURLToPath(new URL('../src/content/hospitals.json', import.meta.url));
 const SITE = 'https://suchitracancercare.org';
 const errors = [];
 const warnings = [];
@@ -200,6 +205,54 @@ const brokenTargets = new Set([...brokenLinks].map((l) => l.split(' -> ')[1]));
 const unexpectedBroken = [...brokenLinks].filter((l) => !KNOWN_BROKEN.has(l.split(' -> ')[1]));
 for (const t of KNOWN_BROKEN) {
   if (!brokenTargets.has(t)) warnings.push(`KNOWN_BROKEN entry ${t} is no longer broken. Remove it from the list.`);
+}
+
+// The Hospital Directory must not show free text from hospitals.json that has
+// not been reviewed for publication. Checked against the raw HTML with
+// entities decoded, so attributes and JSON-LD count too.
+const DIRECTORY = '/find-care/hospitals/';
+const decodeHtml = (s) =>
+  s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+const norm = (s) => s.replace(/\s+/g, ' ').trim();
+{
+  const hospitals = JSON.parse(readFileSync(HOSPITALS, 'utf8')).hospitals;
+  const file = join(DIST, 'find-care/hospitals/index.html');
+  if (!existsSync(file)) {
+    errors.push(`${DIRECTORY} was not built`);
+  } else {
+    const page = norm(decodeHtml(readFileSync(file, 'utf8')));
+    const DOCTOR_IN_TEXT = /\bDr\.?\s?(?:[A-Z][A-Za-z]*\.?\s?){1,4}/g;
+    let checked = 0;
+    for (const h of hospitals) {
+      const found = (kind, text) => {
+        checked += 1;
+        if (text && page.includes(norm(text))) errors.push(`${DIRECTORY}: shows ${kind} for ${h.id}`);
+      };
+      if (typeof h.notes === 'string' && h.notes.trim().length >= 12) found('notes text', h.notes);
+      if (typeof h.risk_flag === 'string' && h.risk_flag.trim().length >= 12) found('risk-flag text', h.risk_flag);
+      for (const d of h.key_doctors ?? []) {
+        const name = typeof d === 'string' ? d : d?.name;
+        if (name && name.trim().length >= 6) found('a name from key_doctors', name);
+      }
+      for (const m of String(h.notes ?? '').matchAll(DOCTOR_IN_TEXT)) {
+        if (m[0].trim().length >= 6) found('a doctor name from notes', m[0].trim());
+      }
+    }
+    console.log(`directory free-text guard: ${checked} strings checked`);
+  }
+}
+
+// Every tel: link must dial exactly one valid Indian number.
+for (const file of htmlFiles) {
+  for (const m of readFileSync(file, 'utf8').matchAll(/href="(tel:[^"]*)"/g)) {
+    if (!TEL_HREF_RE.test(m[1])) errors.push(`${pagePath(file)}: tel: link "${m[1]}" is not a single valid number`);
+  }
 }
 
 console.log(`pages built: ${builtPaths.size} (${notIndexable} not indexable, ${THIN_HUBS.length} thin hubs left out of the sitemap)`);
