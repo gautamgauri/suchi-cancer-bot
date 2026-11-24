@@ -2,6 +2,7 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import hospitalsData from '../../../content/hospitals.json';
 import { chatUrlFor } from '../../../lib/chat-link';
+import { telHref } from '../../../lib/phone.mjs';
 
 type Hospital = (typeof hospitalsData.hospitals)[number];
 
@@ -67,17 +68,24 @@ const DEPT_LABELS: Record<string, string> = {
   head_and_neck: 'Head & Neck',
 };
 
-const COST_LABEL: Record<string, string> = {
-  Low: 'Free / Subsidised',
-  Medium: 'Moderate Cost',
-  High: 'Private Rates',
-};
-
-function scoreClass(score: number): string {
-  if (score >= 9) return 'high';
-  if (score >= 7) return 'mid';
-  return 'low';
+// Months in which the listed entries were recorded, from verified_date.
+// The field holds the day the research pipeline recorded the entry.
+function monthsRecorded(dates: string[]): string {
+  const sorted = dates.filter(Boolean).sort();
+  const fmt = (d: string, opts: Intl.DateTimeFormatOptions) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { ...opts, timeZone: 'UTC' });
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const firstMonth = fmt(first, { month: 'long', year: 'numeric' });
+  const lastMonth = fmt(last, { month: 'long', year: 'numeric' });
+  if (firstMonth === lastMonth) return `in ${lastMonth}`;
+  if (first.slice(0, 4) === last.slice(0, 4)) return `in ${fmt(first, { month: 'long' })} and ${lastMonth}`;
+  return `between ${firstMonth} and ${lastMonth}`;
 }
+const RECORDED = monthsRecorded(LISTABLE.map((h) => h.verified_date));
+
+// Shown on a card in place of risk-flag text, which has not been reviewed for publication.
+const FLAG_NOTICE = 'Please confirm current services with this hospital before you travel.';
 ---
 
 <BaseLayout
@@ -87,7 +95,7 @@ function scoreClass(score: number): string {
     { name: 'Find Care', path: '/find-care/' },
     { name: 'Hospital Directory', path: '/find-care/hospitals/' },
   ]}
-  description={`${LISTABLE.length} verified cancer hospitals across East India and national referral centres — Bihar, Jharkhand, West Bengal, Odisha, Assam, and beyond.`}
+  description={`${LISTABLE.length} hospitals with cancer services recorded in the SCCF directory, in Bihar, Jharkhand, West Bengal, Odisha, Assam and other states.`}
 >
   <section class="dir-page">
     <div class="dir-inner">
@@ -96,9 +104,8 @@ function scoreClass(score: number): string {
         <p class="dir-eyebrow">Find Care</p>
         <h1>Hospital Directory</h1>
         <p class="dir-intro">
-          {LISTABLE.length} verified cancer hospitals with at least a Medical Oncologist and
-          Surgical Oncologist — covering Bihar, Jharkhand, Odisha, West Bengal, Assam, and
-          national referral centres. Scored on quality, cost, and accessibility.
+          This page lists {LISTABLE.length} hospitals with cancer services recorded in the SCCF
+          directory. They are in Bihar, Jharkhand, Odisha, West Bengal, Assam and other states.
         </p>
       </header>
 
@@ -120,18 +127,17 @@ function scoreClass(score: number): string {
           <li class="hosp-item" data-state={filterGroup(h)}>
             <div class="hosp-card">
 
-              <div class="card-top">
-                <div class="card-badges">
-                  {h.ncg_member && <span class="badge badge-ncg">NCG Member</span>}
-                  {h.tmc_affiliated && <span class="badge badge-tmc">TMC</span>}
-                  {h.pmjay_empanelled === true && (
-                    <span class="badge badge-pmjay">PMJAY</span>
-                  )}
+              {(h.ncg_member || h.tmc_affiliated || h.pmjay_empanelled === true) && (
+                <div class="card-top">
+                  <div class="card-badges">
+                    {h.ncg_member && <span class="badge badge-ncg">NCG Member</span>}
+                    {h.tmc_affiliated && <span class="badge badge-tmc">TMC</span>}
+                    {h.pmjay_empanelled === true && (
+                      <span class="badge badge-pmjay">PMJAY</span>
+                    )}
+                  </div>
                 </div>
-                <span class={`score-badge score-${scoreClass(h.score)}`}>
-                  {h.score}/10
-                </span>
-              </div>
+              )}
 
               <h2 class="hosp-name">{h.name}</h2>
               <p class="hosp-location">
@@ -148,25 +154,20 @@ function scoreClass(score: number): string {
                 )}
               </div>
 
-              <p class="hosp-notes">{h.notes}</p>
-
               {h.risk_flag && (
                 <p class="hosp-risk">
                   <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 10.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM7.25 5h1.5v4h-1.5V5z"/></svg>
-                  {h.risk_flag}
+                  {FLAG_NOTICE}
                 </p>
               )}
 
-              <div class="card-foot">
-                <span class={`cost-badge cost-${(h.cost_tier ?? '').toLowerCase()}`}>
-                  {COST_LABEL[h.cost_tier] ?? h.cost_tier}
-                </span>
-                {h.contact?.phone && (
-                  <a href={`tel:${h.contact.phone.replace(/\s/g, '')}`} class="hosp-phone">
-                    {h.contact.phone}
-                  </a>
-                )}
-              </div>
+              {h.contact?.phone && (
+                <div class="card-foot">
+                  {telHref(h.contact.phone)
+                    ? <a href={telHref(h.contact.phone)} class="hosp-phone">{h.contact.phone}</a>
+                    : <span class="hosp-phone">{h.contact.phone}</span>}
+                </div>
+              )}
 
             </div>
           </li>
@@ -185,8 +186,8 @@ function scoreClass(score: number): string {
       </aside>
 
       <p class="dir-footnote">
-        Hospital data verified April–May 2026. Scores reflect quality accreditation, cost,
-        East India location, and PMJAY empanelment. Always call ahead to confirm
+        Entries were recorded {RECORDED}. Details can change. Please confirm with the
+        hospital before you travel. Always call ahead to confirm
         appointments and available services. <strong>West Bengal note:</strong> WB operates
         Swasthya Sathi (not central PMJAY) — Bihar PMJAY cards are generally not accepted
         at WB hospitals, whether government or private. Confirm PMJAY portability directly
@@ -348,19 +349,6 @@ function scoreClass(score: number): string {
   .badge-tmc  { background: #f3e8ff; color: #6b21a8; }
   .badge-pmjay { background: #dcfce7; color: #15803d; }
 
-  .score-badge {
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-sm);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .score-high { background: #dcfce7; color: #166534; }
-  .score-mid  { background: #fef3c7; color: #92400e; }
-  .score-low  { background: var(--color-bg-soft); color: var(--color-text-muted); }
-
   .hosp-name {
     font-family: var(--font-serif);
     font-size: 1.0625rem;
@@ -403,19 +391,6 @@ function scoreClass(score: number): string {
     color: var(--color-text-muted);
   }
 
-  /* ── Notes ── */
-  .hosp-notes {
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: var(--color-text);
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    flex: 1;
-  }
-
   /* ── Risk flag ── */
   .hosp-risk {
     display: flex;
@@ -444,23 +419,17 @@ function scoreClass(score: number): string {
     margin-top: auto;
   }
 
-  .cost-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .cost-low    { background: #dcfce7; color: #166534; }
-  .cost-medium { background: #fef3c7; color: #92400e; }
-  .cost-high   { background: #fee2e2; color: #991b1b; }
-
   .hosp-phone {
-    font-size: 0.8125rem;
-    color: var(--color-accent);
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
   }
+
+  a.hosp-phone { color: var(--color-primary); }
 
   .hosp-phone:hover { text-decoration: underline; }
 
