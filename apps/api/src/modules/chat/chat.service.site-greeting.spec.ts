@@ -36,11 +36,12 @@ import * as greetingPhrases from "./greeting-phrases";
  * A brand-new WhatsApp contact has no messages yet. ChatService stores the
  * user's message before the greeting check, so the interactive greeting flow
  * (which needs zero messages) does not start, and a recognised greeting gets
- * the G1 template. G1 exists in English only.
+ * the G1 template. A greeting written in Devanagari or romanised Hindi gets
+ * G1 in Hindi (G1Hindi). Any other greeting gets the English G1, unchanged.
  *
- * The "as on main" runs switch the new Hindi matcher off, which restores the
- * GreetingDetector behaviour on main. Every safety probe must give exactly the
- * same reply either way.
+ * The "as on main" runs switch the new Hindi matcher and the Hindi template
+ * off, which restores the behaviour on main. Every safety probe must give
+ * exactly the same reply either way.
  */
 
 /** The site greeting as the pipeline sees it, after the `(src: ...)` line is stripped. */
@@ -165,6 +166,8 @@ async function buildService() {
 }
 
 const G1 = ResponseTemplates.G1({ isFirstMessage: true, userText: "" });
+const G1_HINDI = ResponseTemplates.G1Hindi({ isFirstMessage: true, userText: "" });
+const DEVANAGARI = /[\u0900-\u097F]/;
 
 async function firstTurn(userText: string, locale: string) {
   const built = await buildService();
@@ -174,23 +177,28 @@ async function firstTurn(userText: string, locale: string) {
 
 /** The same turn with the new matcher off, i.e. GreetingDetector as on main. */
 async function firstTurnAsOnMain(userText: string, locale: string) {
-  const spy = jest.spyOn(greetingPhrases, "isHindiOrBilingualGreeting").mockReturnValue(false);
+  const spies = [
+    jest.spyOn(greetingPhrases, "isHindiOrBilingualGreeting").mockReturnValue(false),
+    jest.spyOn(greetingPhrases, "isHindiGreetingText").mockReturnValue(false),
+  ];
   try {
     return await firstTurn(userText, locale);
   } finally {
-    spy.mockRestore();
+    for (const spy of spies) spy.mockRestore();
   }
 }
 
 describe("ChatService: first reply to the website's WhatsApp greeting", () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it("answers the site greeting with the G1 greeting template, in English", async () => {
+  it("answers the site greeting with the Hindi greeting, pinned character for character", async () => {
     const { result, rag, llm, messages } = await firstTurn(SITE_GREETING, "hi");
 
-    expect(result.responseText).toBe(G1);
+    expect(result.responseText).toBe(G1_HINDI);
     expect(result.responseText).toBe(
-      "Hi. I'm Suchi, the Suchitra Cancer Bot. How can I help today?\n\nIs this about symptoms, a report, treatment side effects, or finding care?",
+      "नमस्ते। मैं सुचि हूँ। मैं सुचित्रा कैंसर केयर फ़ाउंडेशन की ओर से कैंसर से जुड़ी जानकारी देती हूँ। आज मैं आपकी क्या मदद कर सकती हूँ?" +
+        "\n\n" +
+        "क्या आपका सवाल लक्षणों, किसी जाँच रिपोर्ट, इलाज के साइड इफ़ेक्ट या इलाज की जगह ढूँढने के बारे में है?",
     );
     expect(result.safety.classification).toBe("normal");
     expect(rag.retrieveWithMetadata).not.toHaveBeenCalled();
@@ -204,18 +212,70 @@ describe("ChatService: first reply to the website's WhatsApp greeting", () => {
   it("on main the same greeting missed the greeting route", async () => {
     const { result } = await firstTurnAsOnMain(SITE_GREETING, "hi");
     expect(result.responseText).not.toBe(G1);
+    expect(result.responseText).not.toBe(G1_HINDI);
   });
 
   it.each([
     ["Devanagari", "नमस्ते सुचि", "hi"],
+    ["Devanagari, namaskar", "नमस्कार", "hi"],
     ["Devanagari, pranam", "प्रणाम जी", "hi"],
-    ["romanised Hindi", "namaste suchi", "en"],
-    ["English", "Hello Suchi, I would like some information.", "en"],
-    ["the plain greeting used when only a source line arrived", "Hello", "en"],
-  ])("answers a %s greeting with G1", async (_label, text, locale) => {
+    ["Devanagari hello", "हेलो सुचि", "hi"],
+    ["romanised namaste", "namaste", "en"],
+    ["romanised namaskar", "namaskar", "en"],
+    ["romanised namaste with the name", "namaste suchi", "en"],
+    ["romanised info request", "Namaste Suchi! Mujhe kuchh jankari chahie.", "en"],
+  ])("answers a %s greeting with the Hindi greeting", async (_label, text, locale) => {
     const { result, llm } = await firstTurn(text, locale);
-    expect(result.responseText).toBe(G1);
+    expect(result.responseText).toBe(G1_HINDI);
     expect(llm.generateWithCitations).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["hello", "hello", "en"],
+    ["hi", "hi", "en"],
+    ["Hi there, how are you", "Hi there, how are you", "en"],
+    ["English site line", "Hello Suchi, I would like some information.", "en"],
+    ["the plain greeting used when only a source line arrived", "Hello", "en"],
+  ])("answers %s with the unchanged English G1", async (_label, text, locale) => {
+    const { result } = await firstTurn(text, locale);
+    expect(result.responseText).toBe(G1);
+    expect(result.responseText).toBe(
+      "Hi. I'm Suchi, the Suchitra Cancer Bot. How can I help today?\n\nIs this about symptoms, a report, treatment side effects, or finding care?",
+    );
+  });
+
+  it("the web chat path gives the same replies (no locale is sent by the web client)", async () => {
+    const built = await buildService();
+    const hindi = await built.chat.handle({ sessionId: "wa-new", channel: "web", userText: "नमस्ते सुचि" } as any);
+    expect(hindi.responseText).toBe(G1_HINDI);
+    const english = await (await buildService()).chat.handle({ sessionId: "wa-new", channel: "web", userText: "hello" } as any);
+    expect(english.responseText).toBe(G1);
+  });
+
+  it("a later greeting in the same session still gets the English G2, as on main", async () => {
+    const built = await buildService();
+    await built.chat.handle({ sessionId: "wa-new", channel: "whatsapp", locale: "hi", userText: SITE_GREETING });
+    const second = await built.chat.handle({ sessionId: "wa-new", channel: "whatsapp", locale: "hi", userText: "नमस्ते" });
+    expect(second.responseText).toBe(ResponseTemplates.G2({ isFirstMessage: false, userText: "" }));
+  });
+
+  it("a visitor who then writes in English is answered in English on the next turn", async () => {
+    const built = await buildService();
+    const first = await built.chat.handle({ sessionId: "wa-new", channel: "whatsapp", locale: "hi", userText: SITE_GREETING });
+    expect(first.responseText).toBe(G1_HINDI);
+
+    // WhatsApp detects the locale per message, so an English message arrives as "en".
+    const question = "What are the early signs of breast cancer?";
+    const second = await built.chat.handle({ sessionId: "wa-new", channel: "whatsapp", locale: "en", userText: question });
+
+    // The answer comes from the LLM, which is given this turn's text only.
+    // No earlier message (so not the Hindi greeting) is passed to it.
+    const llmCalls = [...built.llm.generateWithCitations.mock.calls, ...built.llm.generate.mock.calls];
+    expect(llmCalls.length).toBeGreaterThan(0);
+    for (const call of llmCalls) expect(JSON.stringify(call)).not.toMatch(DEVANAGARI);
+    // Nothing the pipeline adds (disclaimer, framing) is in Hindi.
+    expect(second.responseText).not.toMatch(DEVANAGARI);
+    expect(second.responseText).not.toBe(G1_HINDI);
   });
 
   // Probes taken from emergency-fast-path.spec.ts and hindi-safety-regression.spec.ts.
@@ -231,6 +291,7 @@ describe("ChatService: first reply to the website's WhatsApp greeting", () => {
   const PREFIXES: Array<[string, (probe: string) => string]> = [
     ["after a Devanagari greeting", (p) => `नमस्ते सुचि, ${p}`],
     ["after the site greeting", (p) => `${SITE_GREETING}\n${p}`],
+    ["after a romanised greeting", (p) => `namaste suchi, ${p}`],
   ];
 
   for (const [prefixLabel, withGreeting] of PREFIXES) {
@@ -241,6 +302,7 @@ describe("ChatService: first reply to the website's WhatsApp greeting", () => {
 
       expect(now.result.safety.classification).not.toBe("normal");
       expect(now.result.responseText).not.toBe(G1);
+      expect(now.result.responseText).not.toBe(G1_HINDI);
       expect(now.result.responseText).toBe(main.result.responseText);
       expect(now.result.safety).toEqual(main.result.safety);
       expect(now.prisma.safetyEvent.create.mock.calls).toEqual(main.prisma.safetyEvent.create.mock.calls);
@@ -252,6 +314,7 @@ describe("ChatService: first reply to the website's WhatsApp greeting", () => {
     const now = await firstTurn(text, "hi");
     const main = await firstTurnAsOnMain(text, "hi");
     expect(now.result.responseText).not.toBe(G1);
+    expect(now.result.responseText).not.toBe(G1_HINDI);
     expect(now.result.responseText).toBe(main.result.responseText);
     expect(now.rag.retrieveWithMetadata.mock.calls.length + now.rag.retrieveWithExpansion.mock.calls.length).toBeGreaterThan(0);
   });

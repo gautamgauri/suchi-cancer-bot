@@ -97,6 +97,21 @@ function infoPhraseAt(tokens: string[], at: number): number {
   return 0;
 }
 
+/** Romanised Hindi greeting words. A greeting using one is answered in Hindi. */
+const ROMANISED_HINDI_GREETINGS = new Set(["namaste", "namastey", "namaskar", "namaskaar", "pranam", "pranaam"]);
+const DEVANAGARI = /[ऀ-ॿ]/;
+
+/**
+ * Language of the reply to a message already known to be a greeting: true
+ * (answer in Hindi) when it has any Devanagari, or a romanised Hindi
+ * greeting word such as "namaste". The site's bilingual greeting has a
+ * Devanagari line, so it is answered in Hindi. Plain "hi" or "hello" is not.
+ */
+export function isHindiGreetingText(text: string): boolean {
+  if (DEVANAGARI.test(text)) return true;
+  return words(text.slice(0, MAX_LENGTH)).some((w) => ROMANISED_HINDI_GREETINGS.has(w));
+}
+
 /**
  * True when the whole message is one or more greeting parts in Hindi,
  * Hinglish or English, such as "नमस्ते सुचि", "pranam ji" or the website's

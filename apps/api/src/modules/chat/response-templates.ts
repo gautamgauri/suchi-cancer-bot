@@ -4,6 +4,7 @@
  */
 
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
+import { isHindiGreetingText } from "./greeting-phrases";
 
 export interface TemplateContext {
   isFirstMessage: boolean;
@@ -159,6 +160,16 @@ export class ResponseTemplates {
   static G1(context: TemplateContext): string {
     // First message of session - full introduction
     return "Hi. I'm Suchi, the Suchitra Cancer Bot. How can I help today?\n\nIs this about symptoms, a report, treatment side effects, or finding care?";
+  }
+
+  /**
+   * G1 in Hindi, for a first greeting written in Devanagari or romanised
+   * Hindi. Same layout as G1. Wording follows the owner's decisions of
+   * 21 November 2026: the name is spelled सुचि and Suchi speaks in the
+   * feminine, in plain spoken Hindi.
+   */
+  static G1Hindi(context: TemplateContext): string {
+    return "नमस्ते। मैं सुचि हूँ। मैं सुचित्रा कैंसर केयर फ़ाउंडेशन की ओर से कैंसर से जुड़ी जानकारी देती हूँ। आज मैं आपकी क्या मदद कर सकती हूँ?\n\nक्या आपका सवाल लक्षणों, किसी जाँच रिपोर्ट, इलाज के साइड इफ़ेक्ट या इलाज की जगह ढूँढने के बारे में है?";
   }
 
   static G2(context: TemplateContext): string {
@@ -490,7 +501,10 @@ Let me know if you'd like more information about any of these options, or if the
    */
   static selectTemplate(intent: string, context: TemplateContext): string {
     const templateMap: Record<string, (ctx: TemplateContext) => string> = {
-      GREETING_ONLY: context.isFirstMessage ? this.G1 : this.G2,
+      // A first greeting written in Devanagari or romanised Hindi gets G1 in Hindi.
+      GREETING_ONLY: context.isFirstMessage
+        ? isHindiGreetingText(context.userText ?? "") ? this.G1Hindi : this.G1
+        : this.G2,
       SYMPTOMS_URGENT_RED_FLAGS: this.S2,
       INSUFFICIENT_EVIDENCE: this.A0,
       MISSING_CONTEXT: this.A1,
