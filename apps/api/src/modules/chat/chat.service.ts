@@ -319,15 +319,10 @@ export class ChatService implements BeforeApplicationShutdown {
       isFirstMessage: boolean;
       started: number;
       sessionKnown: boolean;
-      /**
-       * The text the reply is built from: the message itself, or its screened
-       * tail when only the tail of an over-long message tripped a gate (F1).
-       */
-      replyText: string;
     },
   ) {
     const reply = buildDeterministicSafetyReply(screen, {
-      userText: ctx.replyText,
+      userText: dto.userText,
       disclaimerLocale: ctx.disclaimerLocale,
       templateLocale: ctx.templateLocale,
       isFirstMessage: ctx.isFirstMessage,
@@ -692,10 +687,11 @@ export class ChatService implements BeforeApplicationShutdown {
     const screened = screenWholeMessage(dto.userText, dto.channel, dto.inputMode, this.safetyScreenDeps);
     dto.userText = screened.text;
     const screen = screened.screen;
-    // The text the safety reply is built from, and the urgency template's
-    // text: the tail when only the tail of an over-long message fired (F1).
-    const replyText = screened.fromTail ? screened.tailText! : dto.userText;
-    const urgencyText = replyText;
+    // Only the urgency template's CHOICE reads the tail, when only the tail of
+    // an over-long message carries the urgency (F1). Every language and
+    // disclaimer decision reads `dto.userText`, so the parts of one reply
+    // never disagree on language.
+    const urgencyText = screened.fromTail ? screened.tailText! : dto.userText;
 
     const obsTrace = this.observability.startTrace('chat_turn', {
       query: dto.userText?.substring(0, 200),
@@ -754,7 +750,6 @@ export class ChatService implements BeforeApplicationShutdown {
           isFirstMessage: false,
           started: turnStarted,
           sessionKnown: false,
-          replyText,
         });
       }
     } else {
@@ -826,7 +821,6 @@ export class ChatService implements BeforeApplicationShutdown {
         isFirstMessage,
         started,
         sessionKnown: true,
-        replyText,
       });
     }
     const safetyResult = screen.safety;
@@ -1113,7 +1107,6 @@ export class ChatService implements BeforeApplicationShutdown {
         isFirstMessage,
         started,
         sessionKnown: true,
-        replyText,
       });
     }
     // Past the safety / escalation / crisis gates: this is an ordinary turn, and

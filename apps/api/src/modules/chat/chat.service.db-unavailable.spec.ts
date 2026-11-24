@@ -303,9 +303,9 @@ describe.each<Mode>(["session-read-rejects", "all-reject", "all-hang"])(
 );
 
 describe("ChatService with over-length input (PR #202)", () => {
-  // A web message above MAX_USER_TEXT_LENGTH used to get a 400, which the web
-  // client shows as a generic error. It is now cut on the server, so a long
-  // message that opens with an emergency still gets the emergency reply.
+  // An earlier commit of this PR refused long web text with a 400, which the
+  // web client shows as a generic error. No length is refused now, and a long
+  // message is read whole up to 20,000 characters, as on main.
   afterEach(() => jest.restoreAllMocks());
 
   it("keeps a long emergency message whole, as main does, and escalates", async () => {
@@ -463,7 +463,7 @@ describe("ChatService screens the whole of a long message (PR #202, review B1)",
     expect(text.length).toBeGreaterThan(4096);
     const safety = new SafetyService().evaluate(text);
     const fast = evaluateEmergencyFastPath(text);
-    // The phrase sits beyond the pipeline bound, so the first 4096 characters alone are clean.
+    // The phrase sits after the first 4,096 characters, where an earlier commit of this PR cut the text.
     const head = text.slice(0, 4096);
     expect(evaluateEmergencyFastPath(head).isEmergency || new SafetyService().evaluate(head).classification !== "normal").toBe(false);
     expect(fast.isEmergency || safety.classification !== "normal").toBe(true);

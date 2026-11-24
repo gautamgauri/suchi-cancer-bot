@@ -313,6 +313,26 @@ describe("ChatService — safety replies survive persistence failures", () => {
     );
   });
 
+  // Differences from main, stated in the PR (review F6). Neither makes an
+  // outcome worse.
+  it("difference from main: the urgency SafetyEvent write failing does not fail the turn", async () => {
+    ragRetrieve.mockResolvedValue([]);
+    const result: any = await turn("my father is rapidly worsening since yesterday");
+    expect(result.safety.classification).toBe("red_flag");
+    // The write was attempted (with retries) and its failure absorbed.
+    expect(prisma.safetyEvent.create).toHaveBeenCalled();
+    expect(errorLog).toHaveBeenCalledWith(expect.stringContaining("[safety-persist] urgentTemplate"));
+  });
+
+  it("difference from main: a failed session-context write does not fail an ordinary turn", async () => {
+    // The default tone here is "urgent", so every turn writes session context.
+    const greeting: any = (chatService as any).greetingFlow;
+    greeting.updateSessionContext.mockRejectedValue(new Error("context write failed"));
+    const outcome = await turn("what is chemotherapy?").catch((e: any) => e);
+    expect(greeting.updateSessionContext).toHaveBeenCalled();
+    expect(outcome?.message).not.toBe("context write failed");
+  });
+
   it("an ordinary turn whose user message cannot be stored still fails (unchanged contract)", async () => {
     prisma.message.create.mockImplementation(dbDown);
     await expect(turn("what is chemotherapy?")).rejects.toThrow("Can't reach database server");

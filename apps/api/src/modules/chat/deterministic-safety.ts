@@ -360,7 +360,8 @@ export function buildSessionFreeSafetyReply(
   const m = screenWholeMessage(input.userText, input.channel, input.inputMode, deps);
   if (!repliesWithoutSession(m.screen.gate)) return null;
   return buildDeterministicSafetyReply(m.screen, {
-    userText: m.fromTail ? m.tailText! : m.text,
+    // Language and disclaimer from the message itself, as in the pipeline.
+    userText: m.text,
     disclaimerLocale: input.locale,
     templateLocale: input.locale,
     isFirstMessage: false,
