@@ -111,6 +111,64 @@ export function videoJsonLd(v: VideoLdInput): JsonLd {
   };
 }
 
+export interface HospitalLdInput {
+  name: string;
+  /** Site-relative path of the hospital's page on this site. */
+  path: string;
+  city: string;
+  state: string;
+  address?: string | null;
+  telephone?: string | null;
+  /** The hospital's own website, if the directory records one. */
+  website?: string | null;
+  /** Only when the directory geocoded the address itself, not the city centre. */
+  geo?: { latitude: number; longitude: number } | null;
+}
+
+/**
+ * `Hospital` for one directory entry. Every property comes from a field in
+ * hospitals.json. No rating, review, accreditation, specialty or opening
+ * hours: the directory does not record them in a form fit to publish.
+ * `addressCountry` is left out because the data has no country field.
+ */
+export function hospitalJsonLd(h: HospitalLdInput): JsonLd {
+  const page = new URL(h.path, SITE_URL).href;
+  const address: JsonLd = {
+    '@type': 'PostalAddress',
+    addressLocality: h.city,
+    addressRegion: h.state,
+  };
+  if (h.address) address.streetAddress = h.address;
+  const ld: JsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Hospital',
+    '@id': `${page}#hospital`,
+    name: h.name,
+    mainEntityOfPage: page,
+    address,
+  };
+  if (h.telephone) ld.telephone = h.telephone;
+  if (h.website) ld.url = h.website;
+  if (h.geo) ld.geo = { '@type': 'GeoCoordinates', latitude: h.geo.latitude, longitude: h.geo.longitude };
+  return ld;
+}
+
+/** `ItemList` of pages on this site, in the order shown. */
+export function itemListJsonLd(name: string, items: { name: string; path: string }[]): JsonLd {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      url: new URL(it.path, SITE_URL).href,
+    })),
+  };
+}
+
 /** Serialise for a `<script type="application/ld+json">` body. Escapes `<` so text cannot close the tag. */
 export function serializeJsonLd(data: JsonLd): string {
   return JSON.stringify(data).replace(/</g, '\\u003c');
