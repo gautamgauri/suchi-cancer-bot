@@ -442,10 +442,25 @@ a:hover {
   z-index: 99;
   flex-direction: column;
   gap: 0.5rem;
+  /* Scroll inside the panel, so the last links are reachable on a short screen. */
+  max-height: calc(100vh - var(--nav-height-mobile) - 2rem);
+  max-height: calc(100dvh - var(--nav-height-mobile) - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .mobile-menu[aria-hidden="false"] {
   display: flex;
+}
+
+/* The toggle is hidden from 900 px, where the desktop links show. Hide the
+   panel there too, so a menu left open cannot be stranded when the window
+   widens. */
+@media (min-width: 900px) {
+  .mobile-menu,
+  .mobile-menu[aria-hidden="false"] {
+    display: none;
+  }
 }
 
 .mobile-menu a {
@@ -674,6 +689,11 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+}
+
+/* `display: flex` above overrode the hidden attribute, so every section was open. */
+.mobile-section-body[hidden] {
+  display: none;
 }
 
 .mobile-sub-link {
