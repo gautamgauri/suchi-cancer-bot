@@ -3,8 +3,16 @@ import { AbstentionService } from "../abstention/abstention.service";
 import { SafetyService } from "../safety/safety.service";
 import { ForbiddenException } from "@nestjs/common";
 import { createHmac } from "node:crypto";
-import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppService } from "./whatsapp.service";
+import { inboundLedgerId, INBOUND_LEDGER_EVENT, WhatsAppDeliveryError, WhatsAppService } from "./whatsapp.service";
 import { MetaWebhookBody } from "./whatsapp.types";
+import { MAX_USER_TEXT_HARD_LIMIT } from "../chat/dto";
+
+// The 4096 bound an earlier revision of PR #202 applied. Text above it must pass whole.
+const MAX_USER_TEXT_LENGTH = 4096;
+import { cleanResponseForDisplay } from "../chat/display-text-cleaner";
+import { appendDisclaimer } from "../safety/disclaimer-engine";
+import { evaluateEmergencyFastPath } from "../safety/emergency-fast-path";
+import { detectLocale } from "./whatsapp-format";
 
 /**
  * Stand-in for the `AnalyticsEvent` table backing the inbound ledger. The store
@@ -83,7 +91,10 @@ describe("WhatsAppService", () => {
       },
       analyticsEvent: ledger,
     };
-    chat = { handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }) };
+    chat = {
+      handle: jest.fn().mockResolvedValue({ responseText: "Here is some info." }),
+      recordSessionFreeSafetyTurn: jest.fn(),
+    };
     sessions = { create: jest.fn().mockResolvedValue({ id: "sess-new", createdAt: new Date() }) };
 
     svc = new WhatsAppService(prisma, chat, sessions, new SafetyService(), new AbstentionService(), new EmpathyDetector());
@@ -166,6 +177,16 @@ describe("WhatsAppService", () => {
       expect(msgs).toEqual([
         { wamid: "wamid.1", from: "919876543210", text: "hello", profileName: "Asha" },
       ]);
+    });
+
+    // PR #202 (review B1): parseInbound passes the text through whole, as on
+    // main. ChatService and the shared safety helper apply the 20,000 ceiling
+    // and screen the tail of a longer message.
+    it("passes inbound text through uncut, at any length", () => {
+      for (const n of [MAX_USER_TEXT_LENGTH + 500, MAX_USER_TEXT_HARD_LIMIT + 500, 60_000]) {
+        const msgs = svc.parseInbound(textWebhook(`wamid.len${n}`, "919876543210", "x".repeat(n)));
+        expect(msgs[0].text).toHaveLength(n);
+      }
     });
 
     it("ignores statuses-only events", () => {
@@ -283,6 +304,211 @@ describe("WhatsAppService", () => {
       await svc.processInbound([{ wamid: "noretry", from: "9199", text: "hi" }]);
       expect(chat.handle).toHaveBeenCalledTimes(1);
       expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+    });
+  });
+
+  // PR #202: resolveSession reads and writes WhatsAppContact before the chat
+  // pipeline runs. With the database down it threw first, and an emergency
+  // message got the generic "something went wrong" reply. Synthetic text only.
+  describe("session cannot be resolved", () => {
+    const EMERGENCY = "I am coughing up blood right now";
+    const SELF_HARM = "I want to kill myself";
+    const dbDown = () => Promise.reject(Object.assign(new Error("Can't reach database server"), { code: "P1001" }));
+
+    const expectedEmergency = () =>
+      cleanResponseForDisplay(
+        appendDisclaimer(evaluateEmergencyFastPath(EMERGENCY).responseText!, detectLocale(EMERGENCY), true, EMERGENCY),
+      );
+    const expectedSelfHarm = () => {
+      const r = new SafetyService().evaluate(SELF_HARM);
+      expect(r.classification).toBe("self_harm");
+      return cleanResponseForDisplay(appendDisclaimer(r.responseText!, detectLocale(SELF_HARM), false, SELF_HARM));
+    };
+
+    beforeEach(() => {
+      jest.spyOn((svc as any).logger, "error").mockImplementation(() => undefined);
+    });
+
+    it("sends the emergency template when the contact lookup rejects", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf1", from: "9199", text: EMERGENCY }]);
+      expect(chat.handle).not.toHaveBeenCalled();
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
+      // The failure log carries the wamid and error code, never the text.
+      const logged = ((svc as any).logger.error as jest.Mock).mock.calls.flat().join(" ");
+      expect(logged).toContain("[safety-fallback]");
+      expect(logged).not.toContain(EMERGENCY);
+    });
+
+    it("sends the self-harm template when a new session cannot be minted", async () => {
+      sessions.create.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf2", from: "9199", text: SELF_HARM }]);
+      expect(chat.handle).not.toHaveBeenCalled();
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedSelfHarm());
+    });
+
+    it("sends the emergency template when the contact lookup hangs past the bound", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(() => new Promise(() => undefined));
+      const started = Date.now();
+      await svc.processClaimed([{ wamid: "sf3", from: "9199", text: EMERGENCY }]);
+      expect(Date.now() - started).toBeLessThan(4_500);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
+    }, 10_000);
+
+    it("an ordinary message still gets the generic failure reply (unchanged)", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf4", from: "9199", text: "what is chemotherapy?" }]);
+      expect(chat.handle).not.toHaveBeenCalled();
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+    });
+
+    it("records a truthful ledger row for the session-free template", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf6", from: "9199", text: EMERGENCY }]);
+      expect(ledger.rows.get(inboundLedgerId("sf6")).payload).toMatchObject({
+        status: "processed",
+        partsSent: 1,
+        notice: "safety_fallback",
+        noticeSent: true,
+      });
+    });
+
+    it("never follows a failed safety template with the generic failure reply", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      (svc.sendText as jest.Mock).mockRejectedValue(
+        new WhatsAppDeliveryError("Graph API 500", 0, "http", 500),
+      );
+      await svc.processClaimed([{ wamid: "sf7", from: "9199", text: EMERGENCY }]);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).not.toHaveBeenCalledWith("9199", expect.stringContaining("something went wrong"));
+      expect(ledger.rows.get(inboundLedgerId("sf7")).payload).toMatchObject({
+        status: "failed",
+        failedStage: "delivery",
+        notice: "safety_fallback",
+        noticeSent: false,
+      });
+    });
+
+    it("sends the template when the stored session is gone and a new one cannot be minted", async () => {
+      prisma.whatsAppContact.findUnique.mockResolvedValue({ waId: "9199", sessionId: "sess-gone", lastActiveAt: new Date() });
+      chat.handle.mockRejectedValue(new Error("Invalid sessionId"));
+      sessions.create.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf8", from: "9199", text: EMERGENCY }]);
+      expect(chat.handle).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
+    });
+
+    it("records the gate and classification in the ledger row, never the text", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf9", from: "9199", text: SELF_HARM }]);
+      const payload = ledger.rows.get(inboundLedgerId("sf9")).payload;
+      expect(payload).toMatchObject({
+        status: "processed",
+        notice: "safety_fallback",
+        noticeSent: true,
+        safetyGate: "safetyTemplate",
+        safetyClassification: "self_harm",
+      });
+      expect(JSON.stringify(payload)).not.toContain(SELF_HARM);
+    });
+
+    it("stores the turn once a slow session lookup does resolve", async () => {
+      let finish!: (v: any) => void;
+      prisma.whatsAppContact.findUnique.mockImplementation(
+        () => new Promise((r) => (finish = r)),
+      );
+      await svc.processClaimed([{ wamid: "sf10", from: "9199", text: SELF_HARM }]);
+      // The template went out without a session.
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedSelfHarm());
+      expect(chat.recordSessionFreeSafetyTurn).not.toHaveBeenCalled();
+      // The lookup finishes late with a live contact.
+      const finishedAt = Date.now();
+      finish({ waId: "9199", sessionId: "sess-late", lastActiveAt: new Date() });
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+      expect(chat.recordSessionFreeSafetyTurn).toHaveBeenCalledTimes(1);
+      const [sessionId, input, reply, times] = chat.recordSessionFreeSafetyTurn.mock.calls[0];
+      expect(sessionId).toBe("sess-late");
+      expect(input).toEqual({ userText: SELF_HARM, channel: "whatsapp" });
+      expect(reply.safety.classification).toBe("self_harm");
+      // The rows carry the receive and reply times, taken before the late
+      // session arrived, so the transcript order holds (review N4).
+      expect(times.receivedAt).toBeInstanceOf(Date);
+      expect(times.repliedAt.getTime()).toBeGreaterThanOrEqual(times.receivedAt.getTime());
+      expect(times.repliedAt.getTime()).toBeLessThanOrEqual(finishedAt);
+    }, 10_000);
+
+    it("logs, without the text, when the session never arrives", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf11", from: "9199", text: SELF_HARM }]);
+      await new Promise((r) => setImmediate(r));
+      expect(chat.recordSessionFreeSafetyTurn).not.toHaveBeenCalled();
+      const logged = ((svc as any).logger.error as jest.Mock).mock.calls.flat().join(" ");
+      expect(logged).toContain("sf11 has no stored record");
+      expect(logged).not.toContain(SELF_HARM);
+    });
+
+    // Review B1: a safety phrase beyond 4096 characters reaches the fallback.
+    it("screens the whole of a long message for the no-session template", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      const long = "I have some questions about my treatment plan. ".repeat(200) + " " + SELF_HARM;
+      expect(long.length).toBeGreaterThan(MAX_USER_TEXT_LENGTH);
+      const [parsed] = svc.parseInbound(textWebhook("sf12", "9199", long));
+      await svc.processClaimed([parsed]);
+      const r = new SafetyService().evaluate(long);
+      expect(r.classification).toBe("self_harm");
+      expect(svc.sendText).toHaveBeenCalledWith(
+        "9199",
+        cleanResponseForDisplay(appendDisclaimer(r.responseText!, detectLocale(long), false, long)),
+      );
+    });
+
+    // Review B1 and F1: over-ceiling messages through the real path, parseInbound
+    // then processClaimed. The no-session reply screens the tail.
+    it.each([
+      [20_500, "self-harm"],
+      [60_000, "self-harm"],
+      [20_500, "emergency"],
+      [60_000, "emergency"],
+    ])("a %i character message ending in a %s phrase gets its template with no session", async (n, kind) => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      const phrase = kind === "self-harm" ? SELF_HARM : EMERGENCY;
+      const filler = "I have some questions about my treatment plan. ".repeat(Math.ceil(n / 47));
+      const long = filler.slice(0, (n as number) - phrase.length - 1) + " " + phrase;
+      expect(long.length).toBe(n);
+      const [parsed] = svc.parseInbound(textWebhook(`sf-${n}-${kind}`, "9199", long));
+      await svc.processClaimed([parsed]);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      const sent = (svc.sendText as jest.Mock).mock.calls[0][1] as string;
+      expect(sent).not.toContain("something went wrong");
+      const template =
+        kind === "self-harm"
+          ? new SafetyService().evaluate(SELF_HARM).responseText!
+          : evaluateEmergencyFastPath(EMERGENCY).responseText!;
+      expect(sent).toContain(cleanResponseForDisplay(template).split("\n")[0]);
+      // The ledger records the length only, never the text.
+      expect(JSON.stringify(ledger.rows.get(inboundLedgerId(`sf-${n}-${kind}`)))).not.toContain(phrase);
+    });
+
+    // #254 with PR #202: a caption note must never follow a no-session safety reply.
+    it("captioned media with an emergency caption and no session: one send, the template, no caption note", async () => {
+      prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
+      await svc.processClaimed([{ wamid: "sf13", from: "9199", text: EMERGENCY, captionMediaType: "image" } as any]);
+      expect(svc.sendText).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", expectedEmergency());
+      const payload = ledger.rows.get(inboundLedgerId("sf13")).payload;
+      expect(payload).toMatchObject({ status: "processed", notice: "safety_fallback" });
+      for (const field of ["captionNote", "captionNoteSent", "captionNoteSkipped", "captionNoteFailed"]) {
+        expect(payload).not.toHaveProperty(field);
+      }
+    });
+
+    it("a healthy session lookup goes through the full pipeline as before", async () => {
+      await svc.processClaimed([{ wamid: "sf5", from: "9199", text: EMERGENCY }]);
+      expect(chat.handle).toHaveBeenCalledTimes(1);
+      expect(svc.sendText).toHaveBeenCalledWith("9199", "Here is some info.");
     });
   });
 

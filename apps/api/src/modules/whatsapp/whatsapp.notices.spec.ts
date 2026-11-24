@@ -295,7 +295,7 @@ describe("WhatsApp fixed notices", () => {
       expect(ledgerStatus("w1")).toBe("processed");
     });
 
-    // Review of #248 (AGENTS.md §1.1): the stale notice must never stand in
+    // Review of #248 (AGENTS.md, section 1, rule 1): the stale notice must never stand in
     // front of the safety path. The texts below are the synthetic probes the
     // safety specs already use.
     describe("a stale message the safety checks flag runs the pipeline", () => {
@@ -329,6 +329,17 @@ describe("WhatsApp fixed notices", () => {
 
         expect(chat.handle).toHaveBeenCalledTimes(1);
         expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: SELF_HARM }));
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      });
+
+      // PR #202 (review B1): the guard screens the tail of an over-ceiling
+      // message, and the pipeline gets the message whole, as on main.
+      it.each([20_500, 60_000])("a stale %i character message ending in self-harm runs the pipeline", async (n) => {
+        const filler = "I have some questions about my treatment plan. ".repeat(Math.ceil(n / 47));
+        const long = filler.slice(0, n - SELF_HARM.length - 1) + " " + SELF_HARM;
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", long)])));
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: long }));
         expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
       });
 
