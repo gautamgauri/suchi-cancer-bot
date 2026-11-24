@@ -206,8 +206,11 @@ const CANCER_TYPES = [
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      // If the menu was open, give focus back to the button that opened it.
+      const wasOpen = menu?.getAttribute('aria-hidden') === 'false';
       menu?.setAttribute('aria-hidden', 'true');
       toggle?.setAttribute('aria-expanded', 'false');
+      if (wasOpen) toggle?.focus();
       // also close any open desktop dropdowns
       document.querySelectorAll('[data-drop-trigger]').forEach((btn) => {
         btn.setAttribute('aria-expanded', 'false');
