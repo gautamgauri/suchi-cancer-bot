@@ -10,6 +10,11 @@
  *     frontmatter does not record a completed review (src/lib/review-status.mjs)
  *   - a page lacks a <title> or meta description, or an indexable page has a wrong canonical URL
  *   - an internal link points at a page that was not built
+ *   - any JSON-LD block carries a rating or a review
+ *   - the hospital section (src/lib/hospital-pages.mjs) is wrong: an entry without a
+ *     page has one, an expected page is missing, a hospital page shows a value that is
+ *     not in the data for that hospital, shows a doctor's name or a free-text note,
+ *     or two pages in the section share a title
  *
  * Warns (exit 0) when:
  *   - two indexable pages share a <title> or meta description
@@ -24,9 +29,11 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
+import { hospitalSite, hospitalPath, preciseGeo } from '../src/lib/hospital-pages.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
+const HOSPITALS = fileURLToPath(new URL('../src/content/hospitals.json', import.meta.url));
 const SITE = 'https://suchitracancercare.org';
 const errors = [];
 const warnings = [];
@@ -153,7 +160,7 @@ for (const file of htmlFiles) {
       const data = JSON.parse(m[1]);
       typeCounts[data['@type']] = (typeCounts[data['@type']] ?? 0) + 1;
       // Articles are AI drafts. No markup may claim review.
-      for (const key of ['reviewedBy', 'lastReviewed', 'medicalAudience']) {
+      for (const key of ['reviewedBy', 'lastReviewed', 'medicalAudience', 'aggregateRating', 'review']) {
         if (key in data) errors.push(`${path}: JSON-LD claims ${key}`);
       }
     } catch (e) {
@@ -202,6 +209,116 @@ for (const t of KNOWN_BROKEN) {
   if (!brokenTargets.has(t)) warnings.push(`KNOWN_BROKEN entry ${t} is no longer broken. Remove it from the list.`);
 }
 
+// Hospital, city and state pages (src/lib/hospital-pages.mjs). These checks
+// compare each page with the data it was built from, so a normal data update
+// from the navigator pipeline passes. They fail only when a page shows
+// something the data does not hold, or the set of pages is wrong.
+const hospitalData = JSON.parse(readFileSync(HOSPITALS, 'utf8'));
+const hsite = hospitalSite(hospitalData);
+const SECTION = '/find-care/hospitals/';
+const decode = (s) =>
+  s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+const attr = (attrs, name) => {
+  const m = attrs.match(new RegExp(`\\b${name}="([^"]*)"`));
+  return m ? decode(m[1]) : undefined;
+};
+const fieldValue = (h, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), h);
+const presentValue = (v) => v !== null && v !== undefined && String(v).trim() !== '';
+
+const expectedSection = new Map(); // path -> kind
+for (const h of hsite.publishable) expectedSection.set(hospitalPath(h), 'hospital');
+for (const p of hsite.places) expectedSection.set(p.path, 'city');
+for (const s of hsite.states) expectedSection.set(s.path, 'state');
+for (const e of hsite.excluded) {
+  if (builtPaths.has(`${SECTION}${e.id}/`)) errors.push(`excluded hospital ${e.id} has a page (${e.reason})`);
+}
+for (const path of builtPaths) {
+  if (path.startsWith(SECTION) && path !== SECTION && !expectedSection.has(path)) {
+    errors.push(`unexpected page in the hospital section: ${path}`);
+  }
+}
+for (const [path] of expectedSection) if (!builtPaths.has(path)) errors.push(`hospital section page not built: ${path}`);
+
+// Text from fields that must never appear on the new pages: doctor names
+// (an earlier research agent invented many), and free-text notes and flags
+// that have not been through review for publication.
+const doctorNames = hospitalData.hospitals.flatMap((h) =>
+  (h.key_doctors ?? []).map((d) => (typeof d === 'string' ? d : d?.name)).filter((n) => n && n.length >= 6),
+);
+const sectionTitles = new Map();
+const KNOWN_FIELDS = new Set(['name', 'type', 'city', 'state', 'contact.address', 'contact.phone', 'contact.phone_alt', 'contact.website']);
+const FIELD_RE = /<([a-z][a-z0-9]*)\b([^>]*\bdata-field="[^"]*"[^>]*)>([\s\S]*?)<\/\1>/g;
+
+for (const [path, kind] of expectedSection) {
+  if (!builtPaths.has(path)) continue;
+  const html = readFileSync(join(DIST, path, 'index.html'), 'utf8');
+  const text = visibleText(html);
+  const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
+  if (title) sectionTitles.set(title, [...(sectionTitles.get(title) ?? []), path]);
+  for (const name of doctorNames) if (text.includes(name) || html.includes(name)) errors.push(`${path}: shows a doctor's name from key_doctors`);
+  if (kind !== 'hospital') continue;
+
+  const h = hsite.publishable.find((x) => hospitalPath(x) === path);
+  const banned = [h.notes, h.risk_flag, h.sccf_notes, ...(h.navigation_notes ?? [])].filter((s) => typeof s === 'string' && s.length >= 12);
+  for (const s of banned) if (decode(html).includes(s)) errors.push(`${path}: shows free-text notes from the data`);
+
+  let marked = 0;
+  for (const m of html.matchAll(FIELD_RE)) {
+    marked += 1;
+    const attrs = m[2];
+    const field = attr(attrs, 'data-field');
+    const shown = decode(m[3].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+    if (field === 'departments') {
+      if (!(h.departments ?? []).includes(attr(attrs, 'data-raw'))) errors.push(`${path}: department "${attr(attrs, 'data-raw')}" is not in the data`);
+    } else if (field === 'verified_date') {
+      if (attr(attrs, 'datetime') !== h.verified_date) errors.push(`${path}: verified date does not match the data`);
+    } else if (field === 'pmjay_empanelled') {
+      if (h.pmjay_empanelled !== true) errors.push(`${path}: shows PMJAY but the data does not record it`);
+    } else if (field === 'geo') {
+      const geo = preciseGeo(h);
+      if (!geo || !attr(attrs, 'href')?.includes(`${geo.latitude},${geo.longitude}`)) errors.push(`${path}: map link without address-level coordinates`);
+    } else if (KNOWN_FIELDS.has(field)) {
+      const value = fieldValue(h, field);
+      if (!presentValue(value)) errors.push(`${path}: shows ${field}, which is empty in the data`);
+      else if (shown !== String(value).replace(/\s+/g, ' ').trim()) errors.push(`${path}: ${field} shown as "${shown}", data has "${value}"`);
+    } else {
+      errors.push(`${path}: unknown data-field "${field}"`);
+    }
+  }
+  if (marked === 0) errors.push(`${path}: no data-field markers found`);
+
+  // Every value cell in the facts table must come from a marked field.
+  const facts = html.match(/<table\b[^>]*\bdata-facts\b[^>]*>([\s\S]*?)<\/table>/)?.[1];
+  if (!facts) errors.push(`${path}: facts table missing`);
+  else for (const td of facts.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)) {
+    if (!td[1].includes('data-field=')) errors.push(`${path}: facts table cell not taken from a data field`);
+  }
+
+  // Hospital JSON-LD must match the data and add nothing.
+  for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    let ld;
+    try { ld = JSON.parse(m[1]); } catch { continue; }
+    if (ld['@type'] !== 'Hospital') continue;
+    const allowed = new Set(['@context', '@type', '@id', 'name', 'mainEntityOfPage', 'address', 'telephone', 'url', 'geo']);
+    for (const k of Object.keys(ld)) if (!allowed.has(k)) errors.push(`${path}: Hospital JSON-LD has unexpected property ${k}`);
+    if (ld.name !== h.name) errors.push(`${path}: Hospital JSON-LD name does not match the data`);
+    if ((ld.telephone ?? null) !== (h.contact?.phone || null)) errors.push(`${path}: Hospital JSON-LD telephone does not match the data`);
+    if ((ld.url ?? null) !== (h.contact?.website || null)) errors.push(`${path}: Hospital JSON-LD url does not match the data`);
+    if (ld.geo && !preciseGeo(h)) errors.push(`${path}: Hospital JSON-LD geo from city-level coordinates`);
+  }
+}
+for (const [t, paths] of sectionTitles) if (paths.length > 1) errors.push(`hospital section pages share a title "${t}": ${paths.join(', ')}`);
+
+console.log(
+  `hospital pages: ${hsite.publishable.length}, city pages: ${hsite.places.length}, state pages: ${hsite.states.length}, ` +
+    `entries without a page: ${hsite.excluded.length} (${hsite.excluded.map((e) => e.id).join(', ')})`,
+);
 console.log(`pages built: ${builtPaths.size} (${notIndexable} not indexable, ${THIN_HUBS.length} thin hubs left out of the sitemap)`);
 console.log(`sitemap URLs: ${sitemapUrls.length}`);
 console.log(`JSON-LD blocks parsed: ${jsonLdBlocks} ${JSON.stringify(typeCounts)}`);
