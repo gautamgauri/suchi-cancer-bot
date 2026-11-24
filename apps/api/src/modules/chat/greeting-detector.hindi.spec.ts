@@ -25,6 +25,36 @@ const OK_GATE = {
 } as any;
 
 describe("GreetingDetector: Hindi, Hinglish and the site greeting", () => {
+  it("recognises both spellings of चाहिए in the fixed phrase", () => {
+    expect(GreetingDetector.isGreeting("नमस्ते सुचि, मुझे कुछ जानकारी चाहिये।")).toBe(true);
+  });
+
+  it("still recognises a single हाय", () => {
+    expect(GreetingDetector.isGreeting("हाय")).toBe(true);
+    expect(GreetingDetector.isGreeting("हाय सुचि")).toBe(true);
+  });
+
+  // Review F2: main's pattern accepted "namaste" or "namaskar" followed by
+  // anything, so a symptom after the greeting got the welcome message.
+  it.each([
+    "namaste ji saans phool rahi hai",
+    "namaskar ji, stan me ganth hai",
+    "namaste 102 bukhar",
+    "namaste, mujhe chemo ke baare mein jaanna hai",
+    "Namaste! meri maa ko cancer hai",
+    "namaskar, gale mein gaanth",
+    "namaste ji kya aap meri madad karengi",
+  ])("%s is no longer a greeting", (text) => {
+    expect(GreetingDetector.isGreeting(text)).toBe(false);
+  });
+
+  it.each(["namaste", "Namaste!", "namaste ji", "namaskar ji", "namaste, kaise ho?", "namaste ji, aap kaise hain", "namaskar kaise hain"])(
+    "%s is still a greeting",
+    (text) => {
+      expect(GreetingDetector.isGreeting(text)).toBe(true);
+    },
+  );
+
   it("recognises the site greeting", () => {
     expect(GreetingDetector.isGreeting(SITE_GREETING)).toBe(true);
   });
@@ -88,6 +118,10 @@ describe("GreetingDetector: Hindi, Hinglish and the site greeting", () => {
     "मुझे कुछ जानकारी चाहिए",
     // Pinned as not a greeting by chat.service.slow-turn-fallback.spec.ts.
     "Hii",
+    // "हाय हाय" can be a cry of distress.
+    "हाय हाय",
+    "हाय हाय, बहुत दर्द है",
+    "हाय सुचि हाय",
   ])("does not treat %s as a greeting", (text) => {
     expect(GreetingDetector.isGreeting(text)).toBe(false);
   });

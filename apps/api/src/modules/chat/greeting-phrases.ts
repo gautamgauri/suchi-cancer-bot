@@ -56,7 +56,7 @@ const ADDRESS_WORDS = new Set(["suchi", "सुचि", "ji", "जी", "there"]
  * accepted spellings of that word.
  */
 const INFO_PHRASES: ReadonlyArray<ReadonlyArray<ReadonlySet<string>>> = [
-  [new Set(["मुझे"]), new Set(["कुछ"]), new Set(["जानकारी"]), new Set(["चाहिए"])],
+  [new Set(["मुझे"]), new Set(["कुछ"]), new Set(["जानकारी"]), new Set(["चाहिए", "चाहिये"])],
   [
     new Set(["mujhe"]),
     new Set(["kuch", "kuchh"]),
@@ -97,6 +97,15 @@ function infoPhraseAt(tokens: string[], at: number): number {
   return 0;
 }
 
+/**
+ * "हाय" is "hi", but repeated ("हाय हाय") it is a cry of distress. A message
+ * with it more than once is not a greeting.
+ */
+const DISTRESS_IF_REPEATED = "हाय";
+
+/** English greeting words that open the English line of the site greeting. */
+const ENGLISH_GREETING_WORDS = new Set(["hi", "hello", "helo", "hey"]);
+
 /** Romanised Hindi greeting words. A greeting using one is answered in Hindi. */
 const ROMANISED_HINDI_GREETINGS = new Set(["namaste", "namastey", "namaskar", "namaskaar", "pranam", "pranaam"]);
 const DEVANAGARI = /[ऀ-ॿ]/;
@@ -113,6 +122,27 @@ export function isHindiGreetingText(text: string): boolean {
 }
 
 /**
+ * Language of the reply to a message already known to be a greeting.
+ * - "both": it has Devanagari and also a line that is an English greeting on
+ *   its own (the site's prefilled message). The visitor's language is unknown.
+ * - "hi": Devanagari or a romanised Hindi greeting word, and no English line.
+ * - "en": anything else.
+ */
+export function greetingReplyLanguage(text: string): "hi" | "en" | "both" {
+  if (!isHindiGreetingText(text)) return "en";
+  if (!DEVANAGARI.test(text)) return "hi";
+  const englishLine = text
+    .slice(0, MAX_LENGTH)
+    .split("\n")
+    .some((line) => {
+      if (DEVANAGARI.test(line)) return false;
+      const lineWords = words(line);
+      return lineWords.length > 0 && ENGLISH_GREETING_WORDS.has(lineWords[0]) && isHindiOrBilingualGreeting(line);
+    });
+  return englishLine ? "both" : "hi";
+}
+
+/**
  * True when the whole message is one or more greeting parts in Hindi,
  * Hinglish or English, such as "नमस्ते सुचि", "pranam ji" or the website's
  * bilingual greeting. Medical keywords are still checked by the caller.
@@ -121,6 +151,7 @@ export function isHindiOrBilingualGreeting(text: string): boolean {
   if (text.length > MAX_LENGTH) return false;
   const tokens = words(text);
   if (tokens.length === 0) return false;
+  if (tokens.indexOf(DISTRESS_IF_REPEATED) !== tokens.lastIndexOf(DISTRESS_IF_REPEATED)) return false;
 
   let i = 0;
   let parts = 0;

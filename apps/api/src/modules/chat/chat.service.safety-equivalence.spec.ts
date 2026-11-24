@@ -40,7 +40,10 @@ import { OutputVerifierService } from "./output-verifier.service";
  * with a baseline captured from code WITHOUT the reorder
  * (`__fixtures__/safety-path-baseline.json`). The current baseline was
  * captured from `ChatService` and the greeting detector as they stand on main
- * at b121036, which has no length limit and none of PR #202. Every run must
+ * at b121036, which has no length limit and none of PR #202. The rows for
+ * the probes PR #255 added to EXPECTED_DIFFERENCE_PROBES were captured on
+ * main at f5690ec and merged in. On every older probe main at f5690ec gives
+ * the b121036 rows, apart from #202's three listed long greetings. Every run must
  * match, apart from the probes listed in EXPECTED_DIFFERENCES, which must
  * differ, for the reason given there.
  *
@@ -119,6 +122,20 @@ const EXPECTED_DIFFERENCE_PROBES: Array<{ text: string; reason: string }> = [
     text: "hello how are you " + "I have had a lump in my breast for two weeks and it hurts. ".repeat(10),
     reason: "greeting bound: main answered a 608 character symptom message with the greeting menu",
   },
+  // Hindi and Hinglish greetings (PR #255). None of these trips a safety
+  // screen. They differ only in which greeting or answer path they take.
+  { text: "hello there", reason: "greetings: now a greeting (the address word 'there'), main sent it to the pipeline" },
+  {
+    text: "नमस्ते सुचि, मुझे कुछ जानकारी चाहिए।\nHello Suchi, I would like some information.",
+    reason: "greetings: the site's greeting now gets the Hindi then English welcome, main missed the greeting route",
+  },
+  { text: "नमस्ते सुचि", reason: "greetings: a Devanagari greeting now gets the Hindi welcome, main missed the greeting route" },
+  { text: "namaste", reason: "greetings: a romanised Hindi first greeting now gets the Hindi welcome, main gave the English one" },
+  // Review F2: main's pattern took "namaste" or "namaskar" followed by
+  // anything as a greeting, so these symptom messages got the welcome.
+  { text: "namaste ji saans phool rahi hai", reason: "F2: main answered a breathing symptom with the greeting, now routed" },
+  { text: "namaskar ji, stan me ganth hai", reason: "F2: main answered a breast lump with the greeting, now routed" },
+  { text: "namaste 102 bukhar", reason: "F2: main answered a fever with the greeting, now routed" },
 ];
 const EXPECTED_DIFFERENCE_KEYS = new Set(EXPECTED_DIFFERENCE_PROBES.map((p) => probeKey(p.text)));
 
