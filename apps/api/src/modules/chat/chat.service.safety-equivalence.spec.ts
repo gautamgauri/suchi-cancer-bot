@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Logger } from "@nestjs/common";
 import { ChatService } from "./chat.service";
+import { MAX_USER_TEXT_HARD_LIMIT } from "./dto";
 import { EvidenceGateService } from "../evidence/evidence-gate.service";
 import { CitationService } from "../citations/citation.service";
 import { ResponseValidatorService } from "./response-validator.service";
@@ -38,9 +39,10 @@ import { OutputVerifierService } from "./output-verifier.service";
  * template code over a healthy in-memory database, and compares the outcome
  * with a baseline captured from code WITHOUT the reorder
  * (`__fixtures__/safety-path-baseline.json`). The current baseline was
- * captured from `ChatService` as it stands on main at b121036, which has no
- * length limit and none of PR #202. The stored user message is compared after
- * the 4096 cut, the one intended difference in the stored rows.
+ * captured from `ChatService` and the greeting detector as they stand on main
+ * at b121036, which has no length limit and none of PR #202. Every run must
+ * match, apart from the probes listed in EXPECTED_DIFFERENCES, which must
+ * differ, for the reason given there.
  *
  * For each probe and variant the record holds the reply text, classification,
  * actions and banner, whether a message id came back, every row written
@@ -98,6 +100,28 @@ const VARIANTS: Variant[] = [
  * any change to the order of precedence changes a reply: the safety module
  * with urgency, and urgency with the mental-health screen.
  */
+/**
+ * Probes where the branch is MEANT to differ from main, with the reason. The
+ * comparison requires each of them to differ in at least one run, so the
+ * difference stays pinned and visible.
+ *
+ * Greeting bound (PR #202): a message over 500 characters that opens with a
+ * greeting word main recognises is no longer answered with the greeting
+ * menu. It is routed like any other message.
+ */
+const GREETING_TAIL = "I wanted to say thank you for the kind words last week. ".repeat(10);
+const EXPECTED_DIFFERENCE_PROBES: Array<{ text: string; reason: string }> = [
+  { text: "hello how are you " + GREETING_TAIL, reason: "greeting bound: over 500 characters is never a greeting" },
+  { text: "namaste, " + GREETING_TAIL, reason: "greeting bound: over 500 characters is never a greeting" },
+  // Main's greeting check misses these symptom words, so main shows the
+  // greeting menu. The branch routes the symptom question.
+  {
+    text: "hello how are you " + "I have had a lump in my breast for two weeks and it hurts. ".repeat(10),
+    reason: "greeting bound: main answered a 608 character symptom message with the greeting menu",
+  },
+];
+const EXPECTED_DIFFERENCE_KEYS = new Set(EXPECTED_DIFFERENCE_PROBES.map((p) => probeKey(p.text)));
+
 const EN_FILLER = "I have some questions about my treatment plan. ";
 const HI_FILLER = "मेरे इलाज के बारे में कुछ सवाल हैं। ";
 const EXTRA_PROBES: Array<{ source: string; text: string }> = [
@@ -119,6 +143,8 @@ const EXTRA_PROBES: Array<{ source: string; text: string }> = [
   { source: "overlap", text: "I feel so alone and the pain is severe" },
   { source: "overlap", text: "I feel hopeless and I am confused" },
   ...routingProbes(),
+  ...mixedScriptProbes(),
+  ...EXPECTED_DIFFERENCE_PROBES.map((p) => ({ source: "expected-difference", text: p.text })),
 ];
 
 function routingProbes(): Array<{ source: string; text: string }> {
@@ -151,6 +177,25 @@ function routingProbes(): Array<{ source: string; text: string }> {
   return out;
 }
 const ALL_PROBES = [...PROBES, ...EXTRA_PROBES];
+
+/**
+ * Messages over 20,000 characters whose head and tail are in different
+ * scripts, with the safety or urgency phrase only in the tail (review F5).
+ * The reply's language decisions read one text, so its parts agree.
+ */
+function mixedScriptProbes(): Array<{ source: string; text: string }> {
+  const en = "Thank you for reading my message. ";
+  const hi = "मेरा संदेश पढ़ने के लिए धन्यवाद। ";
+  const pad = (f: string, n: number) => f.repeat(Math.ceil(n / f.length)).slice(0, n);
+  return [
+    // English head, Devanagari tail with an urgency-only phrase.
+    { source: "mixed-script", text: pad(en, 21_000) + pad(hi, 4_000) + " पापा confused हैं" },
+    // Devanagari head, English tail with an urgency-only phrase.
+    { source: "mixed-script", text: pad(hi, 21_000) + pad(en, 4_000) + " weakness on one side" },
+    // English head, Devanagari tail with an emergency phrase.
+    { source: "mixed-script", text: pad(en, 21_000) + pad(hi, 4_000) + " मम्मी बेहोश हो गई" },
+  ];
+}
 
 /** How a probe is named in the baseline file. Long probes by length and hash. */
 function probeKey(text: string): string {
@@ -321,7 +366,8 @@ async function drain(svc: any) {
 function normaliseRows(calls: Array<{ model: string; method: string; args: any }>, sessionId: string) {
   const assistantIds = new Set<string>();
   const byModel: Record<string, any[]> = {};
-  const scrub = (v: any): any => stripTimings(JSON.parse(JSON.stringify(v ?? null).split(sessionId).join("SESSION")));
+  const scrub = (v: any): any =>
+    atCeiling(stripTimings(JSON.parse(JSON.stringify(v ?? null).split(sessionId).join("SESSION"))));
   for (const c of calls) {
     if (c.model === "message" && c.method === "count") continue; // a read
     const args = scrub(c.args);
@@ -359,6 +405,19 @@ function writeOrder(calls: Array<{ model: string; method: string; args: any }>, 
   const writes = calls.filter((c) => c.method !== "count" && c.method !== "findMany" && c.method !== "findUnique" && c.method !== "findFirst");
   const turnRows = writes.filter((c) => (c.model === "message" || c.model === "safetyEvent") && c.method === "create").map(label);
   return ordinaryOrUrgency ? { turnRows, allWrites: writes.map(label) } : { turnRows };
+}
+
+/**
+ * Cut every string at the 20,000 character ceiling. Text beyond it is not
+ * read or stored on the branch (a stated difference from main), so for the
+ * few probes over 20,000 characters the stored row and the retrieval and LLM
+ * arguments are compared up to the ceiling. Shorter strings are unchanged.
+ */
+function atCeiling(v: any): any {
+  if (typeof v === "string") return v.length > MAX_USER_TEXT_HARD_LIMIT ? v.slice(0, MAX_USER_TEXT_HARD_LIMIT) : v;
+  if (Array.isArray(v)) return v.map(atCeiling);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, atCeiling(x)]));
+  return v;
 }
 
 /** Drop wall-clock fields (latencies, durations, timestamps) at any depth. */
@@ -430,7 +489,7 @@ async function runProbe(text: string, variant: Variant, config: Config["name"]) 
     rows: normaliseRows(calls, sessionId),
     order: writeOrder(calls, outcome.kind !== "reply" || urgencyPath),
     // What retrieval and the LLM were given, with session ids scrubbed.
-    calls: JSON.parse(JSON.stringify(seen).split(sessionId).join("SESSION")),
+    calls: atCeiling(JSON.parse(JSON.stringify(seen).split(sessionId).join("SESSION"))),
   };
   // Keys are sorted first, so the order of fields in an insert does not count.
   const digest = createHash("sha256").update(canonicalJson(record)).digest("hex").slice(0, 20);
@@ -480,6 +539,7 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
         ({ r, b }) =>
           r.config !== b.config || r.text !== b.text || r.variant !== b.variant || r.label !== b.label || r.digest !== b.digest,
       )
+      .filter(({ r }) => !EXPECTED_DIFFERENCE_KEYS.has(r.text))
       .map(({ r, b }) => ({
         config: r.config,
         variant: r.variant,
@@ -489,6 +549,16 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
         record: records[`${r.config}::${r.variant}::${r.text}`],
       }));
     expect(mismatches).toEqual([]);
+
+    // Each expected difference must still differ, so it stays visible.
+    for (const p of EXPECTED_DIFFERENCE_PROBES) {
+      const differs = results.some((r, i) => r.text === probeKey(p.text) && r.digest !== baseline[i].digest);
+      expect({ probe: p.text.slice(0, 40), reason: p.reason, differs }).toEqual({
+        probe: p.text.slice(0, 40),
+        reason: p.reason,
+        differs: true,
+      });
+    }
 
     // The probe set must exercise every gate, or the comparison proves little.
     const labels = new Set(results.map((r) => r.label));
