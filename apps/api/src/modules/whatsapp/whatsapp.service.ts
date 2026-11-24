@@ -272,9 +272,13 @@ export class WhatsAppService {
             sentAt: parseSentAt(m.timestamp),
           };
           if (text) {
-            // A trailing `(src: <code>)` line from the website's WhatsApp
-            // links is removed here, before the ledger and the pipeline.
-            const { text: body, sourceCode } = extractSourceLine(text);
+            // The `(src: <code>)` line from the website's WhatsApp links is
+            // removed here, before the ledger and the pipeline. Only an
+            // allow-listed code is read, and never when removing it would
+            // change the deterministic safety outcome (whatsapp-source.ts).
+            const { text: body, sourceCode } = extractSourceLine(text, (t) =>
+              flaggedByDeterministicSafetyChecks(t, this.safetyScreenDeps),
+            );
             out.push({
               ...base,
               text: body,

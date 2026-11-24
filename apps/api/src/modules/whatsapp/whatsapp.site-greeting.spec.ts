@@ -163,11 +163,38 @@ describe("WhatsApp: the website greeting and its source code", () => {
     expect(ledger.rows.get(inboundLedgerId("w-bad")).payload).not.toHaveProperty("src");
   });
 
-  it("leaves a source line that is not the last line in the text", async () => {
-    const body = "Hello\n(src: wa-article)\nmy question";
-    await receive("w-mid", body);
-    expect(chat.handle.mock.calls[0][0].userText).toBe(body);
-    expect(ledger.rows.get(inboundLedgerId("w-mid")).payload).not.toHaveProperty("src");
+  it("reads a source line that is not the last line, and keeps the text around it", async () => {
+    await receive("w-mid", "Hello\n(src: wa-article)\nmy question");
+    expect(chat.handle.mock.calls[0][0].userText).toBe("Hello\nmy question");
+    expect(ledger.rows.get(inboundLedgerId("w-mid")).payload).toMatchObject({ src: "wa-article" });
+  });
+
+  // Review B1: a word in the code position that is not an allow-listed code
+  // stays in the text, so the safety screens see it, and nothing is recorded.
+  it.each(["(src: suicide)", "hello\n(src: suicide)", "(src: seizure)", "hello\n(src: unconscious)"])(
+    "passes %j to the pipeline unchanged and records no code",
+    async (body) => {
+      await receive("w-b1", body);
+      expect(chat.handle.mock.calls[0][0].userText).toBe(body);
+      expect(ledger.rows.get(inboundLedgerId("w-b1")).payload).not.toHaveProperty("src");
+      expect(sessionCreatedPayloads()[0]).not.toHaveProperty("src");
+    },
+  );
+
+  // Review F4: the visitor types after the prefilled message.
+  it.each([
+    ["a symptom question", "mere stan mein gaanth hai, kya karun?"],
+    ["an emergency phrase", "खून बहुत आ रहा है"],
+    ["an ordinary question", "What is chemotherapy?"],
+  ])("with %s typed after the code line, the pipeline gets only what was typed", async (_label, typed) => {
+    await receive("w-f4", `${siteGreeting("wa-article")}\n${typed}`);
+    const dto = chat.handle.mock.calls[0][0];
+    expect(dto.userText).toBe(typed);
+    expect(dto.userText).not.toContain("Hello Suchi");
+    expect(dto.userText).not.toContain("नमस्ते");
+    expect(dto.userText).not.toContain("src");
+    expect(ledger.rows.get(inboundLedgerId("w-f4")).payload).toMatchObject({ src: "wa-article", textLength: typed.length });
+    expect(sessionCreatedPayloads()).toEqual([expect.objectContaining({ src: "wa-article" })]);
   });
 
   it("does not change an ordinary message", async () => {
