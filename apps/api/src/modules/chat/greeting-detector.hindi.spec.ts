@@ -51,7 +51,7 @@ describe("GreetingDetector: Hindi, Hinglish and the site greeting", () => {
     "namaskar suchi",
     "pranam",
     "pranaam ji",
-    "hii suchi",
+    "hi suchi",
     "helo",
     "Hello Suchi",
     "hello, hello",
@@ -86,6 +86,8 @@ describe("GreetingDetector: Hindi, Hinglish and the site greeting", () => {
     "जानकारी चाहिए",
     "सुचि",
     "मुझे कुछ जानकारी चाहिए",
+    // Pinned as not a greeting by chat.service.slow-turn-fallback.spec.ts.
+    "Hii",
   ])("does not treat %s as a greeting", (text) => {
     expect(GreetingDetector.isGreeting(text)).toBe(false);
   });

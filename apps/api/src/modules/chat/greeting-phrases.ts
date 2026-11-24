@@ -28,7 +28,6 @@ const MAX_ADDRESS_WORDS = 3;
 const GREETING_WORDS = new Set([
   // Romanised
   "hi",
-  "hii",
   "hello",
   "helo",
   "hey",
