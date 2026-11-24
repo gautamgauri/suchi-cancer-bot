@@ -29,7 +29,18 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
-import { hospitalSite, hospitalPath, preciseGeo } from '../src/lib/hospital-pages.mjs';
+import {
+  hospitalSite,
+  hospitalPath,
+  websiteFor,
+  telHref,
+  TEL_HREF_RE,
+  HELD,
+  isUnknownDeptCode,
+  hospitalPageTitle,
+  cityHeading,
+  stateHeading,
+} from '../src/lib/hospital-pages.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
@@ -238,6 +249,9 @@ for (const s of hsite.states) expectedSection.set(s.path, 'state');
 for (const e of hsite.excluded) {
   if (builtPaths.has(`${SECTION}${e.id}/`)) errors.push(`excluded hospital ${e.id} has a page (${e.reason})`);
 }
+for (const id of Object.keys(HELD)) {
+  if (builtPaths.has(`${SECTION}${id}/`)) errors.push(`held hospital ${id} has a page (${HELD[id]})`);
+}
 for (const path of builtPaths) {
   if (path.startsWith(SECTION) && path !== SECTION && !expectedSection.has(path)) {
     errors.push(`unexpected page in the hospital section: ${path}`);
@@ -268,6 +282,10 @@ for (const [path, kind] of expectedSection) {
   const banned = [h.notes, h.risk_flag, h.sccf_notes, ...(h.navigation_notes ?? [])].filter((s) => typeof s === 'string' && s.length >= 12);
   for (const s of banned) if (decode(html).includes(s)) errors.push(`${path}: shows free-text notes from the data`);
 
+  const rawSite = h.contact?.website;
+  if (rawSite && !websiteFor(h) && decode(html).includes(rawSite)) errors.push(`${path}: links or shows a held or malformed website`);
+  if (rawSite && websiteFor(h) && !html.includes(`href="${websiteFor(h)}"`)) warnings.push(`${path}: checked website not linked`);
+
   let marked = 0;
   for (const m of html.matchAll(FIELD_RE)) {
     marked += 1;
@@ -275,14 +293,20 @@ for (const [path, kind] of expectedSection) {
     const field = attr(attrs, 'data-field');
     const shown = decode(m[3].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
     if (field === 'departments') {
-      if (!(h.departments ?? []).includes(attr(attrs, 'data-raw'))) errors.push(`${path}: department "${attr(attrs, 'data-raw')}" is not in the data`);
+      const raw = attr(attrs, 'data-raw');
+      if (!(h.departments ?? []).includes(raw)) errors.push(`${path}: department "${raw}" is not in the data`);
+      else if (isUnknownDeptCode(raw)) warnings.push(`${path}: department code "${raw}" has no label in DEPT_LABELS (shown tidied)`);
     } else if (field === 'verified_date') {
       if (attr(attrs, 'datetime') !== h.verified_date) errors.push(`${path}: verified date does not match the data`);
     } else if (field === 'pmjay_empanelled') {
       if (h.pmjay_empanelled !== true) errors.push(`${path}: shows PMJAY but the data does not record it`);
     } else if (field === 'geo') {
-      const geo = preciseGeo(h);
+      const geo = hsite.geoFor(h);
       if (!geo || !attr(attrs, 'href')?.includes(`${geo.latitude},${geo.longitude}`)) errors.push(`${path}: map link without address-level coordinates`);
+    } else if (field === 'contact.website') {
+      const site = websiteFor(h);
+      if (!site) errors.push(`${path}: shows a website that is missing, malformed or held`);
+      else if (shown !== site) errors.push(`${path}: website shown as "${shown}", data has "${site}"`);
     } else if (KNOWN_FIELDS.has(field)) {
       const value = fieldValue(h, field);
       if (!presentValue(value)) errors.push(`${path}: shows ${field}, which is empty in the data`);
@@ -308,12 +332,115 @@ for (const [path, kind] of expectedSection) {
     const allowed = new Set(['@context', '@type', '@id', 'name', 'mainEntityOfPage', 'address', 'telephone', 'url', 'geo']);
     for (const k of Object.keys(ld)) if (!allowed.has(k)) errors.push(`${path}: Hospital JSON-LD has unexpected property ${k}`);
     if (ld.name !== h.name) errors.push(`${path}: Hospital JSON-LD name does not match the data`);
-    if ((ld.telephone ?? null) !== (h.contact?.phone || null)) errors.push(`${path}: Hospital JSON-LD telephone does not match the data`);
-    if ((ld.url ?? null) !== (h.contact?.website || null)) errors.push(`${path}: Hospital JSON-LD url does not match the data`);
-    if (ld.geo && !preciseGeo(h)) errors.push(`${path}: Hospital JSON-LD geo from city-level coordinates`);
+    const phone = h.contact?.phone || null;
+    if ((ld.telephone ?? null) !== (phone && telHref(phone) ? phone : null)) errors.push(`${path}: Hospital JSON-LD telephone does not match the data`);
+    if ((ld.url ?? null) !== websiteFor(h)) errors.push(`${path}: Hospital JSON-LD url is not the checked website`);
+    if (ld.geo && !hsite.geoFor(h)) errors.push(`${path}: Hospital JSON-LD geo without address-level coordinates`);
   }
 }
 for (const [t, paths] of sectionTitles) if (paths.length > 1) errors.push(`hospital section pages share a title "${t}": ${paths.join(', ')}`);
+
+// Every tel: link on the site must dial exactly one valid Indian number.
+for (const file of htmlFiles) {
+  for (const m of readFileSync(file, 'utf8').matchAll(/href="(tel:[^"]*)"/g)) {
+    if (!TEL_HREF_RE.test(m[1])) errors.push(`${pagePath(file)}: tel: link "${m[1]}" is not a single valid number`);
+  }
+}
+
+// Rules of src/lib/hospital-pages.mjs on made-up data, so a change to the
+// rules that would let these cases through fails the build.
+{
+  const mk = (id, over = {}) => ({
+    id,
+    name: `Test Hospital ${id}`,
+    city: 'Testpur',
+    state: 'Teststate',
+    type: 'Private',
+    status: 'active',
+    verified_date: '2026-05-01',
+    departments: ['medical_oncology'],
+    pmjay_empanelled: null,
+    contact: { phone: null, address: 'Test Road', website: null },
+    latitude: null,
+    longitude: null,
+    geocode_confidence: 'city',
+    ...over,
+  });
+  const at = (lat, lon) => ({ latitude: lat, longitude: lon, geocode_confidence: 'address' });
+  const cases = [
+    {
+      name: 'a renamed twin of a flagged entry sharing its website host gets no page',
+      data: [
+        mk('flagged', { risk_flag: 'x', contact: { phone: '0612-2000001', address: 'A', website: 'https://www.example-hosp.in' } }),
+        mk('renamed', { name: 'Another Name', contact: { phone: '0612-2000002', address: 'B', website: 'https://example-hosp.in/cancer' } }),
+      ],
+      noPage: ['flagged', 'renamed'],
+    },
+    {
+      name: 'a renamed twin of a flagged entry 100 m away gets no page',
+      data: [mk('flagged', { risk_flag: 'x', ...at(25.6, 85.1) }), mk('renamed', { name: 'Another Name', ...at(25.6009, 85.1) })],
+      noPage: ['flagged', 'renamed'],
+    },
+    {
+      name: 'a held entry and its twin get no page',
+      data: [mk('aiims-hyderabad'), mk('twin', { name: 'Test Hospital aiims-hyderabad' })],
+      noPage: ['aiims-hyderabad', 'twin'],
+    },
+    {
+      name: 'duplicates that disagree on the main phone get no page',
+      data: [mk('one', { contact: { phone: '0612-2000001' } }), mk('two', { contact: { phone: '0612-2000009' }, name: 'Test Hospital one' })],
+      noPage: ['one', 'two'],
+    },
+    {
+      name: 'a city with one hospital gets no city page',
+      data: [mk('solo', { city: 'Lonely' }), mk('a'), mk('b')],
+      noPage: [],
+      cities: ['testpur'],
+    },
+    {
+      name: 'a city and a state with the same name have different titles',
+      data: [
+        mk('d1', { city: 'Delhi', state: 'Delhi' }),
+        mk('d2', { city: 'Delhi', state: 'Delhi' }),
+        mk('d3', { city: 'New Delhi', state: 'Delhi' }),
+        mk('d4', { city: 'Narela', state: 'Delhi' }),
+        mk('d5', { city: 'Narela', state: 'Delhi' }),
+      ],
+      noPage: [],
+      uniqueTitles: true,
+    },
+  ];
+  let passed = 0;
+  for (const c of cases) {
+    const site = hospitalSite({ hospitals: c.data });
+    const pageIds = new Set(site.publishable.map((h) => h.id));
+    let ok = true;
+    for (const id of c.noPage) if (pageIds.has(id)) ok = false;
+    if (c.cities && JSON.stringify(site.places.map((p) => p.slug)) !== JSON.stringify(c.cities)) ok = false;
+    if (c.uniqueTitles) {
+      const all = [
+        ...site.publishable.map(hospitalPageTitle),
+        ...site.places.map(cityHeading),
+        ...site.states.map(stateHeading),
+      ];
+      if (site.states.length === 0 || site.places.length === 0 || new Set(all).size !== all.length) ok = false;
+    }
+    if (ok) passed += 1;
+    else errors.push(`hospital page rule broken: ${c.name}`);
+  }
+  for (const [phone, want] of [
+    ['+91-612-2250127', 'tel:+916122250127'],
+    ['0612-2297631', 'tel:+916122297631'],
+    ['1800-313-4922', 'tel:18003134922'],
+    ['+91-86177-87387', 'tel:+918617787387'],
+    ['+91-0542-6917700', null],
+    ['033-2475-9313 / 033-3506-0600', null],
+  ]) {
+    if (telHref(phone) !== want) errors.push(`telHref("${phone}") gave ${telHref(phone)}, expected ${want}`);
+    else passed += 1;
+  }
+  console.log(`hospital rule self-tests passed: ${passed}`);
+}
 
 console.log(
   `hospital pages: ${hsite.publishable.length}, city pages: ${hsite.places.length}, state pages: ${hsite.states.length}, ` +
