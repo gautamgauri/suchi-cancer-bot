@@ -134,7 +134,13 @@ const crumbs = [
             </tr>
           )}
           {pmjay && (
-            <tr><th scope="row">Scheme</th><td><span data-field="pmjay_empanelled">PMJAY empanelled</span></td></tr>
+            <tr>
+              <th scope="row">Scheme</th>
+              <td>
+                <span data-field="pmjay_empanelled">PMJAY empanelled</span>.
+                Confirm PMJAY portability directly with the hospital before travelling.
+              </td>
+            </tr>
           )}
           {geo && (
             <tr>
@@ -158,7 +164,6 @@ const crumbs = [
           Details can change. Please confirm with the hospital before you travel.
           Always call ahead to confirm appointments and available services.
         </p>
-        {pmjay && <p>Confirm PMJAY portability directly with the hospital before travelling.</p>}
         {westBengal && (
           <p>
             <strong>West Bengal note:</strong> WB operates Swasthya Sathi (not central PMJAY) — Bihar

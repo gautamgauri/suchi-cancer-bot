@@ -36,6 +36,7 @@ import {
   telHref,
   TEL_HREF_RE,
   HELD,
+  APPROVED_PAGE_IDS,
   isUnknownDeptCode,
   hospitalPageTitle,
   cityHeading,
@@ -249,6 +250,17 @@ for (const s of hsite.states) expectedSection.set(s.path, 'state');
 for (const e of hsite.excluded) {
   if (builtPaths.has(`${SECTION}${e.id}/`)) errors.push(`excluded hospital ${e.id} has a page (${e.reason})`);
 }
+for (const path of builtPaths) {
+  const m = path.match(/^\/find-care\/hospitals\/([^/]+)\/$/);
+  if (m && m[1] !== 'in' && m[1] !== 'state' && !APPROVED_PAGE_IDS.has(m[1])) {
+    errors.push(`hospital page ${path} is for an id not on the approved list (src/content/hospital-pages-approved.mjs)`);
+  }
+}
+for (const id of APPROVED_PAGE_IDS) {
+  if (!hsite.publishable.some((h) => h.id === id)) {
+    warnings.push(`approved id ${id} has no page (${hsite.excluded.find((e) => e.id === id)?.reason ?? 'not in hospitals.json'})`);
+  }
+}
 for (const id of Object.keys(HELD)) {
   if (builtPaths.has(`${SECTION}${id}/`)) errors.push(`held hospital ${id} has a page (${HELD[id]})`);
 }
@@ -360,7 +372,7 @@ for (const file of htmlFiles) {
     verified_date: '2026-05-01',
     departments: ['medical_oncology'],
     pmjay_empanelled: null,
-    contact: { phone: null, address: 'Test Road', website: null },
+    contact: { phone: null, address: 'Test Road', website: `https://${id}.example.in` },
     latitude: null,
     longitude: null,
     geocode_confidence: 'city',
@@ -392,6 +404,40 @@ for (const file of htmlFiles) {
       noPage: ['one', 'two'],
     },
     {
+      name: 'a hospital sharing coordinates with a flagged entry keeps its page',
+      data: [mk('flagged', { risk_flag: 'x', ...at(25.6, 85.1) }), mk('neighbour', { name: 'Another Name', ...at(25.6, 85.1) })],
+      noPage: ['flagged'],
+      page: ['neighbour'],
+    },
+    {
+      name: 'an entry with no dialable phone and no website gets no page',
+      data: [mk('mute', { contact: { phone: '+91-0542-6917700', website: null } })],
+      noPage: ['mute'],
+    },
+    {
+      name: 'an entry not on the approved list gets no page',
+      data: [mk('a'), mk('b')],
+      approved: new Set(['a']),
+      noPage: ['b'],
+      page: ['a'],
+    },
+    {
+      name: 'a duplicate of a listed hospital does not make a place page partial',
+      data: [
+        mk('a', { contact: { phone: '0612-2000001', website: null } }),
+        mk('a-old', { name: 'Test Hospital a', verified_date: '2026-04-01', contact: { phone: '0612-2000001', website: null } }),
+        mk('b'),
+      ],
+      noPage: ['a-old'],
+      partial: false,
+    },
+    {
+      name: 'a different hospital on the directory makes a place page partial',
+      data: [mk('a'), mk('b'), mk('c', { status: 'needs_verification' })],
+      noPage: ['c'],
+      partial: true,
+    },
+    {
       name: 'a city with one hospital gets no city page',
       data: [mk('solo', { city: 'Lonely' }), mk('a'), mk('b')],
       noPage: [],
@@ -412,10 +458,12 @@ for (const file of htmlFiles) {
   ];
   let passed = 0;
   for (const c of cases) {
-    const site = hospitalSite({ hospitals: c.data });
+    const site = hospitalSite({ hospitals: c.data }, { approved: c.approved ?? null });
     const pageIds = new Set(site.publishable.map((h) => h.id));
     let ok = true;
     for (const id of c.noPage) if (pageIds.has(id)) ok = false;
+    for (const id of c.page ?? []) if (!pageIds.has(id)) ok = false;
+    if (c.partial !== undefined && (site.places.length !== 1 || site.hasMore.city(site.places[0]) !== c.partial)) ok = false;
     if (c.cities && JSON.stringify(site.places.map((p) => p.slug)) !== JSON.stringify(c.cities)) ok = false;
     if (c.uniqueTitles) {
       const all = [

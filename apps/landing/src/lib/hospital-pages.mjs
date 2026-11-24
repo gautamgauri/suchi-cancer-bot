@@ -26,6 +26,8 @@
  *     for another reason, none of them gets a page until the data is cleaned up.
  *   - An entry with no name, city, state, verified_date or departments gets
  *     no page.
+ *   - An entry needs a dialable phone or a shown website, and its id must
+ *     be on the approved list (src/content/hospital-pages-approved.mjs).
  *   - A city gets a page only when two or more hospitals there have pages.
  *     A state gets a page only when its hospitals with pages are in two or
  *     more cities. A hospital in a city without a page is linked directly.
@@ -34,6 +36,8 @@
  * cleaned-up duplicate, a cleared flag or a removed hold gives the hospital a
  * page on the next build.
  */
+
+import { APPROVED_IDS } from '../content/hospital-pages-approved.mjs';
 
 /** Slugs used by the section's own listing pages. A hospital id may not take one. */
 export const RESERVED_SLUGS = new Set(['in', 'state']);
@@ -77,6 +81,14 @@ export const TWIN_DISTANCE_M = 150;
 
 /** Entries of different hospitals this close together have a locality geocode, not a building one. */
 const SHARED_GEO_M = 50;
+
+/**
+ * Ids approved for a page of their own (src/content/hospital-pages-approved.mjs).
+ * An entry gets a page only when it passes every rule above AND is on this
+ * list, so each new page is a reviewed decision. verify-build.mjs fails if a
+ * page exists for an id not on the list.
+ */
+export const APPROVED_PAGE_IDS = new Set(APPROVED_IDS);
 
 /** Spelling variants of the same city. Key and value as written in the data. */
 const PLACE_ALIASES = {
@@ -208,7 +220,7 @@ const websiteHost = (h) => {
 
 /**
  * Coordinates geocoded to an address. City-centre geocodes are not. Pages
- * use hospitalSite().geoFor(), which also drops coordinates two hospitals share.
+ * use hospitalSite().geoFor(), which returns null for every entry for now.
  */
 export function preciseGeo(h) {
   const ok =
@@ -316,7 +328,10 @@ export function classifyHospitals(hospitals) {
     for (let j = i + 1; j < located.length; j += 1) {
       const [a, ga] = located[i];
       const [b, gb] = located[j];
-      if (nextToExcluded(a.id, b.id) && distanceM(ga, gb) <= TWIN_DISTANCE_M) union(a.id, b.id);
+      // Pairs that share coordinates are skipped: those are locality geocodes,
+      // and a flag on one hospital must not remove its neighbour.
+      const d = distanceM(ga, gb);
+      if (nextToExcluded(a.id, b.id) && d > SHARED_GEO_M && d <= TWIN_DISTANCE_M) union(a.id, b.id);
     }
   }
   const ids = new Set(hospitals.map((h) => h.id));
@@ -352,22 +367,9 @@ export function classifyHospitals(hospitals) {
     }
   }
 
-  // Coordinates shared with a different hospital are a locality centre.
-  const sharedGeo = new Set();
-  for (let i = 0; i < located.length; i += 1) {
-    for (let j = i + 1; j < located.length; j += 1) {
-      const [a, ga] = located[i];
-      const [b, gb] = located[j];
-      if (find(a.id) !== find(b.id) && distanceM(ga, gb) <= SHARED_GEO_M) {
-        sharedGeo.add(a.id);
-        sharedGeo.add(b.id);
-      }
-    }
-  }
-
   const publishable = hospitals.filter((h) => !reasons.has(h.id));
   const excluded = hospitals.filter((h) => reasons.has(h.id)).map((h) => ({ id: h.id, reason: reasons.get(h.id) }));
-  return { publishable, excluded, sharedGeo };
+  return { publishable, excluded, groupOf: (id) => find(id) };
 }
 
 const byName = (a, b) => a.name.localeCompare(b.name, 'en');
@@ -427,10 +429,23 @@ export const hospitalPath = (h) => `/find-care/hospitals/${h.id}/`;
 export const onDirectory = (h) => h.status !== 'incomplete_departments';
 
 /** Everything the pages and the verify script need, from the raw JSON. */
-export function hospitalSite(data) {
-  const { publishable, excluded, sharedGeo } = classifyHospitals(data.hospitals);
-  /** Coordinates for a directions link: address-level and not shared with another hospital. */
-  const geoFor = (h) => (sharedGeo.has(h.id) ? null : preciseGeo(h));
+export function hospitalSite(data, { approved = APPROVED_PAGE_IDS } = {}) {
+  const classified = classifyHospitals(data.hospitals);
+  const excluded = [...classified.excluded];
+  // Applied after classification, so these entries still count as clean for
+  // the twin rule. A page must give the reader a way to reach the hospital.
+  const publishable = [];
+  for (const h of classified.publishable) {
+    if (!reachable(h)) excluded.push({ id: h.id, reason: 'no dialable phone or shown website' });
+    else if (approved && !approved.has(h.id)) excluded.push({ id: h.id, reason: 'not on the approved list' });
+    else publishable.push(h);
+  }
+  /**
+   * Coordinates for a directions link and JSON-LD geo. None for now: a review
+   * found recorded coordinates 7 to 8 km from the hospital in three of five
+   * cases. Restore preciseGeo(h) here once the coordinates are verified.
+   */
+  const geoFor = () => null;
   const allPlaces = placeGroups(publishable);
   const places = allPlaces.filter((p) => p.hasPage);
   const states = stateGroups(publishable, allPlaces);
@@ -438,12 +453,22 @@ export function hospitalSite(data) {
   for (const p of places) for (const h of p.hospitals) placeOf.set(h.id, p);
   const stateOf = new Map(states.map((s) => [s.state, s]));
 
-  // How many entries the directory lists for each city and state, to tell a
-  // reader when a page shows only some of them.
+  // Whether the directory lists a hospital in a place that the page does not.
+  // An entry that is a duplicate of a listed hospital does not count.
   const listed = data.hospitals.filter(onDirectory);
-  const directoryCount = {
-    city: (p) => listed.filter((h) => placeName(h) === p.place && h.state === p.state).length,
-    state: (s) => listed.filter((h) => h.state === s.state).length,
+  const more = (inPlace, shown) => {
+    const shownGroups = new Set(shown.map((h) => classified.groupOf(h.id)));
+    return listed.some((h) => inPlace(h) && !shownGroups.has(classified.groupOf(h.id)));
   };
-  return { publishable, excluded, allPlaces, places, states, placeOf, stateOf, directoryCount, geoFor };
+  const hasMore = {
+    city: (p) => more((h) => placeName(h) === p.place && h.state === p.state, p.hospitals),
+    state: (s) => more((h) => h.state === s.state, s.hospitals),
+  };
+  return { publishable, excluded, allPlaces, places, states, placeOf, stateOf, hasMore, geoFor };
+}
+
+/** True when a page can offer a dialable phone or a shown website. */
+export function reachable(h) {
+  const phones = [h.contact?.phone, h.contact?.phone_alt].filter(Boolean);
+  return phones.some((p) => telHref(p)) || Boolean(websiteFor(h));
 }
