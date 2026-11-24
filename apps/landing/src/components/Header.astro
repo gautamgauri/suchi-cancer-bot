@@ -191,7 +191,9 @@ const CANCER_TYPES = [
 
   toggle?.addEventListener('click', () => {
     const isOpen = menu?.getAttribute('aria-hidden') === 'false';
-    menu?.setAttribute('aria-hidden', String(!isOpen));
+    // Opening sets aria-hidden to "false". It used to be set to "true" on
+    // every click, so the menu never showed.
+    menu?.setAttribute('aria-hidden', String(isOpen));
     toggle.setAttribute('aria-expanded', String(!isOpen));
   });
 
