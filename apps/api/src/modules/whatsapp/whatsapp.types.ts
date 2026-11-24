@@ -71,4 +71,10 @@ export interface InboundMessage {
    * short note then says the attachment itself was not read.
    */
   captionMediaType?: string;
+  /**
+   * Validated source code from a trailing `(src: <code>)` line, which the
+   * website's WhatsApp links add (see whatsapp-source.ts). The line itself has
+   * already been removed from `text`.
+   */
+  sourceCode?: string;
 }
