@@ -11,27 +11,72 @@
  *   - An entry with a risk_flag gets no page. The directory still shows it
  *     with its flag. A page of its own would either hide the flag or put it
  *     in front of search engines, and neither is right without review.
- *   - The same hospital entered twice (same name and place, or same phone and
- *     place, or listed in KNOWN_DUPLICATES) gets one page at most. The most
- *     recently verified entry wins. If the entries disagree on the type of
- *     hospital or on PMJAY, or if any of them is excluded for the reasons
- *     above, none of them gets a page until the data is cleaned up.
+ *   - An entry on the HELD list gets no page until its data is corrected.
+ *   - The same hospital entered twice gets one page at most. Entries count as
+ *     one hospital when they share a name and city or a phone and city, or
+ *     when they are listed in KNOWN_DUPLICATES. An entry that shares a
+ *     website host and city with an excluded entry, or sits within
+ *     TWIN_DISTANCE_M of one, also counts as its twin, so a renamed copy of
+ *     a flagged or held entry gets no page. (Many address geocodes are
+ *     locality centres, so two different hospitals can share coordinates.
+ *     That is why the host and distance tests apply only next to an excluded
+ *     entry.) The most
+ *     recently recorded entry wins. If the entries disagree on the type of
+ *     hospital, on PMJAY or on the main phone, or if any of them is excluded
+ *     for another reason, none of them gets a page until the data is cleaned up.
  *   - An entry with no name, city, state, verified_date or departments gets
  *     no page.
+ *   - A city gets a page only when two or more hospitals there have pages.
+ *     A state gets a page only when its hospitals with pages are in two or
+ *     more cities. A hospital in a city without a page is linked directly.
  *
  * None of this needs maintenance as the navigator pipeline adds entries. A
- * cleaned-up duplicate or a cleared flag gives the hospital a page on the
- * next build.
+ * cleaned-up duplicate, a cleared flag or a removed hold gives the hospital a
+ * page on the next build.
  */
 
 /** Slugs used by the section's own listing pages. A hospital id may not take one. */
 export const RESERVED_SLUGS = new Set(['in', 'state']);
 
 /**
- * Pairs the automatic duplicate check cannot see (different names and
- * phones). Remove a pair once one of its entries is deleted from the data.
+ * Entries held back from a page of their own until the data is corrected.
+ * They stay on the directory as before. Remove an id once its entry is fixed.
+ */
+export const HELD = {
+  'aiims-hyderabad': 'city-differs-from-address',
+  'nimhans-bangalore': 'not-a-cancer-hospital-by-type',
+  'sctimst-thiruvananthapuram': 'not-a-cancer-hospital-by-type',
+  'chittaranjan-national-cancer-institute-kolkata': 'duplicate-phones-differ',
+  'gujarat-cancer-research-institute-ahmedabad': 'duplicate-phones-differ',
+  'kidwai-memorial-bangalore': 'duplicate-phones-differ',
+};
+
+/**
+ * Entries whose recorded website is not shown, because it did not resolve
+ * in a DNS check. Remove an id once the website in the data is corrected.
+ */
+export const WEBSITE_HELD = new Set([
+  'kidwai-memorial-bangalore',
+  'gujarat-cancer-research-institute-ahmedabad',
+  'nims-hyderabad',
+  'aiims-bhubaneswar',
+]);
+
+/**
+ * Pairs the automatic duplicate check cannot see. Remove a pair once one of
+ * its entries is deleted from the data.
  */
 export const KNOWN_DUPLICATES = [['cancer-institute-wia-chennai', 'cancer-institute-adyar-chennai']];
+
+/**
+ * An entry this close to an excluded entry, both geocoded to an address,
+ * counts as its twin. Kept below the 159 m between two distinct institutes
+ * in Bengaluru that share a campus road.
+ */
+export const TWIN_DISTANCE_M = 150;
+
+/** Entries of different hospitals this close together have a locality geocode, not a building one. */
+const SHARED_GEO_M = 50;
 
 /** Spelling variants of the same city. Key and value as written in the data. */
 const PLACE_ALIASES = {
@@ -44,23 +89,48 @@ const PLACE_ALIASES = {
   Trivandrum: 'Thiruvananthapuram',
 };
 
-/** Department codes used by older entries. Newer entries hold readable names. */
+/**
+ * Plain labels for department codes. Covers the codes the research pipeline
+ * is told to use (apps/api/src/modules/admin/navigator-research.service.ts)
+ * and the older codes already in the data. Newer entries hold readable names,
+ * which are shown as written.
+ */
 export const DEPT_LABELS = {
   medical_oncology: 'Medical Oncology',
   surgical_oncology: 'Surgical Oncology',
   radiation_oncology: 'Radiation Oncology',
-  hemato_oncology: 'Haematology',
-  pediatric_oncology: 'Paediatric',
+  chemotherapy: 'Chemotherapy',
+  immunotherapy: 'Immunotherapy',
+  bone_marrow_transplant: 'Bone Marrow Transplant',
+  targeted_therapy: 'Targeted Therapy',
   palliative_care: 'Palliative Care',
+  head_and_neck_surgery: 'Head and Neck Surgery',
+  gynecologic_oncology: 'Gynaecological Oncology',
+  hemato_oncology: 'Haemato-Oncology',
+  pediatric_oncology: 'Paediatric Oncology',
   nuclear_medicine: 'Nuclear Medicine',
-  gynaec_oncology: 'Gynaecology',
-  gynec_oncology: 'Gynaecology',
+  pathology: 'Pathology',
+  radiology: 'Radiology',
+  clinical_trials: 'Clinical Trials',
+  gynaec_oncology: 'Gynaecological Oncology',
+  gynec_oncology: 'Gynaecological Oncology',
   uro_oncology: 'Uro-Oncology',
-  head_and_neck: 'Head & Neck',
+  head_and_neck: 'Head and Neck Oncology',
   preventive_oncology: 'Preventive Oncology',
 };
 
-export const deptLabel = (d) => DEPT_LABELS[d] ?? d;
+/** True for a value written as a code (lower case and underscores) with no label. */
+export const isUnknownDeptCode = (d) => /^[a-z0-9_]+$/.test(d) && !(d in DEPT_LABELS);
+
+/** Label for a department. An unknown code is tidied ("foo_bar" becomes "Foo bar"). */
+export function deptLabel(d) {
+  if (DEPT_LABELS[d]) return DEPT_LABELS[d];
+  if (isUnknownDeptCode(d)) {
+    const s = d.replace(/_+/g, ' ').trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return d;
+}
 
 export function slugify(s) {
   return String(s)
@@ -94,21 +164,66 @@ const nameKey = (n) =>
 const typeHead = (t) => String(t ?? '').split('/')[0].trim().toLowerCase();
 
 /**
- * `tel:` href for a number as written in the data. Spaces and hyphens go,
- * and "+91-0..." becomes "+91..." so the number dials. The text shown on the
- * page stays as written.
+ * `tel:` href for a phone field, or null when the field is not exactly one
+ * Indian number. Accepted forms, once spaces, hyphens and brackets are gone:
+ * +91 and ten digits, a ten-digit mobile, 0 and a ten-digit landline, or a
+ * 1800 toll-free number. Anything else (two numbers, an extension, "+91-0...")
+ * is shown as text with no link.
  */
 export function telHref(phone) {
-  return `tel:${String(phone).replace(/[^\d+]/g, '').replace(/^\+910/, '+91')}`;
+  const s = String(phone ?? '').replace(/[\s\-().]/g, '');
+  let m;
+  if ((m = s.match(/^\+91([1-9]\d{9})$/))) return `tel:+91${m[1]}`;
+  if ((m = s.match(/^0([1-9]\d{9})$/))) return `tel:+91${m[1]}`;
+  if ((m = s.match(/^([6-9]\d{9})$/))) return `tel:+91${m[1]}`;
+  if ((m = s.match(/^(1800\d{6,7})$/))) return `tel:${m[1]}`;
+  return null;
 }
 
-/** Coordinates precise enough for a directions link. City-centre geocodes are not. */
+/** The form every `tel:` href on the site must take. */
+export const TEL_HREF_RE = /^tel:(\+91[1-9]\d{9}|1800\d{6,7})$/;
+
+/** The recorded website, when it is a well-formed absolute https URL and not held. */
+export function websiteFor(h) {
+  const w = h.contact?.website;
+  if (!present(w) || WEBSITE_HELD.has(h.id)) return null;
+  const raw = String(w).trim();
+  if (/\s/.test(raw)) return null;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'https:' || u.username || u.password || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(u.hostname)) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+const websiteHost = (h) => {
+  try {
+    return new URL(String(h.contact?.website ?? '')).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Coordinates geocoded to an address. City-centre geocodes are not. Pages
+ * use hospitalSite().geoFor(), which also drops coordinates two hospitals share.
+ */
 export function preciseGeo(h) {
   const ok =
     (h.geocode_confidence === 'address' || h.geocode_confidence === 'name_address') &&
     typeof h.latitude === 'number' &&
     typeof h.longitude === 'number';
   return ok ? { latitude: h.latitude, longitude: h.longitude } : null;
+}
+
+function distanceM(a, b) {
+  const r = (x) => (x * Math.PI) / 180;
+  const dLat = r(b.latitude - a.latitude);
+  const dLon = r(b.longitude - a.longitude);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.latitude)) * Math.cos(r(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(s));
 }
 
 export function directionsUrl(geo) {
@@ -128,9 +243,30 @@ export function hospitalTitle(h) {
   return h.name.toLowerCase().includes(city.toLowerCase()) ? h.name : `${h.name}, ${city}`;
 }
 
+/** <title> of a hospital page. */
+export const hospitalPageTitle = (h) => `${hospitalTitle(h)} | SCCF Hospital Directory`;
+
+/**
+ * Introductory sentence for a hospital page, or null when the name carries a
+ * suffix after a dash and the sentence would not read as English.
+ */
+export function hospitalIntro(h) {
+  if (/\s[–—-]\s|[–—]/.test(h.name)) return null;
+  return `${h.name} is a hospital in ${h.city}, ${h.state}.`;
+}
+
+/**
+ * Headings of city and state pages. City pages say "in", state pages say
+ * "across", so a city and a state with the same name never share a title.
+ */
+export const cityLabel = (p) => (p.place === p.state ? p.place : `${p.place}, ${p.state}`);
+export const cityHeading = (p) => `Hospitals in ${cityLabel(p)} in the SCCF hospital directory`;
+export const stateHeading = (s) => `Hospitals across ${s.state} in the SCCF hospital directory`;
+
 function ownReason(h) {
   if (h.status !== 'active') return `status ${h.status}`;
   if (present(h.risk_flag)) return 'risk flag recorded';
+  if (HELD[h.id]) return `held: ${HELD[h.id]}`;
   for (const f of ['id', 'name', 'city', 'state', 'verified_date']) {
     if (!present(h[f])) return `missing ${f}`;
   }
@@ -155,6 +291,7 @@ export function classifyHospitals(hospitals) {
   const find = (x) => (parent.get(x) === x ? x : find(parent.get(x)));
   const union = (a, b) => parent.set(find(a), find(b));
   const seen = new Map();
+  const byHost = new Map();
   for (const h of hospitals) {
     const place = slugify(placeName(h));
     const keys = [`n:${nameKey(h.name)}@${place}`];
@@ -163,6 +300,23 @@ export function classifyHospitals(hospitals) {
     for (const k of keys) {
       if (seen.has(k)) union(h.id, seen.get(k));
       else seen.set(k, h.id);
+    }
+    const host = websiteHost(h);
+    if (host) byHost.set(`${host}@${place}`, [...(byHost.get(`${host}@${place}`) ?? []), h.id]);
+  }
+  // Host and distance links only next to an entry that is already excluded.
+  const nextToExcluded = (a, b) => reasons.has(a) || reasons.has(b);
+  for (const group of byHost.values()) {
+    for (let i = 0; i < group.length; i += 1) {
+      for (let j = i + 1; j < group.length; j += 1) if (nextToExcluded(group[i], group[j])) union(group[i], group[j]);
+    }
+  }
+  const located = hospitals.map((h) => [h, preciseGeo(h)]).filter(([, g]) => g);
+  for (let i = 0; i < located.length; i += 1) {
+    for (let j = i + 1; j < located.length; j += 1) {
+      const [a, ga] = located[i];
+      const [b, gb] = located[j];
+      if (nextToExcluded(a.id, b.id) && distanceM(ga, gb) <= TWIN_DISTANCE_M) union(a.id, b.id);
     }
   }
   const ids = new Set(hospitals.map((h) => h.id));
@@ -185,7 +339,8 @@ export function classifyHospitals(hospitals) {
     }
     const types = new Set(members.map((m) => typeHead(m.h.type)));
     const pmjay = new Set(members.map((m) => m.h.pmjay_empanelled).filter((v) => typeof v === 'boolean'));
-    if (types.size > 1 || pmjay.size > 1) {
+    const phones = new Set(members.map((m) => phoneKey(m.h.contact?.phone)).filter((p) => p.length >= 6));
+    if (types.size > 1 || pmjay.size > 1 || phones.size > 1) {
       for (const m of members) reasons.set(m.h.id, `duplicate entries disagree (${memberIds.join(', ')})`);
       continue;
     }
@@ -197,16 +352,30 @@ export function classifyHospitals(hospitals) {
     }
   }
 
+  // Coordinates shared with a different hospital are a locality centre.
+  const sharedGeo = new Set();
+  for (let i = 0; i < located.length; i += 1) {
+    for (let j = i + 1; j < located.length; j += 1) {
+      const [a, ga] = located[i];
+      const [b, gb] = located[j];
+      if (find(a.id) !== find(b.id) && distanceM(ga, gb) <= SHARED_GEO_M) {
+        sharedGeo.add(a.id);
+        sharedGeo.add(b.id);
+      }
+    }
+  }
+
   const publishable = hospitals.filter((h) => !reasons.has(h.id));
   const excluded = hospitals.filter((h) => reasons.has(h.id)).map((h) => ({ id: h.id, reason: reasons.get(h.id) }));
-  return { publishable, excluded };
+  return { publishable, excluded, sharedGeo };
 }
 
 const byName = (a, b) => a.name.localeCompare(b.name, 'en');
 
 /**
- * City pages: one per place with at least one publishable hospital.
- * A place name shared by two states gets the state in its slug.
+ * Every city with at least one publishable hospital. Only cities with two or
+ * more get a page (`hasPage`). A city name shared by two states gets the
+ * state in its slug.
  */
 export function placeGroups(publishable) {
   const byPlace = new Map();
@@ -224,15 +393,19 @@ export function placeGroups(publishable) {
       const [place, state] = key.split('|');
       const base = slugify(place);
       const slug = slugCount.get(base) > 1 ? `${base}-${slugify(state)}` : base;
-      return { slug, place, state, path: `/find-care/hospitals/in/${slug}/`, hospitals: [...hs].sort(byName) };
+      return {
+        slug,
+        place,
+        state,
+        path: `/find-care/hospitals/in/${slug}/`,
+        hasPage: hs.length >= 2,
+        hospitals: [...hs].sort(byName),
+      };
     })
     .sort((a, b) => a.place.localeCompare(b.place, 'en'));
 }
 
-/**
- * State pages: only for a state whose publishable hospitals sit in two or
- * more places. Otherwise the single city page already covers the state.
- */
+/** State pages, for a state whose publishable hospitals are in two or more cities. */
 export function stateGroups(publishable, places) {
   const byState = new Map();
   for (const p of places) byState.set(p.state, [...(byState.get(p.state) ?? []), p]);
@@ -250,13 +423,27 @@ export function stateGroups(publishable, places) {
 
 export const hospitalPath = (h) => `/find-care/hospitals/${h.id}/`;
 
+/** Entries the directory page lists (it hides only incomplete_departments). */
+export const onDirectory = (h) => h.status !== 'incomplete_departments';
+
 /** Everything the pages and the verify script need, from the raw JSON. */
 export function hospitalSite(data) {
-  const { publishable, excluded } = classifyHospitals(data.hospitals);
-  const places = placeGroups(publishable);
-  const states = stateGroups(publishable, places);
+  const { publishable, excluded, sharedGeo } = classifyHospitals(data.hospitals);
+  /** Coordinates for a directions link: address-level and not shared with another hospital. */
+  const geoFor = (h) => (sharedGeo.has(h.id) ? null : preciseGeo(h));
+  const allPlaces = placeGroups(publishable);
+  const places = allPlaces.filter((p) => p.hasPage);
+  const states = stateGroups(publishable, allPlaces);
   const placeOf = new Map();
   for (const p of places) for (const h of p.hospitals) placeOf.set(h.id, p);
   const stateOf = new Map(states.map((s) => [s.state, s]));
-  return { publishable, excluded, places, states, placeOf, stateOf };
+
+  // How many entries the directory lists for each city and state, to tell a
+  // reader when a page shows only some of them.
+  const listed = data.hospitals.filter(onDirectory);
+  const directoryCount = {
+    city: (p) => listed.filter((h) => placeName(h) === p.place && h.state === p.state).length,
+    state: (s) => listed.filter((h) => h.state === s.state).length,
+  };
+  return { publishable, excluded, allPlaces, places, states, placeOf, stateOf, directoryCount, geoFor };
 }
