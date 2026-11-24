@@ -5,9 +5,9 @@ import { MAX_USER_TEXT_HARD_LIMIT } from "../chat/dto";
 const MAX_USER_TEXT_LENGTH = 4096;
 
 /**
- * Review B1 of PR #202: the voice path hands ChatService the whole transcript,
- * so the safety screen sees a phrase near the end of a long one. ChatService
- * cuts it to MAX_USER_TEXT_LENGTH only after screening. Synthetic text.
+ * PR #202: the voice path hands ChatService the whole transcript, as on main
+ * (review F3). ChatService applies the 20,000 ceiling and screens the tail of
+ * a longer one. Synthetic text.
  */
 describe("VoiceService passes the whole transcript to the chat pipeline", () => {
   function build() {
@@ -29,10 +29,10 @@ describe("VoiceService passes the whole transcript to the chat pipeline", () => 
     expect(svc.chatService.handle.mock.calls[0][0].userText).toBe(transcript);
   });
 
-  it("cuts only at the abuse ceiling", async () => {
+  it("does not cut even above the 20,000 ceiling, which ChatService applies", async () => {
     const svc = build();
     const transcript = "a".repeat(MAX_USER_TEXT_HARD_LIMIT + 10);
     await svc.runPipeline("00000000-0000-4000-8000-00000000000b", transcript, "en-IN").catch(() => undefined);
-    expect(svc.chatService.handle.mock.calls[0][0].userText).toHaveLength(MAX_USER_TEXT_HARD_LIMIT);
+    expect(svc.chatService.handle.mock.calls[0][0].userText).toBe(transcript);
   });
 });

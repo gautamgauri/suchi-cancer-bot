@@ -164,4 +164,28 @@ describe("WhatsApp contact whose stored session was deleted", () => {
     expect(sendText).toHaveBeenCalledWith("9199", expected);
     expect(ledgerRows.get("wa-inbound:ds2").payload).toMatchObject({ status: "processed", partsSent: 1 });
   });
+
+  // Review B1: over-ceiling messages through the real path, parseInbound then
+  // processClaimed, into the real ChatService. Its tail screen finds the phrase.
+  it.each([
+    [20_500, "I want to kill myself", "self_harm"],
+    [60_000, "I want to kill myself", "self_harm"],
+    [20_500, EMERGENCY, "red_flag"],
+    [60_000, EMERGENCY, "red_flag"],
+  ])("a %i character message ending in a safety phrase gets its template (%s)", async (n, phrase, classification) => {
+    const filler = "I have some questions about my treatment plan. ".repeat(Math.ceil((n as number) / 47));
+    const long = filler.slice(0, (n as number) - (phrase as string).length - 1) + " " + phrase;
+    const body = {
+      object: "whatsapp_business_account",
+      entry: [{ changes: [{ field: "messages", value: { messages: [{ id: `long-${n}`, from: "9199", type: "text", text: { body: long } }] } }] }],
+    } as any;
+    const [parsed] = svc.parseInbound(body);
+    expect(parsed.text).toHaveLength(n as number);
+    await svc.processClaimed([parsed]);
+    expect(sendText).toHaveBeenCalledTimes(1);
+    const results = await Promise.all(handle.mock.results.map((r) => (r.value as Promise<any>).catch((e) => e)));
+    const reply = results.find((r: any) => r && r.safety);
+    expect(reply.safety.classification).toBe(classification);
+    expect(sendText.mock.calls[0][1]).toBe(cleanResponseForDisplay(reply.responseText));
+  });
 });

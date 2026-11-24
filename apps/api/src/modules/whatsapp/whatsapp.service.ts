@@ -12,7 +12,6 @@ import {
   flaggedByDeterministicSafetyChecks,
   withinBound,
 } from "../chat/deterministic-safety";
-import { MAX_USER_TEXT_HARD_LIMIT, cutToLength } from "../chat/dto";
 import { SessionsService } from "../sessions/sessions.service";
 import { SafetyService } from "../safety/safety.service";
 import { AbstentionService } from "../abstention/abstention.service";
@@ -272,15 +271,7 @@ export class WhatsAppService {
             sentAt: parseSentAt(m.timestamp),
           };
           if (text) {
-            // Cut at the abuse ceiling only, the bound every channel uses. The
-            // stale guard, the no-session safety reply and ChatService also
-            // screen the tail of a longer message (PR #202).
-            const bounded = cutToLength(text, MAX_USER_TEXT_HARD_LIMIT);
-            out.push({
-              ...base,
-              text: bounded,
-              ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}),
-            });
+            out.push({ ...base, text, ...(m.type && CAPTION_MEDIA_TYPES.has(m.type) ? { captionMediaType: m.type } : {}) });
           } else if (m.type && NOTICE_MESSAGE_TYPES.has(m.type)) {
             // No readable text (voice note, image, document, ...). Kept so the
             // sender gets the fixed "typed messages only" notice. Never reaches

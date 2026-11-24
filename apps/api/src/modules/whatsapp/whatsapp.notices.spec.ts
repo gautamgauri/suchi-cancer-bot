@@ -332,6 +332,17 @@ describe("WhatsApp fixed notices", () => {
         expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
       });
 
+      // PR #202 (review B1): the guard screens the tail of an over-ceiling
+      // message, and the pipeline gets the message whole, as on main.
+      it.each([20_500, 60_000])("a stale %i character message ending in self-harm runs the pipeline", async (n) => {
+        const filler = "I have some questions about my treatment plan. ".repeat(Math.ceil(n / 47));
+        const long = filler.slice(0, n - SELF_HARM.length - 1) + " " + SELF_HARM;
+        await svc.processInbound(svc.parseInbound(webhook([staleText("w1", long)])));
+        expect(chat.handle).toHaveBeenCalledTimes(1);
+        expect(chat.handle).toHaveBeenCalledWith(expect.objectContaining({ userText: long }));
+        expect(sendText).not.toHaveBeenCalledWith(CONTACT_A, STALE_MESSAGE_NOTICE);
+      });
+
       it("a flagged message is never swallowed by the notice cooldown", async () => {
         // An ordinary stale message takes the notice slot first. The flagged
         // one after it must still run the pipeline.

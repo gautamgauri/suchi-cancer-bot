@@ -179,16 +179,14 @@ describe("WhatsAppService", () => {
       ]);
     });
 
-    // PR #202: the whole message reaches the safety screen. ChatService cuts it
-    // to MAX_USER_TEXT_LENGTH only after screening. Only the abuse ceiling applies here.
-    it("keeps inbound text above MAX_USER_TEXT_LENGTH, so the safety screen sees all of it", () => {
-      const msgs = svc.parseInbound(textWebhook("wamid.long", "919876543210", "x".repeat(MAX_USER_TEXT_LENGTH + 500)));
-      expect(msgs[0].text).toHaveLength(MAX_USER_TEXT_LENGTH + 500);
-    });
-
-    it("cuts inbound text at the abuse ceiling (this path skips ChatDto)", () => {
-      const msgs = svc.parseInbound(textWebhook("wamid.huge", "919876543210", "x".repeat(MAX_USER_TEXT_HARD_LIMIT + 500)));
-      expect(msgs[0].text).toHaveLength(MAX_USER_TEXT_HARD_LIMIT);
+    // PR #202 (review B1): parseInbound passes the text through whole, as on
+    // main. ChatService and the shared safety helper apply the 20,000 ceiling
+    // and screen the tail of a longer message.
+    it("passes inbound text through uncut, at any length", () => {
+      for (const n of [MAX_USER_TEXT_LENGTH + 500, MAX_USER_TEXT_HARD_LIMIT + 500, 60_000]) {
+        const msgs = svc.parseInbound(textWebhook(`wamid.len${n}`, "919876543210", "x".repeat(n)));
+        expect(msgs[0].text).toHaveLength(n);
+      }
     });
 
     it("ignores statuses-only events", () => {
@@ -467,18 +465,31 @@ describe("WhatsAppService", () => {
       );
     });
 
-    // Review F1: the shared helper also screens the tail of a message longer
-    // than 20,000 characters. Meta's own cap on inbound text keeps WhatsApp
-    // messages far below that, so this checks the helper on this path.
-    it("the no-session reply screens the tail of a message over 20,000 characters", async () => {
+    // Review B1 and F1: over-ceiling messages through the real path, parseInbound
+    // then processClaimed. The no-session reply screens the tail.
+    it.each([
+      [20_500, "self-harm"],
+      [60_000, "self-harm"],
+      [20_500, "emergency"],
+      [60_000, "emergency"],
+    ])("a %i character message ending in a %s phrase gets its template with no session", async (n, kind) => {
       prisma.whatsAppContact.findUnique.mockImplementation(dbDown);
-      const filler = "I have some questions about my treatment plan. ".repeat(700);
-      const long = filler.slice(0, 30_000 - SELF_HARM.length - 1) + " " + SELF_HARM;
-      await svc.processClaimed([{ wamid: "sf14", from: "9199", text: long }]);
+      const phrase = kind === "self-harm" ? SELF_HARM : EMERGENCY;
+      const filler = "I have some questions about my treatment plan. ".repeat(Math.ceil(n / 47));
+      const long = filler.slice(0, (n as number) - phrase.length - 1) + " " + phrase;
+      expect(long.length).toBe(n);
+      const [parsed] = svc.parseInbound(textWebhook(`sf-${n}-${kind}`, "9199", long));
+      await svc.processClaimed([parsed]);
       expect(svc.sendText).toHaveBeenCalledTimes(1);
       const sent = (svc.sendText as jest.Mock).mock.calls[0][1] as string;
       expect(sent).not.toContain("something went wrong");
-      expect(sent).toContain(cleanResponseForDisplay(new SafetyService().evaluate(SELF_HARM).responseText!).split("\n")[0]);
+      const template =
+        kind === "self-harm"
+          ? new SafetyService().evaluate(SELF_HARM).responseText!
+          : evaluateEmergencyFastPath(EMERGENCY).responseText!;
+      expect(sent).toContain(cleanResponseForDisplay(template).split("\n")[0]);
+      // The ledger records the length only, never the text.
+      expect(JSON.stringify(ledger.rows.get(inboundLedgerId(`sf-${n}-${kind}`)))).not.toContain(phrase);
     });
 
     // #254 with PR #202: a caption note must never follow a no-session safety reply.
