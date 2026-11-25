@@ -21,6 +21,18 @@
  *   - prognosis or staging (survive, survival, cure, curable, prognosis, life
  *     expectancy, chance, stage, grade, metastatic, spread, terminal,
  *     recover, "theek ho").
+ *   - a growth, count or blood word (tumour, gilti, gaanth, blood, platelets,
+ *     haemoglobin, neutropenia), recurrence ("came back", relapse), a
+ *     decision about treatment ("stop treatment") or another system of
+ *     medicine (ayurvedic, homeopathy, desi ilaj);
+ *   - a procedure or drug name by its suffix (-ectomy, -oscopy, -otomy,
+ *     -ostomy, -mab, -nib, -platin, -taxel, -rubicin);
+ *   - ANY distress, self-harm, death or urgency word (die, death, point of
+ *     living, jeena, marna, मर, burden, bojh, ending it, suicide, pills,
+ *     overdose, poison, emergency, urgent, ICU, ventilator, unconscious, not
+ *     waking, paralysis, hopeless, give up, scared, alone and variants).
+ *     These are over-inclusive on purpose: when in doubt, not practical.
+ * "Blood cancer" alone is a cancer type and does not count.
  * The generic words "cancer", "treatment", "ilaj" and "इलाज" are NOT medical
  * content on their own: they name what is being paid for or looked for, not
  * a clinical question. Naming a cancer type ("blood cancer") is not medical
@@ -36,35 +48,62 @@ import { detectPlace, detectState, PlaceResult } from "../utils/location-detecto
 // ─── Medical content (the conservative boundary) ─────────────────────────
 
 const MEDICAL_LATIN: RegExp[] = [
-  // Symptoms and complaints
-  /\b(pain|painful|aches?|aching|hurts?|hurting|lumps?|swelling|swollen|bleed|bleeding|bled)\b/i,
-  /\b(blood\s+(in|from|while|when)|(vomit\w*|cough\w*|spit\w*|passing)\s+(up\s+)?blood)\b/i,
-  /\b(fever|feverish|temperature|vomit\w*|nausea|nauseous|cough\w*|breathless\w*|breath|breathing|breathe)\b/i,
-  /\b(ulcers?|sores?|wounds?|rash|itch\w*|fatigue|tired\w*|weak|weakness|dizz\w*|faint\w*|headaches?)\b/i,
-  /\b(diarrh\w*|constipat\w*|weight\s+loss|losing\s+weight|appetite|discharge|numb|numbness|tingling|seizures?|fits)\b/i,
-  /\b(confus\w*|jaundice|yellow\w*|swallow\w*|hoarse\w*|not\s+healing|non[- ]healing|symptoms?|infection|pus|cramps?)\b/i,
-  /\b(dard|bukhar|bukhaar|ganth|gaanth|gath|khoon|khun|ulti|ultee|khansi|khaasi|khasi|sujan|soojan|ghav|ghaav|chhala|chhale|kamzori|kamjori|chakkar|saans|sans|jalan|kharash|thakan|thakaan)\b/i,
-  // Named treatments and procedures
-  /\b(chemo\w*|kimo\w*|keemo\w*|kemo\w*|radiation|radiotherap\w*|radio\s+therapy|sikai|sekai|surgery|surgical|surgeries|operation|operate|operated|oparation|opration|sarjari|transplant\w*|immunotherap\w*|targeted\s+therapy|hormon\w*\s+therapy|dialysis|picc|chemoport|port\s+line|catheter|stent|palliative|brachytherap\w*)\b/i,
-  // Medicines, drugs and doses
-  /\b(medicines?|medication\w*|drugs?|tablets?|capsules?|injections?|dawa|dawai|dawaai|dawaiyan|goli|painkillers?|morphine|paracetamol|tamoxifen|letrozole|imatinib|trastuzumab|herceptin|cisplatin|paclitaxel)\b/i,
+  // Symptoms and complaints. Stems end in \w* where the word has endings, so
+  // "hoga" after "theek ho" and "bachega" after "bach" are caught.
+  /\b(pain\w*|aches?|aching|hurts?|hurting|lumps?|swelling|swollen|bleed\w*|bled|blood(?!\s+cancers?\b)\w*)\b/i,
+  /\b(fever\w*|temperature|vomit\w*|nausea|nauseous|cough\w*|breathless\w*|breath|breathing|breathe)\b/i,
+  /\b(ulcers?|sores?|wounds?|rash|rashes|itch\w*|fatigue|tired\w*|weak|weakness|dizz\w*|faint\w*|headaches?)\b/i,
+  /\b(diarrh\w*|dast|loose\s+motions?|constipat\w*|stools?|weight\s+loss|losing\s+weight|appetite|discharge|numb|numbness|tingling|seizures?|fits)\b/i,
+  /\b(confus\w*|jaundice|peeliya|piliya|pilia|yellow\w*|swallow\w*|hoarse\w*|not\s+healing|non[- ]healing|symptoms?|infection\w*|pus|cramps?)\b/i,
+  /\b(tumou?rs?|growth|gilti|gilthi|ganth|gaanth|gath|gaath|dard|bukhar|bukhaar|khoon|khun|ulti|ultee|khansi|khaasi|khasi|sujan|soojan|ghav|ghaav|chhala|chhale|kamzori|kamjori|chakkar|saans|sans|jalan|kharash|thakan|thakaan)\b/i,
+  /\b(platelets?|ha?emoglobin|hb|wbc|rbc|neutropeni\w*|counts?\s+(is\s+|are\s+)?(very\s+)?(low|high|down))\b/i,
+  // Named treatments and procedures, and the suffixes procedure names share
+  /\b(chemo\w*|kimo\w*|keemo\w*|kemo\w*|radiation|radiotherap\w*|radio\s+therapy|sikai|sekai|surg\w*|operat\w*|oparation|opration|sarjari|transplant\w*|bmt|bone\s+marrow|transfusion\w*|immunotherap\w*|targeted\s+therapy|hormon\w*\s+therapy|dialysis|picc|chemoport|port\s+line|catheter|stent|palliative|brachytherap\w*)\b/i,
+  /\b\w+(ectomy|ectomies|oscopy|oscopies|otomy|ostomy)\b/i,
+  // Medicines, drugs and doses, and the suffixes cancer drug names share
+  /\b(medicines?|medication\w*|drugs?|tablets?|capsules?|injections?|dawa|dawai|dawaai|dawaiyan|goli|painkillers?|morphine|paracetamol|tamoxifen|letrozole|imatinib|trastuzumab|herceptin|cisplatin|paclitaxel|nivolumab|pembrolizumab|keytruda|opdivo)\b/i,
+  /\b\w{3,}(mab|nib|platin|taxel|rubicin)\b/i,
   /\b(dose|doses|dosage|\d+\s*mg|milligrams?)\b/i,
   // Tests, scans, reports and results
-  /\b(tests?|testing|scans?|ct|pet|mri|x-?rays?|mammogra\w*|ultrasound|sonography|biops\w*|pathology|reports?|results?|markers?|psa|cbc|fnac|endoscopy|colonoscopy|pap\s+smear)\b/i,
-  // Prognosis and staging
-  /\b(surviv\w*|cure|cured|curable|prognosis|life\s+expectancy|chances?|stage|stages|staging|grade|metasta\w*|spread\w*|terminal|recover\w*|theek\s+ho|thik\s+ho|bachenge|bach\s+jay\w*)\b/i,
+  /\b(tests?|testing|scans?|ct|pet|mri|x-?rays?|mammogra\w*|ultrasound|sonography|biops\w*|pathology|reports?|results?|markers?|psa|cbc|fnac|pap\s+smear)\b/i,
+  // Prognosis, staging, recurrence and decisions about treatment
+  /\b(surviv\w*|cure|cured|curable|prognosis|life\s+expectancy|chances?|stage|stages|staging|grade|metasta\w*|spread\w*|terminal|recover\w*|relapse\w*|recurr\w*|(come|came|comes|coming)\s+back|returned|wapas\s+aa\w*)\b/i,
+  /\b(theek\s+ho\w*|thik\s+ho\w*|bach\s*(ega|egi|enge|ega|na|ne|ti|ta)\b|bachega|bachegi|bachenge|bach\s+ja\w*|bach\s+sak\w*)/i,
+  /\b(stop\w*\s+(the\s+)?(treatment|ilaa?j|therapy)|(treatment|ilaa?j)\s+band\w*|ayurved\w*|homo?eopath\w*|naturopath\w*|unani|siddha|herbal|desi\s+(ilaa?j|dawa\w*|nuskh\w*)|alternative|home\s+remed\w*|gharelu)\b/i,
 ];
 
 const MEDICAL_DEVANAGARI =
-  /(दर्द|बुखार|गांठ|गाँठ|खून|उल्टी|खांसी|खाँसी|सूजन|घाव|छाला|छाले|थकान|कमजोरी|कमज़ोरी|चक्कर|सांस|साँस|जलन|लक्षण|कीमो|रेडिएशन|रेडियेशन|रेडियोथेरेपी|सिकाई|सर्जरी|ऑपरेशन|आपरेशन|दवा|दवाई|गोली|इंजेक्शन|जांच|जाँच|टेस्ट|रिपोर्ट|स्कैन|बायोप्सी|स्टेज|ठीक\s*हो|बचेंगे|बच\s*जा)/;
+  /(दर्द|बुखार|गांठ|गाँठ|गिल्टी|ट्यूमर|खून|ब्लड|उल्टी|खांसी|खाँसी|सूजन|घाव|छाला|छाले|थकान|कमजोरी|कमज़ोरी|चक्कर|सांस|साँस|जलन|लक्षण|पीलिया|दस्त|प्लेटलेट|हीमोग्लोबिन|कीमो|केमो|किमो|रेडिएशन|रेडियेशन|रेडियो|विकिरण|सिकाई|सिंकाई|सेकाई|सर्जरी|शल्य|ऑपरेशन|आपरेशन|ओपरेशन|ट्रांसप्लांट|दवा|दवाई|गोली|गोलियां|इंजेक्शन|जांच|जाँच|टेस्ट|रिपोर्ट|स्कैन|बायोप्सी|स्टेज|फैल|वापस\s*आ|ठीक\s*हो|बच\s*जा|बचेग|बचेंग|बचेगी|बच\s*सक|आयुर्वेद|होम्योपैथ|होमियोपैथ|देसी\s*इलाज|देसी\s*दवा|जड़ी|इलाज\s*बंद)/;
 
 /**
- * True when the message has any medical content under the rule at the top of
- * this file. Such a message is never answered by the practical replies.
+ * Distress, self-harm, death and urgency words. A message with any of them is
+ * never given a practical reply, so the screens' and the ordinary pipeline's
+ * handling applies exactly as before. Over-inclusive by design.
+ */
+const DISTRESS_LATIN: RegExp[] = [
+  /\b(die|dies|died|dying|death|deaths|dead|deadly|kill\w*|suicid\w*|self[- ]?harm\w*|ending\s+it|end\s+it|end\s+(my|our|his|her)\s+life|take\s+my\s+life)\b/i,
+  /\b(point\s+(of|in)\s+living|reason\s+to\s+live|want\s+to\s+live|live\s+any\s*more|living\s+any\s*more|not\s+live|will\s+\w+(\s+\w+)?\s+live|how\s+long\s+.{0,30}\s+live|jeena|jeene|jina|jine|jeevan|zindagi|marna|marne|marenge|marega|maregi|mar\s+ja\w*|mar\s+jau\w*|mar\s+gay\w*|maut|khudkushi|aatmahatya)\b/i,
+  /\b(burden|bojh|hopeless\w*|no\s+hope|give\s+up|giving\s+up|gave\s+up|can'?t\s+go\s+on|cannot\s+go\s+on|worthless|depress\w*|anxious|anxiety|panic\w*|scared|afraid|terrified|frightened|crying|cry|worr\w*|tension|pareshaa?n|alone|lonely|nirash|udaas|haar\s+gay\w*)\b/i,
+  /\b(pills?|overdose\w*|poison\w*|zeher|zehar|zahar|emergency|urgent\w*|urgently|icu|ventilator\w*|oxygen|unconscious\w*|not\s+waking|won'?t\s+wake|not\s+responding|unresponsive|paraly\w*|lakwa|stroke|collaps\w*|accident\w*|chok\w*|behosh\w*|serious|critical|sinking|ambulance)\b/i,
+];
+
+const DISTRESS_DEVANAGARI =
+  /(मर\s*(ना|ने|जा|जाऊ|जाऊं|जाऊँ|जाए|गया|गई|गए|ेंगे|ेगा|ेगी)|मरना|मरने|मौत|मृत्यु|आत्महत्या|ख़ुदकुशी|खुदकुशी|जान\s*दे|जीना|जीने|ज़िंदगी|जिंदगी|बोझ|ज़हर|जहर|बेहोश|लकवा|आईसीयू|वेंटिलेटर|ऑक्सीजन|इमरजेंसी|आपातकाल|एम्बुलेंस|उम्मीद\s*नहीं|हिम्मत|डर|अकेल|निराश|परेशान|रो\s*रह|हार\s*गय|गंभीर)/;
+
+/** True when the message has any distress, self-harm, death or urgency word. */
+export function hasDistressOrUrgency(text: string): boolean {
+  const t = text.normalize("NFC");
+  return DISTRESS_LATIN.some((re) => re.test(t)) || DISTRESS_DEVANAGARI.test(t);
+}
+
+/**
+ * True when the message has any medical content, or any distress or urgency
+ * word, under the rule at the top of this file. Such a message is never
+ * answered by the practical replies.
  */
 export function hasMedicalContent(text: string): boolean {
   const t = text.normalize("NFC");
-  return MEDICAL_LATIN.some((re) => re.test(t)) || MEDICAL_DEVANAGARI.test(t);
+  return MEDICAL_LATIN.some((re) => re.test(t)) || MEDICAL_DEVANAGARI.test(t) || hasDistressOrUrgency(t);
 }
 
 // ─── Paying for treatment ────────────────────────────────────────────────

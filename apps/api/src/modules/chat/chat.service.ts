@@ -1590,7 +1590,10 @@ export class ChatService implements BeforeApplicationShutdown {
         safetyClassification: "normal",
         latencyMs: Date.now() - started,
         kbDocIds: [],
-        evidenceGatePassed: true,
+        // Built without retrieval, so the evidence gate never ran. The gate
+        // flag is left unset (the column's default) and the quality field
+        // marks the reply as a deterministic practical one, per kind.
+        evidenceQuality: `practical_${practical.kind}`,
         locale: disclaimerLocale,
         userText: dto.userText,
       });
@@ -1810,7 +1813,7 @@ export class ChatService implements BeforeApplicationShutdown {
       // Generate SafeFallbackResponse (no medical content). A practical
       // question with no medical content gets the practical reply instead,
       // which does not send a funding question to a clinician (issue #260).
-      const safeFallback = this.evidenceGateFallbackReply(dto.userText, gateResult.reasonCode || 'NO_RESULTS', queryType);
+      const safeFallback = this.evidenceGateFallbackReply(dto.userText, gateResult.reasonCode || 'NO_RESULTS', queryType, agenticIntent.category);
 
       // Attach deterministic citations if evidence exists (template/abstention path)
       const { modifiedText, citations } = this.attachDeterministicCitationsIfNeeded(
@@ -2538,7 +2541,7 @@ export class ChatService implements BeforeApplicationShutdown {
         // A practical question with no medical content gets the practical
         // reply, never "NCI sources ... consult a clinician" (issue #260).
         // Medical questions keep the existing wording.
-        const abstentionResponse = this.ungroundedAbstentionReply(dto.userText, hasRedFlags);
+        const abstentionResponse = this.ungroundedAbstentionReply(dto.userText, hasRedFlags, agenticIntent.category);
 
         const assistant = await this.prisma.message.create({
           data: {
@@ -2617,7 +2620,7 @@ export class ChatService implements BeforeApplicationShutdown {
             // Only abstain for non-informational queries
             this.logger.warn(`Regenerated response still contains ungrounded entities`);
             const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
-            const abstentionResponse = this.ungroundedAbstentionReply(dto.userText, hasRedFlags);
+            const abstentionResponse = this.ungroundedAbstentionReply(dto.userText, hasRedFlags, agenticIntent.category);
             
             const assistant = await this.prisma.message.create({
               data: {
@@ -3708,17 +3711,40 @@ export class ChatService implements BeforeApplicationShutdown {
    * to "consult a clinician" about "NCI sources" (issue #260, cause 5).
    * Every other message keeps the existing medical abstention, word for word.
    */
-  private ungroundedAbstentionReply(userText: string, hasRedFlags: boolean): string {
-    return isPracticalNonMedical(userText)
-      ? practicalUnknownReply()
-      : this.responseValidator.generateAbstentionResponse(hasRedFlags);
+  private ungroundedAbstentionReply(
+    userText: string,
+    hasRedFlags: boolean,
+    category?: AgenticIntentResult["category"],
+  ): string {
+    return this.practicalUnknownIfApplicable(userText, category) ?? this.responseValidator.generateAbstentionResponse(hasRedFlags);
   }
 
   /** The evidence gate's fallback, with the same practical split. */
-  private evidenceGateFallbackReply(userText: string, reasonCode: string, queryType: string): string {
-    return isPracticalNonMedical(userText)
-      ? practicalUnknownReply()
-      : this.abstention.generateSafeFallbackResponse(reasonCode, queryType);
+  private evidenceGateFallbackReply(
+    userText: string,
+    reasonCode: string,
+    queryType: string,
+    category?: AgenticIntentResult["category"],
+  ): string {
+    return (
+      this.practicalUnknownIfApplicable(userText, category) ??
+      this.abstention.generateSafeFallbackResponse(reasonCode, queryType)
+    );
+  }
+
+  /**
+   * The practical "I do not know", or null to keep the existing wording: for
+   * a medical, emergency or psychosocial message, or when the verified file
+   * cannot be read.
+   */
+  private practicalUnknownIfApplicable(userText: string, category?: AgenticIntentResult["category"]): string | null {
+    if (category === "EMERGENCY" || category === "PSYCHOSOCIAL") return null;
+    try {
+      return isPracticalNonMedical(userText) ? practicalUnknownReply() : null;
+    } catch (err: any) {
+      this.logger.error(`practical unknown reply unavailable: ${err?.message ?? err}`);
+      return null;
+    }
   }
 
   /**

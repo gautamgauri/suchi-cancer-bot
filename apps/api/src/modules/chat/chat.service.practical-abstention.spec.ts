@@ -33,6 +33,35 @@ describe("ChatService refusals: practical questions are not sent to a clinician 
     }
   });
 
+  it("keeps the medical wording for EMERGENCY and PSYCHOSOCIAL categories (review of PR #267)", () => {
+    const validator = new ResponseValidatorService();
+    const q = "How to apply to the Prime Minister's relief fund for my mother's cancer treatment?";
+    for (const category of ["EMERGENCY", "PSYCHOSOCIAL"]) {
+      expect(svc.ungroundedAbstentionReply(q, false, category)).toBe(validator.generateAbstentionResponse(false));
+    }
+    expect(svc.ungroundedAbstentionReply(q, false, "SCHEMES")).toMatch(/^Suchi does not have confirmed information/);
+  });
+
+  it("falls back to the existing wording when the verified file cannot be read", () => {
+    const fs = require("node:fs");
+    const original = fs.readFileSync;
+    jest.resetModules();
+    const spy = jest.spyOn(fs, "readFileSync").mockImplementation((...args: any[]) => {
+      if (String(args[0]).endsWith("financial-support.json")) throw new Error("missing");
+      return original.apply(fs, args);
+    });
+    // A fresh copy of the module graph, so the cached file is not used.
+    const { ChatService: Fresh } = require("./chat.service");
+    const { ResponseValidatorService: FreshValidator } = require("./response-validator.service");
+    const fresh: any = Object.create(Fresh.prototype);
+    fresh.responseValidator = new FreshValidator();
+    fresh.logger = { error: jest.fn() };
+    const q = "How to apply to the Prime Minister's relief fund for my mother's cancer treatment?";
+    expect(fresh.ungroundedAbstentionReply(q, false, "SCHEMES")).toBe(fresh.responseValidator.generateAbstentionResponse(false));
+    expect(fresh.logger.error).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   it("applies the same split to the evidence gate's fallback", () => {
     const abstention = new AbstentionService();
     expect(

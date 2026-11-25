@@ -49,6 +49,84 @@ describe("practical-router", () => {
     });
   });
 
+  // Review of PR #267, item 1. Distress, self-harm, death and urgency words
+  // that a deterministic screen might miss must never get a canned practical
+  // reply. These messages take the existing path, exactly as on main.
+  describe("distress and urgency always take the existing path", () => {
+    it.each([
+      "no money left, I am a burden on my family",
+      "can't pay for treatment, what is the point of living",
+      "we cannot afford treatment, I feel like ending it all",
+      "garib hain, ilaj nahi kara sakte, marne ke alawa koi raasta nahi",
+      "गरीब हैं, मर जाना ही ठीक है",
+      "Will my father die? we are poor, no money",
+      "nearest hospital in Patna, she took too many pills",
+      "which hospital in Patna, he is paralysed on one side",
+      "which hospital in Delhi has ICU bed, need ventilator urgently",
+      "nearest hospital, he is not waking up",
+      "Ayushman card hai, par ab jeene ka mann nahi",
+      "poor family, I want to give up, is there free treatment",
+      "hospital in Patna, he drank poison",
+      "free treatment chahiye, papa behosh hain",
+      "आयुष्मान कार्ड है, ज़िंदगी बोझ लगती है",
+      "emergency mein kaun sa hospital Patna mein",
+    ])("not practical: %s", (text) => {
+      expect(hasMedicalContent(text)).toBe(true);
+      expect(routePracticalQuestion(text)).toBeNull();
+      expect(isPlaceSeekingQuestion(text) && !hasMedicalContent(text)).toBe(false);
+    });
+  });
+
+  // Review of PR #267, item 2: gaps in the medical lists.
+  describe("medical boundary gaps found in review", () => {
+    it.each([
+      "muh se blood aa raha hai, ayushman card chalega?",
+      "मुंह से ब्लड आ रहा है, आयुष्मान कार्ड चलेगा?",
+      "मुंह से खून आ रहा है, सरकारी अस्पताल कौन सा है",
+      "tumor is growing fast, which hospital in Patna",
+      "ट्यूमर बढ़ रहा है, पटना में अस्पताल",
+      "gale mein gilti hai, free ilaj kahan",
+      "गले में गिल्टी है, मुफ्त इलाज कहाँ",
+      "gaanth hai, ayushman card se hoga?",
+      "गांठ है, आयुष्मान कार्ड से होगा?",
+      "peeliya ho gaya, sarkari hospital Patna",
+      "पीलिया है, सरकारी अस्पताल कहाँ",
+      "dast ho rahe hain, free ilaj kahan milega",
+      "black stools, which hospital in Patna",
+      "platelets are very low, which hospital in Patna",
+      "hemoglobin 5, which hospital in Patna",
+      "neutropenia after treatment, hospital in Delhi",
+      "does Ayushman cover mastectomy?",
+      "does Ayushman cover hysterectomy?",
+      "blood transfusion free in government hospital?",
+      "is nivolumab covered under Ayushman card?",
+      "pembrolizumab cost under PM-JAY",
+      "BMT under Ayushman card",
+      "bone marrow transplant scheme",
+      "केमोथेरेपी के लिए आयुष्मान कार्ड",
+      "विकिरण के लिए सरकारी योजना",
+      "ओपरेशन के लिए पैसे नहीं",
+      "kya woh bachega, ayushman card hai",
+      "क्या पापा बचेगा, पैसे नहीं हैं",
+      "cancer has come back, is there any government scheme",
+      "relapse after two years, free hospital in Patna",
+      "recurrence, ayushman card",
+      "should we stop treatment, no money",
+      "ayurvedic treatment instead, any scheme",
+      "desi ilaj se free mein hoga?",
+      "homeopathy for cancer free hospital",
+      "alternative treatment under Ayushman",
+      "kya desi ilaj se cancer theek hoga",
+      "imatinib or trastuzumab covered by Ayushman?",
+      "is oxaliplatin or docetaxel or doxorubicin free?",
+      "colonoscopy and laparotomy cost under Ayushman",
+      "gefitinib under PM-JAY",
+    ])("medical: %s", (text) => {
+      expect(hasMedicalContent(text)).toBe(true);
+      expect(routePracticalQuestion(text)).toBeNull();
+    });
+  });
+
   describe("routePracticalQuestion", () => {
     it.each([
       ["Does Ayushman Bharat cover cancer treatment?", ["pmjay"]],
