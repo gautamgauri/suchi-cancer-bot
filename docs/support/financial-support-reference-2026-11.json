@@ -1,0 +1,486 @@
+{
+  "title": "Financial support for cancer treatment in India: verified reference",
+  "checked_on": "2026-11-25",
+  "status": "source material for review, not ingested into the knowledge base",
+  "rule": "Each fact was read on an official page fetched on the checked_on date. Re-check before use.",
+  "national_facts": [
+    {
+      "topic": "pmjay",
+      "fact": "NHA states nha.gov.in is the only official website of AB PM-JAY and warns against fraudulent portals, calls and messages about enrolment or premium payments.",
+      "quote": "nha.gov.in is the only official website of Ayushman Bharat - Pradhan Mantri Jan Arogya Yojna (AB PM-JAY)",
+      "url": "https://nha.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "PM-JAY gives a cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation, cashless, at public and private empanelled hospitals.",
+      "quote": "It provides a cover of Rs. 5 lakh per family per year for secondary and tertiary care hospitalization across public and private empanelled hospitals in India.",
+      "url": "https://pmjay.nha.gov.in/about-ayushman-bharat",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "PM-JAY targets over 12 crore poor and vulnerable families (about 55 crore people), the bottom 40% of the population, identified from SECC 2011 deprivation (rural) and occupational (urban) criteria.",
+      "quote": "over 12 crore poor and vulnerable families (approximately 55 crore beneficiaries) that form the bottom 40% of the Indian population",
+      "url": "https://pmjay.nha.gov.in/about-ayushman-bharat",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "No restriction on family size, age or gender. Pre-existing conditions covered from day one. Covers up to 3 days pre-hospitalisation and 15 days post-hospitalisation expenses. Benefits are portable across India.",
+      "quote": "There is no restriction on family size, age, or gender. All pre-existing conditions are covered from day one.",
+      "url": "https://pmjay.nha.gov.in/about-ayushman-bharat",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "The page says services include approximately 1,929 procedures, covering drugs, diagnostics, fees, room, OT and ICU charges.",
+      "quote": "Services include approximately 1,929 procedures, covering all the costs related to treatment",
+      "url": "https://pmjay.nha.gov.in/about-ayushman-bharat",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Rural eligibility uses SECC deprivation criteria D1 to D5 and D7. Urban eligibility uses 11 occupational categories (ragpicker, beggar, domestic worker, street vendor, construction worker, sanitation worker, home-based worker, transport worker, shop worker, electrician/mechanic, washer-man/chowkidar). States may use their own databases but must cover all SECC-eligible families.",
+      "quote": "For urban areas, the following 11 occupational categories of workers are eligible for the scheme",
+      "url": "https://pmjay.nha.gov.in/criteria-coverage",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Treatment packages cover nearly 24 specialities including oncology. Surgical packages are bundled payments, medical packages are paid per day, day-care packages paid like surgical. NHA signed an MoU with Tata Memorial Hospital to review oncology packages under HBP 2.0. The page does not list individual medical, surgical or radiation oncology packages.",
+      "quote": "covering treatment for nearly 24 specialities that include super speciality care like oncology, neurosurgery and cardio-thoracic and cardiovascular surgery",
+      "url": "https://pmjay.nha.gov.in/PackagesAndRates",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Package rate includes medicines, diagnostics, food, and pre and post hospitalisation expenses up to 15 days after discharge for the same ailment.",
+      "quote": "up to 15 days of the discharge from the hospital for the same ailment/ surgery",
+      "url": "https://pmjay.nha.gov.in/PackagesAndRates",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Official toll-free helplines: AB PM-JAY 14555. Ayushman Vay Vandana card (70+) missed call 1800110770. ABDM 1800-11-4477.",
+      "quote": "AB PMJAY : 14555 ... Ayushman Vay Vandana Card (For senior citizens aged 70+): Get details with a missed call on : 1800110770",
+      "url": "https://pmjay.nha.gov.in/tollFree",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Eligibility check and self-service: beneficiary.nha.gov.in lets a person log in with a mobile number to check whether they are a beneficiary, and offers Link Aadhaar, Add Member, Redo e-KYC and Check Status. It also links to the Ayushman mobile app and a Find Empanelled Hospital search. NHA home page labels this link 'AM I Eligible'.",
+      "quote": "To checkout if you are a beneficiary, you can login here using your mobile number.",
+      "url": "https://beneficiary.nha.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Beneficiaries can make their own Ayushman card with the Ayushman app (Hindi text on the official beneficiary portal).",
+      "quote": "अब लाभार्थी अपने आयुष्मान कार्ड को आयुष्मान ऐप की सहायता से स्वयं बना सकते हैं।",
+      "url": "https://beneficiary.nha.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Find an empanelled hospital: NHA home page 'Find Hospitals' links to hem.nha.gov.in/search. Beneficiary portal also has 'Find Empanelled Hospital'.",
+      "quote": "Find Hospitals",
+      "url": "https://nha.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "NHA home page statistics on 25-11-2026: 49,84,37,129 Ayushman cards issued, 39,703 hospitals empanelled.",
+      "quote": "39,703 Hospitals Empanelled",
+      "url": "https://nha.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Documents at hospital (official PM-JAY FAQ PDF, an early-era FAQ re-released on site 2025-05-06): carry ration card or any government photo ID such as Aadhaar. Same FAQ says portability across the country and helpline 14555. Text extracted from PDF, spacing reconstructed.",
+      "quote": "At the time of admission to the hospital, beneficiaries should carry ration card or any other government recognized photo identity document like Aadhaar etc.",
+      "url": "https://pmjay.nha.gov.in/strapi/uploads/AB_PMJAY_FA_Qs_ed45d95556.pdf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "Ayushman Vay Vandana (official senior citizen FAQ PDF, created Oct 2024): all citizens aged 70 or above, regardless of income, are eligible for free treatment up to Rs 5 lakh. Age taken from Aadhaar. Aadhaar e-KYC is mandatory and Aadhaar is the only document needed. A distinct Ayushman card is issued. Apply at beneficiary.nha.gov.in or the Ayushman app. No waiting period. The Rs 5 lakh is shared on a family basis between eligible seniors. Seniors in families already under PM-JAY get an additional top-up of Rs 5 lakh for themselves only. Private insurance or ESIC cover does not bar eligibility. CGHS (and other government scheme) holders must choose one scheme, a one-time irreversible choice. Text extracted from PDF, spacing reconstructed.",
+      "quote": "All senior citizens aged 70 or above, regardless of economic status, are eligible for free medical treatment up to ₹5 lakh under this scheme.",
+      "url": "https://pmjay.nha.gov.in/strapi/uploads/English_FA_Qs_related_to_the_benefits_for_senior_citizens_7596c43be0.pdf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmjay",
+      "fact": "West Bengal became the 36th State/UT to implement AB PM-JAY, by MoU between NHA and the West Bengal health department (NHA 'What's New' item dated 2026-06-08).",
+      "quote": "West Bengal today became the 36th State/Union Territory to implement the Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (AB PM-JAY).",
+      "url": "https://pmjay.nha.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "myScheme (MeitY official portal, MoHFW entry) lists 'Rastriya Arogya Nidhi - Health Minister's Cancer Patient Fund' (HMCPF within RAN), set up in 2009, for poor patients living below the poverty line with cancer, for treatment at 27 Regional Cancer Centres, each holding a revolving fund of up to Rs 50 lakh.",
+      "quote": "It is a scheme to provide financial assistance to poor patients living below poverty line and suffering from cancer, for their treatment at 27 Regional cancer centers (RCCs).",
+      "url": "https://www.myscheme.gov.in/schemes/hmcpf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "HMCPF benefit: Rs 5 lakh towards treatment. Cases needing more than Rs 5 lakh are sent to the Ministry. Maximum admissible under the scheme is Rs 15 lakh.",
+      "quote": "The maximum financial assistance admissible under the Scheme will be ₹15,00,000/-",
+      "url": "https://www.myscheme.gov.in/schemes/hmcpf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "HMCPF covered treatments: radiation of all kinds incl. radiotherapy, gamma knife, brachytherapy; chemotherapy with supportive medication incl. hormonal therapy; allogenic and autologous bone marrow transplant; diagnostics incl. PET scan; surgery for operable malignant tumours.",
+      "quote": "Anti-Cancer Chemotherapy with supportive medication including hormonal therapy.",
+      "url": "https://www.myscheme.gov.in/schemes/hmcpf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "HMCPF exclusions: Central/State Government and PSU employees are not eligible. Grant not used where cancer treatment is available free of cost. Assistance admissible at the 27 RCCs only (per this page).",
+      "quote": "Assistance is admissible for treatment in 27 Regional Cancer Centre(s) (RCC) only.",
+      "url": "https://www.myscheme.gov.in/schemes/hmcpf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "HMCPF application (offline): download the prescribed form (pages 10 to 12 of the RAN guideline PDF), have it signed and stamped by the treating doctor/HOD and countersigned by the Medical Superintendent of the Government hospital, and submit it with documents to that Government hospital. Documents: the signed proforma, original BPL/income certificate from BDO/Mandal Development Officer/Tehsildar/SDM or similar, and ration card copy attested by a Gazetted Officer. Guideline linked: https://mohfw.gov.in/sites/default/files/RAN_Guideline_2019_0.pdf (2019, could not be fetched).",
+      "quote": "submit the application form along with all required documents to the concerned Government hospital.",
+      "url": "https://www.myscheme.gov.in/schemes/hmcpf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "PIB backgrounder 'Towards a Cancer-Free India' (MoHFW, Feb 2025) says HMCPF under RAN gives up to Rs 5 lakh for cancer treatment to BPL patients, maximum under the scheme Rs 15 lakh, at 27 RCCs with Rs 50 lakh revolving funds each, established 2009. Text extracted from PDF.",
+      "quote": "provides financial aid up to ₹5 lakh for cancer treatment to patients below the poverty line.",
+      "url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/feb/doc2025213500801.pdf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "Health Minister's Discretionary Grant (HMDG), MoHFW: for financially poor patients, to defray part of hospitalisation/treatment cost in Government hospitals (incl. super-speciality) for life-threatening diseases covered under RAN where free treatment is not available. Excludes private hospital treatment, TB, prolonged recurring treatment, common inexpensive diseases, and Central/State Government employees. Apply offline: printed form submitted to the treating doctor/HOD/Medical Superintendent, with original income certificate from BDO/Tehsildar/Collector/SDM and ration card copy.",
+      "quote": "Only those having annual family income up to Rs.1.25,000/- and below are eligible for financial assistance from Health Minister's Discretionary Grant (HMDG).",
+      "url": "https://www.myscheme.gov.in/schemes/hmdg",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "HMDG page is internally inconsistent. Details section says family income up to Rs 1,25,000. Eligibility section says it must not exceed Rs 1,00,000. Benefits section gives Rs 50,000 / 75,000 / 1,00,000 by estimated cost bands (up to 1 lakh, 1 to 1.5 lakh, above 1.5 lakh). Documents section gives Rs 75,000 / 1,00,000 / 1,25,000 (bands up to 1.25 lakh, 1.25 to 1.75 lakh, above 1.75 lakh).",
+      "quote": "The Total Annual Family Income of the applicant must not exceed ₹1,00,000/- per annum.",
+      "url": "https://www.myscheme.gov.in/schemes/hmdg",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "ran",
+      "fact": "The NHA PM-JAY site has a 'RAN & HMDG' convergence page listing one document, a DS letter on NSA database integration with BIS (eligibility), released 2025-06-11. Letter contents not read.",
+      "quote": "DS letter NSA database integration with BIS_CO_030521 Eligibility",
+      "url": "https://pmjay.nha.gov.in/Ranhmdg",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmnrf",
+      "fact": "PMNRF partially defrays medical treatment expenses such as heart surgery, kidney transplantation, cancer treatment and acid attack. Funded wholly by public contributions with no budgetary support. Disbursements made with the approval of the Prime Minister.",
+      "quote": "Assistance from PMNRF is also rendered, to partially defray the expenses for medical treatment like heart surgeries, kidney transplantation, cancer treatment and acid attack etc.",
+      "url": "https://pmnrf.gov.in/en/about",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmnrf",
+      "fact": "PMNRF gives financial assistance to indigent patients for treatment of major diseases at Government or PMNRF-empanelled hospitals, partially.",
+      "quote": "the PMNRF provides financial assistance to indigent patients for treatment of major diseases at Government/PMNRF empanelled hospitals to partially defray the expenses.",
+      "url": "https://pmnrf.gov.in/en/faqs/pmnrf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmnrf",
+      "fact": "How to apply: application addressed to the Prime Minister (format on website). Enclose two passport photos of the patient (one pasted, one stapled), copy of residence proof, original medical certificate stating disease and estimated cost, and copy of income certificate. All government hospitals are already empanelled. Empanelled private hospitals are listed on the site. Disbursement at the sole discretion of the Prime Minister subject to funds.",
+      "quote": "Applicants can apply for grant of financial assistance through an application (format also available at the website) addressed to the Prime Minister.",
+      "url": "https://pmnrf.gov.in/en/faqs/pmnrf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmnrf",
+      "fact": "Not all medical applications can be met owing to limited resources.",
+      "quote": "it is not possible to accommodate all requests due to the limited resources.",
+      "url": "https://pmnrf.gov.in/en/faqs/pmnrf",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "pmnrf",
+      "fact": "Application form for financial assistance is on the Downloads page (https://pmnrf.gov.in/assets/uploads/downloads/PMNRF-Assistance-form-English.pdf). Empanelled private hospital list at https://pmnrf.gov.in/en/about/private-hospital-lists. PMNRF operates from the PMO, Seva Teerth, New Delhi-110011.",
+      "quote": "Application Form for Financial Assistance from PMNRF",
+      "url": "https://pmnrf.gov.in/en/downloads",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "railways",
+      "fact": "Indian Railways passenger enquiry concession rules: cancer patients travelling alone or with an escort for treatment or periodic check-up get 75% in 2nd class, 1st class and AC chair car; 100% in Sleeper and 3AC; 50% in 1AC and 2AC. One escort gets the same concession, except in Sleeper and 3AC where the escort gets 75%.",
+      "quote": "Cancer patients traveling alone or with an escort for treatment/periodic check-up. -- 75% in 2nd class, 1st class, AC chair car -- 100% in SL & 3AC -- 50% in 1AC & 2AC -- One escort eligible for same element of concession(except in SL and 3AC where escort gets 75%)",
+      "url": "https://www.indianrail.gov.in/enquiry/StaticPages/StaticEnquiry.jsp?StaticPage=conc_Rules.html",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "railways",
+      "fact": "Concession applies to basic fare only (not superfast surcharge or reservation fee). The 300 km minimum distance does not apply to cancer patients and their escorts.",
+      "quote": "Concession shall be admissible only in respect of basic fares. No concession is admissible in respect of other charges, viz. superfast surcharge, reservation fee, etc.",
+      "url": "https://www.indianrail.gov.in/enquiry/StaticPages/StaticEnquiry.jsp?StaticPage=conc_Rules.html",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "railways",
+      "fact": "Certificate: the page states only the general rule that the requisite certificate from the concerned person or organisation in India must be produced. It does not name the issuing authority for cancer patients on the section read.",
+      "quote": "Concession on Indian Railway will be admissible on production of the requisite certificate from the concerned Person/Organization in India",
+      "url": "https://www.indianrail.gov.in/enquiry/StaticPages/StaticEnquiry.jsp?StaticPage=conc_Rules.html",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "cghs",
+      "fact": "CGHS gives comprehensive medical care to Central Government employees and pensioners enrolled under the scheme. 24x7 helpline 1800-208-8900. Site shows 2,490 empanelled hospitals.",
+      "quote": "Central Government Health Scheme is providing comprehensive medical care to the Central Government employees and pensioners enrolled under the scheme.",
+      "url": "https://cghs.mohfw.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "esic",
+      "fact": "ESIC (Ministry of Labour and Employment) gives medical benefits to insured persons. Toll-free medical helpdesk 1800-11-3839, general queries 1800-11-2526.",
+      "quote": "For Medical related queries/advice Call TollFree Helpdesk No. 1800113839",
+      "url": "https://www.esic.gov.in/",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "topic": "mental_health",
+      "fact": "Tele-MANAS gives 24-hour tele mental health services on toll-free 1800-89-14416 or short code 14416.",
+      "quote": "dialing toll-free helpline number 1800-89-14416 or short code 14416",
+      "url": "https://dghs.mohfw.gov.in/national-mental-health-programme.php",
+      "checked_on": "2026-11-25"
+    }
+  ],
+  "states": [
+    {
+      "state": "Assam",
+      "scheme": "Ayushman Asom Mukhya Mantri Jan Arogya Yojana, Atal Amrit Abhiyan and AB PM-JAY, run by the Atal Amrit Abhiyan Society",
+      "url": "https://atalamritabhiyan.assam.gov.in/",
+      "helpline": null,
+      "notes": "The home page lists the three schemes. No helpline or amount was read.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Bihar",
+      "scheme": "AB PM-JAY, run by Bihar Swasthya Suraksha Samiti (BISWASS)",
+      "url": "https://biswass.bihar.gov.in/",
+      "helpline": null,
+      "notes": "The page states Rs 5 lakh per family per year. Its count of 1.21 crore families differs from the NHA figure of 1,90,78,143 and looks out of date.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Haryana",
+      "scheme": "Ayushman Bharat Haryana (AB PM-JAY)",
+      "url": "https://ayushmanbharat.haryana.gov.in/",
+      "helpline": null,
+      "notes": "The page states Rs 5 lakh per family per year. No beneficiary helpline was read.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Himachal Pradesh",
+      "scheme": "Mukhya Mantri Himachal Health Care Scheme (HIMCARE) and AB PM-JAY",
+      "url": "https://www.hpsbys.in/",
+      "helpline": null,
+      "notes": "The site is headed Government of Himachal Pradesh but is not on a gov.in address. It states up to Rs 5 lakh per family per year under HIMCARE.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Jharkhand",
+      "scheme": "Mukhyamantri Abua Swasthya Suraksha Yojana, run by the Jharkhand State Arogya Society",
+      "url": "https://www.myscheme.gov.in/schemes/massy",
+      "helpline": null,
+      "notes": "From the myScheme entry. It states cover of Rs 15 lakh per family per year for residents with an NFSA or Jharkhand food security ration card. Applications at bis.jharkhand.gov.in. The state's own portal was not opened.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Karnataka",
+      "scheme": "Ayushman Bharat Arogya Karnataka (AB-ArK)",
+      "url": "https://arogya.karnataka.gov.in/",
+      "helpline": "104 (toll-free) and 1800 425 8330",
+      "notes": "Helplines from the site's contact page. No amount was read.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Kerala",
+      "scheme": "Karunya Arogya Suraksha Padhathi (KASP), run by the State Health Agency Kerala",
+      "url": "https://sha.kerala.gov.in/",
+      "helpline": "0471 4063121 and 1056",
+      "notes": "The Malayalam text states Rs 5 lakh a year for hospital care for the poorest 40% of families. The numbers are not marked toll-free. The Karunya Benevolent Fund was not checked.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Meghalaya",
+      "scheme": "Megha Health Insurance Scheme (MHIS 6), alongside PM-JAY",
+      "url": "https://mhis.org.in/",
+      "helpline": "1800 102 4762 and +91 364 2507477",
+      "notes": "The scheme site is not on a gov.in address. It is linked from the state health department site meghealth.gov.in.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Nagaland",
+      "scheme": "Chief Minister Health Insurance Scheme (CMHIS), with AB PM-JAY",
+      "url": "https://cmhis.nagaland.gov.in/",
+      "helpline": "1800 202 3380",
+      "notes": "The home page table shows Rs 5 lakh under PM-JAY and under CMHIS for the general category, and Rs 20 lakh for employees and pensioners.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Odisha",
+      "scheme": "Gopabandhu Jana Arogya Yojana (GJAY), formerly Biju Swasthya Kalyan Yojana",
+      "url": "https://gjaydashboard.odisha.gov.in/About",
+      "helpline": "104",
+      "notes": "The page states Rs 5 lakh per family a year, and a further Rs 5 lakh for women once the first is used, at empanelled private hospitals. It states that services, cancer chemotherapy among them, are free at state government facilities up to medical college hospitals.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Punjab",
+      "scheme": "Mukh Mantri Sehat Yojana, alongside AB PM-JAY, run by the State Health Agency Punjab",
+      "url": "https://sha.punjab.gov.in/",
+      "helpline": "104",
+      "notes": "The page states cashless treatment up to Rs 10 lakh per family per year for all residents of Punjab.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Rajasthan",
+      "scheme": "Mukhyamantri Ayushman Arogya Yojana (MAA Yojana)",
+      "url": "https://maayojana.rajasthan.gov.in/",
+      "helpline": "181 (toll-free)",
+      "notes": "The site has a hospital search and a mobile app. No amount was read.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Tamil Nadu",
+      "scheme": "Chief Minister's Comprehensive Health Insurance Scheme (CMCHIS), run with AB PM-JAY",
+      "url": "https://www.cmchistn.com/",
+      "helpline": "1800 425 3993 (Monday to Saturday, 10 am to 6 pm)",
+      "notes": "The site is headed Government of Tamil Nadu but is not on a gov.in address. No amount was read.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Uttar Pradesh",
+      "scheme": "AB PM-JAY and a state scheme the site abbreviates as MMJAA, run by the State Agency for Comprehensive Health and Integrated Services (SACHIS)",
+      "url": "https://sachis.in/",
+      "helpline": "1800 1800 4444 (toll-free)",
+      "notes": "The site carries the Uttar Pradesh government logo but is not on a gov.in address. Its banner states free treatment up to Rs 5 lakh a year.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "Uttarakhand",
+      "scheme": "AB PM-JAY and Atal Ayushman Uttarakhand Yojana, run by the State Health Authority Uttarakhand",
+      "url": "https://sha.uk.gov.in/",
+      "helpline": "155368",
+      "notes": "The page states Rs 5 lakh a year per family to all eligible people in the state. The number appears in the site header without a label.",
+      "checked_on": "2026-11-25"
+    },
+    {
+      "state": "West Bengal",
+      "scheme": "Swasthya Sathi. AB PM-JAY began in June 2026. An FAQ of 17 August 2026 also names a Mukhya Mantri Swasthya Bima Yojana",
+      "url": "https://swasthyasathi.gov.in/",
+      "helpline": "1800 345 5384 (toll-free, 24 hours)",
+      "notes": "Swasthya Sathi states Rs 5 lakh per family a year. The FAQ describes moving from Swasthya Sathi to PM-JAY and gives the state PM-JAY eligibility site pmjay-sha.wb.gov.in. The details of the new state scheme could not be read.",
+      "checked_on": "2026-11-25"
+    }
+  ],
+  "not_confirmed": [
+    {
+      "item": "pmjay.gov.in (old PM-JAY site) content",
+      "tried": [
+        "https://pmjay.gov.in/about/pmjay"
+      ],
+      "why": "Connection refused / timed out from this network. Content moved to pmjay.nha.gov.in, which was used instead."
+    },
+    {
+      "item": "List of specific PM-JAY oncology packages (medical, surgical, radiation oncology) and current total package count",
+      "tried": [
+        "https://pmjay.nha.gov.in/PackagesAndRates"
+      ],
+      "why": "Page names oncology as a covered speciality but gives no package list. About page still says approx 1,929 procedures, which may be out of date."
+    },
+    {
+      "item": "Current MoHFW page for the Umbrella Scheme of RAN (scheme names today, income criteria, whether 27 RCCs only or a wider list of tertiary cancer centres / State Cancer Institutes, online mode, any PM-JAY exclusion)",
+      "tried": [
+        "https://main.mohfw.gov.in/Major-Programmes/poor-patients-financial-support",
+        "https://mohfw.gov.in/Major-Programmes/poor-patients-financial-support",
+        "https://mohfw.gov.in/",
+        "https://mohfw.gov.in/sites/default/files/RAN_Guideline_2019_0.pdf",
+        "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2154159",
+        "https://www.myscheme.gov.in/schemes/ran"
+      ],
+      "why": "main.mohfw.gov.in no longer resolves (DNS NXDOMAIN). mohfw.gov.in and pib.gov.in HTML pages return 403 Access Denied (Akamai) to this network. myScheme has no 'ran' umbrella entry. A search-engine summary claimed a 2025 PIB release mentions RCCs/TCCCs/SCIs, an online mode and a one-time Rs 15 lakh figure, but the page could not be fetched, so this is unconfirmed. No official page seen says PM-JAY-eligible patients are excluded from RAN/HMCPF."
+    },
+    {
+      "item": "PMNRF application form contents (whether an MP/official recommendation is needed, postal address)",
+      "tried": [
+        "https://pmnrf.gov.in/assets/uploads/downloads/PMNRF-Assistance-form-English.pdf"
+      ],
+      "why": "WebFetch returned 404 for the PDF; not read."
+    },
+    {
+      "item": "Railway Board circular (indianrailways.gov.in) confirming the cancer concession table, and the exact certificate format/issuer for cancer patients",
+      "tried": [
+        "https://indianrailways.gov.in/railwayboard/uploads/directorate/traffic_comm/Comm_Cir_2025/ANNEXURE%204%20%20%20%20%20%20%20General%20Rules%20for%20Concession.pdf",
+        "https://indianrailways.gov.in/railwayboard/view_section.jsp?lang=0&id=0,1,304,366,555,737,3181",
+        "https://er.indianrailways.gov.in/view_detail.jsp?lang=0&id=0,4,268&dcd=8774&did=1709102270294C82C69417DB53F1000E11EBE713128A2",
+        "https://ser.indianrailways.gov.in/view_section.jsp?lang=0&id=0,2,406,453,569,1258",
+        "https://contents.irctc.co.in/en/Concession.html"
+      ],
+      "why": "indianrailways.gov.in now redirects to a new Hindi IDN domain (रेलमंत्रालय.सरकार.भारत); old Railway Board and zonal JSP pages return 404 'Site Under Construction' or 403. Table confirmed only on the indianrail.gov.in (CRIS passenger enquiry) concession rules page. Search summaries mention a certificate from the head of the cancer hospital, but no official page read says so."
+    },
+    {
+      "item": "Kerala Karunya Benevolent Fund (KBF)",
+      "tried": [
+        "https://sha.kerala.gov.in/"
+      ],
+      "why": "Not visible on the home page text read."
+    },
+    {
+      "item": "West Bengal Mukhya Mantri Swasthya Bima Yojana (MMSBY) eligibility and benefits",
+      "tried": [
+        "https://swasthyasathi.gov.in/Content/HomeTabItems/AB%20PMJAY%20MMSBY2026-19-8--13-34-31.pdf"
+      ],
+      "why": "Only the contents page, checklists and key numbers could be extracted from the PDF."
+    },
+    {
+      "item": "Maharashtra state scheme",
+      "why": "jeevandayee.gov.in timed out."
+    },
+    {
+      "item": "Andhra Pradesh state scheme",
+      "why": "drntrvaidyaseva.ap.gov.in failed a certificate check."
+    },
+    {
+      "item": "Telangana state scheme",
+      "why": "aarogyasri.telangana.gov.in refused the connection."
+    },
+    {
+      "item": "Madhya Pradesh state scheme",
+      "why": "ayushmanbharat.mp.gov.in failed a certificate check."
+    },
+    {
+      "item": "Chhattisgarh state scheme",
+      "why": "dkbssy.cg.nic.in refused the connection."
+    },
+    {
+      "item": "Jammu and Kashmir state scheme",
+      "why": "sha.jk.gov.in does not resolve. No other official address was found."
+    },
+    {
+      "item": "Manipur state scheme",
+      "why": "shamanipur.mn.gov.in has an expired certificate."
+    },
+    {
+      "item": "Gujarat state scheme",
+      "why": "No official scheme site was found. The myScheme address for the scheme returned an empty page."
+    },
+    {
+      "item": "Delhi, Goa, Arunachal Pradesh, Mizoram, Tripura, Sikkim and the other union territories state scheme",
+      "why": "No official scheme site was found within this session."
+    }
+  ]
+}
