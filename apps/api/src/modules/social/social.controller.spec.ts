@@ -53,8 +53,13 @@ describe("SocialController", () => {
     expect(r.body).toContain('<form method="post"');
     expect(r.body).toContain("LinkedIn &lt;text&gt;");
     expect(r.body).toContain('<img src="https://suchitracancercare.org/social/cards/a.jpg"');
-    expect(r.body).toContain('name="platforms" value="facebook" checked');
-    expect(r.body).not.toContain('value="x" checked');
+    // Every box starts unticked, so the owner chooses each platform.
+    expect(r.body).toContain('name="platforms" value="facebook">');
+    expect(r.body).not.toMatch(/<input[^>]*checked/);
+    expect(r.body).not.toContain('value="x"');
+    expect(r.body).toContain("Facts are not checked automatically. Please open the source links before approving.");
+    expect(r.body).toContain('href="https://www.cancer.gov/x"');
+    expect(r.body).not.toMatch(/editorial score/i);
     expect(r.headers["Content-Security-Policy"]).toContain("form-action 'self'");
     expect(r.headers["Cache-Control"]).toBe("no-store");
   });

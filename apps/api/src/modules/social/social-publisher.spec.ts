@@ -45,7 +45,7 @@ describe("SocialPublisher", () => {
   });
 
   function setup(outcomes: Partial<Record<Platform, PublishOutcome[]>> = {}, delay = 0) {
-    const store = new MemorySocialStore();
+    const store = new MemorySocialStore({ durable: true });
     const clients = {
       linkedin: client("linkedin", outcomes.linkedin ?? [{ kind: "published", postId: "urn:li:share:1", permalink: "https://li/1" }], delay),
       facebook: client("facebook", outcomes.facebook ?? [{ kind: "published", postId: "104_1" }], delay),
@@ -166,6 +166,83 @@ describe("SocialPublisher", () => {
     await pub.publishApproved("p1");
     expect(clients.facebook.calls).toBe(0);
     expect((await store.getPost("p1"))!.value.platforms.facebook.state).toBe("skipped");
+  });
+
+  it("sends nothing for a post that has not been approved", async () => {
+    const { store, clients, pub } = setup();
+    const offered = approvedPost(now, { status: "awaiting_approval" });
+    for (const p of ["linkedin", "facebook", "instagram"] as const) offered.platforms[p].state = "offered";
+    await store.createPost(offered);
+    expect(await pub.publishApproved("p1")).toEqual([]);
+    expect(clients.linkedin.calls + clients.facebook.calls + clients.instagram.calls).toBe(0);
+  });
+
+  it("refuses to claim a platform when the post's status is not approved", async () => {
+    const { store, clients, pub } = setup();
+    // A platform left in "approved" on a post that was rejected or expired.
+    await store.createPost(approvedPost(now, { status: "rejected" }));
+    expect(await pub.publishApproved("p1")).toEqual([]);
+    expect(clients.facebook.calls).toBe(0);
+    // Even when called straight at the claim, past the status check above.
+    const anyPub = pub as unknown as { publishOne: (id: string, p: string) => Promise<unknown> };
+    expect(await anyPub.publishOne("p1", "facebook")).toBeNull();
+    expect(clients.facebook.calls).toBe(0);
+  });
+
+  it("sends platforms one after another, never two at once", async () => {
+    const { store, clients, pub } = setup({}, 15);
+    let active = 0;
+    let most = 0;
+    for (const c of Object.values(clients)) {
+      const orig = c.publish;
+      c.publish = async (p) => { active++; most = Math.max(most, active); try { return await orig(p); } finally { active--; } };
+    }
+    await store.createPost(approvedPost(now));
+    await pub.publishApproved("p1");
+    expect(most).toBe(1);
+  });
+
+  it("refuses live sending from the in-memory store", async () => {
+    const store = new MemorySocialStore();
+    const c = client("facebook", []);
+    const pub = new SocialPublisher(store, { linkedin: client("linkedin", []), facebook: c, instagram: client("instagram", []), x: client("x", []) }, clock);
+    await store.createPost(approvedPost(now));
+    const results = await pub.publishApproved("p1");
+    expect(c.calls).toBe(0);
+    expect(results[0].attempt!.error).toMatch(/QUEUE_GCS_BUCKET/);
+  });
+
+  it("marks a claim left in publishing for 15 minutes as uncertain, and never sends it again", async () => {
+    const { store, clients, pub } = setup();
+    const p = approvedPost(now);
+    p.platforms.facebook.state = "publishing";
+    p.platforms.facebook.claimedAt = now.toISOString();
+    await store.createPost(p);
+    expect(await pub.releaseStuck()).toEqual([]);
+    now = new Date(now.getTime() + 16 * 60_000);
+    expect(await pub.releaseStuck()).toEqual([{ id: "p1", title: "T", platform: "facebook" }]);
+    expect((await store.getPost("p1"))!.value.platforms.facebook.state).toBe("uncertain");
+    await pub.publishApproved("p1");
+    expect(clients.facebook.calls).toBe(0);
+  });
+
+  it("reports a result it could not save, leaving the claim for the stuck check", async () => {
+    const { store, pub } = setup();
+    await store.createPost(approvedPost(now));
+    const realUpdate = store.updatePost.bind(store);
+    let n = 0;
+    // Let the claim through, then refuse every write of the result.
+    store.updatePost = async (post, v) => (post.platforms.linkedin.state === "publishing" && n++ === 0 ? realUpdate(post, v) : post.platforms.linkedin.state === "publishing" ? realUpdate(post, v) : false);
+    const results = await pub.publishApproved("p1");
+    const li = results.find((r) => r.platform === "linkedin")!;
+    expect(li.recordNotSaved).toBe(true);
+    expect((await store.getPost("p1"))!.value.platforms.linkedin.state).toBe("publishing");
+  }, 20_000);
+
+  it("lists approved posts that are still waiting to be sent", async () => {
+    const { store, pub } = setup();
+    await store.createPost(approvedPost(now));
+    expect(await pub.waitingApproved()).toEqual(["p1"]);
   });
 
   it("refuses a clinical post whose article is not reviewed, even if approved", async () => {

@@ -28,7 +28,7 @@ import { generateDraft, Llm } from "./social-generator";
 import { contentHashOf, signApprovalToken, verifyApprovalToken, ApprovalSecretMissingError } from "./approval-token";
 import { PlatformResult, publishMode, PublishMode, SocialPublisher } from "./social-publisher";
 import { checkLinkedIn, checkMeta, checkX, needsAlert, PlatformHealth, secretManagerCreatedAt, SecretCreatedAt } from "./token-health";
-import { approvalEmailHtml, heldEmailHtml, resultHtml, tokenAlertHtml } from "./social-html";
+import { approvalEmailHtml, heldEmailHtml, resultHtml, stuckHtml, tokenAlertHtml } from "./social-html";
 import { FetchLike } from "./platforms/platform-client";
 
 export const API_PUBLIC_BASE = "https://suchi-api-lxiveognla-uc.a.run.app/v1";
@@ -64,6 +64,20 @@ async function readQueueObjectFromGcs(name: string): Promise<string | null> {
   }
 }
 
+/** The generator writes posts that have no hand-written text. Off unless "true". */
+export function generatorEnabled(): boolean {
+  return process.env.SOCIAL_GENERATOR_ENABLED === "true";
+}
+
+/**
+ * Verify the token against the post's content as it is now, recomputed from
+ * the stored text and images, so an edit to the stored record after the email
+ * went out invalidates the approval.
+ */
+function verifyAgainstContent(token: string | undefined, post: SocialPost, now: Date) {
+  return verifyApprovalToken(token, { id: post.id, contentHash: contentHashOf(post) }, now);
+}
+
 /** YYYY-MM-DD in India. */
 export function istDate(d: Date): string {
   return new Date(d.getTime() + 330 * 60_000).toISOString().slice(0, 10);
@@ -83,6 +97,12 @@ export interface TickReport {
   tokens: PlatformHealth[];
   alertsSent: number;
   retried: string[];
+  /** Approved posts sent by this tick, for example after a pause. */
+  resumed: string[];
+  /** Platforms moved from "publishing" to "uncertain". */
+  stuck: Array<{ id: string; title: string; platform: Platform }>;
+  /** Posts whose failed approval email was reported to the owner. */
+  emailFailures: string[];
   prepared: Array<{ id: string; status: string }>;
   expired: string[];
 }
@@ -184,6 +204,11 @@ export class SocialService {
         };
         continue;
       }
+      if (!generatorEnabled()) {
+        post.platforms[p] = { ...base, state: "held", voice: { passed: false, violations: ["no hand-written text, and the generator is off (SOCIAL_GENERATOR_ENABLED)"], score: 0, attempts: 0 } };
+        post.heldReasons!.push(`${p}: no hand-written text, and the generator is off`);
+        continue;
+      }
       const gen = await generateDraft(this.llm as unknown as Llm, p, brief, base.cardText);
       if ("gate" in gen) {
         post.platforms[p] = { ...base, text: gen.text, state: "offered", voice: { passed: true, violations: [], score: gen.gate.score.total, attempts: gen.attempts } };
@@ -228,15 +253,30 @@ export class SocialService {
       }
     }
 
+    post.offeredMode = mode;
     if (!(await this.deps.store.createPost(post))) return { id, status: "exists" };
 
     if (post.status === "awaiting_approval" && token && expiresAt && owner) {
       const reviewUrl = `${API_PUBLIC_BASE}/social/review/${encodeURIComponent(post.id)}?t=${encodeURIComponent(token)}`;
-      await this.email.sendEmail({
+      const sent = await this.email.sendEmail({
         to: owner,
         subject: `For your approval: social post, ${post.title}`,
         html: approvalEmailHtml(post, reviewUrl, mode, expiresAt),
-      });
+      }).catch(() => false);
+      if (!sent) {
+        // Nobody can approve a post whose link never arrived. Hold it, and
+        // the next tick tells the owner.
+        await mutatePost(this.deps.store, id, (p) => {
+          if (p.status !== "awaiting_approval") return null;
+          p.status = "held_for_owner";
+          p.emailFailedAt = this.deps.now().toISOString();
+          p.heldReasons = [...(p.heldReasons ?? []), "the approval email could not be sent"];
+          for (const q of PLATFORMS) if (p.platforms[q].state === "offered") p.platforms[q].state = "skipped";
+          return p;
+        });
+        this.logger.error(`Approval email for social post ${id} could not be sent. The post is held.`);
+        return { id, status: "held_for_owner" };
+      }
     } else if (owner) {
       await this.email.sendEmail({ to: owner, subject: `Social post held: ${post.title}`, html: heldEmailHtml(post) });
     }
@@ -253,10 +293,16 @@ export class SocialService {
     const cur = await this.deps.store.getPost(id);
     if (!cur) return { ok: false, reason: "not_found" };
     const post = cur.value;
-    const check = verifyApprovalToken(token, post, this.deps.now());
+    if (post.approval?.usedAt) {
+      // Decided already. The token is checked against the hash it was issued
+      // for, since the platforms' states have moved on since.
+      const signed = verifyApprovalToken(token, post, this.deps.now());
+      return { ok: false, reason: signed.ok || signed.reason === "expired" ? "already_decided" : signed.reason, post };
+    }
+    const check = verifyAgainstContent(token, post, this.deps.now());
     if (!check.ok) return { ok: false, reason: check.reason, post };
-    if (post.approval?.usedAt) return { ok: false, reason: "already_decided", post };
     if (post.status !== "awaiting_approval") return { ok: false, reason: post.status, post };
+    if (post.offeredMode && post.offeredMode !== publishMode()) return { ok: false, reason: "mode_changed", post };
     return { ok: true, post };
   }
 
@@ -270,9 +316,10 @@ export class SocialService {
 
     let reason: string | null = null;
     const res = await mutatePost(this.deps.store, id, (post) => {
-      const check = verifyApprovalToken(token, post, this.deps.now());
-      if (!check.ok) { reason = check.reason; return null; }
       if (post.approval?.usedAt || post.status !== "awaiting_approval") { reason = "already_decided"; return null; }
+      const check = verifyAgainstContent(token, post, this.deps.now());
+      if (!check.ok) { reason = check.reason; return null; }
+      if (post.offeredMode && post.offeredMode !== publishMode()) { reason = "mode_changed"; return null; }
       const at = this.deps.now().toISOString();
       post.approval = { ...(post.approval ?? { issuedAt: at, expiresAt: at }), usedAt: at, decision: decision === "approve" ? "approved" : "rejected", platforms };
       if (decision === "reject") {
@@ -346,7 +393,7 @@ export class SocialService {
   async tick(): Promise<TickReport> {
     const mode = publishMode();
     const paused = await this.deps.store.isPaused();
-    const report: TickReport = { paused, mode, tokens: [], alertsSent: 0, retried: [], prepared: [], expired: [] };
+    const report: TickReport = { paused, mode, tokens: [], alertsSent: 0, retried: [], resumed: [], stuck: [], emailFailures: [], prepared: [], expired: [] };
 
     try {
       report.tokens = await this.checkTokens();
@@ -354,10 +401,17 @@ export class SocialService {
     } catch (err) {
       this.logger.error(`Token check failed: ${(err as Error).message}`);
     }
+    report.stuck = await this.publisher.releaseStuck();
+    if (report.stuck.length) await this.reportStuck(report.stuck);
+    report.emailFailures = await this.reportEmailFailures();
     if (paused || mode === "off") return report;
 
     report.retried = await this.publisher.requeueRetryable();
-    for (const id of report.retried) {
+    // Posts approved while paused, or whose send was interrupted, are sent now,
+    // within the seven-day rule the publisher applies.
+    const waiting = await this.publisher.waitingApproved();
+    report.resumed = waiting.filter((id) => !report.retried.includes(id));
+    for (const id of [...report.retried, ...report.resumed]) {
       const results = await this.publisher.publishApproved(id);
       const post = (await this.deps.store.getPost(id))?.value;
       if (post) await this.reportResults(post, results);
@@ -372,6 +426,31 @@ export class SocialService {
     report.prepared.push(...(await this.recheckClinicalWaiting()));
     report.expired = await this.expireStale();
     return report;
+  }
+
+  private async reportStuck(stuck: Array<{ id: string; title: string; platform: Platform }>): Promise<void> {
+    const owner = this.ownerEmail();
+    if (!owner) return;
+    await this.email.sendEmail({
+      to: owner,
+      subject: "Social posting: please check a post by hand",
+      html: stuckHtml(stuck),
+    }).catch(() => undefined);
+  }
+
+  /** Posts held because their approval email failed, not yet reported. */
+  private async reportEmailFailures(): Promise<string[]> {
+    const owner = this.ownerEmail();
+    if (!owner) return [];
+    const failed = (await this.deps.store.listPosts()).filter((p) => p.emailFailedAt && !p.emailFailureReported);
+    const out: string[] = [];
+    for (const post of failed) {
+      const ok = await this.email.sendEmail({ to: owner, subject: `Social post held, its approval email did not send: ${post.title}`, html: heldEmailHtml(post) }).catch(() => false);
+      if (!ok) continue;
+      await mutatePost(this.deps.store, post.id, (p) => (p.emailFailureReported ? null : { ...p, emailFailureReported: true }));
+      out.push(post.id);
+    }
+    return out;
   }
 
   private async expireStale(): Promise<string[]> {

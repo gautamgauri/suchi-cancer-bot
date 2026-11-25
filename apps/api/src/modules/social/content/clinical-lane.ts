@@ -4,15 +4,22 @@
  * AGENTS.md section 1, rule 3 puts new clinical content behind SCCF's
  * clinicians. Every site article is `review_status: ai_draft` today, so this
  * lane produces nothing. It switches on per article when that article's
- * front matter says `reviewed` or `published`. Nothing else switches it on.
+ * front matter says `reviewed`. Nothing else switches it on. `published` only
+ * means the article is live on the site (FR-CONTENT-012), and every live
+ * article is an `ai_draft`, so it does not count.
  * The publisher checks the same rule again before any request is sent.
  */
 import matter from "gray-matter";
 import { ContentBrief, SourceFact } from "../social.types";
 import { SITE_URL } from "../links";
 
-/** Statuses that mean a clinician has reviewed the article (apps/landing/src/content/config.ts). */
-export const REVIEWED_STATUSES = new Set(["reviewed", "published"]);
+/**
+ * Statuses that mean a clinician has reviewed the article. Mirrors
+ * REVIEWED_STATUSES in apps/landing/src/lib/review-status.mjs, which decides
+ * whether the site may show a review label. clinical-lane.spec.ts fails if
+ * the two lists differ.
+ */
+export const REVIEWED_STATUSES: ReadonlySet<string> = new Set(["reviewed"]);
 
 export interface ClinicalCheck {
   allowed: boolean;

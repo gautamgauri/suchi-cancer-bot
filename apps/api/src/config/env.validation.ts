@@ -64,7 +64,13 @@ export const envSchema = z.object({
   // Social distribution (apps/api/src/modules/social). docs/OPERATIONS.md section 12.
   // live sends approved posts, dry_run records exactly what would be sent and
   // sends nothing, off prepares nothing. Default dry_run.
-  SOCIAL_PUBLISH_MODE:      z.enum(["live", "dry_run", "off"]).optional().default("dry_run"),
+  // Case and spaces are ignored. Any other value fails at boot with a clear message.
+  SOCIAL_PUBLISH_MODE:      z.preprocess(
+    (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
+    z.enum(["live", "dry_run", "off"], { message: 'SOCIAL_PUBLISH_MODE must be "live", "dry_run" or "off"' }),
+  ).optional().default("dry_run"),
+  // The model writes posts that have no hand-written text only when this is "true".
+  SOCIAL_GENERATOR_ENABLED: z.string().optional().default("false"),
   // X is off unless this is "true" and all four X keys are set.
   SOCIAL_X_ENABLED:         z.string().optional().default("false"),
   // X keys (OAuth 1.0a user context), read from optional env. Not in the

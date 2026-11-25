@@ -73,7 +73,7 @@ describe("SocialService", () => {
     process.env.META_PAGE_ACCESS_TOKEN = "m";
     delete process.env.SOCIAL_X_ENABLED;
     now = new Date("2026-12-01T03:30:00Z");
-    store = new MemorySocialStore();
+    store = new MemorySocialStore({ durable: true });
     clients = { linkedin: fakeClient("linkedin"), facebook: fakeClient("facebook"), instagram: fakeClient("instagram"), x: fakeClient("x", false) };
     email = { sendEmail: jest.fn(async () => true) };
     llm = goodLlm();
@@ -138,6 +138,18 @@ describe("SocialService", () => {
       expect(approvalEmail()).toBeUndefined();
     });
 
+    it("holds the post when the approval email fails, and reports it on the next tick", async () => {
+      email.sendEmail.mockResolvedValueOnce(false);
+      const r1 = await svc.tick();
+      expect(r1.prepared).toEqual([{ id: "2026-12-01-first-appointment", status: "held_for_owner" }]);
+      const post = (await store.getPost("2026-12-01-first-appointment"))!.value;
+      expect(post.status).toBe("held_for_owner");
+      expect(post.emailFailedAt).toBeDefined();
+      const r2 = await svc.tick();
+      expect(r2.emailFailures).toEqual(["2026-12-01-first-appointment"]);
+      expect((await svc.tick()).emailFailures).toEqual([]);
+    });
+
     it("prepares nothing while paused", async () => {
       await store.setPaused(true);
       const r = await svc.tick();
@@ -145,21 +157,30 @@ describe("SocialService", () => {
       expect(r.prepared).toEqual([]);
     });
 
-    it("writes a generated item through the gate and offers it", async () => {
-      now = new Date("2026-12-15T03:30:00Z");
-      await svc.tick();
-      const post = (await store.getPost("2026-12-15-what-suchi-does"))!.value;
+    const suchiItem = () => CALENDAR.find((i) => i.brief.topicId === "what-suchi-does")!;
+
+    it("never calls the model while the generator is off, and holds a post with no hand-written text", async () => {
+      delete process.env.SOCIAL_GENERATOR_ENABLED;
+      const r = await svc.prepareAndOffer("adhoc-1", suchiItem().brief, { card: suchiItem().card });
+      expect(r.status).toBe("held_for_owner");
+      expect(llm.generateRaw).not.toHaveBeenCalled();
+    });
+
+    it("writes a post through the gate when the generator is on", async () => {
+      process.env.SOCIAL_GENERATOR_ENABLED = "true";
+      await svc.prepareAndOffer("adhoc-1", suchiItem().brief, { card: suchiItem().card });
+      const post = (await store.getPost("adhoc-1"))!.value;
       expect(post.status).toBe("awaiting_approval");
       expect(post.platforms.facebook.state).toBe("offered");
       expect(post.platforms.facebook.text).toMatch(/src=social-facebook$/);
-      expect(post.platforms.instagram.cardText).toBe(CALENDAR.find((i) => i.date === "2026-12-15")!.card.text);
+      expect(post.platforms.instagram.cardText).toBe(suchiItem().card.text);
     });
 
     it("regenerates a failing draft at most three times, then holds it and never offers it", async () => {
-      now = new Date("2026-12-15T03:30:00Z");
+      process.env.SOCIAL_GENERATOR_ENABLED = "true";
       llm.generateRaw.mockImplementation(async () => JSON.stringify({ text: "Did you know? Suchi will empower your cancer journey!" }));
-      await svc.tick();
-      const post = (await store.getPost("2026-12-15-what-suchi-does"))!.value;
+      await svc.prepareAndOffer("adhoc-1", suchiItem().brief, { card: suchiItem().card });
+      const post = (await store.getPost("adhoc-1"))!.value;
       expect(post.status).toBe("held_for_owner");
       expect(post.platforms.facebook.state).toBe("held");
       expect(post.platforms.facebook.voice!.attempts).toBe(3);
@@ -238,6 +259,49 @@ describe("SocialService", () => {
       const t = await prepared();
       expect(await svc.decide("2026-12-01-first-appointment", t, "approve", [])).toMatchObject({ ok: false, reason: "no_platform_chosen" });
       expect((await svc.getForReview("2026-12-01-first-appointment", t)).ok).toBe(true);
+    });
+
+    it("refuses approval when the stored text was changed after the email went out", async () => {
+      const t = await prepared();
+      const cur = await store.getPost("2026-12-01-first-appointment");
+      const edited = { ...cur!.value };
+      edited.platforms = { ...edited.platforms, facebook: { ...edited.platforms.facebook, text: "Something else entirely." } };
+      await store.updatePost(edited, cur!.version);
+      expect(await svc.decide("2026-12-01-first-appointment", t, "approve", ["facebook"])).toMatchObject({ ok: false, reason: "content_changed" });
+      expect(clients.facebook.calls).toHaveLength(0);
+    });
+
+    it("refuses approval when the publish mode changed after the offer", async () => {
+      const t = await prepared();
+      process.env.SOCIAL_PUBLISH_MODE = "dry_run";
+      expect(await svc.decide("2026-12-01-first-appointment", t, "approve", ["facebook"])).toMatchObject({ ok: false, reason: "mode_changed" });
+      expect(clients.facebook.calls).toHaveLength(0);
+    });
+
+    it("sends a post approved while paused on the first tick after resuming", async () => {
+      const t = await prepared();
+      await store.setPaused(true);
+      await svc.decide("2026-12-01-first-appointment", t, "approve", ["facebook"]);
+      expect(clients.facebook.calls).toHaveLength(0);
+      await store.setPaused(false);
+      now = new Date(now.getTime() + 86_400_000);
+      const r = await svc.tick();
+      expect(r.resumed).toEqual(["2026-12-01-first-appointment"]);
+      expect(clients.facebook.calls).toHaveLength(1);
+    });
+
+    it("emails the owner about a post left in publishing, after 15 minutes", async () => {
+      await prepared();
+      const cur = await store.getPost("2026-12-01-first-appointment");
+      const p = structuredClone(cur!.value);
+      p.status = "approved";
+      p.platforms.facebook.state = "publishing";
+      p.platforms.facebook.claimedAt = now.toISOString();
+      await store.updatePost(p, cur!.version);
+      now = new Date(now.getTime() + 20 * 60_000);
+      const r = await svc.tick();
+      expect(r.stuck).toEqual([{ id: "2026-12-01-first-appointment", title: p.title, platform: "facebook" }]);
+      expect(email.sendEmail.mock.calls.some((c) => /check a post by hand/.test(c[0].subject))).toBe(true);
     });
 
     it("marks an unanswered approval as expired on a later tick", async () => {

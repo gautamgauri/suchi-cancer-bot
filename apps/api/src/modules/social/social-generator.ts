@@ -34,7 +34,7 @@ const PLATFORM_GUIDE: Record<Platform, string> = {
   facebook:
     "Facebook. Readers are families and older relatives, many reading on a phone. Write 50 to 120 words in short paragraphs, in the simplest words that are still exact. Speak to the family directly. No hashtags are needed.",
   instagram:
-    "Instagram caption, read under a card image. Write 30 to 80 words. End the caption with a sentence saying the link is in our profile, then at most two relevant hashtags on the last line. Do not put any web address in the caption.",
+    "Instagram caption, read under a card image. Write 30 to 80 words. Do not put any web address in the caption. At most two hashtags, on the last line, and only if they help.",
   x:
     "X. One or two plain sentences, then the link on its own line. The whole post must fit in 280 characters, counting the link as 23. No hashtags.",
 };
@@ -54,6 +54,8 @@ Hard rules. A post that breaks any of them is thrown away.
 - Never say or imply that the reader has cancer. Say "people with cancer" and "caregivers". Do not use victim, battle, fight or survivor.
 - No marketing words such as empower, transform, holistic, seamless, unlock, world-class.
 - Use only the facts given below. Do not add any number, name, claim or advice that is not in them. Do not add anything medical.
+- Do not end on a sentence about Suchi or SCCF. Stop when the useful thing has been said.
+- Do not name a doctor. Do not ask readers to share, tag or pass anything on.
 - Sentences short and of uneven length. Concrete detail.`;
 
 export function buildPrompt(platform: Platform, brief: ContentBrief, previous?: { text: string; reasons: string[] }): string {

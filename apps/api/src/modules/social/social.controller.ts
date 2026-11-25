@@ -26,6 +26,7 @@ const REASONS: Record<string, string> = {
   already_decided: "A decision has already been made on this post. Nothing more will be posted from this link.",
   no_platform_chosen: "No platform was ticked, so nothing was posted. The link still works if you want to go back and choose.",
   rejected: "This post was turned down earlier.",
+  mode_changed: "Posting was switched between dry run and live after this post was offered, so this link no longer works. Nothing was posted. A new offer is needed.",
   expired_status: "This post was not approved in time.",
   held_for_owner: "This post was held and cannot be approved.",
   approved: "This post has already been approved.",

@@ -13,8 +13,9 @@ export type Platform = (typeof PLATFORMS)[number];
 
 /**
  * Content lanes. Practical support and Onco Talks need only the owner's
- * approval. The clinical lane is blocked unless the source article carries a
- * reviewed status (AGENTS.md section 1, rule 3).
+ * approval. The clinical lane is blocked unless the source article's
+ * `review_status` is `reviewed` (AGENTS.md section 1, rule 3). `published`
+ * means only that the article is live, and does not open it.
  */
 export type Lane = "practical" | "onco_talks" | "clinical";
 
@@ -77,6 +78,8 @@ export interface PlatformRecord extends PlatformDraftText {
   state: PlatformState;
   voice?: { passed: boolean; violations: string[]; score: number; attempts: number };
   attempts: PublishAttempt[];
+  /** When this platform was claimed for sending. */
+  claimedAt?: string;
   platformPostId?: string;
   permalink?: string;
   publishedAt?: string;
@@ -115,4 +118,9 @@ export interface SocialPost {
   article?: { slug: string; reviewStatus: string };
   /** Calendar date the post belongs to, when it came from the calendar. */
   date?: string;
+  /** SOCIAL_PUBLISH_MODE when the post was offered. Approval is refused if it has changed. */
+  offeredMode?: "live" | "dry_run" | "off";
+  /** The approval email could not be sent. Reported to the owner on the next tick. */
+  emailFailedAt?: string;
+  emailFailureReported?: boolean;
 }

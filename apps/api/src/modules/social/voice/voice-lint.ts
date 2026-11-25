@@ -120,20 +120,29 @@ const OPENER_CLICHES: Array<[RegExp, string]> = [
 ];
 
 const ENGAGEMENT_BAIT = [
-  /\b(like|share|repost|retweet)\s+(this|if)\b/i,
-  /\btag\s+(a|someone|your|a friend)\b/i,
-  /\bcomment\s+(below|yes|if)\b/i,
+  /\b(like|share|repost|retweet|forward)\s+(this|if|it|with|to)\b/i,
+  /\bplease\s+(share|forward|like|repost)\b/i,
+  /\btag\s+(a|someone|your|a friend|us)\b/i,
+  /\bcomment\s+(below|yes|if|with)\b/i,
+  /\bin the comments\b/i,
   /\bdrop\s+a\b/i,
   /\btype\s+["']?(yes|amen)\b/i,
-  /\bfollow\s+(us\s+)?for\s+more\b/i,
+  /\bfollow\s+(us|our page)\b/i,
+  /\bfollow\s+for\s+more\b/i,
+  /\bsubscribe\b/i,
   /\bsave\s+this\s+post\b/i,
-  /\bspread\s+the\s+word\b/i,
+  /\bspread\s+(the\s+word|awareness)\b/i,
   /\bshare\s+widely\b/i,
+  /\bpass\s+(it|this|the number|the word)\s+on\b/i,
+  /\bwell placed to\b/i,
 ];
 
 const FEAR = [
   "deadly", "killer", "silent killer", "scary", "terrifying", "shocking", "alarming",
   "devastating", "horrifying", "death sentence", "don't ignore", "do not ignore", "before it's too late",
+  "before it is too late", "don't wait", "do not wait", "don't delay", "do not delay", "could be cancer",
+  "may be cancer", "might be cancer", "could kill", "life-threatening", "dangerous", "risk your life",
+  "die", "dies", "death", "deaths", "dying", "panic", "frightening", "worst",
 ];
 
 const PROMISES = [
@@ -141,20 +150,79 @@ const PROMISES = [
   /\bguarantee(d|s)?\b/i,
   /\b100\s?%/,
   /\bmiracle\b/i,
-  /\bwill (heal|survive|recover|beat)\b/i,
-  /\bbeat(ing)? cancer\b/i,
+  /\bwill (heal|survive|recover|beat|get better|be fine|be cured|be okay|be ok)\b/i,
+  /\b(beat|beating|defeat|defeating|overcome|overcoming) (cancer|it|the disease)\b/i,
   /\bcancer[- ]free\b/i,
-  /\bsave (your|a) life\b/i,
+  /\bfree of cancer\b/i,
+  /\bsave (your|a|their) life\b/i,
+  /\b(full|complete) recovery\b/i,
+  /\bno side[- ]effects\b/i,
+  /\b(completely|totally|100%) safe\b/i,
+  /\bproven to\b/i,
+  /\balways works\b/i,
+  /\bbest (treatment|hospital|doctor|care)\b/i,
 ];
 
-const WAR_WORDS = /\b(victims?|battles?|battling|fights?|fighting|fighters?|warriors?|survivors?|war on)\b/i;
+const WAR_WORDS = /\b(victims?|battles?|battling|fights?|fighting|fighters?|warriors?|survivors?|war on|brave(ly)?)\b/i;
 
 const READER_HAS_CANCER = [
-  /\byour (cancer|tumou?r|diagnosis|biopsy|chemo|chemotherapy|illness|disease|scan results)\b/i,
+  /\byour (cancer|tumou?r|diagnosis|biopsy|chemo\w*|radiation|radiotherapy|surgery|illness|disease|condition|prognosis|stage|scans?|scan results|oncologist|treatment|reports? show)\b/i,
   /\b(you|you may|you might|you could) (have|have got) cancer\b/i,
   /\bif you have cancer\b/i,
-  /\bwhen you (were|are) diagnosed\b/i,
+  /\b(you|you've|you have|you were|you are) (been |just )?diagnosed\b/i,
+  /\bwhen you (were|are|get) diagnosed\b/i,
+  /\b(as|if you are) a (cancer )?patient\b/i,
+  /\byou(?:'re| are) (a )?(cancer )?patient\b/i,
+  /\byour (fight|journey|road) (with|against)\b/i,
 ];
+
+/** A named doctor, e.g. "Dr Sharma", "Dr. A. Kumar", "Doctor Rao". */
+const NAMED_DOCTOR = /\b(Dr\.?|Doctor)\s+(?:[A-Z]\.\s*)*[A-Z][a-z]+/;
+
+/**
+ * "A, B and C" where each item is one to three words: a group of three. A
+ * phrase after the comma that opens with a preposition, an article or a
+ * pronoun ("..., at empanelled public and private hospitals") is not a list
+ * item, so it does not count. A simple rule. It misses triads written as
+ * three sentences, and the owner's reading catches those.
+ */
+const TRIAD = /(?:^|[^\w'-])([\w'-]+(?:\s[\w'-]+){0,2}),\s([\w'-]+(?:\s[\w'-]+){0,2}),?\s(?:and|or)\s([\w'-]+(?:\s[\w'-]+){0,2})(?=[\s.,;:?!]|$)/gi;
+const NOT_A_LIST_ITEM = new Set([
+  "to", "at", "in", "on", "with", "for", "from", "by", "of", "the", "a", "an", "and", "or", "but", "so",
+  "which", "who", "that", "where", "when", "if", "as", "than", "then", "it", "they", "we", "you", "he",
+  "she", "is", "are", "was", "can", "will", "may", "one", "whatever", "because", "while", "after", "before",
+]);
+
+export function findTriad(text: string): string | null {
+  for (const m of text.matchAll(TRIAD)) {
+    const first = m[1].split(/\s/);
+    const second = m[2].split(/\s/)[0].toLowerCase();
+    const third = m[3].split(/\s/)[0].toLowerCase();
+    if ([first[0].toLowerCase(), second, third].some((w) => NOT_A_LIST_ITEM.has(w))) continue;
+    // "Afterwards, keep ..." : a single opening word before a comma is not an item.
+    const before = text.slice(0, (m.index ?? 0) + m[0].indexOf(m[1])).trimEnd();
+    if (first.length === 1 && (before === "" || /[.?!]$/.test(before))) continue;
+    return m[0].trim();
+  }
+  return null;
+}
+
+/** Closing lines that sound like a slogan or a sign-off. */
+const CLOSER = [
+  /\b(is|are) (power|strength|everything|key|the first step)\b/i,
+  /\bmakes? (all )?the difference\b/i,
+  /\b(starts|begins) with (you|one|a single)\b/i,
+  /\byou are not alone\b/i,
+  /\btogether,? we\b/i,
+  /\bone step at a time\b/i,
+  /\bsmall steps?\b/i,
+  /\bevery (family|patient|step|question) (counts|matters|deserves)\b/i,
+  /\bhope (is|lives|begins)\b/i,
+  /\bwe are (here|with you)\b/i,
+];
+
+/** The final sentence may not be a sign-off about Suchi. */
+const SIGNOFF = /^(suchi|sccf|we)\b[^.?!]*\b(can|is|are|will)\b[^.?!]*\b(help|there|here|explain|answer|guide|support)\b/i;
 
 export const MARKETING_WORDS = [
   "empower", "empowering", "empowerment", "transform", "transformative", "revolutionary",
@@ -241,7 +309,25 @@ export function lintSocial(platform: Platform, text: string, cardText?: string):
     if (rx.test(noUrls)) { hits.push({ code: "engagement_bait", reason: "no engagement bait" }); break; }
   }
   for (const w of FEAR) {
-    if (low.includes(w)) hits.push({ code: "fear", reason: `fear language "${w}"` });
+    if (new RegExp(`(^|[^a-z'])${escapeRe(w)}([^a-z']|$)`).test(low)) hits.push({ code: "fear", reason: `fear language "${w}"` });
+  }
+  if (NAMED_DOCTOR.test(noUrls)) hits.push({ code: "doctor_named", reason: "do not name a doctor" });
+  const triad = findTriad(noUrls.replace(/#\S+/g, " "));
+  if (triad) hits.push({ code: "triad", reason: "a group of three", excerpt: triad.slice(0, 100) });
+
+  const sentences = noUrls
+    .split(/(?<=[.?!])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => /[a-z]{3}/i.test(s) && !/^#/.test(s) && !/^(source|sources|report)\b/i.test(s));
+  const last = sentences[sentences.length - 1] ?? "";
+  if (CLOSER.some((rx) => rx.test(last))) hits.push({ code: "closer", reason: "the post ends on a slogan", excerpt: last.slice(0, 100) });
+  if (SIGNOFF.test(last)) hits.push({ code: "signoff", reason: "the post ends on a sign-off about Suchi. Stop when the useful thing is said.", excerpt: last.slice(0, 100) });
+  for (let i = 0; i + 2 < sentences.length; i++) {
+    const first = (s: string) => s.split(/\s+/)[0].toLowerCase();
+    if (first(sentences[i]) === first(sentences[i + 1]) && first(sentences[i]) === first(sentences[i + 2]) && !sentences[i].endsWith("?")) {
+      hits.push({ code: "stacked", reason: "three sentences in a row start the same way", excerpt: sentences[i].slice(0, 80) });
+      break;
+    }
   }
   for (const rx of PROMISES) {
     if (rx.test(noUrls)) { hits.push({ code: "promise", reason: "no promises of outcomes" }); break; }

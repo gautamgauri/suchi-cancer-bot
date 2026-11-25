@@ -101,6 +101,24 @@ describe("lintSocial", () => {
     expect(codes(lintSocial("facebook", text))).toContain(code);
   });
 
+  it("does not read a list of two, or a phrase after a comma, as a group of three", () => {
+    expect(codes(lintSocial("facebook", "PM-JAY covers care for each family, at empanelled public and private hospitals."))).not.toContain("triad");
+    expect(codes(lintSocial("facebook", "Afterwards, keep test results and treatment plans together."))).not.toContain("triad");
+    expect(codes(lintSocial("facebook", "Bring reports, scans and bills."))).toContain("triad");
+  });
+
+  it("matches fear words as whole words only", () => {
+    expect(codes(lintSocial("facebook", "Keep a note of the diet chart and the audience."))).not.toContain("fear");
+    expect(codes(lintSocial("facebook", "People die waiting."))).toContain("fear");
+  });
+
+  it("flags a named doctor, a slogan ending and a sign-off", () => {
+    expect(codes(lintSocial("facebook", "Dr. R. Kumar explains the scheme."))).toContain("doctor_named");
+    expect(codes(lintSocial("facebook", "Keep the papers. You are not alone."))).toContain("closer");
+    expect(codes(lintSocial("facebook", "Keep the papers. Suchi can help with this."))).toContain("signoff");
+    expect(codes(lintSocial("facebook", "Suchi can help with the wording. Keep the papers in a folder."))).not.toContain("signoff");
+  });
+
   it("allows war words inside a quotation", () => {
     expect(codes(lintSocial("facebook", 'The film is called "The Fight".'))).not.toContain("war_language");
   });

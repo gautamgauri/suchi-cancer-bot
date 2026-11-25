@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
-import { assertLaneAllowed, clinicalBriefFromArticle, isReviewed } from "./clinical-lane";
+import { assertLaneAllowed, clinicalBriefFromArticle, isReviewed, REVIEWED_STATUSES } from "./clinical-lane";
 
 const REPO_ROOT = join(__dirname, "..", "..", "..", "..", "..", "..");
 const md = (status?: string) => `---
@@ -13,7 +13,20 @@ This sentence is long enough to count as one fact from the article itself.
 `;
 
 describe("clinical lane", () => {
-  it.each(["reviewed", "published"])("opens for %s", (s) => {
+  it("matches the landing site's list of reviewed statuses", () => {
+    const src = readFileSync(join(REPO_ROOT, "apps/landing/src/lib/review-status.mjs"), "utf8");
+    const m = /export const REVIEWED_STATUSES = \[([^\]]*)\]/.exec(src);
+    expect(m).not.toBeNull();
+    const landing = [...m![1].matchAll(/'([^']+)'|"([^"]+)"/g)].map((x) => x[1] ?? x[2]).sort();
+    expect([...REVIEWED_STATUSES].sort()).toEqual(landing);
+  });
+
+  it("rejects published, which only means live on the site", () => {
+    expect(isReviewed("published")).toBe(false);
+    expect(clinicalBriefFromArticle("t", md("published"), "/symptoms/t/").allowed).toBe(false);
+  });
+
+  it.each(["reviewed"])("opens for %s", (s) => {
     expect(isReviewed(s)).toBe(true);
     const r = clinicalBriefFromArticle("t", md(s), "/symptoms/t/");
     expect(r.allowed).toBe(true);

@@ -42,16 +42,24 @@ ${r.text ? `<div style="${BOX};opacity:.7">${esc(r.text)}</div>` : ""}`;
   const image = p === "instagram" && r.imageUrl
     ? `<p style="margin:8px 0 4px;font-size:12px;color:#6b7280">Card image</p><img src="${esc(r.imageUrl)}" alt="${esc(r.cardText)}" width="320" style="max-width:100%;border:1px solid #e5e7eb;border-radius:6px"><p style="font-size:12px;color:#6b7280;margin:4px 0 8px">Card text: ${esc(r.cardText)}</p>`
     : "";
+  // Each box starts unticked, so the owner chooses every platform.
   const box = withCheckbox && r.state === "offered"
-    ? `<label style="display:block;margin:8px 0 0;font-size:14px"><input type="checkbox" name="platforms" value="${p}" checked> Post this to ${PLATFORM_LABEL[p]}</label>`
+    ? `<label style="display:block;margin:8px 0 0;font-size:14px"><input type="checkbox" name="platforms" value="${p}"> Post this to ${PLATFORM_LABEL[p]}</label>`
     : "";
-  const score = r.voice ? `<span style="font-size:12px;color:#6b7280;font-weight:normal"> editorial score ${r.voice.score}</span>` : "";
-  return `<h3 style="margin:24px 0 6px">${PLATFORM_LABEL[p]}${score}</h3>${image}<div style="${BOX}">${esc(r.text)}</div>${box}`;
+  return `<h3 style="margin:24px 0 6px">${PLATFORM_LABEL[p]}</h3>${image}<div style="${BOX}">${esc(r.text)}</div>${box}`;
 }
+
+/** Shown at the top of every approval email and review page. */
+export const FACTS_NOT_CHECKED = "Facts are not checked automatically. Please open the source links before approving.";
 
 function sourcesBlock(post: SocialPost): string {
   const unique = [...new Map(post.sources.map((s) => [s.url, s])).values()];
-  return `<h3 style="margin:28px 0 6px">Sources</h3><ul style="font-size:13px;padding-left:18px">${unique.map((s) => `<li><a href="${esc(s.url)}">${esc(s.url)}</a> (read ${esc(s.fetchedOn)})</li>`).join("")}</ul>`;
+  return `<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:10px 14px;margin:16px 0">
+<p style="margin:0 0 6px;font-size:14px"><strong>${esc(FACTS_NOT_CHECKED)}</strong></p>
+<p style="margin:0 0 4px;font-size:13px">The automatic checks look for banned wording, for numbers and links missing from the facts below, and for sentences unrelated to them. They cannot tell whether a sentence is true.</p>
+<ul style="font-size:13px;padding-left:18px;margin:6px 0 0">${unique.map((s) => `<li><a href="${esc(s.url)}">${esc(s.url)}</a> (read ${esc(s.fetchedOn)})</li>`).join("")}</ul>
+<details style="font-size:13px;margin-top:6px"><summary>The facts this post was written from</summary><ul style="padding-left:18px">${post.sources.map((s) => `<li>${esc(s.text)}</li>`).join("")}</ul></details>
+</div>`;
 }
 
 export function approvalEmailHtml(post: SocialPost, reviewUrl: string, mode: PublishMode, expiresAt: Date): string {
@@ -60,8 +68,8 @@ export function approvalEmailHtml(post: SocialPost, reviewUrl: string, mode: Pub
 <p style="margin-top:0;color:#4b5563">${esc(post.title)}${post.date ? `, planned for ${esc(post.date)}` : ""}</p>
 <p style="font-size:14px">Below is each platform's text exactly as it will appear. Nothing is posted from this email. The button opens a page where you tick the platforms and press publish.</p>
 <p style="font-size:13px;color:#4b5563">${esc(modeNote(mode))}</p>
-${PLATFORMS.map((p) => platformBlock(post, p, false)).join("\n")}
 ${sourcesBlock(post)}
+${PLATFORMS.map((p) => platformBlock(post, p, false)).join("\n")}
 <p style="margin:28px 0"><a href="${esc(reviewUrl)}" style="background:#0f766e;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;font-size:15px">Open the review page</a></p>
 <p style="font-size:12px;color:#6b7280">The link works once and stops working on ${esc(expiresAt.toUTCString())}. If you do nothing, nothing is posted.</p>
 </body></html>`;
@@ -83,8 +91,9 @@ export function reviewPageHtml(post: SocialPost, token: string, actionUrl: strin
 <p style="margin-top:0;color:#4b5563">${esc(modeNote(mode))}</p>
 <form method="post" action="${esc(actionUrl)}">
 <input type="hidden" name="t" value="${esc(token)}">
-${PLATFORMS.map((p) => platformBlock(post, p, true)).join("\n")}
 ${sourcesBlock(post)}
+<p style="font-size:14px">Tick each platform you want. Nothing is ticked to begin with.</p>
+${PLATFORMS.map((p) => platformBlock(post, p, true)).join("\n")}
 <p style="margin:28px 0 8px">
 <button type="submit" name="decision" value="approve" style="background:#0f766e;color:#fff;border:0;padding:12px 20px;border-radius:6px;font-size:15px;cursor:pointer">Publish the ticked posts</button>
 <button type="submit" name="decision" value="reject" style="background:#fff;color:#b91c1c;border:1px solid #b91c1c;padding:11px 18px;border-radius:6px;font-size:15px;cursor:pointer;margin-left:8px">Do not post</button>
@@ -106,7 +115,8 @@ function resultLine(r: PlatformResult): string {
     case "dry_run": return `${label}: dry run, recorded and not sent`;
     case "failed": return `${label}: not posted. ${esc(r.attempt?.error)}`;
     case "uncertain": return `${label}: outcome unknown. ${esc(r.attempt?.error)}. Check the page before posting it again by hand. It will not be retried.`;
-    case "approved": return `${label}: waiting. ${esc(r.attempt?.error)}`;
+    case "approved": return `${label}: waiting. ${esc(r.attempt?.error)}. It will be sent by the next daily run, within seven days of approval.`;
+    case "publishing": return `${label}: the platform answered, but the record was not saved. ${esc(r.attempt?.error)}. Check the page by hand.`;
     default: return `${label}: ${esc(r.state)}`;
   }
 }
@@ -116,6 +126,14 @@ export function resultHtml(post: SocialPost, results: PlatformResult[]): string 
 <h2 style="margin-bottom:4px">Social post result</h2>
 <p style="margin-top:0;color:#4b5563">${esc(post.title)}</p>
 <ul style="font-size:14px">${results.map((r) => `<li>${resultLine(r)}</li>`).join("")}</ul>
+</body></html>`;
+}
+
+export function stuckHtml(items: Array<{ id: string; title: string; platform: Platform }>): string {
+  return `<!DOCTYPE html><html><body style="${PAGE_STYLE}">
+<h2>Please check these posts by hand</h2>
+<p style="font-size:14px">Sending started more than 15 minutes ago and no result was recorded. The post may or may not be on the platform. It will not be sent again by the system. If it is missing, post it by hand.</p>
+<ul style="font-size:14px">${items.map((i) => `<li>${PLATFORM_LABEL[i.platform]}: ${esc(i.title)} (${esc(i.id)})</li>`).join("")}</ul>
 </body></html>`;
 }
 

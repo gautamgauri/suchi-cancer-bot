@@ -339,14 +339,14 @@ All runtime secrets live in Secret Manager in the project above. `cloudbuild.yam
 | `NAVIGATOR_APPROVAL_SECRET` | same | Signs approval links. The navigator jobs mount it as well. |
 | `CONTENT_APPROVAL_SECRET` | same | Signs approval links |
 | `DISTRIBUTION_APPROVAL_SECRET` | same | Signs the one-click approve and reject links |
-| `META_PAGE_ACCESS_TOKEN` | same | Facebook and Instagram. A Page token that does not expire, valid on 25 November 2026 (Graph `debug_token`). It carries `pages_manage_posts` and lacks `instagram_basic` and `instagram_content_publish`. Section 12. |
+| `META_PAGE_ACCESS_TOKEN` | same | Facebook and Instagram. Section 12 gives the renewal procedure, and `GET /v1/social/tokens` reports its state. |
 | `META_PAGE_ID` | same | |
 | `META_IG_USER_ID` | same | |
 | `META_WABA_PHONE_NUMBER_ID` | same | WhatsApp |
 | `META_WABA_TOKEN` | same | WhatsApp. TO CONFIRM token expiry. |
 | `META_APP_SECRET` | same | Verifies the WhatsApp webhook signature |
 | `WHATSAPP_VERIFY_TOKEN` | same | |
-| `LINKEDIN_ACCESS_TOKEN` | same | Expires every 60 days. The only version was added on 21 May 2026, so it lapsed around 20 July 2026. |
+| `LINKEDIN_ACCESS_TOKEN` | same | Expires every 60 days |
 | `LINKEDIN_AUTHOR_URN` | same | |
 
 Seven names are lower case with hyphens and fourteen are upper case. Secret Manager names are case-sensitive, so check each new name with `gcloud secrets describe <NAME> --project gen-lang-client-0202543132` before deploying.
@@ -498,27 +498,27 @@ Suchi posts to LinkedIn, Facebook, Instagram and X from `apps/api/src/modules/so
 ### How a post goes out
 
 1. A Cloud Scheduler job calls `POST /v1/social/tick` once a day. The tick checks the platform credentials, retries any post that failed for a reason that is safe to retry, and prepares the calendar item due that day (`content/calendar.ts`).
-2. Each platform gets its own text. Items 1 to 6 of the first calendar are written by hand. Later items are written by Gemini from a brief of sourced facts.
-3. Every draft passes an automatic gate before anyone sees it. The gate applies the owner's style rules (`voice/voice-lint.ts`), checks that every number, link and clinical word comes from the sources (`voice/source-check.ts`), and scores the draft out of 100 (`voice/editorial-score.ts`, pass mark 75). A failing draft is written again with the reasons, three attempts in all, and is then held. A held draft is never offered.
-4. The owner receives one email at `DAILY_REPORT_EMAIL` with each platform's text exactly as it will appear and the Instagram card image. Its button opens a review page. Opening the page changes nothing.
-5. On the page the owner ticks the platforms and presses publish. That press is a POST, which is the only thing that can approve a post. The link is signed, bound to the exact text shown, works once and expires after 72 hours.
+2. Each platform gets its own text. All twelve items of the first calendar are written by hand. Gemini writes later items from a brief of sourced facts only when `SOCIAL_GENERATOR_ENABLED=true`, which both pipelines leave at `false`. With the generator off, an item without hand-written text is held.
+3. Every draft passes an automatic gate before anyone sees it. The gate is a filter for obvious faults. It applies the owner's style rules (`voice/voice-lint.ts`). It compares the draft with the brief's own fact strings (`voice/source-check.ts`). It looks at numbers in digits or words, links and bare web addresses, clinical words and drug names in their inflected forms, instructions about medicines or food, and whether each sentence shares words with a fact. It scores the draft out of 100 (`voice/editorial-score.ts`, pass mark 75), with points earned by overlap with the facts. It compares strings, so a sentence that reuses the facts' words to say something they do not say still passes. The owner's reading against the source links is the real check. A failing generated draft is written again with the reasons, three attempts in all, and is then held. A held draft is never offered.
+4. The owner receives one email at `DAILY_REPORT_EMAIL` with each platform's text exactly as it will appear, the Instagram card image, and the source links with the line "Facts are not checked automatically. Please open the source links before approving." Its button opens a review page. Opening the page changes nothing. If the email cannot be sent, the post is held and the next tick says so.
+5. On the page the owner ticks each platform, none being ticked to begin with, and presses publish. That press is a POST, which is the only thing that can approve a post. The link is signed, bound to the exact text shown, works once and expires after 72 hours.
 6. Each ticked platform is posted on its own. A failure on one does not touch the others. The result, with each platform's post id and link, comes back by email and is kept in `gs://suchi-navigator-state/social/posts/`.
 
-A post can never go out twice. Each platform is claimed with a conditional write before any request is sent, so a second click, a resent email or two runs at once cannot post again. A post whose outcome is unknown, after a timeout or a server error, is marked `uncertain` and is never retried by the system. Check the page and post it by hand if it is missing.
+A post can never go out twice. Each platform is claimed with a conditional write before any request is sent, so a second click, a resent email or two runs at once cannot post again. A post whose outcome is unknown, after a timeout or a server error, is marked `uncertain` and is never retried by the system. A platform left in `publishing` for more than 15 minutes is marked `uncertain` by the next tick, which emails the owner. Check the page and post it by hand if it is missing. The approval link is checked against the post's text as it is stored at the moment of approval, and it stops working if `SOCIAL_PUBLISH_MODE` changes after the offer. Live sending is refused unless the queue bucket is set, because the in-memory fallback is not shared between instances.
 
 ### Content lanes
 
 | Lane | What | Approval |
 |---|---|---|
 | Practical | Appointments, questions for the doctor, PM-JAY, health records, hospital contact pages, what Suchi can do. Facts only from official pages, each with its URL and the date it was read (`content/sources.ts`). | Owner |
-| Onco Talks | A pointer to one episode, using only its title and audience from `videos.json`. The video takeaways are never used. | Owner |
-| Clinical | Symptoms, treatment, side effects, screening, drafted from a site article. Shut until that article's front matter says `reviewed` or `published`. Every article is `ai_draft` today. | Clinician review of the article first, then owner |
+| Onco Talks | A pointer to one episode, using only its title and audience from `videos.json`. The video takeaways are never used. None is in the first calendar, because that metadata is too thin to say what an episode offers a family without someone watching it. | Owner |
+| Clinical | Symptoms, treatment, side effects, screening, drafted from a site article. Shut until that article's front matter says `reviewed`. `published` only means the article is live, and does not open it. The list mirrors `apps/landing/src/lib/review-status.mjs`, and a test fails if they differ. Every article is `ai_draft` today. | Clinician review of the article first, then owner |
 
 When an article is approved in the content pipeline, its slug waits in a list. The daily tick checks the list and opens the clinical lane for that article on the day its status changes.
 
 ### The one switch
 
-To stop everything at once, pause. Nothing is prepared and nothing is sent until you resume. Posts already approved wait, and are dropped if they wait more than seven days.
+To stop everything at once, pause. Nothing is prepared and nothing is sent until you resume. Posts approved while paused wait. The first daily tick after you resume sends them, and drops any approved more than seven days earlier.
 
 ```bash
 printf paused | gcloud storage cp - gs://suchi-navigator-state/social/PAUSED   # pause

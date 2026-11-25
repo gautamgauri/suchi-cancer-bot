@@ -48,10 +48,10 @@ Social posts are approved by the owner alone. The full description is in `docs/O
 A daily job prepares the post planned for that day. Each platform gets its own text, and every draft passes an automatic check of the owner's style rules and its sources before anyone sees it. Article posts wait until a clinician has reviewed the article.
 
 ### The email
-One email goes to the owner. It shows the text for LinkedIn, Facebook, Instagram and X exactly as it will appear, with the Instagram card image and the sources. Nothing is posted from the email. Its button opens a review page.
+One email goes to the owner. It shows the text for LinkedIn, Facebook, Instagram and X exactly as it will appear, with the Instagram card image and the sources. Facts are not checked automatically, so please open the source links before approving. Nothing is posted from the email. Its button opens a review page.
 
 ### The review page
-Opening the page changes nothing, so a mail scanner that follows the link cannot post. Tick the platforms you want and press publish, or press do not post. The link works once and expires after 72 hours. If you do nothing, nothing is posted.
+Opening the page changes nothing, so a mail scanner that follows the link cannot post. No platform is ticked to begin with. Tick each one you want and press publish, or press do not post. The link works once and expires after 72 hours. If you do nothing, nothing is posted.
 
 ### After you press publish
 Each ticked platform is posted on its own, and a failure on one does not stop the others. A result email lists each platform with a link to the post. A platform marked "outcome unknown" is never posted again by the system. Check the page and post it by hand if it is missing.

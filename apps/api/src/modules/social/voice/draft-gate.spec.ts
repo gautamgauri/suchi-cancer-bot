@@ -49,9 +49,9 @@ describe("source check", () => {
     expect(checkSources("facebook", `Call 14555.\n${siteLink("/find-care/hospitals/", "facebook")}`, brief)).toEqual([]);
   });
 
-  it("refuses a link on Instagram and asks for the profile sentence", () => {
-    expect(codes(checkSources("instagram", `Call 14555. ${webChatLink("instagram")}`, brief))).toEqual(expect.arrayContaining(["instagram_link", "next_step_missing"]));
-    expect(checkSources("instagram", "Call 14555. The link is in our profile.", brief)).toEqual([]);
+  it("refuses a link on Instagram and does not force a profile formula", () => {
+    expect(codes(checkSources("instagram", `Call 14555. ${webChatLink("instagram")}`, brief))).toContain("instagram_link");
+    expect(checkSources("instagram", "To find out whether you are covered, call the helpline 14555.", brief)).toEqual([]);
   });
 
   it("fails clinical words that the sources do not use, in the safe lanes", () => {
@@ -81,7 +81,7 @@ describe("editorial score", () => {
 
   it("scores accuracy against the source", () => {
     const s = scoreEditorial("facebook", `PM-JAY gives cover of Rs 7 lakh. Call 14555.\n${whatsappLink("facebook")}`, brief);
-    expect(s.sourceAccuracy).toBeLessThanOrEqual(15);
+    expect(s.sourceAccuracy).toBeLessThan(25);
   });
 });
 

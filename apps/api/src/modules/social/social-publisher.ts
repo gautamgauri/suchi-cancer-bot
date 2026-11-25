@@ -16,6 +16,8 @@ import { assertLaneAllowed } from "./content/clinical-lane";
 
 export const MAX_PUBLISH_ATTEMPTS = 3;
 export const RETRY_AFTER_MS = 15 * 60_000;
+/** A claim older than this with no recorded result is treated as uncertain. */
+export const STUCK_AFTER_MS = 15 * 60_000;
 /** Approved posts not sent within this time (for example while paused) are not sent later. */
 export const APPROVAL_SHELF_LIFE_MS = 7 * 86_400_000;
 
@@ -32,6 +34,8 @@ export interface PlatformResult {
   attempt?: PublishAttempt;
   permalink?: string;
   tokenProblem?: boolean;
+  /** The outcome is known but the record was not updated. */
+  recordNotSaved?: boolean;
 }
 
 export class SocialPublisher {
@@ -41,15 +45,26 @@ export class SocialPublisher {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** Publish every platform of this post that is in the "approved" state. */
+  /**
+   * Publish every platform of this post that is in the "approved" state, one
+   * after another, so writers on the same record do not contend. A platform
+   * whose step throws is reported and the next one still runs.
+   */
   async publishApproved(id: string): Promise<PlatformResult[]> {
     const cur = await this.store.getPost(id);
     if (!cur) return [];
+    if (cur.value.status !== "approved") return [];
     const targets = PLATFORMS.filter((p) => cur.value.platforms[p]?.state === "approved");
-    const settled = await Promise.allSettled(targets.map((p) => this.publishOne(id, p)));
-    return settled.map((s, i) =>
-      s.status === "fulfilled" ? s.value : { platform: targets[i], state: "approved" as const, attempt: { at: this.now().toISOString(), outcome: "uncertain" as const, error: `internal error: ${(s.reason as Error)?.message ?? s.reason}` } },
-    ).filter((r): r is PlatformResult => r !== null);
+    const out: PlatformResult[] = [];
+    for (const p of targets) {
+      try {
+        const r = await this.publishOne(id, p);
+        if (r) out.push(r);
+      } catch (err) {
+        out.push({ platform: p, state: "approved", attempt: { at: this.now().toISOString(), outcome: "uncertain", error: `internal error: ${(err as Error)?.message ?? err}` } });
+      }
+    }
+    return out;
   }
 
   private async publishOne(id: string, platform: Platform): Promise<PlatformResult | null> {
@@ -59,6 +74,11 @@ export class SocialPublisher {
     const mode = publishMode();
     if (mode === "off") {
       return { platform, state: "approved", attempt: { at: this.now().toISOString(), outcome: "paused", error: "SOCIAL_PUBLISH_MODE is off" } };
+    }
+    if (mode === "live" && !this.store.durable) {
+      // Without the GCS store there is no shared record, so a second instance
+      // could post the same thing. Live posting is refused.
+      return { platform, state: "approved", attempt: { at: this.now().toISOString(), outcome: "paused", error: "live mode needs QUEUE_GCS_BUCKET; nothing is sent from the in-memory store" } };
     }
 
     // Claim. Only one writer gets past this point for this platform.
@@ -74,6 +94,7 @@ export class SocialPublisher {
         return post;
       }
       r.state = "publishing";
+      r.claimedAt = this.now().toISOString();
       claimed = post;
       return post;
     });
@@ -127,7 +148,9 @@ export class SocialPublisher {
           : outcome.kind === "uncertain" ? "uncertain"
             : "failed";
 
-    const written = await mutatePost(this.store, id, (p) => {
+    let written: Awaited<ReturnType<typeof mutatePost>> = null;
+    try {
+      written = await mutatePost(this.store, id, (p) => {
       const r = p.platforms[platform];
       if (r.state !== "publishing") return null;
       r.state = nextState;
@@ -142,8 +165,16 @@ export class SocialPublisher {
         p.status = "done";
       }
       return p;
-    });
-    void written;
+      }, 12, true);
+    } catch (err) {
+      // The platform answered but the record could not be written. The claim
+      // stays at "publishing", and the daily tick moves it to "uncertain"
+      // after 15 minutes and asks the owner to check by hand.
+      return { platform, state: "publishing", attempt: { ...attempt, error: `${attempt.error ?? attempt.outcome}, but the record could not be saved: ${(err as Error).message}` }, recordNotSaved: true };
+    }
+    if (!written || !written.changed) {
+      return { platform, state: written?.post.platforms[platform]?.state ?? "publishing", attempt, recordNotSaved: true };
+    }
     return {
       platform,
       state: nextState,
@@ -157,6 +188,43 @@ export class SocialPublisher {
     const r = post.platforms[platform];
     const last = r.attempts[r.attempts.length - 1];
     return r.state === "failed" && Boolean(last?.retryable) && r.attempts.filter((a) => a.outcome === "rejected").length < MAX_PUBLISH_ATTEMPTS;
+  }
+
+  /**
+   * A platform left in "publishing" (the process stopped, or the result could
+   * not be saved) may or may not have been posted. After STUCK_AFTER_MS it is
+   * marked "uncertain" so the owner checks the platform by hand. Never retried.
+   */
+  async releaseStuck(): Promise<Array<{ id: string; title: string; platform: Platform }>> {
+    const out: Array<{ id: string; title: string; platform: Platform }> = [];
+    for (const post of await this.store.listPosts()) {
+      for (const p of PLATFORMS) {
+        const r = post.platforms[p];
+        if (r?.state !== "publishing") continue;
+        const since = Date.parse(r.claimedAt ?? post.approval?.usedAt ?? post.createdAt);
+        if (this.now().getTime() - since < STUCK_AFTER_MS) continue;
+        const res = await mutatePost(this.store, post.id, (cur) => {
+          const c = cur.platforms[p];
+          if (c.state !== "publishing") return null;
+          c.state = "uncertain";
+          c.attempts.push({ at: this.now().toISOString(), outcome: "uncertain", error: "left in publishing for more than 15 minutes, outcome unknown" });
+          return cur;
+        });
+        if (res?.changed) out.push({ id: post.id, title: post.title, platform: p });
+      }
+    }
+    return out;
+  }
+
+  /** Posts approved but not yet sent, for example while paused, within the seven-day rule. */
+  async waitingApproved(): Promise<string[]> {
+    const out: string[] = [];
+    for (const post of await this.store.listPosts()) {
+      if (post.status !== "approved") continue;
+      if (!PLATFORMS.some((p) => post.platforms[p]?.state === "approved")) continue;
+      out.push(post.id);
+    }
+    return out;
   }
 
   /** Put retryable failures back to "approved" once enough time has passed. Returns ids touched. */

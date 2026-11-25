@@ -4,19 +4,21 @@
  * This replaces the scorer in distribution/editorial-scorer.ts, which gave
  * points for a question in the opening line, for "Did you know", for naming
  * Bihar or tobacco products and for timeframe phrases such as "2-3 weeks".
- * Those rewarded the habits the owner has banned and pushed clinical claims
- * into every post. Nothing in it checked the post against its source.
  *
- * Here the points go to what helps a family.
- *   Plainness (35)      short, uneven sentences, everyday words, no jargon or sales talk
- *   Source accuracy (30) every number, link and clinical word is in the sources
- *   Use to a family (25) a concrete detail, something they can do, one next step
- *   Calm (10)           no fear, no hype, no exclamation marks
- * Polish earns nothing. A hard rule broken in voice-lint or source-check fails
- * the draft whatever the score.
+ * Points are earned, so a draft unrelated to its brief cannot reach the gate.
+ *   Plainness (30)       short, uneven sentences, everyday words, no jargon or sales talk
+ *   Fit to the brief (35) share of the draft's content words found in the brief's
+ *                         facts, less penalties for unsourced numbers, links,
+ *                         clinical words and sentences off the brief
+ *   Use to a family (25)  a concrete detail, something they can do, a way to act
+ *   Calm (10)            no fear, no hype, no exclamation marks
+ *
+ * The score measures word overlap and surface habits. It does not show that a
+ * post is true or good, so it is kept in the record and not shown to the owner
+ * as a mark of quality.
  */
 import { ContentBrief, Platform } from "../social.types";
-import { checkSources, factOverlap } from "./source-check";
+import { checkSources, factCoverage } from "./source-check";
 import { MARKETING_WORDS } from "./voice-lint";
 
 export const EDITORIAL_GATE = 75;
@@ -35,11 +37,11 @@ const URL_RE = /https?:\/\/\S+/g;
 export const JARGON = [
   "tertiary", "modality", "modalities", "multidisciplinary", "paradigm", "stakeholders", "ecosystem",
   "utilise", "utilize", "facilitate", "optimise", "optimize", "robust", "landscape", "holistic",
-  "outcomes", "interventions", "beneficiaries", "continuum", "touchpoint", "actionable",
+  "outcomes", "interventions", "beneficiaries", "continuum", "touchpoint", "actionable", "empanelment",
 ];
 
-const ACTION_VERBS = /\b(call|write|bring|keep|ask|check|open|watch|message|read|look|take|note|carry|put|search|find)\b/i;
-const FEAR = /\b(deadly|killer|scary|terrifying|shocking|alarming|devastating|horrifying)\b/i;
+const ACTION_VERBS = /\b(call|write|bring|keep|ask|check|open|watch|message|read|look|take|note|carry|put|search|find|apply|log in|give|show|book|enrol|use|share|add)\b/i;
+const FEAR = /\b(deadly|killer|scary|terrifying|shocking|alarming|devastating|horrifying|dangerous)\b/i;
 
 function sentences(text: string): string[] {
   return text
@@ -63,52 +65,54 @@ function stdev(xs: number[]): number {
 export function scoreEditorial(platform: Platform, text: string, brief: ContentBrief, cardText?: string): EditorialScore {
   const notes: string[] = [];
   const body = text.replace(URL_RE, " ");
-  const low = body.toLowerCase();
 
   // Plainness
-  let plainness = 35;
+  let plainness = 30;
   const ss = sentences(text);
   const lengths = ss.map((s) => s.split(/\s+/).filter(Boolean).length);
   const avg = lengths.length ? lengths.reduce((a, b) => a + b, 0) / lengths.length : 0;
   if (avg > 22) { plainness -= 15; notes.push(`sentences average ${avg.toFixed(0)} words`); }
   else if (avg > 18) { plainness -= 8; notes.push(`sentences average ${avg.toFixed(0)} words`); }
   const words = body.match(/[A-Za-z][A-Za-z'-]*/g) ?? [];
-  const long = words.filter((w) => syllables(w) >= 4).length;
-  const longShare = words.length ? long / words.length : 0;
+  const longShare = words.length ? words.filter((w) => syllables(w) >= 4).length / words.length : 0;
   if (longShare > 0.12) { plainness -= 8; notes.push("many long words"); }
   else if (longShare > 0.08) { plainness -= 4; notes.push("some long words"); }
   for (const j of JARGON) {
     if (new RegExp(`\\b${j}\\b`, "i").test(body)) { plainness -= 4; notes.push(`jargon "${j}"`); }
   }
   for (const m of MARKETING_WORDS) {
-    if (new RegExp(`\\b${m}\\b`, "i").test(body)) { plainness -= 6; notes.push(`sales word "${m}"`); }
+    if (new RegExp(`\\b${m}\\b`, "i").test(body)) { plainness -= 15; notes.push(`sales word "${m}"`); }
   }
   if (lengths.length >= 4 && stdev(lengths) < 2.5) { plainness -= 5; notes.push("sentences all the same length"); }
   plainness = Math.max(0, plainness);
 
-  // Source accuracy
-  let sourceAccuracy = 30;
+  // Fit to the brief, earned from overlap with the facts
+  const coverage = factCoverage(`${text}\n${cardText ?? ""}`, brief);
+  let sourceAccuracy = Math.round(35 * Math.min(1, coverage / 0.5));
+  if (coverage < 0.5) notes.push(`only ${Math.round(coverage * 100)}% of its words come from the facts`);
   for (const v of checkSources(platform, text, brief, cardText)) {
     if (v.code === "unsourced_number" || v.code === "unknown_link") sourceAccuracy -= 15;
-    else if (v.code === "clinical_term") sourceAccuracy -= 10;
+    else if (v.code === "off_brief") sourceAccuracy -= 30;
+    else if (v.code === "clinical_term" || v.code === "clinical_instruction") sourceAccuracy -= 10;
     else continue;
     notes.push(v.reason);
   }
-  if (factOverlap(text, brief) < 2) { sourceAccuracy -= 10; notes.push("says little that is in the sources"); }
   sourceAccuracy = Math.max(0, sourceAccuracy);
 
   // Use to a family
   let familyUse = 0;
-  const concrete = /\d/.test(body) || /\b(helpline|website|contact page|folder|notebook|phone|youtube|whatsapp|episode|video|directory)\b/i.test(body);
+  const concrete = /\d/.test(body) || /\b(helpline|website|contact page|folder|notebook|paper|sheet|list|phone|card|aadhaar|ration card|portal|app|form|certificate)\b/i.test(body);
   if (concrete) familyUse += 10; else notes.push("no concrete detail");
   if (ACTION_VERBS.test(body)) familyUse += 10; else notes.push("nothing the reader can do");
-  const hasNext = platform === "instagram" ? /in our profile/i.test(text) : /https?:\/\/\S*src(=|%3A)/i.test(text);
-  if (hasNext) familyUse += 5; else notes.push("no next step");
+  const hasWay = platform === "instagram"
+    ? /\b(profile|website|helpline|call|\d{5,})\b/i.test(text) || /suchitracancercare\.org|\.gov\.in/i.test(text)
+    : /https?:\/\/\S*src(=|%3A)/i.test(text);
+  if (hasWay) familyUse += 5; else notes.push("no way to act");
 
   // Calm
   let calm = 10;
   if (body.includes("!")) { calm -= 5; notes.push("exclamation mark"); }
-  if (FEAR.test(low)) { calm -= 5; notes.push("fear language"); }
+  if (FEAR.test(body)) { calm -= 5; notes.push("fear language"); }
   calm = Math.max(0, calm);
 
   return { total: plainness + sourceAccuracy + familyUse + calm, plainness, sourceAccuracy, familyUse, calm, notes };

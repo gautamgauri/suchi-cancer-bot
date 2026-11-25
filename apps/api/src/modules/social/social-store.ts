@@ -19,6 +19,8 @@ export interface Versioned<T> {
 }
 
 export interface SocialStore {
+  /** True only for the shared GCS store. Live posting is refused otherwise. */
+  readonly durable: boolean;
   getPost(id: string): Promise<Versioned<SocialPost> | null>;
   /** Create only if absent. False when a post with this id exists. */
   createPost(post: SocialPost): Promise<boolean>;
@@ -36,6 +38,11 @@ const STATE = "social/state/";
 export const PAUSE_OBJECT = "social/PAUSED";
 
 export class MemorySocialStore implements SocialStore {
+  readonly durable: boolean;
+  /** `durable` may be set true in tests that exercise live mode. */
+  constructor(opts: { durable?: boolean } = {}) {
+    this.durable = opts.durable ?? false;
+  }
   private objects = new Map<string, { body: string; gen: number }>();
   private gen = 0;
 
@@ -96,6 +103,7 @@ function isNotFound(err: unknown): boolean {
 }
 
 export class GcsSocialStore implements SocialStore {
+  readonly durable = true;
   private readonly logger = new Logger(GcsSocialStore.name);
   constructor(private readonly bucket: Bucket) {}
 
@@ -185,6 +193,7 @@ export async function mutatePost(
   id: string,
   change: (post: SocialPost) => SocialPost | null,
   attempts = 6,
+  jitter = false,
 ): Promise<{ post: SocialPost; changed: boolean } | null> {
   for (let i = 0; i < attempts; i++) {
     const cur = await store.getPost(id);
@@ -192,6 +201,7 @@ export async function mutatePost(
     const next = change(structuredClone(cur.value));
     if (!next) return { post: cur.value, changed: false };
     if (await store.updatePost(next, cur.version)) return { post: next, changed: true };
+    if (jitter) await new Promise((r) => setTimeout(r, 20 + Math.floor(Math.random() * 80) * (i + 1)));
   }
   throw new Error(`Could not update social post ${id}: too many concurrent writes`);
 }

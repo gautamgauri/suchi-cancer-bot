@@ -65,8 +65,8 @@ export function episodeFacts(ep: OncoTalksEpisode, fetchedOn = "2026-11-25"): So
   const page = `${SITE_URL}${watchPath(ep)}`;
   const audience = ep.whoIsThisFor.map((w) => AUDIENCE_WORDS[w]);
   return [
-    { text: `${ep.title}. Onco Talks is SCCF's video series in which oncologists speak about cancer. This episode is about ${ep.subject}.`, url: page, fetchedOn },
-    { text: `An oncologist speaks in this episode. It is listed for ${audience.join(" and ")}.`, url: page, fetchedOn },
+    { text: `${ep.title}. This episode of SCCF's Onco Talks video series is about ${ep.subject}.`, url: page, fetchedOn },
+    { text: `The episode is listed for ${audience.join(" and ")}.`, url: page, fetchedOn },
     { text: `On YouTube the upload is titled "${ep.youtubeTitle}".`, url: `https://www.youtube.com/@suchitracancercarefoundati1877`, fetchedOn },
   ];
 }
@@ -77,7 +77,7 @@ export function episodeBrief(ep: OncoTalksEpisode): ContentBrief {
     topicId: `onco-talks-${n}`,
     lane: "onco_talks",
     title: ep.title,
-    angle: `Point people to episode ${n} of Onco Talks. Say plainly that it is about ${ep.subject} and who it is meant for. Do not describe what the oncologist says.`,
+    angle: `Point people to episode ${n} of Onco Talks. Say plainly that it is about ${ep.subject} and who it is meant for. Do not describe what is said in it.`,
     facts: episodeFacts(ep),
     sitePath: watchPath(ep),
     nextStep: "site",

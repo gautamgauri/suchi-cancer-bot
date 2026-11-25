@@ -63,8 +63,37 @@ describe("four-week calendar", () => {
   });
 
   const drafted = CALENDAR.filter((i) => i.drafts);
-  it("hand-writes the first six items for all four platforms", () => {
-    expect(drafted).toHaveLength(6);
+  it("hand-writes all twelve items for all four platforms, so nothing in the first four weeks is generated", () => {
+    expect(drafted).toHaveLength(12);
+  });
+
+  it("mentions Suchi in at most one post in three, and never in the last sentence", () => {
+    const withSuchi = drafted.filter((i) => Object.values(i.drafts!).some((d) => /\bSuchi\b/.test(d.text)));
+    expect(withSuchi.length).toBeLessThanOrEqual(4);
+  });
+
+  it("carries one clean link per post and no wa.me or long source link outside LinkedIn", () => {
+    for (const item of drafted) {
+      for (const p of ["facebook", "x"] as const) {
+        const urls = item.drafts![p].text.match(/https?:\/\/\S+/g) ?? [];
+        expect(urls).toHaveLength(1);
+        expect(urls[0]).toMatch(/^https:\/\/(chat\.)?suchitracancercare\.org\//);
+      }
+      expect(item.drafts!.instagram.text).not.toMatch(/https?:\/\//);
+      expect(item.drafts!.linkedin.text.match(/https?:\/\/\S+/g)!.length).toBeLessThanOrEqual(2);
+      for (const d of Object.values(item.drafts!)) expect(d.text).not.toContain("wa.me");
+    }
+  });
+
+  it("never says that people aged 70 and over are simply covered", () => {
+    for (const item of drafted) for (const d of Object.values(item.drafts!)) {
+      expect(`${d.text} ${d.cardText ?? ""}`).not.toMatch(/70[^.]*\bare (now )?covered\b/i);
+    }
+  });
+
+  it("never gives a count from the hospital check", () => {
+    const hosp = drafted.find((i) => i.brief.topicId === "hospital-contact")!;
+    for (const d of Object.values(hosp.drafts!)) expect(d.text.replace(/https?:\/\/\S+/g, "")).not.toMatch(/\d/);
   });
 
   for (const item of drafted) {

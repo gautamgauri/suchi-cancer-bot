@@ -17,9 +17,11 @@ describe("social generator", () => {
     expect(p).toContain("put exactly this link as the final line: https://chat.suchitracancercare.org/?src=social-facebook");
   });
 
-  it("asks Instagram for the profile sentence and no link", () => {
+  it("asks Instagram for no link and forces no closing formula", () => {
     expect(nextStepLink("instagram", brief)).toBeNull();
-    expect(buildPrompt("instagram", brief)).toContain("link is in our profile");
+    expect(buildPrompt("instagram", brief)).toContain("Do not put any web address");
+    expect(buildPrompt("instagram", brief)).not.toContain("link is in our profile");
+    expect(VOICE_RULES).toContain("Do not end on a sentence about Suchi");
   });
 
   it("feeds the reasons back on a retry", () => {
