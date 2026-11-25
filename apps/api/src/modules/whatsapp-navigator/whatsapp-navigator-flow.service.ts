@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { hospitalDirectoryPath, readHospitalDirectoryFile } from "../../common/hospital-directory-file";
+import { isBotVisible, RawHospitalEntry, singleIndianPhone } from "../../common/hospital-visibility";
 import {
   AffordabilityLevel,
   CancerTypeGroup,
@@ -69,10 +70,8 @@ interface Hospital {
   state: string;
   type: string;
   departments: string[];
-  cost_tier: "Low" | "Medium" | "High";
   pmjay_empanelled: boolean | null;
   contact: { phone: string | null; address: string };
-  score: number;
   status: string;
 }
 
@@ -98,7 +97,10 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
     // health status is recorded by HospitalDirectoryService, which loads first.
     try {
       const file = readHospitalDirectoryFile();
-      this.hospitals = (file.hospitals as Hospital[]).filter((h) => h.status === "active");
+      // Same visibility rule as the chat hospital search (common/hospital-visibility.ts).
+      this.hospitals = (file.hospitals as RawHospitalEntry[])
+        .filter(isBotVisible)
+        .map((h) => h as unknown as Hospital);
       this.logger.log(`Loaded ${this.hospitals.length} active hospitals from ${file.path}`);
     } catch (err: any) {
       this.logger.error(`Failed to load hospitals.json from ${hospitalDirectoryPath()}: ${err.message}`);
@@ -234,8 +236,8 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
     const response: NavigatorMessage = {
       text: "इलाज का खर्च? / Treatment budget?",
       options: [
-        { key: "1", label: "Government hospital only (free / PMJAY) / सरकारी, मुफ़्त" },
-        { key: "2", label: "Affordable private also OK / सस्ता प्राइवेट भी ठीक" },
+        { key: "1", label: "Government or trust hospital / सरकारी या ट्रस्ट अस्पताल" },
+        { key: "2", label: "Private also OK / प्राइवेट भी ठीक" },
         { key: "3", label: "Any hospital / कोई भी" },
       ],
     };
@@ -259,8 +261,8 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
     if (!selected) {
       return {
         response: this.invalidInputMessage([
-          { key: "1", label: "Government hospital only (free / PMJAY) / सरकारी, मुफ़्त" },
-          { key: "2", label: "Affordable private also OK / सस्ता प्राइवेट भी ठीक" },
+          { key: "1", label: "Government or trust hospital / सरकारी या ट्रस्ट अस्पताल" },
+          { key: "2", label: "Private also OK / प्राइवेट भी ठीक" },
           { key: "3", label: "Any hospital / कोई भी" },
         ]),
         updatedSession: { ...session, updatedAt: new Date() },
@@ -341,8 +343,9 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
       }
     }
 
-    // Sort by score descending, take top 3
-    const top3 = matches.sort((a, b) => b.score - a.score).slice(0, 3);
+    // By name, take three. The directory score is not used: it was set by a
+    // research agent and an order built on it reads as a ranking of quality.
+    const top3 = matches.sort((a, b) => a.name.localeCompare(b.name, "en")).slice(0, 3);
 
     if (top3.length === 0) {
       return {
@@ -357,7 +360,7 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
     const header = usedFallback
       ? `आपके राज्य (${state}) में कोई मेल नहीं मिला — नज़दीकी अस्पताल दिखा रहे हैं:\n` +
         `No exact match in ${state} — showing nearby hospitals:\n\n`
-      : `${state} में सुझाए गए अस्पताल / Recommended hospitals in ${state}:\n\n`;
+      : `SCCF सूची में ${state} के अस्पताल / Hospitals in the SCCF directory in ${state}:\n\n`;
 
     const cards = top3.map((h, i) => this.formatHospitalCard(i + 1, h)).join("\n\n");
 
@@ -381,41 +384,37 @@ export class WhatsAppNavigatorFlowService implements OnModuleInit {
       );
       if (!hasCapability) return false;
 
-      // Affordability filter
+      // Type filter, from the recorded type only. The cost tier was a research
+      // agent's guess and is not used, so "mixed" and "any" filter nothing.
       if (affordability === "government_only") {
-        if (h.cost_tier !== "Low") return false;
         const isGovOrTrust =
           h.type.toLowerCase().includes("government") ||
           h.type.toLowerCase().includes("trust") ||
           h.type.toLowerCase().includes("tmc");
-        if (!isGovOrTrust && h.pmjay_empanelled !== true) return false;
-      } else if (affordability === "mixed") {
-        if (h.cost_tier === "High") return false;
+        if (!isGovOrTrust) return false;
       }
-      // "any" — no filter
 
       return true;
     });
   }
 
   private formatHospitalCard(index: number, h: Hospital): string {
-    const costLine =
-      h.cost_tier === "Low"
-        ? h.pmjay_empanelled === true
-          ? "✅ Free / PMJAY accepted / मुफ़्त या PMJAY"
-          : "✅ Government / Low cost / सरकारी / कम खर्च"
-        : h.cost_tier === "Medium"
-        ? "💰 Affordable / किफ़ायती"
-        : "💳 Private / Check costs / खर्च जाँचें";
+    // Type and PMJAY exactly as recorded. No cost claim: the cost tier was a
+    // research agent's guess.
+    const typeLine = `🏷️ ${h.type}`;
+    const pmjayLine =
+      h.pmjay_empanelled === true
+        ? "\nPMJAY: as recorded, please confirm with the hospital / PMJAY: दर्ज जानकारी, अस्पताल से पुष्टि करें"
+        : "";
 
-    const phone = h.contact?.phone
+    const phone = singleIndianPhone(h.contact?.phone)
       ? `📞 Call: ${h.contact.phone}`
-      : `📞 Call: check website / वेबसाइट देखें`;
+      : `📞 Phone not recorded / फ़ोन दर्ज नहीं`;
 
     return (
       `🏥 ${index}. ${h.short_name || h.name}\n` +
       `📍 ${h.city}, ${h.state}\n` +
-      `${costLine}\n` +
+      `${typeLine}${pmjayLine}\n` +
       `${phone}`
     );
   }

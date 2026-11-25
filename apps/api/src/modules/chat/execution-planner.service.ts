@@ -41,16 +41,13 @@ export interface HospitalSearchResult {
   city: string;
   state: string;
   type: string;
-  tier: "A" | "B" | "C" | "D" | null;
   departments: string[];
-  cost_tier: string | null;
   pmjay_empanelled: boolean | null;
   ncg_member: boolean;
+  /** `phone` is set only when the record holds exactly one valid Indian number. */
   contact: { phone: string | null; address: string | null };
-  key_doctors: Array<{ name: string; role: string }>;
-  notes: string;
-  navigation_notes: string[];
-  score: number;
+  // No notes, navigation notes, doctors, cost tier, tier or score: the
+  // directory service drops them at load (common/hospital-visibility.ts).
   national_referral?: boolean;
   latitude?: number | null;
   longitude?: number | null;

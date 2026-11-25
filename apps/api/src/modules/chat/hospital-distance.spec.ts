@@ -3,6 +3,7 @@ import {
   HospitalSearchResult,
   haversineKm,
   normaliseDepartment,
+  toBotHospital,
 } from "./hospital-directory.service";
 import { ExecutionPlannerService } from "./execution-planner.service";
 import { readHospitalDirectoryFile } from "../../common/hospital-directory-file";
@@ -120,11 +121,15 @@ describe("Hospital distance ordering (issue #103)", () => {
   describe("capability is filtered before distance is considered", () => {
     const HEALING_TOUCH = "healing-touch-bhagalpur";
 
-    it("offers the nearest centre for a query with no stated need", () => {
-      // Control for the test below: with no need stated, Healing Touch really
-      // is the nearest centre to Bhagalpur, and nothing stops it leading.
+    it("offers the nearest centre the bot may use for a query with no stated need", () => {
+      // Healing Touch is the nearest record to Bhagalpur, but its status is
+      // incomplete_departments, so the bot no longer uses it at all (the site
+      // excludes it too). The nearest remaining centre leads.
       const results = near("Bhagalpur");
-      expect(results[0].id).toBe(HEALING_TOUCH);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.map((h) => h.id)).not.toContain(HEALING_TOUCH);
+      const d0 = results[0].distance_km ?? Number.POSITIVE_INFINITY;
+      for (const h of results) expect(d0).toBeLessThanOrEqual(h.distance_km ?? Number.POSITIVE_INFINITY);
     });
 
     it("never offers a surgery-only centre for a radiotherapy need, however near", () => {
@@ -217,12 +222,13 @@ describe("Hospital distance ordering (issue #103)", () => {
       }
     });
 
-    it("still offers Healing Touch when the patient states a need it can serve", () => {
-      // The control: the filter must not be a blanket demotion of a tier-C
-      // centre. Healing Touch does surgical oncology, and for a surgery
-      // question it is the nearest centre in Bhagalpur.
+    it("does not offer an entry the site excludes, even for a need it records", () => {
+      // Healing Touch records surgical oncology, but its status is
+      // incomplete_departments. The bot's pool follows the site's exclusions,
+      // so a surgery question still gets centres, just not this one.
       const results = lookup("Which hospital in Bhagalpur for cancer surgery?");
-      expect(results[0].id).toBe(HEALING_TOUCH);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.map((h) => h.id)).not.toContain(HEALING_TOUCH);
     });
 
     it("flags the search AND withholds the incapable rows when nothing regional can serve the need", () => {
@@ -392,7 +398,12 @@ describe("Hospital distance ordering (issue #103)", () => {
       // whose only centre cannot do the thing, and a national centre that can.
       // Both rows are real records from the shipped file.
       const local = new HospitalDirectoryService();
-      (local as any).hospitals = [svc.getHospitalById("healing-touch-bhagalpur")!];
+      // Healing Touch is no longer in the bot's pool (status
+      // incomplete_departments), so its record is shaped from the file directly.
+      const raw = (readHospitalDirectoryFile().hospitals as Array<Record<string, unknown>>).find(
+        (h) => h.id === "healing-touch-bhagalpur"
+      )!;
+      (local as any).hospitals = [toBotHospital(raw)];
       (local as any).nationalHospitals = [
         { ...svc.getHospitalById("aiims-patna")!, national_referral: true as const },
       ];
@@ -518,16 +529,20 @@ describe("Hospital distance ordering (issue #103)", () => {
       expect(results[0].id).toBe("near");
     });
 
-    it("breaks a distance tie by directory score", () => {
-      // Patna's centres share a city and so share a distance from Darbhanga to
-      // within metres; the tiebreak must be quality, not file order.
-      const results = near("Darbhanga").filter((h) => h.city === "Patna");
-      expect(results.length).toBeGreaterThan(1);
-      const tied = results.filter(
-        (h) => Math.abs((h.distance_km ?? 0) - (results[0].distance_km ?? 0)) < 0.5
-      );
-      const scores = tied.map((h) => h.score);
-      expect(scores).toEqual([...scores].sort((a, b) => b - a));
+    it("breaks an exact distance tie by name, never by directory score", () => {
+      // Several centres share one city geocode and so one distance. The
+      // tiebreak is the name: the score was set by a research agent and an
+      // order built on it reads as a ranking of quality.
+      const results = near("Darbhanga");
+      const byDistance = new Map<number, string[]>();
+      for (const h of results) {
+        if (typeof h.distance_km !== "number") continue;
+        byDistance.set(h.distance_km, [...(byDistance.get(h.distance_km) ?? []), h.name]);
+      }
+      const tiedGroups = [...byDistance.values()].filter((names) => names.length > 1);
+      for (const names of tiedGroups) {
+        expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")));
+      }
     });
 
     it("falls back to the administrative chain for a city with no coordinates", () => {
