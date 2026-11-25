@@ -1,4 +1,4 @@
-import { HospitalDirectoryService, HospitalSearchResult } from "./hospital-directory.service";
+import { HospitalDirectoryService, buildBotPool } from "./hospital-directory.service";
 
 // ─── Inline fixture ────────────────────────────────────────────────────────
 // Three hospitals covering the scenarios under test:
@@ -28,6 +28,7 @@ const FIXTURE = {
       navigation_notes: ["Take OPD token from Gate 1"],
       score: 90,
       national_referral: false,
+      status: "active",
     },
     {
       id: "h-regional-b",
@@ -48,6 +49,7 @@ const FIXTURE = {
       navigation_notes: [],
       score: 70,
       national_referral: false,
+      status: "active",
     },
     {
       id: "h-tier-d",
@@ -68,6 +70,7 @@ const FIXTURE = {
       navigation_notes: [],
       score: 20,
       national_referral: false,
+      status: "active",
     },
     {
       id: "h-national",
@@ -88,6 +91,7 @@ const FIXTURE = {
       navigation_notes: ["Book online at tmc.gov.in"],
       score: 99,
       national_referral: true,
+      status: "active",
     },
   ],
 };
@@ -101,10 +105,11 @@ const FIXTURE = {
  */
 function buildService(): HospitalDirectoryService {
   const svc = new HospitalDirectoryService();
-  const allHospitals = FIXTURE.hospitals as unknown as HospitalSearchResult[];
-  const active = allHospitals.filter((h) => h.tier !== "D");
-  (svc as any).nationalHospitals = active.filter((h) => (h as any).national_referral === true);
-  (svc as any).hospitals = active.filter((h) => (h as any).national_referral !== true);
+  // The same pool builder onModuleInit uses, so the visibility rule and the
+  // field stripping are exercised here too.
+  const pool = buildBotPool(FIXTURE.hospitals);
+  (svc as any).nationalHospitals = pool.national;
+  (svc as any).hospitals = pool.regional;
   return svc;
 }
 
@@ -149,10 +154,7 @@ describe("HospitalDirectoryService", () => {
       });
       expect(results.length).toBeGreaterThan(0);
       results.forEach((h) => {
-        const qualifies =
-          h.pmjay_empanelled === true ||
-          h.type.includes("Government") ||
-          h.cost_tier === "Low";
+        const qualifies = h.pmjay_empanelled === true || h.type.includes("Government");
         expect(qualifies).toBe(true);
       });
     });
@@ -212,7 +214,7 @@ describe("HospitalDirectoryService", () => {
   });
 
   describe("Affordability filter", () => {
-    it("returns only Low cost_tier / Government hospitals when affordabilityTier is 'low'", () => {
+    it("returns only Government, Trust or TMC hospitals by recorded type when affordabilityTier is 'low'", () => {
       const results = svc.searchHospitals({
         state: "Bihar",
         affordabilityTier: "low",
@@ -221,7 +223,6 @@ describe("HospitalDirectoryService", () => {
       expect(results.length).toBeGreaterThan(0);
       results.forEach((h) => {
         const qualifies =
-          h.cost_tier === "Low" ||
           h.type.includes("Government") ||
           h.type.includes("Trust") ||
           h.type.includes("TMC");
@@ -229,7 +230,7 @@ describe("HospitalDirectoryService", () => {
       });
     });
 
-    it("excludes Medium/High cost hospital when affordabilityTier is 'low' and a Low hospital exists", () => {
+    it("excludes a private hospital when affordabilityTier is 'low' and a government one exists", () => {
       const results = svc.searchHospitals({
         state: "Bihar",
         affordabilityTier: "low",
@@ -238,7 +239,7 @@ describe("HospitalDirectoryService", () => {
       expect(results.find((h) => h.id === "h-regional-b")).toBeUndefined();
     });
 
-    it("returns both Low and Medium hospitals when affordabilityTier is 'medium'", () => {
+    it("does not filter on the guessed cost tier when affordabilityTier is 'medium'", () => {
       const results = svc.searchHospitals({
         state: "Bihar",
         affordabilityTier: "medium",
@@ -293,13 +294,10 @@ describe("HospitalDirectoryService", () => {
       const result = svc.compareHospitals(["h-regional-a", "h-regional-b"]);
 
       expect(result.hospitals).toHaveLength(2);
-      expect(result.comparison.costTiers["PCC"]).toBe("Low");
-      expect(result.comparison.costTiers["BPO"]).toBe("Medium");
       expect(result.comparison.pmjayStatus["PCC"]).toBe(true);
       expect(result.comparison.pmjayStatus["BPO"]).toBe(false);
       expect(result.comparison.departments["PCC"]).toContain("head_and_neck");
-      expect(result.comparison.tiers["PCC"]).toBe("A");
-      expect(result.comparison.scores["PCC"]).toBe(90);
+      expect(Object.keys(result.comparison).sort()).toEqual(["departments", "pmjayStatus"]);
     });
 
     it("silently drops unknown IDs from comparison", () => {
@@ -349,16 +347,12 @@ describe("HospitalDirectoryService", () => {
       ).toBe(true);
     });
 
-    it("includes dharmashala logistics note when notes mention dharmashala", () => {
+    it("never reads the record's free-text notes or navigation notes", () => {
       const prep = svc.generateVisitPrep("h-regional-a")!;
-      expect(
-        prep.logisticsNotes.some((n) => n.toLowerCase().includes("dharmashala"))
-      ).toBe(true);
-    });
-
-    it("uses navigation_notes from the hospital record when present", () => {
-      const prep = svc.generateVisitPrep("h-regional-a")!;
-      expect(prep.navigationNotes).toContain("Take OPD token from Gate 1");
+      const text = JSON.stringify(prep);
+      expect(text).not.toContain("Dharmashala available near hospital");
+      expect(text).not.toContain("Take OPD token from Gate 1");
+      expect(prep.navigationNotes).toEqual([prep.disclaimer]);
     });
 
     it("works for national referral hospital via generateVisitPrep", () => {
@@ -438,14 +432,14 @@ describe("HospitalDirectoryService", () => {
       });
     });
 
-    it("preserves score-descending order on a fallback candidate set", () => {
+    it("orders a fallback candidate set by name, never by score", () => {
       const results = svc.searchHospitals({
         city: "Darbhanga",
         state: "Bihar",
         includeNational: false,
       });
-      const scores = results.map((h) => h.score);
-      expect(scores).toEqual([...scores].sort((a, b) => b - a));
+      const names = results.map((h) => h.name);
+      expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")));
     });
   });
 
@@ -562,14 +556,15 @@ describe("HospitalDirectoryService", () => {
       expect(results.length).toBeLessThanOrEqual(1);
     });
 
-    it("sorts by score descending before limiting", () => {
+    it("sorts by name before limiting, not by score", () => {
       const results = svc.searchHospitals({
         state: "Bihar",
         maxResults: 1,
         includeNational: false,
       });
-      // h-regional-a (score 90) should come before h-regional-b (score 70)
-      expect(results[0].id).toBe("h-regional-a");
+      // "Bihar Private Oncology" sorts before "Patna Cancer Centre" by name,
+      // although the fixture gives the second a higher score.
+      expect(results[0].id).toBe("h-regional-b");
     });
   });
 });

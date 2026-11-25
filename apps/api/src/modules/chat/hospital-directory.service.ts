@@ -8,7 +8,10 @@
  * Design principles:
  *  - OnModuleInit: load once, cache forever (no async in search path)
  *  - Graceful degradation: if JSON not found, log warning and return [] (system falls back to KB markdown)
- *  - Tier D hospitals are never surfaced in search results
+ *  - Only entries the bot may use are loaded (common/hospital-visibility.ts):
+ *    active, no risk flag, not held, not tier D
+ *  - Unreviewed fields (notes, navigation notes, doctors, cost tier, tier,
+ *    score) are dropped at load, so nothing downstream can pass them on
  *  - All filtering is additive (each filter applied in sequence)
  */
 
@@ -22,6 +25,7 @@ import {
   resolveCoordsForCity,
   resolveStateForCity,
 } from "./utils/location-detector";
+import { isBotVisible, RawHospitalEntry, singleIndianPhone } from "../../common/hospital-visibility";
 
 // ─── Public Types ──────────────────────────────────────────────
 
@@ -53,17 +57,12 @@ export interface HospitalSearchResult {
   city: string;
   state: string;
   type: string;
-  tier: "A" | "B" | "C" | "D" | null;
   departments: string[];
-  cost_tier: string | null;
   pmjay_empanelled: boolean | null;
   ncg_member: boolean;
   tmc_affiliated?: boolean;
+  /** `phone` is set only when the record holds exactly one valid Indian number. */
   contact: { phone: string | null; address: string | null };
-  key_doctors: Array<{ name: string; role: string }>;
-  notes: string;
-  navigation_notes: string[];
-  score: number;
   /** True when this is a national referral centre surfaced alongside regional results */
   national_referral?: boolean;
   /** Geocoded latitude — absent when the record has not been geocoded */
@@ -89,11 +88,8 @@ export interface HospitalSearchResult {
 export interface ComparisonResult {
   hospitals: HospitalSearchResult[];
   comparison: {
-    costTiers: Record<string, string>;
     pmjayStatus: Record<string, boolean | null>;
     departments: Record<string, string[]>;
-    tiers: Record<string, string | null>;
-    scores: Record<string, number>;
   };
 }
 
@@ -327,26 +323,89 @@ function hospitalCoords(h: HospitalSearchResult): [number, number] | null {
 }
 
 /**
- * Nearest first, directory `score` breaking ties.
+ * Order for a search, from what the request itself makes checkable:
+ *   1. hospitals in the city the patient named first;
+ *   2. then, off the distance rung, hospitals in the state the search used;
+ *   3. then nearest first, where a distance is known;
+ *   4. then by name.
  *
- * A hospital with no coordinates sorts LAST rather than first: an unknown
- * distance is not a short one, and the alternative — treating absent as zero —
- * would put exactly the records we know least about at the top of a list a
- * patient uses to decide where to travel.
+ * The directory `score` and cost tier are not used. Both were set by a
+ * research agent, the scores are on two different scales, and an order built
+ * on them reads to a patient as a ranking of quality.
  *
- * The score tiebreak matters more than it looks. Several centres share one
- * city, so they share a distance to the decimal; without it the order within a
- * city would be whatever the file happened to list first, and a tier-A TMC unit
- * could fall below a tier-C private hospital on the same street.
+ * On the distance rung the state is not a key: a border is not a travel
+ * burden (owner direction 2026-09-30, issue #103). A hospital with no
+ * coordinates sorts after every measured one, because an unknown distance is
+ * not a short one.
  */
-function compareByDistanceThenScore(
-  a: HospitalSearchResult,
-  b: HospitalSearchResult
-): number {
-  const da = a.distance_km ?? Number.POSITIVE_INFINITY;
-  const db = b.distance_km ?? Number.POSITIVE_INFINITY;
-  if (da !== db) return da - db;
-  return b.score - a.score;
+export function compareForRequest(
+  requestedCity: string | null,
+  state: string | null,
+  stage: GeographicStage | "national"
+): (a: HospitalSearchResult, b: HospitalSearchResult) => number {
+  const city = requestedCity?.trim().toLowerCase() || null;
+  const inCity = (h: HospitalSearchResult): number => {
+    if (!city) return 0;
+    const c = h.city.toLowerCase();
+    return c.includes(city) || city.includes(c) ? 0 : 1;
+  };
+  const inState = (h: HospitalSearchResult): number =>
+    stage === "distance" || !state ? 0 : h.state === state ? 0 : 1;
+  return (a, b) => {
+    const cityKey = inCity(a) - inCity(b);
+    if (cityKey !== 0) return cityKey;
+    const stateKey = inState(a) - inState(b);
+    if (stateKey !== 0) return stateKey;
+    const da = a.distance_km ?? Number.POSITIVE_INFINITY;
+    const db = b.distance_km ?? Number.POSITIVE_INFINITY;
+    if (da !== db) return da - db;
+    return a.name.localeCompare(b.name, "en");
+  };
+}
+
+/**
+ * The bot's view of one directory entry: only the fields the landing site
+ * shows (name, place, type, departments, PMJAY as recorded, a single valid
+ * phone) plus the national-referral flag, the address and the coordinates
+ * used for ordering. Every unreviewed field is dropped here.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toBotHospital(raw: Record<string, any>): HospitalSearchResult {
+  const phone = singleIndianPhone(raw.contact?.phone) ? (raw.contact.phone as string) : null;
+  return {
+    id: raw.id,
+    name: raw.name,
+    short_name: raw.short_name,
+    city: raw.city,
+    state: raw.state,
+    type: raw.type,
+    departments: Array.isArray(raw.departments) ? [...raw.departments] : [],
+    pmjay_empanelled: typeof raw.pmjay_empanelled === "boolean" ? raw.pmjay_empanelled : null,
+    ncg_member: raw.ncg_member === true,
+    ...(typeof raw.tmc_affiliated === "boolean" && { tmc_affiliated: raw.tmc_affiliated }),
+    contact: { phone, address: typeof raw.contact?.address === "string" ? raw.contact.address : null },
+    ...(raw.national_referral === true && { national_referral: true }),
+    latitude: typeof raw.latitude === "number" ? raw.latitude : null,
+    longitude: typeof raw.longitude === "number" ? raw.longitude : null,
+    geocode_source: raw.geocode_source ?? null,
+    geocode_confidence: raw.geocode_confidence ?? null,
+  };
+}
+
+/** Split raw directory entries into the bot's regional and national pools. */
+export function buildBotPool(raws: unknown[]): {
+  regional: HospitalSearchResult[];
+  national: HospitalSearchResult[];
+  excluded: number;
+} {
+  const visible = (raws as RawHospitalEntry[]).filter(isBotVisible).map((h) => toBotHospital(h));
+  return {
+    regional: visible.filter((h) => h.national_referral !== true),
+    national: visible
+      .filter((h) => h.national_referral === true)
+      .map((h) => ({ ...h, national_referral: true as const })),
+    excluded: raws.length - visible.length,
+  };
 }
 
 /** National states — queries for these locations don't need national referrals appended */
@@ -400,12 +459,10 @@ export class HospitalDirectoryService implements OnModuleInit {
     const jsonPath = hospitalDirectoryPath();
     try {
       const file = readHospitalDirectoryFile();
-      const allHospitals = file.hospitals as (HospitalSearchResult & { national_referral?: boolean })[];
-      const active = allHospitals.filter((h) => h.tier !== "D");
-      this.nationalHospitals = active
-        .filter((h) => h.national_referral === true)
-        .map((h) => ({ ...h, national_referral: true as const }));
-      this.hospitals = active.filter((h) => h.national_referral !== true);
+      const allHospitals = file.hospitals;
+      const pool = buildBotPool(allHospitals);
+      this.nationalHospitals = pool.national;
+      this.hospitals = pool.regional;
       recordHospitalDirectoryStatus({ loaded: true, count: allHospitals.length, path: file.path, error: null });
       this.logger.log({
         event: "hospital_directory_loaded",
@@ -414,7 +471,7 @@ export class HospitalDirectoryService implements OnModuleInit {
         total: allHospitals.length,
         regional: this.hospitals.length,
         national: this.nationalHospitals.length,
-        tierDFiltered: allHospitals.length - active.length,
+        notVisibleToBot: pool.excluded,
       });
     } catch (err: any) {
       // ERROR, not WARN: with an empty directory every hospital-navigation answer
@@ -545,8 +602,8 @@ export class HospitalDirectoryService implements OnModuleInit {
    * 1. Geographic (city → state → adjacent state → unfiltered fallback chain)
    * 2. Cancer type → departments
    * 3. PMJAY filter
-   * 4. Affordability tier
-   * 5. Sort by score desc, limit maxResults
+   * 4. Affordability (by recorded type only, never by the guessed cost tier)
+   * 5. Sort by city, state, distance and name (compareForRequest), limit maxResults
    *
    * The geography, PMJAY and affordability filters degrade gracefully: when one
    * would empty the candidate set it is skipped and the previous set is kept.
@@ -686,13 +743,10 @@ export class HospitalDirectoryService implements OnModuleInit {
       capabilityUnavailable,
     };
 
-    // ── 3. PMJAY filter ──
+    // ── 3. PMJAY filter ── (recorded PMJAY status or recorded type only)
     if (params.pmjayRequired) {
       const pmjayFiltered = results.filter(
-        (h) =>
-          h.pmjay_empanelled === true ||
-          h.type.includes("Government") ||
-          h.cost_tier === "Low"
+        (h) => h.pmjay_empanelled === true || h.type.includes("Government")
       );
       if (pmjayFiltered.length > 0) {
         results = pmjayFiltered;
@@ -700,28 +754,21 @@ export class HospitalDirectoryService implements OnModuleInit {
     }
 
     // ── 4. Affordability filter ──
-    if (params.affordabilityTier && params.affordabilityTier !== "any") {
-      if (params.affordabilityTier === "low") {
-        const lowFiltered = results.filter(
-          (h) =>
-            h.cost_tier === "Low" ||
-            h.type.includes("Government") ||
-            h.type.includes("Trust") ||
-            h.type.includes("TMC")
-        );
-        if (lowFiltered.length > 0) results = lowFiltered;
-      } else if (params.affordabilityTier === "medium") {
-        const medFiltered = results.filter(
-          (h) => h.cost_tier === "Low" || h.cost_tier === "Medium"
-        );
-        if (medFiltered.length > 0) results = medFiltered;
-      }
+    //
+    // By the recorded type only. The cost tier was a research agent's guess and
+    // is not used. "medium" has no type-based meaning, so it filters nothing.
+    if (params.affordabilityTier === "low") {
+      const lowFiltered = results.filter(
+        (h) =>
+          h.type.includes("Government") ||
+          h.type.includes("Trust") ||
+          h.type.includes("TMC")
+      );
+      if (lowFiltered.length > 0) results = lowFiltered;
     }
 
     // ── 5. Sort + limit ──
-    results.sort(
-      stage === "distance" ? compareByDistanceThenScore : (a, b) => b.score - a.score
-    );
+    results.sort(compareForRequest(requestedCity, resolvedState, stage));
     const regionalResults = results.slice(0, params.maxResults ?? 3);
 
     // ── 6. Fail closed on capability ──
@@ -755,18 +802,22 @@ export class HospitalDirectoryService implements OnModuleInit {
         meetsAllRequirements(h.departments, requirementGroups)
       );
     }
-    // When PMJAY required, prefer government/low-cost national centres
+    // When PMJAY required, prefer centres recorded as PMJAY or government
     if (params.pmjayRequired) {
       const govNational = nationalPool.filter(
-        (h) =>
-          h.pmjay_empanelled === true ||
-          h.type.includes("Government") ||
-          h.cost_tier === "Low"
+        (h) => h.pmjay_empanelled === true || h.type.includes("Government")
       );
       if (govNational.length > 0) nationalPool = govNational;
     }
 
-    nationalPool.sort((a, b) => b.score - a.score);
+    // Nearest first where the patient's city is geocoded, then by name.
+    if (origin) {
+      nationalPool = nationalPool.map((h) => {
+        const coords = hospitalCoords(h);
+        return coords ? { ...h, distance_km: haversineKm(origin, coords) } : h;
+      });
+    }
+    nationalPool.sort(compareForRequest(null, null, "national"));
     const nationalResults = nationalPool
       .slice(0, 2)
       .map((h) => ({ ...h, national_referral: true as const }));
@@ -839,23 +890,17 @@ export class HospitalDirectoryService implements OnModuleInit {
       .map((id) => this.getHospitalById(id))
       .filter((h): h is HospitalSearchResult => h !== null);
 
-    const costTiers: Record<string, string> = {};
     const pmjayStatus: Record<string, boolean | null> = {};
     const departments: Record<string, string[]> = {};
-    const tiers: Record<string, string | null> = {};
-    const scores: Record<string, number> = {};
 
     for (const h of hospitals) {
-      costTiers[h.short_name] = h.cost_tier ?? "Unknown";
       pmjayStatus[h.short_name] = h.pmjay_empanelled;
       departments[h.short_name] = h.departments;
-      tiers[h.short_name] = h.tier;
-      scores[h.short_name] = h.score;
     }
 
     return {
       hospitals,
-      comparison: { costTiers, pmjayStatus, departments, tiers, scores },
+      comparison: { pmjayStatus, departments },
     };
   }
 
@@ -878,37 +923,21 @@ export class HospitalDirectoryService implements OnModuleInit {
       "Prescription history",
     ];
 
-    // Logistics notes — extract lodging/dharmashala info from notes
+    // Logistics: nothing is read from the record's free-text notes, which have
+    // not been reviewed for publication.
     const logisticsNotes: string[] = [];
-    const notesLower = hospital.notes.toLowerCase();
-    if (notesLower.includes("dharmashala") || notesLower.includes("dharamshala")) {
-      logisticsNotes.push("Dharmashala/patient accommodation available nearby — confirm before travel");
-    }
-    if (notesLower.includes("lodging") || notesLower.includes("guest house") || notesLower.includes("guesthouse")) {
-      logisticsNotes.push("Patient lodging available nearby — confirm availability before travel");
-    }
-    if (hospital.type.includes("Government") || hospital.type.includes("TMC")) {
-      logisticsNotes.push("Government/Trust hospital — typically no advance payment required for initial OPD");
-    }
 
-    // Financial notes
+    // Financial notes: from the recorded PMJAY status only, never the cost tier.
     const financialNotes: string[] = [];
     if (hospital.pmjay_empanelled === true) {
-      financialNotes.push("PM-JAY (Ayushman Bharat) accepted — bring Ayushman card and Aadhaar");
-      financialNotes.push("PM-JAY covers up to ₹5 lakh per year for inpatient care");
-    } else if (hospital.cost_tier === "Low" || hospital.type.includes("Government")) {
-      financialNotes.push("Government rates apply — treatment costs significantly lower than private hospitals");
-      financialNotes.push("Check with hospital help desk about state government health schemes");
+      financialNotes.push(
+        "PM-JAY empanelment is as recorded in the directory. Confirm with the hospital, and bring your Ayushman card and Aadhaar."
+      );
     }
-    if (hospital.cost_tier === "Medium" || hospital.cost_tier === "High") {
-      financialNotes.push("Ask the hospital social worker about financial assistance or instalment options");
-    }
+    financialNotes.push("Ask the hospital help desk or social worker about government schemes and financial assistance.");
 
-    // Navigation notes from the hospital record
-    const navigationNotes =
-      hospital.navigation_notes.length > 0
-        ? [...hospital.navigation_notes]
-        : [STANDARD_DISCLAIMER];
+    // The record's navigation notes have not been reviewed for publication.
+    const navigationNotes = [STANDARD_DISCLAIMER];
 
     return {
       hospitalId: hospital.id,
