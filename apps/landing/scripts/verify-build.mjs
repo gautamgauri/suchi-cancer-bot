@@ -10,6 +10,12 @@
  *     frontmatter does not record a completed review (src/lib/review-status.mjs)
  *   - a page lacks a <title> or meta description, or an indexable page has a wrong canonical URL
  *   - an internal link points at a page that was not built
+ *   - the Hospital Directory or the Find Care hub shows unreviewed text from
+ *     hospitals.json: notes, risk flags, navigation_notes, sccf_notes, a name from
+ *     key_doctors or a doctor's name found in notes. Also the word "verified", an old
+ *     cost label or a score.
+ *   - "Invalid Date" appears on any page
+ *   - a tel: link on a hospital directory page is not exactly one valid Indian number
  *
  * Warns (exit 0) when:
  *   - two indexable pages share a <title> or meta description
@@ -24,9 +30,12 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
+import { TEL_HREF_RE } from '../src/lib/phone.mjs';
+import { listable, deptLabel } from '../src/lib/hospital-directory.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
+const HOSPITALS = fileURLToPath(new URL('../src/content/hospitals.json', import.meta.url));
 const SITE = 'https://suchitracancercare.org';
 const errors = [];
 const warnings = [];
@@ -200,6 +209,87 @@ const brokenTargets = new Set([...brokenLinks].map((l) => l.split(' -> ')[1]));
 const unexpectedBroken = [...brokenLinks].filter((l) => !KNOWN_BROKEN.has(l.split(' -> ')[1]));
 for (const t of KNOWN_BROKEN) {
   if (!brokenTargets.has(t)) warnings.push(`KNOWN_BROKEN entry ${t} is no longer broken. Remove it from the list.`);
+}
+
+// The Hospital Directory and the Find Care hub must not show text from
+// hospitals.json that has not been reviewed for publication. The search runs
+// over the whole HTML (text, attributes, comments, embedded JSON and JSON-LD)
+// with HTML entities and JSON escapes decoded. A string is skipped when the
+// page legitimately shows it: inside a listed entry's name, city, state, type
+// or department labels, or inside the page's own fixed copy. Free-text fields
+// are tested only from 40 characters, so a short phrase cannot block a deploy.
+// Failure messages name the field and the entry id, never the text.
+const decodeHtml = (s) =>
+  s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+const decodeJson = (s) =>
+  s.replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16))).replace(/\\(["\\/])/g, '$1');
+const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+const FREE_TEXT_FLOOR = 40;
+const DOCTOR_IN_TEXT = /\bDr\.?\s?(?:[A-Z][A-Za-z]*\.?\s?){1,4}/g;
+{
+  const hospitals = JSON.parse(readFileSync(HOSPITALS, 'utf8')).hospitals;
+  const shown = hospitals.filter(listable);
+  const displayed = shown.flatMap((h) =>
+    [h.name, h.city, h.state, h.type, ...(h.departments ?? []).map(deptLabel)].filter(Boolean).map(norm),
+  );
+  const pages = [
+    { path: '/find-care/hospitals/', file: join(DIST, 'find-care/hospitals/index.html'), fixedCut: /<ul class="hosp-grid"[\s\S]*?<\/ul>/ },
+    { path: '/find-care/', file: join(DIST, 'find-care/index.html'), fixedCut: null },
+  ];
+  let checked = 0;
+  for (const page of pages) {
+    if (!existsSync(page.file)) {
+      errors.push(`${page.path} was not built`);
+      continue;
+    }
+    const raw = readFileSync(page.file, 'utf8');
+    const haystack = norm(decodeJson(decodeHtml(raw)));
+    const fixedHtml = page.fixedCut ? raw.replace(page.fixedCut, ' ') : raw;
+    const fixedCopy = norm(decodeHtml(visibleText(fixedHtml)));
+    const legit = (t) => fixedCopy.includes(t) || displayed.some((d) => d.includes(t));
+    const test = (field, id, text, floor) => {
+      if (typeof text !== 'string') return;
+      const t = norm(text);
+      if (t.length < floor || legit(t)) return;
+      checked += 1;
+      if (haystack.includes(t)) errors.push(`${page.path}: shows ${field} of ${id}`);
+    };
+    for (const h of hospitals) {
+      test('notes', h.id, h.notes, FREE_TEXT_FLOOR);
+      test('risk_flag', h.id, h.risk_flag, FREE_TEXT_FLOOR);
+      test('sccf_notes', h.id, h.sccf_notes, FREE_TEXT_FLOOR);
+      for (const n of h.navigation_notes ?? []) test('navigation_notes', h.id, n, FREE_TEXT_FLOOR);
+      for (const d of h.key_doctors ?? []) test('key_doctors', h.id, typeof d === 'string' ? d : d?.name, 6);
+      for (const m of String(h.notes ?? '').matchAll(DOCTOR_IN_TEXT)) test('a doctor name in notes', h.id, m[0], 6);
+    }
+    const visible = decodeHtml(visibleText(raw)) + ' ' + [...raw.matchAll(/<meta [^>]*content="([^"]*)"/g)].map((m) => decodeHtml(m[1])).join(' ');
+    if (/\bverified\b/i.test(visible)) errors.push(`${page.path}: uses the word "verified"`);
+    if (page.path === '/find-care/hospitals/') {
+      for (const label of ['Free / Subsidised', 'Moderate Cost', 'Private Rates']) {
+        if (visible.includes(label)) errors.push(`${page.path}: shows the old cost label "${label}"`);
+      }
+      if (/\b\d{1,3}\s*\/\s*(10|100)\b/.test(visible)) errors.push(`${page.path}: shows a score`);
+    }
+  }
+  console.log(`hospital free-text guard: ${checked} strings checked on ${pages.length} pages`);
+}
+
+for (const file of htmlFiles) {
+  const html = readFileSync(file, 'utf8');
+  if (html.includes('Invalid Date')) errors.push(`${pagePath(file)}: shows "Invalid Date"`);
+  // A hospital phone must dial exactly one valid Indian number. Other pages
+  // may link a helpline short code such as 112, so they are not checked.
+  if (pagePath(file).startsWith('/find-care/hospitals/')) {
+    for (const m of html.matchAll(/href="(tel:[^"]*)"/g)) {
+      if (!TEL_HREF_RE.test(m[1])) errors.push(`${pagePath(file)}: tel: link "${m[1]}" is not a single valid number`);
+    }
+  }
 }
 
 console.log(`pages built: ${builtPaths.size} (${notIndexable} not indexable, ${THIN_HUBS.length} thin hubs left out of the sitemap)`);
