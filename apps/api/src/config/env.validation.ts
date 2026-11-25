@@ -51,8 +51,8 @@ export const envSchema = z.object({
   REVIEW_COPILOT_MODE: z.enum(['off', 'shadow', 'active']).optional().default('off'),
   // Social post publishing (all optional — platforms without credentials are silently skipped)
   SUCHI_SITE_URL:           z.string().optional().default("https://suchitracancercare.org"),
-  SOCIAL_APPROVAL_SECRET:   z.string().optional(),
-  DISTRIBUTION_APPROVAL_SECRET: z.string().optional(), // HMAC key for one-click distribution approve/reject links
+  SOCIAL_APPROVAL_SECRET:   z.string().optional(), // signs social approval links. Falls back to CONTENT_APPROVAL_SECRET, never to a built-in value
+  DISTRIBUTION_APPROVAL_SECRET: z.string().optional(), // used only by the distribution/ CLI. The API's distribution links are retired
   // Meta (Facebook + Instagram)
   META_PAGE_ID:             z.string().optional(),
   META_PAGE_ACCESS_TOKEN:   z.string().optional(),
@@ -61,6 +61,19 @@ export const envSchema = z.object({
   // LinkedIn UGC Posts API
   LINKEDIN_ACCESS_TOKEN:    z.string().optional(), // OAuth 2.0 bearer token, expires in 60 days
   LINKEDIN_AUTHOR_URN:      z.string().optional(), // e.g. urn:li:organization:12345
+  // Social distribution (apps/api/src/modules/social). docs/OPERATIONS.md section 12.
+  // live sends approved posts, dry_run records exactly what would be sent and
+  // sends nothing, off prepares nothing. Default dry_run.
+  SOCIAL_PUBLISH_MODE:      z.enum(["live", "dry_run", "off"]).optional().default("dry_run"),
+  // X is off unless this is "true" and all four X keys are set.
+  SOCIAL_X_ENABLED:         z.string().optional().default("false"),
+  // X keys (OAuth 1.0a user context), read from optional env. Not in the
+  // cloudbuild --set-secrets lists until the secrets exist, because a missing
+  // secret fails every deploy. See docs/OPERATIONS.md section 12.
+  X_API_KEY:                z.string().optional(),
+  X_API_SECRET:             z.string().optional(),
+  X_ACCESS_TOKEN:           z.string().optional(),
+  X_ACCESS_TOKEN_SECRET:    z.string().optional(),
   // WhatsApp conversational channel — Meta Cloud API (§16 / FR-WA-014).
   // All optional: when any are missing the channel fails safe (no outbound send).
   META_WABA_PHONE_NUMBER_ID: z.string().optional(), // numeric phone number id from the WABA

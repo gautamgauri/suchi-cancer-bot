@@ -15,10 +15,12 @@
 
 /**
  * The only codes that are read and stripped. The landing site uses the first
- * four. `wa-qr` and `wa-poster` are kept for printed material.
+ * four. `wa-qr` and `wa-poster` are kept for printed material. The four
+ * `wa-<platform>` codes are used by the WhatsApp links in social posts
+ * (social/links.ts, WHATSAPP_SOCIAL_CODES), one per platform.
  *
- * A new code needs an API deploy BEFORE the site or any print uses it. Until
- * then its line reaches the pipeline as part of the message.
+ * A new code needs an API deploy BEFORE the site, a print or a post uses it.
+ * Until then its line reaches the pipeline as part of the message.
  */
 export const WHATSAPP_SOURCE_CODES: ReadonlySet<string> = new Set([
   "wa-header",
@@ -27,6 +29,10 @@ export const WHATSAPP_SOURCE_CODES: ReadonlySet<string> = new Set([
   "wa-hospitals",
   "wa-qr",
   "wa-poster",
+  "wa-linkedin",
+  "wa-facebook",
+  "wa-instagram",
+  "wa-x",
 ]);
 
 /** The two greeting lines the site prefills above the source line. */
