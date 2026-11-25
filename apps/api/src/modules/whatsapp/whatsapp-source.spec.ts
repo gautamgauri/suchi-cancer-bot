@@ -16,10 +16,14 @@ const siteGreeting = (code: string) => `${GREETING}\n(src: ${code})`;
 const SITE_CODES = ["wa-header", "wa-article", "wa-video", "wa-hospitals"];
 
 describe("extractSourceLine", () => {
-  it("allows exactly the site and print codes", () => {
+  it("allows exactly the site, print and social codes", () => {
     expect([...WHATSAPP_SOURCE_CODES].sort()).toEqual(
-      ["wa-article", "wa-clinic", "wa-header", "wa-hospitals", "wa-poster", "wa-qr", "wa-video"],
+      ["wa-article", "wa-clinic", "wa-facebook", "wa-header", "wa-hospitals", "wa-instagram", "wa-linkedin", "wa-poster", "wa-qr", "wa-video", "wa-x"],
     );
+  });
+
+  it.each(["wa-linkedin", "wa-facebook", "wa-instagram", "wa-x"])("reads a social post code: %s", (code) => {
+    expect(extract(siteGreeting(code))).toEqual({ text: GREETING, sourceCode: code });
   });
 
   it.each(SITE_CODES)("reads and strips the site's source line: %s", (code) => {
