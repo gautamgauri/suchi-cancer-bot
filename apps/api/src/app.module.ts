@@ -26,6 +26,7 @@ import { ObservabilityModule } from "./modules/observability/observability.modul
 import { WhatsAppNavigatorModule } from "./modules/whatsapp-navigator/whatsapp-navigator.module";
 import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 import { DistributionModule } from "./modules/distribution/distribution.module";
+import { SocialModule } from "./modules/social/social.module";
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { DistributionModule } from "./modules/distribution/distribution.module";
     WhatsAppNavigatorModule,
     WhatsAppModule,
     DistributionModule,
+    SocialModule,
     ...(process.env.VOICE_WS_ENABLED === 'true' ? [VoiceWsModule] : []),
   ],
   providers: [
