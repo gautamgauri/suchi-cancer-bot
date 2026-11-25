@@ -16,7 +16,7 @@ describe("ExecutionPlannerService", () => {
   // ─── plan() ────────────────────────────────────────────────────
 
   describe("plan()", () => {
-    test("navigation with hospital search → template plan with navigation + scheme retrieval", () => {
+    test("navigation with hospital search → template plan with navigation retrieval only", () => {
       const plan = planner.plan(
         "Which hospital in Patna is best for cancer treatment?",
         "NAVIGATION",
@@ -28,13 +28,15 @@ describe("ExecutionPlannerService", () => {
       expect(plan.template).not.toBeNull();
       expect(plan.template!.id).toBe("hospital_visit_prep");
 
+      // The financial section is filled from the verified file (issue #260),
+      // so the template no longer asks for a "schemes" retrieval.
       const retrievals = stepsOfType<RetrievalStep>(plan.steps, "retrieve");
       const intents = retrievals.map((r) => r.intent);
       expect(intents).toContain("navigation");
-      expect(intents).toContain("schemes");
+      expect(intents).not.toContain("schemes");
     });
 
-    test("schemes query → template plan with scheme retrieval", () => {
+    test("schemes query → no template (issue #260), LLM plan with scheme retrieval", () => {
       const plan = planner.plan(
         "How to apply for Ayushman Bharat card?",
         "SCHEMES",
@@ -42,9 +44,8 @@ describe("ExecutionPlannerService", () => {
         "en"
       );
 
-      expect(plan.usesStructuredTemplate).toBe(true);
-      expect(plan.template).not.toBeNull();
-      expect(plan.template!.id).toBe("scheme_application");
+      expect(plan.usesStructuredTemplate).toBe(false);
+      expect(plan.template).toBeNull();
 
       const retrievals = stepsOfType<RetrievalStep>(plan.steps, "retrieve");
       const intents = retrievals.map((r) => r.intent);
@@ -239,8 +240,20 @@ describe("ExecutionPlannerService", () => {
     });
 
     test("template-driven retrieval deduplicates same intent", () => {
-      // SCHEME_APPLICATION_CHECKLIST has 3 sections with intent "schemes"
-      // but they should be deduplicated to 1 retrieval call
+      // PSYCHOSOCIAL_SUPPORT has 2 sections with intent "psychosocial" but
+      // they should be deduplicated to 1 retrieval call
+      const plan = planner.plan(
+        "I feel very scared about cancer",
+        "PSYCHOSOCIAL"
+      );
+
+      const psychoRetrievals = stepsOfType<RetrievalStep>(plan.steps, "retrieve").filter(
+        (r) => r.intent === "psychosocial"
+      );
+      expect(psychoRetrievals.length).toBe(1);
+    });
+
+    test("a scheme question asks for at most one schemes retrieval", () => {
       const plan = planner.plan(
         "Tell me about Ayushman Bharat scheme",
         "SCHEMES"
@@ -249,6 +262,58 @@ describe("ExecutionPlannerService", () => {
       const retrievals = stepsOfType<RetrievalStep>(plan.steps, "retrieve");
       const schemeRetrievals = retrievals.filter((r) => r.intent === "schemes");
       expect(schemeRetrievals.length).toBe(1);
+    });
+  });
+
+  // ─── Hospital directory reach (issue #260) ────────────────────
+
+  describe("hospital directory reach (issue #260)", () => {
+    let loaded: ExecutionPlannerService;
+    beforeAll(() => {
+      const directory = new HospitalDirectoryService();
+      directory.onModuleInit();
+      loaded = new ExecutionPlannerService(directory);
+    });
+
+    test("a plural question searches the directory: 'Which cancer hospitals are there in Patna?'", () => {
+      // On main `\bhospital\b` failed on "hospitals", so the template's
+      // hospital section was filled from knowledge base chunks.
+      const plan = loaded.plan("Which cancer hospitals are there in Patna?", "NAVIGATION");
+      expect(plan.signals).toContain("hospital_search");
+      expect(plan.structuredHospitalResults?.length).toBeGreaterThan(0);
+      expect(plan.structuredHospitalResults!.every((h) => h.city === "Patna" || h.national_referral)).toBe(true);
+    });
+
+    test("a question without the word hospital searches the directory when a place is named", () => {
+      const plan = loaded.plan("Where can I get cancer treatment in Lucknow?", "NAVIGATION");
+      expect(plan.signals).toContain("hospital_search");
+      expect(plan.structuredHospitalResults?.some((h) => h.city === "Lucknow")).toBe(true);
+    });
+
+    test("no place recognised: no directory list and no national centres", () => {
+      const plan = loaded.plan("which hospital is best for my cancer", "NAVIGATION");
+      expect(plan.structuredHospitalResults ?? null).toBeNull();
+      expect(plan.structuredHospitalGeography ?? null).toBeNull();
+    });
+
+    test("'follow up' is not a place", () => {
+      const plan = loaded.plan("when is my follow up visit", "NAVIGATION");
+      expect(plan.signals).not.toContain("location_mentioned");
+    });
+
+    test("searchForPlace pools national and regional centres: Guwahati lists BBCI first", () => {
+      const outcome = loaded.searchForPlace("Which hospital in Guwahati treats cancer?", {
+        city: "Guwahati",
+        state: "Assam",
+        confidence: 1,
+      });
+      expect(outcome!.results[0].city).toBe("Guwahati");
+      expect(outcome!.results.some((h) => h.national_referral === true)).toBe(false);
+    });
+
+    test("searchForPlace never returns held or excluded entries", () => {
+      const outcome = loaded.searchForPlace("Cancer hospital in Shillong", { city: "Shillong", state: "Meghalaya", confidence: 1 });
+      expect(outcome!.results.map((h) => h.id)).not.toContain("neigrihms-shillong");
     });
   });
 

@@ -27,7 +27,9 @@ import {
   HospitalDirectoryService,
   HospitalSearchGeography,
 } from "./hospital-directory.service";
-import { detectLocation } from "./utils/location-detector";
+import { detectPlace, PlaceResult } from "./utils/location-detector";
+import { isPlaceSeekingQuestion } from "./practical/practical-router";
+import type { HospitalSearchOutcome } from "./hospital-directory.service";
 
 // ─── Hospital Search Result (mirrored from HospitalDirectoryService) ──────────
 
@@ -169,9 +171,13 @@ function detectSignals(userText: string, sessionContext?: SessionContext): Detec
     /\b(budget|afford|cost|paisa|paise|kharcha|खर्च|पैसा|गरीब|free|muft|मुफ्त)\b/i.test(lower);
   if (budgetConcern) signals.push("budget_concern");
 
+  // A place is any city or state the location detector recognises (issue
+  // #260). The old list knew eight cities and read "up" in "follow up" as
+  // Uttar Pradesh.
   const locationMentioned =
-    /\b(patna|gaya|muzaffarpur|ranchi|delhi|mumbai|kolkata|lucknow|bihar|jharkhand|up|uttar pradesh)\b/i.test(lower) ||
-    /\b(district|city|state|शहर|जिला|राज्य)\b/i.test(lower);
+    detectPlace(userText) !== null ||
+    /\b(district|city|state)\b/i.test(lower) ||
+    /(शहर|जिला|ज़िला|राज्य)/.test(lower);
   if (locationMentioned) signals.push("location_mentioned");
 
   const reportReceived =
@@ -195,9 +201,16 @@ function detectSignals(userText: string, sessionContext?: SessionContext): Detec
   // Same bug family as the Hindi safety-keyword misses (issue #30). Only this
   // signal is repaired here; the other `\b`-guarded Devanagari alternatives in
   // this function have the same latent defect and are left untouched.
+  //
+  // Plurals count (issue #260): "Which cancer hospitals are there in Patna?"
+  // failed `\bhospital\b`, so the directory was never searched and the
+  // template's hospital section was filled from knowledge base chunks. A
+  // question that asks where to get treatment in a named place counts too,
+  // with or without the word "hospital".
   const hospitalSearch =
-    /\b(hospital|clinic|centre|center|dispensary|kaun sa|best|acha)\b/i.test(lower) ||
-    /(अस्पताल|कौन सा|अच्छा)/.test(lower);
+    /\b(hospitals?|clinics?|centres?|centers?|dispensary|dispensaries|kaun sa|best|acha)\b/i.test(lower) ||
+    /(अस्पताल|कौन सा|अच्छा)/.test(lower) ||
+    isPlaceSeekingQuestion(userText);
   if (hospitalSearch) signals.push("hospital_search");
 
   const chemoPrepare =
@@ -336,8 +349,12 @@ export class ExecutionPlannerService {
     // ── Hospital Intelligence: structured lookup for hospital_search signals ──
     let structuredHospitalResults: HospitalSearchResult[] | null = null;
     let structuredHospitalGeography: HospitalSearchGeography | null = null;
-    if (detected.hospitalSearch && category === "NAVIGATION" && this.hospitalDirectory.isLoaded()) {
-      const locationResult = detectLocation(userText);
+    // Only when a place is recognised (issue #260). With no place there is
+    // nothing to search near, and the old fallback listed centres from the
+    // whole country, with national centres appended, as if they were nearby.
+    const placeResult = detectPlace(userText);
+    if (detected.hospitalSearch && category === "NAVIGATION" && placeResult && this.hospitalDirectory.isLoaded()) {
+      const locationResult = placeResult;
       const cancerType = this.extractCancerType(userText);
       // What the patient said they need done, independent of cancer type. This
       // is what makes the directory's hard capability filter reachable from the
@@ -362,11 +379,15 @@ export class ExecutionPlannerService {
       // about, and this field becomes the LLM's authoritative hospital list
       // (PR #148 review, P0). Anything that wants to speak about the withheld
       // centres needs its own SCCF-reviewed surface, not this one.
-      structuredHospitalResults = hospitalOutcome.results;
-      structuredHospitalGeography = hospitalOutcome.geography;
+      // A search that matched nothing in or near the place returns the whole
+      // regional pool ("unfiltered"). That is not a list for this place, so it
+      // is not used: the hospital section is left out instead.
+      const matchedPlace = hospitalOutcome.geography.stage !== "unfiltered" && hospitalOutcome.geography.stage !== "none";
+      structuredHospitalResults = matchedPlace ? hospitalOutcome.results : null;
+      structuredHospitalGeography = matchedPlace ? hospitalOutcome.geography : null;
 
       reasoningParts.push(
-        `Hospital lookup: ${structuredHospitalResults.length} results (location=${locationResult?.city ?? "undetected"}, stage=${structuredHospitalGeography.stage}, cancerType=${cancerType ?? "any"}, needs=${requiredDepartments.join("+") || "none"}, capabilityUnavailable=${structuredHospitalGeography.capabilityUnavailable === true}, withheldIncapable=${hospitalOutcome.nonCapableRegional.length}, pmjay=${pmjayRequired})`
+        `Hospital lookup: ${structuredHospitalResults?.length ?? 0} results (location=${locationResult?.city ?? "undetected"}, stage=${hospitalOutcome.geography.stage}, cancerType=${cancerType ?? "any"}, needs=${requiredDepartments.join("+") || "none"}, capabilityUnavailable=${hospitalOutcome.geography.capabilityUnavailable === true}, withheldIncapable=${hospitalOutcome.nonCapableRegional.length}, pmjay=${pmjayRequired})`
       );
     }
 
@@ -551,6 +572,28 @@ export class ExecutionPlannerService {
       structuredHospitalResults,
       structuredHospitalGeography,
     };
+  }
+
+  /**
+   * Search the hospital directory for a practical "where can I get treatment"
+   * question (issue #260), pooling regional and national centres. Returns null
+   * when the directory is not loaded.
+   */
+  searchForPlace(userText: string, place: PlaceResult): HospitalSearchOutcome | null {
+    if (!this.hospitalDirectory.isLoaded()) return null;
+    const lower = userText.toLowerCase();
+    const detected = detectSignals(userText);
+    return this.hospitalDirectory.searchHospitalsWithGeography({
+      city: place.city,
+      state: place.state,
+      cancerType: this.extractCancerType(userText),
+      requiredDepartments: this.extractTreatmentNeeds(userText),
+      pmjayRequired:
+        /\b(pmjay|ayushman|pm-jay|government|govt|sarkari|free)\b/i.test(lower) || /(आयुष्मान|सरकारी|मुफ्त)/.test(userText),
+      affordabilityTier: detected.budgetConcern || /\b(poor|garib|gareeb)\b/i.test(lower) ? "low" : "any",
+      maxResults: 30, // the answer ranks and caps the list itself
+      pooled: true,
+    });
   }
 
   /**

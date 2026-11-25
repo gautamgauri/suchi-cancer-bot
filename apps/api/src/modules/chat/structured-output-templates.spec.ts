@@ -5,7 +5,6 @@ import {
   BIOPSY_NEXT_STEPS,
   CHEMO_DAY_PREP,
   SECOND_OPINION_PREP,
-  SCHEME_APPLICATION_CHECKLIST,
   PSYCHOSOCIAL_SUPPORT,
   HOSPITAL_VISIT_PREP,
   OutputTemplate,
@@ -146,40 +145,54 @@ describe("StructuredOutputTemplates", () => {
       });
     });
 
-    describe("Scheme/financial queries → SCHEME_APPLICATION_CHECKLIST", () => {
-      test("category: SCHEMES", () => {
-        const result = selectOutputTemplate("SCHEMES", [], "tell me about government help");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
+    // Issue #260: the fixed scheme template is removed. No money question is
+    // answered by a template any more. A practical one is answered from the
+    // verified file before planning, and one with medical content takes the
+    // ordinary evidence-gated path.
+    describe("Scheme/financial queries → no template (issue #260)", () => {
+      test.each([
+        ["SCHEMES", [], "tell me about government help"],
+        ["EDUCATION", ["budget_concern"], "treatment cost is too much"],
+        ["EDUCATION", [], "how to get ayushman bharat card"],
+        ["EDUCATION", [], "government scheme for cancer"],
+        ["EDUCATION", [], "सरकारी योजना कैसे मिलेगी"],
+        ["EDUCATION", [], "आयुष्मान कार्ड कैसे बनता है"],
+        ["EDUCATION", [], "paisa ki bahut dikkat hai"],
+      ] as Array<[string, string[], string]>)("%s %j %s → null", (category, signals, text) => {
+        expect(selectOutputTemplate(category, signals, text)).toBeNull();
       });
 
-      test("signal: budget_concern", () => {
-        const result = selectOutputTemplate("EDUCATION", ["budget_concern"], "treatment cost is too much");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
+      test("the registry no longer holds a scheme template", () => {
+        expect(TEMPLATE_REGISTRY["scheme_application"]).toBeUndefined();
       });
 
-      test("keyword: ayushman", () => {
-        const result = selectOutputTemplate("NAVIGATION", [], "how to get ayushman bharat card");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
+      test("no template carries a fixed scheme document list", () => {
+        for (const t of Object.values(TEMPLATE_REGISTRY)) {
+          for (const section of t.sections) {
+            const text = section.staticContent ?? "";
+            expect({ section: section.id, text }).toEqual({
+              section: section.id,
+              text: expect.not.stringMatching(/tehsildar|income certificate|BPL certificate|Passport-size photographs|Bank account details/i),
+            });
+          }
+        }
+      });
+    });
+
+    describe("Hospital visit checklist (issue #260)", () => {
+      test("asks for no papers the official PM-JAY FAQ does not support", () => {
+        const docs = HOSPITAL_VISIT_PREP.sections.find((s) => s.id === "documents_checklist")!.staticContent!;
+        expect(docs).not.toMatch(/BPL certificate|income certificate|Passport-size photographs/i);
       });
 
-      test("keyword: scheme", () => {
-        const result = selectOutputTemplate("EDUCATION", [], "government scheme for cancer");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
-      });
-
-      test("Hindi: योजना", () => {
-        const result = selectOutputTemplate("EDUCATION", [], "सरकारी योजना कैसे मिलेगी");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
-      });
-
-      test("Hindi: आयुष्मान", () => {
-        const result = selectOutputTemplate("EDUCATION", [], "आयुष्मान कार्ड कैसे बनता है");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
-      });
-
-      test("keyword: paisa", () => {
-        const result = selectOutputTemplate("EDUCATION", [], "paisa ki bahut dikkat hai");
-        expect(result).toBe(SCHEME_APPLICATION_CHECKLIST);
+      test("fills its financial section from the verified file, never from retrieval", () => {
+        const section = HOSPITAL_VISIT_PREP.sections.find((s) => s.id === "financial_support")!;
+        expect(section.source).toBe("template");
+        expect(section.staticContent).toContain(
+          "- At admission to hospital, carry a ration card or any government photo ID such as Aadhaar."
+        );
+        expect(section.staticContent).toContain("- The PM-JAY toll-free helpline is 14555.");
+        expect(section.staticContent).toMatch(/Checked on 25 November 2026\./);
       });
     });
 
@@ -362,16 +375,12 @@ describe("StructuredOutputTemplates", () => {
   // ─── Template Registry ──────────────────────────────────────────
 
   describe("TEMPLATE_REGISTRY", () => {
-    test("contains all 6 expected templates", () => {
-      expect(Object.keys(TEMPLATE_REGISTRY)).toHaveLength(6);
+    test("contains all 5 expected templates", () => {
+      expect(Object.keys(TEMPLATE_REGISTRY)).toHaveLength(5);
     });
 
     test("has hospital_visit_prep", () => {
       expect(TEMPLATE_REGISTRY["hospital_visit_prep"]).toBe(HOSPITAL_VISIT_PREP);
-    });
-
-    test("has scheme_application", () => {
-      expect(TEMPLATE_REGISTRY["scheme_application"]).toBe(SCHEME_APPLICATION_CHECKLIST);
     });
 
     test("has chemo_day_prep", () => {

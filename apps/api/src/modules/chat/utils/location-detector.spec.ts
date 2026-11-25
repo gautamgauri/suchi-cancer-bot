@@ -1,4 +1,4 @@
-import { detectLocation } from './location-detector';
+import { detectLocation, detectPlace, detectState } from './location-detector';
 
 describe('detectLocation', () => {
   describe('exact match with context', () => {
@@ -49,13 +49,20 @@ describe('detectLocation', () => {
       }));
     });
 
-    it('should match "Muzffapur" (transposed) via fuzzy', () => {
-      const result = detectLocation('I am from Muzffapur');
+    it('should match "Muzaffarpr" (one letter missing) via fuzzy', () => {
+      const result = detectLocation('I am from Muzaffarpr');
       expect(result).not.toBeNull();
       expect(result).toEqual(expect.objectContaining({
         city: 'Muzaffarpur',
       }));
       expect(result.confidence).toBeLessThan(1.0);
+    });
+
+    // Issue #260: fuzzy matching is at distance one only. "Muzffapur" is two
+    // edits from every alias, and a two-edit match is what read "Kochi" as
+    // "kashi" (Varanasi).
+    it('does not match a word two edits from every alias', () => {
+      expect(detectLocation('I am from Muzffapur')).toBeNull();
     });
 
     it('should match "Bangaluru" as Bengaluru', () => {
@@ -154,6 +161,104 @@ describe('detectLocation', () => {
       expect(result).toEqual(expect.objectContaining({
         city: 'Prayagraj',
       }));
+    });
+  });
+
+  // Issue #260, assessment cause 4: the misreadings found on the live service.
+  describe('misreadings from the practical support assessment', () => {
+    it.each([
+      ['Cancer hospital in Kochi or Thiruvananthapuram?', 'Kochi', 'Kerala'],
+      ['How do I get an appointment at Tata Memorial Hospital Mumbai?', 'Mumbai', 'Maharashtra'],
+      ['Any cancer centre in Odisha near Bhubaneswar?', 'Bhubaneswar', 'Odisha'],
+      ['Good cancer hospital in Punjab? We live near Ludhiana', 'Ludhiana', 'Punjab'],
+      ['Is there a cancer hospital in Shillong or anywhere in Meghalaya?', 'Shillong', 'Meghalaya'],
+      ['वाराणसी में कैंसर का इलाज कहाँ होता है?', 'Varanasi', 'Uttar Pradesh'],
+      ['पटना में कैंसर का अस्पताल', 'Patna', 'Bihar'],
+    ])('reads "%s" as %s', (text, city, state) => {
+      expect(detectLocation(text)).toEqual(expect.objectContaining({ city, state }));
+    });
+
+    it.each([
+      ['Tata Memorial'],
+      ['Any cancer centre?'],
+      ['report aa gaya hai'],
+      ['dard chala gaya'],
+      ['मैं कल अस्पताल गया था'],
+    ])('finds no city in "%s"', (text) => {
+      expect(detectLocation(text)).toBeNull();
+    });
+
+    it('still reads Gaya after a place word', () => {
+      expect(detectLocation('hospital in Gaya')).toEqual(expect.objectContaining({ city: 'Gaya' }));
+      expect(detectLocation('Gaya mein cancer hospital')).toEqual(expect.objectContaining({ city: 'Gaya' }));
+    });
+
+    it('never matches a short word fuzzily', () => {
+      // "kochi" is two edits from "kashi", "tata" two from "patna": both
+      // matched before. Five-letter words are now exact matches only.
+      expect(detectLocation('pune')).toEqual(expect.objectContaining({ city: 'Pune' }));
+      expect(detectLocation('punee')).toBeNull();
+    });
+  });
+
+  // Review of PR #267, item 7: a fuzzy match needs a place cue, and
+  // ordinary words, surnames and other real places are never matched.
+  describe('fuzzy false positives from review', () => {
+    it.each([
+      ['no hunger, only tiredness'],
+      ['Dr Chopra said to wait'],
+      ['Dr Chopra ka clinic'],
+      ['we are from Kalyan'],
+      ['Kalyan'],
+      ['I live in Rampur'],
+      ['Rampur'],
+      ['he studies in a madrasa'],
+      ['madrasa'],
+      ['cancer ho gaya mein kya karun'],
+      ['report aa gaya se pehle'],
+      ['कैंसर हो गया में अस्पताल'],
+    ])('finds no city in "%s"', (text) => {
+      expect(detectLocation(text)).toBeNull();
+    });
+
+    it.each([
+      ['Cancer hospital in Kochi or Thiruvananthapuram?', 'Kochi'],
+      ['hospitals in Bombay', 'Mumbai'],
+      ['I am from Muzaffarpr', 'Muzaffarpur'],
+      ['Muzaffarpr hospital', 'Muzaffarpur'],
+      ['Gaya mein cancer hospital', 'Gaya'],
+    ])('still reads "%s" as %s', (text, city) => {
+      expect(detectLocation(text)).toEqual(expect.objectContaining({ city }));
+    });
+
+    it('does not match a misspelling with no place cue next to it', () => {
+      expect(detectLocation('Muzaffarpr breast cancer')).toBeNull();
+    });
+
+    it.each([['when is my follow up visit'], ['Any cancer centre?']])('finds no city in "%s"', (text) => {
+      expect(detectLocation(text)).toBeNull();
+    });
+  });
+
+  describe('detectState and detectPlace', () => {
+    it.each([
+      ['Is there a government scheme in Tamil Nadu?', 'Tamil Nadu'],
+      ['We are from Rajasthan', 'Rajasthan'],
+      ['Kerala scheme for cancer', 'Kerala'],
+      ['पश्चिम बंगाल में योजना', 'West Bengal'],
+      ['Is there a scheme in Maharashtra?', 'Maharashtra'],
+    ])('reads the state in "%s"', (text, state) => {
+      expect(detectState(text)).toBe(state);
+    });
+
+    it('prefers a city, with its state, over a state alone', () => {
+      expect(detectPlace('Any cancer centre in Odisha near Bhubaneswar?')).toEqual(
+        expect.objectContaining({ city: 'Bhubaneswar', state: 'Odisha' }),
+      );
+      expect(detectPlace('cancer hospital in Meghalaya')).toEqual(
+        expect.objectContaining({ city: null, state: 'Meghalaya' }),
+      );
+      expect(detectPlace('which hospital is best for my cancer')).toBeNull();
     });
   });
 });

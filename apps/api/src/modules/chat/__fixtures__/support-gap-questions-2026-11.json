@@ -1,0 +1,495 @@
+{
+ "source": "docs/support/gap-assessment-2026-11.md (PR #266), table 'Every question, with its result'. These are the test questions written for the assessment. They are not user messages.",
+ "questions": [
+  {
+   "id": "P01",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Does Ayushman Bharat cover cancer treatment?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P02",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "How do I check if my family is eligible for PM-JAY?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P03",
+   "kind": "Pay",
+   "lang": "HL",
+   "text": "Ayushman card kaise banwayein? Papa ko cancer hai",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "P04",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "What documents should I carry to the hospital to use the Ayushman card for chemo?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "P05",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "My father is 72. Is there a new Ayushman card for senior citizens?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P06",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Is there a government scheme in Tamil Nadu for cancer treatment?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P07",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "We are from Rajasthan. Which state health scheme covers cancer surgery?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P08",
+   "kind": "Pay",
+   "lang": "HL",
+   "text": "Hamare paas Ayushman card nahi hai, garib parivar hai. Cancer ka ilaaj kaise hoga?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P09",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Is there any central government fund that gives money to poor cancer patients?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P10",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "How to apply to the Prime Minister's relief fund for my mother's cancer treatment?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P11",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "What is Rashtriya Arogya Nidhi and how do I apply?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P12",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "How much does a PET CT scan cost in India?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P13",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Roughly how much does chemotherapy for breast cancer cost in a private hospital?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P14",
+   "kind": "Pay",
+   "lang": "HL",
+   "text": "Radiation therapy ka kharcha kitna aata hai?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P15",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Does health insurance cover cancer if it was diagnosed after I bought the policy?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P16",
+   "kind": "Pay",
+   "lang": "HL",
+   "text": "Garib logon ke liye free cancer treatment kahan milta hai?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P17",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Do cancer patients get a concession on train tickets?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P18",
+   "kind": "Pay",
+   "lang": "HL",
+   "text": "Train mein cancer patient ke liye ticket mein chhoot milti hai kya? Attendant ko bhi?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P19",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Cancer medicines are very expensive. Where can I get them cheaper?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P20",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Are generic medicines from Jan Aushadhi kendra OK for cancer?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P21",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "My husband is a central government employee. Does CGHS cover cancer treatment?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "P22",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "I work in a factory and have ESIC. Can I get cancer treatment under ESI?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "P23",
+   "kind": "Pay",
+   "lang": "HI",
+   "text": "आयुष्मान कार्ड से कैंसर का इलाज कितने रुपये तक मुफ्त होता है?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P24",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "What is the PM-JAY helpline number?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "P25",
+   "kind": "Pay",
+   "lang": "EN",
+   "text": "Is there a Kerala scheme for cancer patients' treatment costs?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W01",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Should I go to a government hospital or a private hospital for cancer?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W02",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Best government cancer hospital in Chennai?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "W03",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Cancer hospitals in Bangalore that accept Ayushman card",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W04",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Which hospital in Guwahati treats cancer?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "W05",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Where can I get cancer treatment in Lucknow?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W06",
+   "kind": "Where",
+   "lang": "HL",
+   "text": "Patna mein cancer ka accha hospital kaun sa hai?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "W07",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Is there a cancer hospital in Ahmedabad for poor patients?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "W08",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "How do I get an appointment at Tata Memorial Hospital Mumbai?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W09",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Where can we stay near Tata Memorial while my mother gets treatment? We can't afford hotels",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W10",
+   "kind": "Where",
+   "lang": "HL",
+   "text": "Jharkhand se Mumbai jaana chahiye ilaaj ke liye ya Ranchi mein hi karayein?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "W11",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "How do I get a second opinion on my biopsy report?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "W12",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Cancer hospital in Hyderabad",
+   "assessed": "Helped"
+  },
+  {
+   "id": "W13",
+   "kind": "Where",
+   "lang": "HL",
+   "text": "Delhi AIIMS mein cancer ke liye appointment kaise milega?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "W14",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Any cancer centre in Odisha near Bhubaneswar?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "W15",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Is there a cancer hospital in Shillong or anywhere in Meghalaya?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W16",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Which hospitals in Kolkata treat blood cancer in children?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W17",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Good cancer hospital in Punjab? We live near Ludhiana",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "W18",
+   "kind": "Where",
+   "lang": "HI",
+   "text": "वाराणसी में कैंसर का इलाज कहाँ होता है?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "W19",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "What is a National Cancer Grid hospital and why does it matter?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "W20",
+   "kind": "Where",
+   "lang": "EN",
+   "text": "Cancer hospital in Kochi or Thiruvananthapuram?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "T01",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "What should I ask the oncologist at the first visit?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "T02",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "What should I bring to the first oncology appointment?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "T03",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "How should I keep my father's medical reports organised?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "T04",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "Report says 'metastatic'. What does that mean in simple words?",
+   "assessed": "Deflected"
+  },
+  {
+   "id": "T05",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "What does 'grade 3' mean on a biopsy report?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "T06",
+   "kind": "Treatment",
+   "lang": "HL",
+   "text": "Report mein ER PR positive likha hai, iska matlab kya hai?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "T07",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "When should we call the hospital during chemo?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "T08",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "What is a PICC line and how do we look after it at home?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "T09",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "What food should my mother eat during chemotherapy?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "T10",
+   "kind": "Treatment",
+   "lang": "HL",
+   "text": "Chemo ke baad bahut thakan hai, kya karein?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "T11",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "What is the difference between stage and grade?",
+   "assessed": "Refused"
+  },
+  {
+   "id": "T12",
+   "kind": "Treatment",
+   "lang": "EN",
+   "text": "How long does a course of radiation usually take?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "E01",
+   "kind": "Emotional",
+   "lang": "EN",
+   "text": "I am scared. My mother has cancer and I don't know what to do",
+   "assessed": "Helped"
+  },
+  {
+   "id": "E02",
+   "kind": "Emotional",
+   "lang": "EN",
+   "text": "Is there a helpline in India I can call to talk about cancer?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "E03",
+   "kind": "Emotional",
+   "lang": "EN",
+   "text": "Are there support groups for cancer caregivers in India?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "E04",
+   "kind": "Emotional",
+   "lang": "HL",
+   "text": "Main akela hoon, papa ki dekhbhal karte karte thak gaya hoon",
+   "assessed": "Helped"
+  },
+  {
+   "id": "E05",
+   "kind": "Emotional",
+   "lang": "EN",
+   "text": "How do I tell my children that their father has cancer?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "E06",
+   "kind": "Emotional",
+   "lang": "HL",
+   "text": "Biwi ki dekhbhal ke liye naukri chhod di, ab paise khatam ho rahe hain",
+   "assessed": "Refused"
+  },
+  {
+   "id": "E07",
+   "kind": "Emotional",
+   "lang": "HI",
+   "text": "मुझे बहुत डर लग रहा है, क्या मैं ठीक हो जाऊँगी?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "E08",
+   "kind": "Emotional",
+   "lang": "EN",
+   "text": "Can I get leave from my job to look after a parent with cancer?",
+   "assessed": "Wrong or unverifiable"
+  },
+  {
+   "id": "M01",
+   "kind": "Mixed",
+   "lang": "EN",
+   "text": "My father is vomiting blood. Will Ayushman card cover emergency?",
+   "assessed": "Helped"
+  },
+  {
+   "id": "M02",
+   "kind": "Mixed",
+   "lang": "EN",
+   "text": "I have a lump in my breast. Which hospital in Pune should I go to?",
+   "assessed": "Thin"
+  },
+  {
+   "id": "M03",
+   "kind": "Mixed",
+   "lang": "HL",
+   "text": "Chemo ke baad tez bukhar hai 103, kaunse hospital jayein, paise nahi hai",
+   "assessed": "Helped"
+  },
+  {
+   "id": "M04",
+   "kind": "Mixed",
+   "lang": "EN",
+   "text": "Mouth ulcer not healing for 2 months, I chew gutka. Is the test free in government hospital?",
+   "assessed": "Unsafe"
+  },
+  {
+   "id": "M05",
+   "kind": "Mixed",
+   "lang": "EN",
+   "text": "My mother can't breathe properly and is confused after chemo. We are far from the hospital, what do we do?",
+   "assessed": "Helped"
+  }
+ ]
+}
