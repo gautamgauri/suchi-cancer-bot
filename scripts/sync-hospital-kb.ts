@@ -5,6 +5,14 @@
  * Reads apps/landing/src/content/hospitals.json (single source of truth)
  * and regenerates kb/en/99_local_navigation/hospital-directory.md.
  *
+ * DO NOT INGEST the generated article until the hospital data has been
+ * reviewed. It is marked inactive in kb/manifest.json and in its own
+ * frontmatter. The article holds only what the landing site shows: name,
+ * type, city, state, departments, PMJAY status as recorded and a single valid
+ * phone. It never holds notes, navigation notes, SCCF notes, risk-flag text,
+ * doctors' names, the score, the cost tier or the tier letter, and it lists
+ * only the entries the bot may use (apps/api/src/common/hospital-visibility.ts).
+ *
  * Usage:
  *   npx ts-node scripts/sync-hospital-kb.ts           # writes file
  *   npx ts-node scripts/sync-hospital-kb.ts --dry-run # prints to stdout only
@@ -12,6 +20,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { isBotVisible, singleIndianPhone } from "../apps/api/src/common/hospital-visibility";
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -113,8 +122,8 @@ function deptLabel(slug: string): string {
     pediatric_oncology: "Pediatric Oncology",
     palliative_care: "Palliative Care",
     nuclear_medicine: "Nuclear Medicine",
-    gynaec_oncology: "Gynaecology",
-    gynec_oncology: "Gynaecology",
+    gynaec_oncology: "Gynaecological Oncology",
+    gynec_oncology: "Gynaecological Oncology",
     uro_oncology: "Uro-Oncology",
     head_and_neck: "Head & Neck",
     preventive_oncology: "Preventive Oncology",
@@ -124,37 +133,9 @@ function deptLabel(slug: string): string {
 
 /** Format PMJAY field to a readable string. */
 function pmjayLabel(val: boolean | null): string {
-  if (val === true) return "Yes";
-  if (val === false) return "No";
-  return "Check before visiting";
-}
-
-/** Format cost_tier into a readable string. */
-function costLabel(tier: string): string {
-  switch (tier) {
-    case "Low":
-      return "Free / Government rates";
-    case "Medium":
-      return "Medium (affordable)";
-    case "High":
-      return "High (private rates)";
-    default:
-      return tier;
-  }
-}
-
-/** Render a list of accreditation codes into a readable string. */
-function accreditationLabel(codes: string[]): string {
-  const map: Record<string, string> = {
-    NABH: "NABH",
-    NABL: "NABL",
-    NABH_RECOMMENDED: "NABH Recommended",
-    TMC_AFFILIATED: "TMC Affiliated",
-    AERB: "AERB",
-    NABL_ACCREDITED: "NABL",
-    JCI: "JCI",
-  };
-  return codes.map((c) => map[c] ?? c).join(", ");
+  if (val === true) return "Yes, as recorded. Confirm with the hospital.";
+  if (val === false) return "No, as recorded";
+  return "Not recorded. Confirm with the hospital.";
 }
 
 /** Group hospitals by state, preserving the order they appear in JSON. */
@@ -167,161 +148,18 @@ function groupByState(hospitals: Hospital[]): Map<string, Hospital[]> {
   return map;
 }
 
-/** Determine section heading and intro paragraph for each state group. */
-function stateSectionMeta(
-  state: string,
-  hospitals: Hospital[]
-): { heading: string; intro: string } {
-  const count = hospitals.length;
-  const headingMap: Record<string, string> = {
-    Bihar: "Bihar Cancer Hospitals",
-    Jharkhand: "Jharkhand Cancer Hospitals",
-    Odisha: "Odisha Cancer Hospitals",
-    "West Bengal": "West Bengal Cancer Hospitals",
-    Assam: "Assam (Northeast) Cancer Hospitals",
-    Meghalaya: "Meghalaya Cancer Hospitals",
-    "Uttar Pradesh": "Uttar Pradesh (Eastern UP) Cancer Hospitals",
-    Delhi: "National Referral Centres — Delhi",
-    Maharashtra: "National Referral Centres — Mumbai",
-    Gujarat: "National Referral Centres — Gujarat",
-    "Tamil Nadu": "National Referral Centres — Tamil Nadu",
-    Karnataka: "National Referral Centres — Karnataka / Bangalore",
-    Telangana: "National Referral Centres — Telangana / Hyderabad",
-    Punjab: "National Referral Centres — North India",
-    Haryana: "National Referral Centres — Haryana / NCR",
-  };
-
-  const introMap: Record<string, string> = {
-    Bihar: `Bihar has ${count} verified cancer hospitals. The best starting points are HBCH Muzaffarpur (for North Bihar) and AIIMS Patna / Mahavir Cancer Sansthan (for Patna and surrounding districts).`,
-    Jharkhand: `Jharkhand has ${count} verified hospitals. AIIMS Deoghar (for eastern Jharkhand / Santhal Pargana) and RCHRC Ranchi (Tata Trusts, PMJAY) are the top public-sector options.`,
-    Odisha: `Odisha has ${count} verified hospitals. AHPGIC Cuttack is completely free — the primary referral centre for all of Odisha. Note: Odisha uses BSKY scheme, not central PMJAY.`,
-    "West Bengal": `West Bengal has ${count} verified hospitals. **Important:** West Bengal does NOT use central PMJAY — Bihar patients' PMJAY cards will not work at WB hospitals. CNCI Kolkata accepts both PMJAY and Swasthya Sathi (WB state scheme).`,
-    Assam: ``,
-    Meghalaya: ``,
-    "Uttar Pradesh": `Bihar patients can reach Varanasi by road (3 hours from Patna) or train. The two TMC Varanasi hospitals complement each other: MPMMCC handles adult solid tumours; HBCH handles blood cancers and childhood cancers.`,
-    Delhi: `Patients from Bihar with complex or rare cancers, or who need a second opinion, may be referred to national centres in Delhi.`,
-    Maharashtra: `Patients from Bihar with complex or rare cancers, or who need a second opinion, may be referred to national centres in Mumbai.`,
-    Gujarat: ``,
-    "Tamil Nadu": ``,
-    Karnataka: ``,
-    Telangana: ``,
-    Punjab: ``,
-    Haryana: ``,
-  };
-
-  return {
-    heading: headingMap[state] ?? `${state} Cancer Hospitals`,
-    intro: introMap[state] ?? "",
-  };
-}
-
-/** Render a single hospital entry as markdown. */
+/** Render a single hospital entry as markdown, from reviewed-for-display fields only. */
 function renderHospital(h: Hospital): string {
   const lines: string[] = [];
-
-  // Heading: ShortName — Full Name (Score: X/10)
-  lines.push(`### ${h.short_name} — ${h.name} (Score: ${h.score}/10)`);
-
-  // Type line
-  const typeStr = `**Type:** ${h.type} | **City:** ${h.city}, ${h.state}`;
-  lines.push(typeStr);
-
-  // Departments
+  lines.push(`### ${h.name}`);
+  lines.push(`**Type:** ${h.type} | **City:** ${h.city}, ${h.state}`);
   if (h.departments.length > 0) {
     lines.push(`**Departments:** ${h.departments.map(deptLabel).join(", ")}`);
   }
-
-  // Cost and PMJAY line
-  let costPmjayLine = `**Cost:** ${costLabel(h.cost_tier)} | **PMJAY:** ${pmjayLabel(h.pmjay_empanelled)}`;
-  if (h.ncg_member) costPmjayLine += " | **NCG Member:** Yes";
-  if (h.tmc_affiliated) costPmjayLine += " | **TMC affiliated:** Yes";
-  lines.push(costPmjayLine);
-
-  // Tier (future field)
-  if (h.tier) {
-    lines.push(`**Tier:** ${h.tier}`);
+  lines.push(`**PMJAY:** ${pmjayLabel(h.pmjay_empanelled)}`);
+  if (singleIndianPhone(h.contact.phone)) {
+    lines.push(`**Phone:** ${h.contact.phone}`);
   }
-
-  // Cost ranges (future field)
-  if (h.cost_ranges) {
-    const cr = h.cost_ranges;
-    const parts: string[] = [];
-    if (cr.opd) parts.push(`OPD: ${cr.opd}`);
-    if (cr.chemo) parts.push(`Chemo: ${cr.chemo}`);
-    if (cr.surgery) parts.push(`Surgery: ${cr.surgery}`);
-    if (parts.length > 0) {
-      lines.push(`**Cost ranges:** ${parts.join(" | ")}`);
-    }
-  }
-
-  // Contact
-  const hasPhone = h.contact.phone || h.contact.phone_alt;
-  const hasAddress = h.contact.address;
-  if (hasPhone || hasAddress) {
-    const parts: string[] = [];
-    if (h.contact.phone) parts.push(h.contact.phone);
-    if (h.contact.phone_alt) parts.push(h.contact.phone_alt);
-    if (h.contact.address) parts.push(h.contact.address);
-    lines.push(`**Contact:** ${parts.join(" | ")}`);
-  }
-
-  // Accreditation (if non-empty and non-trivial)
-  if (h.accreditation.length > 0) {
-    lines.push(`**Accreditation:** ${accreditationLabel(h.accreditation)}`);
-  }
-
-  // Key doctors
-  if (h.key_doctors.length > 0) {
-    const doctorStr = h.key_doctors
-      .map((d) => `${d.name} (${d.role})`)
-      .join("; ");
-    lines.push(`**Key doctors:** ${doctorStr}`);
-  }
-
-  // Trust signals (future field)
-  if (h.trust_signals) {
-    const ts = h.trust_signals;
-    const parts: string[] = [];
-    if (ts.tumor_board) parts.push("Tumour Board: Yes");
-    if (ts.case_volume) parts.push(`Case volume: ${ts.case_volume}`);
-    if (ts.academic_affiliation) parts.push(`Affiliation: ${ts.academic_affiliation}`);
-    if (parts.length > 0) {
-      lines.push(`**Trust signals:** ${parts.join(" | ")}`);
-    }
-  }
-
-  // Logistics (future field)
-  if (h.logistics) {
-    const lg = h.logistics;
-    const parts: string[] = [];
-    if (lg.railway) parts.push(`Railway: ${lg.railway}`);
-    if (lg.airport) parts.push(`Airport: ${lg.airport}`);
-    if (lg.lodging) parts.push(`Lodging: ${lg.lodging}`);
-    if (lg.languages && lg.languages.length > 0) parts.push(`Languages: ${lg.languages.join(", ")}`);
-    if (lg.telemedicine !== undefined) parts.push(`Telemedicine: ${lg.telemedicine ? "Yes" : "No"}`);
-    if (parts.length > 0) {
-      lines.push(`**Logistics:** ${parts.join(" | ")}`);
-    }
-  }
-
-  // Key facts (notes)
-  if (h.notes) {
-    lines.push(`**Key facts:** ${h.notes}`);
-  }
-
-  // Risk flag
-  if (h.risk_flag) {
-    lines.push(`**Warning:** ⚠ ${h.risk_flag}`);
-  }
-
-  // Navigation notes (future field)
-  if (h.navigation_notes && h.navigation_notes.length > 0) {
-    lines.push(`**Navigation notes:**`);
-    for (const note of h.navigation_notes) {
-      lines.push(`- ${note}`);
-    }
-  }
-
   return lines.join("\n");
 }
 
@@ -341,11 +179,13 @@ function buildMarkdown(data: HospitalsJson): string {
   out.push("---");
   out.push(`title: "Cancer Hospital Directory — East India and National Referral Centres"`);
   out.push(`version: "v1"`);
-  out.push(`status: "active"`);
+  out.push(`status: "inactive"`);
   out.push(`source: "SCCF Navigator Research"`);
   out.push(`sourceType: "99_local_navigation"`);
   out.push(`license: "sccf_owned"`);
-  out.push(`lastReviewed: "${today}"`);
+  // No lastReviewed: generating the file is not a review. The date it was
+  // generated is recorded instead.
+  out.push(`generated: "${today}"`);
   out.push(`reviewFrequency: "quarterly"`);
   out.push(`audienceLevel: "patient"`);
   out.push(`language: "en"`);
@@ -361,32 +201,21 @@ function buildMarkdown(data: HospitalsJson): string {
   out.push("# Cancer Hospital Directory — East India and National Referral Centres");
   out.push("");
 
-  // Intro paragraph (preserved from original format)
-  const total = data.hospitals.filter((h) => h.status === "active").length;
+  // Intro paragraph: plain facts only.
+  const listed = data.hospitals.filter((h) => isBotVisible(h as unknown as { id: string }));
   out.push(
-    `This directory covers ${data._meta.total_hospitals ?? data.hospitals.length} verified cancer hospitals that have at least a Medical Oncologist and Surgical Oncologist. Hospitals are scored on clinical quality, cost, East India location, and PMJAY empanelment (max score 10).`
-  );
-  out.push("");
-  out.push(
-    "**Important — West Bengal:** West Bengal does NOT use central PMJAY. WB hospitals use Swasthya Sathi (the WB state scheme). Patients from Bihar with PMJAY cards cannot use them at West Bengal state hospitals."
+    `This article lists ${listed.length} entries for hospitals with cancer services recorded in the SCCF hospital directory. Details can change. Please confirm with the hospital before you travel.`
   );
   out.push("");
   out.push("---");
   out.push("");
 
   // Group hospitals by state in order of first appearance
-  const byState = groupByState(data.hospitals);
+  const byState = groupByState(listed);
 
   for (const [state, hospitals] of byState) {
-    const { heading, intro } = stateSectionMeta(state, hospitals);
-
-    out.push(`## ${heading}`);
+    out.push(`## ${state}`);
     out.push("");
-
-    if (intro) {
-      out.push(intro);
-      out.push("");
-    }
 
     for (const h of hospitals) {
       out.push(renderHospital(h));
@@ -396,46 +225,6 @@ function buildMarkdown(data: HospitalsJson): string {
     out.push("---");
     out.push("");
   }
-
-  // Quick Routing Guide (static — must be maintained manually in this template
-  // as it contains curated routing logic that goes beyond raw JSON fields)
-  out.push("## Quick Routing Guide");
-  out.push("");
-  out.push(
-    "**I'm in North Bihar (Muzaffarpur/Sitamarhi/Gopalganj)** → HBCH Muzaffarpur (TMC unit, closest option)"
-  );
-  out.push("");
-  out.push(
-    "**I'm in Patna** → AIIMS Patna or Mahavir Cancer Sansthan (government/trust, affordable); Paras HMRI / Medanta (private, high cost)"
-  );
-  out.push("");
-  out.push(
-    "**I'm in East Bihar (Bhagalpur/Munger)** → For surgical cases: AIIMS Patna or Mahavir Patna; Healing Touch Bhagalpur was surgical-only and is under review"
-  );
-  out.push("");
-  out.push(
-    "**I need blood cancer treatment (leukemia/lymphoma)** → HBCH Varanasi (TMC, PMJAY, free); or Paras HMRI Patna (bone marrow transplant, private); or CNCI Kolkata"
-  );
-  out.push("");
-  out.push(
-    "**My child has cancer** → AIIMS Patna (pediatric oncology), HBCH Varanasi (TMC pediatric, PMJAY), AIIMS Bhubaneswar (only govt pediatric oncology for Odisha/JH/WB)"
-  );
-  out.push("");
-  out.push(
-    "**I need free treatment and have PMJAY** → HBCH Muzaffarpur, AIIMS Patna, Mahavir Sansthan, IGIMS Patna (Bihar); RCHRC Ranchi or RIMS Ranchi (Jharkhand); BBCI Guwahati, CNCI Kolkata (outside Bihar); MPMMCC/HBCH Varanasi (UP)"
-  );
-  out.push("");
-  out.push(
-    "**I need a second opinion on a complex case** → TMH Mumbai or AIIMS Delhi (national centres, long waits, plan logistics)"
-  );
-  out.push("");
-  out.push(
-    "**I'm in Jharkhand** → AIIMS Deoghar (east JH) or RCHRC Ranchi / RIMS Ranchi (Ranchi); HCG Ranchi (private)"
-  );
-  out.push("");
-  out.push(
-    "**I'm in Odisha** → AIIMS Bhubaneswar (comprehensive, central govt); AHPGIC Cuttack (free, regional cancer centre; note: BSKY not PMJAY)"
-  );
 
   return out.join("\n");
 }

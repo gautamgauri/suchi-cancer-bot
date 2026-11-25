@@ -34769,7 +34769,7 @@
       "id": "kb_en_hospital_directory_v1",
       "title": "Cancer Hospital Directory — East India and National Referral Centres",
       "version": "v1",
-      "status": "active",
+      "status": "inactive",
       "source": "SCCF Navigator Research",
       "sourceType": "99_local_navigation",
       "path": "en/99_local_navigation/hospital-directory.md",
