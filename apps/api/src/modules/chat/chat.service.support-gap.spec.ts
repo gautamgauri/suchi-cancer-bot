@@ -178,7 +178,7 @@ function body(text: string): string {
 function labelReply(text: string, classification: string, llmCalls: number): string {
   if (classification !== "normal") return `safety:${classification}`;
   const b = body(text);
-  if (/Checked on \d{1,2} \w+ \d{4}\./.test(b) && /^Here is what Suchi has checked/m.test(b)) return "verified_answer";
+  if (/Checked on \d{1,2} \w+ \d{4}\./.test(b) && /^Here is what Suchi has (checked|on record)/m.test(b)) return "verified_answer";
   if (b.startsWith("Which city or state are you asking about?")) return "ask_place";
   if (b.startsWith("Suchi does not have confirmed information on that yet.")) return "practical_unknown";
   if (/^(Cancer centres|Suchi's hospital list has no)/.test(b) && b.includes("Suchi's hospital list")) return "directory_answer";

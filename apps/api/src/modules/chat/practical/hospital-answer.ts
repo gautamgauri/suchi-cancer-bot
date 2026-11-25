@@ -22,8 +22,12 @@ import { HOSPITAL_CONFIRMATION_SENTENCE, renderHospitalBullet } from "../hospita
 import type { PlaceResult } from "../utils/location-detector";
 import { pmjayFinderLines } from "./financial-support";
 
+/**
+ * Routing is stateless, so a bare "Patna" sent next would not be joined to
+ * this question. The reply asks for the whole question again, with the place.
+ */
 export const ASK_PLACE_REPLY =
-  "Which city or state are you asking about? I can then look for cancer centres there in Suchi's hospital list.";
+  "Which city or state are you asking about? Please send your question again with the place in it, for example \"cancer hospitals in Patna\".";
 
 const DISTANCE_NOTE = "Distances are approximate. The distance by road or rail is longer.";
 
@@ -47,13 +51,25 @@ export function buildHospitalAnswer(place: PlaceResult, outcome: HospitalSearchO
   const lines: string[] = [];
   // The directory files a few centres twice (one record per pool). Show each
   // name once.
+  // Duplicates are caught by id, short name or full name.
   const seen = new Set<string>();
   const unique = results.filter((h) => {
-    const key = (h.short_name || h.name).trim().toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const keys = [h.id, h.short_name, h.name].filter(Boolean).map((k) => `${k}`.trim().toLowerCase());
+    if (keys.some((k) => seen.has(k))) return false;
+    keys.forEach((k) => seen.add(k));
     return true;
   });
+  // Within the same distance (to the nearest 10 km, as shown), public and
+  // National Cancer Grid centres come first, then trusts, then private
+  // hospitals. Otherwise the directory's order is kept. The directory's own
+  // order within a distance is alphabetical, which put five private hospitals
+  // ahead of Tata Memorial in Mumbai.
+  const rank = (h: (typeof unique)[number]) =>
+    /government|tmc/i.test(h.type ?? "") || h.ncg_member === true ? 0 : /trust/i.test(h.type ?? "") ? 1 : 2;
+  // The same buckets the reply shows: "within 10 km", then "about N km".
+  const bucket = (h: (typeof unique)[number]) =>
+    typeof h.distance_km !== "number" || h.distance_km < 10 ? 0 : Math.round(h.distance_km / 10);
+  unique.sort((a, b) => bucket(a) - bucket(b) || rank(a) - rank(b));
   // When the list holds centres in the city itself, show only those. Centres
   // further away are shown only when there is none in the city, and then the
   // lead line says so.

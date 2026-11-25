@@ -52,6 +52,38 @@ describe("the verified financial support file", () => {
     }
   });
 
+  // Review of PR #267, item 3. A changed phone number, amount, percentage, age
+  // or day count in a fact's text must fail here, not only a changed quote.
+  it("finds every number in a fact's text and in each helpline in that fact's own reference entry", () => {
+    const norm = (s: string) => s.replace(/[\s,\-‐‑–]/g, "").replace(/₹/g, "");
+    const numbers = (s: string) => (s.match(/\d[\d\s,\-]*\d|\d/g) ?? []).map(norm);
+    const entryFor = (quote: string): string => {
+      const entries = [...reference.national_facts, ...reference.states];
+      const hit = entries.find((e: any) => JSON.stringify(e).includes(JSON.stringify(quote).slice(1, -1)));
+      if (!hit) throw new Error(`no reference entry holds: ${quote}`);
+      return norm(JSON.stringify(hit));
+    };
+    for (const f of allFacts()) {
+      const entry = entryFor(f.reference_quote);
+      for (const n of numbers(f.text)) {
+        expect({ fact: f.text, number: n, inEntry: entry.includes(n) }).toEqual({ fact: f.text, number: n, inEntry: true });
+      }
+    }
+    for (const t of Object.values(file.topics)) {
+      if (!t.helpline) continue;
+      const entries = t.facts.map((f) => entryFor(f.reference_quote)).join(" ");
+      for (const n of numbers(t.helpline)) {
+        expect({ topic: t.name, number: n, inEntry: entries.includes(n) }).toEqual({ topic: t.name, number: n, inEntry: true });
+      }
+    }
+    for (const s of file.states) {
+      const entry = norm(JSON.stringify(reference.states.find((r: any) => r.state === s.state)));
+      for (const n of numbers(s.helpline ?? "")) {
+        expect({ state: s.state, number: n, inEntry: entry.includes(n) }).toEqual({ state: s.state, number: n, inEntry: true });
+      }
+    }
+  });
+
   it("holds every state the reference confirmed, with its page and helpline, and no other", () => {
     expect(file.states.map((s) => s.state)).toEqual(reference.states.map((s: any) => s.state));
     for (const s of file.states) {
@@ -96,7 +128,7 @@ describe("buildFinancialAnswer", () => {
     "Is there a government scheme in Maharashtra for cancer?",
   ])("states only facts from the file, with the checked-on date: %s", (text) => {
     const reply = answer(text);
-    expect(reply.startsWith("Here is what Suchi has checked on official pages.")).toBe(true);
+    expect(reply.startsWith("Here is what Suchi has on record, with the page each part comes from.")).toBe(true);
     expect(reply).toContain("Checked on 25 November 2026. Rules change");
     for (const line of reply.split("\n").filter((l) => l.startsWith("- "))) {
       expect({ line, inFile: facts.has(line.slice(2)) }).toEqual({ line, inFile: true });
@@ -112,7 +144,7 @@ describe("buildFinancialAnswer", () => {
   it("answers a state question with that state's scheme, page and helpline, then PM-JAY", () => {
     const reply = answer("Is there a government scheme in Tamil Nadu for cancer treatment?");
     expect(reply).toContain("Chief Minister's Comprehensive Health Insurance Scheme (CMCHIS)");
-    expect(reply).toContain("Official page: https://www.cmchistn.com/");
+    expect(reply).toContain("Source page: https://www.cmchistn.com/");
     expect(reply).toContain("1800 425 3993");
     expect(reply.indexOf("**Tamil Nadu**")).toBeLessThan(reply.indexOf("**Ayushman Bharat PM-JAY**"));
   });

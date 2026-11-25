@@ -46,7 +46,7 @@
         },
         {
           "id": "pmjay_criteria",
-          "text": "In villages, families qualify under the SECC 2011 deprivation criteria. In towns, they qualify under 11 groups of workers, such as domestic workers, street vendors, construction workers and sanitation workers.",
+          "text": "In villages, families qualify under the SECC deprivation criteria. In towns, they qualify under 11 groups of workers, such as domestic workers, street vendors, construction workers and sanitation workers.",
           "url": "https://pmjay.nha.gov.in/criteria-coverage",
           "checked_on": "2026-11-25",
           "reference_quote": "For urban areas, the following 11 occupational categories of workers are eligible for the scheme"
@@ -109,7 +109,7 @@
       "facts": [
         {
           "id": "senior_who",
-          "text": "Everyone aged 70 or over can get the Ayushman Vay Vandana card, whatever the family's income. It gives free treatment up to Rs 5 lakh.",
+          "text": "Everyone aged 70 or over can get the Ayushman Vay Vandana card, whatever the family's income. It gives free treatment up to Rs 5 lakh, shared between the family's members aged 70 or over.",
           "url": "https://pmjay.nha.gov.in/strapi/uploads/English_FA_Qs_related_to_the_benefits_for_senior_citizens_7596c43be0.pdf",
           "checked_on": "2026-11-25",
           "reference_quote": "All senior citizens aged 70 or above, regardless of economic status, are eligible for free medical treatment up to ₹5 lakh under this scheme."

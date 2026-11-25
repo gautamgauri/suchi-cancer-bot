@@ -201,6 +201,44 @@ describe('detectLocation', () => {
     });
   });
 
+  // Review of PR #267, item 7: a fuzzy match needs a place cue, and
+  // ordinary words, surnames and other real places are never matched.
+  describe('fuzzy false positives from review', () => {
+    it.each([
+      ['no hunger, only tiredness'],
+      ['Dr Chopra said to wait'],
+      ['Dr Chopra ka clinic'],
+      ['we are from Kalyan'],
+      ['Kalyan'],
+      ['I live in Rampur'],
+      ['Rampur'],
+      ['he studies in a madrasa'],
+      ['madrasa'],
+      ['cancer ho gaya mein kya karun'],
+      ['report aa gaya se pehle'],
+    ])('finds no city in "%s"', (text) => {
+      expect(detectLocation(text)).toBeNull();
+    });
+
+    it.each([
+      ['Cancer hospital in Kochi or Thiruvananthapuram?', 'Kochi'],
+      ['hospitals in Bombay', 'Mumbai'],
+      ['I am from Muzaffarpr', 'Muzaffarpur'],
+      ['Muzaffarpr hospital', 'Muzaffarpur'],
+      ['Gaya mein cancer hospital', 'Gaya'],
+    ])('still reads "%s" as %s', (text, city) => {
+      expect(detectLocation(text)).toEqual(expect.objectContaining({ city }));
+    });
+
+    it('does not match a misspelling with no place cue next to it', () => {
+      expect(detectLocation('Muzaffarpr breast cancer')).toBeNull();
+    });
+
+    it.each([['when is my follow up visit'], ['Any cancer centre?']])('finds no city in "%s"', (text) => {
+      expect(detectLocation(text)).toBeNull();
+    });
+  });
+
   describe('detectState and detectPlace', () => {
     it.each([
       ['Is there a government scheme in Tamil Nadu?', 'Tamil Nadu'],

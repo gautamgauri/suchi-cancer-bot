@@ -591,7 +591,7 @@ export class ExecutionPlannerService {
       pmjayRequired:
         /\b(pmjay|ayushman|pm-jay|government|govt|sarkari|free)\b/i.test(lower) || /(आयुष्मान|सरकारी|मुफ्त)/.test(userText),
       affordabilityTier: detected.budgetConcern || /\b(poor|garib|gareeb)\b/i.test(lower) ? "low" : "any",
-      maxResults: 8,
+      maxResults: 30, // the answer ranks and caps the list itself
       pooled: true,
     });
   }

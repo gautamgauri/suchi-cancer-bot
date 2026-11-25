@@ -76,6 +76,20 @@ describe("buildHospitalAnswer", () => {
     expect(UNREVIEWED_HOSPITAL_FIELDS.length).toBeGreaterThan(0);
   });
 
+  // Review of PR #267, item 6.
+  it("puts public and NCG centres first at the same distance: Tata Memorial in Mumbai", () => {
+    const reply = answer("hospital in Mumbai");
+    const bullets = reply.split("\n").filter((l) => l.startsWith("- "));
+    expect(bullets[0]).toContain("Tata Memorial Hospital");
+  });
+
+  it("shows each centre once, deduplicated on id, short name or name: AIIMS in Delhi", () => {
+    const reply = answer("cancer hospital in Delhi");
+    const bullets = reply.split("\n").filter((l) => l.startsWith("- "));
+    expect(bullets.filter((b) => /All India Institute of Medical Sciences/.test(b)).length).toBeLessThanOrEqual(1);
+    expect(bullets[0]).toMatch(/AIIMS/);
+  });
+
   it("filters to PM-JAY or government centres when the question names Ayushman", () => {
     const reply = answer("Cancer hospitals in Bangalore that accept Ayushman card");
     expect(reply).toContain("Kidwai Memorial Institute of Oncology");

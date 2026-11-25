@@ -73,7 +73,7 @@ function fact(topic: VerifiedTopic, id: string): VerifiedFact {
 
 // ─── Fixed lines (no facts of their own) ─────────────────────────────────
 
-export const PAY_OPENING = "Here is what Suchi has checked on official pages.";
+export const PAY_OPENING = "Here is what Suchi has on record, with the page each part comes from.";
 
 /** The closing line. It carries the checked-on date from the file. */
 export function payClosing(checkedOn: string, mentionsAyushman: boolean): string {
@@ -104,7 +104,7 @@ export function practicalUnknownReply(): string {
 
 function topicSection(topic: VerifiedTopic, facts: VerifiedFact[], showNotConfirmed: boolean): string[] {
   const lines = [`**${topic.name}**`, ...facts.map((f) => `- ${f.text}`)];
-  lines.push(`Official page: ${topic.official_page}`);
+  lines.push(`Source page: ${topic.official_page}`);
   if (topic.helpline) lines.push(`Helpline: ${topic.helpline}`);
   if (showNotConfirmed && topic.not_confirmed) lines.push(topic.not_confirmed);
   return lines;
@@ -147,7 +147,7 @@ export function buildFinancialAnswer(req: FinancialAnswerRequest): string {
   if (req.state && !topics.includes("pmjay") && !topics.includes("senior")) topics.push("pmjay");
 
   if (stateEntry) {
-    const lines = [`**${stateEntry.state}**`, ...stateEntry.facts.map((f) => `- ${f.text}`), `Official page: ${stateEntry.url}`];
+    const lines = [`**${stateEntry.state}**`, ...stateEntry.facts.map((f) => `- ${f.text}`), `Source page: ${stateEntry.url}`];
     if (stateEntry.helpline) lines.push(`Helpline: ${stateEntry.helpline}`);
     sections.push(lines);
   } else if (stateUncovered) {

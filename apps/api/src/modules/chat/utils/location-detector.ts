@@ -194,7 +194,19 @@ const NEVER_FUZZY = new Set([
   'where', 'which', 'really', 'second', 'opinion', 'children', 'anywhere', 'appointment',
   'between', 'before', 'during', 'office', 'person', 'people', 'parents', 'husband',
   'daughter', 'brother', 'sister', 'medicine', 'medicines', 'ilaaj', 'paisa', 'kahan',
+  // Review of PR #267: ordinary words, surnames and other real places one
+  // edit from a city in the table.
+  'hunger', 'chopra', 'madrasa', 'madrassa', 'kalyan', 'rampur', 'jaipuri', 'raipuri',
 ]);
+
+/** Words next to a candidate that make it a place: needed for a fuzzy match. */
+const PLACE_CUES = new Set([
+  'in', 'near', 'at', 'from', 'mein', 'me', 'se', 'ke', 'paas', 'pas', 'hospital', 'hospitals',
+  'city', 'district', 'shahar', 'zila', 'jila',
+]);
+
+/** Hinglish verbs that "gaya" follows as a past tense: "ho gaya", "chala gaya". */
+const GAYA_VERB_BEFORE = /\b(ho|hua|chala|chal|aa|a|kar|kara|mil|ban|de|le|reh|rah|so|lag|nikal|bhag|mar|bach|dikh|pahunch|ja|bhej|bata|samajh|thak|bigad)\s+$/i;
 
 /** Context patterns that precede city names */
 const CONTEXT_PATTERNS = [
@@ -246,7 +258,11 @@ const FUZZY_MIN_LENGTH = 6;
  * the word follows or precedes a place word, which is when an alias that is
  * also an ordinary word may count.
  */
-function matchCity(word: string, inContext = false): { entry: CityEntry; confidence: number } | null {
+function matchCity(
+  word: string,
+  inContext = false,
+  allowFuzzy = inContext,
+): { entry: CityEntry; confidence: number } | null {
   const lower = word.toLowerCase();
 
   // Skip very short words (likely not city names). Devanagari names are
@@ -264,8 +280,9 @@ function matchCity(word: string, inContext = false): { entry: CityEntry; confide
     }
   }
 
-  // 2. Fuzzy match: Latin script, six letters or more, distance one.
-  if (IS_DEVANAGARI.test(lower) || lower.length < FUZZY_MIN_LENGTH || NEVER_FUZZY.has(lower)) {
+  // 2. Fuzzy match: Latin script, six letters or more, distance one, and only
+  // next to a place cue (review of PR #267: "no hunger" was read as Munger).
+  if (!allowFuzzy || IS_DEVANAGARI.test(lower) || lower.length < FUZZY_MIN_LENGTH || NEVER_FUZZY.has(lower)) {
     return null;
   }
 
@@ -353,6 +370,10 @@ export function detectLocation(text: string): LocationResult | null {
 
     while ((match = pattern.exec(normalised)) !== null) {
       const candidate = match[1];
+      // "cancer ho gaya mein" is a verb, not the city of Gaya.
+      if (/^gaya$/i.test(candidate) && GAYA_VERB_BEFORE.test(normalised.slice(0, match.index + match[0].indexOf(candidate)))) {
+        continue;
+      }
       const cityMatch = matchCity(candidate, true);
       if (cityMatch) {
         return {
@@ -377,9 +398,11 @@ export function detectLocation(text: string): LocationResult | null {
   // 3. Fallback: scan all words for city names
   const words = normalised
     .split(/[\s,;.!?।()"'“”‘’:/-]+/)
-    .filter((w) => w.length >= 3 || IS_DEVANAGARI.test(w));
-  for (const word of words) {
-    const cityMatch = matchCity(word);
+    .filter((w) => w.length > 0); // short words stay, as place cues ("in", "se")
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const cue = PLACE_CUES.has((words[i - 1] ?? '').toLowerCase()) || PLACE_CUES.has((words[i + 1] ?? '').toLowerCase());
+    const cityMatch = matchCity(word, false, cue);
     if (cityMatch) {
       // Slightly lower confidence for non-contextual matches
       return {
