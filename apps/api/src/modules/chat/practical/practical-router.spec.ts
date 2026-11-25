@@ -157,6 +157,22 @@ describe("practical-router", () => {
       "He is not eating or drinking, which hospital in Patna",
       "mole is changing colour, is it free in government hospital",
       "sugar is 400, which hospital in Lucknow",
+      // Third review: phrases built wholly from words that were then allowed.
+      "no money, I can not go on",
+      "no money, I do not want to go on",
+      "paisa nahi hai, kuch nahi bacha",
+      "garib hain, papa nahi bacha",
+      "My father is no more, we have no money",
+      "no money, I do not want treatment",
+      "treatment is not working, which hospital in Patna",
+      "papa is not getting better, Ayushman card",
+      "koi ilaj nahi hai kya, paisa nahi hai",
+      "kuch nahi ho sakta, paisa nahi hai",
+      "mera koi nahi hai, paisa nahi hai",
+      "पापा कब तक हैं, पैसे नहीं हैं",
+      // Third review: other scripts and symbols fail closed.
+      "Ayushman card আমি মরতে চাই",
+      "Ayushman card 💊💊💊",
     ])("existing path: %s", (text) => {
       expect(routePracticalQuestion(text)).toBeNull();
       expect(isPracticalNonMedical(text)).toBe(false);

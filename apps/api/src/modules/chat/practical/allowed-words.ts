@@ -21,20 +21,20 @@ import { placeNameTokens } from "../utils/location-detector";
 
 /** (a) Function words in English, romanised Hindi and Hindi. */
 const FUNCTION_WORDS = `
-a an the is are was were be been am i we you he she they it my our your his her their its me us them
+a an the is are was were   am i we you he she they it my our your his her their its me us them
 this that these those there what which who whom whose where when how why do does did can could will would
 should may must to of in on at for from by with without about into near nearby and or but if so as than
-then also any some all every each other another only just very more most much many no not yes please
-tell know get getting got give given have has had need needs want wants there's i'm we're don't doesn't
+then also any some all every each other another only just very  most much many no not yes please
+tell know get getting got give  have has had need needs   there's i'm we're don't doesn't
 can't cannot isn't won't what's how's whats hows dont doesnt cant isnt wont im
 hai hain ho hota hoti hote hoga hogi hoge kya kaise kaisa kaisi kaun kaunsa kaunsi kon konsa sa si se
 ki ka ke ko me mein mai main hum ham hamare hamara hamari humara humare mera meri mere aap ap apna apne
 apni tum woh wo yeh ye is us iske uske inke unke liye lie par pe aur ya bhi nahi nahin na to toh
 jo kab kahan kaha kahaan kidhar kitna kitne kitni milta milti milte milega milegi milenge mil sakta
-sakte sakti ji chahiye chahie chaiye koi kuch sab kaun-sa paas pas log logon gives give gets get while under after work works working factory accept accepts accepted anywhere through via
+sakte sakti ji chahiye chahie chaiye   sab kaun-sa paas pas log logon gives give gets get while under work     factory accept accepts accepted anywhere through via
 है हैं हो होता होती होते होगा होगी क्या कैसे कैसा कैसी कौन कौनसा कौनसे कौनसी सा से सी की का के को
 में मैं हम हमारे हमारा हमारी मेरा मेरी मेरे आप अपना अपने अपनी तुम वह वो यह ये इस उस लिए पर और या भी
-नहीं ना तो जो कब कहाँ कहां किधर कितना कितने कितनी मिलता मिलती मिलेगा मिलेगी चाहिए कोई कुछ जी तक लोगों लोग
+नहीं ना तो जो कब कहाँ कहां किधर कितना कितने कितनी मिलता मिलती मिलेगा मिलेगी चाहिए   जी तक लोगों लोग
 `;
 
 /** (b) Schemes, money, cost, paperwork and applications. */
@@ -60,9 +60,9 @@ cmchis kasp himcare abua sehat mhis cmhis gjay maa swasthya sathi
 /** (c) Hospitals, travel, stay and place. */
 const PLACE_WORDS = `
 hospital hospitals aspatal aspataal haspatal centre centres center centers clinic clinics doctor doctors
-oncologist oncologists best good better accha acha achha achchha nearest near nearby around city cities
+oncologist oncologists best good  accha acha achha achchha nearest near nearby around city cities
 district districts state states where list treat treats treated care stay lodging accommodation dharamshala
-dharmshala hotel hotels hostel travel go going visit cheap private public area town village gaon
+dharmshala hotel hotels hostel travel   visit cheap private public area town village gaon
 india bharat region tata memorial aiims kidwai cmc
 अस्पताल हॉस्पिटल केंद्र डॉक्टर अच्छा अच्छे नज़दीक नजदीक पास शहर जिला ज़िला राज्य गांव गाँव
 `;
@@ -72,7 +72,7 @@ const PEOPLE_WORDS = `
 cancer cancers treatment treatments ilaj ilaaj elaj patient patients mareez marij
 mother father papa mummy mom mum dad wife husband son daughter brother sister child children kid kids
 parent parents family families grandmother grandfather maa mata pita pati patni beta beti bhai behen
-bahan bachcha bachche bacha baccha nana nani dada dadi parivar
+bahan bachcha bachche  baccha nana nani dada dadi parivar
 कैंसर इलाज मरीज़ मरीज माँ मां माता पिता पापा मम्मी पति पत्नी बेटा बेटी भाई बहन परिवार
 `;
 
@@ -118,6 +118,8 @@ export function tokenise(text: string): string[] {
   let t = text.normalize("NFC").toLowerCase();
   for (const [re, to] of PHRASES) t = t.replace(re, to);
   t = t.replace(/[’‘]/g, "'");
+  // fail closed on any other script, symbol or emoji
+  if (/[^\x00-\x7F\u0900-\u097F\u200C\u200D“”–—₹]/.test(t)) return ["\u0000other-script"];
   return t.match(/[a-z]+(?:['-][a-z]+)*|[ऀ-ॣ०-ॿ]+|[0-9]+/g) ?? [];
 }
 

@@ -82,6 +82,7 @@ const MEDICAL_DEVANAGARI =
  * handling applies exactly as before. Over-inclusive by design.
  */
 const DISTRESS_LATIN: RegExp[] = [
+  /\b(not\s+good|accha\s+nahi|acha\s+nahi|achha\s+nahi|(treatment|ilaa?j|it)\s+(\w+\s+){0,2}work|not\s+work)\b/i,
   /\b(die|dies|died|dying|death|deaths|dead|deadly|kill\w*|suicid\w*|self[- ]?harm\w*|ending\s+it|end\s+it|end\s+(my|our|his|her)\s+life|take\s+my\s+life)\b/i,
   /\b(point\s+(of|in)\s+living|reason\s+to\s+live|want\s+to\s+live|live\s+any\s*more|living\s+any\s*more|not\s+live|will\s+\w+(\s+\w+)?\s+live|how\s+long\s+.{0,30}\s+live|jeena|jeene|jina|jine|jeevan|zindagi|marna|marne|marenge|marega|maregi|mar\s+ja\w*|mar\s+jau\w*|mar\s+gay\w*|maut|khudkushi|aatmahatya)\b/i,
   /\b(burden|bojh|hopeless\w*|no\s+hope|give\s+up|giving\s+up|gave\s+up|can'?t\s+go\s+on|cannot\s+go\s+on|worthless|depress\w*|anxious|anxiety|panic\w*|scared|afraid|terrified|frightened|crying|cry|worr\w*|tension|pareshaa?n|alone|lonely|nirash|udaas|haar\s+gay\w*)\b/i,
@@ -89,7 +90,7 @@ const DISTRESS_LATIN: RegExp[] = [
 ];
 
 const DISTRESS_DEVANAGARI =
-  /(मर\s*(ना|ने|जा|जाऊ|जाऊं|जाऊँ|जाए|गया|गई|गए|ेंगे|ेगा|ेगी)|मरना|मरने|मौत|मृत्यु|आत्महत्या|ख़ुदकुशी|खुदकुशी|जान\s*दे|जीना|जीने|ज़िंदगी|जिंदगी|बोझ|ज़हर|जहर|बेहोश|लकवा|आईसीयू|वेंटिलेटर|ऑक्सीजन|इमरजेंसी|आपातकाल|एम्बुलेंस|उम्मीद\s*नहीं|हिम्मत|डर|अकेल|निराश|परेशान|रो\s*रह|हार\s*गय|गंभीर)/;
+  /(कब\s*तक|मर\s*(ना|ने|जा|जाऊ|जाऊं|जाऊँ|जाए|गया|गई|गए|ेंगे|ेगा|ेगी)|मरना|मरने|मौत|मृत्यु|आत्महत्या|ख़ुदकुशी|खुदकुशी|जान\s*दे|जीना|जीने|ज़िंदगी|जिंदगी|बोझ|ज़हर|जहर|बेहोश|लकवा|आईसीयू|वेंटिलेटर|ऑक्सीजन|इमरजेंसी|आपातकाल|एम्बुलेंस|उम्मीद\s*नहीं|हिम्मत|डर|अकेल|निराश|परेशान|रो\s*रह|हार\s*गय|गंभीर)/;
 
 /** True when the message has any distress, self-harm, death or urgency word. */
 export function hasDistressOrUrgency(text: string): boolean {
