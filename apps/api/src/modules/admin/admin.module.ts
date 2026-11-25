@@ -15,9 +15,10 @@ import { AnalyticsModule } from "../analytics/analytics.module";
 import { EmailModule } from "../email/email.module";
 import { LlmModule } from "../llm/llm.module";
 import { RagModule } from "../rag/rag.module";
+import { SocialModule } from "../social/social.module";
 
 @Module({
-  imports: [AnalyticsModule, EmailModule, LlmModule, RagModule],
+  imports: [AnalyticsModule, EmailModule, LlmModule, RagModule, SocialModule],
   controllers: [AdminController],
   providers: [AdminService, NavigatorApproveService, NavigatorResearchService, ContentApproveService, ContentResearchService, SocialPostService, DraftExpiryService, RetentionService, ReviewQueueService, AnalyticsAdminService, LearningNoteService],
 })

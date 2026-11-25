@@ -37,7 +37,7 @@ describe("SUCHI_SITE_URL vs the landing site's real domain", () => {
 
   it("the social publisher's fallback points at the same domain", () => {
     const svc = readFileSync(
-      join(REPO_ROOT, "apps/api/src/modules/admin/social-post.service.ts"),
+      join(REPO_ROOT, "apps/api/src/modules/social/links.ts"),
       "utf8"
     );
     const match = svc.match(/SUCHI_SITE_URL\s*\?\?\s*"([^"]+)"/);
@@ -60,7 +60,7 @@ describe("SUCHI_SITE_URL vs the landing site's real domain", () => {
   it("no source file still carries the old misspelled domain", () => {
     const files = [
       "apps/api/src/config/env.validation.ts",
-      "apps/api/src/modules/admin/social-post.service.ts",
+      "apps/api/src/modules/social/links.ts",
       "cloudbuild.yaml",
       "cloudbuild.gated.yaml",
     ];

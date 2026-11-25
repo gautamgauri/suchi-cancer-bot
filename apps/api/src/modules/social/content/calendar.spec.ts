@@ -3,6 +3,23 @@ import { gateDraft, describeViolations } from "../voice/draft-gate";
 import { lintProse } from "../voice/voice-lint";
 import { PLATFORMS } from "../social.types";
 import { carriesPlatformCode } from "../links";
+import { GENERIC_CARD } from "../social.service";
+import { readFileSync } from "fs";
+import { join } from "path";
+
+/** Width and height from a baseline JPEG's SOF0 marker. Throws if the bytes are not a JPEG. */
+function jpegSize(buf: Buffer): { width: number; height: number } {
+  if (buf[0] !== 0xff || buf[1] !== 0xd8) throw new Error("not a JPEG");
+  let i = 2;
+  while (i < buf.length) {
+    if (buf[i] !== 0xff) throw new Error("bad marker");
+    const marker = buf[i + 1];
+    const len = buf.readUInt16BE(i + 2);
+    if (marker >= 0xc0 && marker <= 0xc3) return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    i += 2 + len;
+  }
+  throw new Error("no size found");
+}
 
 describe("four-week calendar", () => {
   it("has twelve items, three a week, in the two safe lanes only", () => {
@@ -28,6 +45,20 @@ describe("four-week calendar", () => {
         expect(f.url).toMatch(/^https:\/\//);
         expect(f.fetchedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       }
+    }
+  });
+
+  it("has a card JPEG for every item, within Instagram's size and shape limits", () => {
+    const dir = join(__dirname, "..", "..", "..", "..", "..", "landing", "public", "social", "cards");
+    for (const file of [...CALENDAR.map((i) => i.card.file), GENERIC_CARD.file]) {
+      const buf = readFileSync(join(dir, file));
+      expect(buf.length).toBeLessThan(8 * 1024 * 1024);
+      const { width, height } = jpegSize(buf);
+      expect(width).toBeGreaterThanOrEqual(320);
+      expect(width).toBeLessThanOrEqual(1440);
+      const ratio = width / height;
+      expect(ratio).toBeGreaterThanOrEqual(0.8);
+      expect(ratio).toBeLessThanOrEqual(1.91);
     }
   });
 
