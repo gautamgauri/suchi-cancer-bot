@@ -339,14 +339,14 @@ All runtime secrets live in Secret Manager in the project above. `cloudbuild.yam
 | `NAVIGATOR_APPROVAL_SECRET` | same | Signs approval links. The navigator jobs mount it as well. |
 | `CONTENT_APPROVAL_SECRET` | same | Signs approval links |
 | `DISTRIBUTION_APPROVAL_SECRET` | same | Signs the one-click approve and reject links |
-| `META_PAGE_ACCESS_TOKEN` | same | Facebook and Instagram. TO CONFIRM token expiry. |
+| `META_PAGE_ACCESS_TOKEN` | same | Facebook and Instagram. A Page token that does not expire, valid on 25 November 2026 (Graph `debug_token`). It carries `pages_manage_posts` and lacks `instagram_basic` and `instagram_content_publish`. Section 12. |
 | `META_PAGE_ID` | same | |
 | `META_IG_USER_ID` | same | |
 | `META_WABA_PHONE_NUMBER_ID` | same | WhatsApp |
 | `META_WABA_TOKEN` | same | WhatsApp. TO CONFIRM token expiry. |
 | `META_APP_SECRET` | same | Verifies the WhatsApp webhook signature |
 | `WHATSAPP_VERIFY_TOKEN` | same | |
-| `LINKEDIN_ACCESS_TOKEN` | same | Expires every 60 days |
+| `LINKEDIN_ACCESS_TOKEN` | same | Expires every 60 days. The only version was added on 21 May 2026, so it lapsed around 20 July 2026. |
 | `LINKEDIN_AUTHOR_URN` | same | |
 
 Seven names are lower case with hyphens and fourteen are upper case. Secret Manager names are case-sensitive, so check each new name with `gcloud secrets describe <NAME> --project gen-lang-client-0202543132` before deploying.
@@ -452,6 +452,8 @@ gcloud scheduler jobs list --location us-central1 --project gen-lang-client-0202
 
 Two other scheduler-guarded endpoints have no job named for them. They are `POST /v1/admin/housekeeping/run-expiry` and `POST /v1/admin/content/notify-publish`. TO CONFIRM whether another job calls them.
 
+**Open item. No social tick job exists yet.** Social posting needs one daily call to `POST /v1/social/tick`. Section 12 gives the command.
+
 The autoresearch nightly loop only ever proposed changes on `autoresearch/*` branches for human review. It has been paused since 20 July 2026 and never gated a deploy. Issue #60 holds the audit record and the conditions for restarting it. Do not restart it without meeting them.
 
 ## 11. Local setup, tests and CI
@@ -488,3 +490,99 @@ The same checks run locally.
 python3 scripts/check_deploy_config_parity.py
 python3 scripts/check_no_secret_literals.py
 ```
+
+## 12. Social posting
+
+Suchi posts to LinkedIn, Facebook, Instagram and X from `apps/api/src/modules/social/`. Nothing is posted without the owner's approval, and the owner approves each post once.
+
+### How a post goes out
+
+1. A Cloud Scheduler job calls `POST /v1/social/tick` once a day. The tick checks the platform credentials, retries any post that failed for a reason that is safe to retry, and prepares the calendar item due that day (`content/calendar.ts`).
+2. Each platform gets its own text. Items 1 to 6 of the first calendar are written by hand. Later items are written by Gemini from a brief of sourced facts.
+3. Every draft passes an automatic gate before anyone sees it. The gate applies the owner's style rules (`voice/voice-lint.ts`), checks that every number, link and clinical word comes from the sources (`voice/source-check.ts`), and scores the draft out of 100 (`voice/editorial-score.ts`, pass mark 75). A failing draft is written again with the reasons, three attempts in all, and is then held. A held draft is never offered.
+4. The owner receives one email at `DAILY_REPORT_EMAIL` with each platform's text exactly as it will appear and the Instagram card image. Its button opens a review page. Opening the page changes nothing.
+5. On the page the owner ticks the platforms and presses publish. That press is a POST, which is the only thing that can approve a post. The link is signed, bound to the exact text shown, works once and expires after 72 hours.
+6. Each ticked platform is posted on its own. A failure on one does not touch the others. The result, with each platform's post id and link, comes back by email and is kept in `gs://suchi-navigator-state/social/posts/`.
+
+A post can never go out twice. Each platform is claimed with a conditional write before any request is sent, so a second click, a resent email or two runs at once cannot post again. A post whose outcome is unknown, after a timeout or a server error, is marked `uncertain` and is never retried by the system. Check the page and post it by hand if it is missing.
+
+### Content lanes
+
+| Lane | What | Approval |
+|---|---|---|
+| Practical | Appointments, questions for the doctor, PM-JAY, health records, hospital contact pages, what Suchi can do. Facts only from official pages, each with its URL and the date it was read (`content/sources.ts`). | Owner |
+| Onco Talks | A pointer to one episode, using only its title and audience from `videos.json`. The video takeaways are never used. | Owner |
+| Clinical | Symptoms, treatment, side effects, screening, drafted from a site article. Shut until that article's front matter says `reviewed` or `published`. Every article is `ai_draft` today. | Clinician review of the article first, then owner |
+
+When an article is approved in the content pipeline, its slug waits in a list. The daily tick checks the list and opens the clinical lane for that article on the day its status changes.
+
+### The one switch
+
+To stop everything at once, pause. Nothing is prepared and nothing is sent until you resume. Posts already approved wait, and are dropped if they wait more than seven days.
+
+```bash
+printf paused | gcloud storage cp - gs://suchi-navigator-state/social/PAUSED   # pause
+gcloud storage rm gs://suchi-navigator-state/social/PAUSED                # resume
+```
+
+The admin routes `POST /v1/social/pause` and `POST /v1/social/resume` do the same with the admin login.
+
+`SOCIAL_PUBLISH_MODE` sets what a publish press does. `live` sends. `dry_run` records exactly the request each platform would receive and sends nothing. `off` prepares nothing. Both pipelines deploy `dry_run`. Change it to `live` in both `cloudbuild.yaml` and `cloudbuild.gated.yaml` when the owner is content with a week of dry runs.
+
+### Checking
+
+```bash
+# Exactly what would be posted on a calendar date, per platform. Sends nothing.
+curl -u "$ADMIN_USER:$ADMIN_PASS" "https://suchi-api-lxiveognla-uc.a.run.app/v1/social/preview?date=2026-12-01"
+# What was posted where and when, with each platform's post id
+curl -u "$ADMIN_USER:$ADMIN_PASS" https://suchi-api-lxiveognla-uc.a.run.app/v1/social/posts
+# Credential health, without sending email
+curl -u "$ADMIN_USER:$ADMIN_PASS" https://suchi-api-lxiveognla-uc.a.run.app/v1/social/tokens
+```
+
+Visits are counted in the daily report by source code. Web links carry `?src=social-linkedin`, `social-facebook`, `social-instagram` or `social-x`. The site passes that code on to its chat links for the rest of the visit. WhatsApp links carry `wa-linkedin`, `wa-facebook`, `wa-instagram` or `wa-x`, which the API must know before a post uses them (`whatsapp-source.ts`).
+
+### Setting up the scheduler job
+
+Run once, after the deploy that carries the social module.
+
+```bash
+gcloud scheduler jobs create http suchi-social-tick-daily \
+  --project gen-lang-client-0202543132 --location us-central1 \
+  --schedule "30 3 * * *" --time-zone "Etc/UTC" \
+  --uri "https://suchi-api-lxiveognla-uc.a.run.app/v1/social/tick" --http-method POST \
+  --oidc-service-account-email suchi-scheduler@gen-lang-client-0202543132.iam.gserviceaccount.com \
+  --oidc-token-audience "https://suchi-api-lxiveognla-uc.a.run.app"
+```
+
+At 03:30 UTC the approval email arrives at 09:00 in India.
+
+### Credentials, per platform
+
+**Facebook.** Needs `META_PAGE_ID` and `META_PAGE_ACCESS_TOKEN`, a Page token with `pages_manage_posts`. A Page token made from a long-lived user token does not expire, but it stops working if the person who made it loses their Page role or changes their password. To make a new one, open the Graph API Explorer as a Page admin, choose the SCCF app, ask for `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic` and `instagram_content_publish`, exchange the user token for a long-lived one, then read the Page's `access_token` from `GET /me/accounts`. Add it as a new version.
+
+```bash
+printf %s "$PAGE_TOKEN" | gcloud secrets versions add META_PAGE_ACCESS_TOKEN --data-file=- --project gen-lang-client-0202543132
+```
+
+**Instagram.** Uses the same Meta token, which must also carry `instagram_basic` and `instagram_content_publish`. The Instagram account must be a professional account linked to the SCCF Facebook Page. `META_IG_USER_ID` is the id returned by `GET /{page-id}?fields=instagram_business_account`. Instagram accepts JPEG images only. The card for each post is in `apps/landing/public/social/cards/` and is served by the site, so the site must be deployed before a post uses a new card. `python3 scripts/render-social-cards.py` draws the cards. Set the Instagram profile link to `https://suchitracancercare.org/?src=social-instagram`, because captions cannot hold a working link.
+
+**LinkedIn.** Needs `LINKEDIN_ACCESS_TOKEN` and `LINKEDIN_AUTHOR_URN` (`urn:li:organization:<id>`). Tokens last 60 days and need a browser sign-in by a Page admin to renew, about ten minutes, following `docs/LINKEDIN_ORG_POSTING.md`. The tick works out the token's age from the date its secret version was added. For that, the runtime service account needs to read the secret's metadata.
+
+```bash
+SA=$(gcloud run services describe suchi-api --region us-central1 --project gen-lang-client-0202543132 --format 'value(spec.template.spec.serviceAccountName)')
+gcloud secrets add-iam-policy-binding LINKEDIN_ACCESS_TOKEN --project gen-lang-client-0202543132 \
+  --member "serviceAccount:$SA" --role roles/secretmanager.viewer
+```
+
+Without it the tick reports the expiry as unknown, so keep a 55-day reminder.
+
+**X.** Off until `SOCIAL_X_ENABLED=true` and four keys are set. X charges for each post, and a post with a link costs more than one without (`docs.x.com/x-api/getting-started/pricing`). To switch it on, create a developer app in the X developer console for the SCCF account, buy credits and set a spending limit, give the app read and write permission, and generate the API key and secret and the access token and secret. Create the secrets `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN` and `X_ACCESS_TOKEN_SECRET`, check each with `gcloud secrets describe`, add them to `--set-secrets` in both pipeline files, set `SOCIAL_X_ENABLED=true` in both, run the parity check and deploy. Do not add the secret names before the secrets exist, because a missing secret fails every deploy. OAuth 1.0a user tokens do not expire but can be revoked.
+
+### Warnings to the owner
+
+The tick emails the owner when a LinkedIn or Meta token is 14, 7, 3 and 1 days from expiry and when it has lapsed, when the Meta token cannot publish to Instagram, and when X is switched on without its keys. Each stage is sent once. A platform that rejects its token during a post also triggers an email at once.
+
+### Retired links
+
+The old one-click links (`GET /v1/admin/social/approve/...` and `GET /v1/distribution/approve/...`) answer with a page that changes nothing. They changed state on a GET, never expired and fell back to a built-in secret. The `distribution/` folder, which posted to Instagram and X by logging in through a browser, was never scheduled and is not used.

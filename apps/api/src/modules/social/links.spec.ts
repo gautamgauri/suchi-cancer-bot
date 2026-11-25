@@ -20,10 +20,14 @@ describe("social source codes", () => {
     expect(new Set(Object.values(WHATSAPP_SOCIAL_CODES)).size).toBe(4);
   });
 
-  it.each(PLATFORMS)("a %s WhatsApp link is read by the API as that platform's code", (p) => {
+  it.each(PLATFORMS)("a %s WhatsApp link is read by the API as that platform's code, leaving the greeting", (p) => {
     const text = new URL(whatsappLink(p)).searchParams.get("text")!;
     const r = extractSourceLine(text, () => false);
-    expect(r.sourceCode).toBe(WHATSAPP_SOCIAL_CODES[p]);
+    expect(r).toEqual({ text: "Hello Suchi", sourceCode: WHATSAPP_SOCIAL_CODES[p] });
+  });
+
+  it("keeps the WhatsApp link short enough to read in a post", () => {
+    expect(whatsappLink("facebook")).toBe("https://wa.me/919430674464?text=Hello%20Suchi%0A%28src%3A%20wa-facebook%29");
   });
 
   it.each(PLATFORMS)("a %s web link carries exactly its own code", (p) => {

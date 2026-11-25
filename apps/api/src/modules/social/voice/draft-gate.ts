@@ -18,7 +18,7 @@ export function gateDraft(platform: Platform, text: string, brief: ContentBrief,
   const violations = [...lintVoice(platform, text, cardText), ...checkSources(platform, text, brief, cardText)];
   const score = scoreEditorial(platform, text, brief, cardText);
   if (score.total < EDITORIAL_GATE) {
-    violations.push({ code: "score", reason: `editorial score ${score.total} is below ${EDITORIAL_GATE} (${score.notes.join("; ") || "no notes"})` });
+    violations.push({ code: "score", reason: `editorial score ${score.total} is below ${EDITORIAL_GATE} (${score.notes.join(", ") || "no notes"})` });
   }
   return { passed: violations.length === 0, violations, score };
 }
