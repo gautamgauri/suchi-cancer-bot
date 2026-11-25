@@ -14,7 +14,6 @@
  * button on that page (POST) is the only thing that can approve a post.
  */
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
-import { createHash } from "node:crypto";
 import { LlmService } from "../llm/llm.service";
 import { EmailService } from "../email/email.service";
 import { ContentBrief, Platform, PLATFORMS, PlatformRecord, SocialPost } from "./social.types";
@@ -26,7 +25,7 @@ import { CALENDAR, CalendarItem, cardUrl } from "./content/calendar";
 import { assertLaneAllowed, clinicalBriefFromArticle } from "./content/clinical-lane";
 import { gateDraft, describeViolations } from "./voice/draft-gate";
 import { generateDraft, Llm } from "./social-generator";
-import { contentHashOf, signApprovalToken, verifyApprovalToken, APPROVAL_TTL_HOURS, ApprovalSecretMissingError } from "./approval-token";
+import { contentHashOf, signApprovalToken, verifyApprovalToken, ApprovalSecretMissingError } from "./approval-token";
 import { PlatformResult, publishMode, PublishMode, SocialPublisher } from "./social-publisher";
 import { checkLinkedIn, checkMeta, checkX, needsAlert, PlatformHealth, secretManagerCreatedAt, SecretCreatedAt } from "./token-health";
 import { approvalEmailHtml, heldEmailHtml, resultHtml, tokenAlertHtml } from "./social-html";
@@ -304,9 +303,10 @@ export class SocialService {
     const owner = this.ownerEmail();
     if (!owner || results.length === 0) return;
     const anyBad = results.some((r) => r.state === "failed" || r.state === "uncertain");
+    const allDry = results.every((r) => r.state === "dry_run");
     await this.email.sendEmail({
       to: owner,
-      subject: `${anyBad ? "Social post partly sent" : "Social post sent"}: ${post.title}`,
+      subject: `${allDry ? "Social post dry run recorded, nothing sent" : anyBad ? "Social post partly sent" : "Social post sent"}: ${post.title}`,
       html: resultHtml(post, results),
     }).catch(() => undefined);
     if (results.some((r) => r.tokenProblem)) {
@@ -484,11 +484,4 @@ export class SocialService {
         platforms: Object.fromEntries(PLATFORMS.map((q) => [q, { state: p.platforms[q]?.state, postId: p.platforms[q]?.platformPostId, permalink: p.platforms[q]?.permalink, publishedAt: p.platforms[q]?.publishedAt, lastError: p.platforms[q]?.attempts.slice(-1)[0]?.error }])),
       }));
   }
-
-  /** Stable id for an ad hoc post. */
-  static idFor(topicId: string, date: string): string {
-    return `${date}-${topicId}-${createHash("sha256").update(topicId + date).digest("hex").slice(0, 6)}`;
-  }
 }
-
-export { APPROVAL_TTL_HOURS };

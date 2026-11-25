@@ -31,6 +31,7 @@ describe("LinkedIn token age", () => {
     const h = await checkLinkedIn(async () => null, now);
     expect(h.status).toBe("unknown");
     expect(h.detail).toContain("roles/secretmanager.viewer");
+    expect(needsAlert(h)).toBe(true);
   });
 
   it("reports missing credentials", async () => {

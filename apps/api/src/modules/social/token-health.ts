@@ -150,7 +150,13 @@ export function checkX(): PlatformHealth {
   return { platform: "x", status: "ok", detail: "X keys are set. OAuth 1.0a user tokens do not expire." };
 }
 
-/** Statuses the owner should hear about. "missing" counts only when the owner meant to switch it on. */
+/**
+ * Statuses the owner should hear about. "missing" counts only when the owner
+ * meant to switch it on (X). An unknown LinkedIn expiry is reported once, so
+ * the owner learns how to make it readable.
+ */
 export function needsAlert(h: PlatformHealth): boolean {
-  return h.status === "expiring" || h.status === "expired" || h.status === "invalid" || (h.status === "missing" && h.platform === "x");
+  return h.status === "expiring" || h.status === "expired" || h.status === "invalid"
+    || (h.status === "missing" && h.platform === "x")
+    || (h.status === "unknown" && h.platform === "linkedin");
 }

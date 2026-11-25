@@ -44,6 +44,13 @@ describe("FacebookClient", () => {
     expect(calls[0].url).toBe("https://graph.facebook.com/v21.0/104/feed");
     const body = new URLSearchParams(String(calls[0].init!.body));
     expect(body.get("message")).toBe("Hello.");
+    expect(body.get("link")).toBeNull();
+  });
+
+  it("attaches the post's last link, its next step, as the preview", async () => {
+    const { fn, calls } = mockFetch([json(200, { id: "104_1" })]);
+    await new FacebookClient(fn).publish({ text: "Source: https://www.pib.gov.in/x\nMore https://chat.suchitracancercare.org/?src=social-facebook" });
+    expect(new URLSearchParams(String(calls[0].init!.body)).get("link")).toBe("https://chat.suchitracancercare.org/?src=social-facebook");
   });
 
   it("reports an invalid token (code 190) as a token problem", async () => {

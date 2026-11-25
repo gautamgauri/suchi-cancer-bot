@@ -9,7 +9,6 @@
  */
 import { Platform } from "./social.types";
 import { normalizeSourceCode } from "../sessions/source-code";
-import { PREFILLED_ENGLISH_LINE, PREFILLED_HINDI_LINE } from "../whatsapp/whatsapp-source";
 
 export const SITE_URL = (process.env.SUCHI_SITE_URL ?? "https://suchitracancercare.org").replace(/\/$/, "");
 export const CHAT_URL = "https://chat.suchitracancercare.org/";
@@ -46,8 +45,16 @@ export function siteLink(path: string, platform: Platform): string {
   return `${SITE_URL}${path}?src=${WEB_SOURCE_CODES[platform]}`;
 }
 
+/**
+ * A short greeting keeps the link readable when a platform shows it as text
+ * (the site's two-line Hindi and English greeting makes a link of several
+ * hundred characters once encoded). whatsapp-source.ts reads the code line
+ * whatever greeting sits above it.
+ */
+export const SOCIAL_WHATSAPP_GREETING = "Hello Suchi";
+
 export function whatsappLink(platform: Platform): string {
-  const text = `${PREFILLED_HINDI_LINE}\n${PREFILLED_ENGLISH_LINE}\n(src: ${WHATSAPP_SOCIAL_CODES[platform]})`;
+  const text = `${SOCIAL_WHATSAPP_GREETING}\n(src: ${WHATSAPP_SOCIAL_CODES[platform]})`;
   // encodeURIComponent leaves brackets alone. Encode them too, so no link
   // finder (ours, or a platform's) ends the link at the ")".
   const encoded = encodeURIComponent(text).replace(/\(/g, "%28").replace(/\)/g, "%29");

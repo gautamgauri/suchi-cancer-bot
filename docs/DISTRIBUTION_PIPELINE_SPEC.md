@@ -1,131 +1,46 @@
-# Suchi Distribution & Social Publishing Pipelines
+# Suchi social distribution
 
-This document specifies the distribution and social publishing pipelines used by Suchi Cancer Bot. 
+Social posting runs in the API, in `apps/api/src/modules/social/`. The runbook is `docs/OPERATIONS.md` section 12, which covers how a post goes out, the content lanes, the one switch that pauses everything, and what the owner must set up and renew for each platform.
 
-There are two co-existing publishing flows:
-1. **Unified Social Post Pipeline** (Fully integrated into the NestJS API under `apps/api`)
-2. **Standalone Distribution Pack Pipeline** (GCS-driven pipeline under `distribution/`)
+## What replaced what
 
----
+Until November 2026 there were two flows.
 
-## 1. Unified Social Post Pipeline (API-driven)
+The article-triggered flow in `apps/api/src/modules/admin/social-post.service.ts` drafted Facebook, Instagram and LinkedIn copy after each article approval and emailed three reviewers one-click GET links. Between 21 May and 23 June 2026 it posted eight times to the SCCF Facebook Page, with the chemotherapy article posted twice. Instagram never posted, because the Meta token has no Instagram permissions. LinkedIn answered 422 once and was not configured after that. Two drafts from 23 June 2026 were never decided. Those posts were drafted from articles that no clinician had reviewed.
 
-This pipeline triggers automatically when a website article is approved. It generates social media copy, runs safety checks, and sends an approval email to reviewers. Once approved, it publishes immediately to the native APIs of configured social platforms.
+The standalone flow in `distribution/` generated packs for five channels and posted to Instagram and X by logging in through a browser. Nothing schedules it, and it has never posted.
 
-### Flow Architecture
-```
-[Article Approved]
-       │
-       ▼
-[SocialPostService.generateAndQueue()]
-  - Generates platform-specific copy (Gemini)
-  - Runs Safety Gate (HARD_BLOCK_PATTERNS check)
-  - Saves draft to GCS (social-queue.json)
-  - Sends approval email to reviewers (Gautam, Divya, Nisha)
-       │
-       ▼
-Reviewer clicks "Approve All" or platform-specific links
-       │
-       ▼
-[GET /v1/admin/social/approve/:id?token=xxx]
-  - Verifies HMAC token
-  - Publishes directly to Facebook, Instagram, and LinkedIn APIs
-  - Sends confirmation email to team
-```
+Both are replaced by the social module.
 
-### Safety Gate & Hard Blocks
-Before the review email is sent, the content is inspected for medical safety. Any post matching these patterns is flagged `safetyBlocked` and **cannot be approved**:
-- Definitive diagnosis language ("you have/might have cancer")
-- Guarantees of cure or survival outcomes ("will cure", "90% survival")
-- Advice to start or stop clinical treatments ("stop chemo", "instead of radiation")
-- Specific rupee costs of treatments or procedures
+| Then | Now |
+|---|---|
+| Article copy posted after any reviewer's click | Article posts are in the clinical lane, shut until the article is marked reviewed |
+| One-click GET links, tokens that never expire, a built-in fallback secret | A review page. Only its POST button approves. Signed, content-bound, single-use links that expire after 72 hours. No fallback secret. |
+| Emails to three named reviewers | One email to `DAILY_REPORT_EMAIL` |
+| Copy shown as plain text without the image | Each platform's exact text and the Instagram card image |
+| A safety check by a second model call | The voice gate, the source check and the editorial score, all in code |
+| An editorial score that rewarded question openers, "Did you know", regional names and timeframes | A score for plainness, accuracy against the source, use to a family and calm |
+| Browser logins to Instagram and X | The official APIs. X behind `SOCIAL_X_ENABLED`. |
+| No record beyond a queue file | A record per post with each platform's post id, link, time and every attempt |
 
-### native Posting APIs
-On approval, the service posts directly to platforms:
-- **Facebook**: Publishes message to `/v21.0/{page-id}/feed`
-- **Instagram**: Creates media container with branded social card via `/v21.0/{ig-user-id}/media`, then publishes via `/media_publish`.
-- **LinkedIn**: Share UGC post with article links to `/v2/ugcPosts`.
+## Channel formats
 
----
-
-## 2. Standalone Distribution Pipeline (GCS-driven)
-
-This pipeline processes generated content packs manually or nightly. It reads the article queue, parses content, generates channel variations, and emails reviewers.
-
-### Flow Architecture
-```
-Nightly Cloud Run Job (daily-publisher)
-           │
-           ▼
-     [cli.ts / run]
-           │
-           ▼
-[Gemini Generator] ── Generates variants for 5 channels
-           │
-           ▼
-[Safety Checker] ── Runs safety check on all variants
-           │
-           ▼
-[Pack Writer]
-  - Saves pack to GCS (dist-packs/<slug>.json)
-  - Updates queue (dist-queue.json)
-  - Emails reviewers with approval link
-           │
-           ▼
-Reviewer clicks "Approve" link:
-[GET /v1/distribution/approve/:slug?token=xxx]
-  - Verifies HMAC token
-  - Sets pack status to "approved" in GCS
-           │
-           ▼
-Next run of daily-publisher posts approved packs to platforms (Instagram, Twitter, and LinkedIn via native APIs)
-```
-
-### Editorial Quality Gate & Regenerate-on-Fail Loop
-Before a pack is written to GCS, each generated channel variant is evaluated by the [Editorial Quality Scorer](../distribution/editorial-scorer.ts) on a 100-point scale across five core Suchi Editorial Principles:
-1. **Human-First**: Avoids starting with a clinical definition; opens with a human observation.
-2. **India-Grounded**: Focuses on local habits, regional tobacco types (e.g. gutka, khaini), or PM-JAY/Ayushman Bharat.
-3. **Practical**: Provides clear, actionable timeframes and next steps.
-4. **Calm Urgency**: Promotes swift action without causing alarm; balances urgent facts with reassuring guidance.
-5. **Clinically Humble**: Uses uncertainty terms (e.g. "may", "often") and avoids diagnosing.
-
-- **Threshold**: The minimum passing score is **75/100**.
-- **Automated Feedback Loop**: If a channel scores below 75/100, the pipeline dynamically builds targeted corrective feedback and invokes Gemini to regenerate the content (preserving what worked and repairing only the flagged dimensions).
-- **Retries**: The loop attempts up to **2 retries** per channel. If the score is still below 75 after retries, the variant is flagged in the logs but included in the pack anyway so the human reviewer can inspect the scores and make a final call.
-
-### Verification Endpoints
-- **Approve**: `GET /v1/distribution/approve/:slug?token=<hmac>`
-- **Reject**: `GET /v1/distribution/reject/:slug?token=<hmac>`
-- **Request Changes**: Handled via `mailto:` links directly to Gautam.
-
----
-
-## 3. Channel Specifications
-
-| Channel | Format / Word Count | Target Audience | Tone |
+| Platform | Who reads it | Length | Next step |
 |---|---|---|---|
-| **LinkedIn** | 150–250 words, opening hook, CTA | NGOs, health professionals, doctors | Authoritative, educational |
-| **Twitter / X** | 5–7 tweet thread, CTA | Health-aware youth, general public | Direct, factual, shareable |
-| **Instagram** | 6–8 slide captions, slide 1 is hook, CTA | Caregivers, general public | Warm, visual-first |
-| **WhatsApp** | ≤300 characters, warning sign, CTA | Caregivers, patients | Actionable, caring |
-| **YouTube Short** | 90–120 seconds spoken script, hook, CTA | Youth, general public | Conversational, educational |
+| LinkedIn | Hospital staff, social workers, health workers, funders | 60 to 160 words, no emoji, no hashtags | Web chat or site page with `src=social-linkedin` |
+| Facebook | Families and older relatives | 50 to 120 words | WhatsApp with `wa-facebook`, web chat or site page with `src=social-facebook` |
+| Instagram | Families, younger caregivers | 30 to 80 words under a card image, two hashtags at most | Profile link with `src=social-instagram` |
+| X | General public, journalists, health workers | One or two sentences, 280 characters with a link counted as 23 | Web chat or site page with `src=social-x` |
 
----
+## Environment
 
-## 4. Environment Variables
-
-Both pipelines read configuration from Environment Variables (in Secret Manager or process env):
-
-| Env Var | Purpose | Location |
-|---|---|---|
-| `META_PAGE_ID` | Facebook page ID for direct publishing | Unified Social |
-| `META_IG_USER_ID` | Instagram User ID for direct publishing | Unified Social |
-| `META_PAGE_ACCESS_TOKEN`| Meta Graph API token (Facebook & Instagram) | Unified Social |
-| `LINKEDIN_ACCESS_TOKEN` | OAuth Bearer token (rotate monthly) | Unified Social |
-| `LINKEDIN_AUTHOR_URN` | LinkedIn Organization or Person URN | Unified Social |
-| `SUCHI_SOCIAL_CARD_URL` | Base branded social card image URL for IG | Unified Social |
-| `SOCIAL_APPROVAL_SECRET`| HMAC signing secret for social posts | Unified Social |
-| `DISTRIBUTION_APPROVAL_SECRET`| HMAC signing secret for standalone packs | Standalone |
-| `QUEUE_GCS_BUCKET` | Google Cloud Storage bucket for queue and packs | Both |
-| `DIST_QUEUE_GCS_OBJECT` | GCS queue file name (defaults to `dist-queue.json`) | Standalone |
-| `DIST_PACKS_GCS_PREFIX` | GCS directory prefix for packs (defaults to `dist-packs`) | Standalone |
+| Variable | Purpose |
+|---|---|
+| `SOCIAL_PUBLISH_MODE` | `live`, `dry_run` (default) or `off` |
+| `SOCIAL_X_ENABLED` | `true` to allow X. Default `false`. |
+| `SOCIAL_APPROVAL_SECRET` | Signs approval links. Falls back to `CONTENT_APPROVAL_SECRET`. |
+| `DAILY_REPORT_EMAIL` | The owner, who receives approval and warning emails |
+| `QUEUE_GCS_BUCKET` | Holds `social/posts/`, `social/state/` and the `social/PAUSED` switch |
+| `META_PAGE_ID`, `META_IG_USER_ID`, `META_PAGE_ACCESS_TOKEN` | Facebook and Instagram |
+| `LINKEDIN_ACCESS_TOKEN`, `LINKEDIN_AUTHOR_URN` | LinkedIn |
+| `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` | X. Optional env, kept out of the pipelines until the secrets exist. |

@@ -32,6 +32,20 @@ function form(fields: Record<string, string>): URLSearchParams {
   return new URLSearchParams(fields);
 }
 
+/**
+ * The post's last link is its next step. Sending it as `link` makes Facebook
+ * show that page as the preview card, even when a source link comes first.
+ */
+export function lastLink(text: string): string | undefined {
+  const urls = text.match(/https?:\/\/\S+/g);
+  return urls ? urls[urls.length - 1] : undefined;
+}
+
+function feedFields(text: string): Record<string, string> {
+  const link = lastLink(text);
+  return link ? { message: text, link } : { message: text };
+}
+
 export class FacebookClient implements PlatformClient {
   readonly platform = "facebook" as const;
   constructor(private readonly fetchFn: FetchLike = fetch) {}
@@ -41,7 +55,7 @@ export class FacebookClient implements PlatformClient {
   }
 
   render(p: PlatformPayload) {
-    return { method: "POST", url: `${GRAPH}/${process.env.META_PAGE_ID ?? "{META_PAGE_ID}"}/feed`, body: { message: p.text } };
+    return { method: "POST", url: `${GRAPH}/${process.env.META_PAGE_ID ?? "{META_PAGE_ID}"}/feed`, body: feedFields(p.text) };
   }
 
   async publish(p: PlatformPayload): Promise<PublishOutcome> {
@@ -53,7 +67,7 @@ export class FacebookClient implements PlatformClient {
       res = await fetchWithTimeout(this.fetchFn, `${GRAPH}/${pageId}/feed`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: form({ message: p.text, access_token: token }),
+        body: form({ ...feedFields(p.text), access_token: token }),
       });
     } catch (err) {
       return networkOutcome(err);
