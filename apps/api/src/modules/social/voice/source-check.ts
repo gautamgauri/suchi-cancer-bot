@@ -6,8 +6,11 @@
  * - every number in the draft, in digits or in words, must appear in the
  *   brief's fact strings or title;
  * - every link, whether `https://`, `www.` or a bare domain such as
- *   `nha.gov.in`, must be one of the brief's source URLs or hosts, or the
- *   post's own next-step link;
+ *   `nha.gov.in`, must be one of the brief's source URLs, or name a host that
+ *   is exactly a source's host, a host the facts name or the site's own, or
+ *   be the post's own next-step link;
+ * - text in a script other than Latin, such as Devanagari, is held, since
+ *   none of these checks can read it;
  * - in the practical and Onco Talks lanes, a clinical word or drug name
  *   (in any of its plural or inflected forms) may appear only if the brief's
  *   facts use it, and an instruction about medicines, treatment or food is
@@ -27,8 +30,18 @@ import { carriesPlatformCode } from "../links";
 import { VoiceViolation } from "./voice-lint";
 
 const URL_RE = /https?:\/\/[^\s)]+/g;
-/** `www.example.org/x` or `example.gov.in/x`, not part of an e-mail address or a full URL. */
-const BARE_DOMAIN_RE = /(?<![@/\w.-])(?:www\.)?(?:[a-z0-9-]+\.)+(?:com|org|net|in|gov|edu|io|co|info|me|ly|app|health)(?:\/[^\s)]*)?(?![\w-])/gi;
+/**
+ * A run of dot-separated labels with an optional path, such as
+ * `beneficiary.nha.gov.in/x`, not part of an e-mail address or a full URL.
+ * The whole run is taken, so `beneficiary.nha.gov.in.cover-check.xyz` is
+ * read as that one host. Only a run whose last label is two or more letters
+ * is treated as an address (see bareDomainsIn), so "3.5" is not one.
+ */
+const HOST_RUN_RE = /(?<![@/\w.-])(?:[a-z0-9-]+\.)+[a-z0-9-]+(?:\/[^\s)]*)?/gi;
+const ADDRESS_END = /\.[a-z]{2,}$/i;
+
+/** Letters from any script other than Latin, such as Devanagari. */
+const NON_LATIN_LETTER = /(?![\p{Script=Latin}])\p{L}/u;
 
 /**
  * Clinical words and drug names. In the safe lanes each may appear only when
@@ -105,7 +118,7 @@ function normaliseNumber(n: string): string {
 
 /** Numbers in digits and in words, normalised so "five" and "5" compare equal. */
 export function numbersIn(text: string): string[] {
-  const t = text.replace(URL_RE, " ").replace(BARE_DOMAIN_RE, " ");
+  const t = text.replace(URL_RE, " ").replace(HOST_RUN_RE, (m) => (ADDRESS_END.test(m.replace(/\/.*$/, "")) ? " " : m));
   const digits = (t.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map(normaliseNumber);
   const words = (t.toLowerCase().match(/[a-z]+/g) ?? []).filter((w) => w in NUMBER_WORDS).map((w) => NUMBER_WORDS[w]);
   return [...digits, ...words];
@@ -132,8 +145,18 @@ export function urlsIn(text: string): string[] {
 }
 
 export function bareDomainsIn(text: string): string[] {
-  return (text.replace(URL_RE, " ").match(BARE_DOMAIN_RE) ?? []).map(stripTrailing);
+  return (text.replace(URL_RE, " ").match(HOST_RUN_RE) ?? [])
+    .map(stripTrailing)
+    .filter((d) => ADDRESS_END.test(d.replace(/\/.*$/, "")));
 }
+
+/** The hosts named in a text, lower case and without `www.`. */
+function hostsNamedIn(text: string): Set<string> {
+  return new Set(bareDomainsIn(text).map(hostOf).filter(Boolean));
+}
+
+/** The site's own hosts, always allowed. */
+const OWN_HOSTS = ["suchitracancercare.org", "chat.suchitracancercare.org"];
 
 function termRegex(term: string): RegExp {
   const body = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
@@ -157,6 +180,13 @@ export function checkSources(platform: Platform, text: string, brief: ContentBri
   const corpusNumbers = new Set(numbersIn(corpus));
   const all = `${text}\n${cardText ?? ""}`;
 
+  // These checks read English. Text in another script cannot be compared
+  // with the facts, so it is held for the owner instead of passing unread.
+  const nonLatin = all.split(/\n+/).find((l) => NON_LATIN_LETTER.test(l.replace(URL_RE, " ")));
+  if (nonLatin !== undefined) {
+    hits.push({ code: "non_latin", reason: "text in a script other than Latin cannot be checked against the facts", excerpt: nonLatin.trim().slice(0, 100) });
+  }
+
   for (const n of numbersIn(all)) {
     if (!corpusNumbers.has(n)) hits.push({ code: "unsourced_number", reason: `the number "${n}" is not in the sources` });
   }
@@ -171,14 +201,14 @@ export function checkSources(platform: Platform, text: string, brief: ContentBri
       hits.push({ code: "unknown_link", reason: "link not from the sources and without this platform's code", excerpt: u.slice(0, 100) });
     }
   }
+  // Allowed hosts, compared whole and exactly: a source URL's host, a host the
+  // facts themselves name, or the site's own. A subdomain of a source host is
+  // not allowed unless a fact names it, so a look-alike cannot borrow a real
+  // host as its prefix or its suffix.
+  const allowedHosts = new Set([...sourceHosts, ...hostsNamedIn(corpus), ...OWN_HOSTS]);
   for (const d of bareDomainsIn(all)) {
     const h = hostOf(d);
-    // Allowed: a source's host or a subdomain of it, an address the facts
-    // themselves name, or the site's own addresses.
-    const known = [...sourceHosts].some((s) => h === s || h.endsWith(`.${s}`))
-      || corpus.includes(d.toLowerCase().replace(/^www\./, ""))
-      || h === "suchitracancercare.org" || h === "chat.suchitracancercare.org";
-    if (h && !known) {
+    if (!h || !allowedHosts.has(h)) {
       hits.push({ code: "unknown_link", reason: "web address not from the sources", excerpt: d.slice(0, 100) });
     }
   }

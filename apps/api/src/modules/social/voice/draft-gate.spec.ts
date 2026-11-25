@@ -54,6 +54,45 @@ describe("source check", () => {
     expect(checkSources("instagram", "To find out whether you are covered, call the helpline 14555.", brief)).toEqual([]);
   });
 
+  describe("web addresses", () => {
+    const portal: ContentBrief = {
+      ...brief,
+      facts: [...brief.facts, { text: "A family can check its cover on the beneficiary portal, beneficiary.nha.gov.in.", url: "https://beneficiary.nha.gov.in/", fetchedOn: "2026-11-25" }],
+    };
+    const post = (addr: string) => `Check your family's cover at ${addr} or call 14555.\n${webChatLink("x")}`;
+
+    it("allows the address the facts name", () => {
+      expect(checkSources("x", post("beneficiary.nha.gov.in"), portal)).toEqual([]);
+      expect(checkSources("x", post("beneficiary.nha.gov.in."), portal)).toEqual([]);
+    });
+
+    it("fails a look-alike that puts the real host first", () => {
+      const hits = checkSources("x", post("beneficiary.nha.gov.in.cover-check.xyz"), portal);
+      expect(hits).toContainEqual(expect.objectContaining({ code: "unknown_link", excerpt: "beneficiary.nha.gov.in.cover-check.xyz" }));
+    });
+
+    it("fails a look-alike with an ending outside the usual few", () => {
+      expect(codes(checkSources("x", post("beneficiary-nha.online"), portal))).toContain("unknown_link");
+      expect(codes(checkSources("x", post("nha-gov.in"), portal))).toContain("unknown_link");
+    });
+
+    it("fails a subdomain of a source host that no fact names", () => {
+      expect(codes(checkSources("x", post("cover.beneficiary.nha.gov.in"), portal))).toContain("unknown_link");
+    });
+
+    it("does not read a decimal number as an address", () => {
+      expect(codes(checkSources("x", `Cover is 5.0 lakh. Call 14555.\n${webChatLink("x")}`, brief))).not.toContain("unknown_link");
+    });
+  });
+
+  it("holds text in Devanagari or another non-Latin script instead of skipping it", () => {
+    const hindi = `PM-JAY gives eligible families health cover of Rs 5 lakh a year for hospital care.\nइलाज के लिए 10 लाख रुपये मिलते हैं।\n${webChatLink("x")}`;
+    expect(codes(checkSources("x", hindi, brief))).toContain("non_latin");
+    expect(gateDraft("x", hindi, brief).passed).toBe(false);
+    expect(codes(checkSources("instagram", "Call the helpline 14555 to find out whether you are covered.", brief, "হেল্পলাইন 14555"))).toContain("non_latin");
+    expect(codes(checkSources("x", `Rs 5 lakh, or ₹5 lakh, for hospital care. Call 14555.\n${webChatLink("x")}`, brief))).not.toContain("non_latin");
+  });
+
   it("fails clinical words that the sources do not use, in the safe lanes", () => {
     const text = `Early screening can catch symptoms. Call 14555.\n${webChatLink("x")}`;
     expect(codes(checkSources("x", text, brief))).toContain("clinical_term");
