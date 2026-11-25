@@ -93,6 +93,14 @@ export class SocialPublisher {
         r.attempts.push({ at: this.now().toISOString(), outcome: "rejected", error: "approval older than seven days, not sent", retryable: false });
         return post;
       }
+      // The owner approved what the email said would happen. A post offered
+      // as a dry run is never sent live, and the other way round.
+      if (post.offeredMode && post.offeredMode !== mode) {
+        r.state = "skipped";
+        r.attempts.push({ at: this.now().toISOString(), outcome: "rejected", error: "publish mode changed since approval, not sent", retryable: false });
+        if (PLATFORMS.every((q) => !["approved", "publishing"].includes(post.platforms[q].state))) post.status = "done";
+        return post;
+      }
       r.state = "publishing";
       r.claimedAt = this.now().toISOString();
       claimed = post;

@@ -290,6 +290,58 @@ describe("SocialService", () => {
       expect(clients.facebook.calls).toHaveLength(1);
     });
 
+    it("never sends live a post that was offered and approved as a dry run", async () => {
+      process.env.SOCIAL_PUBLISH_MODE = "dry_run";
+      const t = await prepared();
+      expect((await store.getPost("2026-12-01-first-appointment"))!.value.offeredMode).toBe("dry_run");
+      await store.setPaused(true);
+      const d = await svc.decide("2026-12-01-first-appointment", t, "approve", ["linkedin", "facebook", "instagram"]);
+      expect(d.ok).toBe(true);
+      process.env.SOCIAL_PUBLISH_MODE = "live";
+      await store.setPaused(false);
+      now = new Date(now.getTime() + 86_400_000);
+      await svc.tick();
+      expect(clients.linkedin.calls.length + clients.facebook.calls.length + clients.instagram.calls.length).toBe(0);
+      const post = (await store.getPost("2026-12-01-first-appointment"))!.value;
+      for (const p of ["linkedin", "facebook", "instagram"] as const) {
+        expect(post.platforms[p].state).toBe("skipped");
+        expect(post.platforms[p].attempts.slice(-1)[0].error).toBe("publish mode changed since approval, not sent");
+      }
+      expect(post.status).toBe("done");
+    });
+
+    it("does nothing on a tick while the mode is off: nothing prepared, offered or sent", async () => {
+      const t = await prepared();
+      await store.setPaused(true);
+      await svc.decide("2026-12-01-first-appointment", t, "approve", ["facebook"]);
+      await store.setPaused(false);
+      process.env.SOCIAL_PUBLISH_MODE = "off";
+      email.sendEmail.mockClear();
+      now = new Date(now.getTime() + 2 * 86_400_000);
+      const r = await svc.tick();
+      expect(r.mode).toBe("off");
+      expect(r.prepared).toEqual([]);
+      expect(r.resumed).toEqual([]);
+      expect(clients.facebook.calls).toHaveLength(0);
+      expect(await store.getPost("2026-12-03-pmjay-check")).toBeNull();
+      expect(email.sendEmail.mock.calls.filter((c) => /For your approval|Social post/.test(c[0].subject))).toEqual([]);
+    });
+
+    it("emails the owner once when the calendar has no items left", async () => {
+      const last = CALENDAR[CALENDAR.length - 1].date;
+      now = new Date(`${last}T03:30:00Z`);
+      await svc.tick();
+      const empty = () => email.sendEmail.mock.calls.filter((c) => /calendar has no posts left/.test(c[0].subject));
+      expect(empty()).toHaveLength(0);
+      now = new Date(now.getTime() + 86_400_000);
+      expect((await svc.tick()).calendarEmptySent).toBe(true);
+      now = new Date(now.getTime() + 86_400_000);
+      expect((await svc.tick()).calendarEmptySent).toBe(false);
+      await svc.tick();
+      expect(empty()).toHaveLength(1);
+      expect(empty()[0][0].html).toContain(last);
+    });
+
     it("emails the owner about a post left in publishing, after 15 minutes", async () => {
       await prepared();
       const cur = await store.getPost("2026-12-01-first-appointment");

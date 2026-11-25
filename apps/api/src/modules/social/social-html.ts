@@ -32,7 +32,7 @@ function platformBlock(post: SocialPost, p: Platform, withCheckbox: boolean): st
   if (!r) return "";
   if (r.state === "held") {
     return `<h3 style="margin:24px 0 6px">${PLATFORM_LABEL[p]} <span style="color:#b45309;font-weight:normal">(held, will not be posted)</span></h3>
-<p style="font-size:13px;color:#92400e;margin:0 0 6px">The draft broke the voice rules after every attempt.</p>
+<p style="font-size:13px;color:#92400e;margin:0 0 6px">This version is held for the reasons below. A written draft is checked once, and a generated one up to three times.</p>
 <ul style="font-size:13px;color:#92400e;margin:0 0 8px">${(r.voice?.violations ?? []).map((v) => `<li>${esc(v)}</li>`).join("")}</ul>
 ${r.text ? `<div style="${BOX};opacity:.7">${esc(r.text)}</div>` : ""}`;
   }
@@ -82,6 +82,14 @@ export function heldEmailHtml(post: SocialPost): string {
 <p style="font-size:14px">No platform draft passed the checks, so nothing was offered for approval and nothing will be posted.</p>
 ${(post.heldReasons ?? []).length ? `<ul style="font-size:13px">${post.heldReasons!.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
 ${PLATFORMS.map((p) => platformBlock(post, p, false)).join("\n")}
+</body></html>`;
+}
+
+export function calendarEmptyHtml(lastDate: string | null): string {
+  return `<!DOCTYPE html><html><body style="${PAGE_STYLE}">
+<h2>The social calendar has no posts left</h2>
+<p style="font-size:14px">${lastDate ? `The last planned post was for ${esc(lastDate)}. ` : ""}No more posts will be prepared until new items are added to apps/api/src/modules/social/content/calendar.ts and deployed.</p>
+<p style="font-size:12px;color:#6b7280">This email is sent once.</p>
 </body></html>`;
 }
 

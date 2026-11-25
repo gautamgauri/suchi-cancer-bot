@@ -28,7 +28,7 @@ import { generateDraft, Llm } from "./social-generator";
 import { contentHashOf, signApprovalToken, verifyApprovalToken, ApprovalSecretMissingError } from "./approval-token";
 import { PlatformResult, publishMode, PublishMode, SocialPublisher } from "./social-publisher";
 import { checkLinkedIn, checkMeta, checkX, needsAlert, PlatformHealth, secretManagerCreatedAt, SecretCreatedAt } from "./token-health";
-import { approvalEmailHtml, heldEmailHtml, resultHtml, stuckHtml, tokenAlertHtml } from "./social-html";
+import { approvalEmailHtml, calendarEmptyHtml, heldEmailHtml, resultHtml, stuckHtml, tokenAlertHtml } from "./social-html";
 import { FetchLike } from "./platforms/platform-client";
 
 export const API_PUBLIC_BASE = "https://suchi-api-lxiveognla-uc.a.run.app/v1";
@@ -105,6 +105,8 @@ export interface TickReport {
   emailFailures: string[];
   prepared: Array<{ id: string; status: string }>;
   expired: string[];
+  /** True on the one tick that told the owner the calendar has run out. */
+  calendarEmptySent?: boolean;
 }
 
 @Injectable()
@@ -422,10 +424,25 @@ export class SocialService {
     for (const item of CALENDAR.filter((i) => i.date === today || i.date === yesterday)) {
       report.prepared.push(await this.prepareAndOffer(`${item.date}-${item.brief.topicId}`, item.brief, { date: item.date, card: item.card, drafts: item.drafts }));
     }
+    if (!CALENDAR.some((i) => i.date >= today)) report.calendarEmptySent = await this.reportCalendarEmpty();
 
     report.prepared.push(...(await this.recheckClinicalWaiting()));
     report.expired = await this.expireStale();
     return report;
+  }
+
+  /** Tell the owner once that no calendar items are left. */
+  private async reportCalendarEmpty(): Promise<boolean> {
+    const owner = this.ownerEmail();
+    if (!owner) return false;
+    const lastDate = CALENDAR.length ? CALENDAR.map((i) => i.date).sort().slice(-1)[0] : null;
+    const key = "calendar-empty";
+    const cur = await this.deps.store.getState<{ lastDate: string | null }>(key);
+    if (cur && cur.value.lastDate === lastDate) return false;
+    // Claim first, so two instances cannot both send it.
+    if (!(await this.deps.store.putState(key, { lastDate }, cur?.version ?? null).catch(() => false))) return false;
+    await this.email.sendEmail({ to: owner, subject: "Social posting: the calendar has no posts left", html: calendarEmptyHtml(lastDate) }).catch(() => undefined);
+    return true;
   }
 
   private async reportStuck(stuck: Array<{ id: string; title: string; platform: Platform }>): Promise<void> {
