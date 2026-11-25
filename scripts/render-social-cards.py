@@ -11,7 +11,7 @@ Instagram's content publishing API accepts JPEG only, 320 to 1440 pixels wide,
 aspect ratio 4:5 to 1.91:1, at most 8 MB.
 
     python3 scripts/render-social-cards.py            # render all
-    python3 scripts/render-social-cards.py --check    # fail if any card is missing
+    python3 scripts/render-social-cards.py --check    # fail if a card is missing or its text cannot fit
 
 Needs Pillow and the DejaVu Sans fonts (fonts-dejavu on Debian and Ubuntu).
 """
@@ -69,6 +69,25 @@ def wrap(draw, text: str, f, width: int) -> list[str]:
     return lines
 
 
+def layout(d, text: str):
+    """The largest type size at which every line fits inside the margins.
+
+    A long word such as a web address cannot be wrapped, so the size also
+    comes down until the widest line fits. Raises if nothing fits at 44.
+    """
+    width = W - 2 * MARGIN
+    size = 76
+    while size >= 44:
+        big = font("DejaVuSans-Bold.ttf", size)
+        lines = wrap(d, text, big, width)
+        line_h = int(size * 1.3)
+        widest = max(d.textlength(line, font=big) for line in lines)
+        if len(lines) * line_h <= H - 2 * MARGIN - 300 and widest <= width:
+            return big, lines, line_h
+        size -= 4
+    raise SystemExit(f"Card text does not fit at the smallest size: {text}")
+
+
 def render(name: str, text: str) -> None:
     from PIL import Image, ImageDraw
 
@@ -78,14 +97,7 @@ def render(name: str, text: str) -> None:
     d.text((MARGIN, MARGIN), "Suchitra Cancer Care Foundation", font=small, fill=LIGHT)
     d.rectangle([MARGIN, MARGIN + 60, MARGIN + 120, MARGIN + 66], fill=LIGHT)
 
-    size = 76
-    while size > 44:
-        big = font("DejaVuSans-Bold.ttf", size)
-        lines = wrap(d, text, big, W - 2 * MARGIN)
-        line_h = int(size * 1.3)
-        if len(lines) * line_h <= H - 2 * MARGIN - 300:
-            break
-        size -= 4
+    big, lines, line_h = layout(d, text)
     y = (H - len(lines) * line_h) // 2
     for line in lines:
         d.text((MARGIN, y), line, font=big, fill=WHITE)
@@ -103,6 +115,14 @@ def main() -> int:
         if missing:
             print("Missing social cards: " + ", ".join(missing))
             return 1
+        try:
+            from PIL import Image, ImageDraw
+        except ImportError:
+            print("Pillow is not installed, so the layout was not checked")
+        else:
+            d = ImageDraw.Draw(Image.new("RGB", (W, H)))
+            for text in wanted.values():
+                layout(d, text)
         print(f"OK: {len(wanted)} social cards present")
         return 0
     for name, text in wanted.items():
