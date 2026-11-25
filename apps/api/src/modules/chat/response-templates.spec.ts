@@ -35,3 +35,16 @@ describe("ResponseTemplates.explainModeFrame — no 'undefined' leaks", () => {
     expect(out).toContain("Diagnosis may involve a CT scan and biopsy.");
   });
 });
+
+// Issue #260: the navigation template quotes only numbers in the verified
+// financial support file. The PM-JAY helpline stays. The Indian Cancer Society
+// number is not in the verified reference, and the Tata Memorial switchboard
+// was labelled a helpline; hospital numbers now come from the directory.
+describe("ResponseTemplates.N1 — verified numbers only (#260)", () => {
+  it("keeps the PM-JAY helpline and drops the unverified numbers", () => {
+    const out = ResponseTemplates.N1({} as any);
+    expect(out).toContain("14555");
+    expect(out).not.toContain("1800-22-1951");
+    expect(out).not.toContain("022-24177000");
+  });
+});

@@ -255,15 +255,13 @@ describe("PlanExecutorService — structured template composition", () => {
     });
   });
 
-  describe("required sections of a same-intent template (Codex review, PR #174)", () => {
+  describe("the removed scheme template and chunk sanitising (#174, #158, #260)", () => {
     /**
-     * SCHEME_APPLICATION_CHECKLIST declares THREE retrieval sections with the
-     * same retrievalIntent "schemes": scheme_overview and eligibility (both
-     * required) and additional_schemes (optional). findChunksForIntent hands
-     * all three the same chunks, so all three format byte-identically — the
-     * same shape as PSYCHOSOCIAL_SUPPORT's duplicate pair, but two of these
-     * sections are REQUIRED, and renderTemplate answers an unfilled required
-     * section with "_Information not available…_".
+     * SCHEME_APPLICATION_CHECKLIST, whose two required "schemes" sections the
+     * PR #174 tests covered, is removed (issue #260). A plan that still names
+     * it renders nothing, so ChatService falls through to the ordinary path.
+     * The #158 chunk-numbering tests below now run through the biopsy
+     * template's optional "education" section, which still quotes chunks.
      */
     const PMJAY_OVERVIEW_CHUNK = [
       "# Ayushman Bharat PM-JAY",
@@ -326,38 +324,10 @@ describe("PlanExecutorService — structured template composition", () => {
       return result.responseText || "";
     }
 
-    it("does not claim information is unavailable when the retrieval returned evidence", async () => {
+    it("renders nothing for the removed scheme template (#260)", async () => {
       const text = await schemeResponse();
 
-      expect(text).not.toContain("Information not available");
-    });
-
-    it("fills the required eligibility section from the retrieved chunks", async () => {
-      const text = await schemeResponse();
-
-      expect(text).toContain("**Eligibility Criteria**");
-      expect(visible(sectionBody(text, "**Eligibility Criteria**"))).toContain(
-        "Families listed in the SECC database are eligible"
-      );
-      expect(visible(sectionBody(text, "**Scheme Overview**"))).toContain(
-        "The scheme covers hospitalisation costs up to Rs 5 lakh"
-      );
-    });
-
-    it("still suppresses the optional duplicate section", async () => {
-      const text = await schemeResponse();
-
-      // additional_schemes is optional and would repeat the overview verbatim
-      // a third time — the defect issue #173 reported.
-      expect(text).not.toContain("**Other Financial Support**");
-    });
-
-    it("keeps the template's own scheme content intact", async () => {
-      const text = await schemeResponse();
-
-      expect(text).toContain("**Documents Required**");
-      expect(text).toContain("**How to Apply (Step by Step)**");
-      expect(text).toContain("**Helpline:** Call 14555 (toll-free)");
+      expect(text).toBe("");
     });
 
     /**
@@ -404,23 +374,41 @@ describe("PlanExecutorService — structured template composition", () => {
         "उदाहरण कैंसर अस्पताल, पटना में सर्जिकल ऑन्कोलॉजी उपलब्ध है।",
       ].join("\n");
 
+      function biopsyPlan(): ExecutionPlan {
+        const retrieve: RetrievalStep = {
+          type: "retrieve",
+          intent: "education",
+          query: "my biopsy report came, what next",
+          topK: 5,
+          stepId: "retrieve_education_0",
+        };
+        const template: TemplateStep = {
+          type: "template",
+          templateId: "biopsy_next_steps",
+          retrievalStepIds: ["retrieve_education_0"],
+          locale: "en",
+          stepId: "template_biopsy_next_steps",
+        };
+        return {
+          planId: "plan_test_158",
+          steps: [retrieve, template],
+          usesStructuredTemplate: true,
+          template: null as any,
+          signals: [],
+          reasoning: "test",
+          estimatedRetrievalCalls: 1,
+        } as unknown as ExecutionPlan;
+      }
+
       async function responseFor(content: string): Promise<string> {
         buildExecutor([chunk("kb_synthetic::chunk::7", "kb_synthetic", content)]);
-        const result = await executor.execute(
-          schemePlan(),
-          "how much will treatment cost under Ayushman Bharat",
-          "en"
-        );
+        const result = await executor.execute(biopsyPlan(), "my biopsy report came, what next", "en");
         return visible(result.responseText || "");
       }
 
       /** Bullets rendered under a retrieval section. */
       function retrievalBullets(text: string): string[] {
-        return [
-          sectionBody(text, "**Scheme Overview**"),
-          sectionBody(text, "**Eligibility Criteria**"),
-        ]
-          .join("\n")
+        return sectionBody(text, "**Tests Your Doctor May Order Next**")
           .split("\n")
           .filter((line) => line.startsWith("- "));
       }
@@ -593,40 +581,32 @@ describe("PlanExecutorService — structured template composition", () => {
       return result.responseText || "";
     }
 
+    // Issue #260: with no directory results the hospital section is left out.
+    // A knowledge-base chunk never supplies the hospital list, and the
+    // financial section holds verified PM-JAY lines only.
     it("does not print the research document's section numbering or list marker", async () => {
       const text = visible(await navigationResponse());
 
-      // The reported line, verbatim.
-      expect(text).not.toContain(
-        "4. Other Accredited Hospitals with Surgical Oncology: - Savera"
-      );
       expect(text).not.toContain("4. Other Accredited Hospitals");
       expect(text).not.toContain(": - Savera");
-      // The hospital itself still reaches the reader.
-      expect(text).toContain("Savera Cancer and Multispeciality Hospital");
     });
 
-    it("lists the hospital once, under the hospital heading only", async () => {
+    it("never lists a hospital from a knowledge-base chunk, under any heading (#260)", async () => {
       const text = visible(await navigationResponse());
 
-      const occurrences =
-        text.split("Savera Cancer and Multispeciality Hospital").length - 1;
-      expect(occurrences).toBe(1);
-
-      expect(
-        sectionBody(text, "**Hospital / Treatment Centre Information**")
-      ).toContain("Savera Cancer and Multispeciality Hospital");
-      expect(
-        sectionBody(text, "**Financial Support Options**")
-      ).not.toContain("Savera Cancer and Multispeciality Hospital");
+      expect(text).not.toContain("Savera Cancer and Multispeciality Hospital");
+      expect(text).not.toContain("Mahavir Cancer Sansthan");
+      expect(text).not.toContain("**Hospital / Treatment Centre Information**");
     });
 
-    it("keeps the financial section's own scheme evidence", async () => {
-      const text = visible(await navigationResponse());
+    it("fills the financial section from the verified file, not from retrieved chunks (#260)", async () => {
+      const body = sectionBody(visible(await navigationResponse()), "**Financial Support Options**");
 
-      expect(sectionBody(text, "**Financial Support Options**")).toContain(
-        "The scheme covers hospitalisation costs up to Rs 5 lakh"
+      expect(body).not.toContain("The scheme covers hospitalisation costs");
+      expect(body).toContain(
+        "Ayushman Bharat PM-JAY gives a cover of Rs 5 lakh per family per year for secondary and tertiary hospital care"
       );
+      expect(body).toContain("The PM-JAY toll-free helpline is 14555.");
     });
 
     it("keeps the template's own checklist content intact", async () => {
@@ -853,12 +833,12 @@ describe("PlanExecutorService — structured template composition", () => {
       expect(sectionBody(text, "**Financial Support Options**")).toContain("Rs 5 lakh");
     });
 
-    it("falls back to the chunks when the plan carries no directory results, still without boilerplate", async () => {
-      const body = sectionBody(await respond(false), HOSPITAL_HEADING);
-      expect(body).toContain("IGIMS");
-      expect(body).not.toContain("Editorial Board");
-      expect(body).not.toContain("Based on comprehensive research");
-      expect(body).not.toContain("HBCH Muzaffarpur");
+    it("leaves the hospital section out when the plan carries no directory results (#260)", async () => {
+      const text = await respond(false);
+      expect(text).not.toContain(HOSPITAL_HEADING);
+      expect(text).not.toContain("IGIMS");
+      expect(text).not.toContain("Editorial Board");
+      expect(text).not.toContain("HBCH Muzaffarpur");
     });
   });
 

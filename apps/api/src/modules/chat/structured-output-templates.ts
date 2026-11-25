@@ -13,6 +13,7 @@
  */
 
 import { normalizeForMatch } from "../safety/text-normalizer";
+import { loadFinancialSupport, payClosing } from "./practical/financial-support";
 
 // ─── Template Definitions ─────────────────────────────────────
 
@@ -50,6 +51,29 @@ export interface OutputTemplate {
   closingNoteHi?: string;
 }
 
+// ─── Verified financial support lines ──────────────────────────
+
+/**
+ * The PM-JAY lines of the visit checklist's financial section, word for word
+ * from the verified file (apps/api/data/financial-support.json), with the
+ * checked-on date. Empty if the file cannot be read, and an empty optional
+ * section is left out of the reply.
+ */
+export function verifiedFinancialSupportLines(): string {
+  try {
+    const file = loadFinancialSupport();
+    const pmjay = file.topics.pmjay;
+    const ids = ["pmjay_cover", "pmjay_documents", "pmjay_find_hospital", "pmjay_check", "pmjay_helpline"];
+    const lines = ids
+      .map((id) => pmjay.facts.find((f) => f.id === id))
+      .filter((f) => f !== undefined)
+      .map((f) => `- ${f!.text}`);
+    return [...lines, payClosing(file.checked_on_text, true)].join("\n");
+  } catch {
+    return "";
+  }
+}
+
 // ─── Hospital Visit Preparation ────────────────────────────────
 
 export const HOSPITAL_VISIT_PREP: OutputTemplate = {
@@ -70,8 +94,6 @@ export const HOSPITAL_VISIT_PREP: OutputTemplate = {
         "- Biopsy report (if available)",
         "- Blood test reports from last 3 months",
         "- Referral letter from district hospital (if applicable)",
-        "- BPL certificate / income certificate (for scheme eligibility)",
-        "- Passport-size photographs (2-3 copies)",
       ].join("\n"),
       maxItems: 10,
     },
@@ -100,12 +122,15 @@ export const HOSPITAL_VISIT_PREP: OutputTemplate = {
       maxItems: 8,
     },
     {
+      // Verified PM-JAY facts only (issue #260). Until then this section was
+      // filled with the first sentence of whatever the "schemes" retrieval
+      // returned, which put a hospital under "Financial Support Options".
       id: "financial_support",
       heading: "**Financial Support Options**",
       headingHi: "**आर्थिक सहायता के विकल्प**",
       required: false,
-      source: "retrieval",
-      retrievalIntent: "schemes",
+      source: "template",
+      staticContent: verifiedFinancialSupportLines(),
     },
     {
       id: "practical_tips",
@@ -128,75 +153,15 @@ export const HOSPITAL_VISIT_PREP: OutputTemplate = {
     "यह चेकलिस्ट केवल तैयारी के लिए है। आपके डॉक्टर वास्तविक उपचार योजना के बारे में मार्गदर्शन करेंगे।",
 };
 
-// ─── Scheme Application Checklist ──────────────────────────────
-
-export const SCHEME_APPLICATION_CHECKLIST: OutputTemplate = {
-  id: "scheme_application",
-  name: "Government Scheme Application Guide",
-  triggerCategories: ["SCHEMES"],
-  sections: [
-    {
-      id: "scheme_overview",
-      heading: "**Scheme Overview**",
-      headingHi: "**योजना का अवलोकन**",
-      required: true,
-      source: "retrieval",
-      retrievalIntent: "schemes",
-    },
-    {
-      id: "eligibility",
-      heading: "**Eligibility Criteria**",
-      headingHi: "**पात्रता मानदंड**",
-      required: true,
-      source: "retrieval",
-      retrievalIntent: "schemes",
-    },
-    {
-      id: "documents_needed",
-      heading: "**Documents Required**",
-      headingHi: "**आवश्यक दस्तावेज़**",
-      required: true,
-      source: "template",
-      staticContent: [
-        "- Aadhaar card (mandatory)",
-        "- Ration card / BPL certificate",
-        "- Income certificate (from tehsildar / SDM office)",
-        "- Cancer diagnosis certificate from government hospital",
-        "- Treatment estimate letter from empanelled hospital",
-        "- Bank account details (for direct benefit transfer)",
-        "- Passport-size photographs (4 copies)",
-      ].join("\n"),
-    },
-    {
-      id: "application_steps",
-      heading: "**How to Apply (Step by Step)**",
-      headingHi: "**आवेदन कैसे करें (कदम दर कदम)**",
-      required: true,
-      source: "template",
-      staticContent: [
-        "1. Visit your nearest Common Service Centre (CSC) or Ayushman Bharat kiosk",
-        "2. Carry all required documents listed above",
-        "3. The operator will check your eligibility on the portal",
-        "4. If eligible, your e-card will be generated on the spot",
-        "5. Take the e-card to any empanelled hospital for cashless treatment",
-        "",
-        "**Helpline:** Call 14555 (toll-free) for Ayushman Bharat queries",
-      ].join("\n"),
-    },
-    {
-      id: "additional_schemes",
-      heading: "**Other Financial Support**",
-      headingHi: "**अन्य आर्थिक सहायता**",
-      required: false,
-      source: "retrieval",
-      retrievalIntent: "schemes",
-    },
-  ],
-  closingNote:
-    "Scheme details may vary by state. Contact your district hospital or CSC for the latest information.",
-  closingNoteHi:
-    "योजना का विवरण राज्य के अनुसार भिन्न हो सकता है। नवीनतम जानकारी के लिए अपने जिला अस्पताल या CSC से संपर्क करें।",
-};
+// ─── Scheme Application Checklist (removed, issue #260) ────────
+//
+// SCHEME_APPLICATION_CHECKLIST answered every money question with one fixed
+// page: two sections filled with the first sentence of any retrieved chunk,
+// a fixed "Documents Required" list that the official PM-JAY FAQ does not
+// support (an income certificate from the tehsildar, a cancer certificate,
+// bank details, four photographs), and the same steps for every state.
+// Questions about paying are now answered from the verified file
+// (practical/financial-support.ts) before any template is chosen.
 
 // ─── Chemotherapy Day Preparation ──────────────────────────────
 
@@ -475,7 +440,6 @@ export const BIOPSY_NEXT_STEPS: OutputTemplate = {
 
 export const TEMPLATE_REGISTRY: Record<string, OutputTemplate> = {
   hospital_visit_prep: HOSPITAL_VISIT_PREP,
-  scheme_application: SCHEME_APPLICATION_CHECKLIST,
   chemo_day_prep: CHEMO_DAY_PREP,
   second_opinion_prep: SECOND_OPINION_PREP,
   psychosocial_support: PSYCHOSOCIAL_SUPPORT,
@@ -566,15 +530,9 @@ export function selectOutputTemplate(
     return SECOND_OPINION_PREP;
   }
 
-  // Scheme/financial queries
-  if (
-    category === "SCHEMES" ||
-    signals.includes("budget_concern") ||
-    /\b(ayushman|scheme|card|paisa)\b/i.test(lowerText) ||
-    /(योजना|आयुष्मान|कार्ड|पैसा)/.test(lowerText)
-  ) {
-    return SCHEME_APPLICATION_CHECKLIST;
-  }
+  // Scheme/financial queries: no template (issue #260). A practical money
+  // question is answered from the verified file before planning. One with
+  // medical content takes the ordinary evidence-gated path.
 
   // Psychosocial
   if (
