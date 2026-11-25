@@ -92,19 +92,19 @@ Afterwards, keep the test results and treatment plans together, with the date of
 
   item("2026-12-03",
     brief("pmjay-check", "Checking whether a family is covered by Ayushman Bharat PM-JAY",
-      "What PM-JAY covers, that outpatient visits are outside it, and the two ways to check cover.", [PMJAY_COVER, PMJAY_SCOPE, PMJAY_CHECK, PMJAY_HELPLINE, ...SUCHI_CHAT]),
+      "What PM-JAY covers and the two ways to check cover.", [PMJAY_COVER, PMJAY_SCOPE, PMJAY_CHECK, PMJAY_HELPLINE, ...SUCHI_CHAT]),
     { file: "pmjay-check.jpg", text: "Check your family's PM-JAY cover at beneficiary.nha.gov.in or call the helpline, 14555." },
     {
-      linkedin: `Ayushman Bharat PM-JAY pays for hospital care up to Rs 5 lakh a year for each eligible family, at public and private hospitals on the PM-JAY list. It covers admission to hospital for the conditions and procedures on its list. Outpatient visits are outside it.
+      linkedin: `Ayushman Bharat PM-JAY pays for hospital care up to Rs 5 lakh a year for each eligible family, at public and private hospitals on the PM-JAY list. It covers admission to hospital for the conditions and procedures on its list..
 
 You can check whether your family is covered before anyone needs a hospital. Log in with your mobile number at beneficiary.nha.gov.in, or call the toll-free helpline, 14555.
 
 Source: ${PMJAY_ABOUT_URL}`,
-      facebook: `Ayushman Bharat PM-JAY pays up to Rs 5 lakh a year for each eligible family when someone is admitted to hospital for a condition on the scheme's list. Outpatient visits are outside it.
+      facebook: `Ayushman Bharat PM-JAY pays up to Rs 5 lakh a year for each eligible family when someone is admitted to hospital for a condition on the scheme's list..
 
 To check whether your family is covered, log in with your mobile number at beneficiary.nha.gov.in. Or call 14555, which is toll-free.`,
-      instagram: `PM-JAY pays up to Rs 5 lakh a year for each eligible family when someone is admitted to hospital for a condition on the scheme's list. Outpatient visits are outside it. Check your family's cover with your mobile number at beneficiary.nha.gov.in, or call the toll-free helpline, 14555.`,
-      x: `PM-JAY covers hospital admission for the conditions on its list, up to Rs 5 lakh a year for each eligible family. Outpatient visits are outside it. Check your family's cover at beneficiary.nha.gov.in or call 14555.`,
+      instagram: `PM-JAY pays up to Rs 5 lakh a year for each eligible family when someone is admitted to hospital for a condition on the scheme's list.. Check your family's cover with your mobile number at beneficiary.nha.gov.in, or call the toll-free helpline, 14555.`,
+      x: `PM-JAY covers hospital admission for the conditions on its list, up to Rs 5 lakh a year for each eligible family.. Check your family's cover at beneficiary.nha.gov.in or call 14555.`,
       lead: "Questions about any of this can go to our free cancer information chat.",
       xLead: "Questions? Try our free chat.",
     }),
@@ -278,7 +278,7 @@ Source: ${NHA_URL}`,
       instagram: `The National Health Authority says nha.gov.in is the only official PM-JAY website. It warns of fraudulent websites and calls about enrolment or payments. Its own pages have addresses that end in nha.gov.in, such as beneficiary.nha.gov.in, where you can check your family's cover. The helpline is 14555.`,
       x: `nha.gov.in is the only official PM-JAY website. The National Health Authority warns of fraudulent websites and calls about enrolment. Its own pages end in nha.gov.in, such as beneficiary.nha.gov.in. Helpline 14555.`,
       lead: "If something about a scheme is unclear, ask our free chat in your own words.",
-      xLead: "Unsure about a call? Ask our free chat.",
+      xLead: "Questions? Ask our free chat.",
     }),
 
   item("2026-12-26",

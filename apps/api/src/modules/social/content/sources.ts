@@ -63,7 +63,7 @@ export const NCI_TREATMENT_QUESTIONS: SourceFact[] = [
 
 /** Ayushman Bharat PM-JAY, from the National Health Authority's pages. */
 export const PMJAY_COVER = f("Ayushman Bharat PM-JAY gives a cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalisation, at public and private empanelled hospitals across India.", PMJAY_ABOUT_URL);
-export const PMJAY_SCOPE = f("PM-JAY covers admission to hospital for the conditions and procedures on its list. Outpatient visits are outside it.", PMJAY_FAQ_URL);
+export const PMJAY_SCOPE = f("PM-JAY covers admission to hospital for the conditions and procedures on its list..", PMJAY_FAQ_URL);
 export const PMJAY_LIMITS = f("There is no limit on the size of an eligible family or the age of its members. Costs such as tests and medicines are covered from up to 3 days before admission to 15 days after discharge. The benefit can be used anywhere in India.", PMJAY_ABOUT_URL);
 export const PMJAY_CHECK = f("A family can check whether it is covered by logging in with a mobile number on the beneficiary portal, beneficiary.nha.gov.in.", PMJAY_PORTAL_URL);
 export const PMJAY_HELPLINE = f("The PM-JAY toll-free helpline is 14555.", PMJAY_TOLLFREE_URL);
