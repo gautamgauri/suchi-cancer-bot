@@ -1,0 +1,5021 @@
+{
+  "_about": "Contact verification of apps/landing/src/content/hospitals.json against official sources, November 2026. Every confirmed value carries the URL of the page on which it was read and the date of the fetch. Values marked null were not confirmed.",
+  "entries": {
+    "homi-bhabha-cancer-hospital-muzaffarpur": {
+      "id": "homi-bhabha-cancer-hospital-muzaffarpur",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://hbchrcmzp.tmc.gov.in/",
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "(0621) 2232031, 2232032",
+        "official": "+91-621-2232031",
+        "alternatives": [
+          "+91-621-2232032"
+        ],
+        "source_url": "https://tmc.gov.in/contactus",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Muzaffarpur, Bihar",
+        "printed": "Homi Bhabha Cancer Hospital and Research Centre, Muzaffarpur, Uma Nagar, Rasulpur Saidpur Bazid, Bihar - 842004",
+        "proposed": "Uma Nagar, Rasulpur Saidpur Bazid, Muzaffarpur, Bihar - 842004",
+        "source_url": "https://hbchrcmzp.tmc.gov.in/ (footer, in bundle index-C8WIwKxI.js)",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Muzaffarpur",
+        "state_recorded": "Bihar",
+        "official": "Muzaffarpur",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital and research centre, unit of Tata Memorial Centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-621-2232031",
+          "source_url": "https://tmc.gov.in/contactus",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Muzaffarpur, Bihar",
+          "new": "Uma Nagar, Rasulpur Saidpur Bazid, Muzaffarpur, Bihar - 842004",
+          "source_url": "https://hbchrcmzp.tmc.gov.in/ (footer, in bundle index-C8WIwKxI.js)",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "mahavir-cancer-sansthan-patna": {
+      "id": "mahavir-cancer-sansthan-patna",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://mahavircancersansthan.com/",
+        "source_url": "https://mahavircancersansthan.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-612-2250127",
+        "printed": "+91 - 612 - 2250127 / 2253956/ 3222583",
+        "official": "+91-612-2250127",
+        "alternatives": [
+          "+91-612-2253956",
+          "+91-612-3222583"
+        ],
+        "source_url": "https://mahavircancersansthan.com/contact%20us.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Phulwarisharif, Patna - 801505",
+        "printed": "Phulwarisharif, Patna - 801505",
+        "proposed": null,
+        "source_url": "https://mahavircancersansthan.com/contact%20us.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": "Patna",
+        "flag": null
+      },
+      "institution_kind": "comprehensive cancer hospital managed by Mahavir Mandir Trust, not-for-profit",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://mahavircancersansthan.com/contact%20us.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "paras-hmri-patna": {
+      "id": "paras-hmri-patna",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.parashospitals.com/patna",
+        "source_url": "https://www.parashospitals.com/patna",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "8080808069",
+        "official": "+91-8080808069",
+        "alternatives": [],
+        "source_url": "https://www.parashospitals.com/patna",
+        "checked_on": "2026-11-24",
+        "note": "printed beside the Patna address and also in the group-wide site header"
+      },
+      "address": {
+        "recorded": "Raja Bazar, Bailey Road, Patna",
+        "printed": "Bailey Road, Raja Bazaar, Patna, Bihar 800014",
+        "proposed": "Bailey Road, Raja Bazaar, Patna, Bihar - 800014",
+        "source_url": "https://www.parashospitals.com/patna",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": "Patna",
+        "flag": null
+      },
+      "institution_kind": "multi-speciality hospital (30+ specialties including Oncology)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.parashospitals.com/patna",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-8080808069",
+          "source_url": "https://www.parashospitals.com/patna",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Raja Bazar, Bailey Road, Patna",
+          "new": "Bailey Road, Raja Bazaar, Patna, Bihar - 800014",
+          "source_url": "https://www.parashospitals.com/patna",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "jay-prabha-medanta-patna": {
+      "id": "jay-prabha-medanta-patna",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.medanta.org/hospitals-near-me/patna-hospital",
+        "source_url": "https://www.medanta.org/hospitals-near-me/patna-hospital",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "+91-880-000-1068",
+        "official": "+91-8800001068",
+        "alternatives": [],
+        "source_url": "https://www.medanta.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": "group-wide appointment and enquiry number, printed against each Medanta hospital"
+      },
+      "address": {
+        "recorded": "Kankarbagh, Patna",
+        "printed": "Jay Prabha Medanta Super Specialty Hospital, Housing Board Colony, Kankarbagh, Patrakar Nagar, Patna, Bihar 800020",
+        "proposed": "Housing Board Colony, Kankarbagh, Patrakar Nagar, Patna, Bihar - 800020",
+        "source_url": "https://www.medanta.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": "Patna",
+        "flag": null
+      },
+      "institution_kind": "super speciality hospital (29+ super specialities including Medical Oncology and Radiation Oncology)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.medanta.org/hospitals-near-me/patna-hospital",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-8800001068",
+          "source_url": "https://www.medanta.org/contact-us",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Kankarbagh, Patna",
+          "new": "Housing Board Colony, Kankarbagh, Patrakar Nagar, Patna, Bihar - 800020",
+          "source_url": "https://www.medanta.org/contact-us",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "ruban-memorial-patna": {
+      "id": "ruban-memorial-patna",
+      "status": "could not confirm",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "No official website found. rubanpatliputrahospital.com does not resolve and rubanhospital.com is a parked domain (fetched 2026-11-24)."
+      },
+      "phone": {
+        "recorded": null,
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Patliputra Colony, Patna",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "No official website found. rubanpatliputrahospital.com does not resolve and rubanhospital.com is a parked domain (fetched 2026-11-24).",
+      "changes_applied": []
+    },
+    "buddha-cancer-centre-patna": {
+      "id": "buddha-cancer-centre-patna",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.buddhacancer.com/",
+        "source_url": "https://www.buddhacancer.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "1800 570 7980 (toll free appointment line), +91 9470000258, +91 7361877980",
+        "official": "1800-570-7980",
+        "alternatives": [
+          "+91-9470000258",
+          "+91-7361877980"
+        ],
+        "source_url": "https://www.buddhacancer.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Bailey Road, Patna",
+        "printed": "200 metre left from Nahar Chowk Naharpar, Bailey Rd, Rupaspur, Patna, Bihar 801503",
+        "proposed": "200 metre left from Nahar Chowk Naharpar, Bailey Road, Rupaspur, Patna, Bihar - 801503",
+        "source_url": "https://www.buddhacancer.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": "Patna",
+        "flag": null
+      },
+      "institution_kind": "cancer centre (dedicated cancer hospital)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.buddhacancer.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "1800-570-7980",
+          "source_url": "https://www.buddhacancer.com/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Bailey Road, Patna",
+          "new": "200 metre left from Nahar Chowk Naharpar, Bailey Road, Rupaspur, Patna, Bihar - 801503",
+          "source_url": "https://www.buddhacancer.com/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "ss-hospital-patna": {
+      "id": "ss-hospital-patna",
+      "status": "could not confirm",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "No official website found by search (2026-11-24)."
+      },
+      "phone": {
+        "recorded": null,
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Kankarbagh, Patna",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "No official website found by search (2026-11-24).",
+      "changes_applied": []
+    },
+    "igims-patna": {
+      "id": "igims-patna",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.igims.org/",
+        "source_url": "https://www.igims.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0612-2297631",
+        "printed": "0612-2297631, 2297099, 9473191807 (IGIMS Helpline Number, Reception / Enquiry / Appointment)",
+        "official": "+91-612-2297631",
+        "alternatives": [
+          "+91-612-2297099"
+        ],
+        "source_url": "https://www.igims.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Sheikhpura, Patna - 800014",
+        "printed": "Sheikhpura, Patna - 800 014 (Bihar)",
+        "proposed": null,
+        "source_url": "https://www.igims.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": "Patna",
+        "flag": null
+      },
+      "institution_kind": "autonomous institute of medical sciences under Government of Bihar, with a State Cancer Institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.igims.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "healing-touch-bhagalpur": {
+      "id": "healing-touch-bhagalpur",
+      "status": "could not confirm",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "No official website found by search (2026-11-24)."
+      },
+      "phone": {
+        "recorded": null,
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Bhagalpur, Bihar",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Bhagalpur",
+        "state_recorded": "Bihar",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "No official website found by search (2026-11-24).",
+      "changes_applied": []
+    },
+    "narayana-cancer-centre-patna": {
+      "id": "narayana-cancer-centre-patna",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.narayanacancercentre.com/",
+        "source_url": "https://www.narayanacancercentre.com/",
+        "checked_on": "2026-11-24",
+        "note": "Domain matches the institution name. Site header leads with a named doctor. Not part of the Narayana Health group network page."
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "7766055563, 7050399666",
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "Numbers appear under a contact heading that names an individual doctor. Not recorded under the personal-number rule."
+      },
+      "address": {
+        "recorded": "Patna, Bihar",
+        "printed": "Rd Number 0, Indrapuri, Rajeev Nagar, Patna, Bihar 800024",
+        "proposed": "Road Number 0, Indrapuri, Rajeev Nagar, Patna, Bihar - 800024",
+        "source_url": "https://www.narayanacancercentre.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": "Patna",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (medical, radiation and surgical oncology listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.narayanacancercentre.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "Domain matches the institution name. Site header leads with a named doctor. Not part of the Narayana Health group network page.",
+      "changes_applied": [
+        {
+          "field": "address",
+          "old": "Patna, Bihar",
+          "new": "Road Number 0, Indrapuri, Rajeev Nagar, Patna, Bihar - 800024",
+          "source_url": "https://www.narayanacancercentre.com/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "atlantis-super-speciality-patna": {
+      "id": "atlantis-super-speciality-patna",
+      "status": "could not confirm",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "atlantishospitals.com shows a Website Under Development placeholder. No other official site found by search (2026-11-24)."
+      },
+      "phone": {
+        "recorded": null,
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Patna, Bihar",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "atlantishospitals.com shows a Website Under Development placeholder. No other official site found by search (2026-11-24).",
+      "changes_applied": []
+    },
+    "manipal-hospital-rangapani": {
+      "id": "manipal-hospital-rangapani",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.manipalhospitals.com/rangapani/",
+        "source_url": "https://www.manipalhospitals.com/rangapani/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-353-6650000",
+        "printed": "Telephones 03536640000, Doctor Enquiry 0353 664 0000",
+        "official": "+91-353-6640000",
+        "alternatives": [],
+        "source_url": "https://www.manipalhospitals.com/rangapani/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": "The site appointment list also gives 9933356204 for Rangapani"
+      },
+      "address": {
+        "recorded": "Vill & P.O. Rangapani, Dist. Darjeeling, West Bengal - 734434",
+        "printed": "Vill and P.O. Rangapani, Dist. Darjeeling, West Bengal - 734434",
+        "proposed": null,
+        "source_url": "https://www.manipalhospitals.com/rangapani/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Siliguri",
+        "state_recorded": "West Bengal",
+        "official": "Rangapani, Darjeeling district (the site groups it under Siliguri City)",
+        "flag": null
+      },
+      "institution_kind": "hospital with Cancer Care/Oncology centre of excellence (medical, surgical, paediatric cancer care, radiotherapy)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.manipalhospitals.com/rangapani/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "+91-353-6650000",
+          "new": "+91-353-6640000",
+          "source_url": "https://www.manipalhospitals.com/rangapani/contact-us/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hope-and-heal-jalpaiguri": {
+      "id": "hope-and-heal-jalpaiguri",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.hopeandheal.in/",
+        "source_url": "https://www.hopeandheal.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-86177-87387",
+        "printed": "+91 86177 87387 / +91 62890 91925",
+        "official": "+91-8617787387",
+        "alternatives": [
+          "+91-6289091925"
+        ],
+        "source_url": "https://www.hopeandheal.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Jatiakhali, Fulbari, Jalpaiguri District, West Bengal - 734015",
+        "printed": "Jatiakhali, Fulbari, Dist: Jalpaiguri, West Bengal - 734015",
+        "proposed": null,
+        "source_url": "https://www.hopeandheal.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Siliguri",
+        "state_recorded": "West Bengal",
+        "official": "Fulbari, Jalpaiguri district (the site describes itself as a cancer hospital in Siliguri, North Bengal)",
+        "flag": "Recorded city Siliguri. Official address is Fulbari, Jalpaiguri district. Site markets the hospital as in Siliguri. Left unchanged for the owner to decide."
+      },
+      "institution_kind": "cancer hospital and research centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.hopeandheal.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "desun-hospital-siliguri": {
+      "id": "desun-hospital-siliguri",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.desunsiliguri.com/",
+        "source_url": "https://desunhospital.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-90517-15171",
+        "printed": "(+91) 90 5171 5171",
+        "official": "+91-9051715171",
+        "alternatives": [],
+        "source_url": "https://www.desunsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Beside NBMCH, Kwakhali, Siliguri, West Bengal - 734012",
+        "printed": "Desun Hospital, Beside Medical College Siliguri, India",
+        "proposed": null,
+        "source_url": "https://www.desunsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded Kwakhali locality and PIN 734012 not printed on the page fetched. Not contradicted."
+      },
+      "city": {
+        "recorded": "Siliguri",
+        "state_recorded": "West Bengal",
+        "official": "Siliguri",
+        "flag": null
+      },
+      "institution_kind": "multi-speciality hospital (Medical Oncology, Surgical Oncology, Haemato-Oncology listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.desunsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "nbmch-siliguri": {
+      "id": "nbmch-siliguri",
+      "status": "could not confirm",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "No official website found. nbmch.ac.in, nbmch.in and nbmch.wb.gov.in do not resolve. nbmch.org is an unrelated content site (2026-11-24)."
+      },
+      "phone": {
+        "recorded": null,
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Sushrutanagar, Siliguri, Darjeeling District, West Bengal - 734012",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Siliguri",
+        "state_recorded": "West Bengal",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "No official website found. nbmch.ac.in, nbmch.in and nbmch.wb.gov.in do not resolve. nbmch.org is an unrelated content site (2026-11-24).",
+      "changes_applied": []
+    },
+    "neotia-getwel-siliguri": {
+      "id": "neotia-getwel-siliguri",
+      "status": "not a cancer hospital per its own site",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://neotiagetwelsiliguri.com/",
+        "source_url": "https://neotiagetwelsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-353-3053000",
+        "printed": "Phone: 0353 660 3000",
+        "official": "+91-353-6603000",
+        "alternatives": [
+          "+91-353-6603030"
+        ],
+        "source_url": "https://neotiagetwelsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded +91-353-3053000 is not printed on the site"
+      },
+      "address": {
+        "recorded": "Uttorayon, Matigara, Siliguri, West Bengal - 734010",
+        "printed": "Uttorayon, Behind City Centre, Matigara, Siliguri - 734010, WB, India",
+        "proposed": null,
+        "source_url": "https://neotiagetwelsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Siliguri",
+        "state_recorded": "West Bengal",
+        "official": "Siliguri",
+        "flag": null
+      },
+      "institution_kind": "multispecialty hospital (unit of Ambuja Neotia Healthcare Venture Limited)",
+      "cancer_care": {
+        "offered": false,
+        "source_url": "https://neotiagetwelsiliguri.com/",
+        "checked_on": "2026-11-24",
+        "note": "Speciality pages linked from the home page cover cardiology, gastroenterology, nephrology, neurology, orthopaedics, paediatric surgery, paediatrics and urology. No oncology or cancer department is shown."
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "+91-353-3053000",
+          "new": "+91-353-6603000",
+          "source_url": "https://neotiagetwelsiliguri.com/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "tata-medical-center-kolkata": {
+      "id": "tata-medical-center-kolkata",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://tmckolkata.com/",
+        "source_url": "https://tmckolkata.com/in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "Contact Number: +91-33-6605-7000. For Appointment: (033) 6605 7222. For Other Queries: (033) 6605 7000",
+        "official": "+91-33-66057000",
+        "alternatives": [
+          "+91-33-66057222"
+        ],
+        "source_url": "https://tmckolkata.com/in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "New Town, Kolkata, West Bengal",
+        "printed": "Tata Medical Center, Kolkata, 14 MAR (E-W), New Town, Rajarhat, Kolkata 700 160, West Bengal, India",
+        "proposed": "14 MAR (E-W), New Town, Rajarhat, Kolkata, West Bengal - 700160",
+        "source_url": "https://tmckolkata.com/in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kolkata",
+        "state_recorded": "West Bengal",
+        "official": "Kolkata",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (Tata Medical Center)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmckolkata.com/in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-33-66057000",
+          "source_url": "https://tmckolkata.com/in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "New Town, Kolkata, West Bengal",
+          "new": "14 MAR (E-W), New Town, Rajarhat, Kolkata, West Bengal - 700160",
+          "source_url": "https://tmckolkata.com/in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "tata-memorial-hospital-mumbai": {
+      "id": "tata-memorial-hospital-mumbai",
+      "status": "corrected",
+      "duplicate_of": "tata-memorial-mumbai",
+      "keep_id_recommendation": "tata-memorial-mumbai",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://tmc.gov.in/",
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "(+91-22) 24177000, 24177300, 24161413",
+        "official": "+91-22-24177000",
+        "alternatives": [
+          "+91-22-24177300",
+          "+91-22-24161413"
+        ],
+        "source_url": "https://tmc.gov.in/contactus",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Dr. Ernest Borges Road, Parel, Mumbai - 400012",
+        "printed": "Dr. E Borges Road, Parel, Mumbai - 400 012",
+        "proposed": null,
+        "source_url": "https://tmc.gov.in/contactus",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "Tata Memorial Hospital, unit of Tata Memorial Centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-22-24177000",
+          "source_url": "https://tmc.gov.in/contactus",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-delhi": {
+      "id": "aiims-delhi",
+      "status": "corrected",
+      "duplicate_of": "aiims-new-delhi",
+      "keep_id_recommendation": "aiims-new-delhi",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.aiims.edu/",
+        "source_url": "https://www.aiims.edu/index.php/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "Board Number : +91-11-26588500 / 26588700",
+        "official": "+91-11-26588500",
+        "alternatives": [
+          "+91-11-26588700"
+        ],
+        "source_url": "https://www.aiims.edu/index.php/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Sri Aurobindo Marg, Ansari Nagar, New Delhi - 110029",
+        "printed": "Ansari Nagar, New Delhi - 110029",
+        "proposed": null,
+        "source_url": "https://www.aiims.edu/index.php/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "New Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (institute of national importance), with Medical Oncology, Surgical Oncology, Radiotherapy departments",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.aiims.edu/index.php/en/departments-and-centers",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-11-26588500",
+          "source_url": "https://www.aiims.edu/index.php/en",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "rims-ranchi": {
+      "id": "rims-ranchi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.rimsranchi.org/",
+        "source_url": "https://www.rimsranchi.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "Ph : 0651-2541533, +91-651-2545404",
+        "official": "+91-651-2541533",
+        "alternatives": [
+          "+91-651-2545404"
+        ],
+        "source_url": "https://www.rimsranchi.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Bariatu, Ranchi, Jharkhand",
+        "printed": "RIMS, Bariatu, Ranchi, Jharkhand, India",
+        "proposed": null,
+        "source_url": "https://www.rimsranchi.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Ranchi",
+        "state_recorded": "Jharkhand",
+        "official": "Ranchi",
+        "flag": null
+      },
+      "institution_kind": "autonomous institute of medical sciences under the Government of Jharkhand (Radiation Oncology and Surgical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.rimsranchi.org/dept/index.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-651-2541533",
+          "source_url": "https://www.rimsranchi.org/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "rchrc-ranchi": {
+      "id": "rchrc-ranchi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.rchrc.org/",
+        "source_url": "https://www.rchrc.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "1800-313-4922",
+        "printed": "Toll Free 1800 313 4922. Landline 0651 - 2710010",
+        "official": "1800-313-4922",
+        "alternatives": [
+          "+91-651-2710010"
+        ],
+        "source_url": "https://www.rchrc.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Plot 580, Sukurhutu Road, Kanke, Ranchi - Jharkhand",
+        "printed": "Plot no. 580, Sukurhutu Road, Kadma Kanke, Ranchi - 834006",
+        "proposed": "Plot No. 580, Sukurhutu Road, Kadma, Kanke, Ranchi, Jharkhand - 834006",
+        "source_url": "https://www.rchrc.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Ranchi",
+        "state_recorded": "Jharkhand",
+        "official": "Ranchi",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital and research centre (a unit of Tata Cancer Care Foundation network, per site header)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.rchrc.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": {
+          "value": "confirmed on own site",
+          "text": "Ranchi Cancer Hospital and Research Centre (RCHRC) is now empanelled with PM-JAY MM-JAY",
+          "url": "https://www.rchrc.org/ayushman-bharat-pm-jay-mm-jay"
+        }
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "address",
+          "old": "Plot 580, Sukurhutu Road, Kanke, Ranchi - Jharkhand",
+          "new": "Plot No. 580, Sukurhutu Road, Kadma, Kanke, Ranchi, Jharkhand - 834006",
+          "source_url": "https://www.rchrc.org/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hcg-ranchi": {
+      "id": "hcg-ranchi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+        "checked_on": "2026-11-24",
+        "note": "hcgoncology.com redirects to hcghospitals.com"
+      },
+      "phone": {
+        "recorded": "+91-7406499999",
+        "printed": "+91 6358888823 (Call Hospital). Group 24/7 helpline +91 74064 99999 in the site header",
+        "official": "+91-6358888823",
+        "alternatives": [
+          "+91-7406499999"
+        ],
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "NH-33, Irba, Ranchi, Jharkhand",
+        "printed": "NH-33, Irba, Ranchi, Jharkhand, Irba, Ranchi, Jharkhand - 835217",
+        "proposed": "NH-33, Irba, Ranchi, Jharkhand - 835217",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Ranchi",
+        "state_recorded": "Jharkhand",
+        "official": "Ranchi",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (part of HCG, the Specialist in Cancer Care)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": "The Medanta contact page separately lists a Medanta Abdur Razzaque Ansari Memorial Weavers Hospital at P.O. Irba, NH33, Ranchi. The two are named as different hospitals on their own sites.",
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "+91-7406499999",
+          "new": "+91-6358888823",
+          "source_url": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "NH-33, Irba, Ranchi, Jharkhand",
+          "new": "NH-33, Irba, Ranchi, Jharkhand - 835217",
+          "source_url": "https://www.hcghospitals.com/our-centres/hcg-abdur-razzaque-ansari-cancer-hospital-ranchi",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-deoghar": {
+      "id": "aiims-deoghar",
+      "status": "partly confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.aiimsdeoghar.edu.in/",
+        "source_url": "https://www.aiimsdeoghar.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "06432-277220",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "No phone number found on the home page, the departments page or the how-to-reach page. /contact-us returns 404."
+      },
+      "address": {
+        "recorded": "Devipur, Deoghar, Jharkhand",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Deoghar",
+        "state_recorded": "Jharkhand",
+        "official": "Deoghar",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (Radiotherapy and Surgical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.aiimsdeoghar.edu.in/departments/list",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": {
+          "value": "site refers to AB-PMJAY for cancer patients",
+          "text": "Circular regarding Mandatory Presentation and Clearance of Cancer Patients through the Multidisciplinary Tumor Board (MDTB) for Availing Benefits under Ayushman Bharat- Pradhan Mantri Jan Arogya Yojana (AB-PMJAY)",
+          "url": "https://www.aiimsdeoghar.edu.in/"
+        }
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "ahpgic-cuttack": {
+      "id": "ahpgic-cuttack",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://ahpgic.in/",
+        "source_url": "https://ahpgic.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0671-2304264",
+        "printed": "0671 - 2304264 (Office), 0671 - 2304 683 (Help Desk)",
+        "official": "+91-671-2304264",
+        "alternatives": [
+          "+91-671-2304683 (Help Desk)"
+        ],
+        "source_url": "https://ahpgic.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Cuttack, Odisha",
+        "printed": "SCB Medical Road, Mangalabag, Medical College Post Office, Kataka, Odisha - 753007",
+        "proposed": "SCB Medical Road, Mangalabag, Medical College Post Office, Cuttack, Odisha - 753007",
+        "source_url": "https://ahpgic.in/",
+        "checked_on": "2026-11-24",
+        "note": "Kataka is the Odia name of Cuttack"
+      },
+      "city": {
+        "recorded": "Cuttack",
+        "state_recorded": "Odisha",
+        "official": "Cuttack",
+        "flag": null
+      },
+      "institution_kind": "post graduate institute of cancer (state government)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://ahpgic.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "address",
+          "old": "Cuttack, Odisha",
+          "new": "SCB Medical Road, Mangalabag, Medical College Post Office, Cuttack, Odisha - 753007",
+          "source_url": "https://ahpgic.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hcg-panda-cuttack": {
+      "id": "hcg-panda-cuttack",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.hcghospitals.com/our-centres/hcg-panda-cancer-hospital-cuttack",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-panda-cancer-hospital-cuttack",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-63588-88824",
+        "printed": "+91 6358888824",
+        "official": "+91-6358888824",
+        "alternatives": [],
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-panda-cancer-hospital-cuttack",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "NH-16, Telengapentha, Cuttack, Odisha",
+        "printed": "NH-16, Telengapentha, Cuttack, Odisha - 400000",
+        "proposed": null,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-panda-cancer-hospital-cuttack",
+        "checked_on": "2026-11-24",
+        "note": "PIN 400000 printed on the site is not a Cuttack PIN. Recorded address left unchanged."
+      },
+      "city": {
+        "recorded": "Cuttack",
+        "state_recorded": "Odisha",
+        "official": "Cuttack",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (part of HCG)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-panda-cancer-hospital-cuttack",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "cnci-kolkata": {
+      "id": "cnci-kolkata",
+      "status": "confirmed",
+      "duplicate_of": "chittaranjan-national-cancer-institute-kolkata",
+      "keep_id_recommendation": "cnci-kolkata",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://cnci.ac.in/",
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "033-2475-9313",
+        "printed": "Hazra - 033 2475-9313. Newtown - 033 3506-0600",
+        "official": "+91-33-24759313",
+        "alternatives": [
+          "+91-33-35060600 (New Town campus)"
+        ],
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "37 SP Mukherjee Road, Hazra, Kolkata (also New Town, Rajarhat campus)",
+        "printed": "Campus 1: 37, S.P. Mukherjee Road, Hazra, Kolkata - 700 026. Campus 2: Street Number 299, DJ Block, Action Area 1D, New Town, Kolkata - 700 160",
+        "proposed": null,
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kolkata",
+        "state_recorded": "West Bengal",
+        "official": "Kolkata",
+        "flag": null
+      },
+      "institution_kind": "national cancer institute (autonomous body under the Ministry of Health and Family Welfare)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "aiims-kalyani": {
+      "id": "aiims-kalyani",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://aiimskalyani.edu.in/",
+        "source_url": "https://aiimskalyani.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Single-page site. Values read from its script bundle /assets/index-D-JJIuCP.js"
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "Call helpline: 033-29516005 (24x7 Helpline)",
+        "official": "+91-33-29516005",
+        "alternatives": [],
+        "source_url": "https://aiimskalyani.edu.in/ (header, in /assets/index-D-JJIuCP.js)",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Kalyani, Nadia District, West Bengal",
+        "printed": "NH - 34 Connector, Basantapur, Saguna, Kalyani, West Bengal 741245",
+        "proposed": "NH-34 Connector, Basantapur, Saguna, Kalyani, West Bengal - 741245",
+        "source_url": "https://aiimskalyani.edu.in/ (structured data, in /assets/index-D-JJIuCP.js)",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kalyani",
+        "state_recorded": "West Bengal",
+        "official": "Kalyani",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences",
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Department list is loaded from a data service and could not be read. Cancer care not confirmed from the site."
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "Single-page site. Values read from its script bundle /assets/index-D-JJIuCP.js",
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-33-29516005",
+          "source_url": "https://aiimskalyani.edu.in/ (header, in /assets/index-D-JJIuCP.js)",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Kalyani, Nadia District, West Bengal",
+          "new": "NH-34 Connector, Basantapur, Saguna, Kalyani, West Bengal - 741245",
+          "source_url": "https://aiimskalyani.edu.in/ (structured data, in /assets/index-D-JJIuCP.js)",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hcg-eko-kolkata": {
+      "id": "hcg-eko-kolkata",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-kolkata",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-63588-88825",
+        "printed": "+91 6358888825",
+        "official": "+91-6358888825",
+        "alternatives": [],
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Action Area 1D, New Town, Kolkata, West Bengal",
+        "printed": "DG-04, Premises No. 03/358, Action Area I, Near DPS Newtown, New Town, Kolkata, West Bengal - 700156",
+        "proposed": "DG-04, Premises No. 03/358, Action Area I, Near DPS Newtown, New Town, Kolkata, West Bengal - 700156",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kolkata",
+        "state_recorded": "West Bengal",
+        "official": "Kolkata",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (part of HCG). The site now names it HCG Cancer Hospital, Kolkata, and HCG Cancer Centre, New Town",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": "Recorded name HCG EKO Cancer Centre. The official page uses HCG Cancer Hospital, Kolkata. Name not changed.",
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "address",
+          "old": "Action Area 1D, New Town, Kolkata, West Bengal",
+          "new": "DG-04, Premises No. 03/358, Action Area I, Near DPS Newtown, New Town, Kolkata, West Bengal - 700156",
+          "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-kolkata",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "nscri-kolkata": {
+      "id": "nscri-kolkata",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://nscri.in/",
+        "source_url": "https://nscri.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "For Quick Assistance 9874210003, 033-7122 3000. Header: 9874210007, 6292264829",
+        "official": "+91-33-71223000",
+        "alternatives": [
+          "+91-9874210003",
+          "+91-9874210007"
+        ],
+        "source_url": "https://nscri.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Nayabad, New Garia, Kolkata, West Bengal",
+        "printed": "3081, Nayabad, Kolkata-94",
+        "proposed": "3081, Nayabad, Kolkata, West Bengal - 700094",
+        "source_url": "https://nscri.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kolkata",
+        "state_recorded": "West Bengal",
+        "official": "Kolkata",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital and research institute (medical, surgical and radiation oncology, nuclear medicine listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://nscri.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-33-71223000",
+          "source_url": "https://nscri.in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Nayabad, New Garia, Kolkata, West Bengal",
+          "new": "3081, Nayabad, Kolkata, West Bengal - 700094",
+          "source_url": "https://nscri.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "apollo-gleneagles-kolkata": {
+      "id": "apollo-gleneagles-kolkata",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.apollohospitals.com/kolkata",
+        "source_url": "https://www.apollohospitals.com/kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "The Kolkata page has an unlabelled Call Us button (tel:08062972764) and group-wide lines (Emergency 1066, Health Help Line 1860-500-1066). No number is labelled as the Kolkata hospital enquiry line. Not applied."
+      },
+      "address": {
+        "recorded": "Canal Circular Road, Kolkata, West Bengal",
+        "printed": "Apollo Multispeciality Hospitals, EM Bypass, Kolkata, 58, Canal Circular Rd, Kadapara, Phoolbagan, Kankurgachi, Kolkata, West Bengal 700054",
+        "proposed": "58, Canal Circular Road, Kadapara, Phoolbagan, Kankurgachi, Kolkata, West Bengal - 700054",
+        "source_url": "https://www.apollohospitals.com/kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kolkata",
+        "state_recorded": "West Bengal",
+        "official": "Kolkata",
+        "flag": null
+      },
+      "institution_kind": "750-bed multispeciality hospital with a Cancer Care (Oncology) department",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.apollohospitals.com/kolkata",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": "Recorded name Apollo Gleneagles Cancer Hospital. The official site names it Apollo Multispeciality Hospitals, EM Bypass, Kolkata. Name not changed.",
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "address",
+          "old": "Canal Circular Road, Kolkata, West Bengal",
+          "new": "58, Canal Circular Road, Kadapara, Phoolbagan, Kankurgachi, Kolkata, West Bengal - 700054",
+          "source_url": "https://www.apollohospitals.com/kolkata",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "cchrc-silchar": {
+      "id": "cchrc-silchar",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://cacharcancerhospital.org/",
+        "source_url": "https://cacharcancerhospital.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "03842-260099",
+        "printed": "+91 8011936390 (Cachar Cancer Hospital Society, with admin email)",
+        "official": "+91-8011936390",
+        "alternatives": [],
+        "source_url": "https://cacharcancerhospital.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 03842-260099 is not printed on the home or contact page"
+      },
+      "address": {
+        "recorded": "Meherpur, Silchar, Assam - 788015",
+        "printed": "Cachar Cancer Hospital and Research Center, Meherpur, Silchar, Assam, India - 788015",
+        "proposed": null,
+        "source_url": "https://cacharcancerhospital.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Silchar",
+        "state_recorded": "Assam",
+        "official": "Silchar",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital and research centre run by a society (preventive care, treatment, palliative and home care)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://cacharcancerhospital.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "03842-260099",
+          "new": "+91-8011936390",
+          "source_url": "https://cacharcancerhospital.org/contact-us/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "neigrihms-shillong": {
+      "id": "neigrihms-shillong",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://neigrihms.gov.in/",
+        "source_url": "https://neigrihms.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0364-2538023",
+        "printed": "Helpline: 0364-2538045 (Administration), 0364-2538076 (Hospital). 0364-2538014 (Casualty/Emergency)",
+        "official": "+91-364-2538076",
+        "alternatives": [
+          "+91-364-2538045 (Administration)",
+          "+91-364-2538014 (Casualty/Emergency)"
+        ],
+        "source_url": "https://neigrihms.gov.in/contact.html",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 0364-2538023 is not printed on the contact page"
+      },
+      "address": {
+        "recorded": "Mawdiangdiang, Shillong, Meghalaya - 793018",
+        "printed": "NEIGRIHMS, Mawdiangdiang, Shillong-793018, Meghalaya, India",
+        "proposed": null,
+        "source_url": "https://neigrihms.gov.in/contact.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Shillong",
+        "state_recorded": "Meghalaya",
+        "official": "Shillong",
+        "flag": null
+      },
+      "institution_kind": "regional institute of health and medical sciences under the Ministry of Health and Family Welfare (Radiotherapy and Oncology, Surgical Oncology, Medical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://neigrihms.gov.in/department.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0364-2538023",
+          "new": "+91-364-2538076",
+          "source_url": "https://neigrihms.gov.in/contact.html",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "bbci-guwahati": {
+      "id": "bbci-guwahati",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "http://bbci.in/",
+        "source_url": "http://bbci.in/",
+        "checked_on": "2026-11-24",
+        "note": "TMC link bbcionline.org redirects to bbci.in"
+      },
+      "phone": {
+        "recorded": "0361-2529073",
+        "printed": "0361-2800500, 2800501",
+        "official": "+91-361-2800500",
+        "alternatives": [
+          "+91-361-2800501"
+        ],
+        "source_url": "http://bbci.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Gopinath Nagar, Guwahati, Assam",
+        "printed": "Gopinath Nagar, A K Azad Road, Guwahati-781016",
+        "proposed": "Gopinath Nagar, A K Azad Road, Guwahati, Assam - 781016",
+        "source_url": "http://bbci.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Guwahati",
+        "state_recorded": "Assam",
+        "official": "Guwahati",
+        "flag": null
+      },
+      "institution_kind": "cancer institute (Tata Memorial Centre), grant-in-aid institute of Department of Atomic Energy",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0361-2529073",
+          "new": "+91-361-2800500",
+          "source_url": "http://bbci.in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Gopinath Nagar, Guwahati, Assam",
+          "new": "Gopinath Nagar, A K Azad Road, Guwahati, Assam - 781016",
+          "source_url": "http://bbci.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "mpmmcc-varanasi": {
+      "id": "mpmmcc-varanasi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://mpmmcc.tmc.gov.in/",
+        "source_url": "https://mpmmcc.tmc.gov.in/contact",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-0542-6917700",
+        "printed": "+91-0542-6917700",
+        "official": "+91-542-6917700",
+        "alternatives": [],
+        "source_url": "https://mpmmcc.tmc.gov.in/contact",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Naria Road, BHU Campus, Varanasi, Uttar Pradesh",
+        "printed": "Mahamana Pandit Madan Mohan Malaviya Cancer Centre, Sundar Bagiya, Near Nariya Gate, BHU Campus, Varanasi, Uttar Pradesh - 221005",
+        "proposed": "Sundar Bagiya, Near Nariya Gate, BHU Campus, Varanasi, Uttar Pradesh - 221005",
+        "source_url": "https://mpmmcc.tmc.gov.in/contact",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Varanasi",
+        "state_recorded": "Uttar Pradesh",
+        "official": "Varanasi",
+        "flag": null
+      },
+      "institution_kind": "Mahamana Pandit Madanmohan Malviya Cancer Centre, unit of Tata Memorial Centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "+91-0542-6917700",
+          "new": "+91-542-6917700",
+          "source_url": "https://mpmmcc.tmc.gov.in/contact",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Naria Road, BHU Campus, Varanasi, Uttar Pradesh",
+          "new": "Sundar Bagiya, Near Nariya Gate, BHU Campus, Varanasi, Uttar Pradesh - 221005",
+          "source_url": "https://mpmmcc.tmc.gov.in/contact",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hbch-varanasi": {
+      "id": "hbch-varanasi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://mpmmcc.tmc.gov.in/",
+        "source_url": "https://mpmmcc.tmc.gov.in/contact",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "(0542) 2517699",
+        "official": "+91-542-2517699",
+        "alternatives": [
+          "+91-542-6917700"
+        ],
+        "source_url": "https://tmc.gov.in/contactus",
+        "checked_on": "2026-11-24",
+        "note": "Unit site lists +91-0542-6917700 for patient care queries for both Varanasi hospitals"
+      },
+      "address": {
+        "recorded": "Shivpurwa, Varanasi, Uttar Pradesh",
+        "printed": "Homi Bhabha Cancer Hospital, Old Loco Colony, Shivpurwa, Varanasi, Uttar Pradesh - 221002",
+        "proposed": "Old Loco Colony, Shivpurwa, Varanasi, Uttar Pradesh - 221002",
+        "source_url": "https://mpmmcc.tmc.gov.in/contact",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Varanasi",
+        "state_recorded": "Uttar Pradesh",
+        "official": "Varanasi",
+        "flag": null
+      },
+      "institution_kind": "Homi Bhabha Cancer Hospital, unit of Tata Memorial Centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-542-2517699",
+          "source_url": "https://tmc.gov.in/contactus",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Shivpurwa, Varanasi, Uttar Pradesh",
+          "new": "Old Loco Colony, Shivpurwa, Varanasi, Uttar Pradesh - 221002",
+          "source_url": "https://mpmmcc.tmc.gov.in/contact",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "sgpgi-lucknow": {
+      "id": "sgpgi-lucknow",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://sgpgims.org.in/",
+        "source_url": "https://sgpgims.org.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": null,
+        "printed": "Public Relation Counter (24X7) 0522-2494070, 2494071",
+        "official": "+91-522-2494070",
+        "alternatives": [
+          "+91-522-2494071"
+        ],
+        "source_url": "https://sgpgims.org.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Raebareli Road, Lucknow, Uttar Pradesh - 226014",
+        "printed": "Raebareli Road - 226 014, India",
+        "proposed": null,
+        "source_url": "https://sgpgims.org.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Lucknow",
+        "state_recorded": "Uttar Pradesh",
+        "official": "Lucknow",
+        "flag": null
+      },
+      "institution_kind": "postgraduate institute of medical sciences (Medical Oncology, Nuclear Medicine and other departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://sgpgims.org.in/Home/Departments.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": null,
+          "new": "+91-522-2494070",
+          "source_url": "https://sgpgims.org.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "kgmu-lucknow": {
+      "id": "kgmu-lucknow",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.kgmu.org/",
+        "source_url": "https://www.kgmu.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0522-2257540",
+        "printed": "+91 522 2257540",
+        "official": "+91-522-2257540",
+        "alternatives": [],
+        "source_url": "https://www.kgmu.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Shah Mina Road, Chowk, Lucknow, Uttar Pradesh - 226003",
+        "printed": "Shah Mina Rd, Chowk, Lucknow, Uttar Pradesh 226003",
+        "proposed": null,
+        "source_url": "https://www.kgmu.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Lucknow",
+        "state_recorded": "Uttar Pradesh",
+        "official": "Lucknow",
+        "flag": null
+      },
+      "institution_kind": "medical university (Medical Oncology, Gynaecological Oncology departments and a Cancer Palliative Care Unit listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.kgmu.org/department.php",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "rgci-delhi": {
+      "id": "rgci-delhi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.rgcirc.org/",
+        "source_url": "https://www.rgcirc.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-47022222",
+        "printed": "+91-11-47022222, +91 11 27051037",
+        "official": "+91-11-47022222",
+        "alternatives": [
+          "+91-11-27051037"
+        ],
+        "source_url": "https://www.rgcirc.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Sir Chotu Ram Marg, Sector 5, Rohini, Delhi - 110085",
+        "printed": "Rohini: D-18, Sector-5, Rohini, Delhi-110085",
+        "proposed": "D-18, Sector-5, Rohini, Delhi - 110085",
+        "source_url": "https://www.rgcirc.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Delhi",
+        "state_recorded": "Delhi",
+        "official": "Delhi",
+        "flag": null
+      },
+      "institution_kind": "cancer institute and research centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.rgcirc.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "address",
+          "old": "Sir Chotu Ram Marg, Sector 5, Rohini, Delhi - 110085",
+          "new": "D-18, Sector-5, Rohini, Delhi - 110085",
+          "source_url": "https://www.rgcirc.org/contact-us/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "sir-ganga-ram-delhi": {
+      "id": "sir-ganga-ram-delhi",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://sgrh.com/",
+        "source_url": "https://sgrh.com/en/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-25750000",
+        "printed": "+91 11-351 256 00 / +91 11-422 540 00",
+        "official": "+91-11-35125600",
+        "alternatives": [
+          "+91-11-42254000"
+        ],
+        "source_url": "https://sgrh.com/en/contact-us",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 011-25750000 is not printed on the contact page"
+      },
+      "address": {
+        "recorded": "Sir Ganga Ram Hospital Marg, Old Rajinder Nagar, Delhi - 110060",
+        "printed": "Sir Ganga Ram Hospital Marg, Rajinder Nagar, New Delhi, Delhi - 110060",
+        "proposed": null,
+        "source_url": "https://sgrh.com/en/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi",
+        "flag": null
+      },
+      "institution_kind": "multi-department hospital (Gynecologic Oncology, Head and Neck Surgical Oncology and other departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://sgrh.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "011-25750000",
+          "new": "+91-11-35125600",
+          "source_url": "https://sgrh.com/en/contact-us",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "apollo-cancer-delhi": {
+      "id": "apollo-cancer-delhi",
+      "status": "partly confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.apollohospitals.com/delhi",
+        "source_url": "https://www.apollohospitals.com/delhi",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-26825858",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "The Delhi page carries only an unlabelled Call button number and group-wide lines (Emergency 1066, Health Help Line 1860-500-1066). Recorded 011-26825858 is not printed. Not changed."
+      },
+      "address": {
+        "recorded": "Sarita Vihar, Delhi Mathura Road, New Delhi - 110076",
+        "printed": "Indraprastha Apollo Hospitals, Sarita Vihar, Delhi (no full street address on the page)",
+        "proposed": null,
+        "source_url": "https://www.apollohospitals.com/delhi",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "New Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi (Sarita Vihar, Delhi)",
+        "flag": null
+      },
+      "institution_kind": "multispecialty hospital (Indraprastha Apollo Hospitals). Cancer care listed among Apollo specialties",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.apollohospitals.com/cancer-centres/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "max-cancer-saket": {
+      "id": "max-cancer-saket",
+      "status": "corrected",
+      "duplicate_of": "max-cancer-centre-saket-delhi",
+      "keep_id_recommendation": "max-cancer-centre-saket-delhi",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-26515050",
+        "printed": "Call us +91 926 888 0303 (To Book an Appointment)",
+        "official": "+91-9268880303",
+        "alternatives": [],
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 011-26515050 is not printed on the hospital page"
+      },
+      "address": {
+        "recorded": "Press Enclave Road, Saket, New Delhi - 110017",
+        "printed": "1,2, Press Enclave Marg, Saket Institutional Area, Saket, New Delhi, Delhi 110017",
+        "proposed": null,
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": "Recorded address is equivalent. Not changed."
+      },
+      "city": {
+        "recorded": "New Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi",
+        "flag": null
+      },
+      "institution_kind": "514+ bed super speciality hospital with a Cancer Care institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "011-26515050",
+          "new": "+91-9268880303",
+          "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "blk-max-delhi": {
+      "id": "blk-max-delhi",
+      "status": "partly confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.blkmaxhospital.com/",
+        "source_url": "https://www.blkmaxhospital.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-30403040",
+        "printed": "Helpline +91-11-30403040. Emergency 011-4055 4055",
+        "official": "+91-11-30403040",
+        "alternatives": [],
+        "source_url": "https://www.blkmaxhospital.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Pusa Road, New Delhi - 110005",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Street address not printed on the home page fetched"
+      },
+      "city": {
+        "recorded": "New Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi",
+        "flag": null
+      },
+      "institution_kind": "super speciality hospital with a Cancer Centre institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.blkmaxhospital.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "fortis-fmri-gurugram": {
+      "id": "fortis-fmri-gurugram",
+      "status": "site unreachable",
+      "duplicate_of": "fortis-memorial-research-institute-gurugram",
+      "keep_id_recommendation": "fortis-memorial-research-institute-gurugram",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "www.fortishealthcare.com returns HTTP 403 to automated fetches (curl and the fetch tool) on 2026-11-24. Nothing could be read."
+      },
+      "phone": {
+        "recorded": "0124-4962200",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Sector 44, Gurugram, Haryana - 122002",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Gurugram",
+        "state_recorded": "Haryana",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "www.fortishealthcare.com returns HTTP 403 to automated fetches (curl and the fetch tool) on 2026-11-24. Nothing could be read.",
+      "changes_applied": []
+    },
+    "kokilaben-mumbai": {
+      "id": "kokilaben-mumbai",
+      "status": "partly confirmed",
+      "duplicate_of": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
+      "keep_id_recommendation": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.kokilabenhospital.com/departments/centresofexcellence/centrefor_cancer.html",
+        "source_url": "https://www.kokilabenhospital.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-42696969",
+        "printed": "24 HRS +91-22-4269-6969 / 7192-0000",
+        "official": "+91-22-42696969",
+        "alternatives": [
+          "+91-22-71920000"
+        ],
+        "source_url": "https://www.kokilabenhospital.com/contacts.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Rao Saheb Achutrao Patwardhan Marg, Four Bungalows, Andheri West, Mumbai - 400053",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Street address not found in the text of the home or contacts page"
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "multispeciality hospital with a Centre for Cancer (centre of excellence)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.kokilabenhospital.com/departments/centresofexcellence/centrefor_cancer.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "hn-reliance-mumbai": {
+      "id": "hn-reliance-mumbai",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.rfhospital.org/",
+        "source_url": "https://www.rfhospital.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-71009000",
+        "printed": "Toll-Free Number: 1-800-221-166 / 1-800-890-1111. Emergency: 022-61305005",
+        "official": "1800-221-166",
+        "alternatives": [
+          "1800-890-1111",
+          "+91-22-61305005 (Emergency)"
+        ],
+        "source_url": "https://www.rfhospital.org/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 022-71009000 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "Raja Rammohan Roy Road, Prarthana Samaj, Mumbai - 400004",
+        "printed": "Raja Rammohan Roy Road, Prarthana Samaj, Girgaon, Mumbai, Maharashtra 400004 (structured data on the home page)",
+        "proposed": null,
+        "source_url": "https://www.rfhospital.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "specialty hospital and research centre (Cancer Care with medical, radiation and surgical oncology listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.rfhospital.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": null,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "022-71009000",
+          "new": "1800-221-166",
+          "source_url": "https://www.rfhospital.org/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "gcri-ahmedabad": {
+      "id": "gcri-ahmedabad",
+      "status": "corrected",
+      "duplicate_of": "gujarat-cancer-research-institute-ahmedabad",
+      "keep_id_recommendation": "gujarat-cancer-research-institute-ahmedabad",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://gcriindia.org/",
+        "source_url": "https://gcriindia.org/contact.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "079-26306000",
+        "printed": "Phone :+91-79- 2268 8000 (Hunting)",
+        "official": "+91-79-22688000",
+        "alternatives": [],
+        "source_url": "https://gcriindia.org/contact.html",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 079-26306000 is not printed on the contact page"
+      },
+      "address": {
+        "recorded": "Civil Hospital Campus, Asarwa, Ahmedabad, Gujarat - 380016",
+        "printed": "The Gujarat Cancer and Research Institute, Civil Hospital Campus, Asarwa, Ahmedabad-380 016, Gujarat, INDIA",
+        "proposed": null,
+        "source_url": "https://gcriindia.org/contact.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Ahmedabad",
+        "state_recorded": "Gujarat",
+        "official": "Ahmedabad",
+        "flag": null
+      },
+      "institution_kind": "cancer and research institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://gcriindia.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "079-26306000",
+          "new": "+91-79-22688000",
+          "source_url": "https://gcriindia.org/contact.html",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "cmc-vellore": {
+      "id": "cmc-vellore",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.cmch-vellore.edu/",
+        "source_url": "https://www.cmch-vellore.edu/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "+91-416-2224609",
+        "printed": "Patient-related: +91 8000338855. Whatsapp: +91 9385285928",
+        "official": "+91-8000338855",
+        "alternatives": [],
+        "source_url": "https://www.cmch-vellore.edu/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded +91-416-2224609 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "IDA Scudder Road, Vellore, Tamil Nadu - 632004",
+        "printed": "Christian Medical College Vellore, Ida Scudder Road, Vellore - 632004, Tamil Nadu, India",
+        "proposed": null,
+        "source_url": "https://www.cmch-vellore.edu/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Vellore",
+        "state_recorded": "Tamil Nadu",
+        "official": "Vellore",
+        "flag": null
+      },
+      "institution_kind": "medical college and hospital (Gynaecologic Oncology and other departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.cmch-vellore.edu/departments/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "+91-416-2224609",
+          "new": "+91-8000338855",
+          "source_url": "https://www.cmch-vellore.edu/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "cancer-institute-wia-chennai": {
+      "id": "cancer-institute-wia-chennai",
+      "status": "corrected",
+      "duplicate_of": "cancer-institute-adyar-chennai",
+      "keep_id_recommendation": "cancer-institute-wia-chennai",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://cancerinstitutewia.in/",
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "044-22350241",
+        "printed": "Appointment line 044-22209150 / 22350131. Sardar Patel Road campus 044 2220 9150",
+        "official": "+91-44-22209150",
+        "alternatives": [
+          "+91-44-22350131"
+        ],
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 044-22350241 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "38 Sardar Patel Road, Guindy, Chennai, Tamil Nadu - 600036",
+        "printed": "Sardar Patel Road campus, No.38, Sardar Patel Road, Chennai - 600 036, Tamil Nadu, India",
+        "proposed": null,
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded address matches this campus. Not changed."
+      },
+      "city": {
+        "recorded": "Chennai",
+        "state_recorded": "Tamil Nadu",
+        "official": "Chennai",
+        "flag": null
+      },
+      "institution_kind": "public charitable cancer institute, two campuses",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "044-22350241",
+          "new": "+91-44-22209150",
+          "source_url": "https://cancerinstitutewia.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "apollo-cancer-chennai": {
+      "id": "apollo-cancer-chennai",
+      "status": "partly confirmed",
+      "duplicate_of": "apollo-cancer-centre-chennai",
+      "keep_id_recommendation": "apollo-cancer-centre-chennai",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.apollohospitals.com/cancer-centres/",
+        "source_url": "https://www.apollohospitals.com/cancer-centres/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "044-28290200",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "No number labelled for a Chennai cancer centre. Recorded 044-28290200 is not printed on the pages fetched. Not changed."
+      },
+      "address": {
+        "recorded": "21 Greams Lane, Off Greams Road, Chennai, Tamil Nadu - 600006",
+        "printed": "Apollo One, Apollo Hospitals Enterprise Limited, 21 Greams Lane, Thousand Lights, Chennai. The Chennai cancer facility listed is Apollo Proton Cancer Centre, Tharamani, Chennai",
+        "proposed": null,
+        "source_url": "https://www.apollohospitals.com/chennai",
+        "checked_on": "2026-11-24",
+        "note": "The recorded 21 Greams Lane address is listed by Apollo as Apollo One, its corporate entity, and the main hospital is on Greams Road. The site lists Apollo Proton Cancer Centre at Tharamani. Left for the owner to decide which facility the entry means."
+      },
+      "city": {
+        "recorded": "Chennai",
+        "state_recorded": "Tamil Nadu",
+        "official": "Chennai",
+        "flag": null
+      },
+      "institution_kind": "Apollo Cancer Centres network. Chennai cancer facility listed as Apollo Proton Cancer Centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.apollohospitals.com/cancer-centres/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "kidwai-kmio-bangalore": {
+      "id": "kidwai-kmio-bangalore",
+      "status": "corrected",
+      "duplicate_of": "kidwai-memorial-bangalore",
+      "keep_id_recommendation": "kidwai-memorial-bangalore",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://kmio.karnataka.gov.in/",
+        "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+        "checked_on": "2026-11-24",
+        "note": "The server TLS certificate did not validate with a standard client on 2026-11-24. The page loads when the check is skipped."
+      },
+      "phone": {
+        "recorded": "080-29727000",
+        "printed": "Kidwai Landline Number 080-66697902, 080-66697999",
+        "official": "+91-80-66697902",
+        "alternatives": [
+          "+91-80-66697999"
+        ],
+        "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 080-29727000 is not printed"
+      },
+      "address": {
+        "recorded": "Dr. M.H. Marigowda Road, Bangalore, Karnataka - 560029",
+        "printed": "Kidwai Memorial Institute of Oncology, Dr. M. H. Marigowda Road, Bengaluru - 560029",
+        "proposed": null,
+        "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bangalore",
+        "state_recorded": "Karnataka",
+        "official": "Bengaluru",
+        "flag": null
+      },
+      "institution_kind": "state institute of oncology (Government of Karnataka)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://kmio.karnataka.gov.in/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "080-29727000",
+          "new": "+91-80-66697902",
+          "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hcg-bangalore": {
+      "id": "hcg-bangalore",
+      "status": "corrected",
+      "duplicate_of": "hcg-cancer-centre-bangalore",
+      "keep_id_recommendation": "hcg-cancer-centre-bangalore",
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "080-40206000",
+        "printed": "+91 6358888801",
+        "official": "+91-6358888801",
+        "alternatives": [],
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 080-40206000 is not printed on the page"
+      },
+      "address": {
+        "recorded": "8 P Kalinga Rao Road, Sampangiram Nagar, Bangalore, Karnataka - 560027",
+        "printed": "#8, HCG Towers, P. Kalinga Rao Road (K.R. Road), Sampangi Ram Nagar, Bangalore, 560027",
+        "proposed": null,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bangalore",
+        "state_recorded": "Karnataka",
+        "official": "Bangalore",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (HCG)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "080-40206000",
+          "new": "+91-6358888801",
+          "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "basavatarakam-hyderabad": {
+      "id": "basavatarakam-hyderabad",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://basavatarakam.org/",
+        "source_url": "https://basavatarakam.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "040-23551235",
+        "printed": "7729 800 800, 040- 2355 1235",
+        "official": "+91-40-23551235",
+        "alternatives": [
+          "+91-7729800800"
+        ],
+        "source_url": "https://basavatarakam.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Road No. 10, Banjara Hills, Hyderabad, Telangana - 500034",
+        "printed": "Basavatarakam Indo American Cancer Hospital and Research Institute, Road No 10, Banjara Hills, Hyderabad-500034, Telangana, India",
+        "proposed": null,
+        "source_url": "https://basavatarakam.org/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Hyderabad",
+        "state_recorded": "Telangana",
+        "official": "Hyderabad",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital and research institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://basavatarakam.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "mnj-hyderabad": {
+      "id": "mnj-hyderabad",
+      "status": "could not confirm",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": null,
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "No reachable official website. mnjio.ap.nic.in (the only government domain found by search) does not respond. mnjiorcc.telangana.gov.in, mnjio.telangana.gov.in and other guesses do not resolve (2026-11-24)."
+      },
+      "phone": {
+        "recorded": "040-23320011",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Red Hills, Lakdi-Ka-Pool, Hyderabad, Telangana - 500004",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Hyderabad",
+        "state_recorded": "Telangana",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "No reachable official website. mnjio.ap.nic.in (the only government domain found by search) does not respond. mnjiorcc.telangana.gov.in, mnjio.telangana.gov.in and other guesses do not resolve (2026-11-24).",
+      "changes_applied": []
+    },
+    "aiims-new-delhi": {
+      "id": "aiims-new-delhi",
+      "status": "confirmed",
+      "duplicate_of": "aiims-delhi",
+      "keep_id_recommendation": "aiims-new-delhi",
+      "website": {
+        "recorded": "https://www.aiims.edu",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.aiims.edu/",
+        "source_url": "https://www.aiims.edu/index.php/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-26588500",
+        "printed": "Board Number : +91-11-26588500 / 26588700",
+        "official": "+91-11-26588500",
+        "alternatives": [
+          "+91-11-26588700"
+        ],
+        "source_url": "https://www.aiims.edu/index.php/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Sri Aurobindo Marg, Ansari Nagar, New Delhi - 110029",
+        "printed": "Ansari Nagar, New Delhi - 110029",
+        "proposed": null,
+        "source_url": "https://www.aiims.edu/index.php/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "New Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (institute of national importance), with Medical Oncology, Surgical Oncology, Radiotherapy departments",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.aiims.edu/index.php/en/departments-and-centers",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "tata-memorial-mumbai": {
+      "id": "tata-memorial-mumbai",
+      "status": "confirmed",
+      "duplicate_of": "tata-memorial-hospital-mumbai",
+      "keep_id_recommendation": "tata-memorial-mumbai",
+      "website": {
+        "recorded": "https://tmc.gov.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://tmc.gov.in/",
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-24177000",
+        "printed": "(+91-22) 24177000, 24177300, 24161413",
+        "official": "+91-22-24177000",
+        "alternatives": [
+          "+91-22-24177300",
+          "+91-22-24161413"
+        ],
+        "source_url": "https://tmc.gov.in/contactus",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Dr. E Borges Road, Parel, Mumbai - 400012",
+        "printed": "Dr. E Borges Road, Parel, Mumbai - 400 012",
+        "proposed": null,
+        "source_url": "https://tmc.gov.in/contactus",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "Tata Memorial Hospital, unit of Tata Memorial Centre",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://tmc.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "pgimer-chandigarh": {
+      "id": "pgimer-chandigarh",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://pgimer.edu.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://pgimer.edu.in/",
+        "source_url": "https://pgimer.edu.in/PGIMER_PORTAL/PGIMERPORTAL/home.jsp",
+        "checked_on": "2026-11-24",
+        "note": "The TLS certificate did not validate with a standard client on 2026-11-24. The page loads when the check is skipped. Recorded URL kept."
+      },
+      "phone": {
+        "recorded": "0172-2746018",
+        "printed": "Helpline Numbers: New OPD +91-172-2756868. Main Emergency +91-172-2755656",
+        "official": "+91-172-2756868",
+        "alternatives": [
+          "+91-172-2755656 (Main Emergency)"
+        ],
+        "source_url": "https://pgimer.edu.in/PGIMER_PORTAL/PGIMERPORTAL/home.jsp",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 0172-2746018 is not printed on the home page helpline list"
+      },
+      "address": {
+        "recorded": "Sector 12, Chandigarh - 160012",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Street address not printed on the home page"
+      },
+      "city": {
+        "recorded": "Chandigarh",
+        "state_recorded": "Chandigarh",
+        "official": "Chandigarh",
+        "flag": null
+      },
+      "institution_kind": "postgraduate institute of medical education and research (Radiotherapy and Oncology department listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://pgimer.edu.in/PGIMER_PORTAL/PGIMERPORTAL/home.jsp",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "The TLS certificate did not validate with a standard client on 2026-11-24. The page loads when the check is skipped. Recorded URL kept.",
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0172-2746018",
+          "new": "+91-172-2756868",
+          "source_url": "https://pgimer.edu.in/PGIMER_PORTAL/PGIMERPORTAL/home.jsp",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "jipmer-puducherry": {
+      "id": "jipmer-puducherry",
+      "status": "partly confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.jipmer.edu.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://jipmer.edu.in/",
+        "source_url": "https://jipmer.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "https://www.jipmer.edu.in redirects to https://jipmer.edu.in. The TLS certificate did not validate with a standard client on 2026-11-24."
+      },
+      "phone": {
+        "recorded": "0413-2296000",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "Phone number not found on the home page or the administration contact page within the page limit"
+      },
+      "address": {
+        "recorded": "Dhanvantari Nagar, Gorimedu, Puducherry - 605006",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Puducherry",
+        "state_recorded": "Puducherry",
+        "official": "Puducherry",
+        "flag": null
+      },
+      "institution_kind": "institute of postgraduate medical education and research (Medical Oncology, Radiation Oncology, Surgical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://jipmer.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": "https://www.jipmer.edu.in redirects to https://jipmer.edu.in. The TLS certificate did not validate with a standard client on 2026-11-24.",
+      "changes_applied": []
+    },
+    "sctimst-thiruvananthapuram": {
+      "id": "sctimst-thiruvananthapuram",
+      "status": "not a cancer hospital per its own site",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://sctimst.ac.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.sctimst.ac.in/",
+        "source_url": "https://www.sctimst.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0471-2524664",
+        "printed": "Stroke Helpline 0471 2524333. Heart Attack Helpline 0471 2524524. Cardiology Emergency OPD 0471 2524219",
+        "official": null,
+        "alternatives": [],
+        "source_url": "https://www.sctimst.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": "No general enquiry number on the home page. Recorded 0471-2524664 is not printed. Not changed."
+      },
+      "address": {
+        "recorded": "Medical College PO, Thiruvananthapuram - 695011",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Thiruvananthapuram",
+        "state_recorded": "Kerala",
+        "official": "Thiruvananthapuram",
+        "flag": null
+      },
+      "institution_kind": "Institution of National Importance under the Department of Science and Technology. Its own description: the institute focuses on high quality, advanced treatment of cardiac and neurological disorders",
+      "cancer_care": {
+        "offered": false,
+        "source_url": "https://www.sctimst.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": "No oncology or cancer department or service is mentioned on the home page. The site describes a cardiac and neurological focus."
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "aiims-bhubaneswar": {
+      "id": "aiims-bhubaneswar",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimsbhubaneswar.nic.in",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.aiimsbhubaneswar.nic.in does not resolve (DNS). The same domain without www resolves.",
+        "official": "https://aiimsbhubaneswar.nic.in/",
+        "source_url": "https://aiimsbhubaneswar.nic.in/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0674-2476789",
+        "printed": "AIIMS Hospital OPD Help Desk: (0674) 2476789. AIIMS Hospital Emergency: (0674) 2476461",
+        "official": "+91-674-2476789",
+        "alternatives": [
+          "+91-674-2476461 (Emergency)"
+        ],
+        "source_url": "https://aiimsbhubaneswar.nic.in/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Sijua, Patrapada, Bhubaneswar - 751019",
+        "printed": "AIIMS Bhubaneswar, Sijua, Patrapada, Bhubaneswar-751019",
+        "proposed": null,
+        "source_url": "https://aiimsbhubaneswar.nic.in/contact-us/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bhubaneswar",
+        "state_recorded": "Odisha",
+        "official": "Bhubaneswar",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (Department of Medical Oncology named in recruitment notices)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://aiimsbhubaneswar.nic.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "website",
+          "old": "https://www.aiimsbhubaneswar.nic.in",
+          "new": "https://aiimsbhubaneswar.nic.in",
+          "source_url": "https://aiimsbhubaneswar.nic.in/contact-us/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-jodhpur": {
+      "id": "aiims-jodhpur",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiims.edu/jodhpur",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.aiims.edu/jodhpur returns HTTP 404. AIIMS Jodhpur has its own domain.",
+        "official": "https://aiimsjodhpur.edu.in/",
+        "source_url": "https://aiimsjodhpur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0291-2740741",
+        "printed": "Telephone Exchange : 0291-2740741. OPD Reception / Enquiry : 0291-2740742. Emergency : 0291-2831622",
+        "official": "+91-291-2740741",
+        "alternatives": [
+          "+91-291-2740742 (OPD Reception / Enquiry)"
+        ],
+        "source_url": "https://aiimsjodhpur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded number matches the printed telephone exchange. Not changed."
+      },
+      "address": {
+        "recorded": "Basni Industrial Area Phase-2, Jodhpur - 342005",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Street address not printed on the home page"
+      },
+      "city": {
+        "recorded": "Jodhpur",
+        "state_recorded": "Rajasthan",
+        "official": "Jodhpur",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (Medical Oncology Haematology, Radiation Oncology, Surgical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://aiimsjodhpur.edu.in/departments.php",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "website",
+          "old": "https://www.aiims.edu/jodhpur",
+          "new": "https://aiimsjodhpur.edu.in",
+          "source_url": "https://aiimsjodhpur.edu.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-patna": {
+      "id": "aiims-patna",
+      "status": "site unreachable",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimspatna.org",
+        "recorded_resolves": true,
+        "recorded_note": "https://www.aiimspatna.org redirects to https://aiimspatna.edu.in/. Recorded URL still works through the redirect. Not changed.",
+        "official": "https://aiimspatna.edu.in/",
+        "source_url": "https://aiimspatna.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0612-2451070",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "The site serves a JavaScript bot challenge (Sucuri) to automated clients. The page content could not be read without circumventing it, which was not attempted."
+      },
+      "address": {
+        "recorded": "Phulwarisharif, Patna - 801507",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Patna",
+        "state_recorded": "Bihar",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "aiims-rishikesh": {
+      "id": "aiims-rishikesh",
+      "status": "partly confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimsrishikesh.edu.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://aiimsrishikesh.edu.in/",
+        "source_url": "https://aiimsrishikesh.edu.in/a1_1/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0135-2462927",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "The Important Contacts/Helpline page lists only service-specific lines (telemedicine, paediatric neurology, urology) and a landline under emergency telemedicine (01352462503). No general enquiry number. Recorded 0135-2462927 is not printed. Not changed."
+      },
+      "address": {
+        "recorded": "Virbhadra Road, Rishikesh - 249203",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Rishikesh",
+        "state_recorded": "Uttarakhand",
+        "official": "Rishikesh",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (Department of Radiation Oncology named on the home page)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://aiimsrishikesh.edu.in/a1_1/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "nimhans-bangalore": {
+      "id": "nimhans-bangalore",
+      "status": "not a cancer hospital per its own site",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://nimhans.ac.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.nimhans.ac.in/",
+        "source_url": "https://www.nimhans.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "080-46110007",
+        "printed": "Enquiry Number: 080-26995100, 080-26995200. Footer Phone: 080 - 26995000",
+        "official": "+91-80-26995100",
+        "alternatives": [
+          "+91-80-26995200",
+          "+91-80-26995000"
+        ],
+        "source_url": "https://www.nimhans.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 080-46110007 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "Hosur Road, Bengaluru - 560029",
+        "printed": "National Institute of Mental Health and Neurosciences, Hosur Road, Bengaluru, Karnataka - 560029",
+        "proposed": null,
+        "source_url": "https://www.nimhans.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bengaluru",
+        "state_recorded": "Karnataka",
+        "official": "Bengaluru",
+        "flag": null
+      },
+      "institution_kind": "National Institute of Mental Health and Neurosciences",
+      "cancer_care": {
+        "offered": false,
+        "source_url": "https://www.nimhans.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": "No oncology or cancer department or service is mentioned on the home page. The institute describes itself as an institute of mental health and neurosciences. Whether its neurosurgery or neuropathology services treat brain tumours was not checked further."
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "080-46110007",
+          "new": "+91-80-26995100",
+          "source_url": "https://www.nimhans.ac.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "kidwai-memorial-bangalore": {
+      "id": "kidwai-memorial-bangalore",
+      "status": "corrected",
+      "duplicate_of": "kidwai-kmio-bangalore",
+      "keep_id_recommendation": "kidwai-memorial-bangalore",
+      "website": {
+        "recorded": "https://www.kmio.kar.nic.in",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.kmio.kar.nic.in does not resolve (DNS)",
+        "official": "https://kmio.karnataka.gov.in/",
+        "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+        "checked_on": "2026-11-24",
+        "note": "The server TLS certificate did not validate with a standard client on 2026-11-24."
+      },
+      "phone": {
+        "recorded": "080-26094000",
+        "printed": "Kidwai Landline Number 080-66697902, 080-66697999",
+        "official": "+91-80-66697902",
+        "alternatives": [
+          "+91-80-66697999"
+        ],
+        "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 080-26094000 is not printed"
+      },
+      "address": {
+        "recorded": "Dr. M.H. Marigowda Road, Bengaluru - 560029",
+        "printed": "Kidwai Memorial Institute of Oncology, Dr. M. H. Marigowda Road, Bengaluru - 560029",
+        "proposed": null,
+        "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bengaluru",
+        "state_recorded": "Karnataka",
+        "official": "Bengaluru",
+        "flag": null
+      },
+      "institution_kind": "state institute of oncology (Government of Karnataka)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://kmio.karnataka.gov.in/en",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "080-26094000",
+          "new": "+91-80-66697902",
+          "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "website",
+          "old": "https://www.kmio.kar.nic.in",
+          "new": "https://kmio.karnataka.gov.in",
+          "source_url": "https://kmio.karnataka.gov.in/14/address-and-telephone-numbers/en",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "cancer-institute-adyar-chennai": {
+      "id": "cancer-institute-adyar-chennai",
+      "status": "corrected",
+      "duplicate_of": "cancer-institute-wia-chennai",
+      "keep_id_recommendation": "cancer-institute-wia-chennai",
+      "website": {
+        "recorded": "https://cancerinstitutewia.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://cancerinstitutewia.in/",
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "044-24910754",
+        "printed": "Adyar campus 044-2235 0131. Appointment line 044-22209150 / 22350131",
+        "official": "+91-44-22350131",
+        "alternatives": [
+          "+91-44-22209150"
+        ],
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 044-24910754 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "38, Sardar Patel Road, Adyar, Chennai - 600020",
+        "printed": "Adyar campus, No.1, East Canal Bank Road, Gandhi Nagar, Adyar, Chennai - 600 020",
+        "proposed": "No.1, East Canal Bank Road, Gandhi Nagar, Adyar, Chennai - 600020",
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded address combined 38 Sardar Patel Road (the 600036 campus) with Adyar 600020. The Adyar campus at 600020 is on East Canal Bank Road."
+      },
+      "city": {
+        "recorded": "Chennai",
+        "state_recorded": "Tamil Nadu",
+        "official": "Chennai",
+        "flag": null
+      },
+      "institution_kind": "public charitable cancer institute, two campuses",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://cancerinstitutewia.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "044-24910754",
+          "new": "+91-44-22350131",
+          "source_url": "https://cancerinstitutewia.in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "38, Sardar Patel Road, Adyar, Chennai - 600020",
+          "new": "No.1, East Canal Bank Road, Gandhi Nagar, Adyar, Chennai - 600020",
+          "source_url": "https://cancerinstitutewia.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "regional-cancer-centre-thiruvananthapuram": {
+      "id": "regional-cancer-centre-thiruvananthapuram",
+      "status": "confirmed",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.rcctvm.gov.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.rcctvm.gov.in/",
+        "source_url": "https://www.rcctvm.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0471-2442541",
+        "printed": "Need Help? Call us now: +91-471-2442541",
+        "official": "+91-471-2442541",
+        "alternatives": [],
+        "source_url": "https://www.rcctvm.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Medical College Campus, Thiruvananthapuram - 695011",
+        "printed": "Regional Cancer Centre, Medical College Campus, Post Bag No.2417, Thiruvananthapuram, India 695011",
+        "proposed": null,
+        "source_url": "https://www.rcctvm.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Thiruvananthapuram",
+        "state_recorded": "Kerala",
+        "official": "Thiruvananthapuram",
+        "flag": null
+      },
+      "institution_kind": "regional cancer centre, State Cancer Institute under Govt of Kerala",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.rcctvm.gov.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "gujarat-cancer-research-institute-ahmedabad": {
+      "id": "gujarat-cancer-research-institute-ahmedabad",
+      "status": "corrected",
+      "duplicate_of": "gcri-ahmedabad",
+      "keep_id_recommendation": "gujarat-cancer-research-institute-ahmedabad",
+      "website": {
+        "recorded": "https://www.gcri.org.in",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.gcri.org.in does not resolve (DNS), with or without www, http or https",
+        "official": "https://gcriindia.org/",
+        "source_url": "https://gcriindia.org/contact.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "079-22685000",
+        "printed": "Phone :+91-79- 2268 8000 (Hunting)",
+        "official": "+91-79-22688000",
+        "alternatives": [],
+        "source_url": "https://gcriindia.org/contact.html",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 079-22685000 is not printed on the contact page. The fax number printed there is +91-79-2268 5490."
+      },
+      "address": {
+        "recorded": "New Civil Campus, Asarwa, Ahmedabad - 380016",
+        "printed": "Civil Hospital Campus, Asarwa, Ahmedabad-380 016, Gujarat",
+        "proposed": "Civil Hospital Campus, Asarwa, Ahmedabad - 380016",
+        "source_url": "https://gcriindia.org/contact.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Ahmedabad",
+        "state_recorded": "Gujarat",
+        "official": "Ahmedabad",
+        "flag": null
+      },
+      "institution_kind": "cancer and research institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://gcriindia.org/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "079-22685000",
+          "new": "+91-79-22688000",
+          "source_url": "https://gcriindia.org/contact.html",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "New Civil Campus, Asarwa, Ahmedabad - 380016",
+          "new": "Civil Hospital Campus, Asarwa, Ahmedabad - 380016",
+          "source_url": "https://gcriindia.org/contact.html",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "website",
+          "old": "https://www.gcri.org.in",
+          "new": "https://gcriindia.org",
+          "source_url": "https://gcriindia.org/contact.html",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "chittaranjan-national-cancer-institute-kolkata": {
+      "id": "chittaranjan-national-cancer-institute-kolkata",
+      "status": "corrected",
+      "duplicate_of": "cnci-kolkata",
+      "keep_id_recommendation": "cnci-kolkata",
+      "website": {
+        "recorded": "https://cnci.org.in",
+        "recorded_resolves": false,
+        "recorded_note": "https://cnci.org.in fails (SSL connection error) on https, with and without www",
+        "official": "https://cnci.ac.in/",
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "033-24765101",
+        "printed": "Hazra - 033 2475-9313. Newtown - 033 3506-0600",
+        "official": "+91-33-24759313",
+        "alternatives": [
+          "+91-33-35060600 (New Town campus)"
+        ],
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 033-24765101 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "37 S.P. Mukherjee Road, Kolkata - 700026",
+        "printed": "37, S.P. Mukherjee Road, Hazra, Kolkata - 700 026",
+        "proposed": null,
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Kolkata",
+        "state_recorded": "West Bengal",
+        "official": "Kolkata",
+        "flag": null
+      },
+      "institution_kind": "national cancer institute (autonomous body under the Ministry of Health and Family Welfare)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://cnci.ac.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "033-24765101",
+          "new": "+91-33-24759313",
+          "source_url": "https://cnci.ac.in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "website",
+          "old": "https://cnci.org.in",
+          "new": "https://cnci.ac.in",
+          "source_url": "https://cnci.ac.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-raipur": {
+      "id": "aiims-raipur",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimsraipur.edu.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.aiimsraipur.edu.in/",
+        "source_url": "https://www.aiimsraipur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0771-2573777",
+        "printed": "For General Enquiry - 0771-2572240. For Emergency Service 24x7 - 0771-2577293",
+        "official": "+91-771-2572240",
+        "alternatives": [
+          "+91-771-2577293 (Emergency 24x7)"
+        ],
+        "source_url": "https://www.aiimsraipur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 0771-2573777 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "G.E. Road, Tatibandh, Raipur - 492099",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Street address not printed on the home page"
+      },
+      "city": {
+        "recorded": "Raipur",
+        "state_recorded": "Chhattisgarh",
+        "official": "Raipur",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (Medical Oncology, Radiation Oncology, Surgical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.aiimsraipur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0771-2573777",
+          "new": "+91-771-2572240",
+          "source_url": "https://www.aiimsraipur.edu.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-nagpur": {
+      "id": "aiims-nagpur",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimsnagpur.edu.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.aiimsnagpur.edu.in/",
+        "source_url": "https://www.aiimsnagpur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0712-2975300",
+        "printed": "Helpline No: 9404044944. IPD Control Room: 0712-2352078, 0712-2352030",
+        "official": "+91-9404044944",
+        "alternatives": [
+          "+91-712-2352078 (IPD Control Room)"
+        ],
+        "source_url": "https://www.aiimsnagpur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 0712-2975300 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "Plot No. 2, Sector-20, MIHAN, Nagpur - 441108",
+        "printed": "All India Institute of Medical Sciences, Nagpur, Plot No. 2, Sector - 20, MIHAN, Nagpur, Maharashtra, Pin: 441124",
+        "proposed": "Plot No. 2, Sector-20, MIHAN, Nagpur, Maharashtra - 441124",
+        "source_url": "https://www.aiimsnagpur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded PIN 441108 differs from the printed 441124"
+      },
+      "city": {
+        "recorded": "Nagpur",
+        "state_recorded": "Maharashtra",
+        "official": "Nagpur",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences (Radiation Oncology department listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.aiimsnagpur.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0712-2975300",
+          "new": "+91-9404044944",
+          "source_url": "https://www.aiimsnagpur.edu.in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Plot No. 2, Sector-20, MIHAN, Nagpur - 441108",
+          "new": "Plot No. 2, Sector-20, MIHAN, Nagpur, Maharashtra - 441124",
+          "source_url": "https://www.aiimsnagpur.edu.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-bhopal": {
+      "id": "aiims-bhopal",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimsbhopal.edu.in",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.aiimsbhopal.edu.in/",
+        "source_url": "https://www.aiimsbhopal.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0755-2672355",
+        "printed": "Hospital enquiry/helpline number (label in Hindi): 0755-2982607, 07552985569",
+        "official": "+91-755-2982607",
+        "alternatives": [
+          "+91-755-2985569"
+        ],
+        "source_url": "https://www.aiimsbhopal.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 0755-2672355 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "Saket Nagar, Bhopal - 462020",
+        "printed": "Saket Nagar, Bhopal - 462020, Madhya Pradesh (Hindi footer)",
+        "proposed": null,
+        "source_url": "https://www.aiimsbhopal.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bhopal",
+        "state_recorded": "Madhya Pradesh",
+        "official": "Bhopal",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences",
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Home page (Hindi) does not name an oncology department. Department pages not read within the page limit."
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0755-2672355",
+          "new": "+91-755-2982607",
+          "source_url": "https://www.aiimsbhopal.edu.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "aiims-hyderabad": {
+      "id": "aiims-hyderabad",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.aiimsbibinagar.edu.in",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.aiimsbibinagar.edu.in returns HTTP 403 with browser-like headers. The domain without www returns the site.",
+        "official": "https://aiimsbibinagar.edu.in/",
+        "source_url": "https://aiimsbibinagar.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "08682-281800",
+        "printed": "Help Line Number : 08685-293300 (9.00am - 5.00pm.)",
+        "official": "+91-8685-293300",
+        "alternatives": [],
+        "source_url": "https://aiimsbibinagar.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 08682-281800 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "Bibinagar, Yadadri Bhuvanagiri District, Telangana - 508126",
+        "printed": "AIIMS Bibinagar (Hyderabad Metropolitan Region), Telangana 508126",
+        "proposed": null,
+        "source_url": "https://aiimsbibinagar.edu.in/",
+        "checked_on": "2026-11-24",
+        "note": "Consistent with the recorded address. Not changed."
+      },
+      "city": {
+        "recorded": "Hyderabad",
+        "state_recorded": "Telangana",
+        "official": "Bibinagar (Hyderabad Metropolitan Region)",
+        "flag": null
+      },
+      "institution_kind": "All India Institute of Medical Sciences",
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Home page does not name an oncology department. Department pages not read within the page limit."
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "08682-281800",
+          "new": "+91-8685-293300",
+          "source_url": "https://aiimsbibinagar.edu.in/",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "website",
+          "old": "https://www.aiimsbibinagar.edu.in",
+          "new": "https://aiimsbibinagar.edu.in",
+          "source_url": "https://aiimsbibinagar.edu.in/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "nims-hyderabad": {
+      "id": "nims-hyderabad",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://nims.ap.nic.in",
+        "recorded_resolves": false,
+        "recorded_note": "https://nims.ap.nic.in does not resolve (DNS)",
+        "official": "https://nims.edu.in/",
+        "source_url": "https://nims.edu.in/NIMSWP/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "040-23489000",
+        "printed": "Phone No. +91-40-23489000, +91-40-23396552",
+        "official": "+91-40-23489000",
+        "alternatives": [
+          "+91-40-23396552"
+        ],
+        "source_url": "https://nims.edu.in/NIMSWP/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Punjagutta, Hyderabad - 500082",
+        "printed": "Punjagutta, Hyderabad, -500082, Telangana, India",
+        "proposed": null,
+        "source_url": "https://nims.edu.in/NIMSWP/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Hyderabad",
+        "state_recorded": "Telangana",
+        "official": "Hyderabad",
+        "flag": null
+      },
+      "institution_kind": "medical sciences university established under state act (Medical Oncology, Radiation Oncology, Surgical Oncology departments listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://nims.edu.in/NIMSWP/depart_department",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "website",
+          "old": "https://nims.ap.nic.in",
+          "new": "https://nims.edu.in",
+          "source_url": "https://nims.edu.in/NIMSWP/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "apollo-cancer-centre-chennai": {
+      "id": "apollo-cancer-centre-chennai",
+      "status": "partly confirmed",
+      "duplicate_of": "apollo-cancer-chennai",
+      "keep_id_recommendation": "apollo-cancer-centre-chennai",
+      "website": {
+        "recorded": "https://apollohospitals.com/cancer",
+        "recorded_resolves": true,
+        "recorded_note": "https://apollohospitals.com/cancer redirects to https://www.apollohospitals.com/cancer-centres/",
+        "official": "https://www.apollohospitals.com/cancer-centres/",
+        "source_url": "https://www.apollohospitals.com/cancer-centres/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "044-28290200",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": "No number labelled for a Chennai cancer centre. Recorded 044-28290200 is not printed on the pages fetched. Not changed."
+      },
+      "address": {
+        "recorded": "21, Greams Lane, Off Greams Road, Chennai - 600006",
+        "printed": "Apollo One, Apollo Hospitals Enterprise Limited, 21 Greams Lane, Thousand Lights, Chennai. The Chennai cancer facility listed is Apollo Proton Cancer Centre, Tharamani, Chennai",
+        "proposed": null,
+        "source_url": "https://www.apollohospitals.com/chennai",
+        "checked_on": "2026-11-24",
+        "note": "See apollo-cancer-chennai."
+      },
+      "city": {
+        "recorded": "Chennai",
+        "state_recorded": "Tamil Nadu",
+        "official": "Chennai",
+        "flag": null
+      },
+      "institution_kind": "Apollo Cancer Centres network",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.apollohospitals.com/cancer-centres/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "medanta-cancer-institute-gurugram": {
+      "id": "medanta-cancer-institute-gurugram",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.medanta.org/cancer-institute",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.medanta.org/cancer-institute redirects to the Medanta home page",
+        "official": "https://www.medanta.org/hospitals-near-me/gurugram-hospital/speciality/oncology",
+        "source_url": "https://www.medanta.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0124-4141414",
+        "printed": "+91-880-000-1068",
+        "official": "+91-8800001068",
+        "alternatives": [],
+        "source_url": "https://www.medanta.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": "0124-4141414 not printed on the contact page"
+      },
+      "address": {
+        "recorded": "Sector 38, Gurugram - 122001",
+        "printed": "Medanta - The Medicity, Gurugram, CH Baktawar Singh Road, Sector 38, Gurugram, Haryana 122001",
+        "proposed": "CH Baktawar Singh Road, Sector 38, Gurugram, Haryana - 122001",
+        "source_url": "https://www.medanta.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Gurugram",
+        "state_recorded": "Haryana",
+        "official": "Gurugram",
+        "flag": null
+      },
+      "institution_kind": "multi-speciality hospital (Medanta - The Medicity) with Cancer Care speciality",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.medanta.org/contact-us",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0124-4141414",
+          "new": "+91-8800001068",
+          "source_url": "https://www.medanta.org/contact-us",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "address",
+          "old": "Sector 38, Gurugram - 122001",
+          "new": "CH Baktawar Singh Road, Sector 38, Gurugram, Haryana - 122001",
+          "source_url": "https://www.medanta.org/contact-us",
+          "checked_on": "2026-11-24"
+        },
+        {
+          "field": "website",
+          "old": "https://www.medanta.org/cancer-institute",
+          "new": "https://www.medanta.org/hospitals-near-me/gurugram-hospital/speciality/oncology",
+          "source_url": "https://www.medanta.org/contact-us",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "fortis-memorial-research-institute-gurugram": {
+      "id": "fortis-memorial-research-institute-gurugram",
+      "status": "site unreachable",
+      "duplicate_of": "fortis-fmri-gurugram",
+      "keep_id_recommendation": "fortis-memorial-research-institute-gurugram",
+      "website": {
+        "recorded": "https://www.fortishealthcare.com/hospitals/fortis-memorial-research-institute-gurgaon",
+        "recorded_resolves": null,
+        "recorded_note": "Recorded URL returns HTTP 403 to automated fetches. The domain is the Fortis corporate domain. Not changed.",
+        "official": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "phone": {
+        "recorded": "0124-4962200",
+        "printed": null,
+        "official": null,
+        "alternatives": [],
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "address": {
+        "recorded": "Sector 44, Gurugram - 122002",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "city": {
+        "recorded": "Gurugram",
+        "state_recorded": "Haryana",
+        "official": null,
+        "flag": null
+      },
+      "institution_kind": null,
+      "cancer_care": {
+        "offered": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": []
+    },
+    "max-cancer-centre-saket-delhi": {
+      "id": "max-cancer-centre-saket-delhi",
+      "status": "corrected",
+      "duplicate_of": "max-cancer-saket",
+      "keep_id_recommendation": "max-cancer-centre-saket-delhi",
+      "website": {
+        "recorded": "https://www.maxhealthcare.in/specialities/cancer-care",
+        "recorded_resolves": null,
+        "recorded_note": "https://www.maxhealthcare.in/specialities/cancer-care returns HTTP 403 to automated fetches, as does the site own Cancer Care link (/our-specialities/cancer-care-oncology). Whether the recorded path exists could not be determined. Not changed.",
+        "official": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "011-26515050",
+        "printed": "Call us +91 926 888 0303 (To Book an Appointment)",
+        "official": "+91-9268880303",
+        "alternatives": [],
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 011-26515050 is not printed on the hospital page"
+      },
+      "address": {
+        "recorded": "1-2, Press Enclave Road, Saket, New Delhi - 110017",
+        "printed": "1,2, Press Enclave Marg, Saket Institutional Area, Saket, New Delhi, Delhi 110017",
+        "proposed": null,
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": "Recorded address is equivalent. Not changed."
+      },
+      "city": {
+        "recorded": "New Delhi",
+        "state_recorded": "Delhi",
+        "official": "New Delhi",
+        "flag": null
+      },
+      "institution_kind": "514+ bed super speciality hospital with a Cancer Care institute",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "011-26515050",
+          "new": "+91-9268880303",
+          "source_url": "https://www.maxhealthcare.in/hospital-network/max-super-speciality-hospital-saket",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "kokilaben-dhirubhai-ambani-cancer-centre-mumbai": {
+      "id": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
+      "status": "corrected (partly confirmed)",
+      "duplicate_of": "kokilaben-mumbai",
+      "keep_id_recommendation": "kokilaben-dhirubhai-ambani-cancer-centre-mumbai",
+      "website": {
+        "recorded": "https://www.kokilabenhospital.com/departments/cancercare",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.kokilabenhospital.com/departments/cancercare redirects to https://www.kokilabenhospital.com/404.html",
+        "official": "https://www.kokilabenhospital.com/departments/centresofexcellence/centrefor_cancer.html",
+        "source_url": "https://www.kokilabenhospital.com/",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-42696969",
+        "printed": "24 HRS +91-22-4269-6969 / 7192-0000",
+        "official": "+91-22-42696969",
+        "alternatives": [
+          "+91-22-71920000"
+        ],
+        "source_url": "https://www.kokilabenhospital.com/contacts.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "address": {
+        "recorded": "Four Bungalows, Andheri West, Mumbai - 400053",
+        "printed": null,
+        "proposed": null,
+        "source_url": null,
+        "checked_on": null,
+        "note": "Street address not found in the text of the home or contacts page"
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "multispeciality hospital with a Centre for Cancer (centre of excellence)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.kokilabenhospital.com/departments/centresofexcellence/centrefor_cancer.html",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "website",
+          "old": "https://www.kokilabenhospital.com/departments/cancercare",
+          "new": "https://www.kokilabenhospital.com/departments/centresofexcellence/centrefor_cancer.html",
+          "source_url": "https://www.kokilabenhospital.com/",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "hcg-cancer-centre-bangalore": {
+      "id": "hcg-cancer-centre-bangalore",
+      "status": "corrected",
+      "duplicate_of": "hcg-bangalore",
+      "keep_id_recommendation": "hcg-cancer-centre-bangalore",
+      "website": {
+        "recorded": "https://www.hcgoncology.com",
+        "recorded_resolves": true,
+        "recorded_note": "https://www.hcgoncology.com redirects to https://www.hcghospitals.com/",
+        "official": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "phone": {
+        "recorded": "080-40206000",
+        "printed": "+91 6358888801",
+        "official": "+91-6358888801",
+        "alternatives": [],
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": "Recorded 080-40206000 is not printed on the page"
+      },
+      "address": {
+        "recorded": "HCG Cancer Centre, No 8, P. Kalinga Rao Road, Sampangiramnagar, Bengaluru - 560027",
+        "printed": "#8, HCG Towers, P. Kalinga Rao Road (K.R. Road), Sampangi Ram Nagar, Bangalore, 560027",
+        "proposed": null,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "city": {
+        "recorded": "Bengaluru",
+        "state_recorded": "Karnataka",
+        "official": "Bangalore",
+        "flag": null
+      },
+      "institution_kind": "cancer hospital (HCG)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+        "checked_on": "2026-11-24",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "080-40206000",
+          "new": "+91-6358888801",
+          "source_url": "https://www.hcghospitals.com/our-centres/hcg-cancer-hospital-k-r-road-bangalore",
+          "checked_on": "2026-11-24"
+        }
+      ]
+    },
+    "manipal-comprehensive-cancer-centre-manipal": {
+      "id": "manipal-comprehensive-cancer-centre-manipal",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.manipalhospitals.com/manipal/specialties/cancer-care",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.manipalhospitals.com/manipal/specialties/cancer-care returns HTTP 404, and https://www.manipalhospitals.com/manipal/ also returns 404. The Manipal Hospitals chain site lists no unit in Manipal town. The hospital at Madhav Nagar, Manipal is Kasturba Hospital, on its own domain khmanipal.com.",
+        "official": "https://khmanipal.com/",
+        "source_url": "https://khmanipal.com/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "phone": {
+        "recorded": "0820-2922340",
+        "printed": "Emergency: 0820 2575555. Help Desk: 0820 2922761. Enquiry: 0820 2571201. Customer Care: 0820 2923188",
+        "official": "+91-820-2571201",
+        "alternatives": [
+          "+91-820-2922761 (Help Desk)",
+          "+91-820-2575555 (Emergency)"
+        ],
+        "source_url": "https://khmanipal.com/contact-us/",
+        "checked_on": "2026-11-25",
+        "note": "Recorded 0820-2922340 is not printed on the contact page"
+      },
+      "address": {
+        "recorded": "Manipal Hospital, Tiger Circle, Madhav Nagar, Manipal - 576104",
+        "printed": "Madhav Nagar, Manipal, Karnataka 576104",
+        "proposed": "Madhav Nagar, Manipal, Karnataka - 576104",
+        "source_url": "https://khmanipal.com/contact-us/",
+        "checked_on": "2026-11-25",
+        "note": "Recorded address names Manipal Hospital, Tiger Circle. The official page names Kasturba Hospital at Madhav Nagar."
+      },
+      "city": {
+        "recorded": "Manipal",
+        "state_recorded": "Karnataka",
+        "official": "Manipal",
+        "flag": null
+      },
+      "institution_kind": "Kasturba Hospital, Manipal (Medical Oncology, Radiotherapy Oncology, Paediatric Haematology and Oncology, Robotic Cancer Surgery pages listed)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://khmanipal.com/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": true,
+        "found": "unconfirmed"
+      },
+      "name_note": "Recorded name Manipal Comprehensive Cancer Centre, Manipal. The official site is that of Kasturba Hospital, Manipal. The name Manipal Comprehensive Cancer Care Centre was not seen on a fetched official page. Name not changed.",
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "0820-2922340",
+          "new": "+91-820-2571201",
+          "source_url": "https://khmanipal.com/contact-us/",
+          "checked_on": "2026-11-25"
+        },
+        {
+          "field": "address",
+          "old": "Manipal Hospital, Tiger Circle, Madhav Nagar, Manipal - 576104",
+          "new": "Madhav Nagar, Manipal, Karnataka - 576104",
+          "source_url": "https://khmanipal.com/contact-us/",
+          "checked_on": "2026-11-25"
+        },
+        {
+          "field": "website",
+          "old": "https://www.manipalhospitals.com/manipal/specialties/cancer-care",
+          "new": "https://khmanipal.com",
+          "source_url": "https://khmanipal.com/",
+          "checked_on": "2026-11-25"
+        }
+      ]
+    },
+    "lilavati-hospital-cancer-mumbai": {
+      "id": "lilavati-hospital-cancer-mumbai",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://lilavatihospital.com/oncology",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://www.lilavatihospital.com/oncology",
+        "source_url": "https://www.lilavatihospital.com/oncology",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-26751000",
+        "printed": "OPD - 022 69318050 / 022 6931 8051 / 08657907751. Boardline - 022-69318000 / 69301000",
+        "official": "+91-22-69318050",
+        "alternatives": [
+          "+91-22-69318051",
+          "+91-22-69318000 (Boardline)"
+        ],
+        "source_url": "https://www.lilavatihospital.com/oncology",
+        "checked_on": "2026-11-25",
+        "note": "Recorded 022-26751000 is not printed on the page"
+      },
+      "address": {
+        "recorded": "A-791, Bandra Reclaimation, Bandra (West), Mumbai - 400050",
+        "printed": "A-791, Bandra Reclamation, Bandra (W), Mumbai - 400050. India.",
+        "proposed": "A-791, Bandra Reclamation, Bandra (West), Mumbai - 400050",
+        "source_url": "https://www.lilavatihospital.com/oncology",
+        "checked_on": "2026-11-25",
+        "note": "Recorded spelling Reclaimation corrected to the printed Reclamation"
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "multi speciality hospital and research centre with an Oncology department",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.lilavatihospital.com/oncology",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "022-26751000",
+          "new": "+91-22-69318050",
+          "source_url": "https://www.lilavatihospital.com/oncology",
+          "checked_on": "2026-11-25"
+        },
+        {
+          "field": "address",
+          "old": "A-791, Bandra Reclaimation, Bandra (West), Mumbai - 400050",
+          "new": "A-791, Bandra Reclamation, Bandra (West), Mumbai - 400050",
+          "source_url": "https://www.lilavatihospital.com/oncology",
+          "checked_on": "2026-11-25"
+        }
+      ]
+    },
+    "breach-candy-hospital-cancer-mumbai": {
+      "id": "breach-candy-hospital-cancer-mumbai",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://breachcandyhospital.org",
+        "recorded_resolves": null,
+        "recorded_note": null,
+        "official": "https://breachcandyhospital.org/",
+        "source_url": "https://breachcandyhospital.org/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-23667888",
+        "printed": "Hospital Boardline 022 - 62597788. Contact Information 022 - 62597788 / 022 - 69197788",
+        "official": "+91-22-62597788",
+        "alternatives": [
+          "+91-22-69197788"
+        ],
+        "source_url": "https://breachcandyhospital.org/",
+        "checked_on": "2026-11-25",
+        "note": "Recorded 022-23667888 is not printed on the home page"
+      },
+      "address": {
+        "recorded": "60-A, Bhulabhai Desai Road, Mumbai - 400026",
+        "printed": "Breach Candy Hospital Trust, 60-A, Bhulabhai Desai Road, Mumbai - 400026",
+        "proposed": null,
+        "source_url": "https://breachcandyhospital.org/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "hospital trust (site navigation links to Oncology and Medical Oncology pages)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://breachcandyhospital.org/",
+        "checked_on": "2026-11-25",
+        "note": "Seen as links /oncology and /medical-oncology in the home page navigation. The department pages were not opened."
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "phone",
+          "old": "022-23667888",
+          "new": "+91-22-62597788",
+          "source_url": "https://breachcandyhospital.org/",
+          "checked_on": "2026-11-25"
+        }
+      ]
+    },
+    "jaslok-hospital-cancer-mumbai": {
+      "id": "jaslok-hospital-cancer-mumbai",
+      "status": "corrected",
+      "duplicate_of": null,
+      "keep_id_recommendation": null,
+      "website": {
+        "recorded": "https://www.jaslokhospital.net/oncology",
+        "recorded_resolves": false,
+        "recorded_note": "https://www.jaslokhospital.net/oncology returns HTTP 404",
+        "official": "https://www.jaslokhospital.net/speciality/best-medical-oncology-hospital-in-mumbai",
+        "source_url": "https://www.jaslokhospital.net/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "phone": {
+        "recorded": "022-66573333",
+        "printed": "Boardline Number: 02240173333, 02266573333. Appointment Number: 09930192000, 90130 06006, 99201 66688",
+        "official": "+91-22-66573333",
+        "alternatives": [
+          "+91-22-40173333",
+          "+91-9930192000 (Appointments)"
+        ],
+        "source_url": "https://www.jaslokhospital.net/",
+        "checked_on": "2026-11-25",
+        "note": "Recorded number matches a printed boardline number. Not changed."
+      },
+      "address": {
+        "recorded": "15, Dr. G. Deshmukh Marg, Mumbai - 400026",
+        "printed": "15, Dr. G. Deshmukh Marg, Mumbai - 400026",
+        "proposed": null,
+        "source_url": "https://www.jaslokhospital.net/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "city": {
+        "recorded": "Mumbai",
+        "state_recorded": "Maharashtra",
+        "official": "Mumbai",
+        "flag": null
+      },
+      "institution_kind": "super specialty tertiary care charitable trust hospital (Medical, Radiation and Surgical Oncology speciality pages)",
+      "cancer_care": {
+        "offered": true,
+        "source_url": "https://www.jaslokhospital.net/",
+        "checked_on": "2026-11-25",
+        "note": null
+      },
+      "pmjay": {
+        "recorded": false,
+        "found": "unconfirmed"
+      },
+      "name_note": null,
+      "research_note": null,
+      "changes_applied": [
+        {
+          "field": "website",
+          "old": "https://www.jaslokhospital.net/oncology",
+          "new": "https://www.jaslokhospital.net/speciality/best-medical-oncology-hospital-in-mumbai",
+          "source_url": "https://www.jaslokhospital.net/",
+          "checked_on": "2026-11-25"
+        }
+      ]
+    }
+  }
+}
