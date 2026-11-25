@@ -32,6 +32,7 @@ import { THIN_HUBS, COMING_SOON_TEXT } from '../src/lib/sitemap-exclude.mjs';
 import { REVIEW_LABEL_ATTR, isReviewed } from '../src/lib/review-status.mjs';
 import { TEL_HREF_RE } from '../src/lib/phone.mjs';
 import { listable, deptLabel } from '../src/lib/hospital-directory.mjs';
+import { socialSourceFrom, retagChatLinks } from '../src/lib/social-src.mjs';
 
 const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 const ARTICLES = fileURLToPath(new URL('../src/content/articles/', import.meta.url));
@@ -299,6 +300,24 @@ console.log(`unique titles: ${titles.size}, unique descriptions: ${descriptions.
 console.log(`review labels: ${reviewLabels} marked, ${unmarkedLabels} unmarked (articles recorded as reviewed: ${[...reviewStatus.values()].filter((v) => isReviewed({ review_status: v })).length} of ${reviewStatus.size})`);
 console.log(`broken internal links: ${brokenLinks.size} (${unexpectedBroken.length} not on the known list)`);
 for (const l of unexpectedBroken) errors.push(`broken internal link: ${l}`);
+
+// Social source codes (src/lib/social-src.mjs). Behaviour, then the build.
+{
+  const fakeAnchor = (href) => ({ href, getAttribute() { return this.href; }, setAttribute(_k, v) { this.href = v; } });
+  const links = [fakeAnchor('https://chat.suchitracancercare.org/?src=site-video'), fakeAnchor('https://www.youtube.com/watch?v=x')];
+  if (socialSourceFrom('?src=social-facebook') !== 'social-facebook') errors.push('social-src: a social code is not read');
+  if (socialSourceFrom('?src=site-home') !== null) errors.push('social-src: a non-social code is carried');
+  if (socialSourceFrom('?src=social-x&src=social-x') !== null) errors.push('social-src: a repeated src is carried');
+  retagChatLinks(links, 'social-x');
+  if (links[0].href !== 'https://chat.suchitracancercare.org/?src=social-x') errors.push('social-src: chat link not retagged');
+  if (links[1].href !== 'https://www.youtube.com/watch?v=x') errors.push('social-src: a non-chat link was changed');
+  if (retagChatLinks(links, 'evil') !== 0) errors.push('social-src: an unknown code was applied');
+  const home = htmlFiles.find((f) => pagePath(f) === '/');
+  const scripts = walk(DIST).filter((f) => f.endsWith('.js')).map((f) => readFileSync(f, 'utf8')).join('\n');
+  const inline = home ? readFileSync(home, 'utf8') : '';
+  if (!/sccf-social-src/.test(scripts + inline)) errors.push('social-src: the script is missing from the build');
+  console.log('social source script: checked');
+}
 
 if (warnings.length) {
   console.warn(`\n${warnings.length} warning(s):`);
