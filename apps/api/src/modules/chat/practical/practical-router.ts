@@ -44,6 +44,7 @@
  */
 
 import { detectPlace, detectState, PlaceResult } from "../utils/location-detector";
+import { allWordsKnown } from "./allowed-words";
 
 // ─── Medical content (the conservative boundary) ─────────────────────────
 
@@ -73,7 +74,7 @@ const MEDICAL_LATIN: RegExp[] = [
 ];
 
 const MEDICAL_DEVANAGARI =
-  /(दर्द|बुखार|गांठ|गाँठ|गिल्टी|ट्यूमर|खून|ब्लड|उल्टी|खांसी|खाँसी|सूजन|घाव|छाला|छाले|थकान|कमजोरी|कमज़ोरी|चक्कर|सांस|साँस|जलन|लक्षण|पीलिया|दस्त|प्लेटलेट|हीमोग्लोबिन|कीमो|केमो|किमो|रेडिएशन|रेडियेशन|रेडियो|विकिरण|सिकाई|सिंकाई|सेकाई|सर्जरी|शल्य|ऑपरेशन|आपरेशन|ओपरेशन|ट्रांसप्लांट|दवा|दवाई|गोली|गोलियां|इंजेक्शन|जांच|जाँच|टेस्ट|रिपोर्ट|स्कैन|बायोप्सी|स्टेज|फैल|वापस\s*आ|ठीक\s*हो|बच\s*जा|बचेग|बचेंग|बचेगी|बच\s*सक|आयुर्वेद|होम्योपैथ|होमियोपैथ|देसी\s*इलाज|देसी\s*दवा|जड़ी|इलाज\s*बंद)/;
+  /(दर्द|बुखार|गांठ|गाँठ|गिल्टी|ट्यूमर|खून|ब्लड(?!\s*कैंसर)|उल्टी|खांसी|खाँसी|सूजन|घाव|छाला|छाले|थकान|कमजोरी|कमज़ोरी|चक्कर|सांस(?!द)|साँस(?!द)|जलन|लक्षण|पीलिया|दस्त(?![\u0900-\u097F])|प्लेटलेट|हीमोग्लोबिन|कीमो|केमो|किमो|रेडिएशन|रेडियेशन|रेडियो|विकिरण|सिकाई|सिंकाई|सेकाई|सर्जरी|शल्य|ऑपरेशन|आपरेशन|ओपरेशन|ट्रांसप्लांट|दवा|दवाई|गोली|गोलियां|इंजेक्शन|जांच|जाँच|टेस्ट|रिपोर्ट|स्कैन|बायोप्सी|स्टेज|फैल|वापस\s*आ|ठीक\s*हो|बच\s*जा|बचेग|बचेंग|बचेगी|बच\s*सक|आयुर्वेद|होम्योपैथ|होमियोपैथ|देसी\s*इलाज|देसी\s*दवा|जड़ी|इलाज\s*बंद)/;
 
 /**
  * Distress, self-harm, death and urgency words. A message with any of them is
@@ -227,7 +228,10 @@ function payTopics(t: string, stateNamed: boolean): PayTopic[] {
  */
 export function routePracticalQuestion(text: string): PracticalRoute | null {
   const t = text.normalize("NFC");
-  if (hasMedicalContent(t)) return null;
+  // Two checks, both required: no word on the deny lists above, and every
+  // word on the allow-list (practical/allowed-words.ts). Any unknown word
+  // sends the message down the existing path.
+  if (hasMedicalContent(t) || !allWordsKnown(t)) return null;
 
   // A place to stay: nothing verified yet.
   if (LODGING.test(t)) return { kind: "unverified" };

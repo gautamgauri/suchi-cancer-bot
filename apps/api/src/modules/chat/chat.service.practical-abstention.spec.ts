@@ -66,7 +66,7 @@ describe("ChatService refusals: practical questions are not sent to a clinician 
     const abstention = new AbstentionService();
     expect(
       svc.evidenceGateFallbackReply(
-        "Does health insurance cover cancer if it was diagnosed after I bought the policy?",
+        "Does health insurance cover cancer?",
         "NO_RESULTS",
         "general",
       ),

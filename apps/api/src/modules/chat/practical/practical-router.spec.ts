@@ -127,6 +127,64 @@ describe("practical-router", () => {
     });
   });
 
+  // Re-review of PR #267: the rule is inverted. A practical reply needs every
+  // word to be on the allow-list, so a symptom, feeling or harm the deny
+  // lists do not name still takes the existing path.
+  describe("allow-list: any unknown word takes the existing path", () => {
+    it.each([
+      "paisa nahi hai, phansi laga lunga",
+      "can't afford, husband says he will jump from the roof",
+      "no money, I don't want to be here anymore",
+      "no money for treatment, better if I was gone",
+      "पैसे नहीं हैं, सब खत्म कर देना चाहता हूँ",
+      "which hospital in Patna, she drank phenyl",
+      "nearest hospital in Ranchi, he cut his wrist",
+      "which hospital in Delhi, baby is turning blue",
+      "hospital in Patna, mummy bol nahi pa rahi, muh tedha ho gaya",
+      "रांची में अस्पताल, बच्चा नीला पड़ रहा है",
+      "munh mein safed daag, free ilaj kahan milega",
+      "awaaz baith gayi, sarkari hospital Patna mein kaun sa hai",
+      "vajan bahut gir gaya, Ayushman card se ilaj hoga?",
+      "भूख नहीं लगती, आयुष्मान कार्ड से इलाज होगा?",
+      "निगलने में दिक्कत, पटना में सरकारी अस्पताल",
+      "nipple is leaking, which hospital in Patna",
+      "doctor ne jawab de diya hai, ab paise nahi hain",
+      "how many months does she have, can PM-JAY cover it",
+      "sek lagega, Ayushman card chalega?",
+      "linac in Patna government hospital",
+      "mummy ko daura pad raha hai, hospital in Ranchi",
+      "cancer fail gaya hai, free ilaj kahan",
+      "He is not eating or drinking, which hospital in Patna",
+      "mole is changing colour, is it free in government hospital",
+      "sugar is 400, which hospital in Lucknow",
+    ])("existing path: %s", (text) => {
+      expect(routePracticalQuestion(text)).toBeNull();
+      expect(isPracticalNonMedical(text)).toBe(false);
+    });
+
+    it.each([
+      ["Ayushman card kaise banega", "pay"],
+      ["cancer hospital in Lucknow", "where"],
+      ["how to apply for PM-JAY", "pay"],
+      ["आयुष्मान कार्ड बनवाने के लिए कौन से दस्तावेज़ चाहिए?", "pay"],
+      ["What is Rashtriya Arogya Nidhi and how do I apply?", "pay"],
+      ["Do cancer patients get a concession on train tickets?", "pay"],
+      ["My father is 72. Is there a new Ayushman card for senior citizens?", "pay"],
+      ["My husband is a central government employee. Does CGHS cover cancer treatment?", "pay"],
+      ["I work in a factory and have ESIC. Can I get cancer treatment under ESI?", "pay"],
+      ["Which hospitals in Kolkata treat blood cancer in children?", "where"],
+      ["ब्लड कैंसर का इलाज कोलकाता में कहाँ होता है?", "where"],
+    ])("still practical: %s", (text, kind) => {
+      expect(routePracticalQuestion(text)).toEqual(expect.objectContaining({ kind }));
+    });
+
+    it("does not read दस्तावेज़ (documents) as दस्त (diarrhoea), or सांसद as सांस", () => {
+      expect(hasMedicalContent("आयुष्मान कार्ड के दस्तावेज़")).toBe(false);
+      expect(hasMedicalContent("सांसद की सिफारिश")).toBe(false);
+      expect(hasMedicalContent("दस्त हो रहे हैं")).toBe(true);
+    });
+  });
+
   describe("routePracticalQuestion", () => {
     it.each([
       ["Does Ayushman Bharat cover cancer treatment?", ["pmjay"]],
@@ -167,8 +225,14 @@ describe("practical-router", () => {
       expect(routePracticalQuestion("which hospital is best for my cancer")).toEqual({ kind: "where", place: null });
     });
 
+    it("a question with a word off the allow-list takes the existing path: 'diagnosed'", () => {
+      expect(
+        routePracticalQuestion("Does health insurance cover cancer if it was diagnosed after I bought the policy?"),
+      ).toBeNull();
+    });
+
     it.each([
-      "Does health insurance cover cancer if it was diagnosed after I bought the policy?",
+      "Does health insurance cover cancer?",
       "Where can we stay near Tata Memorial while my mother gets treatment? We can't afford hotels",
     ])("no verified answer: %s", (text) => {
       expect(routePracticalQuestion(text)).toEqual({ kind: "unverified" });

@@ -216,6 +216,7 @@ describe('detectLocation', () => {
       ['madrasa'],
       ['cancer ho gaya mein kya karun'],
       ['report aa gaya se pehle'],
+      ['कैंसर हो गया में अस्पताल'],
     ])('finds no city in "%s"', (text) => {
       expect(detectLocation(text)).toBeNull();
     });

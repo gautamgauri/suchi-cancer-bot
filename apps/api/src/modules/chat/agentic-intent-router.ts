@@ -15,6 +15,7 @@
 
 import { IntentType } from "./intent-classifier";
 import { hasMedicalContent, isPlaceSeekingQuestion } from "./practical/practical-router";
+import { allWordsKnown } from "./practical/allowed-words";
 
 export type AgenticCategory =
   | "EMERGENCY"
@@ -243,7 +244,7 @@ export function classifyFastPath(userText: string): AgenticIntentResult | null {
   // asks where to go. Checked after the emergency and psychosocial screens,
   // which keep their order. A message with medical content keeps the routing
   // it had before (practical/practical-router.ts states the rule).
-  if (!hasMedicalContent(text) && isPlaceSeekingQuestion(text)) {
+  if (!hasMedicalContent(text) && allWordsKnown(text) && isPlaceSeekingQuestion(text)) {
     return {
       category: "NAVIGATION",
       detailedIntent: null,

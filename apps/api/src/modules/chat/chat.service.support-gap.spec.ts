@@ -254,7 +254,7 @@ const EXPECTED: Record<string, string> = {
   P12: "refusal_a0", // names a test (PET CT scan): medical, the evidence gate abstains as on main
   P13: "visit_template_no_list", // names chemotherapy: medical, now the visit checklist with verified PM-JAY lines
   P14: "llm", // names radiation therapy
-  P15: "practical_unknown",
+  P15: "llm", // "diagnosed" is not on the allow-list, so the existing path
   P16: "verified_answer",
   P17: "verified_answer",
   P18: "verified_answer",
@@ -282,7 +282,7 @@ const EXPECTED: Record<string, string> = {
   W14: "directory_answer",
   W15: "directory_answer",
   W16: "directory_answer",
-  W17: "directory_answer",
+  W17: "visit_template_no_list", // "live" is not on the allow-list. The existing path has no list, as Ludhiana is not geocoded
   W18: "directory_answer",
   W19: "llm",
   W20: "directory_answer",
@@ -359,8 +359,8 @@ describe("Practical support gap questions (assessment of November 2026) through 
     }
 
     expect(summary).toEqual({
-      Pay: { questions: 25, verified: 17, askPlace: 0, practicalUnknown: 1, unchanged: 4, otherChange: 3 },
-      Where: { questions: 20, verified: 13, askPlace: 0, practicalUnknown: 1, unchanged: 4, otherChange: 2 },
+      Pay: { questions: 25, verified: 17, askPlace: 0, practicalUnknown: 0, unchanged: 4, otherChange: 4 },
+      Where: { questions: 20, verified: 12, askPlace: 0, practicalUnknown: 1, unchanged: 4, otherChange: 3 },
       Treatment: { questions: 12, verified: 0, askPlace: 0, practicalUnknown: 0, unchanged: 12, otherChange: 0 },
       Emotional: { questions: 8, verified: 0, askPlace: 0, practicalUnknown: 0, unchanged: 8, otherChange: 0 },
       Mixed: { questions: 5, verified: 0, askPlace: 0, practicalUnknown: 0, unchanged: 3, otherChange: 2 },

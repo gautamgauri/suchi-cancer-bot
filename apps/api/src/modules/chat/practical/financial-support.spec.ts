@@ -55,32 +55,51 @@ describe("the verified financial support file", () => {
   // Review of PR #267, item 3. A changed phone number, amount, percentage, age
   // or day count in a fact's text must fail here, not only a changed quote.
   it("finds every number in a fact's text and in each helpline in that fact's own reference entry", () => {
-    const norm = (s: string) => s.replace(/[\s,\-‐‑–]/g, "").replace(/₹/g, "");
-    const numbers = (s: string) => (s.match(/\d[\d\s,\-]*\d|\d/g) ?? []).map(norm);
-    const entryFor = (quote: string): string => {
-      const entries = [...reference.national_facts, ...reference.states];
-      const hit = entries.find((e: any) => JSON.stringify(e).includes(JSON.stringify(quote).slice(1, -1)));
-      if (!hit) throw new Error(`no reference entry holds: ${quote}`);
-      return norm(JSON.stringify(hit));
-    };
-    for (const f of allFacts()) {
-      const entry = entryFor(f.reference_quote);
-      for (const n of numbers(f.text)) {
-        expect({ fact: f.text, number: n, inEntry: entry.includes(n) }).toEqual({ fact: f.text, number: n, inEntry: true });
+    // Whole number tokens, compared exactly. Separators inside a number
+    // (spaces, hyphens, commas) are dropped, and a unit that follows it
+    // (lakh, crore, %, days, years, months, km) is part of the token, so
+    // "Rs 25 lakh" cannot pass on the strength of "Rs 15 lakh". The reference
+    // side leaves out `checked_on` and `url`, so a date or a link cannot
+    // supply a number.
+    const tokens = (text: string): Set<string> => {
+      const out = new Set<string>();
+      const re = /(\d(?:[\d,]|[\s\-‐‑–](?=\d))*)(?:\s*(lakhs?|crores?|%|days?|years?|months?|km)(?![a-z]))?/gi;
+      for (const m of text.replace(/₹/g, " ").matchAll(re)) {
+        const unit = (m[2] ?? "").toLowerCase().replace(/s$/, "");
+        out.add(m[1].replace(/[\s,\-‐‑–]/g, "") + unit);
       }
-    }
+      return out;
+    };
+    const referenceText = (entry: any): string => {
+      const parts: string[] = [];
+      const walk = (o: any, key = "") => {
+        if (key === "url" || key === "checked_on") return;
+        if (typeof o === "string") parts.push(o);
+        else if (Array.isArray(o)) o.forEach((x) => walk(x));
+        else if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) walk(v, k);
+      };
+      walk(entry);
+      return parts.join(" | ");
+    };
+    const entryFor = (quote: string): Set<string> => {
+      const entries = [...reference.national_facts, ...reference.states];
+      const hit = entries.find((e: any) => referenceText(e).includes(quote));
+      if (!hit) throw new Error(`no reference entry holds: ${quote}`);
+      return tokens(referenceText(hit));
+    };
+    const check = (label: string, text: string, ref: Set<string>) => {
+      for (const n of tokens(text)) {
+        expect({ label, number: n, inEntry: ref.has(n) }).toEqual({ label, number: n, inEntry: true });
+      }
+    };
+    for (const f of allFacts()) check(f.text, f.text, entryFor(f.reference_quote));
     for (const t of Object.values(file.topics)) {
       if (!t.helpline) continue;
-      const entries = t.facts.map((f) => entryFor(f.reference_quote)).join(" ");
-      for (const n of numbers(t.helpline)) {
-        expect({ topic: t.name, number: n, inEntry: entries.includes(n) }).toEqual({ topic: t.name, number: n, inEntry: true });
-      }
+      const ref = new Set(t.facts.flatMap((f) => [...entryFor(f.reference_quote)]));
+      check(t.name, t.helpline, ref);
     }
-    for (const s of file.states) {
-      const entry = norm(JSON.stringify(reference.states.find((r: any) => r.state === s.state)));
-      for (const n of numbers(s.helpline ?? "")) {
-        expect({ state: s.state, number: n, inEntry: entry.includes(n) }).toEqual({ state: s.state, number: n, inEntry: true });
-      }
+    for (const st of file.states) {
+      check(st.state, st.helpline ?? "", tokens(referenceText(reference.states.find((r: any) => r.state === st.state))));
     }
   });
 

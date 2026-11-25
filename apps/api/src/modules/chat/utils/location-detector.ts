@@ -207,6 +207,7 @@ const PLACE_CUES = new Set([
 
 /** Hinglish verbs that "gaya" follows as a past tense: "ho gaya", "chala gaya". */
 const GAYA_VERB_BEFORE = /\b(ho|hua|chala|chal|aa|a|kar|kara|mil|ban|de|le|reh|rah|so|lag|nikal|bhag|mar|bach|dikh|pahunch|ja|bhej|bata|samajh|thak|bigad)\s+$/i;
+const GAYA_VERB_BEFORE_HI = /(?:^|\s)(हो|चला|चल|आ|कर|मिल|बन|दे|ले|रह|सो|लग|निकल|भाग|मर|बच|दिख|पहुंच|पहुँच|जा|थक|बिगड़)\s+$/;
 
 /** Context patterns that precede city names */
 const CONTEXT_PATTERNS = [
@@ -371,7 +372,8 @@ export function detectLocation(text: string): LocationResult | null {
     while ((match = pattern.exec(normalised)) !== null) {
       const candidate = match[1];
       // "cancer ho gaya mein" is a verb, not the city of Gaya.
-      if (/^gaya$/i.test(candidate) && GAYA_VERB_BEFORE.test(normalised.slice(0, match.index + match[0].indexOf(candidate)))) {
+      const before = normalised.slice(0, match.index + match[0].indexOf(candidate));
+      if ((/^gaya$/i.test(candidate) && GAYA_VERB_BEFORE.test(before)) || (candidate === "गया" && GAYA_VERB_BEFORE_HI.test(before))) {
         continue;
       }
       const cityMatch = matchCity(candidate, true);
@@ -440,6 +442,32 @@ export function detectPlace(text: string): PlaceResult | null {
   if (city) return { city: city.city, state: city.state, confidence: city.confidence };
   const state = detectState(text);
   return state ? { city: null, state, confidence: 0.9 } : null;
+}
+
+/**
+ * Every single word that is part of a city or state name or alias the table
+ * knows, lower-cased. Used by the practical-question allow-list. Aliases that
+ * are also ordinary words ("gaya", "ara") are left out.
+ */
+export function placeNameTokens(): Set<string> {
+  const out = new Set<string>();
+  const add = (name: string) =>
+    name
+      .normalize('NFC')
+      .toLowerCase()
+      .split(/[^a-zऀ-ॣ०-ॿ]+/)
+      .filter((w) => w.length > 1 && w !== 'and')
+      .forEach((w) => out.add(w));
+  for (const c of INDIAN_CITIES) {
+    add(c.canonical);
+    c.aliases.forEach(add);
+  }
+  for (const s of INDIAN_STATES) {
+    add(s.canonical);
+    s.aliases.forEach(add);
+  }
+  for (const w of ['gaya', 'गया', 'ara', 'आरा']) out.delete(w);
+  return out;
 }
 
 /** Canonical names of every state and union territory the table knows. */
