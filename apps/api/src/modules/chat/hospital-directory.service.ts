@@ -48,6 +48,15 @@ export interface HospitalSearchParams {
    * offered for that need, however close it is.
    */
   requiredDepartments?: string[];
+  /**
+   * Search regional and national referral centres as ONE pool, and append no
+   * separate national list (issue #260). Suchi now serves the whole of India,
+   * so a centre in the patient's own city is a candidate whichever pool it was
+   * filed under: BBCI Guwahati and RCC Thiruvananthapuram are national
+   * referral centres and also the local answer for Assam and Kerala. Every
+   * filter applies to the pooled set as it does to the regional one.
+   */
+  pooled?: boolean;
 }
 
 export interface HospitalSearchResult {
@@ -630,7 +639,7 @@ export class HospitalDirectoryService implements OnModuleInit {
     const requestedCity = params.city?.trim() || null;
     const resolvedState = params.state?.trim() || resolveStateForCity(requestedCity);
 
-    if (this.hospitals.length === 0) {
+    if (this.hospitals.length === 0 && !(params.pooled && this.nationalHospitals.length > 0)) {
       return {
         results: [],
         geography: {
@@ -644,7 +653,9 @@ export class HospitalDirectoryService implements OnModuleInit {
       };
     }
 
-    let results = [...this.hospitals];
+    let results = params.pooled
+      ? [...this.hospitals, ...this.nationalHospitals.map((h) => ({ ...h, national_referral: undefined }))]
+      : [...this.hospitals];
 
     // ── 1. Capability — a HARD filter, and it runs FIRST ──
     //
@@ -786,6 +797,7 @@ export class HospitalDirectoryService implements OnModuleInit {
     // Skip if: explicitly disabled, or the query is already national-scope
     // (i.e. user asked about Delhi/Mumbai/Bangalore directly)
     const skipNational =
+      params.pooled === true ||
       params.includeNational === false ||
       NATIONAL_SCOPE_STATES.has(params.state ?? "") ||
       NATIONAL_SCOPE_STATES.has(params.city ?? "");

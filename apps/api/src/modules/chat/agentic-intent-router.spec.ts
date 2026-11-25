@@ -233,3 +233,42 @@ describe("AgenticIntentRouter", () => {
     });
   });
 });
+
+// Issue #260, assessment cause 3: hospital and place questions are checked
+// before the money group, and "government hospital" is not a money term.
+describe("AgenticIntentRouter: hospital questions before money (issue #260)", () => {
+  it.each([
+    "Cancer hospitals in Bangalore that accept Ayushman card",
+    "Is there a cancer hospital in Ahmedabad for poor patients?",
+    "Best government cancer hospital in Chennai?",
+    "Which cancer hospitals are there in Patna?",
+    "Where can I get cancer treatment in Lucknow?",
+  ])("NAVIGATION: %s", (text) => {
+    expect(classifyFastPath(text)?.category).toBe("NAVIGATION");
+  });
+
+  it("does not take 'government hospital' alone as a money question", () => {
+    expect(classifyFastPath("Should I go to a government hospital or a private hospital for cancer?")?.category).not.toBe(
+      "SCHEMES",
+    );
+  });
+
+  it("still sends a scheme question to SCHEMES", () => {
+    expect(classifyFastPath("How do I apply for Ayushman Bharat?")?.category).toBe("SCHEMES");
+    expect(classifyFastPath("Is there a government scheme in Tamil Nadu for cancer treatment?")?.category).toBe("SCHEMES");
+  });
+
+  it("keeps EMERGENCY and PSYCHOSOCIAL first", () => {
+    expect(classifyFastPath("My father is vomiting blood. Which hospital in Patna takes Ayushman card?")?.category).toBe(
+      "EMERGENCY",
+    );
+    expect(classifyFastPath("I want to kill myself, which hospital in Patna")?.category).toBe("PSYCHOSOCIAL");
+  });
+
+  it("leaves a medical message's routing as it was", () => {
+    // The hospital-first check skips any message with medical content.
+    expect(classifyFastPath("hospital me kaun si dawai di jaati hai chemo ke liye?")?.category ?? null).not.toBe(
+      "NAVIGATION",
+    );
+  });
+});

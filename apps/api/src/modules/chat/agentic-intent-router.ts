@@ -14,6 +14,7 @@
  */
 
 import { IntentType } from "./intent-classifier";
+import { hasMedicalContent, isPlaceSeekingQuestion } from "./practical/practical-router";
 
 export type AgenticCategory =
   | "EMERGENCY"
@@ -65,7 +66,9 @@ const EMERGENCY_PATTERNS: RegExp[] = [
 const SCHEMES_PATTERNS: RegExp[] = [
   // Government schemes — English
   /\b(ayushman|pmjay|pm-jay|pradhan\s+mantri)\b/i,
-  /\b(government|govt|sarkari)\s+(scheme|yojana|hospital|help|assistance)\b/i,
+  // "government hospital" is a kind of hospital, not a money question by
+  // itself (issue #260). Hospital questions are caught before this list.
+  /\b(government|govt|sarkari)\s+(scheme|yojana|help|assistance)\b/i,
   /\b(bpl|below\s+poverty)\b/i,
   /\b(financial|money|cost|afford|free|subsidized)\s+(help|assistance|support|treatment)\b/i,
   /\b(rashtriya|swasthya|bima|arogya)\b/i,
@@ -231,6 +234,21 @@ export function classifyFastPath(userText: string): AgenticIntentResult | null {
       detailedIntent: null,
       confidence: isCrisis ? 1.0 : 0.85,
       reasoning: `Psychosocial pattern matched (${psychoMatches.length} patterns, crisis=${isCrisis})`,
+      isRuleBased: true,
+    };
+  }
+
+  // NAVIGATION for a hospital or place question, BEFORE the money check
+  // (issue #260). "Cancer hospitals in Bangalore that accept Ayushman card"
+  // asks where to go. Checked after the emergency and psychosocial screens,
+  // which keep their order. A message with medical content keeps the routing
+  // it had before (practical/practical-router.ts states the rule).
+  if (!hasMedicalContent(text) && isPlaceSeekingQuestion(text)) {
+    return {
+      category: "NAVIGATION",
+      detailedIntent: null,
+      confidence: 0.9,
+      reasoning: "Hospital or place question (checked before schemes)",
       isRuleBased: true,
     };
   }

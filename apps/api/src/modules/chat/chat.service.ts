@@ -66,6 +66,9 @@ import { hasSection, deduplicateResponse } from "./response-deduplicator";
 import { stripForVoice } from "./voice-output-stripper";
 import { ObservabilityService } from "../observability/observability.service";
 import { buildSymptomSoftRedirectPrompt } from "./utils/response-language";
+import { routePracticalQuestion, isPracticalNonMedical } from "./practical/practical-router";
+import { buildFinancialAnswer, practicalUnknownReply } from "./practical/financial-support";
+import { ASK_PLACE_REPLY, buildHospitalAnswer } from "./practical/hospital-answer";
 import type { SafetyClassification } from "../safety/safety.rules";
 
 /**
@@ -1573,6 +1576,35 @@ export class ChatService implements BeforeApplicationShutdown {
     let structuredHospitalResults: HospitalSearchResult[] | null = null;
     let structuredHospitalGeography: HospitalSearchGeography | null = null;
 
+    // ─── Practical questions (issue #260) ─────────────────────────────
+    // Paying for treatment, where to go, travel and lodging, with NO medical
+    // content (see practical/practical-router.ts for the rule). Every safety,
+    // urgency, mental-health and greeting gate has already run above and
+    // returned for the messages it catches; nothing here runs before them.
+    // The reply is built without the LLM: from the verified financial support
+    // file, from the hospital directory, or as one fixed reply saying Suchi
+    // has no confirmed information.
+    const practical = this.buildPracticalReply(dto.userText, agenticIntent.category, dto.sessionId);
+    if (practical) {
+      const assistant = await this.persistAssistantMessage(dto.sessionId, practical.text, [], [], {
+        safetyClassification: "normal",
+        latencyMs: Date.now() - started,
+        kbDocIds: [],
+        evidenceGatePassed: true,
+        locale: disclaimerLocale,
+        userText: dto.userText,
+      });
+      this.analytics
+        .emit("practical_reply", { kind: practical.kind, category: agenticIntent.category }, dto.sessionId)
+        .catch((err) => this.logger.warn(`Analytics emit failed: ${err.message}`));
+      return {
+        sessionId: dto.sessionId,
+        messageId: assistant.id,
+        responseText: dto.channel === "voice" ? stripForVoice(deduplicateResponse(assistant.text)) : assistant.text,
+        safety: { classification: "normal" as const, actions: [] },
+      };
+    }
+
     if (this.executionPlanner.needsPlanning(dto.userText, agenticIntent.category, intentResult.intent)) {
       const plan = this.executionPlanner.plan(
         dto.userText,
@@ -1775,11 +1807,10 @@ export class ChatService implements BeforeApplicationShutdown {
     if (gateResult.status === 'insufficient') {
       this.logger.warn(`Evidence gate BLOCKED: ${gateResult.reasonCode} - ${gateResult.reason || 'insufficient evidence'}`);
       
-      // Generate SafeFallbackResponse (no medical content)
-      const safeFallback = this.abstention.generateSafeFallbackResponse(
-        gateResult.reasonCode || 'NO_RESULTS',
-        queryType
-      );
+      // Generate SafeFallbackResponse (no medical content). A practical
+      // question with no medical content gets the practical reply instead,
+      // which does not send a funding question to a clinician (issue #260).
+      const safeFallback = this.evidenceGateFallbackReply(dto.userText, gateResult.reasonCode || 'NO_RESULTS', queryType);
 
       // Attach deterministic citations if evidence exists (template/abstention path)
       const { modifiedText, citations } = this.attachDeterministicCitationsIfNeeded(
@@ -2504,8 +2535,11 @@ export class ChatService implements BeforeApplicationShutdown {
         );
         // Check for red flags in user text
         const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
-        const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
-        
+        // A practical question with no medical content gets the practical
+        // reply, never "NCI sources ... consult a clinician" (issue #260).
+        // Medical questions keep the existing wording.
+        const abstentionResponse = this.ungroundedAbstentionReply(dto.userText, hasRedFlags);
+
         const assistant = await this.prisma.message.create({
           data: {
             sessionId: dto.sessionId,
@@ -2583,7 +2617,7 @@ export class ChatService implements BeforeApplicationShutdown {
             // Only abstain for non-informational queries
             this.logger.warn(`Regenerated response still contains ungrounded entities`);
             const hasRedFlags = /\b(bleeding|blood|severe|emergency|urgent|difficulty breathing|chest pain|fainting)\b/i.test(dto.userText);
-            const abstentionResponse = this.responseValidator.generateAbstentionResponse(hasRedFlags);
+            const abstentionResponse = this.ungroundedAbstentionReply(dto.userText, hasRedFlags);
             
             const assistant = await this.prisma.message.create({
               data: {
@@ -3666,6 +3700,61 @@ export class ChatService implements BeforeApplicationShutdown {
    * @param options - Additional message fields
    * @returns The created message object
    */
+  /**
+   * The reply when a draft names entities its evidence does not support.
+   * A practical question with no medical content (money, documents, travel,
+   * lodging) gets the plain practical reply, which points to the official
+   * PM-JAY helpline and site. It never tells a family with a funding question
+   * to "consult a clinician" about "NCI sources" (issue #260, cause 5).
+   * Every other message keeps the existing medical abstention, word for word.
+   */
+  private ungroundedAbstentionReply(userText: string, hasRedFlags: boolean): string {
+    return isPracticalNonMedical(userText)
+      ? practicalUnknownReply()
+      : this.responseValidator.generateAbstentionResponse(hasRedFlags);
+  }
+
+  /** The evidence gate's fallback, with the same practical split. */
+  private evidenceGateFallbackReply(userText: string, reasonCode: string, queryType: string): string {
+    return isPracticalNonMedical(userText)
+      ? practicalUnknownReply()
+      : this.abstention.generateSafeFallbackResponse(reasonCode, queryType);
+  }
+
+  /**
+   * The deterministic reply to a practical question (issue #260), or null for
+   * a message that takes the ordinary pipeline: any medical content, an
+   * emergency or psychosocial category, a question this does not cover, or a
+   * failure here (which must never cost the user a reply).
+   */
+  private buildPracticalReply(
+    text: string,
+    category: AgenticIntentResult["category"],
+    sessionId: string,
+  ): { kind: "pay" | "unverified" | "ask_place" | "where"; text: string } | null {
+    if (category === "EMERGENCY" || category === "PSYCHOSOCIAL") return null;
+    try {
+      const route = routePracticalQuestion(text);
+      if (!route) return null;
+      switch (route.kind) {
+        case "pay":
+          return { kind: "pay", text: buildFinancialAnswer(route) };
+        case "unverified":
+          return { kind: "unverified", text: practicalUnknownReply() };
+        case "where": {
+          if (!route.place) return { kind: "ask_place", text: ASK_PLACE_REPLY };
+          const outcome = this.executionPlanner.searchForPlace(text, route.place);
+          if (!outcome) return null; // directory not loaded: the ordinary path
+          return { kind: "where", text: buildHospitalAnswer(route.place, outcome) };
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`practical reply failed for session ${sessionId}: ${err?.message ?? err}`);
+      return null;
+    }
+    return null;
+  }
+
   private async persistAssistantMessage(
     sessionId: string,
     text: string,
