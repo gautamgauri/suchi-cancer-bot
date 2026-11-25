@@ -36,6 +36,7 @@ import { RetrievalToolService } from "../rag/retrieval-tool.service";
 import { OutputVerifierService, VerificationResult } from "./output-verifier.service";
 import { EvidenceChunk } from "../evidence/evidence-gate.service";
 import { normaliseDepartment } from "./hospital-directory.service";
+import { singleIndianPhone } from "../../common/hospital-visibility";
 
 /**
  * A line of chunk text that opens mid-word, i.e. on the tail of a word the
@@ -621,7 +622,8 @@ export class PlanExecutorService {
    *     shown to the patient; one line says the road or rail journey is longer;
    *   - a centre in another state is named with its state and the patient is
    *     told to confirm whether their card or state scheme is accepted there;
-   *   - PM-JAY status is stated only as the record has it; unverified says so;
+   *   - PM-JAY status is stated only as the record has it, marked "as recorded"
+   *     with a prompt to confirm; unverified says so;
    *   - national referral centres are mentioned as places patients from the
    *     region also travel to, not as recommendations;
    *   - the section ends with the same confirmation sentence the LLM path must
@@ -694,8 +696,8 @@ export class PlanExecutorService {
         parts.push(`Departments: ${canonical.map((d) => this.departmentPlainName(d)).join(", ")}.`);
       }
 
-      if (h.pmjay_empanelled === true) parts.push("PM-JAY empanelled.");
-      else if (h.pmjay_empanelled === false) parts.push("Not PM-JAY empanelled.");
+      if (h.pmjay_empanelled === true) parts.push("PM-JAY empanelled, as recorded. Confirm with the hospital.");
+      else if (h.pmjay_empanelled === false) parts.push("Not PM-JAY empanelled, as recorded.");
       else parts.push("PM-JAY status not verified; confirm with the hospital.");
 
       if (state && h.state && h.state !== state) {
@@ -704,7 +706,7 @@ export class PlanExecutorService {
         );
       }
 
-      if (h.contact?.phone) parts.push(`Phone: ${h.contact.phone}.`);
+      if (singleIndianPhone(h.contact?.phone)) parts.push(`Phone: ${h.contact.phone}.`);
 
       lines.push(`- ${parts.join(" ")}`);
     }

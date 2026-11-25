@@ -57,6 +57,7 @@ import {
   HospitalSearchResult,
   HospitalSearchGeography,
 } from "./execution-planner.service";
+import { singleIndianPhone } from "../../common/hospital-visibility";
 import { PlanExecutorService } from "./plan-executor.service";
 import { OutputVerifierService } from "./output-verifier.service";
 import { ReviewService } from "../review/review.service";
@@ -3797,9 +3798,15 @@ export class ChatService implements BeforeApplicationShutdown {
   }
 
   /**
-   * Formats structured hospital search results into an authoritative context block
-   * for the LLM. Injected into the checklist slot so hospital facts are treated as
-   * verified data, not probabilistic RAG retrieval.
+   * Formats structured hospital search results into a context block for the
+   * LLM. Injected into the checklist slot so hospital facts come from the
+   * directory record, not probabilistic RAG retrieval. The entries are as
+   * recorded in the SCCF directory and have not been independently verified.
+   *
+   * Only the fields the landing site shows are passed: name, city, state,
+   * type, departments, PMJAY status as recorded, a single valid phone, and
+   * distance. Never notes, navigation notes, doctors, cost tier, tier, score
+   * or flag text, even if a caller hands in a raw record that holds them.
    *
    * Returns empty string if no results (LLM falls back to KB markdown only).
    */
@@ -3818,21 +3825,11 @@ export class ChatService implements BeforeApplicationShutdown {
         .join(", ");
       const pmjay =
         h.pmjay_empanelled === true
-          ? "Yes"
+          ? "Yes, as recorded (confirm with the hospital)"
           : h.pmjay_empanelled === false
-            ? "No"
-            : "Unverified — confirm with hospital";
-      const ncg = h.ncg_member ? "Yes" : "No";
-      const tier = h.tier ? ` (Tier ${h.tier})` : "";
-      const phone = h.contact?.phone ? `\n  Phone: ${h.contact.phone}` : "";
-      const address = h.contact?.address ? `\n  Address: ${h.contact.address}` : "";
-      const navNotes =
-        h.navigation_notes?.length > 0
-          ? `\n  Navigation: ${h.navigation_notes.join(" | ")}`
-          : "";
-      const notes = h.notes
-        ? `\n  Notes: ${h.notes.substring(0, 200)}${h.notes.length > 200 ? "…" : ""}`
-        : "";
+            ? "No, as recorded"
+            : "Not recorded (confirm with the hospital)";
+      const phone = singleIndianPhone(h.contact?.phone) ? `\n  Phone: ${h.contact.phone}` : "";
 
       // Straight-line distance, rounded to the nearest 10km so the number
       // never implies more precision than a locality-level geocode carries.
@@ -3851,10 +3848,10 @@ export class ChatService implements BeforeApplicationShutdown {
             : ` | ~${Math.round(h.distance_km / 10) * 10} km away (straight-line)`
           : "";
 
-      return `[${i + 1}] ${h.name}${tier}
+      return `[${i + 1}] ${h.name}
   Type: ${h.type} | City: ${h.city}, ${h.state}${distance}
   Departments: ${depts || "Not specified"}
-  PMJAY: ${pmjay} | NCG Member: ${ncg} | Cost: ${h.cost_tier || "Unknown"}${phone}${address}${navNotes}${notes}`;
+  PMJAY: ${pmjay}${phone}`;
     };
 
     const regionalBlock =
@@ -3875,8 +3872,8 @@ export class ChatService implements BeforeApplicationShutdown {
 
     const combinedBlocks = [regionalBlock, nationalBlock].filter(Boolean).join("\n\n");
 
-    return `=== VERIFIED HOSPITAL DIRECTORY DATA ===
-The following hospitals are from the Suchi Navigator structured database (verified entries). Use these facts directly — do NOT infer, embellish, or mention hospitals not listed here.
+    return `=== SCCF HOSPITAL DIRECTORY ENTRIES ===
+The following hospitals are entries recorded in the SCCF hospital directory. They have not been independently verified, and details can change. Use only these facts — do NOT infer, embellish, or mention hospitals not listed here. Tell the user, in their language, that details can change and that they should confirm with the hospital before travelling. PM-JAY status is as recorded and must be confirmed with the hospital. The type (government, trust or private) is as recorded and says nothing about cost.
 
 Present hospitals as "major treatment centres" or "cancer treatment centres." NEVER say "best hospital" or make definitive treatment recommendations.
 
