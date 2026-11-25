@@ -137,7 +137,39 @@ const EXPECTED_DIFFERENCE_PROBES: Array<{ text: string; reason: string }> = [
   { text: "namaskar ji, stan me ganth hai", reason: "F2: main answered a breast lump with the greeting, now routed" },
   { text: "namaste 102 bukhar", reason: "F2: main answered a fever with the greeting, now routed" },
 ];
-const EXPECTED_DIFFERENCE_KEYS = new Set(EXPECTED_DIFFERENCE_PROBES.map((p) => probeKey(p.text)));
+/**
+ * Expected differences among probes ALREADY in safety-path-probes.json, so
+ * they are not appended to EXTRA_PROBES again and the baseline keeps its rows.
+ *
+ * Practical questions (issue #260). None trips a safety screen, and every run
+ * of each is "reply:normal" or, for the medical one, the same "error" main
+ * gives other LLM-path probes when the LLM throws. They differ only in the
+ * answer path after the gates, so the differences show in the full-pipeline
+ * configurations and never in "gates". The baseline was not re-captured.
+ */
+const EXPECTED_DIFFERENCE_IN_PROBE_FILE: Array<{ text: string; reason: string }> = [
+  {
+    text: "Hospital for cancer in Patna",
+    reason: "navigation: a place question with no medical content now gets the hospital directory answer, main gave the visit checklist",
+  },
+  {
+    text: "Which hospital in Patna is best for cancer treatment?",
+    reason: "navigation: a place question with no medical content now gets the hospital directory answer, main gave the visit checklist",
+  },
+  {
+    text: "How do I apply for Ayushman Bharat?",
+    reason: "schemes: the verified PM-JAY answer replaces the fixed scheme template, which is removed",
+  },
+  { text: "Ayushman", reason: "schemes: the verified PM-JAY answer replaces the fixed scheme template, which is removed" },
+  {
+    text: "Ayushman card ke chakkar mein pareshan hain",
+    reason:
+      "schemes: 'chakkar' is a symptom word, so the message is medical and takes the ordinary LLM path now the fixed scheme template is removed",
+  },
+];
+const EXPECTED_DIFFERENCE_KEYS = new Set(
+  [...EXPECTED_DIFFERENCE_PROBES, ...EXPECTED_DIFFERENCE_IN_PROBE_FILE].map((p) => probeKey(p.text)),
+);
 
 const EN_FILLER = "I have some questions about my treatment plan. ";
 const HI_FILLER = "मेरे इलाज के बारे में कुछ सवाल हैं। ";
@@ -568,7 +600,7 @@ describe("ChatService safety path: behaviour identical to the pre-reorder baseli
     expect(mismatches).toEqual([]);
 
     // Each expected difference must still differ, so it stays visible.
-    for (const p of EXPECTED_DIFFERENCE_PROBES) {
+    for (const p of [...EXPECTED_DIFFERENCE_PROBES, ...EXPECTED_DIFFERENCE_IN_PROBE_FILE]) {
       const differs = results.some((r, i) => r.text === probeKey(p.text) && r.digest !== baseline[i].digest);
       expect({ probe: p.text.slice(0, 40), reason: p.reason, differs }).toEqual({
         probe: p.text.slice(0, 40),
