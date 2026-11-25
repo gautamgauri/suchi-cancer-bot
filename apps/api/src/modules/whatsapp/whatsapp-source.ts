@@ -15,7 +15,8 @@
 
 /**
  * The only codes that are read and stripped. The landing site uses the first
- * four. `wa-qr` and `wa-poster` are kept for printed material.
+ * four. `wa-qr` and `wa-poster` are kept for printed material, and `wa-clinic` for a
+ * link that a clinician shares with their own patients.
  *
  * A new code needs an API deploy BEFORE the site or any print uses it. Until
  * then its line reaches the pipeline as part of the message.
@@ -26,6 +27,7 @@ export const WHATSAPP_SOURCE_CODES: ReadonlySet<string> = new Set([
   "wa-video",
   "wa-hospitals",
   "wa-qr",
+  "wa-clinic",
   "wa-poster",
 ]);
 

@@ -25,6 +25,8 @@ export const HOSPITAL_HELD_IDS: ReadonlySet<string> = new Set([
   "nimhans-bangalore",
   "sctimst-thiruvananthapuram",
   "aiims-hyderabad",
+  "ruban-memorial-patna",
+  "ss-hospital-patna",
 ]);
 
 /** The raw fields the visibility rule reads. */

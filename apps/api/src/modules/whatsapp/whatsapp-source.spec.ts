@@ -18,7 +18,7 @@ const SITE_CODES = ["wa-header", "wa-article", "wa-video", "wa-hospitals"];
 describe("extractSourceLine", () => {
   it("allows exactly the site and print codes", () => {
     expect([...WHATSAPP_SOURCE_CODES].sort()).toEqual(
-      ["wa-article", "wa-header", "wa-hospitals", "wa-poster", "wa-qr", "wa-video"],
+      ["wa-article", "wa-clinic", "wa-header", "wa-hospitals", "wa-poster", "wa-qr", "wa-video"],
     );
   });
 
@@ -26,7 +26,7 @@ describe("extractSourceLine", () => {
     expect(extract(siteGreeting(code))).toEqual({ text: GREETING, sourceCode: code });
   });
 
-  it.each(["wa-qr", "wa-poster"])("reads a print code: %s", (code) => {
+  it.each(["wa-qr", "wa-poster", "wa-clinic"])("reads a print or clinic code: %s", (code) => {
     expect(extract(`Hello\n(src: ${code})`)).toEqual({ text: "Hello", sourceCode: code });
   });
 
