@@ -15,6 +15,8 @@ export const HIDE_UNTIL_CORRECTED = new Set([
   'nimhans-bangalore',
   'sctimst-thiruvananthapuram',
   'aiims-hyderabad',
+  'ruban-memorial-patna',
+  'ss-hospital-patna',
 ]);
 
 /** True for an entry the directory lists. */

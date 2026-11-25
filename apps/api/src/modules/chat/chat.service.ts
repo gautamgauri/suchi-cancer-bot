@@ -3918,11 +3918,11 @@ MANDATORY: End your response with this exact sentence — "Hospital services, do
 
     if (geography?.stage === "distance") {
       const order = hasRegional
-        ? `The nearest-centres list below is ordered by distance from ${city ?? "the patient's location"}, nearest first, regardless of state. Keep that order. It is not a ranking of quality or suitability; use each centre's Tier, Departments and Notes for that. `
+        ? `The nearest-centres list below is ordered by distance from ${city ?? "the patient's location"}, nearest first, regardless of state. Keep that order. It is not a ranking of quality or suitability; use each centre's Departments for that. `
         : "";
       const otherState = state ? `a state other than ${state}` : "a state other than the patient's own";
       const scheme = state ? `${state} state scheme` : "state scheme";
-      return `${order}Each distance is a STRAIGHT-LINE distance, already rounded. If you mention one, say "about N km" (or "within 10 km") and add that the road or rail journey is longer; do not use the word "straight-line" with the patient. NEVER state or estimate a travel time, a road distance, or a journey duration. For any centre in ${otherState}, name its state and tell the patient to confirm with that hospital, before travelling, whether their PM-JAY card or ${scheme} is accepted there. Do not say whether it will or will not be accepted unless that centre's PMJAY field or Navigation notes say so.`;
+      return `${order}Each distance is a STRAIGHT-LINE distance, already rounded. If you mention one, say "about N km" (or "within 10 km") and add that the road or rail journey is longer; do not use the word "straight-line" with the patient. NEVER state or estimate a travel time, a road distance, or a journey duration. For any centre in ${otherState}, name its state and tell the patient to confirm with that hospital, before travelling, whether their PM-JAY card or ${scheme} is accepted there. Do not say whether it will or will not be accepted unless that centre's PMJAY field says so.`;
     }
 
     if (hasRegional && (geography?.stage === "adjacent_state" || geography?.stage === "unfiltered")) {
