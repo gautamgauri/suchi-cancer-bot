@@ -325,70 +325,25 @@ export class AdminController {
   }
 
   /**
-   * Social post approval. Linked from the approval email.
-   * Optional ?platforms=facebook,instagram,linkedin narrows which platforms to post to.
-   * URL: GET /admin/social/approve/:id?token=<hmac>[&platforms=facebook]
+   * Retired one-click social links (GET /admin/social/approve/:id and
+   * /admin/social/reject/:id). They changed state on a GET with tokens that
+   * never expired, so a mail scanner opening the email could publish. They
+   * now change nothing. Approval happens on the review page of the social
+   * module (GET /social/review/:id shows, POST publishes).
    */
-  @Get("social/approve/:id")
-  async approveSocialPost(
-    @Param("id") id: string,
-    @Query("token") token: string,
-    @Query("platforms") platforms: string | undefined,
-    @Query("approver") approver: string | undefined,
-    @Res() res: Response,
-  ): Promise<void> {
-    try {
-      const { title, published, failed } = await this.socialPost.approvePost(id, token, platforms, approver);
-      const platformLine = published.length > 0
-        ? `Published to: ${published.join(", ")}.${failed.length > 0 ? ` Failed: ${failed.join(", ")}.` : ""}`
-        : "No platforms were published (credentials may not be configured yet).";
-      res.status(200).send(this.buildContentResponseHtml(
-        "Social Post Approved",
-        `"${title}"<br><span style="font-size:13px">${platformLine}</span>`,
-        "#188038",
-      ));
-    } catch (err: unknown) {
-      const error = err as { status?: number; message?: string };
-      res.status(error.status ?? 500).send(this.buildContentResponseHtml(
-        "Approval Failed",
-        error.message ?? "Unexpected error",
-        "#d93025",
-      ));
-    }
+  @Get(["social/approve/:id", "social/reject/:id"])
+  retiredSocialLink(@Res() res: Response): void {
+    res.status(410).send(this.buildContentResponseHtml(
+      "Link retired",
+      "This approval link is no longer used and nothing was posted. New social posts arrive in a separate email with a review page.",
+      "#6b7280",
+    ));
   }
 
   /**
-   * Social post rejection. Linked from the approval email.
-   * URL: GET /admin/social/reject/:id?token=<hmac>
-   */
-  @Get("social/reject/:id")
-  async rejectSocialPost(
-    @Param("id") id: string,
-    @Query("token") token: string,
-    @Query("approver") approver: string | undefined,
-    @Res() res: Response,
-  ): Promise<void> {
-    try {
-      const { title } = await this.socialPost.rejectPost(id, token, approver);
-      res.status(200).send(this.buildContentResponseHtml(
-        "Social Post Rejected",
-        `The social post for "${title}" has been rejected and will not be published.`,
-        "#e37400",
-      ));
-    } catch (err: unknown) {
-      const error = err as { status?: number; message?: string };
-      res.status(error.status ?? 500).send(this.buildContentResponseHtml(
-        "Rejection Failed",
-        error.message ?? "Unexpected error",
-        "#d93025",
-      ));
-    }
-  }
-
-  /**
-   * Manual social post generation — for testing and re-generation of old articles.
-   * Looks up the slug in content-queue, generates Gemini copy, runs safety gate,
-   * and sends the approval email to all reviewers.
+   * Manual social post generation for an article. Article posts are in the
+   * clinical lane: a post is prepared only if the article is marked reviewed,
+   * otherwise the slug waits for review and the response says so.
    *
    * POST /admin/social/generate  { "slug": "chemotherapy" }  (basic-auth protected)
    */
@@ -399,7 +354,7 @@ export class AdminController {
     if (!slug) return { error: "slug is required" };
     this.logger.log(`Manual social post generation requested for slug="${slug}"`);
     const result = await this.socialPost.generateFromSlug(slug);
-    return { ok: true, slug, title: result.title, message: "Approval email sent to reviewers." };
+    return { ok: true, slug, title: result.title, status: result.status, reason: result.reason };
   }
 
   private buildContentResponseHtml(heading: string, body: string, color: string): string {

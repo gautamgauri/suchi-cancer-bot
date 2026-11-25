@@ -1,9 +1,8 @@
 import { Module } from "@nestjs/common";
 import { DistributionController } from "./distribution.controller";
-import { DistributionApproveService } from "./distribution-approve.service";
 
+/** Only the retired-link page remains. See distribution.controller.ts. */
 @Module({
   controllers: [DistributionController],
-  providers: [DistributionApproveService],
 })
 export class DistributionModule {}

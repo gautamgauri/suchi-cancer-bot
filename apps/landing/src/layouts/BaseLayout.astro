@@ -95,5 +95,11 @@ const structuredData = [
   </main>
 
   <Footer />
+
+  <script>
+    // Count visits from SCCF's social posts under their platform (src/lib/social-src.mjs).
+    import { applySocialSource } from '../lib/social-src.mjs';
+    applySocialSource(window);
+  </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-# Suchi Content Pipeline — Reviewer Guide
+# Suchi Content Pipeline Reviewer Guide
 
 This guide is for Gautam, Divya, and Nisha. It explains every approval email you receive, what each button does, and the rules that prevent mistakes.
 
@@ -9,10 +9,10 @@ This guide is for Gautam, Divya, and Nisha. It explains every approval email you
 | Pipeline | What it produces | Who triggers it | Who approves |
 |---|---|---|---|
 | **Article** | New webpage on suchitracancercare.org | Automated scheduler (daily) | Gautam, Divya, Nisha |
-| **Social post** | Facebook / Instagram / LinkedIn post | Auto-triggered after article approval | Gautam, Divya, Nisha |
+| **Social post** | LinkedIn, Facebook, Instagram and X posts | Daily calendar job, and articles once a clinician has reviewed them | The owner |
 | **Hospital directory** | New hospitals in Find Care directory | Research agent (manual trigger) | Gautam, Divya |
 
-All three use the same pattern: **one-click approval in email → publishes immediately**.
+Articles and hospitals use one-click approval in email. Social posts use a review page with a publish button.
 
 ---
 
@@ -24,63 +24,37 @@ The bot researches a cancer topic, drafts a full article using NHS/NCI sources, 
 ### The email
 You receive a single shared email with:
 - Full article text to review
-- **Approve** button — publishes the article to the website
-- **Reject** button — discards it
+- **Approve** button, which publishes the article to the website
+- **Reject** button, which discards it
 
 ### Rules
-- **First click wins.** The article is published the moment anyone clicks Approve. Others do not need to click — clicking again after the first approval does nothing (it's already approved).
+- **First click wins.** The article is published the moment anyone clicks Approve. Others do not need to click. Clicking again after the first approval does nothing (it's already approved).
 - **Clicking Reject** marks the article as rejected and discards it. It won't appear on the website.
 - **Not clicking** leaves the article in "pending" state indefinitely. It won't appear on the website until someone approves it.
-- After you approve an article, **social post generation starts automatically** — you don't need to do anything. You'll receive a separate social post approval email within ~1 minute.
+- After you approve an article, **the article waits for clinical review before any social post is drafted from it**. You don't need to do anything.
 
 ### What happens after approval
 1. Article status set to `approved` in queue
 2. Website picks up the article on next deploy
-3. Social post generation triggers automatically (fire-and-forget)
+3. The article joins the list that the daily social job checks. A social post is drafted from it only once its `review_status` says it has been reviewed.
 
 ---
 
 ## Pipeline 2: Social Post Approval
 
+Social posts are approved by the owner alone. The full description is in `docs/OPERATIONS.md` section 12.
+
 ### How it starts
-Triggered automatically ~1 minute after an article is approved. Gemini generates platform-specific copy for Facebook, Instagram, and LinkedIn, runs a safety check, then emails all three reviewers.
+A daily job prepares the post planned for that day. Each platform gets its own text, and every draft passes an automatic check of the owner's style rules and its sources before anyone sees it. Article posts wait until a clinician has reviewed the article.
 
 ### The email
-Unlike the article email, **each reviewer gets their own personalised copy** of the email. The other two are CC'd so everyone can see it arrived, but your email has buttons tied to your name.
+One email goes to the owner. It shows the text for LinkedIn, Facebook, Instagram and X exactly as it will appear, with the Instagram card image and the sources. Facts are not checked automatically, so please open the source links before approving. Nothing is posted from the email. Its button opens a review page.
 
-The email contains:
-- The generated copy for each platform
-- Safety warning banner (if any content was flagged)
-- Platform approval buttons:
-  - **Approve all three** — publishes to Facebook, Instagram, and LinkedIn simultaneously
-  - **Facebook only** / **Instagram only** / **LinkedIn only** — publish to one platform
-  - **Reject — do not post** — discards the draft
+### The review page
+Opening the page changes nothing, so a mail scanner that follows the link cannot post. No platform is ticked to begin with. Tick each one you want and press publish, or press do not post. The link works once and expires after 72 hours. If you do nothing, nothing is posted.
 
-### Rules
-- **First click wins.** The post publishes the moment anyone clicks an Approve button. Subsequent clicks from other reviewers are silently ignored — the post won't be published twice.
-- **Platform buttons are independent.** If you click "Facebook only", it publishes to Facebook only. Instagram and LinkedIn remain unpublished (unless someone clicks their buttons separately).
-- **Not clicking** means the post is never published. There is no automatic expiry — drafts stay pending until someone acts.
-- **Reject** permanently discards the draft. The article is already live on the website — rejection only prevents the social post, not the article.
-
-### Platforms currently active
-| Platform | Status |
-|---|---|
-| Facebook | ✅ Live — posts immediately on approval |
-| Instagram | ⏳ Not configured — skipped until `META_IG_USER_ID` is set |
-| LinkedIn | ⏳ Not configured — skipped until an org page token is set |
-
-When a platform is not configured, clicking its button returns "not_configured" — it won't error, it just skips.
-
-### Confirmation email
-After the post publishes, everyone receives a confirmation email showing:
-- Which platforms published successfully
-- Which failed (with error reason)
-- Who approved it (the name of whoever clicked first)
-
-### Safety Warnings and Hard Blocks
-If the safety gate flags any content, what you see depends on the severity:
-- **Yellow Warning Banner:** Appears if the content has potential issues but doesn't violate hard safety rules. This is not a hard block — you can still approve it. Read the copy carefully before clicking.
-- **Red "HARD BLOCK" Banner:** Appears if the copy contains critical safety violations (such as diagnosis language, cure guarantees, stop-treatment advice, raw survival stats without context, or specific drug pricing). In this case, **all Approve buttons are removed** from the email. Clicking any approval link will return a 403 Forbidden error.
+### After you press publish
+Each ticked platform is posted on its own, and a failure on one does not stop the others. A result email lists each platform with a link to the post. A platform marked "outcome unknown" is never posted again by the system. Check the page and post it by hand if it is missing.
 
 ---
 
@@ -92,21 +66,21 @@ The hospital research agent finds and verifies oncology hospitals (NCG members, 
 ### The email
 Contains:
 - List of hospitals in the batch with key details (name, city, type, contact)
-- Link to the **review portal** — an inline editor where you can correct details before approving
+- Link to the **review portal**, an inline editor where you can correct details before approving
 - **Approve All** button
 
 ### Rules
 - Use the review portal to fix any errors (wrong address, missing phone number, etc.) before approving.
-- **Approve All** is idempotent — clicking it twice does nothing the second time.
+- **Approve All** is idempotent. Clicking it twice does nothing the second time.
 - Approved hospitals appear in the Find Care directory immediately (no deploy needed).
-- There is no "reject individual hospital" option — if one hospital is wrong, fix it in the portal, then approve.
+- There is no "reject individual hospital" option. If one hospital is wrong, fix it in the portal, then approve.
 
 ---
 
 ## Common Questions
 
 **I clicked Approve but didn't receive a confirmation. Did it work?**
-Check the Cloud Run logs or ask Gautam to verify. The confirmation email is fire-and-forget — if SMTP is down, the approval still went through.
+Check the Cloud Run logs or ask Gautam to verify. The confirmation email is fire-and-forget. If SMTP is down, the approval still went through.
 
 **I accidentally approved something. Can it be undone?**
 - Article: The article won't appear until the next deploy. Contact Gautam to manually set the status back to `pending` in `content-queue.json` on GCS before the deploy runs.
@@ -114,14 +88,14 @@ Check the Cloud Run logs or ask Gautam to verify. The confirmation email is fire
 - Hospital: Edit `hospitals.json` directly in the repo and redeploy `suchi-web`.
 
 **Can I approve from my phone?**
-Yes — the approval links work in any browser. Clicking the link in Gmail on mobile works the same as on desktop.
+Yes. The approval links work in any browser. Clicking the link in Gmail on mobile works the same as on desktop.
 
 **The safety banner appeared. Should I still approve?**
 - If it is a **yellow warning banner**, read the flagged content carefully. If the copy is medically safe, you can approve normally. If not, click Reject.
 - If it is a **red "HARD BLOCK" banner**, you cannot approve the post. The Approve buttons will be hidden, and the system will block any approval requests. You must click Reject and either edit the source article to fix the violations or ask Gautam to trigger a new draft.
 
-**Two of us clicked Approve at the same time — was it published twice?**
-No. The service is idempotent: once a post is marked as published, all subsequent approval clicks are ignored and logged as warnings.
+**Can a social post go out twice?**
+No. Each platform is claimed before anything is sent, so a second press, a resent email or two runs at once cannot post again.
 
 ---
 

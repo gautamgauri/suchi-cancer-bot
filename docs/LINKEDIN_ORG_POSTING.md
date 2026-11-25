@@ -1,10 +1,12 @@
 # LinkedIn organisation-page posting — setup and token rotation
 
-Suchi's social pipeline can publish an approved article to the **SCCF LinkedIn
-company page**. The code path is live (`postLinkedIn()` in
-`apps/api/src/modules/admin/social-post.service.ts`), but it stays inert until
-two secrets exist and are mounted on the Cloud Run service. Everything below is
-a human task: LinkedIn only issues posting tokens through a browser sign-in.
+Suchi's social module can publish an approved post to the **SCCF LinkedIn
+company page**. The client is `LinkedInClient` in
+`apps/api/src/modules/social/platforms/linkedin-x.clients.ts`. It stays inert
+until two secrets exist and are mounted on the Cloud Run service. Everything
+below is a human task, because LinkedIn issues posting tokens only through a
+browser sign-in. How posts are approved and recorded is in `docs/OPERATIONS.md`
+section 12.
 
 Related: issue #27, `docs/RELIABILITY_BACKLOG.md` (P2-6),
 `docs/DISTRIBUTION_PIPELINE_SPEC.md` (env var table).
@@ -205,14 +207,12 @@ revision — see `docs/DEPLOYMENT.md`).
    captured and asserts the token appears in neither. It runs in CI in the
    "Build + config parity" job. If you used `--out`, delete the file once the
    secret version exists.
-1. **Configuration is visible.** Publish or re-send any article approval — the
-   social approval email now shows a **LinkedIn** copy block and a **"LinkedIn
-   only"** button, and the "Approve all" button counts 3 platforms. Those
-   elements are rendered only when both LinkedIn env vars are non-empty
-   (`liConfigured`), so their presence is itself the configuration check.
-2. **Posting works.** Click **LinkedIn only** on a real draft and check the SCCF
-   page feed. The confirmation email lists LinkedIn under published or failed.
-3. **If it failed**, read the Cloud Run log for `SocialPostService`:
+1. **Configuration is visible.** `GET /v1/social/tokens` with the admin login
+   reports LinkedIn as `ok`, with the expiry date, once both env vars are set.
+   In live mode the next approval email offers LinkedIn with a tick box.
+2. **Posting works.** Tick only LinkedIn on the review page of a real post and
+   check the SCCF page feed. The result email gives the post's link.
+3. **If it failed**, the result email and `GET /v1/social/posts` give the reason.
    - `401 — access token expired or revoked` → the 60-day token is dead, redo
      steps 2–4.
    - `403 — the token lacks w_organization_social, or the authorising member is
@@ -256,7 +256,8 @@ does not affect the chat service.
 ## 7. Turning LinkedIn off again
 
 Remove the two `--set-secrets` entries from **both** `cloudbuild.yaml` and
-`cloudbuild.gated.yaml` (they use replace semantics — keep them identical, and
-re-run `python3 scripts/check_deploy_config_parity.py`), then deploy. With the
-env vars absent, `postLinkedIn()` returns `not_configured` and the approval
-email omits LinkedIn entirely. No code change is required.
+`cloudbuild.gated.yaml`, keep them identical and re-run
+`python3 scripts/check_deploy_config_parity.py`, then deploy. With the env
+vars absent, LinkedIn is not offered in live mode. No code change is required.
+To stop all platforms at once without a deploy, use the pause switch in
+`docs/OPERATIONS.md` section 12.
